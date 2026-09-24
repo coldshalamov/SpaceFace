@@ -1453,6 +1453,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     dressApron();
   }
 
+  // The hull's systems round the dial: each slot type once, how many of its slots are fitted, and
+  // whether a stock drive stands in for an empty engine slot (the drawing counts it as fitted).
+  function circuitSystems(def, fittings) {
+    const slots = buildSlotList(def);
+    const fits = fittings || [];
+    const stockDrive = !!(activeBandModel && activeBandModel.handling && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel);
+    const out = [];
+    for (const type of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) {
+      const available = slots.filter((slot) => slot.type === type).length;
+      if (!available) continue;
+      const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fits[i] ? 1 : 0), 0);
+      out.push({ type, label: SLOT_LABEL[type] || type, fitted, available, stock: type === 'engine' && fitted === 0 && stockDrive });
+    }
+    return out;
+  }
+
   // The circuit's ghost arc: what the fittings being previewed would draw from the core.
   function circuitDraws(def, fittings) {
     const draws = new Map();
@@ -1469,7 +1485,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const s = viewedShip();
     if (!core || !def || !s) return;
     const dial = core.querySelector('.orr-power');
-    const html = powerDialSvg({ cap: def.energyCap || 0, draws: circuitDraws(def, s.fittings), ghost: afterFittings ? circuitDraws(def, afterFittings) : null });
+    const html = powerDialSvg({ cap: def.energyCap || 0, draws: circuitDraws(def, s.fittings), ghost: afterFittings ? circuitDraws(def, afterFittings) : null,
+      systems: circuitSystems(def, afterFittings || s.fittings) });
     if (dial) dial.outerHTML = html;
   }
 
@@ -1605,6 +1622,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       gap: 30,
       edge: 40,
       allowNone: true,
+      // a narrow stage keeps its nodes clean: the labels carry the numerals
+      numeralsMinWidth: 1100,
       onPick: (index) => {
         const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
         jigLit = index;
@@ -2206,7 +2225,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
           `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
         // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it
-        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">core · ${fmt(totalDraw)} draw</span></div>` +
+        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">core · ${fmt(totalDraw)} draw</span></div>` +
         `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
@@ -2453,7 +2472,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${d.sentence ? escapeHtml(d.sentence) + ' ' : ''}${chips}${riskChips}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : ''}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
         `</li>`

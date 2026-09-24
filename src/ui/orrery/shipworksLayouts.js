@@ -9,10 +9,12 @@ import { arcD, polar, ticksD } from './svg.js';
 const f2 = (n) => Math.round(n * 100) / 100;
 /**
  * The power circuit as one dial: the core's capacity is the arc, the continuous draw is lit along
- * it system by system with a notch between each, and the quarter ticks read the scale.
+ * it system by system with a notch between each, and the quarter ticks read the scale. The hull's
+ * systems stand round the arc as engraved words on ticks -- bright where a module is fitted, dim
+ * where the slot is empty -- so the dial says what the seven-row table used to.
  */
-export function powerDialSvg({ cap = 0, draws = [], ghost = null } = {}) {
-  const w = 176; const h = 118; const cx = 88; const cy = 70; const r = 58; const from = -128; const to = 128;
+export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] } = {}) {
+  const w = 232; const h = 150; const cx = 116; const cy = 86; const r = 58; const from = -128; const to = 128;
   const span = to - from;
   const capacity = Math.max(1, Number(cap) || 0);
   let at = from;
@@ -35,12 +37,30 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null } = {}) {
     const end = from + span * Math.min(1.08, total / capacity);
     if (total > 0) ghostArc = `<path class="orr-power__ghost${total > capacity ? ' is-over' : ''}" d="${arcD(cx, cy, r + 9, from, Math.min(to + 10, end))}"/>`;
   }
+  // the systems round the arc: a tick each on the scale, the word outside it
+  let sys = '';
+  const list = Array.isArray(systems) ? systems.filter(Boolean) : [];
+  const n = list.length;
+  list.forEach((s, i) => {
+    const a = from + (span * (i + 0.5)) / n;
+    const [tx0, ty0] = polar(cx, cy, r + 12, a);
+    const [tx1, ty1] = polar(cx, cy, r + 17, a);
+    const [lx, ly] = polar(cx, cy, r + 23, a);
+    const cos = Math.cos(((a - 90) * Math.PI) / 180);
+    const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
+    const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
+    const word = String(s.label || s.type || '').toUpperCase();
+    const count = s.available > 1 ? ` ${s.fitted}/${s.available}` : '';
+    sys += `<path class="orr-power__sys ${state}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
+      + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
+  });
   return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 4, from, to, inward: false })}"/>`
-    + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '') + ghostArc
+    + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '') + ghostArc + sys
     + `</svg>`;
 }
+const escapeXml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const STYLE_ID = 'sf-orrery-shipworks';
 const W = 'html body #screens > .sx-berth.orr-station .sx-sw';
@@ -128,8 +148,9 @@ ${W} .sx-sw-row::after { display:none !important; }
 ${W} .sx-sw-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1px !important;
   background:rgb(${BONE} / .38) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; }
 ${W} .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true'])::before { left:2px !important; width:11px !important; height:14px !important;
-  margin-top:-7px !important; ${HAND} background:rgb(248 244 234) !important; }
-${W} .sx-sw__list:is(:focus-within, :hover) .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true'])::before { background:var(--dp-hand, #f2b950) !important; }
+  margin-top:-7px !important; ${HAND} background:var(--dp-hand, #f2b950) !important; filter:drop-shadow(0 0 5px rgb(242 185 80 / .55)); }
+${W} .sx-sw__list:is(:focus-within, :hover) .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true'])::before { background:var(--dp-hand-hot, #ffd98c) !important;
+  filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
 ${W} .sx-sw-row .k-row__name { font-size:14px !important; color:rgb(248 244 234) !important; }
 ${W} .sx-sw-row .k-row__sub { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-row .sx-sw-row__flag { ${LABEL} font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; background:none !important; border:0 !important; }
@@ -296,6 +317,113 @@ ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::after { display
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${W} .sx-sw__side .k-t-fine, ${W} .sx-sw__side .k-sentence { color:rgb(${BONE} / .7) !important; }
+
+/* ================================ ROUND 6 ==================================================== */
+/* the ship's name: a word, never a link at rest */
+${W} .sx-sw__name .sf-entity-link, ${W} .sx-sw-side__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
+${W} :is(.sx-sw__name, .sx-sw-side__name) .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
+/* the hero numeral: top speed, thin and huge; the other figures stay readings */
+${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(44px, 5.4vh, 64px) !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
+  letter-spacing:-.01em !important; white-space:nowrap; }
+${W}.orr-sw--jig .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(40px, 5vh, 58px) !important; }
+${W} .sx-sw-hero[data-band='handling'] { grid-column:1 / -1; }
+/* the screen's verbs: a footer row under the readings (the apron pins the rack after the stats);
+   on the jig, where the readings stand in the left column, the verbs stand at that column's foot */
+${W} .sx-sw-verbs { position:static !important; flex:0 0 auto !important; width:auto !important; display:flex !important; flex-direction:row !important; flex-wrap:wrap;
+  gap:2px 18px !important; margin:8px 0 0 !important; max-width:none !important; }
+${W}.orr-sw--jig .sx-sw-verbs { position:absolute !important; left:0 !important; top:auto !important; right:auto !important; bottom:24px !important; z-index:5; width:250px !important;
+  flex-direction:column !important; align-items:flex-start !important; gap:6px !important; margin:0 !important; }
+${W} .sx-sw-bands { display:flex !important; flex-wrap:wrap; gap:10px 28px !important; align-items:flex-end; }
+${W}.orr-sw--jig .sx-sw-bands { display:grid !important; grid-template-columns:1fr 1fr; gap:10px 18px !important; align-items:end; }
+${W}.orr-sw--jig .sx-sw__stats { width:250px !important; top:150px !important; max-height:calc(100% - 160px) !important; }
+${W}.orr-sw--jig .sx-sw-bar { grid-template-columns:62px minmax(0, 1fr) auto; }
+${W} .sx-sw-bar__track { height:9px !important; background:linear-gradient(rgb(${BONE} / .26), rgb(${BONE} / .26)) 0 50% / 100% 1px no-repeat,
+  repeating-linear-gradient(90deg, rgb(${BONE} / .36) 0 1px, transparent 1px 10%) 0 50% / 100% 9px no-repeat !important; }
+${W} .sx-sw-bar__track > .k-bar__fill { height:3px !important; margin-top:-1.5px; }
+/* the chooser: one line per module at rest; the one in hand unfolds; the Hand is on the hull */
+${W} .sx-modrow { padding:7px 0 7px 26px !important; }
+${W} .sx-modrow .sx-modrow__body { gap:2px; }
+${W} .sx-modrow .sx-modrow__role:not(.k-38) { display:none !important; }
+${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__role:not(.k-38) { display:block !important; }
+${W} .sx-modrow:is(:focus-within, :hover)::before { background:rgb(248 244 234) !important; }
+${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:none !important; display:none !important; }
+${W} .sx-modrow .sx-modrow__meta .sx-modrow__chips { display:block; margin-top:4px; }
+${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip { display:inline-block; margin-right:10px; }
+${W} .sx-sw-verbs { align-self:flex-start !important; justify-content:flex-start !important; margin-left:0 !important; }
+/* the live hull on the stage: its picture dissolves into the bay; no frame, no drag caption */
+${W} .sx-sw__stage.is-live > .sx-sw__canvas { -webkit-mask-image:radial-gradient(ellipse 58% 60% at 50% 50%, #000 36%, transparent 74%); mask-image:radial-gradient(ellipse 58% 60% at 50% 50%, #000 36%, transparent 74%); }
+${W} .sx-sw__stage > .sx-sw__dragcue { display:none !important; }
+${W} .sx-sw__camera { gap:0 14px !important; }
+${W} .sx-modrow .sx-modrow__buy.k-word--primary { color:var(--dp-hand, #f2b950) !important; font-size:12px !important; letter-spacing:.18em !important; }
+${W} .sx-modrow .sx-modrow__buy.k-word--primary::before { color:var(--dp-hand, #f2b950) !important; }
+${W} .sx-modrow .sx-modrow__buy.k-word--primary small { color:rgb(255 217 140 / .85) !important; }
+${W} .sx-modrow .sx-modrow__buy.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 18px rgb(255 217 140 / .45); }
+${W} .sx-chooser__kicker { white-space:normal !important; max-width:100%; }
+${W} .sx-sw__chooser { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 48px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 48px), transparent) !important;
+  padding-bottom:48px !important; }
+/* the picture on the stage: a rendered hull dissolves into the bay; no frame, no toolbar under it */
+${W} .sx-sw__stage > .sx-sw__poster { -webkit-mask-image:radial-gradient(ellipse 60% 56% at 50% 52%, #000 38%, transparent 74%); mask-image:radial-gradient(ellipse 60% 56% at 50% 52%, #000 38%, transparent 74%); }
+${W} .sx-sw__stage.has-poster:not(.is-live) > :is(.sx-sw__camera, .sx-sw__dragcue, .sx-sw__baylines) { display:none !important; }
+/* For Sale: the reading is a ledger; the hull's name is the hero word, its price the figure */
+${W} .sx-sw-side__name { display:block !important; margin:0 0 2px !important; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
+  font-weight:800 !important; font-size:30px !important; letter-spacing:.005em !important; line-height:1 !important; text-transform:uppercase; color:rgb(248 244 234) !important; }
+${W} .sx-sw-side__hero { ${PLAIN} padding:0 !important; margin:8px 0 14px !important; min-height:0 !important; text-align:left; display:block !important; }
+${W} .sx-sw-side__hero::before, ${W} .sx-sw-side__hero::after { display:none !important; }
+${W} .sx-sw-side__hero .k-hero__n { display:block; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important;
+  font-weight:300 !important; font-size:48px !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-transform:none !important; text-shadow:none !important; }
+${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size:10px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-spec { ${PLAIN} }
+${W} .sx-spec > li { ${PLAIN} display:grid !important; grid-template-columns:96px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:6px 0 !important; min-height:0 !important; }
+${W} .sx-spec > li > .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-spec > li > .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; white-space:normal !important; text-align:left !important; justify-self:start; overflow:visible !important;
+  text-overflow:clip !important; max-width:none !important; line-height:1.4; }
+${W} .sx-buybar { ${PLAIN} margin-top:16px !important; }
+${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size:10.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
+/* the rack: two sockets on a short scale, a dashed ring where nothing is loaded */
+${W} .sx-sw-rack { border-top:0 !important; margin-top:18px !important; padding-top:0 !important; }
+${W} .sx-sw-rack__cells { display:flex !important; gap:0 22px !important; margin:6px 0 0 !important; }
+${W} .sx-sw-rack__cell { ${PLAIN} display:flex !important; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 0 !important; min-height:0 !important; cursor:pointer; width:auto !important; }
+${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important; position:static !important; width:16px !important; height:16px !important; border-radius:50% !important;
+  border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important; transform:none !important; clip-path:none !important; margin:0 !important; }
+${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
+${W} .sx-sw-rack__cell::after { display:none !important; }
+${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size:9px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
+${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size:11.5px !important; }
+${W} .sx-sw-rack__cell .k-row__sub { font-size:10.5px !important; }
+${W} .sx-sw-rack__cell:is(:hover, :focus-visible) { outline:none !important; }
+${W} .sx-sw-rack__cell:is(:hover, :focus-visible)::before { border-color:var(--dp-hand, #f2b950) !important; }
+${W} .sx-sw-rack__cell:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand-hot, #ffd98c) !important; }
+/* the circuit: the dial says it all; the seven-row table and the instruction retire */
+${W} .sx-sw-circuit__flows, ${W} .sx-sw-circuit__instruction { display:none !important; }
+${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:232px; height:150px; }
+${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
+${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
+${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
+${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
+${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8px; letter-spacing:.16em; fill:rgb(${BONE} / .42); }
+${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
+${W} text.orr-power__syslabel.is-stock { fill:rgb(${BONE} / .82); }
+${W} .sx-sw-circuit__acts { margin-top:8px !important; }
+@media (max-height:800px) {
+  ${W}.orr-sw--jig .sx-sw__stats { top:132px !important; width:236px !important; max-height:calc(100% - 140px) !important; }
+  /* a short screen: the verbs stand in a row at the stage's foot, left of the readings line */
+  ${W}.orr-sw--jig .sx-sw-verbs { left:258px !important; bottom:40px !important; width:auto !important; flex-direction:row !important; gap:0 16px !important; }
+  ${W}:not(.orr-sw--jig) .sx-sw__stage { flex:0 0 200px !important; min-height:200px !important; }
+  ${W}:not(.orr-sw--jig) .sx-sw-verbs { margin-top:4px !important; }
+  ${W} .sx-sw-band__meta, ${W} .sx-sw-band--presets { display:none !important; }
+  ${W} .sx-sw-hero .k-hero__n { font-size:20px !important; }
+  ${W} .sx-sw-hero[data-band='handling'] .k-hero__n, ${W}.orr-sw--jig .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:40px !important; }
+  ${W} .sx-sw-bar { padding:3px 0 !important; }
+  ${W} .sx-sw-hero { padding:0 0 4px !important; }
+  ${W}.orr-sw--jig .sx-sw-bands { gap:6px 14px !important; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:200px; height:130px; }
+  ${W} .sx-sw-circuit__core .k-hero__n { top:50px; font-size:28px !important; }
+  ${W} .sx-sw-circuit__core .k-hero__w { top:88px; }
+  ${W} .sx-sw-side__name { font-size:24px !important; }
+  ${W} .sx-sw-side__hero .k-hero__n { font-size:38px !important; }
+  ${W} .sx-spec > li { padding:3px 0 !important; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

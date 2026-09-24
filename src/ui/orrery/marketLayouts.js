@@ -121,10 +121,10 @@ ${M} .sx-mkt-row td { padding:8px 8px !important; font-size:13px !important; fon
 ${M} .sx-mkt-row .sx-mkt-row__name { position:relative; padding-left:28px !important; color:rgb(${BONE} / .86) !important; font-weight:560; }
 /* a tick on the rail for every good */
 ${M} .sx-mkt-row .sx-mkt-row__name::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:1px; background:rgb(${BONE} / .38); }
-/* the Hand: an index on the rail at the chosen good; bone at rest, amber where the player is */
+/* the Hand: an index on the rail at the chosen good; the one amber at rest, hot where the player is */
 ${M} .sx-mkt-row.is-active .sx-mkt-row__name::after { content:""; position:absolute; left:2px; top:50%; width:11px; height:14px; margin-top:-7px;
-  clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%); background:rgb(248 244 234); }
-${M} .sx-mkt-table tbody:is(:focus-within, :hover) .sx-mkt-row.is-active .sx-mkt-row__name::after { background:var(--dp-hand, #f2b950); }
+  clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%); background:var(--dp-hand, #f2b950); filter:drop-shadow(0 0 5px rgb(242 185 80 / .55)); }
+${M} .sx-mkt-table tbody:is(:focus-within, :hover) .sx-mkt-row.is-active .sx-mkt-row__name::after { background:var(--dp-hand-hot, #ffd98c); filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
 ${M} .sx-mkt-row.is-active td { color:rgb(${BONE} / .9) !important; }
 ${M} .sx-mkt-row.is-active .sx-mkt-row__name { color:rgb(250 247 238) !important; }
 ${M} .sx-mkt-row:hover td { color:rgb(${BONE} / .88) !important; }

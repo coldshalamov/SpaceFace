@@ -80,8 +80,10 @@ ${S} .so-command-trigger { background:none !important; border:0 !important; bord
   font-weight:650; font-size:11px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
 ${S} .so-command-trigger::before, ${S} .so-command-trigger::after { display:none !important; }
 ${S} .so-command-trigger .so-icon { width:14px; height:14px; }
-${S} .so-command-trigger .dp-kbd { background:none !important; border:1px solid rgb(${BONE} / .28) !important; border-radius:2px !important; box-shadow:none !important;
-  padding:1px 5px !important; font-size:9.5px !important; letter-spacing:.12em; color:rgb(${BONE} / .6) !important; }
+/* the key hint is a word after a dot, never a drawn key cap */
+${S} .so-command-trigger .dp-kbd { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  padding:0 !important; font:inherit !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; }
+${S} .so-command-trigger .dp-kbd::before { content:"· "; color:rgb(${BONE} / .4); }
 ${S} .so-command-trigger:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !important; }
 

@@ -28,10 +28,10 @@ const CSS = `
 /* a scan of cold light passes down the drawing, masked to the ship's own silhouette */
 .orr-hull__scan { position:absolute; pointer-events:none; overflow:hidden;
   -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
-.orr-hull__scan::before { content:""; position:absolute; left:0; right:0; top:-30%; height:30%;
-  background:linear-gradient(rgb(143 203 255 / 0), rgb(143 203 255 / .12) 70%, rgb(223 238 255 / .34) 97%, rgb(143 203 255 / 0));
+.orr-hull__scan::before { content:""; position:absolute; left:0; right:0; top:-18%; height:18%;
+  background:linear-gradient(rgb(143 203 255 / 0), rgb(143 203 255 / .06) 70%, rgb(223 238 255 / .16) 97%, rgb(143 203 255 / 0));
   animation:orr-hull-scan 8s cubic-bezier(.45, 0, .25, 1) 1.4s infinite; }
-@keyframes orr-hull-scan { 0% { transform:translateY(0); } 55%, 100% { transform:translateY(440%); } }
+@keyframes orr-hull-scan { 0% { transform:translateY(0); } 55%, 100% { transform:translateY(680%); } }
 html.sf-reduce-motion .orr-hull__scan::before { animation:none; opacity:0; }
 .orr-hull__svg { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
 .orr-hull__label { position:absolute !important; margin:0 !important; box-sizing:border-box; }
@@ -139,7 +139,7 @@ const INERT = Object.freeze({
  * @param {() => Element[]} [o.avoid] chrome the labels and the ship keep clear of (title, keys)
  * @param {number} [o.labelWidth] label column width in px
  */
-export function createHullSchematic({ host, avoid = () => [], onPick = null, labelWidth = 300, gap = 34, edge = 72, allowNone = false } = {}) {
+export function createHullSchematic({ host, avoid = () => [], onPick = null, labelWidth = 300, gap = 34, edge = 72, allowNone = false, numeralsMinWidth = 0 } = {}) {
   const doc = host && host.ownerDocument;
   if (!doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function'
     || typeof doc.createElement !== 'function') return INERT;
@@ -311,7 +311,8 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
 
     // the dial: as large as the band allows with a label column clear of it on each side (the band
     // also holds the drifting orbit above and the engraving below: 52 px of it each side)
-    const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (region.bottom - region.top) / 2 - 52));
+    const bandMargin = Math.min(52, Math.round((region.bottom - region.top) * 0.11));
+    const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (region.bottom - region.top) / 2 - bandMargin));
     const hx = (region.left + region.right) / 2;
     const hy = (region.top + region.bottom) / 2;
     // the drawing: the plan frame is square with the ship inside ~0.85 of it; the ship's length fills
@@ -414,8 +415,14 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       exits[i] = [ex, ey];
       const colEdge = side < 0 ? hx - R - gap + 6 : hx + R + gap - 6;
       geo.angles[i] = bearing(hx, hy, ex, ey);
-      // inside the ring the line runs behind the drawing; outside it runs flat to its label
-      const inner = `M ${p.x.toFixed(1)} ${p.y.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+      // inside the ring the line leaves the node at 45 degrees and runs level to the rim (an
+      // engineer's elbow, never a stray diagonal); outside it runs flat to its label
+      const dyIn = ey - p.y;
+      const dxIn = ex - p.x;
+      const elbow = Math.abs(dxIn) >= Math.abs(dyIn)
+        ? { x: p.x + Math.sign(dxIn || side) * Math.abs(dyIn), y: ey }
+        : { x: p.x, y: ey - Math.sign(dyIn || 1) * Math.abs(dxIn) };
+      const innerPts = [p, elbow, { x: ex, y: ey }];
       const outer = Math.abs(cy - ey) < 4
         ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
         : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
@@ -428,18 +435,35 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
         if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
         return alphaMap[(((v * 256) | 0) * 256 + ((u * 256) | 0)) * 4 + 3] > 120;
       };
-      const runLen = Math.hypot(ex - p.x, ey - p.y);
+      // the elbowed run is walked as one parameter, so a hidden stretch can span the corner
+      const legLen = [Math.hypot(innerPts[1].x - innerPts[0].x, innerPts[1].y - innerPts[0].y), Math.hypot(innerPts[2].x - innerPts[1].x, innerPts[2].y - innerPts[1].y)];
+      const runLen = legLen[0] + legLen[1];
+      const pointAt = (t) => {
+        const dist = runLen * t;
+        if (dist <= legLen[0] || legLen[1] === 0) {
+          const u = legLen[0] > 0 ? dist / legLen[0] : 0;
+          return [innerPts[0].x + (innerPts[1].x - innerPts[0].x) * u, innerPts[0].y + (innerPts[1].y - innerPts[0].y) * u];
+        }
+        const u = (dist - legLen[0]) / legLen[1];
+        return [innerPts[1].x + (innerPts[2].x - innerPts[1].x) * u, innerPts[1].y + (innerPts[2].y - innerPts[1].y) * u];
+      };
       const steps = Math.max(2, Math.ceil(runLen / 4));
       const runs = [];
       let from = 0; let state = overShip(p.x, p.y);
+      const cornerT = runLen > 0 ? legLen[0] / runLen : 0;
       for (let k = 1; k <= steps; k += 1) {
         const t = k / steps;
-        const s = overShip(p.x + (ex - p.x) * t, p.y + (ey - p.y) * t);
+        const [sx, sy] = pointAt(t);
+        const s = overShip(sx, sy);
         if (s !== state || k === steps) { runs.push([from, t, state]); from = t; state = s; }
       }
-      const at = (t) => `${(p.x + (ex - p.x) * t).toFixed(1)} ${(p.y + (ey - p.y) * t).toFixed(1)}`;
-      const hiddenD = runs.filter((r) => r[2]).map((r) => `M ${at(r[0])} L ${at(r[1])}`).join(' ');
-      const openD = runs.filter((r) => !r[2]).map((r) => `M ${at(r[0])} L ${at(r[1])}`).join(' ');
+      // a run that crosses the corner is drawn through the corner point, so the elbow stays sharp
+      const at = (t) => { const [x, y] = pointAt(t); return `${x.toFixed(1)} ${y.toFixed(1)}`; };
+      const seg = (r) => (r[0] < cornerT && r[1] > cornerT
+        ? `M ${at(r[0])} L ${at(cornerT)} L ${at(r[1])}`
+        : `M ${at(r[0])} L ${at(r[1])}`);
+      const hiddenD = runs.filter((r) => r[2]).map(seg).join(' ');
+      const openD = runs.filter((r) => !r[2]).map(seg).join(' ');
       const lineUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });
       const lineOpen = svg('path', { d: openD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
       layer.appendChild(rise(lineOpen, 120 + i * 40));
@@ -505,6 +529,8 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       if (typeof onPick === 'function') g.addEventListener('click', () => onPick(i));
       layer.appendChild(rise(g, 200 + i * 40));
       nodeEls[i] = g;
+      // on a narrow stage the labels carry the numerals and the nodes stay clean
+      if (W < numeralsMinWidth) { numEls[i] = null; return; }
       // the numeral beside its node: out along the way its line leaves, else the first of eight
       // places round the node clear of every node and every numeral already set
       const [ex, ey] = exits[i];
