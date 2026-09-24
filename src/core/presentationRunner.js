@@ -817,7 +817,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
       if (shouldSkipFullTickSystems(state) && !(Number(state.timeScale) > 0)
         && typeof registry.keepalive === 'function') {
-        registry.keepalive(0);
+        registry.keepalive(0, frameDt);
       }
 
       // Ordering policy: ONE order. The sim advances by the time that passed, then the picture

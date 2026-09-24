@@ -162,8 +162,15 @@ function isProductionDocked(state) {
     && typeof state.ui.dockedStationId === 'string' && state.ui.dockedStationId);
 }
 
+// The yard's clock: simTime plus the wall seconds spent frozen-docked (see update()). Job
+// timestamps and occupancy gates all read this so a docked session is one continuous schedule.
+function yardNow(state) {
+  const s = state && state.stationServices;
+  return (Number(state && state.simTime) || 0) + (Number(s && s.dockedElapsed) || 0);
+}
+
 function freshState() {
-  return { seq: 0, player: null, stations: {}, _viewStamp: null };
+  return { seq: 0, player: null, stations: {}, _viewStamp: null, dockedElapsed: 0 };
 }
 
 export function ensureStationServicesState(state) {
@@ -210,7 +217,7 @@ export const stationServices = {
     const stationId = p && p.stationId;
     if (!stationId) return;
     const s = ensureStationServicesState(this.state);
-    const now = Number(this.state.simTime) || 0;
+    const now = yardNow(this.state);
     if (s.player && s.player.stationId === stationId) {
       // Re-dock at the same yard (harnesses re-emit): keep jobs, keep the pad.
       s.player.dockedAt = now;
@@ -291,7 +298,7 @@ export const stationServices = {
       this._abortJobs(s.player, 'station_changed');
       s.player = null;
     }
-    if (!s.player) s.player = freshPlayer(stationId, Number(state.simTime) || 0);
+    if (!s.player) s.player = freshPlayer(stationId, yardNow(state));
     const profile = stationServiceProfile(state, stationId);
     // A station without the matching service can't take the job (refuel needs 'refuel', repair
     // needs 'repair' in its services list — same contract the UI quote layer enforces).
@@ -307,7 +314,7 @@ export const stationServices = {
       applied: 0,
       lastApplied: 0,
       status: 'queued',
-      queuedAt: Number(state.simTime) || 0,
+      queuedAt: yardNow(state),
       startedAt: null,
       ratePerS: 0,
       meta: spec.meta && typeof spec.meta === 'object' ? spec.meta : {},
@@ -327,7 +334,6 @@ export const stationServices = {
     const s = state.stationServices;
     if (!s || !s.player || !s.player.stationId) return;   // inert off the dock path
     const player = s.player;
-    const now = Number(state.simTime) || 0;
     const stationId = player.stationId;
 
     // The yard only works on a hull sitting on its pad. A saved mid-job record restores
@@ -338,6 +344,18 @@ export const stationServices = {
       ? state.ui.dockedStationId === stationId
       : !!(playerEntity(state) && playerEntity(state).flags && playerEntity(state).flags.docked);
     if (!dockedHere) return;
+    // A production dock freezes the world clock (ui:pausing-screen pins timeScale at 0), so this
+    // tick's dt is wall-frame time. The seeded client schedule must keep arriving and departing
+    // on that same wall clock — a congestion snapshot taken at the dock instant never drains
+    // otherwise, and a paid job would queue forever then abort unpaid on undock. Fold the frozen
+    // seconds into the yard clock; simTime + dockedElapsed is the real wall time since epoch
+    // (unfrozen ticks advance simTime 1:1, frozen ticks advance dockedElapsed 1:1). A harness
+    // that steps an unfrozen world keeps the pure-simTime reading: no double-advance.
+    const scale = Number(state.timeScale);
+    if (Number.isFinite(scale) && scale <= 0) {
+      s.dockedElapsed = (Number(s.dockedElapsed) || 0) + Math.max(0, Number(dt) || 0);
+    }
+    const now = (Number(state.simTime) || 0) + (Number(s.dockedElapsed) || 0);
     const profile = stationServiceProfile(state, stationId);
     const sizeKey = (profile && profile.size) || 'M';
     const pads = yardPadsFor(sizeKey);
@@ -345,12 +363,17 @@ export const stationServices = {
     const rep = playerRepFor(state, profile && profile.factionId);
 
     // Seeded yard traffic for this station-day. A day rollover mid-dock is rare and cheap to
-    // re-plan: yesterday's clients are simply absent from today's schedule.
+    // re-plan: yesterday's clients are simply absent from today's schedule. The plan is a pure
+    // function of the day, so it is cached on the station record rather than rebuilt per tick.
     const day = Math.floor(now / DAY_SECONDS);
     const seed = state.meta && state.meta.seed;
     const sectorId = (profile && profile.sectorId)
       || (state.world && state.world.currentSectorId) || 'sector';
-    const visits = planYardClients(seed, sectorId, day, stationId, sizeKey);
+    const st = s.stations[stationId] || (s.stations[stationId] = {});
+    if (!st._plan || st._plan.day !== day) {
+      st._plan = { day, visits: planYardClients(seed, sectorId, day, stationId, sizeKey) };
+    }
+    const visits = st._plan.visits;
     const occ = yardOccupancy(visits, pads, crews, now);
 
     // Pad assignment: a holding player takes the first pad no client occupies.
@@ -488,8 +511,11 @@ export const stationServices = {
         const seed = this.state.meta && this.state.meta.seed;
         const sectorId = (profile && profile.sectorId)
           || (this.state.world && this.state.world.currentSectorId) || 'sector';
-        const visits = planYardClients(seed, sectorId, day, stationId, sizeKey);
-        return { pads: yardPadsFor(sizeKey), occ: yardOccupancy(visits, yardPadsFor(sizeKey), yardCrewsFor(sizeKey), now) };
+        const st = s.stations[stationId] || (s.stations[stationId] = {});
+        if (!st._plan || st._plan.day !== day) {
+          st._plan = { day, visits: planYardClients(seed, sectorId, day, stationId, sizeKey) };
+        }
+        return { pads: yardPadsFor(sizeKey), occ: yardOccupancy(st._plan.visits, yardPadsFor(sizeKey), yardCrewsFor(sizeKey), now) };
       })();
     const player = s.player;
     const padsArr = [];
@@ -529,9 +555,12 @@ export const stationServices = {
   // ── persistence — the player block survives a save; client traffic is re-derived ──────────
   serialize() {
     const s = this.state.stationServices;
-    if (!s || !s.player) return {};
+    if (!s) return {};
+    const dockedElapsed = Number(s.dockedElapsed) || 0;
+    if (!s.player) return { dockedElapsed };
     return {
       seq: s.seq,
+      dockedElapsed,
       player: {
         stationId: s.player.stationId,
         padIdx: s.player.padIdx,
@@ -548,6 +577,9 @@ export const stationServices = {
 
   deserialize(data) {
     const s = ensureStationServicesState(this.state);
+    if (Number.isFinite(data && data.dockedElapsed)) {
+      s.dockedElapsed = Math.max(0, Number(data.dockedElapsed));
+    }
     if (!data || typeof data !== 'object' || !data.player) {
       s.player = null;
       s.stations = {};

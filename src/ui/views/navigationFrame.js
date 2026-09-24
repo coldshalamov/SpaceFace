@@ -133,6 +133,10 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
             <!-- Place context actions for the current selection. Each one is resolved from real
                  state and ships disabled-with-a-reason when it has no consumer. -->
             <div class="gm-place-actions" id="gm-place-actions" role="group" aria-label="Place actions"></div>
+            <!-- PQ-183.02 chart notes: the player's own line on a selected mark. Lives in the
+                 action band (not the scrollable detail) so it is always reachable; renders the
+                 saved text or the edit field, never a fake placeholder note. -->
+            <div class="gm-note-slot" id="gm-note-slot"></div>
           </div>
         </div>
       </div>

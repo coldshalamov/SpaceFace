@@ -414,14 +414,14 @@ export function createBarScreen(ctx) {
 
     const surveyRow = survey
       ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
-          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
             `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
           `<button type="button" ${stationControlAttrs('buy-survey')} class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>${stationControlLabel('buy-survey')} · ${fmt(survey.price)} cr</button>` +
         `</li>`
       : '';
 
     const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
-        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract'))}</span>` +
           `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
         `<button type="button" ${stationControlAttrs('inspect-lead')} class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">${stationControlLabel('inspect-lead')}</button>` +
       `</li>`).join('');

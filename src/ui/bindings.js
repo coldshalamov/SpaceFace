@@ -34,6 +34,9 @@ export const BINDINGS = Object.freeze({
   // G9: bring the flight objective back. Semicolon is free of the verb tables and does not
   // open the mission log.
   recallObjective: { key: ';', code: 'Semicolon', label: ';' },
+  // PQ-183.02 global find. Slash is the classic find key (EVE, vim, quick-find) and free
+  // repo-wide; text entry still wins, so typing '/' into a field never opens the palette.
+  find: { key: '/', code: 'Slash', label: '/' },
 });
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------

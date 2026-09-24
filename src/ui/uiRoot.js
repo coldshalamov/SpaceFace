@@ -64,6 +64,7 @@ import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createWatchlistHud } from './watchlistHud.js';
+import { createGlobalFind } from './globalFind.js';
 import { createDiscoveryPlate } from './discoveryPlate.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
@@ -407,6 +408,8 @@ export const ui = {
     this.whyReveal = null;
     if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
     this.watchlistHud = null;
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -468,6 +471,12 @@ export const ui = {
     if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
     this.entityLinks = createEntityLinks(ctx);
     ctx.entityLinks = this.entityLinks;
+
+    // PQ-183.02 global find: the `/` palette. Its rows are plain data-entity doors, so it mounts
+    // after the delegate exists and borrows the drawer for everything past the result list.
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = createGlobalFind(ctx);
+    ctx.globalFind = this.globalFind;
 
     // Tier 2 "why" (INSTRUMENT_GRAMMAR §7): ONE delegated capture reveal for every `[data-why]`
     // carrier — causeLedger's market tooltip generalised (whyReveal.js). Hover AND keyboard focus,
@@ -1410,6 +1419,8 @@ export const ui = {
     this.whyReveal = null;
     if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
     this.watchlistHud = null;
+    if (this.globalFind && typeof this.globalFind.destroy === 'function') this.globalFind.destroy();
+    this.globalFind = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
