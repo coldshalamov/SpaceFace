@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24q (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24r (post-import hillclimb)
 
 Master tip: **`2e7ec656b`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #51; +#52 measured
-on stacked tip @ `92e36f2e8`.
+Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #52; +#53 measured
+on stacked tip @ `a5cb8e4ab`.
 
 ### Already on stack (do not rediscover)
 
@@ -37,6 +37,7 @@ on stacked tip @ `92e36f2e8`.
 | 49 | `stunt-threat-lock-prefilter` |
 | 50 | `combat-table-pose-incremental` |
 | 51 | `snapshot-fence-dirty-incremental` |
+| 52 | `asset-residency-diagnostics-cache` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -50,25 +51,26 @@ selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
-Tool cite: prior `settled-45s-stacked-20260924h` (Picture ON, soft-GPU). Idle **61.4%**.
-Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
+Tool cite: fresh `settled-45s-stacked-20260924r` (Picture ON, soft-GPU; post-#52
+stack before #53). Idle **61.7%**. Soft-GPU / native GL / bloom admission owners
+ignored for portable ranking.
 
 ### Top portable src/ self (aggregated) — climb targets
 
 | ms | owner | notes |
 |---:|---|---|
-| 100 | `registry.step` | residual after #39+#43+#49+#50 |
-| 66 | `prepareFrame` | residual after #13+#44+#46+#47+#51+#52 (spaceBg / sync; pack+diag cut) |
-| 61 | `classifyWorld` | residual after #37+#38+#45+#48 |
-| 45 | `syncEntityViews` | residual after #15 + closure-gate + #44 |
-| 22 | `_stepCraft` | HOLD propulsion |
-| 19 | `_stepFixed` | physics sleep residual |
+| 76 | `prepareFrame` | residual after #13+#44+#46+#47+#51+#52; #53 cuts instance cameraDirty |
+| 70 | `entityTimeToGlassSeconds` | new / risen — decode-runway / residency relevance |
+| 61 | `registry.step` | residual after #39+#43+#49+#50 |
+| 55 | `syncEntityViews` | residual after #15 + closure-gate + #44 |
+| 55 | `classifyWorld` | residual after #37+#38+#45+#48 |
+| 28 | `camera.follow` | after #47 composition prefilter |
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 52 | `asset-residency-diagnostics-cache` | Portable quiet `canonicalDiagnostics` **~794×** (80 assets; emit/cacheSweep invalidate). 40 assets ~768×. Oracle same-ref quiet + mutate invalidate. Focused residency pass. |
+| 53 | `authored-instance-camera-quantize` | Portable quiet authored instance pool sync **~2.32×** (120 owners / 0.05 WU chase jitter; ownersVisited ~5.5× fewer). Oracle micro quieter than large pan. Focused instance/frame pass. |
 
 ## Scour attempts / misses
 
@@ -80,8 +82,6 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 | imminentCollision earlyout | prior ~1.22× — under bar |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Profile `deepSkyPlates.pump` was one-shot `initTexture` upload — not a quiet portable cut |
-| classifyWorld non-rock visit | Not shipped this pass |
-| syncEntityViews micro-motion residual | Not shipped this pass |
 
 ## Rock audit (unchanged)
 
@@ -89,8 +89,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51+#52 (spaceBg / sync residual).
-2. classifyWorld residual after #37+#38+#45+#48 (non-rock visit / selectClassify).
-3. registry.step after #39+#43+#49+#50 (physics / flight / AI holds).
+1. prepareFrame residual after #13+#44+#46+#47+#51+#52+#53 (`entityTimeToGlassSeconds` / sync residual).
+2. classifyWorld residual after #37+#38+#45+#48.
+3. registry.step after #39+#43+#49+#50.
 4. syncEntityViews residual after #15+#44.
 5. Soft-GPU fps is not a KPI.
