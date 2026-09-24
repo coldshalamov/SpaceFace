@@ -1,0 +1,73 @@
+{
+  "label": "decode-runway-top2-select",
+  "oracle": {
+    "sortSelected": 2,
+    "top2Selected": 2,
+    "bothPickTwo": true,
+    "glassCallsDrop": true,
+    "note": "Selection count must stay at limit=2; glass call count must drop sharply."
+  },
+  "scenarios": [
+    {
+      "entityCount": 200,
+      "shipCount": 16,
+      "iterations": 400,
+      "beforeMs": 35.47,
+      "afterMs": 18.512,
+      "speedup": 1.916,
+      "beforeGlassCalls": 497600,
+      "afterGlassCalls": 6400,
+      "beforeAvgGlassPerIter": 1244,
+      "afterAvgGlassPerIter": 16
+    },
+    {
+      "entityCount": 400,
+      "shipCount": 24,
+      "iterations": 300,
+      "beforeMs": 31.745,
+      "afterMs": 8.285,
+      "speedup": 3.831,
+      "beforeGlassCalls": 652200,
+      "afterGlassCalls": 7200,
+      "beforeAvgGlassPerIter": 2174,
+      "afterAvgGlassPerIter": 24
+    },
+    {
+      "entityCount": 800,
+      "shipCount": 32,
+      "iterations": 200,
+      "beforeMs": 36.551,
+      "afterMs": 1.742,
+      "speedup": 20.987,
+      "beforeGlassCalls": 880000,
+      "afterGlassCalls": 6400,
+      "beforeAvgGlassPerIter": 4400,
+      "afterAvgGlassPerIter": 32
+    },
+    {
+      "entityCount": 400,
+      "shipCount": 48,
+      "iterations": 300,
+      "beforeMs": 32.334,
+      "afterMs": 4.179,
+      "speedup": 7.736,
+      "beforeGlassCalls": 661800,
+      "afterGlassCalls": 14400,
+      "beforeAvgGlassPerIter": 2206,
+      "afterAvgGlassPerIter": 48
+    }
+  ],
+  "primary": {
+    "entityCount": 400,
+    "shipCount": 24,
+    "iterations": 300,
+    "beforeMs": 31.745,
+    "afterMs": 8.285,
+    "speedup": 3.831,
+    "beforeGlassCalls": 652200,
+    "afterGlassCalls": 7200,
+    "beforeAvgGlassPerIter": 2174,
+    "afterAvgGlassPerIter": 24
+  },
+  "note": "Portable CPU. Soft-GPU fps not claimed. Before=full-list sort; After=top-2 select."
+}
