@@ -1364,7 +1364,7 @@
           "leafId": "PQ-022.exterior-relay-collar",
           "requiredAcceptance": "route_accepted",
           "receipt": "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md",
-          "receiptBlob": null
+          "receiptBlob": "c299d1068d930dbcba08370f11b2c37a61ba0994"
         }
       ],
       "mutexes": [
@@ -10786,7 +10786,7 @@
       "priority": 221,
       "title": "Upgrade and blob-bind the relay-collar receipt",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.relay-reauthor-review",
         "PQ-022.h3-performance"
@@ -10801,9 +10801,12 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md"
+      ],
       "brief": "Upgrade the exact leaf to route_accepted and bind its Git blob into PQ-024.",
-      "blocker": null
+      "blocker": null,
+      "partialIntegration": "2026-09-23 leaf upgraded to route_accepted on the committed re-author chain (reauthor e69af0ef, H1 780b77b3, KEEP review 780b77b3, h2 verdict 5dcfb786); upgraded receipt blob c299d106 bound into PQ-024.evidenceDependencies."
     },
     {
       "id": "PQ-022.promote-corridor-assets",
