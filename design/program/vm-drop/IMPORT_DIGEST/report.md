@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24p (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24q (post-import hillclimb)
 
 Master tip: **`2e7ec656b`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #50; +#51 measured
-on stacked tip @ `a16a8586c`.
+Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #51; +#52 measured
+on stacked tip @ `92e36f2e8`.
 
 ### Already on stack (do not rediscover)
 
@@ -36,6 +36,7 @@ on stacked tip @ `a16a8586c`.
 | 48 | `classify-rock-body-context` |
 | 49 | `stunt-threat-lock-prefilter` |
 | 50 | `combat-table-pose-incremental` |
+| 51 | `snapshot-fence-dirty-incremental` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -57,7 +58,7 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 | ms | owner | notes |
 |---:|---|---|
 | 100 | `registry.step` | residual after #39+#43+#49+#50 |
-| 66 | `prepareFrame` | residual after #13+#44+#46+#47+#51 (residency/spaceBg; pack cut) |
+| 66 | `prepareFrame` | residual after #13+#44+#46+#47+#51+#52 (spaceBg / sync; pack+diag cut) |
 | 61 | `classifyWorld` | residual after #37+#38+#45+#48 |
 | 45 | `syncEntityViews` | residual after #15 + closure-gate + #44 |
 | 22 | `_stepCraft` | HOLD propulsion |
@@ -67,18 +68,18 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 51 | `snapshot-fence-dirty-incremental` | Portable quiet packPresentationWorldToFence **~4.76×** (400/4 dirty; layout-stable copy + dirty-row rewrite). 120/1 ~3.71×; 400/40 ~2.91×. Oracle 0 mismatches. Focused fence/presentation pass. |
+| 52 | `asset-residency-diagnostics-cache` | Portable quiet `canonicalDiagnostics` **~794×** (80 assets; emit/cacheSweep invalidate). 40 assets ~768×. Oracle same-ref quiet + mutate invalidate. Focused residency pass. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
-| isMovableEntity type-first | ~1.10× — under bar (new) |
+| isMovableEntity type-first | ~1.10× — under bar (prior) |
 | classify rock-only resolvePins | ~1.02× — under bar (prior) |
 | selectClassify empty-projectile skip | ~1.11× indexed — under bar (prior) |
 | imminentCollision earlyout | prior ~1.22× — under bar |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
-| prepareFrame residency/spaceBg | Not shipped this pass |
+| spaceBg steady-state | Profile `deepSkyPlates.pump` was one-shot `initTexture` upload — not a quiet portable cut |
 | classifyWorld non-rock visit | Not shipped this pass |
 | syncEntityViews micro-motion residual | Not shipped this pass |
 
@@ -88,8 +89,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51 (residency/spaceBg; pack cut).
+1. prepareFrame residual after #13+#44+#46+#47+#51+#52 (spaceBg / sync residual).
 2. classifyWorld residual after #37+#38+#45+#48 (non-rock visit / selectClassify).
 3. registry.step after #39+#43+#49+#50 (physics / flight / AI holds).
-4. syncEntityViews residual (micro-motion / pose) after #15+#44.
+4. syncEntityViews residual after #15+#44.
 5. Soft-GPU fps is not a KPI.

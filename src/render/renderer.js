@@ -10340,7 +10340,10 @@ export const render = {
     // The renderer publishes this snapshot at high-frequency lifecycle seams. Keep the bounded
     // forensic ring inside the registry; the player-facing state needs only the canonical summary,
     // avoiding a fresh copy of hundreds of event objects on every mesh reconciliation.
+    // Quiet residency polls (every ~250 ms with no retain/release) reuse the cached canonical
+    // object so prepareFrame does not rebuild sorted asset rows when nothing changed.
     const diagnostics = this._assetResidency.canonicalDiagnostics();
+    if (this.state.render.assetResidency === diagnostics) return diagnostics;
     this.state.render.assetResidency = diagnostics;
     return diagnostics;
   },

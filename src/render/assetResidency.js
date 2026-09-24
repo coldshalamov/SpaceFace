@@ -66,17 +66,32 @@ export function createAssetResidencyRegistry(options = {}) {
   let disposedResources = 0;
   let abandonedResources = 0;
   let evictedAssets = 0;
+  // Canonical diagnostics are rebuilt only when residency mutates. Quiet settled
+  // polls republish the same summary every RENDER_RESIDENCY_POLL_SECONDS.
+  let canonicalDiagnosticsRevision = 0;
+  let cachedCanonicalDiagnostics = null;
+  let cachedCanonicalDiagnosticsRevision = -1;
   const governor = createResourceGovernor({
     maxCpuBytes: options.maxCpuBytes,
     maxGpuBytes: options.maxGpuBytes,
   });
 
   function emit(type, detail = {}) {
+    // Any structural event invalidates the canonical diagnostics cache. Quiet
+    // residency polls used to rebuild a frozen sorted row table every 250 ms even
+    // when nothing changed (prepareFrame → serviceRenderMeshResidency residual).
+    invalidateCanonicalDiagnostics();
     const event = Object.freeze({ sequence: ++eventSequence, type, atMs: now(), ...detail });
     events.push(event);
     if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
     if (typeof options.onEvent === 'function') options.onEvent(event);
     return event;
+  }
+
+  function invalidateCanonicalDiagnostics() {
+    canonicalDiagnosticsRevision++;
+    cachedCanonicalDiagnostics = null;
+    cachedCanonicalDiagnosticsRevision = -1;
   }
 
   function ownerState(owner, create = true) {
@@ -626,7 +641,14 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   function canonicalDiagnostics() {
-    return diagnostics({ canonical: true, includeEvents: false });
+    if (cachedCanonicalDiagnostics
+        && cachedCanonicalDiagnosticsRevision === canonicalDiagnosticsRevision) {
+      return cachedCanonicalDiagnostics;
+    }
+    const snapshot = diagnostics({ canonical: true, includeEvents: false });
+    cachedCanonicalDiagnostics = snapshot;
+    cachedCanonicalDiagnosticsRevision = canonicalDiagnosticsRevision;
+    return snapshot;
   }
 
   function has(key) {

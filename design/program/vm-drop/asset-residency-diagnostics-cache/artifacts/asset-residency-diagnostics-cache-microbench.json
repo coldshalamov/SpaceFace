@@ -1,0 +1,47 @@
+{
+  "title": "asset-residency-diagnostics-cache",
+  "scenarios": [
+    {
+      "assetCount": 40,
+      "iterations": 4000,
+      "beforeMs": 159.14,
+      "afterMs": 0.21,
+      "speedup": 767.56,
+      "sinkBefore": 2621600000,
+      "sinkAfter": 2621600000
+    },
+    {
+      "assetCount": 80,
+      "iterations": 4000,
+      "beforeMs": 210.73,
+      "afterMs": 0.27,
+      "speedup": 793.82,
+      "sinkBefore": 5243200000,
+      "sinkAfter": 5243200000
+    },
+    {
+      "assetCount": 160,
+      "iterations": 2000,
+      "beforeMs": 237.14,
+      "afterMs": 0.01,
+      "speedup": 30105.7,
+      "sinkBefore": 5243200000,
+      "sinkAfter": 5243200000
+    }
+  ],
+  "verify": {
+    "sameRef": true,
+    "mutated": true,
+    "beforeAssets": 24,
+    "afterAssets": 25
+  },
+  "primary": {
+    "assetCount": 80,
+    "iterations": 4000,
+    "beforeMs": 210.73,
+    "afterMs": 0.27,
+    "speedup": 793.82,
+    "sinkBefore": 5243200000,
+    "sinkAfter": 5243200000
+  }
+}
