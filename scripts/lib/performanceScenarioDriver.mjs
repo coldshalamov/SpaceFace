@@ -838,12 +838,45 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
       return false;
     };
     if (!state || snapshot?.id !== expectedId) return fail('snapshotMatch');
+    const renderSystemEarly = sf.registry?.get?.('render');
+    const queueEarly = Array.isArray(renderSystemEarly?._meshBuildQueue)
+      ? Math.max(0, renderSystemEarly._meshBuildQueue.length - (renderSystemEarly._meshBuildQueueHead || 0))
+      : 0;
+    detail.queueRemaining = queueEarly;
+    detail.meshesSize = renderSystemEarly?._meshes?.size ?? null;
+    detail.activeJobs = Number(state.render?.scene?.userData?.authoredUpgradeDiagnostics?.activeJobs || 0);
+    const diagJobs = state.render?.scene?.userData?.authoredUpgradeDiagnostics?.jobs;
+    if (Array.isArray(diagJobs)) {
+      detail.runningJobs = diagJobs.filter((j) => j && j.status === 'running').slice(-4).map((j) => ({
+        key: j.key,
+        entityId: j.entityId ?? null,
+        assets: (j.assetUrls || []).slice(-3).map((u) => String(u).split('/').pop()),
+        runningForMs: j.startedAtMs != null ? Math.round(performance.now() - j.startedAtMs) : null,
+      }));
+    }
     const shipIds = snapshot.liveInjectedIds.filter((id) => state.entities.get(id)?.type === 'ship');
     if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) {
       return fail('shipsInjected');
     }
     const unmeshed = shipIds.filter((id) => !state.entities.get(id)?.mesh);
-    if (unmeshed.length) return fail('meshesPresent', { unmeshed: unmeshed.slice(0, 8) });
+    if (unmeshed.length) {
+      return fail('meshesPresent', {
+        unmeshed: unmeshed.slice(0, 8).map((id) => {
+          const entity = state.entities.get(id);
+          return {
+            id,
+            inEntityList: Array.isArray(state.entityList) ? state.entityList.includes(entity) : null,
+            alive: entity?.alive !== false,
+            noMesh: entity?._noMesh === true,
+            farResident: entity?.farResident === true,
+            pos: entity?.pos ? { x: Math.round(entity.pos.x), z: Math.round(entity.pos.z) } : null,
+            playerPos: state.entities.get(state.playerId)?.pos
+              ? { x: Math.round(state.entities.get(state.playerId).pos.x), z: Math.round(state.entities.get(state.playerId).pos.z) }
+              : null,
+          };
+        }),
+      });
+    }
     const unauthored = shipIds.filter((id) => state.entities.get(id)?.mesh?.userData?.authoredAssetState !== 'authored');
     if (unauthored.length) {
       return fail('authoredAdmission', {
