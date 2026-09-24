@@ -68,10 +68,10 @@ export function setPieceFollowOnOffer(pieceId, mission, epoch = 0) {
       ...shared,
       type: 'smuggling_run',
       title: 'Run the take to the den',
-      brief: 'The hatch is off. The take is in the hold. Get it to the den before the lane answers.',
+      brief: 'The hatch is off. The take is a pod beside you. Get it to the den before the lane answers.',
       summary: 'The heist became an escape.',
       reward_cr: 1400,
-      preloadedCargo: true,
+      preloadedCargo: false,
       destStationId: 'station_smuggler',
       destSectorId: 'sector_pallas_drift',
       distance: 1800,
@@ -97,9 +97,59 @@ export function setPieceFollowOnOffer(pieceId, mission, epoch = 0) {
       params: {
         ...params,
         towRole: 'jam_hulk',
+        scanLabel: 'DEAD FRIGATE',
+        massU: 160,
+        bodyRadius: 22,
+        tetherPayload: true,
       },
     };
   }
 
+  return null;
+}
+
+/**
+ * A body the follow-on leaves in the world. The convoy's salvage and the heist's take
+ * are pods you can grab. The frigate is spawned by the tow contract itself.
+ */
+export function setPieceFollowOnBody(pieceId, mission, origin) {
+  if (!mission || !mission.id) return null;
+  const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
+  const oz = origin && Number.isFinite(origin.z) ? origin.z : 0;
+  const pos = { x: ox + 28, z: oz + 12 };
+  if (pieceId === 'convoy_defence') {
+    return {
+      type: 'payload',
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      data: {
+        tetherPayload: true,
+        scanLabel: 'STRIPPED POD',
+        salvagePool: { cmdty_salvage_electronics: 3 },
+        missionId: mission.id,
+      },
+    };
+  }
+  if (pieceId === 'loud_heist') {
+    return {
+      type: 'payload',
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: 5,
+      mass: 18,
+      hull: 30,
+      hullMax: 30,
+      data: {
+        tetherPayload: true,
+        scanLabel: 'VAULT TAKE',
+        salvagePool: { cmdty_classified_salvage: 1 },
+        missionId: mission.id,
+      },
+    };
+  }
   return null;
 }

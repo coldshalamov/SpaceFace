@@ -310,6 +310,9 @@ const GAMEPAD_ROWS_STOCK = Object.freeze([
   ['Pause', null, 'Start / Options'],
   ['Dock / activate', null, 'B / ○ (when prompted)'],
   ['Cancel / back', null, 'B / ○'],
+  ['Travel burn', null, 'L3'],
+  ['Auto-target', null, 'D-Pad Up'],
+  ['Detonate charge', null, 'D-Pad Down'],
 ]);
 
 // Row verb, pad action, and the stock-map sentence shape for the live projection.
@@ -329,6 +332,9 @@ const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Pause', 'pause', (g) => g],
   ['Dock / activate', 'dock', (g) => `${g} (when prompted)`],
   ['Cancel / back', 'cancel', (g) => g],
+  ['Travel burn', 'travelBurn', (g) => g],
+  ['Auto-target', 'autoTarget', (g) => g],
+  ['Detonate charge', 'chargeDetonate', (g) => g],
 ]);
 
 const GAMEPAD_STATIC_ROW_INDEXES = Object.freeze(new Set([0, 1, 8, 15]));

@@ -68,7 +68,11 @@ import {
   offerHistoryTierFor,
   offerHistoryMultiplier,
 } from '../data/missions.js';
-import { SET_PIECE_FOLLOW_ON_SOURCE, setPieceFollowOnOffer } from '../data/sandboxSetPieceFollowOns.js';
+import {
+  SET_PIECE_FOLLOW_ON_SOURCE,
+  setPieceFollowOnBody,
+  setPieceFollowOnOffer,
+} from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import {
   RESEARCH_GRANTS,
@@ -4619,23 +4623,25 @@ export const missions = {
       const rng = nextRng(durableSlot);
       const ang = rng() * Math.PI * 2;
       const r = 220 + rng() * 80;
+      const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
       spawnAt(durableSlot, {
         type: 'asteroid',
         team: 2,
         pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
         vel: { x: 0, z: 0 },
         rot: rng() * Math.PI * 2,
-        radius: 16,
+        radius: bodyRadius,
         mass: Math.max(40, m.params && m.params.massU || 36),
         hull: 220,
         hullMax: 220,
         collides: true,
-        physicsBody: { radius: asteroidColliderRadius(null, 16) },
+        physicsBody: { radius: asteroidColliderRadius(null, bodyRadius) },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.SLAG_CORE,
-          scanLabel: 'SLAG CORE',
+          scanLabel: (m.params && m.params.scanLabel) || 'SLAG CORE',
           tetherable: true,
+          ...(m.params && m.params.tetherPayload ? { tetherPayload: true } : {}),
         },
       });
     }
@@ -5141,6 +5147,7 @@ export const missions = {
     if (!offer) return false;
     const boarded = this._onExternalBoardOffer(offer);
     if (!boarded) return false;
+    this._spawnSetPieceFollowOnBody(m, pieceId);
     const text = offer.title;
     const voice = this.helpers && this.helpers.voice;
     const said = voice && typeof voice.say === 'function'
@@ -5150,6 +5157,22 @@ export const missions = {
       this.bus.emit('toast', { text, kind: 'info', ttl: 4, source: SET_PIECE_FOLLOW_ON_SOURCE });
     }
     return true;
+  },
+
+  _spawnSetPieceFollowOnBody(m, pieceId) {
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return null;
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const origin = player && player.pos ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
+    const spec = setPieceFollowOnBody(pieceId, m, origin);
+    if (!spec) return null;
+    try {
+      return spawn(spec);
+    } catch (_) {
+      return null;
+    }
   },
 
   _authoredRoleClear(m, role, ignoreId = null) {

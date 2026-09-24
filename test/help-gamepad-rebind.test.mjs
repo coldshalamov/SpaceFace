@@ -19,12 +19,15 @@ function padState(custom) {
 
 test('a stock (or missing) pad map keeps the authored dual-naming table byte for byte', () => {
   const stock = gamepadControlRows(null);
-  assert.equal(stock.length, 19);
+  assert.equal(stock.length, 22);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
   assert.deepEqual(stock[6], ['Shove (repulsor)', null, 'Y / △']);
   assert.deepEqual(stock[7], ['Massline', null, 'A / Cross']);
   assert.deepEqual(stock[13], ['Open star-map', null, 'View / Select']);
   assert.deepEqual(stock[17], ['Dock / activate', null, 'B / ○ (when prompted)']);
+  assert.deepEqual(stock[19], ['Travel burn', null, 'L3']);
+  assert.deepEqual(stock[20], ['Auto-target', null, 'D-Pad Up']);
+  assert.deepEqual(stock[21], ['Detonate charge', null, 'D-Pad Down']);
   assert.deepEqual(gamepadControlRows(GAMEPAD_DEFAULT_BINDINGS), stock, 'the frozen default map renders the same table');
 });
 

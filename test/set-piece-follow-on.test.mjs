@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
 import { AUTHORED_SET_PIECES } from '../src/data/missions.js';
-import { setPieceFollowOnOffer } from '../src/data/sandboxSetPieceFollowOns.js';
+import { setPieceFollowOnBody, setPieceFollowOnOffer } from '../src/data/sandboxSetPieceFollowOns.js';
 import { missions } from '../src/systems/missions.js';
 
 const EXPECTED = Object.freeze({
@@ -87,6 +87,27 @@ test('a board refresh keeps the follow-on until its epoch lifetime ends', () => 
     'the contract leaves when its lifetime ends');
   assert.equal(h.failed.length, 0);
   h.sim.dispose();
+});
+
+test('the convoy and the heist each leave a grabbable pod', () => {
+  const mission = { id: 'm-body', destStationId: 'station_tethys' };
+  const salvage = setPieceFollowOnBody('convoy_defence', mission, { x: 10, z: 20 });
+  const take = setPieceFollowOnBody('loud_heist', mission, { x: 10, z: 20 });
+  const frigate = setPieceFollowOnBody('station_door_jam', mission, { x: 0, z: 0 });
+  assert.equal(salvage.type, 'payload');
+  assert.equal(salvage.data.tetherPayload, true);
+  assert.equal(salvage.data.salvagePool.cmdty_salvage_electronics, 3);
+  assert.equal(salvage.mass, 24);
+  assert.equal(take.data.scanLabel, 'VAULT TAKE');
+  assert.equal(take.data.salvagePool.cmdty_classified_salvage, 1);
+  assert.ok(take.mass < 40);
+  assert.equal(frigate, null, 'the frigate is the tow body, not a second pod');
+  const heist = setPieceFollowOnOffer('loud_heist', mission, 1);
+  assert.equal(heist.preloadedCargo, false);
+  const tow = setPieceFollowOnOffer('station_door_jam', mission, 1);
+  assert.equal(tow.params.scanLabel, 'DEAD FRIGATE');
+  assert.equal(tow.params.massU, 160);
+  assert.equal(tow.params.tetherPayload, true);
 });
 
 test('a finished heist can be accepted as the escape, and other pieces mint nothing', () => {

@@ -390,6 +390,10 @@ export const settingsScreen = {
       rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
         QUALITY_PRESETS.map((preset) => [preset.id, preset.label]),
         (value) => this._applyPreset(ctx, value));
+      const chosen = QUALITY_PRESETS.find((preset) => preset.id === (vd.qualityPreset || DEFAULT_QUALITY_PRESET));
+      if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
+        build.note('Keeps ' + chosen.stays.join(', ') + '. Substitutes: ' + chosen.substitutes.join(', ') + '.');
+      }
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
       // Empty space does not receive them. Off skips that extra pass — now the shipped default
