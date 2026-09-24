@@ -1,18 +1,18 @@
-# DONE — IMPORT_DIGEST (report id **20260924am**)
+# DONE — IMPORT_DIGEST (report id **20260924an**)
 
 ## Summary
 
 Post-import hillclimb on master **`7850b341e`** (fetched).
-Scratch `vm-work/hillclimb-20260924h` refreshed onto master + through #73; +#74 @ `aee114930`.
+Scratch `vm-work/hillclimb-20260924h` refreshed onto master + through #74; +#75 @ `33401ba50`.
 
 Fresh quiet profile `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU,
-tip through #64) cites ranking; #74 cuts residual settled zero-dirty
-presentationQueries.query under syncEntityViews / prepareFrame after #73.
+tip through #64) cites ranking; #75 cuts packFence dirty>0 residual under
+prepareFrame after #51+#68+#74.
 
 **Shipped this pass:**
-- **#74 `presentation-query-zero-dirty-retain`** — portable settled zero-dirty
-  presentation query **~6.91×** median (20k; floor minSpeedup ≥5.86×); focused
-  presentation suites **13/13**.
+- **#75 `snapshot-fence-dirty-slot-list`** — portable quiet dirty>0 fence pack
+  **~2.01×** median (12k; floor minSpeedup ≥1.76×); focused fence/presentation
+  suites **33/33**.
 
 **Holds / misses:** JS dirty-scan ~0.8×; contact-base identity retain ~1.27×;
 roster-member-scratch-fill (alloc-only ~0.97× — drop; replaced by #67);
@@ -32,10 +32,9 @@ retain informational ~0.99× (bounds change).
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75
    (syncEntityViews residual closures / ordnance / microMotion; under-roof
-   clearance stamp-check path; moving lookAt still full Three cost; packFence
-   residual when dirty>0).
+   clearance stamp-check path; moving lookAt still full Three cost).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70
