@@ -44,7 +44,7 @@ GPU tier: **software**. Owner iGPU fps not claimed.
 ## Evidence
 
 - Patch: `patches/0001-perf-combat-reuse-heat-dissipation-skip-quiet-postPh.patch`
-- Scratch: `vm-work/hillclimb-20260924h` @ see `scratch-sha.txt`
+- Scratch: `vm-work/hillclimb-20260924i` @ see `scratch-sha.txt`
 - Microbench: `artifacts/combat-kernel-profile-reuse-microbench.json`
 - Tests: `artifacts/focused-tests-combat-kernel-profile-reuse.log`
 

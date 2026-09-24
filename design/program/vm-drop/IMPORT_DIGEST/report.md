@@ -4,7 +4,7 @@ Master tip: **`273f8bad7`** (fetched; was `7850b341e` at #82).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` rebased onto `origin/master` @ `273f8bad7`;
+Scratch `vm-work/hillclimb-20260924i` rebased onto `origin/master` @ `273f8bad7`;
 through #82 @ `016754488`; +#83 measured on stacked tip @ `d64856611`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
