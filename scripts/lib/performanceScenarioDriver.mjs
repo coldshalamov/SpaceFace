@@ -765,7 +765,16 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
   return { ...receipt, baselineSettle, readiness, churn, definition };
 }
 
-async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 120_000 } = {}) {
+// The ready conditions are correctness gates (authored admission actually finished), so they are
+// never relaxed. The bound itself is a host-speed budget: on a contended box the same admission
+// that takes ~75 s quiet can starve past 120 s (09-21 Electron, 09-24 Browser). Acceptors may
+// raise it for a contended evidence host without touching the measured windows.
+function scenarioReadyTimeoutMs() {
+  const override = Number(process.env.SF_SCENARIO_READY_TIMEOUT_MS);
+  return Number.isFinite(override) && override > 0 ? override : 120_000;
+}
+
+async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf?.state;
@@ -798,7 +807,7 @@ async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 
   }, scenarioId);
 }
 
-export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = 120_000 } = {}) {
+export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
   await page.waitForFunction((expectedId) => {
     const sf = window.SF;
     const state = sf?.state;
@@ -1167,7 +1176,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         && state?.world?.frameOrigin?.x === baseline.frameOrigin.x
         && state?.world?.frameOrigin?.z === baseline.frameOrigin.z
         && render?._frameMembrane?.seq === state?.world?.frameOriginSeq;
-    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: 30_000 });
+    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: scenarioReadyTimeoutMs() });
   }
   const receipt = await page.evaluate((expectedId) => {
     const sf = window.SF;
