@@ -51,7 +51,15 @@ const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
 
 const CSS = `
 /* ---- the jig: where the hull has a drawing, the stage is the drawing in its dial ---------------- */
-${W} .orr-sw-jig { position:absolute; inset:0; z-index:3; }
+${W} .orr-sw-jig { position:absolute; inset:0 0 34px 0; z-index:3; }
+@media (max-height:800px) {
+  ${W} .orr-sw-jig { bottom:22px; }
+  /* a short stage: the readings carry the proposed fit's changes as their ghosts; the separate line steps back */
+  ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta { display:none !important; }
+  ${W} .sx-chooser__kicker { white-space:normal !important; }
+}
+/* a drawing that cannot lay out stands down whole: its labels never fall into the flow */
+${W} .orr-sw-jig:not(.orr-hull--on) .orr-sw-node { display:none !important; }
 ${W} .orr-sw-jig .orr-hull__pool { -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   mask-composite:intersect; }
@@ -75,6 +83,7 @@ ${W} .orr-sw-node.is-stock .orr-sw-node__name { color:rgb(${BONE} / .9); font-we
 ${W} .orr-sw-node.is-preview .orr-sw-node__name { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .orr-sw-node.is-preview .orr-sw-node__state { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .orr-sw-jig .orr-hull__fitted.is-lit { stroke:rgb(248 244 234) !important; }
+${W} .orr-sw-jig .orr-hull__hand > path[fill], ${W} .orr-sw-jig .orr-hull__hand > path:nth-child(3) { display:none !important; }
 /* the proposed fit's changes: one line of ice under the dial */
 ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { visibility:visible !important; position:absolute !important; left:0 !important; right:0 !important; top:auto !important;
   bottom:8px !important; width:auto !important; height:auto !important; max-width:none !important; transform:none !important; z-index:6; margin:0 !important; padding:0 !important;
@@ -84,7 +93,8 @@ ${W}.orr-sw--jig .sx-sw__delta > * { position:static !important; transform:none 
 ${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
 ${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
 /* while choosing, the screen's own verbs and the instruction step back */
-${W}.orr-sw--jig.is-choosing .sx-sw-verbs, ${W}.is-choosing .sx-sw-circuit__instruction { visibility:hidden !important; }
+${W}.orr-sw--jig.is-choosing .sx-sw-verbs { visibility:hidden !important; }
+${W}.is-choosing .sx-sw-circuit__instruction { display:none !important; }
 ${W} .orr-sw-node.is-lit .orr-sw-node__num { color:var(--dp-hand, #f2b950); }
 
 /* the drawing takes the main column's height: the handling stands under the fleet in the left
@@ -148,7 +158,13 @@ ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-sw__slotfield .sx-hardpoint:focus-visible { outline:none !important; }
 /* the six readings under the hull: a ledger line of caps and figures */
-${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !important; }
+${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important; white-space:nowrap; }
+@media (max-width:1500px) {
+  ${W} .sx-sw__gauges { gap:0 14px !important; }
+  ${W} .sx-sw-gauge .k-row__name { font-size:8.5px !important; letter-spacing:.14em !important; }
+  ${W} .sx-sw-gauge .k-row__num { font-size:12px !important; }
+  ${W}.orr-sw--jig .sx-sw__delta:not([hidden]) { font-size:11px !important; gap:0 12px !important; }
+}
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
@@ -202,7 +218,7 @@ ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !im
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
-${W} .sx-chooser__kicker { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
+${W} .sx-chooser__kicker { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; white-space:nowrap; }
 ${W} .sx-chooser__head h3 { ${LABEL} font-size:10px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
@@ -218,12 +234,12 @@ ${W} .sx-modrow:focus-visible { outline:none !important; }
 ${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
-${W} .sx-modrow :is(.k-good, .is-gain) { color:rgb(248 244 234) !important; }
-${W} .sx-modrow :is(.k-bad, .is-loss) { color:rgb(${BONE} / .58) !important; }
+${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
+${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(143 203 255 / .7) !important; }
 ${W} .sx-modrow .sx-modrow__role { font-size:11px !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__metrics { font-size:11px !important; color:rgb(${BONE} / .78) !important; }
 ${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:11px !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:11.5px !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
 ${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
@@ -241,8 +257,10 @@ ${W} .sx-modrow.is-eq .sx-modrow__name::after { content:"  fitted"; font-family:
 
 /* ---- the circuit: no plate; the core figure, the systems as readings ------------------------- */
 ${W} .sx-sw__side { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:-30px -40px -30px -40px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(7 8 10 / .8), rgb(7 8 10 / .6) 60%, rgb(7 8 10 / 0)); }
+${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; pointer-events:none; background:rgb(7 8 10 / .72);
+  -webkit-mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
+  mask-composite:intersect; }
 ${W} .sx-sw-circuit__identity { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:none; letter-spacing:.04em; }
 ${W} .sx-sw-circuit__core { position:relative; width:176px; height:118px; margin:6px 0 10px !important; display:block !important; }
@@ -266,7 +284,7 @@ ${W} .sx-sw-flow .sx-sw-flow__copy { grid-column:1 / 3; display:flex !important;
 ${W} .sx-sw-flow .sx-sw-flow__copy > .k-row__sub { text-align:right; flex:none; font-variant-numeric:tabular-nums; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
 ${W} .sx-sw-flow > .k-row__num { grid-column:3; text-align:right; }
 ${W} .sx-sw-rack { margin-top:16px !important; padding-top:12px !important; border-top:1px solid rgb(${BONE} / .14) !important; }
-${W} .sx-sw-circuit__active { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-circuit__acts:has(.sx-sw-circuit__active) { display:none !important; }
 ${W} .sx-sw-circuit__instruction { font-size:12.5px !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__name { font-size:13px !important; color:rgb(${BONE} / .85) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__sub { font-size:11px !important; color:rgb(${BONE} / .55) !important; }

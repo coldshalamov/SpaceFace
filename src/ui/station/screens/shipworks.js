@@ -1665,7 +1665,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (node.innerHTML !== html) node.innerHTML = html;
       node.classList.toggle('is-fitted', !!fitted);
       node.classList.toggle('is-empty', !fitted);
-      return { el: node, slotType: slot.type, state: fitted ? 'fitted' : 'open', num: String(i + 1).padStart(2, '0') };
+      return { el: node, slotType: slot.type, state: fitted || stockDrive ? 'fitted' : 'open', num: String(i + 1).padStart(2, '0') };
     });
     for (const stale of existing.values()) stale.remove();
     const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
@@ -2208,8 +2208,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
           const strength = Math.max(.12, Math.min(1, totalDraw > 0 ? draw / totalDraw : .12));
+          // a hull flying its stock drive has a drive: the table says so, as the drawing does
+          const stock = type === 'engine' && fitted === 0 && activeBandModel && activeBandModel.handling
+            && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel;
           return `<li class="k-row k-row--static sx-sw-flow" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
-            `<span class="k-row__name k-62 sx-sw-flow__copy">${escapeHtml(SLOT_LABEL[type] || type)}<span class="k-row__sub">${fitted}/${available} fitted</span></span>` +
+            `<span class="k-row__name k-62 sx-sw-flow__copy">${escapeHtml(SLOT_LABEL[type] || type)}<span class="k-row__sub">${stock ? 'stock' : `${fitted}/${available} fitted`}</span></span>` +
             `<span class="k-row__num">${fmt(draw)} <span class="k-38">draw</span></span>` +
           `</li>`;
         }).join('')}</ul>` +
