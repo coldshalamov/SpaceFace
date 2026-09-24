@@ -1,4 +1,4 @@
-# IMPORT_DIGEST report — 2026-09-24cg (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ch (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
@@ -160,6 +160,7 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **release-arc Active quiet latch (~0.93× — drop; Active check already cheap)**.
 **overlay-quartet quiet latch truth-reread wake (hold ~0.99–1.03× bundle / wake re-reads same truth — superseded by #123 identity/ref wake ~16.5×)**.
 **weapon-presenter composite quiet latch (shipped #126 ~6.11× — supersedes O1 multi-pool hold ~1.15× / synthetic defer)**.
+**weapon-presenter callsite quiet latch (attachGraph+context+update+damageVenting; after #126) ~2.0× / floor ~1.18× — hold**.
 **projectile-trails quiet empty latch (shipped #122 ~6.0× — supersedes idle scan+diag reset)**.
 **wreck-wisps quiet irrelevant latch (shipped #117 ~3.4× — version-only wake; supersedes prior hold that still re-scanned while latched ~0.96×)**.
 **loot-magnet quiet empty buckets (shipped #115 ~3.0× — empty-bucket only; entityIndexVersion wake)**.
@@ -231,6 +232,12 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| weapon-presenter callsite quiet latch (attachGraph+context+update+damageVenting healthy; presenter/#126 + hp/targetId/targetHp wake) | **hold** ~2.02× median / floor minSpeedup across 5×13-pair @ 400k **≥1.175× under bar** (absolute callsite residual thin after #126; noise-dominated floor) |
+| vfx quiet-head composite (callsite+ceres a11y+targetContour null+apex inactive) | **hold** ~2.27× / floor ~1.36× under bar |
+| ceres-a11y-skip-when-empty (rebench) | **reconfirm hold** ~1.75–1.81× / floor ~1.12–1.40× under bar |
+| feel FOV+hullCrit quiet idle (rebench) | **reconfirm hold** ~1.56–1.72× / floor ~0.69–1.25× |
+| damage-venting healthy quiet (rebench) | **reconfirm hold** ~1.24–1.32× under bar |
+| tether/arc/mining active-probe (prior) | **hold** ~0.8× |
 | weapon-presenter composite quiet latch (full residual; pool-counter dirty-wake) | **shipped #126 ~6.11×** (floor ≥4.769× across package runs @ 80k; supersedes O1 multi-pool hold ~1.15×) |
 | ceres-a11y-skip-when-empty (rebench) | **reconfirm hold** ~1.75× median / floor ~1.12–1.40× under bar |
 | feel FOV+hullCrit quiet idle | **~1.56× / floor ~0.69× — hold** (floor fails) |
@@ -308,7 +315,9 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    attachGraph same-ref held ~1.42×; gas-a11y profile-id retain hold superseded by #124;
    ceres-a11y-skip-when-empty probe ~1.74× / floor ~1.12–1.40× under bar unless floor clears;
    feel FOV+hullCrit ~1.56×/floor ~0.69× hold; damage-venting healthy ~1.24× hold;
-   near-miss-alone / age-shield-alone folded into #126).
+   near-miss-alone / age-shield-alone folded into #126;
+   weapon-presenter callsite quiet composite held ~2.0×/floor ~1.18×;
+   vfx quiet-head composite held ~2.27×/floor ~1.36×).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual; rock visit context-only held ~1.09×).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88
