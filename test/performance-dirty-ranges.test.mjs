@@ -23,7 +23,10 @@ import {
 } from '../scripts/lib/performanceDirtyRangeAcceptance.mjs';
 import browserManifest from '../scripts/validation-manifests/performance-dirty-ranges-browser.mjs';
 import electronManifest from '../scripts/validation-manifests/performance-dirty-ranges-electron.mjs';
-import { computeGateDigestsFromManifest } from '../scripts/lib/validationBroker.mjs';
+import {
+  computeGateDigestsFromManifest,
+  isEnvironmentBlockedProbeError,
+} from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -538,6 +541,29 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
   assert.ok(stable, 'browser and electron manifests never bound the same source candidate within 6 reads');
   assert.notEqual(browser.candidateDigest, electron.candidateDigest);
   assert.notEqual(browser.manifestDigest, electron.manifestDigest);
+});
+
+test('environment census blocks are not primary acceptance failures', () => {
+  // A census refusal fires before any measurement exists; persisting it as a
+  // primaryAcceptance failure would wedge the manifest behind a regression
+  // change no product fix can satisfy. Pin the classification seam.
+  const envBlockText = [
+    'file:///repo/scripts/lib/releaseSoakProbe.mjs:5765',
+    "      const error = new Error('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable');",
+    '                    ^',
+    '',
+    'Error: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED: performance activity census is active or unavailable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(envBlockText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isEnvironmentBlockedProbeError(productFailureText), false);
+  assert.equal(isEnvironmentBlockedProbeError(''), false);
+  assert.equal(isEnvironmentBlockedProbeError(null), false);
 });
 
 test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {

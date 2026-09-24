@@ -2252,6 +2252,19 @@ function resolveBrokerClaimPath(outputRoot, tokenOrPath) {
 }
 
 /**
+ * True when a probe run failed because the host environment census refused to
+ * authorize measurement — foreign process activity or an unavailable census —
+ * rather than because of anything the candidate did. Such failures are recorded
+ * in the run ledger but never persisted as primaryAcceptance failures: they
+ * carry no product signal, and wedging the manifest behind a regression-digest
+ * change would be unanswerable.
+ */
+export function isEnvironmentBlockedProbeError(errorText) {
+  return typeof errorText === 'string'
+    && errorText.includes('PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED');
+}
+
+/**
  * Direct-execution protection helper for expensive probes.
  * Fail-closed unless a valid one-use broker claim is present (or diagnostic mode).
  */
@@ -2575,7 +2588,11 @@ async function runProbeProcess({
       result.exitCode != null ? `exitCode=${result.exitCode}` : null,
     ].filter(Boolean).join('\n').slice(0, 4000);
 
-    const primaryAcceptance = !isDiagnostic;
+    // An environment census block is a host-contention event, not a product
+    // failure: it fires before any measurement exists, so persisting it as a
+    // primary failure would wedge the manifest behind a regression-digest
+    // change no code fix can satisfy. Leave any prior failure record intact.
+    const primaryAcceptance = !isDiagnostic && !isEnvironmentBlockedProbeError(errorText);
     const identity = manifest.normalizeFailure({
       runtimeKind: manifest.runtimeKind,
       phase: isDiagnostic ? 'diagnostic-probe' : 'acceptance-probe',
