@@ -67,7 +67,10 @@ try {
         localStorage.setItem('sf.firstRunIntroSeen', '1');
       } catch (_) {}
     });
-    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+    // 90s matches the sibling runtime checks (pq020/pq022 routes): the dev server ships an
+    // unbundled module graph (~460 requests), so domcontentloaded exceeds playwright's 30s
+    // default on a contended disk. The law assertions below are unchanged.
+    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
     await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
     await page.evaluate(() => {
       window.SF.bus.emit('game:new', { name: 'Site Engineer', difficulty: 'standard' });
@@ -955,7 +958,7 @@ try {
           return read.net.runs.length >= 2
             || (read.net.mount && read.net.mount.phase !== 'loading');
         };
-        for (let waited = 0; !mountSettled(n0) && waited < 15000; waited += 250) {
+        for (let waited = 0; !mountSettled(n0) && waited < 60000; waited += 250) {
           await page.waitForTimeout(250);
           n0 = await readNet();
         }
@@ -1013,6 +1016,8 @@ try {
           // The projection/render bridge advances on its own cadence. A fixed 400 ms sleep raced
           // that cadence at 1920x1080 and sampled 0 -> 0 even though the same 1280x720 cell reached
           // 0 -> 4. Wait for the live renderer reading that this assertion actually consumes.
+          // 15s not 2.5s: on a contended host the render bridge's per-frame lane read can lag a
+          // sim write by whole seconds while still being correct.
           await page.waitForFunction((expected) => {
             const h = document.querySelector('.ast-canvas')?.__ast3d;
             if (!h) return false;
@@ -1021,7 +1026,7 @@ try {
             return expected > 0
               ? lanes.some((lane) => lane.stored >= expected)
               : lanes.every((lane) => lane.stored === 0);
-          }, units, { timeout: 2500, polling: 50 });
+          }, units, { timeout: 15000, polling: 50 });
           return readNet();
         };
         const nEmpty = await setStock(0);

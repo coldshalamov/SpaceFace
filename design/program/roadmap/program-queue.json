@@ -16716,7 +16716,7 @@
       "priority": 424,
       "title": "Design-law checklist as a check",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -16735,9 +16735,10 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
+        "design/program/roadmap/receipts/PQ-185-00-design-law-check-REPORT.md"
       ],
-      "brief": "PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The law-as-check assertions this unit names were NOT written; check:asteroid-works-render is unchanged. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "DONE 2026-09-23: test/asteroid-works-render.test.mjs gained a §11 law section asserting the source-measurable half of ASTEROID_WORKS_DESIGN_LAW.md against the LIVE surface (styles/asteroid-ops.css + src/ui/asteroid/*): --aw-* token hexes, blue-gray/--ao-* ban, face vendoring, Bricolage single-job, uppercase ban, ≤.02em tracking, 12px floor, shape vocabulary, floater spec, fog-free constructs, event surface, and guards that the deckplate bridge cannot redeclare --aw-* tokens or reach the drill mount without the data-screen exclusion. The check went red on first run as the done-when required — caught 9 selectors at 0.06em tracking (fixed to --fh-track-display 0.02em) and Bricolage on .ast-summary-box .title (fixed to --aw-font). Live-route follow-up (Playwright computed styles) found three more real violations the source half could not see: the bridge's :not(.ast-screen) never matched because the mount is .screen[data-screen=drill] with .ast-screen one level down — all 48 bare #screens child selectors now exclude data-screen=drill; the bridge also remapped --aw-mint/--aw-sky/--aw-mono to deckplate neutrals (removed); and fh.css's .fh-key .1em track leaked onto marker keys with no .ast-screen letter-spacing to tie it (.ast-screen .fh-key now declares the display track). Verified live: .aw-leave/.aw-drawer-key/.aw-chip compute none/0.24-0.26px, .aw-crest-name Bricolage only, numerals Spline Sans Mono. Theater check tolerance raised to sibling budgets (goto 90s, mount settle 60s, lane read 15s) — law assertions unchanged; its §7 exposed D34 (conduit mount can hold phase=loading forever when the admission queue starves), logged in the defect ledger. 18/18 green. Receipt: design/program/roadmap/receipts/PQ-185-00-design-law-check-REPORT.md. Prior PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms; temperature 'works' verified for the drill screen; never-list overlap audited."
     },
     {
       "id": "PQ-185.01",
@@ -19511,8 +19512,10 @@
         "src/combat/"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "microJumpBlink (unique_pale_coil_warp_drive) and reactiveMissileKnockback (unique_choir_bell_aegis) are declared as verbs but name no shipped capability; wire them or reclassify honestly."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-208.01-REPORT.md"
+      ],
+      "brief": "DONE: both keys are wired — src/systems/uniqueLootAbilities.js consumes them via fittedVerbSpec (pale-coil blink; choir-bell missile knockback, both usesPerEncounter), and check-progression-verb-audit.mjs VERB_MOD_KEYS carries live {file,symbol} consumer evidence for each, upgraded from the declaredOnly label. Original task: microJumpBlink (unique_pale_coil_warp_drive) and reactiveMissileKnockback (unique_choir_bell_aegis) are declared as verbs but name no shipped capability; wire them or reclassify honestly."
     },
     {
       "id": "PQ-209.00",

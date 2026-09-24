@@ -144,8 +144,12 @@ const FH_BRIDGE = `
    from the Field Hardware vocabulary: .fh-plate, .fh-key, .fh-row, .fh-input, .fh-tile, .fh-light.
    This maps that vocabulary onto the printed controls once. GEOMETRY IS THE KIT'S: every border
    width stays the fh value, transparent, so no content box moves; only what is painted changes.
-   The station is excluded (its own skin, styles/station-orbital.css); so is the title. */
-html body #screens > :not(.sx-observatory):not(.of-title) {
+   The station is excluded (its own skin, styles/station-orbital.css); so is the title; so is the
+   Asteroid Works screen (data-screen="drill") — its fh-* classes are markers it paints itself
+   under ASTEROID_WORKS_DESIGN_LAW §3 (sentence case, ≤.02em tracking), and these selectors would
+   pin uppercase/.1em keys at (1,4,2) where the screen's own (0,2,0) overrides cannot reach. The
+   mount carries dataset.screen, not .ast-screen — that class sits one level down on the wrap. */
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) {
   --fh-legend:var(--dp-lamp); --fh-legend-now:var(--dp-lamp-hot);
   /* amber is for what is lit or acted on: a resting legend is bone, a header legend a step brighter */
   --fh-legend-rest:var(--dp-ink-mute); --fh-legend-lit:var(--dp-ink-dim);
@@ -154,106 +158,106 @@ html body #screens > :not(.sx-observatory):not(.of-title) {
   --fh-text:var(--dp-ink); --fh-text-resting:var(--dp-ink-dim); --fh-text-tertiary:var(--dp-ink-mute);
 }
 /* panels: a printed field */
-html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-plate, .fh-window) {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) :is(.fh-plate, .fh-window) {
   border-style:solid; border-color:transparent; ${SURFACE} color:var(--dp-ink);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate { border-width:24px; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-window { border-width:20px; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--sunk { ${SURFACE} }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--paper { color:var(--dp-ink); }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--edge { border-width:16px; ${SURFACE} }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-plate { border-width:24px; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-window { border-width:20px; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-plate.fh-plate--sunk { ${SURFACE} }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-plate.fh-plate--paper { color:var(--dp-ink); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-plate.fh-plate--edge { border-width:16px; ${SURFACE} }
 /* a rail is a hairline down the middle of its column, not a machined bar */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-rail {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-rail {
   border-width:16px; border-style:solid; border-color:transparent; border-image:none; box-shadow:none;
   background:linear-gradient(90deg, transparent calc(50% - .5px), var(--dp-rule-hi) 0 calc(50% + .5px), transparent 0);
 }
 /* keys */
-${printedKey('html body #screens > :not(.sx-observatory):not(.of-title) .fh-key:not(.fh-key--legend)')}
-${lampKey('html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--primary')}
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--hazard { --dpk-rule:linear-gradient(0deg, var(--dp-danger) 2px, transparent 0); }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
+${printedKey('html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key:not(.fh-key--legend)')}
+${lampKey('html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--primary')}
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--hazard { --dpk-rule:linear-gradient(0deg, var(--dp-danger) 2px, transparent 0); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
   --dpk-fill:var(--dp-danger); --dpk-cut:none; color:var(--dp-metal-0); box-shadow:0 0 18px var(--dp-danger-bloom);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--small { min-height:32px; padding:0 calc(var(--dp-cut) + 8px) 0 12px; font-size:12px; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--small { min-height:32px; padding:0 calc(var(--dp-cut) + 8px) 0 12px; font-size:12px; }
 /* tabs: navigation words, not commands -- the open one lit by a lamp bar beneath it */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend {
   position:relative; border-width:14px; border-style:solid; border-image:none; border-color:transparent; border-radius:0;
   background:none; box-shadow:none; font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 78; letter-spacing:.14em;
   color:var(--dp-ink-dim); text-shadow:none;
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend::before { display:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend::before { display:none; }
 /* one lamp bar per word: the bridge draws it as a background, so the kit's own underline stays off */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend::after { display:none; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:hover { color:var(--dp-ink); background:none; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend::after { display:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend:hover { color:var(--dp-ink); background:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   color:var(--dp-ink); background:${LAMP_UNDER} padding-box; box-shadow:none;
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:focus-visible {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend:focus-visible {
   outline:0 solid transparent !important; color:var(--dp-ink); background:var(--dp-bracket) padding-box;
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit):focus-visible {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit):focus-visible {
   background:var(--dp-bracket) padding-box, ${LAMP_UNDER} padding-box;
 }
 /* choice rows (starter, difficulty): words on one rail, each choice a word, the chosen one lit */
-html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .k-words.k-words--row.of-pause {
   display:inline-flex; flex-wrap:wrap; gap:0 18px; width:max-content; max-width:100%; padding:0; border-radius:0; box-shadow:none;
   background:${RAIL};
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause .fh-key.fh-key--legend { background:none; }
-html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .k-words.k-words--row.of-pause .fh-key.fh-key--legend { background:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   background:${LAMP_UNDER} border-box; box-shadow:0 8px 10px -8px var(--dp-lamp-bloom);
 }
 /* rows: a hairline between; the selected row lights the one way every register does */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-row { background-image:${HAIR_TOP}; background-repeat:no-repeat; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-row.is-selected {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-row { background-image:${HAIR_TOP}; background-repeat:no-repeat; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-row.is-selected {
   border-width:0; border-image:none; color:var(--dp-ink); background:${LAMP_EDGE}, ${INK_FIELD}; box-shadow:none;
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-hairline { height:1px; border:0; background:var(--dp-rule); }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-legend[data-fh-lit="on"] { color:var(--dp-ink-dim); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-hairline { height:1px; border:0; background:var(--dp-rule); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-legend[data-fh-lit="on"] { color:var(--dp-ink-dim); }
 /* hero readouts in a corner are readings: phosphor, not the lamp */
-html body #screens > :not(.sx-observatory):not(.of-title) .k-corner .k-hero__n { color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft), var(--dp-text-legible); }
-html body #screens > :not(.sx-observatory):not(.of-title) .k-corner .k-hero__w { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .k-corner .k-hero__n { color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft), var(--dp-text-legible); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .k-corner .k-hero__w { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); }
 /* selects: the value on a rail, a chevron beside it */
-html body #screens > :not(.sx-observatory):not(.of-title) select.k-select {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) select.k-select {
   -webkit-appearance:none; appearance:none; min-height:40px; padding:0 28px 0 0; border-radius:0; border:0; border-image:none;
   background:${CHEVRON} right 6px center / 10px 6px no-repeat, ${INPUT_RAIL}; box-shadow:none;
   color:var(--dp-ink); font-family:var(--dp-face-read); font-size:14px;
 }
-html body #screens > :not(.sx-observatory):not(.of-title) select.k-select:focus-visible { outline:0 solid transparent !important; background:${CHEVRON} right 6px center / 10px 6px no-repeat, ${INPUT_RAIL_LIT}; }
-html body #screens > :not(.sx-observatory):not(.of-title) select.k-select option { background:#12161c; color:var(--dp-ink); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) select.k-select:focus-visible { outline:0 solid transparent !important; background:${CHEVRON} right 6px center / 10px 6px no-repeat, ${INPUT_RAIL_LIT}; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) select.k-select option { background:#12161c; color:var(--dp-ink); }
 /* inputs: a rail under the words; focus lights it */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-input {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-input {
   border-style:solid; border-color:transparent; border-width:12px 0; border-image:none; box-shadow:none;
   background:${INPUT_RAIL} border-box; color:var(--dp-ink); font-family:var(--dp-face-read);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-input:focus-visible { background:${INPUT_RAIL_LIT} border-box; box-shadow:0 8px 12px -10px var(--dp-lamp-bloom); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-input:focus-visible { background:${INPUT_RAIL_LIT} border-box; box-shadow:0 8px 12px -10px var(--dp-lamp-bloom); }
 /* tiles: keyart on a printed field; pressable, so cut; the chosen one lit */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-tile {
   border-style:solid; border-color:transparent; border-width:20px; ${SURFACE} clip-path:var(--dp-cut-shape);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile[aria-selected='true'] {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-tile[aria-selected='true'] {
   color:var(--dp-lamp-hot); background:var(--dp-cut-lit) border-box, ${LAMP_EDGE} border-box, var(--dp-field);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile:focus-visible { outline:0 solid transparent !important; background:var(--dp-bracket) border-box, var(--dp-field); }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-tile:focus-visible { outline:0 solid transparent !important; background:var(--dp-bracket) border-box, var(--dp-field); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
 /* lights: a flat emitted bead */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-light {
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-light {
   border-radius:50%; width:7px; height:7px; background:var(--dp-lamp); box-shadow:0 0 8px var(--dp-lamp-bloom);
 }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-light:is([data-level='off'], [data-level='dim']) { background:var(--dp-rule-hi); box-shadow:none; }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-light[data-colour='wanted'] { background:var(--dp-danger); box-shadow:0 0 8px var(--dp-danger-bloom); }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-light:is([data-colour='good'], [data-colour='cold']) { background:var(--dp-ink-dim); box-shadow:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-light:is([data-level='off'], [data-level='dim']) { background:var(--dp-rule-hi); box-shadow:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-light[data-colour='wanted'] { background:var(--dp-danger); box-shadow:0 0 8px var(--dp-danger-bloom); }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-light:is([data-colour='good'], [data-colour='cold']) { background:var(--dp-ink-dim); box-shadow:none; }
 /* type: the display face for titles, the condensed voice for legends */
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-title { font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; ${TITLE_INK} }
-html body #screens > :not(.sx-observatory):not(.of-title) .fh-legend { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); text-shadow:none; }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-title { font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; ${TITLE_INK} }
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-legend { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); text-shadow:none; }
 @media (forced-colors:active) {
-  html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-plate, .fh-window, .fh-rail, .fh-key, .fh-input, .fh-tile) {
+  html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) :is(.fh-plate, .fh-window, .fh-rail, .fh-key, .fh-input, .fh-tile) {
     border-color:CanvasText; background:Canvas; color:CanvasText; box-shadow:none; filter:none; clip-path:none;
   }
-  html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-key:is(:hover, :focus-visible), .fh-key--legend:is([aria-selected='true'], [aria-pressed='true'], .is-lit), .fh-row.is-selected, .fh-tile[aria-selected='true']) {
+  html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) :is(.fh-key:is(:hover, :focus-visible), .fh-key--legend:is([aria-selected='true'], [aria-pressed='true'], .is-lit), .fh-row.is-selected, .fh-tile[aria-selected='true']) {
     outline:2px solid Highlight; background:Canvas; color:CanvasText;
   }
-  html body #screens > :not(.sx-observatory):not(.of-title) .fh-light { forced-color-adjust:none; background:CanvasText; box-shadow:none; }
+  html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-light { forced-color-adjust:none; background:CanvasText; box-shadow:none; }
 }
 `;
 
@@ -1045,8 +1049,6 @@ ${OLDP}, ${AU} {
   --sf-display-face:var(--dp-face-etch); --sf-body-face:var(--dp-face-read); --sf-data-face:var(--dp-face-read);
   border:14px solid transparent; border-radius:0; ${SURFACE} -webkit-backdrop-filter:none; backdrop-filter:none;
 }
-/* Asteroid Works keeps its own warm law palette; only its green and its typewriter numerals go */
-html body #screens .ast-screen { --aw-mint:#d8d2c4; --aw-sky:#c9c4b6; --aw-mono:var(--dp-face-read); }
 ${BS} :is(.base-plan, .base-slot, .base-spec, .base-ledger, .base-mod),
 ${AU} :is(.au-next, .au-summary, .au-metric, .au-card, .au-income, .au-outpost-flow, .au-miner-ops, .au-empty) { ${CARD} }
 ${BS} :is(.base-slot, .base-spec, .base-mod):hover, ${AU} :is(.au-metric, .au-card):hover { ${CARD} background:${INK_FIELD}, var(--dp-field); }
@@ -1288,7 +1290,7 @@ ${SL} .sf-save-stage[data-slot-state="filed"] .sf-save-ledger .sf-save-actions {
 /* -- FINISH -- scrollbars are a thin flat thumb on nothing (Windows Chromium drew arrow buttons for
    the standard thin scrollbar, so the standard properties are reset and the part is drawn with the
    scrollbar pseudo-elements). -- */
-const NS = 'html body #screens > :not(.sx-observatory):not(.of-title)';
+const NS = 'html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"])';
 const FINISH = `
 ${NS}, ${NS} * { scrollbar-width:auto !important; scrollbar-color:auto !important; }
 ${NS} ::-webkit-scrollbar, ${NS}::-webkit-scrollbar { width:8px; height:8px; background:transparent; }
