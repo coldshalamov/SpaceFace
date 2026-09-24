@@ -253,6 +253,28 @@ test('an exact-target touch restores a foreign-parented subject after parking it
   assert.equal(subject.parent, staging, 'the original parent keeps the subject');
 });
 
+test('an exact-target touch restores a foreign subject to its original child index', () => {
+  // partsLibrary resolves authored nodes through index-based paths (objectPathFromRoot); a
+  // park that appends on restore silently renumbers the parent's children and corrupts any
+  // path captured before the touch. The restore must splice the subject back where it sat.
+  const scene = new THREE.Scene();
+  const staging = new THREE.Group();
+  const before = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const subject = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const after = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  staging.add(before, subject, after);
+  const renderer = {
+    autoClear: true,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    render() { assert.equal(subject.parent, scene); },
+  };
+  const receipt = touchSubjectOnExactTarget(renderer, null, subject, {}, scene);
+  assert.equal(receipt.skipped, false);
+  assert.deepEqual(staging.children, [before, subject, after],
+    'the subject returns to index 1 — not appended at the end');
+});
+
 test('an exact-target touch draws a frustum-cullable subject and restores the flag', () => {
   // The touch exists to link the subject's program on the exact target — a subject outside the
   // camera frustum (a parked detached root at its pre-commit pose) would be culled and stay

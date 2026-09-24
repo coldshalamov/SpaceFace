@@ -219,6 +219,59 @@ test('context restore stays draw-gated through rebuild and remains gated after a
   assert.equal(recovery.generation, 8);
 });
 
+test('a successful rebuild drains exact-target touches queued while recovery was pending', async () => {
+  const owner = { _contextLost: true };
+  const touched = [];
+  const subjectA = { name: 'authored-root-a' };
+  const subjectB = { name: 'authored-root-b' };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    pendingExactTargetTouches: new Set([subjectA, subjectB]),
+    runQueuedExactTargetTouch(subject) { touched.push(subject); },
+  };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    // A boundary publishing mid-rebuild queues its publish-seam touch — the rebuild's own
+    // scene warm already enumerated without it, so the touch must land here, on the same
+    // tick pending clears, before any presented frame can draw the root cold.
+    recovery.pendingExactTargetTouches.add({ name: 'authored-root-late' });
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(recovery.pending, false);
+  assert.equal(recovery.pendingExactTargetTouches, null,
+    'the queue is consumed — a second recovery must not re-touch stale subjects');
+  assert.deepEqual(touched.map((subject) => subject.name),
+    ['authored-root-a', 'authored-root-b', 'authored-root-late'],
+    'every subject queued during the pending window is re-touched before the gate opens');
+});
+
+test('a failed rebuild keeps queued exact-target touches for the retry', async () => {
+  const owner = { _contextLost: true };
+  const touched = [];
+  const subject = { name: 'authored-root' };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    scheduleRetry() {},
+    pendingExactTargetTouches: new Set([subject]),
+    runQueuedExactTargetTouch(entry) { touched.push(entry); },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('rebuild exploded');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(recovery.pending, true);
+  assert.equal(touched.length, 0,
+    'a failed rebuild must not touch against a still-dead context — the queue rides the retry');
+  assert.equal(recovery.pendingExactTargetTouches.has(subject), true);
+});
+
 test('a failed restore with scheduleRetry does not stay pending without another attempt', async () => {
   const owner = { _contextLost: true };
   let retries = 0;

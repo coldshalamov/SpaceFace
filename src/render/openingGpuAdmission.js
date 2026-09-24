@@ -309,32 +309,44 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   // root mid-prepare, or one parented into a foreign staging group) contributes nothing, so its
   // "touched" program still links inside the first presented pass. Park each foreign subject in
   // the lighting scene for the draw and restore its real parentage afterwards.
+  //
+  // Invariant: the parked subject must not carry a residency-owner identity — reparenting fires
+  // Object3D 'removed' events, and owner roots treat that as boundary removal (asset residency
+  // release). Every caller passes content roots/leaves, never an owner boundary.
   const parked = [];
-  for (const item of subjects) {
-    if (item === lightingScene) continue;
-    let underScene = false;
-    for (let node = item; node; node = node.parent) {
-      if (node === lightingScene) { underScene = true; break; }
-    }
-    if (underScene || typeof lightingScene.add !== 'function') continue;
-    parked.push({ item, parent: item.parent });
-    lightingScene.add(item);
-  }
-  // The touch's only job is to make the subject's draw issue — a subject outside the camera
-  // frustum (a parked detached root at its pre-commit local pose) would be culled and stay cold.
   const cullable = new Set();
-  for (const item of subjects) {
-    if (typeof item.traverse === 'function') {
-      item.traverse((node) => {
-        if (node.frustumCulled === true) cullable.add(node);
-      });
-    }
-    for (let node = item.parent; node; node = node.parent) {
-      if (node.frustumCulled === true) cullable.add(node);
-    }
-  }
-  for (const node of cullable) node.frustumCulled = false;
   try {
+    for (const item of subjects) {
+      if (item === lightingScene) continue;
+      let underScene = false;
+      for (let node = item; node; node = node.parent) {
+        if (node === lightingScene) { underScene = true; break; }
+      }
+      if (underScene || typeof lightingScene.add !== 'function') continue;
+      // Record the foreign parent's child index too — partsLibrary resolves objects through
+      // index-based paths (objectPathFromRoot), so appending on restore would corrupt them.
+      parked.push({
+        item,
+        parent: item.parent,
+        index: item.parent && Array.isArray(item.parent.children)
+          ? item.parent.children.indexOf(item)
+          : -1,
+      });
+      lightingScene.add(item);
+    }
+    // The touch's only job is to make the subject's draw issue — a subject outside the camera
+    // frustum (a parked detached root at its pre-commit local pose) would be culled and stay cold.
+    for (const item of subjects) {
+      if (typeof item.traverse === 'function') {
+        item.traverse((node) => {
+          if (node.frustumCulled === true) cullable.add(node);
+        });
+      }
+      for (let node = item.parent; node; node = node.parent) {
+        if (node.frustumCulled === true) cullable.add(node);
+      }
+    }
+    for (const node of cullable) node.frustumCulled = false;
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
     withOnlySubjectsDrawable(lightingScene, subjects, () => {
@@ -346,9 +358,22 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     return { skipped: false, subjects: subjects.length };
   } finally {
     for (const node of cullable) node.frustumCulled = true;
-    for (const { item, parent } of parked) {
-      if (parent && typeof parent.add === 'function') parent.add(item);
-      else if (typeof lightingScene.remove === 'function') lightingScene.remove(item);
+    // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
+    // order, so unwinding in reverse keeps each reparent consistent with the one before it.
+    for (let i = parked.length - 1; i >= 0; i--) {
+      const { item, parent, index } = parked[i];
+      if (parent && typeof parent.add === 'function') {
+        parent.add(item);
+        if (index >= 0 && index < parent.children.length - 1) {
+          const currentIndex = parent.children.indexOf(item);
+          if (currentIndex >= 0) {
+            parent.children.splice(currentIndex, 1);
+            parent.children.splice(index, 0, item);
+          }
+        }
+      } else if (typeof lightingScene.remove === 'function') {
+        lightingScene.remove(item);
+      }
     }
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {

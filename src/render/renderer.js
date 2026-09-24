@@ -1836,6 +1836,21 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.forcedNewContext = false;
   recovery.terminal = false;
   owner._contextLost = false;
+  // Authored boundaries that published while pending was set queued their exact-target
+  // touch instead of linking into the dead context. Drain them synchronously — before this
+  // tick ends and any presented frame can draw those roots cold against the fresh cache.
+  const queuedTouches = recovery.pendingExactTargetTouches;
+  recovery.pendingExactTargetTouches = null;
+  if (queuedTouches && queuedTouches.size && typeof recovery.runQueuedExactTargetTouch === 'function') {
+    for (const subject of queuedTouches) {
+      try { recovery.runQueuedExactTargetTouch(subject); }
+      catch (error) {
+        if (typeof console !== 'undefined') {
+          console.warn('[render] queued exact-target touch failed after context restore', error);
+        }
+      }
+    }
+  }
   return { ok: true };
 }
 
@@ -6016,9 +6031,18 @@ export const render = {
       // residual variant links here — in the admission continuation — not inside the first
       // presented bloom pass.
       if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
-      const recovering = state.render
-        && state.render.contextRecovery && state.render.contextRecovery.pending === true;
-      if (recovering) return { skipped: true, reason: 'context-recovery' };
+      const recovery = this._contextRecovery;
+      if (recovery && recovery.pending === true) {
+        // A touch now would link into the dead context's program cache, and the restore
+        // rebuild's whole-scene warm can outrun a publish landing mid-recovery — the ship
+        // would present with its bloom variant cold. Queue the subject into the recovery
+        // completion instead: runWebGlContextRestoreRebuild drains it on the same tick that
+        // clears pending, before any presented frame can interleave.
+        const queued = recovery.pendingExactTargetTouches
+          || (recovery.pendingExactTargetTouches = new Set());
+        queued.add(subject);
+        return { skipped: true, reason: 'context-recovery-queued' };
+      }
       // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
       // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
       // the draw a silent no-op and leaves the exact variant cold for the presented pass.
@@ -6029,6 +6053,13 @@ export const render = {
         restore();
       }
     };
+    // The restore drain re-enters the public touch so the queued subject gets the same
+    // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
+    if (this._contextRecovery) {
+      this._contextRecovery.runQueuedExactTargetTouch = (subject) => {
+        state.render.touchSubjectExactTarget(subject);
+      };
+    }
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
