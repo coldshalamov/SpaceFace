@@ -1,6 +1,6 @@
-# IMPORT_DIGEST report — 2026-09-24e (classify-closed-form-index)
+# IMPORT_DIGEST report — 2026-09-24f (classify-signature-prune-membership)
 
-Master tip: **`568d1358e`**.
+Master tip: **`37f50a70d`** (moved from `568d1358e`).
 
 ## Quiet CPU / hitch re-rank (prior pass cite)
 
@@ -11,8 +11,8 @@ Tool: `node scripts/probe-main-thread-profile.mjs --ms=45000 --label=settled-45s
 | ms | owner | coverage |
 |---:|---|---|
 | 173 | `queryFarActors` | pending **#1** far-actor-cell-key |
-| 123 | `registry.step` | residual dispatcher |
-| 104 | `classifyWorld` | **SHIPPED #37** catch-up index (~135×) + pending pinFacts cache |
+| 123 | `registry.step` | residual dispatcher (next after classify shrink) |
+| 104 | `classifyWorld` | **SHIPPED #37** catch-up index (~135×) + **SHIPPED #38** signature-prune gate (~178× prune slice) + pending pinFacts cache |
 | **104** | **`refreshCredits`** | **SHIPPED #34** (layout N→0) |
 | 52 | `prepareFrame` | pending **#13** prepare-pitch-settle |
 | 51 | `syncEntityViews` | pending **#15** submit-scratch |
@@ -31,12 +31,13 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 37 | `classify-closed-form-index` | Catch-up **~135×** vs full-list; prior filter only ~1.05×; 21/21 tests; fair three-way harness |
+| 38 | `classify-signature-prune-membership` | Quiet prune **~178×** vs every-tick walk; 21/21 tests; stacks after #37 |
 
-## Still import — applies cleanly on `568d1358e`
+## Still import — applies cleanly on `37f50a70d`
 
 | # | Package | Evidence |
 |---:|---|---|
+| 38 | `classify-signature-prune-membership` | ~178× quiet signature prune |
 | 37 | `classify-closed-form-index` | ~135× selectClassify catch-up |
 | 36 | `projectile-surface-distance-first` | ~1.87× surface walk |
 | 35 | `prune-evidence-cadence` | ~11× prune / ~7× worst |
@@ -61,12 +62,13 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 5. `#35 prune-evidence-cadence`
 6. `#36 projectile-surface-distance-first`
 7. `#37 classify-closed-form-index` — selectClassify / classifyWorld catch-up
-8. `#17 asteroid-query-callers`
-9. `#1 far-actor-cell-key`
-10. `#13 prepare-pitch-settle`
-11. `#15 sync-entity-views-submit-scratch`
-12. `#12 massline-settext-cache`
-13. Soft-GPU opening: `#20` → `#21` (then rebase `#22`)
+8. `#38 classify-signature-prune-membership` — classifyWorld signature prune residual
+9. `#17 asteroid-query-callers`
+10. `#1 far-actor-cell-key`
+11. `#13 prepare-pitch-settle`
+12. `#15 sync-entity-views-submit-scratch`
+13. `#12 massline-settext-cache`
+14. Soft-GPU opening: `#20` → `#21` (then rebase `#22`)
 
 ## Needs rebase / hold
 
@@ -82,8 +84,8 @@ Quiet Ceres after #31: **11** live rocks pinned (8 geology / 2 collision / 1 act
 
 ## Scour-ranked next poles
 
-1. Import portable pending (esp. #31 + #32 + #33 + #1 + #17 + #35 + #36 + #37).
-2. `classifyWorld` residual after pinFacts cache + #37 catch-up index.
-3. `registry.step` residual dispatcher after classify shrinks.
+1. Import portable pending (esp. #31–#38 + #1 + #17).
+2. `registry.step` residual dispatcher after classify shrinks (#37+#38).
+3. Remaining 11 live rocks still pinned — no legal cut.
 4. Same-material hull batch only if draw/GPU present is still the pole after table authority.
 5. Ignore soft-GPU fps for shipping KPIs.
