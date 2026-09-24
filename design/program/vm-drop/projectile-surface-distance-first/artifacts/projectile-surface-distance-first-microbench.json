@@ -1,0 +1,8 @@
+{
+  "entities": 2500,
+  "iters": 4000,
+  "beforeMs": 10.765150000000006,
+  "afterMs": 5.758373999999989,
+  "speedup": 1.869477390666189,
+  "sinkMatch": true
+}
