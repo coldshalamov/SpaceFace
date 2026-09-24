@@ -1,4 +1,4 @@
-# IMPORT — IMPORT_DIGEST 20260924cw
+# IMPORT — IMPORT_DIGEST 20260924cx
 
-Digest-only update after #140 tumble-states-quiet-latch. No code patch here.
-Apply `design/program/vm-drop/tumble-states-quiet-latch/patches/` for the ship.
+Digest-only update after #141 classify-flying-rock-retain. No code patch here.
+Apply package patches from `classify-flying-rock-retain/patches/` on master.
