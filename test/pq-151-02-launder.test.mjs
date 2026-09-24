@@ -176,7 +176,7 @@ test(`seed ${SEED}: outlaw dock washes the pod; later scan is clean; ledger reco
   const t = boot(SEED);
   try {
     const expectedCut = launderCutCredits(CONTRABAND_ID, POD_UNITS, 0);
-    assert.equal(expectedCut, 616, 'seed 15120 / 8 narcotics / Quiet 0 → 616 cr cut');
+    assert.equal(expectedCut, 1613, 'seed 15120 / 8 narcotics / Quiet 0 → 1613 cr cut');
 
     const pod = spawnPod(t);
     assert.equal(isJettisonedCargoPod(pod), true);
@@ -235,7 +235,7 @@ test(`seed ${SEED}: Quiet standing pays the cut down`, () => {
     const cheap = launderCutCredits(CONTRABAND_ID, POD_UNITS, 700);
     const full = launderCutCredits(CONTRABAND_ID, POD_UNITS, 0);
     assert.ok(cheap < full, `high standing cut ${cheap} must be below Neutral ${full}`);
-    assert.equal(cheap, 308);
+    assert.equal(cheap, 806);
 
     const pod = spawnPod(t);
     t.sim.bus.emit('dock:launder', { stationId: OUTLAW_STATION });

@@ -179,8 +179,8 @@ test(`seed ${SEED_BOUNTY}: warrant hunter flies inward from the reserve point`, 
     seed: SEED_BOUNTY,
     systems: [
       heat, lawSecurity, bountyHunt, spawnBudget,
-      aiPorts, createTacticalAISystem({ seed: SEED_BOUNTY }),
-      actions, flightV3, physics,
+      createTacticalAISystem({ seed: SEED_BOUNTY }),
+      actions, flightV3, aiPorts, physics,
     ],
   });
   const { state } = sim;

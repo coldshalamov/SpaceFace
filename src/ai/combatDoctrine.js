@@ -830,7 +830,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   // offender fires untouched.
   const assignedTargetBreak = !!(directive && directive.formation
     && (directive.formation.breakReason === 'security_response_target'
-      || directive.formation.breakReason === 'ambush_snare_prey'));
+      || directive.formation.breakReason === 'ambush_snare_prey'
+      || directive.formation.breakReason === 'wanted_warrant_target'));
   let maneuverKind = ManeuverKind.INTERCEPT;
   let preferredRange = 180;
   let allowedActionId = null;
@@ -1224,10 +1225,10 @@ function flightProfileFor(doctrineId, self) {
 // Enemy Mind formation rewrite that replaces the break reason.
 function securityDispatched(directive, self) {
   const formation = directive && directive.formation;
-  if (formation && formation.breakReason === 'security_response_target') return true;
+  if (formation && (formation.breakReason === 'security_response_target' || formation.breakReason === 'wanted_warrant_target')) return true;
   const activity = self && self.activity;
   return !!(activity && activity.kind === 'attack_run' && activity.targetId != null
-    && String(activity.reason || '').startsWith('security_response:'));
+    && (String(activity.reason || '').startsWith('security_response:') || String(activity.reason || '').startsWith('wanted_warrant:')));
 }
 
 function interceptorTargetStationary(target) {

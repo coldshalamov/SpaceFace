@@ -527,6 +527,7 @@ export const lawSecurity = {
     for (let i = 0; i < armed.length; i++) {
       const entity = armed[i];
       if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
+      if (entity.data?.wantedWarrant === true) continue;
       const data = entity.data || (entity.data = {});
       const ai = data.ai || (data.ai = {});
       const combat = data.combat || (data.combat = {});
@@ -2409,15 +2410,23 @@ export const lawSecurity = {
     hull.pos = { x: arrival.x, z: arrival.z };
     hull.vel = { x: 0, z: 0 };
     hull.rot = Math.atan2(player.pos.z - arrival.z, player.pos.x - arrival.x);
+    const baseAi = hull.data && hull.data.ai ? { ...hull.data.ai } : {};
     hull.data = { ...(hull.data || {}), ...(huntSpec.data || {}) };
+    hull.data.ai = { ...baseAi, ...(huntSpec.data?.ai || {}) };
     hull.data.missionTag = 'wanted_warrant';
     hull.data.missionPinned = true;
-    const ai = hull.data.ai || (hull.data.ai = {});
-    Object.assign(ai, huntSpec.data.ai || {});
+    const ai = hull.data.ai;
+    ai.motive = 'wanted_warrant';
+    ai.engagementTrigger = 'wanted_bounty';
+    ai.zoneId = 'wanted_warrant';
+    ai.approachTelegraph = 'hunter_inbound';
+    ai.combatDoctrineId = 'interceptor_flyby';
+    ai.noFireResponseWindowS = 1.5;
     ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
     ai.forcePlayerTarget = true;
     ai.hostileTeams = [0];
     ai.lawful = false;
+    ai.roe = 'weapons_free';
     ai.passive = false;
     // Reserve arrival is ≥ 2000 wu; default sensors are 1600. The hunter has to see the
     // contract target from the arrival point or it sits there instead of flying in.
@@ -2484,6 +2493,7 @@ export const lawSecurity = {
         hunter.data.wantedWarrant = false;
         hunter.data.missionPinned = false;
         hunter.data.contractTargetId = null;
+        if (hunter.data.missionTag === 'wanted_warrant') hunter.data.missionTag = null;
       }
       const ai = hunter.data && hunter.data.ai;
       if (ai) {

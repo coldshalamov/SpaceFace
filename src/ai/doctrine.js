@@ -165,7 +165,7 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
   // ambient same-squad members who never learned of the incident vote the offender non-hostile
   // (hostileVotes <= friendlyVotes), no focus ever materializes, and dispatched lawmen hold an
   // impotent guard ring around the jurisdiction anchor while the offender fires at will.
-  if ((reason.startsWith('ambush_snare:') || reason.startsWith('security_response:'))
+  if ((reason.startsWith('ambush_snare:') || reason.startsWith('security_response:') || reason.startsWith('wanted_warrant:'))
     && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
     return freeze({
       ...directive,
@@ -174,7 +174,11 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
       formation: freeze({
         ...(directive.formation || {}),
         breakFormation: true,
-        breakReason: reason.startsWith('ambush_snare:') ? 'ambush_snare_prey' : 'security_response_target',
+        breakReason: reason.startsWith('ambush_snare:')
+          ? 'ambush_snare_prey'
+          : reason.startsWith('wanted_warrant:')
+            ? 'wanted_warrant_target'
+            : 'security_response_target',
       }),
     });
   }
@@ -214,7 +218,7 @@ export function perceptionForWingOrderCombatDoctrine(perception, directive, free
   const exactTargetId = directive.objective.targetId;
   if (!activity || exactTargetId == null) return perception;
   const reason = String(activity.reason || '');
-  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:') && !reason.startsWith('security_response:')) return perception;
+  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:') && !reason.startsWith('security_response:') && !reason.startsWith('wanted_warrant:')) return perception;
   const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
   const filtered = contacts
     .filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId))
