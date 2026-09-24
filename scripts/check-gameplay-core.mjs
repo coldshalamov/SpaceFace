@@ -9,6 +9,7 @@ import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
 import { queryNearbyEntities } from '../src/core/spatialQuery.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
+import { PROJECTILE_FLIGHT_SECONDS } from '../src/combat/projectileFlight.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
 import { hash32, mulberry32, wrapAngle } from '../src/core/rng.js';
 import { audioNearbyHostileCount } from '../src/audio/audioSystem.js';
@@ -370,8 +371,17 @@ function checkProjectileLaunchFullyInheritsShooterVelocity() {
     'fast ships must not overtake their own newly fired bullets');
   assert.equal(projectile.data.maxDistance, def.range,
     'projectile should carry a spatial max distance equal to authored weapon range');
-  assert(projectile.ttl <= def.range / Math.hypot(projectile.vel.x, projectile.vel.z) + 1e-9,
-    'projectile TTL should account for inherited ship velocity');
+  // Flight-budget law (ledger D18): engagement range is a floor, not a cap — the round
+  // always lives at least PROJECTILE_FLIGHT_SECONDS so it can leave the frame, hit, or
+  // bounce back. The budget is still computed against the round's TRUE total speed
+  // (muzzle + inherited ship velocity), never the muzzle speed alone.
+  const totalSpeed = Math.hypot(projectile.vel.x, projectile.vel.z);
+  assert(projectile.ttl >= PROJECTILE_FLIGHT_SECONDS - 1e-9,
+    'projectile flight budget must grant the PROJECTILE_FLIGHT_SECONDS floor');
+  assert(projectile.ttl * totalSpeed >= def.range - 1e-9,
+    'projectile TTL should account for inherited ship velocity: the budget must still carry the round to authored range at total speed');
+  assert(Math.abs(projectile.data.flightDistance - projectile.ttl * totalSpeed) < 1e-6,
+    'flightDistance budget must match ttl x total speed');
 }
 checkProjectileLaunchFullyInheritsShooterVelocity();
 
@@ -942,7 +952,7 @@ function checkAutoTargetGToggle() {
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, true, 'G must enable auto-target');
   assert.equal(state.input.pursuitSlot?.active || false, false, 'G must not enable pursuit steering');
-  assert(toasts.some((t) => /Auto-target ON.*draw to fly/.test(t.text)),
+  assert(toasts.some((t) => /Draw-to-fly ON/.test(t.text)),
     'toggle must explain the draw-to-fly control');
   toggleAutoTarget(state, bus, createAutoTargetRuntime());
   assert.equal(state.input.autoFire, false, 'second G press must disable auto-target');
@@ -2586,7 +2596,10 @@ function checkLoadRestoresPersistentEntities() {
 
   const restored = state.entityList.find((e) => e.data && e.data.role === 'target_dummy');
   assert(restored, 'load should restore saved persistent entities');
-  assert.notEqual(restored.id, 99, 'load should assign persistent entities fresh ids');
+  // Id law (ledger D18): a restored persistent actor reclaims its saved id when the id is
+  // still free, so in-flight rounds saved beside it remap owner/target onto stable ids and
+  // reload@N matches the uninterrupted run. Fresh ids remain the fallback, not the rule.
+  assert.equal(restored.id, 99, 'load should let persistent actors reclaim their saved ids');
   assert.equal(restored.pos.x, 120, 'restored persistent entity should keep position');
   assert.equal(restored.vel.z, 4, 'restored persistent entity should keep velocity');
   assert.equal(restored.rot, 1.5, 'restored persistent entity should keep heading');

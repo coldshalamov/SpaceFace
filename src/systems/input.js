@@ -161,6 +161,10 @@ function stepTravelLatch(host, state, inp, dt) {
   const disrupted = travelDisrupted(state);
   const disruptionReason = travelDisruptionReason(state);
   const braking = travelBrakeBreaks(inp);
+  // Forward the LEVEL flag on the published block, not just the one-shot latch transition: the
+  // kernel's normalizeTravelDrive consumes `disrupted` to hold the ramp down AND (D8) to treat
+  // the dead beacon as the environmental force that spends overspeed toward the falling ceiling.
+  drive.disrupted = disrupted;
 
   // Feed the kernel's published ramp back in. Reading the frame the kernel actually wrote (rather
   // than re-deriving a ramp here) keeps ONE owner of the ramp maths — the kernel.
@@ -213,7 +217,10 @@ function stepTravelLatch(host, state, inp, dt) {
       else if (drive.cooldownT >= TRAVEL_COOLDOWN_S) {
         drive.state = 'off';
         drive.cooldownT = 0;
-        drive.breakReason = null;
+        // The break reason PERSISTS while the disengaged cap record decays: the kernel spends
+        // overspeed toward the falling ceiling only for a world-caused break (D8 disruption), and
+        // it must still know that after the ship has coasted clear of the dead segment. A pilot
+        // reason ('pilot'/'brake') keeps the settle-to-rest coast. The next press overwrites it.
       }
       break;
   }

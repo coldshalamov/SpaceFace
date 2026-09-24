@@ -98,8 +98,8 @@ assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: a
   'keyboard station control bar must teach hub tab navigation and activation');
 assert.match(promptSrc, /firstStation: `Review Departure Check before \$\{BINDINGS\.dock\.label\} or Escape undocks\.`/,
   'keyboard first-station hint must be one terse, binding-truthful departure verb');
-assert.match(promptSrc, /station: 'A dock[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B undock'/,
-  'gamepad station control bar must teach LB/RB tab cycling, focus, activation, and undock');
+assert.match(promptSrc, /station: 'B dock when prompted[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B leave once aboard'/,
+  'gamepad station control bar must teach B docking, LB/RB tab cycling, focus, and activation');
 assert.match(promptSrc, /firstStation: 'Review Departure Check before B undocks\.'/,
   'gamepad first-station hint must be one terse controller departure verb');
 assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: tap tabs\/actions[\s\S]*Tap Undock when ready/,
@@ -131,7 +131,7 @@ assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/,
   'controlPrompts must advertise RMB mining for keyboard/mouse');
 assert.match(controlPrompt('flight', 'gamepad'), /LT mine/,
   'controlPrompts must advertise LT mining for gamepad');
-assert.match(controlPrompt('station', 'gamepad'), /A dock/,
+assert.match(controlPrompt('station', 'gamepad'), /B dock/,
   'controlPrompts must advertise gamepad docking');
 assert.match(controlPrompt('mining', 'touch'), /Mine button/,
   'controlPrompts must include touch mining copy');

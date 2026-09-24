@@ -9,6 +9,7 @@
 // drive the same policy the live path uses.
 
 import { viewHalfExtents } from './entityViewSyncBand.js';
+import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 
 const _glassCache = {
   zoom: NaN,
@@ -716,4 +717,22 @@ export function censusTableBands(entities, options = {}) {
     if (options.residentIds && options.residentIds.has(entity.id)) counts.resident += 1;
   }
   return counts;
+}
+
+// ---- projectile frame test ------------------------------------------------
+// Moved here from src/combat/projectileFlight.js: combat grammar forbids sim
+// code importing presentation, and this is a draw question, not a sim one.
+
+const _frameLook = { x: 0, z: 0 };
+
+/**
+ * True when a world position should be drawn this frame. Missing player
+ * position does not cull: a fixture with no pilot still has to show the shot.
+ * The pad keeps a round visible until its body and dash have left the glass.
+ */
+export function projectileOnReadableFrame(state, pos, playerPos, drawWu, out) {
+  if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return true;
+  const base = Number.isFinite(drawWu) && drawWu > 0 ? drawWu : tableVfxDrawWuFromState(state);
+  const look = tableLookAtDelta(state, playerPos, pos, out || _frameLook);
+  return shouldDrawTableVfx(look.x, look.z, base + PROJECTILE_DRAW_PAD_WU);
 }

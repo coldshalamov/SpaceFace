@@ -16,8 +16,8 @@ import {
   shouldDrawTableVfx,
   tableLookAtDelta,
   tableVfxDrawWuFromState,
+  projectileOnReadableFrame,
 } from '../tabletopPolicy.js';
-import { projectileOnReadableFrame } from '../../combat/projectileFlight.js';
 import {
   FLIGHT_MODE,
   WEAPON_SOCKET_NAME,

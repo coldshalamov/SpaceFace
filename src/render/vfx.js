@@ -80,8 +80,9 @@ import {
   tableLookAtDelta,
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
+  projectileOnReadableFrame,
 } from './tabletopPolicy.js';
-import { PROJECTILE_DRAW_PAD_WU, projectileOnReadableFrame } from '../combat/projectileFlight.js';
+import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
   collectStatusAttachedVictims,

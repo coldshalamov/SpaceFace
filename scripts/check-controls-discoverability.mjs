@@ -46,16 +46,16 @@ assert.match(settingsSource, /Flight keys above are rebindable here; these inter
   'Controls footer should distinguish rebindable flight keys from fixed interface keys');
 assert.match(settingsSource, /Massline: tap latch\/cut; hold line control/,
   'Settings must name the live Massline tap/hold grammar');
-assert.match(settingsSource, /A\/Cross Massline \(dock\/accept when prompted\)/,
-  'Settings must disclose the contextual gamepad A/Cross arbitration');
+assert.match(settingsSource, /A\/Cross Massline, B dock when prompted/,
+  'Settings must disclose the gamepad Massline verb and the B dock verb');
 assert.match(settingsSource, /masslineBindingProfile\s*=\s*MASSLINE_BINDING_PROFILE_SPACE/,
   'Reset to defaults must explicitly adopt the current Space-primary profile');
 assert.match(helpSource, /reel\/pay out\/orbit/,
   'Help must teach the line-control axes without inventing separate default keys');
 assert.match(helpSource, /resolveActionLabel/,
   'Help must resolve rebindable keys from src/systems/input.js');
-assert.match(helpSource, /A \/ X: Massline \(dock\/accept when prompted\)/,
-  'Help must teach the gamepad Massline route and its dock priority');
+assert.match(helpSource, /\['Massline', null, 'A \/ Cross'\]/,
+  'Help must teach the gamepad Massline key');
 // aa95391f5 routed the write through the setText(el, text) helper (skip-unchanged writes); either
 // spelling is the same print.
 assert.match(hudSource, /elTetherKeys\.textContent|setText\(elTetherKeys,/,
