@@ -20,6 +20,7 @@ import {
   SIM_TIER,
   classifyActivity,
   physicsReachWu,
+  PIN_REASON,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
@@ -317,10 +318,16 @@ function imminentCollisionFor(state, player, entity) {
   const rpx = finite(entity.pos.x) - finite(player.pos.x);
   const rpz = finite(entity.pos.z) - finite(player.pos.z);
   const radius = Math.max(0, finite(entity.radius)) + Math.max(0, finite(player.radius));
-  const c = rpx * rpx + rpz * rpz - radius * radius;
+  const d2 = rpx * rpx + rpz * rpz;
+  const c = d2 - radius * radius;
   if (c <= 0) return true;
   const a = rvx * rvx + rvz * rvz;
   if (!(a > 1e-8)) return false;
+  // Coarse reach: even a head-on close at full relative speed cannot arrive inside the
+  // combined radius within the lookahead window. Skips the discriminant/sqrt for the
+  // far majority of the classify near-disc (quiet rocks / parked traffic).
+  const reach = radius + Math.sqrt(a) * COLLISION_LOOKAHEAD_S;
+  if (d2 > reach * reach) return false;
   const b = 2 * (rpx * rvx + rpz * rvz);
   if (b >= 0) return false;
   const discriminant = b * b - 4 * a * c;
@@ -359,8 +366,62 @@ function reusablePins(runtime, id, pins) {
   return stable;
 }
 
-function activitySignature(stamp) {
-  return `${stamp.simTier}|${stamp.presentationTier}|${stamp.nextEventAtT}|${stamp.pinnedExact ? 1 : 0}|${stamp.pins.join(',')}`;
+const PIN_REASON_BIT = Object.freeze({
+  [PIN_REASON.PLAYER]: 1,
+  [PIN_REASON.CURRENT_TARGET]: 2,
+  [PIN_REASON.RECENTLY_DAMAGED_BY_PLAYER]: 4,
+  [PIN_REASON.RECENTLY_DAMAGED_PLAYER]: 8,
+  [PIN_REASON.HOSTILE_AGGRO]: 16,
+  [PIN_REASON.PROJECTILE_THREAT]: 32,
+  [PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT]: 64,
+  [PIN_REASON.DOCKING_OR_LANDING]: 128,
+  [PIN_REASON.MISSION_CRITICAL]: 256,
+  [PIN_REASON.ESCORT_OR_FOLLOW_RELATION]: 512,
+  [PIN_REASON.HAIL_OR_SCRIPTED_CONVERSATION]: 1024,
+  [PIN_REASON.PLAYER_MINING_TARGET]: 2048,
+  [PIN_REASON.PLAYER_SCANNED_AND_TRACKED]: 4096,
+  [PIN_REASON.IMMINENT_COLLISION]: 8192,
+  [PIN_REASON.VISIBLE_ON_GLASS]: 16384,
+});
+
+function pinBitsOf(pins) {
+  let bits = 0;
+  if (!pins || pins.length === 0) return 0;
+  for (let i = 0; i < pins.length; i++) {
+    bits |= PIN_REASON_BIT[pins[i]] || 0;
+  }
+  return bits;
+}
+/**
+ * Quiet classify used to allocate a template string per visit just to detect stamp
+ * churn (`sim|pres|event|pinned|pins`). Store a reusable record per id instead and
+ * compare fields. Pin identity uses a bitfield — `reusablePins` mutates its stable
+ * buffer in place, so a retained pins reference cannot be compared by identity.
+ */
+function signatureRecordChanged(prev, stamp, pinBits) {
+  if (!prev) return true;
+  if (prev.simTier !== stamp.simTier) return true;
+  if (prev.presentationTier !== stamp.presentationTier) return true;
+  if (prev.nextEventAtT !== stamp.nextEventAtT) return true;
+  if (prev.pinnedExact !== !!stamp.pinnedExact) return true;
+  if (prev.pinBits !== pinBits) return true;
+  return false;
+}
+
+function writeSignatureRecord(prev, stamp, pinBits) {
+  const out = prev || {
+    simTier: null,
+    presentationTier: null,
+    nextEventAtT: -1,
+    pinnedExact: false,
+    pinBits: 0,
+  };
+  out.simTier = stamp.simTier;
+  out.presentationTier = stamp.presentationTier;
+  out.nextEventAtT = stamp.nextEventAtT;
+  out.pinnedExact = !!stamp.pinnedExact;
+  out.pinBits = pinBits;
+  return out;
 }
 
 function attachStamp(entity, rec) {
@@ -867,9 +928,10 @@ function classifyWorld(state, runtime) {
         runtime.initialInactiveAiEntities.push(entity);
       }
     }
-    const signature = activitySignature(stamp);
-    if (runtime.signaturesById.get(entity.id) !== signature) {
-      runtime.signaturesById.set(entity.id, signature);
+    const prevSignature = runtime.signaturesById.get(entity.id);
+    const pinBits = pinBitsOf(stamp.pins);
+    if (signatureRecordChanged(prevSignature, stamp, pinBits)) {
+      runtime.signaturesById.set(entity.id, writeSignatureRecord(prevSignature, stamp, pinBits));
       runtime.changedIds.push(entity.id);
     }
     runtime.reasonsById.set(entity.id, stamp.pins);

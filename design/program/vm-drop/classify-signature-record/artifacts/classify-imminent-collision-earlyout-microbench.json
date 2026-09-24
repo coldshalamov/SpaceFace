@@ -1,0 +1,15 @@
+{
+  "label": "classify-imminent-collision-earlyout",
+  "entities": 120,
+  "iters": 30000,
+  "before": {
+    "ms": 24.976,
+    "hits": 3
+  },
+  "after": {
+    "ms": 20.493,
+    "hits": 3
+  },
+  "speedup": 1.219,
+  "sameHits": true
+}

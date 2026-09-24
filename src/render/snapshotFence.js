@@ -247,15 +247,26 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
   for (let index = 0; index < active; index++) {
     const slot = world.activeSlots[index];
     if (world.alive[slot] !== 1) continue;
-    const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
-    const half = rot * 0.5;
+    // Prefer presentation-world half-yaw cache (filled on rot write). Fall back to sin/cos
+    // for worlds that predate the cache columns or omit them in tests.
+    let qy;
+    let qw;
+    if (world.yawSin && world.yawCos) {
+      qy = world.yawSin[slot];
+      qw = world.yawCos[slot];
+    } else {
+      const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
+      const half = rot * 0.5;
+      qy = Math.sin(half);
+      qw = Math.cos(half);
+    }
     const packedIndex = snapshot.write(
       world.entityIds[slot] >>> 0,
       world.typeCodes ? world.typeCodes[slot] : 0,
       world.x[slot],
       world.y[slot],
       world.z[slot],
-      0, Math.sin(half), 0, Math.cos(half),
+      0, qy, 0, qw,
       1, 1, 1,
       world.flags[slot] >>> 0,
     );

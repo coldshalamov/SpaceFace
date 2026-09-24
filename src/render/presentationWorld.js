@@ -162,6 +162,9 @@ export function createPresentationWorld(options = {}) {
     prevBank: new Float64Array(0),
     prevPitch: new Float64Array(0),
     rot: new Float64Array(0),
+    // Cached half-yaw sin/cos for snapshot-fence packing. Updated only when rot changes.
+    yawSin: new Float64Array(0),
+    yawCos: new Float64Array(0),
     bank: new Float64Array(0),
     pitch: new Float64Array(0),
     activeSlots: new Uint32Array(0),
@@ -214,6 +217,8 @@ export function createPresentationWorld(options = {}) {
     world.prevBank = growTyped(world.prevBank, Float64Array, capacity);
     world.prevPitch = growTyped(world.prevPitch, Float64Array, capacity);
     world.rot = growTyped(world.rot, Float64Array, capacity);
+    world.yawSin = growTyped(world.yawSin, Float64Array, capacity);
+    world.yawCos = growTyped(world.yawCos, Float64Array, capacity);
     world.bank = growTyped(world.bank, Float64Array, capacity);
     world.pitch = growTyped(world.pitch, Float64Array, capacity);
     world.activeSlots = growTyped(world.activeSlots, Uint32Array, capacity);
@@ -364,6 +369,14 @@ export function createPresentationWorld(options = {}) {
     world.prevRot[slot] = nextPrevRot;
     world.prevBank[slot] = nextPrevBank;
     world.prevPitch[slot] = nextPrevPitch;
+    if (world.rot[slot] !== nextRot) {
+      const half = nextRot * 0.5;
+      world.yawSin[slot] = Math.sin(half);
+      world.yawCos[slot] = Math.cos(half);
+    } else if (world.yawSin[slot] === 0 && world.yawCos[slot] === 0) {
+      // Slot grown/zero-filled; identity yaw still needs cos=1 for fence packing.
+      world.yawCos[slot] = 1;
+    }
     world.rot[slot] = nextRot;
     world.bank[slot] = nextBank;
     world.pitch[slot] = nextPitch;
