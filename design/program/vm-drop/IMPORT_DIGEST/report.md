@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ab (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ac (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #62; +#63 measured on
-stacked tip @ `5acfe2f38`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #63; +#64 measured on
+stacked tip @ `e1b3f26a3`.
 
 ### Already on stack (do not rediscover)
 
@@ -49,6 +49,7 @@ stacked tip @ `5acfe2f38`.
 | 61 | `stamp-near-work-awake-cache` |
 | 62 | `classify-physics-partition-cache` |
 | 63 | `camera-clearance-asteroid-span-reject` |
+| 64 | `classify-normalize-pins-small-n` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -60,7 +61,7 @@ classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc 
 imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×),
 selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10× — not lane trust),
 reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays),
-normalizePinReasons/bitfield materialize (~0.87× — miss this pass),
+normalizePinReasons/bitfield materialize (~0.87× — miss; distinct from #64 small-n),
 lifetimeSweep dirty-publish isMovableEntity trust (thin ~1.51–1.69×; **full-pole ~1.08× — drop**),
 classify physics-partition fuse-only (~1.44× under bar — replaced by cache).
 
@@ -75,7 +76,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | samples | owner | notes |
 |---:|---|---|
 | 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
-| 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62 |
+| 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57+#63 |
 | 181 | `syncEntityViews` | residual after #15+#44+#57 |
 | 153 | `hud.frame` | radar.draw + setLagTranslate |
@@ -85,14 +86,14 @@ native GL / bloom admission owners ignored for portable ranking.
 
 - prepareFrame → syncEntityViews (**#57**), camera.follow (**#63** clearance), packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
-- classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
+- classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 63 | `camera-clearance-asteroid-span-reject` | Portable quiet camera clearance asteroid span-hint reject **~3.1×** median (60 rocks + 3 stations + capital × 8k drifted; floor minSpeedup ≥2.98× / five isolated runs; capital + station parity). Focused suites 68/68. |
+| 64 | `classify-normalize-pins-small-n` | Portable quiet `normalizePinReasons` 0–2 pin fast path **~1.92×** median (200-entity Ceres mix × 50k visits; floor minSpeedup ≥1.91× / five isolated pairs; admit parity). Focused suites 35/35 scratch. |
 
 ## Scour attempts / misses
 
@@ -102,7 +103,8 @@ native GL / bloom admission owners ignored for portable ranking.
 | lifetimeSweep pose-publish-list reshape | ~1.00× — no win |
 | classify physics-partition fuse (inline three checks) | ~1.44× — under bar; replaced by cache |
 | resolvePins rockBody skip + normalize | prior under bar — not retried |
-| bitfield materialize pins | prior miss — not retried |
+| bitfield materialize pins | prior miss — not retried (distinct from #64) |
+| normalizePinReasons small-n (n<=2) fast path | **shipped #64 ~1.92×** |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -116,7 +118,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63 (syncEntityViews /
    packFence / residual closures / camera.follow residual).
-2. classifyWorld after #37+#38+#45+#48+#60+#62 (resolvePins+normalizePinReasons /
+2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
    lifetimeSweep residual / tacticalAI).
