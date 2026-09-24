@@ -1,4 +1,4 @@
-# IMPORT_DIGEST report — 2026-09-24d (prune-evidence-cadence + projectile-surface-distance-first)
+# IMPORT_DIGEST report — 2026-09-24e (classify-closed-form-index)
 
 Master tip: **`568d1358e`**.
 
@@ -12,7 +12,7 @@ Tool: `node scripts/probe-main-thread-profile.mjs --ms=45000 --label=settled-45s
 |---:|---|---|
 | 173 | `queryFarActors` | pending **#1** far-actor-cell-key |
 | 123 | `registry.step` | residual dispatcher |
-| 104 | `classifyWorld` | master classify-pinfacts residual / closed-form catch-up pending weak |
+| 104 | `classifyWorld` | **SHIPPED #37** catch-up index (~135×) + pending pinFacts cache |
 | **104** | **`refreshCredits`** | **SHIPPED #34** (layout N→0) |
 | 52 | `prepareFrame` | pending **#13** prepare-pitch-settle |
 | 51 | `syncEntityViews` | pending **#15** submit-scratch |
@@ -31,13 +31,13 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 35 | `prune-evidence-cadence` | Multi-tick aging journals **~11.0×** aggregate / **~7.3×** worst; 23/23 tests; overturns prior same-tick/watermark weak miss |
-| 36 | `projectile-surface-distance-first` | 2500-entity walk **~1.87×**; 22/22 tests; spatial@600 WU regresses (not shipped) |
+| 37 | `classify-closed-form-index` | Catch-up **~135×** vs full-list; prior filter only ~1.05×; 21/21 tests; fair three-way harness |
 
 ## Still import — applies cleanly on `568d1358e`
 
 | # | Package | Evidence |
 |---:|---|---|
+| 37 | `classify-closed-form-index` | ~135× selectClassify catch-up |
 | 36 | `projectile-surface-distance-first` | ~1.87× surface walk |
 | 35 | `prune-evidence-cadence` | ~11× prune / ~7× worst |
 | 34 | `hud-credits-pulse-no-reflow` | hitch / layout reads → 0 |
@@ -60,12 +60,13 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 4. `#34 hud-credits-pulse-no-reflow` — early-flight hitch
 5. `#35 prune-evidence-cadence`
 6. `#36 projectile-surface-distance-first`
-7. `#17 asteroid-query-callers`
-8. `#1 far-actor-cell-key`
-9. `#13 prepare-pitch-settle`
-10. `#15 sync-entity-views-submit-scratch`
-11. `#12 massline-settext-cache`
-12. Soft-GPU opening: `#20` → `#21` (then rebase `#22`)
+7. `#37 classify-closed-form-index` — selectClassify / classifyWorld catch-up
+8. `#17 asteroid-query-callers`
+9. `#1 far-actor-cell-key`
+10. `#13 prepare-pitch-settle`
+11. `#15 sync-entity-views-submit-scratch`
+12. `#12 massline-settext-cache`
+13. Soft-GPU opening: `#20` → `#21` (then rebase `#22`)
 
 ## Needs rebase / hold
 
@@ -73,6 +74,7 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 |---:|---|---|
 | 19 | `flight-propulsion-scratch` | integrated ~0.85× on tip — hold |
 | 22 | `opening-residency-deadline` | patch drifts on renderer.js |
+| — | `classify-closed-form-scan` | superseded by #37 for walk shape |
 
 ## Rock audit (unchanged)
 
@@ -80,8 +82,8 @@ Quiet Ceres after #31: **11** live rocks pinned (8 geology / 2 collision / 1 act
 
 ## Scour-ranked next poles
 
-1. Import portable pending (esp. #31 + #32 + #33 + #1 + #17 + #35 + #36).
-2. `registry.step` / `selectClassifyEntities` residual — closed-form catch-up filter still full-list on master (prior package ~1.3×; needs ≥1.5× or structural skip).
-3. `classifyWorld` residual after pending + pinFacts.
+1. Import portable pending (esp. #31 + #32 + #33 + #1 + #17 + #35 + #36 + #37).
+2. `classifyWorld` residual after pinFacts cache + #37 catch-up index.
+3. `registry.step` residual dispatcher after classify shrinks.
 4. Same-material hull batch only if draw/GPU present is still the pole after table authority.
 5. Ignore soft-GPU fps for shipping KPIs.
