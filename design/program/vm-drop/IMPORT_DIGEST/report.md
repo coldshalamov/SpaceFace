@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bo (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24bp (post-import hillclimb)
 
 Master tip: **`273f8bad7`** (fetched; unchanged from #94).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924j` on `origin/master` @ `273f8bad7`;
-through #107 @ `cd08998b8`; +#108 measured on stacked tip @ `c4f5d9c26`. Profile
+through #108 @ `c4f5d9c26`; +#109 measured on stacked tip @ `789585bc9`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -95,6 +95,7 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 106 | `status-attached-quiet-empty-latch` |
 | 107 | `tumble-body-language-quiet-skip` |
 | 108 | `trail-emit-idle-drive-walk` |
+| 109 | `docking-cradle-quiet-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -141,6 +142,7 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **status-attached quiet empty latch (shipped #106 ~134× — Object.keys collect + housekeeping)**.
 **tumble body-language quiet latch (shipped #107 ~29× — pitchPresentationEpoch wake; supersedes prior no-wake hold ~29×)**.
 **trail emit idle drive walk (shipped #108 ~7× — cheap maybe-awake + empty-ribbon share)**.
+**docking cradle quiet idle latch (shipped #109 ~2.16× — phase/berth wake; fade still runs)**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -155,13 +157,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), spaceBg (hold), feel speed-lines / hot plasma residual (volumetric/retro held)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), docking cradle quiet (**#109**), spaceBg (hold), feel speed-lines / hot plasma residual (volumetric/retro held)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -170,6 +172,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 109 | `docking-cradle-quiet-skip` | Portable quiet `vfx._updateDockingCradle` idle fade latch **~2.16×** median (12 proxies × 200k; floor minSpeedup ≥1.758× across 3 package runs). Latch on visible01≤0.004 + no corridor berth; wake on phase/berth. Dirty-wake proved. Focused cradle+inactive+vfx-save+corridor 31/31. Soft-GPU fps not claimed. |
 | 108 | `trail-emit-idle-drive-walk` | Portable quiet `vfx._emitTrails` idle shipLike `_engineDriveFor` walk **~7×** median (48 ships × 200k; floor minSpeedup ≥3.998× across 3 package runs; typical pair floor ≥6.0×). Latch on empty emit; wake on cheap throttle/speed/actuator/input + entityIndexVersion. Empty ribbon update shares latch when map empty. Dirty-wake proved. Focused trail+ribbon+wing+thruster+plasma+retro+history+inactive 71/71. Soft-GPU fps not claimed. |
 | 107 | `tumble-body-language-quiet-skip` | Portable quiet `vfx._updateTumbleBodyLanguageVfx` shipLike walk **~29×** median (48 ships × 200k; floor minSpeedup ≥25.9× across rebenches). Latch on empty walk+empty cadence; wake on `pitchPresentationEpoch` (safe vs entityIndexVersion-only). Dirty-wake proved. Focused thrown-trail+massline-uvp+inactive-plan+ship-pitch+inf-027+combat-vfx 38/38. Soft-GPU fps not claimed. |
 | 106 | `status-attached-quiet-empty-latch` | Portable quiet `vfx._updateStatusAttachedVfx` empty collect+housekeeping **~134×** median (32 combat rows × 200k; floor minSpeedup ≥126× across rebenches). Alloc-free `for...in`+`STATUS_ROW_IDS`; latch on empty collect+empty cd; wake on `statusNextPendingSeq`. Dirty-wake proved. Focused status-attached 4/4; inf-045 contour 6/6; thruster propulsion-family 68/68. Soft-GPU fps not claimed. |
@@ -191,6 +194,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| docking cradle quiet idle latch (proxy scan + update + geometry after fade) | **shipped #109 ~2.16×** (floor ≥1.758× across package runs; phase/berth dirty-wake) |
 | trail emit idle drive walk (shipLike `_engineDriveFor` every emit tick) | **shipped #108 ~7×** (floor ≥4.0× across package runs; cheap maybe-awake; empty-ribbon share) |
 | tumble body-language quiet latch (shipLike walk; pitchPresentationEpoch wake) | **shipped #107 ~29×** (floor ≥25.9×; supersedes prior no-wake hold) |
 | status-attached quiet empty latch (Object.keys collect + Set/Map housekeeping every idle tick) | **shipped #106 ~134×** (floor ≥126×; wake on statusNextPendingSeq; alloc-free collect) |
@@ -211,7 +215,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109
    (syncEntityViews residual closures / ordnance / microMotion; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg / feel
