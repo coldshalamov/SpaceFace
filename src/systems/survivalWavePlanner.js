@@ -172,10 +172,8 @@ function expandSchedule(packages) {
       // Champion marker, carried only when a package sets it. Authored arc packages never do, so
       // an arc schedule is byte-identical to what it always was.
       if (pkg.champion === true) entry.champion = true;
-      if (pkg.lesson === true) {
-        entry.lesson = true;
-        if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
-      }
+      if (pkg.lesson === true) entry.lesson = true;
+      if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
       if (remaining > 0) tick += gap;

@@ -444,6 +444,7 @@ export const swarmArena = {
     this._lastTerrainAnchor = null;
     this._nextTerrainCheck = 0;
     this._terrainRetry = false;
+    this._lessonRockId = null;
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
