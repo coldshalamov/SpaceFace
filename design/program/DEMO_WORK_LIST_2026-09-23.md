@@ -65,7 +65,6 @@ surface — these are feature gaps a demo player can hit, not dead code to delet
 | `ui:heliosBay7Scan` | `story.js:192` → `_onHeliosBay7Scan` | Helios Bay 7 evidence gated behind a producer that doesn't exist. |
 | `ui:endingArchiveOpen` | `story.js:161` → re-emits `endgame:archive` | Doubly dead: nothing emits the open intent *and* `endgame:archive` has no consumer — the archive viewer was never built. |
 | `ui:factionPresenceService` | `factionPresence.js:407` → `_onServiceAction` | Six tests drive it; no live UI. Service rows unsurfaced. |
-| `moralTrap:choose` | `moralTrap.js:97` | Trap reveals a choice into the void — no consumer for the reveal and no choice UI emits the answer. |
 | `claim:defenseIgnore` | `claims.js:284` | Settle-as-ignored path unreachable. |
 | `combat:baseDestroyed` | `economy.js:902` → `onBaseDestroyed` | No destructible base entities exist, so the economy consequence never fires. Either spawn a base or cut the listener at demo scope. |
 

@@ -138,6 +138,7 @@ import { dangerGradient } from '../ui/dangerGradient.js';
 import { causeLedger } from '../ui/causeLedger.js';
 import { customsPrompt } from '../ui/customsPrompt.js';
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';
+import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';
 import { cargoConscience } from '../ui/cargoConscience.js';
 import { securityReadoutSystem } from '../ui/securityReadout.js';
 import { priceForecastSystem } from '../ui/priceForecast.js';
@@ -329,6 +330,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['causeLedger', causeLedger],
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
+    ['moralTrapPrompt', moralTrapPrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],
     ['priceForecastSystem', priceForecastSystem],

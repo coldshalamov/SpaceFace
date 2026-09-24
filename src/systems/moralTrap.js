@@ -1,9 +1,10 @@
 // moralTrap.js — BP-12 packet MORAL_TRAP_CONTRACTS ("The Job That Isn't What It Says") — SYSTEM.
 //
 // Attaches a trap to a qualifying offer (smuggling/passenger), fires the reveal ONCE mid-run, and
-// presents the binary choice via the existing wreckMissions `choice` shape. Each choice option
-// routes to a DISTINCT shipped consequence — rep (faction:repDelta), credits (economy:grantCredits),
-// or a contraband bust (the shipped runScan path) — never two options with no mechanical difference.
+// presents the binary choice via the wreckMissions `choice` shape through the prompt deck.
+// Each choice option routes to a DISTINCT shipped consequence — rep (faction:repDelta), credits
+// (economy:grantCredits), or a contraband bust (the shipped runScan path) — never two options
+// with no mechanical difference.
 //
 // CRITICAL DISCIPLINE (the packet's failure modes, enforced structurally):
 //   • attachTrap is SEEDED + low-probability (hash32(seed, offerId, 'trap') < ATTACH_PROB). A
@@ -13,8 +14,9 @@
 //   • Each choice option resolves through a DISTINCT shipped channel — the system EMITS intents
 //     (faction:repDelta / economy:grantCredits), never writes state directly (single-writer honored).
 //     A 'contraband' consequence reuses the shipped player:scannedByPatrol + runScan path.
-//   • The choice uses the EXACT wreckMissions shape so the existing choice UI consumes it unchanged;
-//     `consequence` is additive metadata the system reads to route the result.
+//   • The choice uses the EXACT wreckMissions shape; the moralTrapPrompt prompt-deck adapter
+//     consumes the reveal and emits moralTrap:choose back. `consequence` is additive metadata
+//     the system reads to route the result.
 //
 // noTouch honored: missions.js / economy.js / factions.js are not edited. The system reads
 // state.missions.active, listens to the same bus events, and EMITS sanctioned intents only.
@@ -123,7 +125,8 @@ export const moralTrapSystem = {
     const line = typeof mission.trap.revealLine === 'string' ? mission.trap.revealLine.trim() : '';
     if (!line) return;
     mission._acceptLineSpoken = true;
-    mission._trapRevealed = true;
+    // Do NOT set _trapRevealed here — the fork still presents mid-run via _maybeReveal (which
+    // stashes + emits moralTrap:revealed). Marking it now would strand the choice unanswered.
     this._speakReveal(line);
   },
 
@@ -142,7 +145,7 @@ export const moralTrapSystem = {
       if (this._bus && this._bus.emit) {
         this._bus.emit('moralTrap:revealed', { missionId: m.id, trapId: m.trap.id, choice: m.trap.choice });
       }
-      this._speakReveal(line);
+      if (!m._acceptLineSpoken) this._speakReveal(line); // Helios traps already said it at accept
       break;
     }
   },
