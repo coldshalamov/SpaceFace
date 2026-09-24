@@ -1,5 +1,5 @@
-# IMPORT — IMPORT_DIGEST 20260924cz
+# IMPORT — IMPORT_DIGEST 20260924da
 
-Digest update after #142 presentation-query-pose-dirty-retain ship. Apply
-`presentation-query-pose-dirty-retain/patches/` on master when importing (after
-#141 classify-flying-rock-retain). No other code in this digest folder.
+Digest-only update after #143 miss (no code package). Prior #142
+`presentation-query-pose-dirty-retain/patches/` remains the latest applyable
+cut on master (after #141). Soft-GPU fps not claimed. Picture ON.

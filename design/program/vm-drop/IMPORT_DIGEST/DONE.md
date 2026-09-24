@@ -1,5 +1,5 @@
-# DONE — IMPORT_DIGEST 20260924cz
+# DONE — IMPORT_DIGEST 20260924da
 
-Post-#141 ship digest for #142 presentation-query-pose-dirty-retain. Master tip
-`4b28a8323` unchanged. Package #142 shipped on vm-drop. Prior holds carried from
-cy (including flying-early-latch ~1.3×).
+Post-#142 miss digest for #143. Master tip `4b28a8323` unchanged. No package.
+Scoured classifyWorld / registry.step / syncEntityViews residuals; no cut cleared
+≥~1.5× median with solid floor. Holds carried from cz (+ new thin probes below).
