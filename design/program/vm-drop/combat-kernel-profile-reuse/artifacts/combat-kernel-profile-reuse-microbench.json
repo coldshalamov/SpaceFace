@@ -1,0 +1,55 @@
+{
+  "label": "combat-kernel-profile-reuse",
+  "primary": "quiet-48-combatant-pre-post-heat-bounds",
+  "pairs": [
+    {
+      "beforeMs": 483.291,
+      "afterMs": 221.137,
+      "speedup": 2.185
+    },
+    {
+      "beforeMs": 490.937,
+      "afterMs": 182.962,
+      "speedup": 2.683
+    },
+    {
+      "beforeMs": 474.786,
+      "afterMs": 183.903,
+      "speedup": 2.582
+    },
+    {
+      "beforeMs": 484.335,
+      "afterMs": 214.596,
+      "speedup": 2.257
+    },
+    {
+      "beforeMs": 478.091,
+      "afterMs": 201.06,
+      "speedup": 2.378
+    },
+    {
+      "beforeMs": 470.184,
+      "afterMs": 179.062,
+      "speedup": 2.626
+    },
+    {
+      "beforeMs": 446.889,
+      "afterMs": 184.756,
+      "speedup": 2.419
+    },
+    {
+      "beforeMs": 477.217,
+      "afterMs": 190.878,
+      "speedup": 2.5
+    },
+    {
+      "beforeMs": 512.178,
+      "afterMs": 179.305,
+      "speedup": 2.856
+    }
+  ],
+  "medianSpeedup": 2.5,
+  "minSpeedup": 2.185,
+  "maxSpeedup": 2.856,
+  "note": "Before=cool resolve + trailing sync resolve + post ensure+sync resolve. After=stashed dissipation + status-gated sync + post skip when runtime exists. Soft-GPU fps not claimed."
+}
