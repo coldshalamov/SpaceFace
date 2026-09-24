@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24as (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24at (post-import hillclimb)
 
 Master tip: **`7850b341e`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` through #79 @ `513716a69`; +#80 measured on
-stacked tip @ `aa1322c41`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` through #80 @ `aa1322c41`; +#81 measured on
+stacked tip @ `c2f41b0f7`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -67,6 +67,7 @@ stacked tip @ `aa1322c41`. Fresh profile `settled-45s-stacked-20260924ac`
 | 78 | `camera-clearance-floor-retain-pos-quantize` |
 | 79 | `chase-lookat-retain-pos-quantize` |
 | 80 | `asteroid-instance-camera-quantize` |
+| 81 | `shadow-caster-pose-quiet-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -92,8 +93,9 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **Direct Matrix4 lookAt (moving) ~1.43× median / floor ~1.16× — hold (reconfirmed)**;
 **resolvePins context-only rock trailing-scan skip ~1.09× — hold (reconfirmed rock-resolvePins)**;
 **classify incremental skip currentEntityIds ~1.17× fair visit — under bar / hold**;
-**noteRealtimeShadowCasterPose bit-identical early-out ~0.87× — hold**;
-**applySnapshotPose identical-write skip ~0.85× — hold**.
+**noteRealtimeShadowCasterPose bit-identical early-out ~0.87× — hold (superseded by #81 call-site skip)**;
+**applySnapshotPose identical-write skip ~0.85× — hold**;
+**clearance floor retain with capital-rock movers (~1.26× median with PIC-07 stamp safety — under bar / hold)**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -107,15 +109,15 @@ native GL / bloom admission owners ignored for portable ranking.
 |---:|---|---|
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
-| 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80 |
+| 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61 |
 
-### Notable callees (post-#79)
+### Notable callees (post-#81)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), spaceBackground (hold)
-- syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), applySnapshotPose, noteRealtimeShadowCasterPose (hold ~0.87×)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), spaceBg (hold)
+- syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
 
@@ -123,21 +125,23 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 81 | `shadow-caster-pose-quiet-skip` | Portable quiet parked cast-band `noteRealtimeShadowCasterPose` call-site skip **~3.63×** median (80 roots × 40k; floor minSpeedup ≥2.49×). Focused shadow suites 35/35. Soft-GPU fps not claimed. |
 | 80 | `asteroid-instance-camera-quantize` | Portable quiet chase micro-jitter `syncAsteroidInstancePool` **~3.05×** median (80 rocks × 2k; floor minSpeedup ≥2.87×). Focused asteroid suites 41/41. Soft-GPU fps not claimed. |
-| 79 | `chase-lookat-retain-pos-quantize` | Portable quiet chase-drift `applyChaseLookAt` **~1.92×** median (200k; floor minSpeedup ≥1.77×). Focused camera suites 85/85. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
+| shadow caster pose call-site quiet skip (parked cast-band unchanged TRS) | **shipped #81 ~3.63×** |
+| clearance floor retain with capital-rock movers (off-roof + xz quantize + PIC-07 stamp) | ~1.26× median / floor ~1.12× — **hold** (under bar once stamp-safe) |
 | asteroid instance camera cull 0.25 WU / 1e-3 quantize (quiet chase micro-jitter) | **shipped #80 ~3.05×** |
 | chase lookAt retain-key 0.25 WU eye/target quantize (quiet chase drift) | **shipped #79 ~1.92×** |
 | clearance floor retain-key 0.25 WU cam quantize (quiet chase drift) | **shipped #78 ~2.07×** |
-| noteRealtimeShadowCasterPose bit-identical early-out | ~0.87× — **hold** |
+| noteRealtimeShadowCasterPose bit-identical early-out | ~0.87× — **hold** (superseded by #81) |
 | presentation-query retain-key 0.25 WU pos quantize (quiet chase drift) | **shipped #77 ~3.05×** |
 | refreshVisibleEntity unchanged early-out (+ writePoseScalars identical skip) | **shipped #76 ~1.60×** |
-| Direct Matrix4 lookAt without updateWorldMatrix (moving) | ~1.43× median / floor ~1.16× — **hold** (reconfirmed prior ~1.19×) |
-| resolvePins context-only skip of trailing entity.data scan (rocks) | ~1.09× — **hold** (reconfirmed rock-resolvePins) |
+| Direct Matrix4 lookAt without updateWorldMatrix (moving) | ~1.43× median / floor ~1.16× — **hold** |
+| resolvePins context-only skip of trailing entity.data scan (rocks) | ~1.09× — **hold** |
 | classify incremental skip currentEntityIds clear+add | ~1.17× fair visit loop — under bar — **hold** |
 | glassIds/runwayIds epoch marks alone | ~1.13× — under bar — not shipped |
 | atan2/direct-quat chase lookAt | incorrect quat vs Three (maxErr ~1.41) — dropped |
@@ -158,14 +162,14 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81
    (syncEntityViews residual closures / ordnance / microMotion; under-roof
-   clearance stamp-check path; noteRealtimeShadowCasterPose held;
+   clearance stamp-check path; clearance movers retain held ~1.26×;
    applySnapshotPose identical-write held; spaceBg steady-state held).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70
    (preStep residual / lifetimeSweep residual / tacticalAI residual).
-4. syncEntityViews residual after #15+#44+#57+#74+#76+#77 (ordnance / query miss path /
+4. syncEntityViews residual after #15+#44+#57+#74+#76+#77+#81 (ordnance / query miss path /
    residual microMotion / applySnapshotPose).
 5. Soft-GPU fps is not a KPI.
