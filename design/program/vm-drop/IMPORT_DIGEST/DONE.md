@@ -1,3 +1,3 @@
-# DONE — IMPORT_DIGEST 20260924dg
+# DONE — IMPORT_DIGEST 20260924dh
 
-Shipped #147 sanctuary-empty-quiet-latch. See report.md.
+Shipped #148 salvage-unstable-quiet-empty-latch. See report.md.
