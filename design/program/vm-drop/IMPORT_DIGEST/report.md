@@ -1,12 +1,12 @@
-# IMPORT_DIGEST report — 20260924dx (post-#160; **#161 ship** ai-encounter-quiet-latch)
+# IMPORT_DIGEST report — 20260924dy (post-#161; **#162 ship** difficulty-director-quiet-latch)
 
-Master tip: **`97c88f92b`** (fetched; unchanged since #160 / digests 20260924dw).
+Master tip: **`97c88f92b`** (fetched; unchanged since #161 / digests 20260924dx).
 
 ## Stack refresh
 
 Portable scour branch `vm-work/hillclimb-20260924t` @ bare `origin/master`
-`97c88f92b` + #160 + #161 (`/workspace/spaceface-scratch/hillclimb-20260924p` tip
-`cc826f487`). Prior #160 scratch tip `bc2d41734` remains on the same branch
+`97c88f92b` + #160 + #161 + #162 (`/workspace/spaceface-scratch/hillclimb-20260924p` tip
+`4d137d720`). Prior #161 scratch tip `cc826f487` remains on the same branch
 lineage. Stacked WIP remains on `vm-work/hillclimb-20260924o` @
 `2911f4458` (trust-sleep — not packaged) `/workspace/spaceface-scratch/hillclimb-20260924h`.
 No restack needed (master tip unchanged). Profile cite remains
@@ -17,8 +17,8 @@ cross-check; Picture ON, soft-GPU; tip through #64).
 
 | # | Package |
 |---:|---|
-| 31–160 | (unchanged — see digest 20260924dw / dv / du / …) |
-| **161** | **`ai-encounter-quiet-latch`** (~3.96–4.13× median / ≥3.34× floor idle empty reinforcement authors) |
+| 31–161 | (unchanged — see digest 20260924dx / dw / dv / …) |
+| **162** | **`difficulty-director-quiet-latch`** (~2.98× median / ≥2.43× floor settled pacing eval) |
 
 Including already-packaged but **not yet on master** (do not re-ship):
 `combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
@@ -31,26 +31,26 @@ parked latches, `sync-entity-views-closure-gate`, `micromotion-settled-skip`,
 arcade-structural / distortion / quarks / discharge / presenter-composite,
 `radar-asteroid-still-layer` (#156), `sync-entity-lod-retain` (#157),
 `radar-contacts-still-layer` (#158), `shield-bubble-quiet-latch` (#159),
-`faction-presence-quiet-latch` (#160), **`ai-encounter-quiet-latch` (#161)**,
-etc.
+`faction-presence-quiet-latch` (#160), `ai-encounter-quiet-latch` (#161),
+**`difficulty-director-quiet-latch` (#162)**, etc.
 
 ### SKIP / hold (unchanged + this pass)
 
-Carry forward all holds from digest 20260924dw / dv / du / dt / ds / dr / dq / dp / do / … / da / cz.
+Carry forward all holds from digest 20260924dx / dw / dv / du / dt / ds / dr / dq / dp / do / … / da / cz.
 
-**#161 pass — NEW:**
-- **registry.step NEW shipped:** aiEncounter quiet-latch (#161).
-- encounterDirector ~2 µs — early path thin (~0.4 µs); 1 Hz cadence already;
-  not packaged this pass (abs savings thin vs ensure-heavy 1 Hz amortize).
+**#162 pass — NEW:**
+- **registry.step NEW shipped:** difficultyDirector quiet-latch (#162).
+- mining settled abs ~0.26 µs (after heat/noise cold) — **thin; not packaged**.
+- sectorSim quiet-skip vs ensureState ~1.09× — **below bar; not packaged**.
+- encounterDirector early ~0.4 µs thin (1 Hz) — **held** (unchanged).
 - fair-aiPorts / packCombat pose-incremental / stampNear / lifetime — **not
-  rediscovered** (aiPorts isolation held; packCombat pose already packaged).
+  rediscovered**.
 - classify / trust-sleep / law / traffic / bandRadio / flying residual /
   quiet-VFX / pickup far-idle magnet-skip / objective idle deepen —
   **not casually retried** (held).
 - syncEntityViews updater residuals / closure-gate / micromotion / LOD /
-  shield-bubble / factionPresence — **not rediscovered**.
-- mining / difficultyDirector / sectorSim / automation — probe abs ≤~2.1 µs;
-  left for later if relative floor clears.
+  shield-bubble / factionPresence / aiEncounter — **not rediscovered**.
+- economy 5 s cadence quiet residual ~0.1 µs — **thin**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -63,7 +63,7 @@ Cross-check `settled-20s-stacked-20260924ad`.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after …+#161; fair-aiPorts held; packCombat only if not pose-incremental / single-dirty; **imported packCombat/stampNear/lifetime not yet on master** |
+| 323 | `registry.step` | residual after …+#162; fair-aiPorts held; packCombat only if not pose-incremental / single-dirty; **imported packCombat/stampNear/lifetime not yet on master** |
 | 269 | `classifyWorld` | residual after …+#141; **flying residual over parked ~1.3×**; flying-early-latch held; NPC/disc-admission still thin |
 | 202 | `syncEntityViews` | residual after …+#157+#159; closures / microMotion already packaged — hunt fresh pickup/ordnance/infra **updater** residuals only if abs clears thin band; asteroid settled + render-entity-frame retain held |
 | 186 | `prepareFrame` | residual after …+#126 (quiet-VFX floors still held; many quiet-live pools packaged, not on master) |
@@ -74,17 +74,19 @@ Cross-check `settled-20s-stacked-20260924ad`.
 
 | # | Package | Evidence |
 |---:|---|---|
-| **161** | **`ai-encounter-quiet-latch`** | Quiet empty reinforcement-author median **~3.96–4.13×** / floor **≥3.34×** (5×11 isolated @ N=40); dirty-wake ok; focused **8/8**; am-verify `3b8cae680` |
+| **162** | **`difficulty-director-quiet-latch`** | Settled pacing quiet-latch median **~2.98×** / floor **≥2.43×** (5×11 isolated @ N=40); dirty-wake ok; focused **16/16**; am-verify `32e14e205` |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| aiEncounter quiet-empty latch (no unrecalled reinforcement authors) | **SHIP #161** — ~3.96–4.13× / ≥3.34× floor |
-| encounterDirector early/1 Hz path | early ~0.4 µs thin; 1 Hz already gated — **not packaged** |
-| ungated broad abs scour (economy/law/bark/flyby/pirate*/mining/…) | bark/flyby/pirate*/law already packaged awaiting import; economy 5 s cadence; mining ~2.1 µs left |
+| difficultyDirector settled quiet-latch (empty books + mults at targets) | **SHIP #162** — ~2.98× / ≥2.43× floor |
+| mining quiet early-out | settled abs ~0.26 µs thin — **not packaged** |
+| sectorSim skip _ensureState between model steps | ~1.09× — **below bar** |
+| encounterDirector early/1 Hz path | early ~0.4 µs thin — **held** |
+| economy quiet residual (5 s cadence) | ~0.1 µs thin — **not packaged** |
 | fair-aiPorts / packCombat / stampNear / lifetime / classify / trust-sleep / law / traffic / bandRadio | **not casually retried** (held) |
-| syncEntityViews updater / closure-gate / micromotion / LOD / shield-bubble / factionPresence rediscovery | **not rediscovered** |
+| syncEntityViews updater / closure-gate / micromotion / LOD / shield-bubble / factionPresence / aiEncounter rediscovery | **not rediscovered** |
 | pickup far-idle magnet-skip / objective idle deepen | **held** (below bar / thin abs) |
 
 ## Rock audit (unchanged)
@@ -93,16 +95,16 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. registry.step after …+#161 — fair-aiPorts held; packCombat only if not
+1. registry.step after …+#162 — fair-aiPorts held; packCombat only if not
    pose-incremental or single-dirty / further HUD NEW only if ≥1.5×. After owner
    imports pose-incremental + stampNear + lifetime, remeasure bare-master
    preStep before retrying trust-sleep. Hunt other ungated systems with abs
-   clearing thin band (mining ~2.1 µs / difficultyDirector ~1.4 µs /
-   sectorSim ~1.3 µs; encounterDirector early thin).
+   clearing thin band (combatOutcome 4-tick shipLike flee-scan; mining left thin;
+   sectorSim held ~1.09×; encounterDirector early thin).
 2. syncEntityViews residual after #157+#159 — fresh pickup/ordnance/infra
    **updater** residuals only if abs clears thin band (not closure-gate
    rediscovery); applySnapshotPose hold ~0.85×; asteroid settled ~1.14× +
-   render-entity-frame retain ~1.21× held.
+   render-entity-frame retain ~1.21× held; pickup far-idle magnet-skip ~1.35× held.
 3. classifyWorld residual after #37+#38+#45+#48+#60+#62+#64+#127+#128+#138+#141
    — flying vs parked residual ~1.3×; NPC/ship visit deepen still thin ~1.08×;
    disc-admission visit-retain thin ~1.12×; **flying-early-latch held ~1.3×**.
@@ -124,13 +126,15 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    **classify flying residual over parked ~1.3×**;
    **objective idle deepen ~0.37 µs thin**;
    **pickup far-idle magnet-skip ~1.35×**;
-   **encounterDirector early ~0.4 µs thin** (1 Hz already).
+   **encounterDirector early ~0.4 µs thin** (1 Hz already);
+   **mining settled ~0.26 µs thin**;
+   **sectorSim ensureState-skip ~1.09×**.
 
 ## Scratch
 
 - Portable scour branch: `vm-work/hillclimb-20260924t`
-- Portable worktree: `/workspace/spaceface-scratch/hillclimb-20260924p` @ `cc826f487` (#161)
-- Prior #160 scratch tip: `bc2d41734`
+- Portable worktree: `/workspace/spaceface-scratch/hillclimb-20260924p` @ `4d137d720` (#162)
+- Prior #161 scratch tip: `cc826f487`
 - Stacked WIP (trust-sleep only; not packaged): `vm-work/hillclimb-20260924o`
   @ `2911f4458` / `/workspace/spaceface-scratch/hillclimb-20260924h`
 - Master tip: `97c88f92b`
