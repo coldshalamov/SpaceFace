@@ -170,6 +170,21 @@ test('a physics impact against the witness suppresses the bark for that pass', (
   assert.equal(h.heatSnapshot(), h.heatAtInit);
 });
 
+test('a thrown rock names the rock, and an unthrown rock stays silent', () => {
+  const h = makeHarness();
+  const rock = h.add({ id: 26, type: 'asteroid', team: 0, radius: 6, x: -300, z: 0 });
+  h.add({ id: 36, type: 'ship', team: 2, radius: 6, x: 0, z: 15 });
+  runPass(h, rock);
+  assert.equal(h.says.length, 0, 'a rock nobody threw is scenery');
+  rock.pos.x = -300;
+  h.bus.emit('tether:released', { targetId: rock.id });
+  runPass(h, rock);
+  assert.equal(h.says.length, 1);
+  assert.equal(h.says[0].text, 'That thrown rock nearly hit us. Clear the lane!');
+  assert.equal(h.nearMissReceipts[0].source, 'throw');
+  assert.equal(h.heatSnapshot(), h.heatAtInit);
+});
+
 test('an ordinary untracked flyby earns nothing', () => {
   const h = makeHarness();
   const drifter = h.add({ id: 25, type: 'ship', team: 1, radius: 4, x: -300, z: 0 });

@@ -697,7 +697,7 @@ export const localmapScreen = {
           '</div>' +
           '<div class="lm-route-path">' + escapeHtml(originName) + ' → ' + escapeHtml(destinationName) + '</div>' +
           '<div class="lm-route-meta"><span class="sf-fig">' + units + 'u load</span> <span class="sf-fig">+' + expectedProfit + ' cr</span> <span class="sf-fig">' + fuel + 'F est</span></div>' +
-          '<div class="lm-route-action">Set sell course</div>' +
+          '<div class="lm-route-action">' + escapeHtml(tradeRouteVisibleAction(destinationName)) + '</div>' +
           (stale ? '<div class="lm-route-stale">stale intel (' + Math.round(reliability * 100) + '% reliable)</div>' : '') +
         '</button>';
       }
@@ -1262,6 +1262,12 @@ function escapeAttr(value) {
 
 function formatCredits(value) {
   return Math.round(Math.max(0, Number(value) || 0)).toLocaleString();
+}
+
+/** The word on the route button: where the cargo is going, not a generic "set course". */
+export function tradeRouteVisibleAction(destinationName) {
+  const name = String(destinationName || '').trim();
+  return name ? 'Sell at ' + name : 'Set sell course';
 }
 
 function tradeRouteActionLabel(route) {

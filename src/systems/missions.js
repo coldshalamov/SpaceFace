@@ -68,6 +68,7 @@ import {
   offerHistoryTierFor,
   offerHistoryMultiplier,
 } from '../data/missions.js';
+import { SET_PIECE_FOLLOW_ON_SOURCE, setPieceFollowOnOffer } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import {
   RESEARCH_GRANTS,
@@ -829,7 +830,8 @@ function isFingerprintBoardSource(source) {
     || source === LANDMARK_QUEST_SOURCE
     // Each cargo-kill chain mints its own salvage offer — dedupe per chain, not per source, so
     // a second completed chain at the same station still boards its contract.
-    || source === 'cargoKillChain';
+    || source === 'cargoKillChain'
+    || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 
 function isZeroPayLandmarkMission(mission, rewardCr) {
@@ -1455,6 +1457,12 @@ export const missions = {
       offer && offer.source === 'cargoKillChain'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
+    // B7 follow-ons are the contract the set piece just became. A refresh must not
+    // eat them before the player can take the salvage, the escape, or the tow.
+    const retainedSetPieceFollowOns = previousSlots.filter((offer) => (
+      offer && offer.source === SET_PIECE_FOLLOW_ON_SOURCE
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
+    )).slice(0, 4);
     // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
     // together through an epoch refresh until the player accepts one; acceptMission withdraws the
     // two unchosen siblings atomically before publishing mission:accepted.
@@ -1504,6 +1512,7 @@ export const missions = {
         ...retainedCapitalBoss,
         ...retainedGhostConvoyOffers,
         ...retainedCargoKillOffers,
+        ...retainedSetPieceFollowOns,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -2045,6 +2054,7 @@ export const missions = {
       || rawOffer.source === 'ghostConvoyRumor'
       || rawOffer.source === 'cargoKillChain'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
+      || rawOffer.source === SET_PIECE_FOLLOW_ON_SOURCE
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
@@ -5120,6 +5130,25 @@ export const missions = {
     m.params.completionMethod = method;
     m.objectiveProgress = m.objectiveTarget;
     this._completeMission(m, index);
+    this._offerSetPieceFollowOn(m);
+    return true;
+  },
+
+  /** B7: a finished convoy, heist, or disabled ship posts the next contract. Never a fail. */
+  _offerSetPieceFollowOn(m) {
+    const pieceId = m && m.params && m.params.authoredSetPieceId;
+    const offer = setPieceFollowOnOffer(pieceId, m, this._epoch());
+    if (!offer) return false;
+    const boarded = this._onExternalBoardOffer(offer);
+    if (!boarded) return false;
+    const text = offer.title;
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say({ channel: 'news', text, kind: 'info', ttl: 4, id: offer.id })
+      : false;
+    if (!said && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', { text, kind: 'info', ttl: 4, source: SET_PIECE_FOLLOW_ON_SOURCE });
+    }
     return true;
   },
 

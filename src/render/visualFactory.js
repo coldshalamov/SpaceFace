@@ -20,6 +20,7 @@ import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/u
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
+  COMMON_ROCK_MINERAL_SHEEN,
   COMMON_ROCK_UV_TRANSFORMS,
   COMMON_ROCK_VARIANTS,
   displacementScalar as geologyDisplacement,
@@ -2155,7 +2156,7 @@ function configureCommonRockPbr(material) {
         'float sfRockLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
         'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma), 0.28);',
         'float sfMineralExposure = smoothstep(0.10, 0.55, vSfGeologyPbr.b);',
-        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(0.63, 0.94, 1.04), sfMineralExposure * 0.68);',
+        `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(${COMMON_ROCK_MINERAL_SHEEN.join(', ')}), sfMineralExposure * 0.68);`,
       ].join('\n'),
       'fragment substrate color chunk',
     );
