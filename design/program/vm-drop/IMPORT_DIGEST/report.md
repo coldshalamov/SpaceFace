@@ -1,35 +1,33 @@
-# IMPORT_DIGEST report — 2026-09-24cm (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24cn (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924k` on `origin/master` @ `8ebdf5537`;
-through #130 @ `8b020a817`; +#131 measured on stacked tip @ `83b816338`. Profile
+through #131 @ `83b816338`; +#132 measured on stacked tip @ `f73561efd`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
 
 | # | Package |
 |---:|---|
-| 31–129 | (unchanged — see digest 20260924cl) |
-| 130 | `fields-idle-quiet-latch` |
-| 131 | `bombs-empty-quiet-latch` |
+| 31–131 | (unchanged — see digest 20260924cm) |
+| 132 | `far-empty-quiet-latch` |
 
 ### SKIP / hold (unchanged + this pass)
 
-Carry forward all holds from digest 20260924cl, plus:
-**bombs empty quiet latch shipped #131** (prior hold "bombs-empty synthetic ~5×
-— not portable quiet path yet" cleared by real `bombs.update` A/B). Prior holds
+Carry forward all holds from digest 20260924cm, plus:
+**farActor careful empty-far+no-virt latch shipped #132** (prior hold "farActor
+careful empty-far+no-virt ~24× synthetic — hold for integrate" cleared by real
+`tickFarActors` A/B with restore preserved when far rows exist). Prior holds
 still stand: classify selectClassify id-replay after #128 ~1.16×; weapon-presenter
 callsite quiet ~2.0×/floor ~1.18×; vfx quiet-head composite ~2.27×/floor ~1.36×;
 ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining;
 rock-resolvePins / classify rock visit context ~1.09×; reusablePins pinBits;
 glassIds/runwayIds epoch ~1.13×; classify incremental currentEntityIds ~1.17×;
 visit-loop; stamp-reuse/inert/near-disc; selectClassify id-replay after #128
-~1.16×; farActor no-virt careful latch synthetic ~24× still **hold** — restore
-path must still run when far rows exist (careful empty-far+no-virt probe held
-for integrate); shield-bubble / preStep-all-sleeping / stampNearWork-empty /
+~1.16×; shield-bubble / preStep-all-sleeping / stampNearWork-empty /
 radar-pose-retain remain held or out of band.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
@@ -49,7 +47,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
-### Notable callees (post-#131)
+### Notable callees (post-#132)
 
 - classifyWorld → resolvePins, normalizePinReasons (#64), selectClassifyEntities (#60),
   reusablePins, shouldSyncPhysics (#62), rock-visit quiet retain (#127),
@@ -60,19 +58,19 @@ native GL / bloom admission owners ignored for portable ranking.
 - registry.step → preStep / packCombatTable / lifetimeSweep / tacticalAI residual;
   **countermeasures quiet-empty latch (#129)**; **fields idle quiet latch (#130)**;
   **bombs empty quiet latch (#131)**
+- world / tickFarActors → **far empty quiet latch (#132)** (restore preserved)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 131 | `bombs-empty-quiet-latch` | Portable quiet bombs.update empty latch when ready typed bombs bucket empty **~9.5–11.7×** median (60k; floor minSpeedup ≥1.78× across primary+5 package runs). Latch after empty+no-edge probe; wake on drop/cycle/detonate / membership / 0.5s rescan. Without versioned bombs bucket latch refuses. Dirty-wake proved. Focused latch+bombs **28/28**. Soft-GPU fps not claimed. |
+| 132 | `far-empty-quiet-latch` | Portable quiet tickFarActors empty-far+no-virt latch **~29.3–30.0×** median (60k; floor minSpeedup ≥18.3× across primary+5 package runs). Latch after empty+no-virt probe; wake on membership / 0.5s rescan. Restore path ~1.0× when far rows exist. Dirty-wake proved. Focused latch+far suites **34/34**. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| bombs empty quiet latch (ready typed bucket) | **shipped #131 ~9.5–11.7×** (floor ≥1.78× across package runs @ 60k) |
-| farActor careful no-virt latch (empty far table) | **hold** — synthetic ~24× when far empty+no virt; ~1× when far rows exist (restore preserved); not casually shipped — needs integrate with ensureActivityClassified / tickFarActors |
+| farActor careful empty-far+no-virt latch (integrate) | **shipped #132 ~29.3–30.0×** (floor ≥18.3× across package runs @ 60k); restore preserved |
 | classify selectClassify id-replay / rock-resolvePins / prepareFrame quiet-VFX | **not casually retried** (held floors) |
 | shield-bubble / preStep-all-sleeping / stampNearWork-empty / radar-pose-retain | **not casually retried** (held or out of band) |
 
@@ -94,4 +92,3 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    weapon-presenter callsite ~2.0×/floor ~1.18×; vfx quiet-head ~2.27×/floor ~1.36×;
    ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining held).
 5. Soft-GPU fps is not a KPI.
-6. farActor careful empty-far+no-virt latch (synthetic ~24×) — hold for integrate.

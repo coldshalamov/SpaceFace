@@ -1,7 +1,7 @@
-# DONE — IMPORT_DIGEST 20260924cm
+# DONE — IMPORT_DIGEST 20260924cn
 
-Post-#130 hillclimb on Quiet Grok Bot VM. **Shipped #131
-`bombs-empty-quiet-latch`** (~9.5–11.7× median / floor ≥1.78×). Soft-GPU
+Post-#131 hillclimb on Quiet Grok Bot VM. **Shipped #132
+`far-empty-quiet-latch`** (~29.3–30.0× median / floor ≥18.3×). Soft-GPU
 fps not a KPI. Master tip `8ebdf5537`. Scratch `vm-work/hillclimb-20260924k` @
-`83b816338` (worktree `/workspace/spaceface-scratch/hillclimb-20260924h`).
+`f73561efd` (worktree `/workspace/spaceface-scratch/hillclimb-20260924h`).
 Bias remains classifyWorld residual / registry.step / syncEntityViews.
