@@ -1,0 +1,194 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: docking cradle quiet-latches after idle fade and wakes on corridor berth
+ok 1 - docking cradle quiet-latches after idle fade and wakes on corridor berth
+  ---
+  duration_ms: 105.489681
+  ...
+# Subtest: docking cradle boundary reset clears quiet latch
+ok 2 - docking cradle boundary reset clears quiet latch
+  ---
+  duration_ms: 22.678439
+  ...
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 3 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.264556
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: law-heat quiet-latches after idle empty and wakes on scan accept
+ok 4 - law-heat quiet-latches after idle empty and wakes on scan accept
+  ---
+  duration_ms: 127.682864
+  ...
+# Subtest: law-heat quiet-latches wake on heat:changed suspicion
+ok 5 - law-heat quiet-latches wake on heat:changed suspicion
+  ---
+  duration_ms: 27.394202
+  ...
+# Subtest: law-heat boundary clear resets quiet latch
+ok 6 - law-heat boundary clear resets quiet latch
+  ---
+  duration_ms: 16.238636
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: tumble body language is multi-axis and thrash-then-failing
+ok 7 - tumble body language is multi-axis and thrash-then-failing
+  ---
+  duration_ms: 1.747321
+  ...
+# Subtest: recover pose eases thrash toward flight lean
+ok 8 - recover pose eases thrash toward flight lean
+  ---
+  duration_ms: 0.342403
+  ...
+# Subtest: force neon scales force cues above hull-neutral baseline
+ok 9 - force neon scales force cues above hull-neutral baseline
+  ---
+  duration_ms: 0.394074
+  ...
+# Subtest: feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+ok 10 - feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+  ---
+  duration_ms: 0.392731
+  ...
+# Subtest: readControlLossPresentation never tumbles the player; ships get status/drifting
+ok 11 - readControlLossPresentation never tumbles the player; ships get status/drifting
+  ---
+  duration_ms: 0.409491
+  ...
+# Subtest: control-loss presentation exposes only active strict player-caused throw truth
+ok 12 - control-loss presentation exposes only active strict player-caused throw truth
+  ---
+  duration_ms: 0.408768
+  ...
+# Subtest: continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+ok 13 - continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+  ---
+  duration_ms: 0.329092
+  ...
+# Subtest: _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+ok 14 - _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+  ---
+  duration_ms: 0.750976
+  ...
+# Subtest: _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+ok 15 - _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+  ---
+  duration_ms: 0.859969
+  ...
+# Subtest: tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+ok 16 - tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+  ---
+  duration_ms: 1.420865
+  ...
+# Subtest: updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+ok 17 - updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+  ---
+  duration_ms: 0.936041
+  ...
+# Subtest: release annulus stays on the captured world target and keeps anticipation distinct from ratings
+ok 18 - release annulus stays on the captured world target and keeps anticipation distinct from ratings
+  ---
+  duration_ms: 3.139707
+  ...
+# Subtest: messy/good/clean/razor are preserved and differ redundantly without relying on color
+ok 19 - messy/good/clean/razor are preserved and differ redundantly without relying on color
+  ---
+  duration_ms: 0.722794
+  ...
+# Subtest: geometry writes a caller-owned world-space annulus without replacing typed arrays
+ok 20 - geometry writes a caller-owned world-space annulus without replacing typed arrays
+  ---
+  duration_ms: 3.926421
+  ...
+# Subtest: reduced-motion and reduced-flash freeze cadence while retaining the quality distinctions
+ok 21 - reduced-motion and reduced-flash freeze cadence while retaining the quality distinctions
+  ---
+  duration_ms: 3.418684
+  ...
+# Subtest: invalid predictor/target/rating fails closed and clears the preallocated draw range
+ok 22 - invalid predictor/target/rating fails closed and clears the preallocated draw range
+  ---
+  duration_ms: 0.506086
+  ...
+# Subtest: rgba strings are reused for the same quantized color
+ok 23 - rgba strings are reused for the same quantized color
+  ---
+  duration_ms: 1.374258
+  ...
+# Subtest: alpha quantization is stable at the 0/1 edges
+ok 24 - alpha quantization is stable at the 0/1 edges
+  ---
+  duration_ms: 0.161637
+  ...
+# Subtest: recycle mutates the same streak object instead of allocating a replacement
+ok 25 - recycle mutates the same streak object instead of allocating a replacement
+  ---
+  duration_ms: 0.286424
+  ...
+# Subtest: speed-lines quiet-latches after idle silent publish and wakes on speed
+ok 26 - speed-lines quiet-latches after idle silent publish and wakes on speed
+  ---
+  duration_ms: 2.32552
+  ...
+# Subtest: speed-lines quiet latch wakes on boost and physicsEarned
+ok 27 - speed-lines quiet latch wakes on boost and physicsEarned
+  ---
+  duration_ms: 0.25931
+  ...
+# Subtest: loading mode clears quiet latch so band-0 still publishes
+ok 28 - loading mode clears quiet latch so band-0 still publishes
+  ---
+  duration_ms: 0.251863
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: swing-trace quiet-latches after idle empty and wakes on tether latch
+ok 29 - swing-trace quiet-latches after idle empty and wakes on tether latch
+  ---
+  duration_ms: 111.637873
+  ...
+# Subtest: swing-trace quiet-latches wake on remote massline
+ok 30 - swing-trace quiet-latches wake on remote massline
+  ---
+  duration_ms: 21.520448
+  ...
+# Subtest: swing-trace boundary reset clears quiet latch
+ok 31 - swing-trace boundary reset clears quiet latch
+  ---
+  duration_ms: 16.427384
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-save-restore-destroy",
+#   "saveRestore": {
+#     "liveParticles": 0,
+#     "liveSprites": 0,
+#     "activeLights": 0
+#   },
+#   "normalDestroy": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   },
+#   "combatReason": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   }
+# }
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+ok 9 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+  ---
+  duration_ms: 618.550598
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 774.026763
