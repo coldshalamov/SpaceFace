@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924aq
+# DONE — IMPORT_DIGEST 20260924ar
 
-Post-#77 hillclimb on Quiet Grok Bot VM. Shipped **#78
-`camera-clearance-floor-retain-pos-quantize`** (~2.07× median cameraClearanceFloorAt
-under quiet chase-drift off-roof; floor ≥1.66×). Soft-GPU fps not a KPI. Master tip
-unchanged at `7850b341e`. Scratch `vm-work/hillclimb-20260924h` @ `51f09af55`.
+Post-#78 hillclimb on Quiet Grok Bot VM. Shipped **#79
+`chase-lookat-retain-pos-quantize`** (~1.92× median applyChaseLookAt under quiet
+chase-drift; floor ≥1.77×). Soft-GPU fps not a KPI. Master tip unchanged at
+`7850b341e`. Scratch `vm-work/hillclimb-20260924h` @ `513716a69`.
