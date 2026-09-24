@@ -1,0 +1,177 @@
+{
+  "label": "asteroid-instance-camera-quantize",
+  "oracle": {
+    "microDirtyRate": 0.1875,
+    "largeDirtyRate": 1,
+    "microQuieterThanLarge": true,
+    "largeMostlyDirty": true
+  },
+  "scenarios": [
+    {
+      "rocks": 40,
+      "frames": 3000,
+      "jitterWu": 0.05,
+      "beforeMs": 64.76,
+      "afterMs": 11.801,
+      "speedup": 5.488,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1833,
+      "beforeMatrixEvals": 93000,
+      "afterMatrixEvals": 17050,
+      "beforeMatrixReuses": 15000,
+      "afterMatrixReuses": 15000
+    },
+    {
+      "rocks": 80,
+      "frames": 2500,
+      "jitterWu": 0.05,
+      "beforeMs": 65.373,
+      "afterMs": 14.186,
+      "speedup": 4.608,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1824,
+      "beforeMatrixEvals": 150000,
+      "afterMatrixEvals": 27360,
+      "beforeMatrixReuses": 12500,
+      "afterMatrixReuses": 12500
+    },
+    {
+      "rocks": 120,
+      "frames": 2000,
+      "jitterWu": 0.05,
+      "beforeMs": 75.526,
+      "afterMs": 16.16,
+      "speedup": 4.674,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825,
+      "beforeMatrixEvals": 170000,
+      "afterMatrixEvals": 31025,
+      "beforeMatrixReuses": 10000,
+      "afterMatrixReuses": 10000
+    },
+    {
+      "rocks": 120,
+      "frames": 2000,
+      "jitterWu": 0.02,
+      "beforeMs": 73.55,
+      "afterMs": 5.853,
+      "speedup": 12.566,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.054,
+      "beforeMatrixEvals": 170000,
+      "afterMatrixEvals": 9180,
+      "beforeMatrixReuses": 10000,
+      "afterMatrixReuses": 10000
+    },
+    {
+      "rocks": 11,
+      "frames": 4000,
+      "jitterWu": 0.05,
+      "beforeMs": 20.458,
+      "afterMs": 6.787,
+      "speedup": 3.015,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1827,
+      "beforeMatrixEvals": 44000,
+      "afterMatrixEvals": 8041,
+      "beforeMatrixReuses": 20000,
+      "afterMatrixReuses": 20000
+    }
+  ],
+  "primary": {
+    "rocks": 80,
+    "frames": 2500,
+    "jitterWu": 0.05,
+    "beforeMs": 65.373,
+    "afterMs": 14.186,
+    "speedup": 4.608,
+    "beforeDirtyRate": 1,
+    "afterDirtyRate": 0.1824,
+    "beforeMatrixEvals": 150000,
+    "afterMatrixEvals": 27360,
+    "beforeMatrixReuses": 12500,
+    "afterMatrixReuses": 12500
+  },
+  "isolatedPairs": [
+    {
+      "speedup": 3.295,
+      "beforeMs": 81.346,
+      "afterMs": 24.686,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 3.046,
+      "beforeMs": 78.667,
+      "afterMs": 25.828,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 2.999,
+      "beforeMs": 77.471,
+      "afterMs": 25.832,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 3.186,
+      "beforeMs": 77.519,
+      "afterMs": 24.328,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 2.96,
+      "beforeMs": 77.951,
+      "afterMs": 26.332,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 2.983,
+      "beforeMs": 77.098,
+      "afterMs": 25.848,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 2.865,
+      "beforeMs": 74.657,
+      "afterMs": 26.057,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 3.254,
+      "beforeMs": 78.135,
+      "afterMs": 24.012,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 3.129,
+      "beforeMs": 76.714,
+      "afterMs": 24.517,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 2.997,
+      "beforeMs": 77.249,
+      "afterMs": 25.774,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    },
+    {
+      "speedup": 3.098,
+      "beforeMs": 75.36,
+      "afterMs": 24.322,
+      "beforeDirtyRate": 1,
+      "afterDirtyRate": 0.1825
+    }
+  ],
+  "medianSpeedup": 3.046,
+  "floorMinSpeedup": 2.865,
+  "note": "Portable asteroid pool sync. Soft-GPU fps not claimed. Before=exact cameraDirty; After=0.25WU/1e-3 quantize."
+}

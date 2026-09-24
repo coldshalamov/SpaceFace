@@ -1,0 +1,218 @@
+TAP version 13
+# Subtest: asteroid camera cull quantize reuses static path under micro jitter
+ok 1 - asteroid camera cull quantize reuses static path under micro jitter
+  ---
+  duration_ms: 21.705766
+  ...
+# Subtest: asteroid camera cull exact bench toggle restores always-dirty micro jitter
+ok 2 - asteroid camera cull exact bench toggle restores always-dirty micro jitter
+  ---
+  duration_ms: 43.006169
+  ...
+# [asteroid-pool] variant 0 buffer owner retired (test-invalid); rebuilding the instanced batch
+# asteroid-instance-structure: ok
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/asteroid-instance-structure.test.mjs
+ok 2 - /workspace/spaceface-scratch/hillclimb-20260924h/test/asteroid-instance-structure.test.mjs
+  ---
+  duration_ms: 234.038274
+  ...
+# Subtest: a newly created variant pool mesh is offered to pipeline admission
+ok 4 - a newly created variant pool mesh is offered to pipeline admission
+  ---
+  duration_ms: 10.339857
+  ...
+# Subtest: the renderer routes created pool meshes through the admission latch
+ok 5 - the renderer routes created pool meshes through the admission latch
+  ---
+  duration_ms: 0.659872
+  ...
+# Subtest: a retired batch owner rebuilds its batch: every rock is still drawn on the very next sync
+ok 6 - a retired batch owner rebuilds its batch: every rock is still drawn on the very next sync
+  ---
+  duration_ms: 27.950772
+  ...
+# Subtest: a batch that keeps retiring falls back to drawing its rocks one by one, never to nothing
+ok 7 - a batch that keeps retiring falls back to drawing its rocks one by one, never to nothing
+  ---
+  duration_ms: 19.748057
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: component spans retain one bounded union in component indexes
+ok 8 - component spans retain one bounded union in component indexes
+  ---
+  duration_ms: 2.439019
+  ...
+# Subtest: owner registration leaves every attribute untouched when a later attribute is rejected
+ok 9 - owner registration leaves every attribute untouched when a later attribute is rejected
+  ---
+  duration_ms: 1.470824
+  ...
+# Subtest: scene-owned publication forces the initial buffer and restores the prior hook
+ok 10 - scene-owned publication forces the initial buffer and restores the prior hook
+  ---
+  duration_ms: 1.846929
+  ...
+# Subtest: ordinary dirty spans survive skipped draws and publish once on eligibility
+ok 11 - ordinary dirty spans survive skipped draws and publish once on eligibility
+  ---
+  duration_ms: 0.914132
+  ...
+# Subtest: one interleaved backing owns ranged publication, replacement, and context recovery
+ok 12 - one interleaved backing owns ranged publication, replacement, and context recovery
+  ---
+  duration_ms: 1.528093
+  ...
+# Subtest: probe-only full-span control changes requested bytes without changing logical writes
+ok 13 - probe-only full-span control changes requested bytes without changing logical writes
+  ---
+  duration_ms: 0.613178
+  ...
+# Subtest: probe-only full-span control cannot change during an armed renderer epoch
+ok 14 - probe-only full-span control cannot change during an armed renderer epoch
+  ---
+  duration_ms: 0.51965
+  ...
+# Subtest: context loss supersedes an unacknowledged generation and restore forces a full replacement
+ok 15 - context loss supersedes an unacknowledged generation and restore forces a full replacement
+  ---
+  duration_ms: 0.794816
+  ...
+# Subtest: context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+ok 16 - context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+  ---
+  duration_ms: 1.026406
+  ...
+# Subtest: Three first bufferData does not retire the owner or abort later frames
+ok 17 - Three first bufferData does not retire the owner or abort later frames
+  ---
+  duration_ms: 0.638166
+  ...
+# Subtest: an invalid owner can still release its callback and coordinator ownership
+ok 18 - an invalid owner can still release its callback and coordinator ownership
+  ---
+  duration_ms: 0.557389
+  ...
+# Subtest: one owner trap cannot latch the coordinator dead for later frames
+ok 19 - one owner trap cannot latch the coordinator dead for later frames
+  ---
+  duration_ms: 0.678708
+  ...
+# Subtest: a nested scene render during publication does not freeze later frames
+ok 20 - a nested scene render during publication does not freeze later frames
+  ---
+  duration_ms: 0.462743
+  ...
+# Subtest: live sprite and trail owners publish only their packed prefixes after initial residency
+ok 21 - live sprite and trail owners publish only their packed prefixes after initial residency
+  ---
+  duration_ms: 26.206598
+  ...
+# Subtest: dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+ok 22 - dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+  ---
+  duration_ms: 7.648949
+  ...
+# Subtest: common-rock matrices publish only the changed compacted slot after residency
+ok 23 - common-rock matrices publish only the changed compacted slot after residency
+  ---
+  duration_ms: 10.342763
+  ...
+# Subtest: ordinary-flight plume layers publish one packed socket prefix per layer
+ok 24 - ordinary-flight plume layers publish one packed socket prefix per layer
+  ---
+  duration_ms: 16.067035
+  ...
+# Subtest: signed RCS layers publish only the live impulse prefix
+ok 25 - signed RCS layers publish only the live impulse prefix
+  ---
+  duration_ms: 4.259284
+  ...
+# Subtest: ordinary-flight shard particles publish only their live prefix and survive quality migration
+ok 26 - ordinary-flight shard particles publish only their live prefix and survive quality migration
+  ---
+  duration_ms: 4.20849
+  ...
+# Subtest: shard particles pack fragmented CPU slots into the live GPU prefix
+ok 27 - shard particles pack fragmented CPU slots into the live GPU prefix
+  ---
+  duration_ms: 1.181572
+  ...
+# Subtest: nearby asteroid seam markers publish only their live matrix and color prefix
+ok 28 - nearby asteroid seam markers publish only their live matrix and color prefix
+  ---
+  duration_ms: 1.867353
+  ...
+# Subtest: active field-device geometry publishes each visible instance prefix
+ok 29 - active field-device geometry publishes each visible instance prefix
+  ---
+  duration_ms: 3.977824
+  ...
+# Subtest: tether topology coordinates stay resident while the rope positions move
+ok 30 - tether topology coordinates stay resident while the rope positions move
+  ---
+  duration_ms: 5.271275
+  ...
+# Subtest: authored instance chunks publish only moved, hidden, released, and reused matrix slots
+ok 31 - authored instance chunks publish only moved, hidden, released, and reused matrix slots
+  ---
+  duration_ms: 4.452231
+  ...
+# Subtest: opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+ok 32 - opaque nearby instances keep casting; far and empty chunks drop out of the shadow map
+  ---
+  duration_ms: 1.319722
+  ...
+# Subtest: nearest submitted instance uses the instance translation, not the origin mesh
+ok 33 - nearest submitted instance uses the instance translation, not the origin mesh
+  ---
+  duration_ms: 1.604203
+  ...
+# Subtest: apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+ok 34 - apply policy hides empty chunks, enables frustum bounds, and turns off far shadows
+  ---
+  duration_ms: 1.707843
+  ...
+# Subtest: live instance finalize refreshes bounds when the camera/origin moved
+ok 35 - live instance finalize refreshes bounds when the camera/origin moved
+  ---
+  duration_ms: 14.480801
+  ...
+# Subtest: one traversal retains records, reclaims membership, and detects visibility and LOD changes
+ok 36 - one traversal retains records, reclaims membership, and detects visibility and LOD changes
+  ---
+  duration_ms: 2.858301
+  ...
+# Subtest: authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
+ok 37 - authored instance pools consume bounded frame records, clean omissions, and retain fallback sync
+  ---
+  duration_ms: 7.503653
+  ...
+# Subtest: asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
+ok 38 - asteroid pool reuses a static matrix and uploads real instance data after transform and rebase
+  ---
+  duration_ms: 4.715055
+  ...
+# Subtest: asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
+ok 39 - asteroid visibility and normal-shadow camera union preserve only relevant exact bodies
+  ---
+  duration_ms: 5.488072
+  ...
+# Subtest: asteroid static reuse invalidates for parented camera motion and detached owners
+ok 40 - asteroid static reuse invalidates for parented camera motion and detached owners
+  ---
+  duration_ms: 2.540397
+  ...
+# Subtest: asteroid membership, release, and LOD detail visibility keep source ownership exact
+ok 41 - asteroid membership, release, and LOD detail visibility keep source ownership exact
+  ---
+  duration_ms: 1.9165
+  ...
+1..41
+# tests 41
+# suites 0
+# pass 41
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 612.41814
