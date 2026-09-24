@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24w (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24x (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #57; +#58 measured on
-stacked tip @ `df665a6bc`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #58; +#59 measured on
+stacked tip @ `8119853f7`.
 
 ### Already on stack (do not rediscover)
 
@@ -43,6 +43,7 @@ stacked tip @ `df665a6bc`.
 | 55 | `gamepad-idle-clean-skip` |
 | 56 | `volatile-index-cadence` |
 | 57 | `micromotion-settled-skip` |
+| 58 | `event-trace-thrust-sanitize` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -52,7 +53,7 @@ physics S1-idle sleep, spatial-hash surface@600, hitch-opening-admission,
 midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss),
 classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar),
 imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×),
-selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×),
+selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10× — not lane trust),
 reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
@@ -65,32 +66,33 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56; eventTrace under bus |
+| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59 |
 | 310 | `classifyWorld` | residual after #37+#38+#45+#48 |
 | 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57 |
 | 181 | `syncEntityViews` | residual after #15+#44+#57 |
 | 153 | `hud.frame` | radar.draw + setLagTranslate |
-| 71 | `sanitizePayload` | **#58 target** (held-thrust ship:thrust every frame) |
+| 71 | `sanitizePayload` | **#58 shipped** |
+| 58 | `authoredPhysicsBody` | **#59 target** (under isMovableEntity from preStep) |
 
-### Notable callees (post-#57 / pre-#58)
+### Notable callees (post-#57 / pre-#59)
 
 - prepareFrame → syncEntityViews (**#57**), camera.follow, packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities, reusablePins, shouldSyncPhysics
-- registry.step → preStep (**#56**), packCombatTable, stampNearWorkBudget, input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
+- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget, input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 58 | `event-trace-thrust-sanitize` | Portable quiet `sanitizePayload` on ship:thrust envelope **~7.15×** median (30k × 7 runs; min band ~3.18×). JSON tapes identical (0 mismatches). Typed flightV3 fast path; legacy fallback for other shapes. |
+| 59 | `prestep-movables-trust` | Portable quiet `isMovableEntity` re-check on `index.movables` **~2.19–2.28×** median (80k × 9; admit parity). Trust append-gated lane; focused lifecycle suites 29/29. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
 | reusablePins pinBits short-circuit | ~0.54× — slower than short array compare (miss) |
-| isMovableEntity type-first | ~1.10× — under bar (prior) |
+| isMovableEntity type-first | ~1.10× — under bar (prior; distinct from #59 lane trust) |
 | classify rock-only resolvePins | ~1.02× — under bar (prior) |
 | selectClassify empty-projectile skip | ~1.11× indexed — under bar (prior) |
 | imminentCollision earlyout | prior ~1.22× — under bar |
@@ -109,7 +111,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    packFence / residual closures / camera.follow).
 2. classifyWorld after #37+#38+#45+#48 (selectClassify / reusablePins /
    shouldSyncPhysics / resolvePins+normalizePinReasons).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58 (preStep residual /
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59 (preStep residual /
    lifetimeSweep / stampNearWorkBudget / tacticalAI).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
