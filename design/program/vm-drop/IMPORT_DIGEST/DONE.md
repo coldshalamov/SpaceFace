@@ -1,4 +1,4 @@
-# DONE — IMPORT_DIGEST 20260924dy
+# DONE — IMPORT_DIGEST 20260924dz
 
-Post-#161 digest with **#162 ship** `difficulty-director-quiet-latch`
-(~2.98× median / ≥2.43× floor). Master tip unchanged `97c88f92b`.
+Post-#162 digest with **#163 ship** `combat-outcome-quiet-latch`
+(~2.05× @30k / ~2.38× @100k median; ≥1.80× floor). Master tip unchanged `97c88f92b`.
