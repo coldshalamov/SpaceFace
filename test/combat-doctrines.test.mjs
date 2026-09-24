@@ -41,6 +41,7 @@ assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'field_anchor_controller',
   'interceptor_flyby',
   'mine_layer_wake',
+  'pack_pursuit',
   'ranged_disengager',
   'shield_breaker',
   'swarm_pack',

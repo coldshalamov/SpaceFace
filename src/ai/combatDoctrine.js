@@ -23,6 +23,7 @@ export const CombatDoctrineId = Object.freeze({
   CAPITAL_BROADSIDE_ALA: 'capital_broadside_ala',
   ESCORT_SCREEN: 'escort_screen',
   SWARM_PACK: 'swarm_pack',
+  PACK_PURSUIT: 'pack_pursuit',
   MINE_LAYER_WAKE: 'mine_layer_wake',
   SHIELD_BREAKER: 'shield_breaker',
 });
@@ -74,6 +75,9 @@ const SWARM_REFORM_TICKS = 24;
 // line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
 // return fire then knocks the fragile attacker off aim before its first useful salvo.
 const SWARM_INGRESS_RANGE_WU = 340;
+// Pack pursuit stays inside the fight. No breakaway, no 960 WU egress point.
+const PACK_PRESS_RANGE_WU = 200;
+const PACK_ORBIT_RANGE_WU = 130;
 // Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage.
 // PQ-205.02: the drop line is the pursuit-lane bomb doctrine — npcBombMirror calls
 // bombs.drop / commandDetonate after the wake_mines telegraph. Physical mines still
@@ -228,6 +232,12 @@ export class CombatDoctrineRuntime {
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
+    // Fodder that was stamped to stay packed never takes the flyby egress, including the
+    // disabled-target and pressure-break hatches that aim a point 960 WU away.
+    if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
+      updatePackPursuit(record, tick, self, target, distance);
+      return snapshot(record, target, directive, factionBehavior, self);
+    }
     // Production supplies this from aiPorts' live combat-runtime query. The contact fallback keeps
     // the pure/worldless doctrine API usable for fixtures and non-production adapters that have no
     // state port; an explicit null is authoritative and must not be replaced by cached perception.
@@ -666,6 +676,14 @@ function updateCapitalBroadside(record, tick, self, distance) {
  * The light-hull pack identity: short committed passes with a tight extend, so a swarm fight is
  * a rapid sequence of flank→flare→strike→extend beats instead of the raider flyby's long cycles.
  */
+function updatePackPursuit(record, tick, self, target, distance) {
+  if (record.phase !== 'press' && distance <= PACK_PRESS_RANGE_WU) {
+    enter(record, 'press', tick, null);
+  }
+  void self;
+  void target;
+}
+
 function updateSwarmPack(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'ingress' && distance <= SWARM_INGRESS_RANGE_WU) enter(record, 'engine_flare', tick, 'engine_flare');
@@ -771,7 +789,8 @@ function enter(record, phase, tick, telegraphKind) {
     ? Object.freeze({ kind: telegraphKind, durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: tick })
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
-  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
+    record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
+    || phase === 'press'
     || phase === 'anchor_hold' || phase === 'broadside_fire'
     || phase === 'screen_hold' || phase === 'shield_dart'
     || phase === 'lance' || phase === 'mine_drop';
@@ -878,6 +897,13 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 340;
     }
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
+    formationLocked = false;
+    faceTarget = true;
+    lateralSign = record.side;
+    maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
+    preferredRange = PACK_ORBIT_RANGE_WU;
+    if (phase === 'press') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
     formationLocked = phase === 'ingress' || phase === 'reform';
     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
@@ -1084,7 +1110,7 @@ function targetScore(doctrineId, contact, ward = null) {
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
   }
-  if (doctrineId === CombatDoctrineId.SWARM_PACK) {
+  if (doctrineId === CombatDoctrineId.PACK_PURSUIT || doctrineId === CombatDoctrineId.SWARM_PACK) {
     // The pack votes for the closest soft thing: mobility over mass, so passes converge on one
     // hull instead of scattering across the formation.
     return threat * 5 + bandScore(contact.mobilityBand, ['high', 'medium', 'low']) * 3;
@@ -1186,6 +1212,7 @@ function flightProfileFor(doctrineId, self) {
   // The identity doctrines reuse published flight profiles: their motion vocabulary (a close
   // pass, a standoff wake line, a hit-and-run pass) is already expressed by the planner through
   // maneuverKind + preferredRange, and downstream consumers only know these profile strings.
+  if (doctrineId === CombatDoctrineId.PACK_PURSUIT) return 'pack_pursuit';
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   return 'ranged_standoff';

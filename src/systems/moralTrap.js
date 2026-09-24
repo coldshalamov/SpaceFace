@@ -54,6 +54,29 @@ export function attachTrap(offer, seed) {
   };
 }
 
+/**
+ * WORLD-18 — one Helios passenger or cargo offer carries a trap that already exists.
+ * Accepting it speaks revealLine once. Not a new trap type.
+ */
+export function seedHeliosOfferTrap(offer) {
+  if (!offer || offer.stationId !== 'station_helios' || offer.trap) return offer;
+  if (offer.type !== 'cargo_delivery' && offer.type !== 'passenger_transport') return offer;
+  const trap = offer.type === 'passenger_transport'
+    ? MORAL_TRAPS.passenger_is_fugitive
+    : MORAL_TRAPS.cargo_is_weapons;
+  if (!trap || !trapFitsOfferType(trap, offer.type)) return offer;
+  return {
+    ...offer,
+    _heliosTrapSeeded: true,
+    trap: {
+      id: trap.id,
+      revealAt: trap.revealAt,
+      revealLine: trap.revealLine,
+      choice: trap.choice,
+    },
+  };
+}
+
 // ── registry SYSTEMS-only entry (reveal once; choice via comms; emit-only consequences) ──────
 
 export const moralTrapSystem = {
@@ -68,36 +91,72 @@ export const moralTrapSystem = {
     // non-deterministic in timing; sector:enter is the stable, seeded-safe trigger.
     this._onSectorEnter = (p) => this._maybeReveal(p);
     this._onChoice = (p) => this._resolveChoice(p);
+    this._onAccepted = (p) => this._revealAcceptedHeliosTrap(p);
     if (this._bus && this._bus.on) {
       this._bus.on('sector:enter', this._onSectorEnter);
       this._bus.on('moralTrap:choose', this._onChoice); // additive seam the choice UI emits
+      this._bus.on('mission:accepted', this._onAccepted);
     }
+  },
+
+  update(_dt, state) {
+    this._state = state || this._state;
+    const board = state && state.missions && state.missions.boards && state.missions.boards.station_helios;
+    const slots = board && board.slots;
+    if (!Array.isArray(slots)) return;
+    for (let i = 0; i < slots.length; i++) {
+      const offer = slots[i];
+      if (!offer || offer.trap || offer._heliosTrapSeeded) continue;
+      const seeded = seedHeliosOfferTrap(offer);
+      if (!seeded || seeded === offer || !seeded.trap) continue;
+      slots[i] = seeded;
+      break;
+    }
+  },
+
+  _revealAcceptedHeliosTrap(payload) {
+    const id = payload && (payload.missionId || payload.id);
+    const mission = this._findActive(id) || (payload && payload.mission);
+    if (!mission || !mission.trap || mission._acceptLineSpoken) return;
+    const station = mission.stationId || mission.startStationId || (payload && payload.stationId);
+    if (station !== 'station_helios') return;
+    const line = typeof mission.trap.revealLine === 'string' ? mission.trap.revealLine.trim() : '';
+    if (!line) return;
+    mission._acceptLineSpoken = true;
+    mission._trapRevealed = true;
+    this._speakReveal(line);
   },
 
   _maybeReveal(p) {
     const state = this._state;
     if (!state) return;
     const active = (state.missions && state.missions.active) || [];
-    let revealed = false;
     for (const m of active) {
-      if (!m || !m.trap) continue;
-      if (m._trapRevealed) continue; // fire ONCE per instance (never re-roll)
+      if (!m || !m.trap || m._trapRevealed || m._trapResolved) continue;
+      if (m.trap.revealAt && m.trap.revealAt !== 'mid_run') continue;
+      const line = typeof m.trap.revealLine === 'string' ? m.trap.revealLine.trim() : '';
+      if (!line) continue;
       m._trapRevealed = true;
-      revealed = true;
-      // Surface the choice on additive UI state + emit the additive reveal seam.
       if (!state.ui || typeof state.ui !== 'object') state.ui = {};
       state.ui.moralTrap = { missionId: m.id, trapId: m.trap.id, choice: m.trap.choice, t: state.simTime || 0 };
       if (this._bus && this._bus.emit) {
         this._bus.emit('moralTrap:revealed', { missionId: m.id, trapId: m.trap.id, choice: m.trap.choice });
       }
-      // ONE comms line — the reveal, through the arbiter.
-      const helpers = this._helpers || {};
-      if (helpers.voice && typeof helpers.voice.say === 'function') {
-        const said = helpers.voice.say({ channel: 'comms', text: m.trap.revealLine, kind: 'moralTrap' });
-        if (!said) this._bus.emit('toast', { text: m.trap.revealLine, kind: 'warn', ttl: 4 });
-      }
+      this._speakReveal(line);
+      break;
     }
-    if (!revealed) return;
+  },
+
+  _speakReveal(line) {
+    const helpers = this._helpers || {};
+    const voice = helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      const said = voice.say({ channel: 'comms', text: line, kind: 'moralTrap' });
+      if (said) return;
+    }
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', { text: line, kind: 'warn', ttl: 4 });
+    }
   },
 
   _resolveChoice(p) {
@@ -140,7 +199,7 @@ export const moralTrapSystem = {
   },
 
   _findActive(missionId) {
-    const active = (this._state.missions && this._state.missions.active) || [];
+    const active = (this._state && this._state.missions && this._state.missions.active) || [];
     return active.find((m) => m && m.id === missionId) || null;
   },
 
@@ -148,9 +207,11 @@ export const moralTrapSystem = {
     if (this._bus && this._bus.off) {
       if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
       if (this._onChoice) this._bus.off('moralTrap:choose', this._onChoice);
+      if (this._onAccepted) this._bus.off('mission:accepted', this._onAccepted);
     }
     this._onSectorEnter = null;
     this._onChoice = null;
+    this._onAccepted = null;
   },
 };
 

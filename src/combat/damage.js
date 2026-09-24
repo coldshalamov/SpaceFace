@@ -17,6 +17,11 @@ import {
   writePlayerFirstHitTruth,
 } from './rewardEligibility.js';
 
+/** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
+export function playerIsDamageTarget(state, target) {
+  return !!(state && state.playerId != null && target && target.id === state.playerId);
+}
+
 export function createDamageRouter(context, statusService, options = {}) {
   const { state, catalog, bus, helpers } = context;
   const onKill = typeof options.onKill === 'function' ? options.onKill : null;
@@ -91,7 +96,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     const runtime = ensureCombatant(state, target, catalog);
     const before = snapshotVitals(target, runtime);
     const model = catalog.damageModel;
-    const isPlayerTarget = Boolean(state && state.playerId && target && target.id === state.playerId);
+    const isPlayerTarget = playerIsDamageTarget(state, target);
     // QoL overhaul: As long as the player's shield is up, hull HP is 100% protected (no cheap bypass or penetration bleed-through)
     const penetration = (isPlayerTarget && (target.shield || 0) > 0) ? 0 : clamp01(packet.penetration);
     // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the

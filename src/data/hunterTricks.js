@@ -8,6 +8,7 @@ function freeze(def) {
   return Object.freeze({
     ...def,
     verb: Object.freeze({ ...def.verb }),
+    effect: def.effect ? Object.freeze({ ...def.effect }) : undefined,
   });
 }
 
@@ -19,6 +20,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.25,
     cooldownS: 18,
     verb: { kind: 'tether_cut', event: 'tether:broken' },
+    // Severs every live attachment whose target is the hunter (masslines, snares).
+    effect: { sever: 'attachments_on_hunter' },
   }),
   'mine-dropper': freeze({
     id: 'mine-dropper',
@@ -27,6 +30,7 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.4,
     cooldownS: 20,
     verb: { kind: 'mine_drop', event: 'combat:fire' },
+    effect: { mineCount: 1, mineCadenceS: 0.7 },
   }),
   'phase-jammer': freeze({
     id: 'phase-jammer',
@@ -35,6 +39,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.1,
     cooldownS: 16,
     verb: { kind: 'phase_jam', event: 'countermeasure:deployed' },
+    // Runs through the countermeasures ECM loop: missiles in radius lose their turn rate.
+    effect: { ecm: { radius: 320, durationS: 3.0, turnRateMult: 0 } },
   }),
   'shield-turtle': freeze({
     id: 'shield-turtle',
@@ -51,6 +57,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 0.95,
     cooldownS: 15,
     verb: { kind: 'ram_plate', event: 'physics:impact' },
+    // During the window the hunter's direct contacts deal the plated multiplier.
+    effect: { ram: { durationS: 3.0, damageMultiplier: 2.0 } },
   }),
   'decoy-clone': freeze({
     id: 'decoy-clone',
@@ -59,6 +67,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.35,
     cooldownS: 22,
     verb: { kind: 'decoy_clone', event: 'countermeasure:deployed' },
+    // A buoy point astern that keeps re-baiting seekers for its duration.
+    effect: { decoy: { radius: 380, durationS: 4.0, divertPct: 0.9 } },
   }),
   'emergency-jump-spool': freeze({
     id: 'emergency-jump-spool',
@@ -67,6 +77,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.75,
     cooldownS: 30,
     verb: { kind: 'emergency_jump', event: 'jump:arrive' },
+    // The telegraph's promise is real: damage during the window fizzles the spool.
+    interruptsOnDamage: true,
   }),
   'wake-mines': freeze({
     id: 'wake-mines',
@@ -75,6 +87,7 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.3,
     cooldownS: 19,
     verb: { kind: 'mine_drop', event: 'combat:fire' },
+    effect: { mineCount: 3, mineCadenceS: 0.7 },
   }),
   'pd-curtain': freeze({
     id: 'pd-curtain',
@@ -83,6 +96,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.2,
     cooldownS: 17,
     verb: { kind: 'pd_screen', event: 'combat:fire' },
+    // A temporary servo ring through the countermeasures point-defense loop.
+    effect: { pd: { radius: 260, cooldownS: 1.2, durationS: 4.0 } },
   }),
   'sensor-ghost': freeze({
     id: 'sensor-ghost',
@@ -91,6 +106,8 @@ export const HUNTER_TRICKS = Object.freeze({
     counterWindowS: 1.4,
     cooldownS: 21,
     verb: { kind: 'decoy_clone', event: 'countermeasure:deployed' },
+    // Wider, longer decoy than the clone + it frays locks already on the hunter.
+    effect: { decoy: { radius: 620, durationS: 8.0, divertPct: 0.9 }, lockBreakPct: 0.6 },
   }),
 });
 

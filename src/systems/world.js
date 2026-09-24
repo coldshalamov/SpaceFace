@@ -65,6 +65,7 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { compileOpticStructure, opticStructuresFor } from '../data/opticStructures.js';
 import {
   FIELD_REGROWTH_BATCH_MAX,
   FIELD_REGROWTH_BATCH_MIN,
@@ -1024,6 +1025,7 @@ export const world = {
         // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
         if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
       }
+      this._ensureOpticStructures(sector, active);
     }
 
     state.world.sectorContents[sectorId] = active;
@@ -1071,6 +1073,7 @@ export const world = {
         this._spawnDressing(sector, active, state.world.rng);
         this.helpers.requestPresentationRebuild?.('sector-full-dressing');
       }
+      this._ensureOpticStructures(sector, active);
       return;
     }
     const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
@@ -1085,7 +1088,57 @@ export const world = {
     } else if (!rematerialized.spawnedBoss) {
       this._spawnBossIfDue(sector, active, rng);
     }
+    this._ensureOpticStructures(sector, active);
     this.helpers.requestPresentationRebuild?.('sector-full');
+  },
+
+  // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
+  // field RNG and they are not ore. REDUCED neighbors stay empty until the sector is FULL.
+  _ensureOpticStructures(sector, active) {
+    if (!sector || !active) return;
+    // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
+    if (Array.isArray(active.opticStructureIds)) return;
+    const specs = opticStructuresFor(sector.id);
+    const ids = [];
+    for (let s = 0; s < specs.length; s++) {
+      const spec = specs[s];
+      const bodies = compileOpticStructure(spec);
+      for (let i = 0; i < bodies.length; i++) {
+        const body = bodies[i];
+        const pos = this._toGlobal({
+          x: spec.origin.x + body.x,
+          z: spec.origin.z + body.z,
+        }, sector.id);
+        // Lattice spacing is authored against entity.radius (projectile sweep uses that). Keep the
+        // physics ball on the same radius so scaled rock colliders cannot seal the mouth shut.
+        const ent = this.helpers.spawnEntity({
+          type: 'asteroid',
+          pos,
+          radius: body.radius,
+          mass: 200 + body.radius * 40,
+          angVel: 0,
+          hull: 1e6,
+          hullMax: 1e6,
+          collides: true,
+          physicsBody: { radius: body.radius },
+          data: {
+            typeId: body.typeId,
+            tint: body.tint,
+            opticMaterial: body.material,
+            opticStructureId: spec.id,
+            opticCell: `${body.ix},${body.iz}`,
+            surfaceMaterial: body.surfaceMaterial,
+            size: body.radius,
+            // Not ore: skip massline latch so the mining beam cannot acquire via tether.
+            masslineTetherable: false,
+          },
+        });
+        if (!ent) continue;
+        this._stampHomeSector(ent, sector.id);
+        ids.push(ent.id);
+      }
+    }
+    active.opticStructureIds = ids;
   },
 
   _stripSectorFullExtras(sectorId) {
@@ -3836,7 +3889,10 @@ export const world = {
     // prompt. Confirmation releases the ordinary charge state machine; decline aborts it.
     if (jump._unfiled === true && jump._unfiledConfirmed !== true) return;
     jump.chargeT += dt;
-    const tickPayload = { progress: clamp(jump.chargeT / Math.max(0.01, jump.chargeNeeded), 0, 1) };
+    const tickPayload = {
+      progress: clamp(jump.chargeT / Math.max(0.01, jump.chargeNeeded), 0, 1),
+      playerId: state.playerId,
+    };
     if (jump._unfiled === true) tickPayload.unfiled = true;
     this.bus.emit('jump:chargeTick', tickPayload);
     if (jump.chargeT >= jump.chargeNeeded) {
@@ -3847,7 +3903,13 @@ export const world = {
       jump._jumpT = 0;
       const player = state.entities.get(state.playerId);
       const fromPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-      const startPayload = { from: state.world.currentSectorId, to: jump.targetSectorId, via: jump.via, fromPos };
+      const startPayload = {
+        from: state.world.currentSectorId,
+        to: jump.targetSectorId,
+        via: jump.via,
+        fromPos,
+        playerId: state.playerId,
+      };
       if (jump._unfiled === true) startPayload.unfiled = true;
       this.bus.emit('jump:start', startPayload);
     }
@@ -3857,7 +3919,9 @@ export const world = {
   _tickJumping(dt, state) {
     const jump = state.jump;
     jump._jumpT = (jump._jumpT || 0) + dt;
+    jump.blend = Math.max(0, Math.min(1, jump._jumpT / JUMPING_DURATION));
     if (jump._jumpT < JUMPING_DURATION) return;
+    jump.blend = 0;
 
     const target = jump.targetSectorId;
     const via = jump.via;
@@ -3885,7 +3949,7 @@ export const world = {
 
     const player = state.entities.get(state.playerId);
     const toPos = player ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
-    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos };
+    const arrivePayload = { sectorId: target, interdicted, ambushCount, toPos, playerId: state.playerId };
     if (unfiled) arrivePayload.unfiled = true;
     this.bus.emit('jump:arrive', arrivePayload);
 
@@ -4073,7 +4137,7 @@ export const world = {
     jump._fuelCost = fuelCost;
     jump._unfiled = false;
     jump._unfiledConfirmed = false;
-    this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded });
+    this.bus.emit('jump:chargeStart', { targetSectorId, via, chargeNeeded, playerId: this.state.playerId });
   },
 
   /**
@@ -4117,6 +4181,7 @@ export const world = {
       via: 'drive',
       chargeNeeded: jump.chargeNeeded,
       unfiled: true,
+      playerId: state.playerId,
     });
     return true;
   },
@@ -4499,7 +4564,16 @@ export const world = {
         killerId: null,
         origin: { kind: 'hazard_radiation' },
       });
-      this.bus.emit('player:death', { recoverable: true, origin: { kind: 'hazard_radiation' } });
+      const vx = Number(player.vel && player.vel.x);
+      const vz = Number(player.vel && player.vel.z);
+      this.bus.emit('player:death', {
+        recoverable: true,
+        origin: { kind: 'hazard_radiation' },
+        victimVel: {
+          x: Number.isFinite(vx) ? vx : 0,
+          z: Number.isFinite(vz) ? vz : 0,
+        },
+      });
     }
   },
 

@@ -17,6 +17,7 @@
 // cooks off at a reduced yield when IT slams. Wells prime on grind through `well:grind`.
 // This system is the SINGLE WRITER of primed state; fields.js only reports the grind.
 import { CHAIN_REACTION, IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
+import { lightCookoffEligible, lightCookoffHits } from '../combat/lightCookoff.js';
 import { removeCargo } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -222,7 +223,10 @@ export const impulseCharges = {
         // owner's own contact pass.
         this.bus.on('physics:impact', (p) => this._onPhysicsImpact(p)),
         this.bus.on('well:grind', (p) => this._onWellGrind(p)),
-        this.bus.on('entity:killed', (p) => this._onPrimedDeath(p)),
+        this.bus.on('entity:killed', (p) => {
+          this._onPrimedDeath(p);
+          this._onLightCookoffDeath(p);
+        }),
         this.bus.on('game:new', () => this._resetChainState()),
         this.bus.on('save:loaded', () => this._resetChainState()),
         this.bus.on('sector:exit', () => this._resetChainState()),
@@ -265,6 +269,8 @@ export const impulseCharges = {
     this._pendingSlams = [];
     this._pendingGrinds = [];
     this._pendingDeaths = [];
+    this._pendingCookoffs = [];
+    this._cookoffDepth = 0;
     this._slamScratch = [];
   },
 
@@ -336,10 +342,62 @@ export const impulseCharges = {
   },
 
   _tickChain(state) {
+    this._resolveLightCookoffs(state);
     this._resolvePrimedDeaths(state);
     this._expirePrimes(state);
     this._resolveGrinds(state);
     this._resolveSlams(state);
+  },
+
+  _onLightCookoffDeath(payload) {
+    if (this._cookoffDepth) return;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload && payload.id)
+      : null;
+    if (!lightCookoffEligible(state, victim)) return;
+    if (!this._pendingCookoffs) this._pendingCookoffs = [];
+    if (this._pendingCookoffs.length >= 8) return;
+    this._pendingCookoffs.push({
+      id: victim.id,
+      pos: { x: victim.pos.x, z: victim.pos.z },
+    });
+  },
+
+  _resolveLightCookoffs(state) {
+    const pending = this._pendingCookoffs || [];
+    if (pending.length === 0) return;
+    this._pendingCookoffs = [];
+    this._cookoffDepth = 1;
+    try {
+      for (const origin of pending) {
+        const neighbors = stickCandidatesNear(state, origin.pos, 36, this._blastScratch);
+        const hits = lightCookoffHits(origin, neighbors, { playerId: state.playerId });
+        for (const hit of hits) {
+          const ent = state.entities && typeof state.entities.get === 'function'
+            ? state.entities.get(hit.id)
+            : null;
+          if (ent) {
+            this._applyBlastImpulse(ent, hit.dirX * hit.impulse, hit.dirZ * hit.impulse, state, origin.id, 'light_cookoff');
+          }
+          const packet = scalarHitToDamagePacket({
+            damage: hit.damage,
+            damageType: 'explosive',
+            pos: origin.pos,
+            source: { kind: 'light_cookoff', chargeId: 'light_cookoff' },
+          });
+          packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+          this._routeDamage({
+            attackerId: origin.id,
+            targetId: hit.id,
+            packet,
+            origin: { kind: 'light_cookoff', id: origin.id },
+          });
+        }
+      }
+    } finally {
+      this._cookoffDepth = 0;
+    }
   },
 
   _onPrimedDeath(payload) {

@@ -371,7 +371,7 @@ function normalizeRoeView(value) {
 function normalizeDoctrineIdView(value) {
   const id = String(value || '');
   return ['interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager',
-    'field_anchor_controller', 'capital_broadside', 'escort_screen'].includes(id)
+    'field_anchor_controller', 'capital_broadside', 'escort_screen', 'pack_pursuit'].includes(id)
     ? id
     : null;
 }
