@@ -1,23 +1,23 @@
-# IMPORT_DIGEST report — 2026-09-24di (post-#148; #149 ship)
+# IMPORT_DIGEST report — 2026-09-24dj (post-#149; #150 ship)
 
-Master tip: **`97c88f92b`** (fetched; unchanged since #148 / digest 20260924dh).
+Master tip: **`97c88f92b`** (fetched; unchanged since #149 / digest 20260924di).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924m` @ `8d1e8ae95` on `origin/master`
-@ `97c88f92b` through #149. No restack needed (master tip unchanged). Profile cite remains
+Scratch `vm-work/hillclimb-20260924m` @ `259e98de3` on `origin/master`
+@ `97c88f92b` through #150. No restack needed (master tip unchanged). Profile cite remains
 `settled-45s-stacked-20260924ac` (+ `settled-20s-stacked-20260924ad` cross-check; Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
 
 | # | Package |
 |---:|---|
-| 31–148 | (unchanged — see digest 20260924dh / dg) |
-| **149** | **bounty-hunt-empty-quiet-latch** (this digest) |
+| 31–149 | (unchanged — see digest 20260924di / dh) |
+| **150** | **pirate-disengage-empty-quiet-latch** (this digest) |
 
 ### SKIP / hold (unchanged + prior)
 
-Carry forward all holds from digest 20260924dh / dg / df / de / dd / dc / db / da / cz. Prior holds still stand:
+Carry forward all holds from digest 20260924di / dh / dg / df / de / dd / dc / db / da / cz. Prior holds still stand:
 classify selectClassify id-replay after #128 ~1.16×; weapon-presenter
 callsite quiet ~2.0×/floor ~1.18×; vfx quiet-head composite ~2.27×/floor ~1.36×;
 ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining;
@@ -63,14 +63,13 @@ packCombat single-dirty remains held (synthetic ~2× noisy; not casually retried
   not casually retried without awake-set rewrite.
 - tether-web empty VFX latch remains regress (~0.93×).
 
-**#146 / #147 / #148 carry:** no new thin holds (shipped catch-nets / sanctuary / salvage).
+**#146 / #147 / #148 / #149 carry:** no new thin holds (shipped catch-nets / sanctuary /
+salvage / bountyHunt).
 flybyFocus quiet-idle probe ~16× synthetic / abs ~0.55 µs — deferred (thin abs vs
 updateDockRange hold band; not packaged).
 
-**#149 this pass:** no new thin holds (shipped fresh bountyHunt empty hunter angle).
-Note: bountyHunt before-abs ~0.58 µs sits near the flybyFocus deferred band, but
-ratio/floor (≥4.05×) clear the portable bar the same way #148 salvage (~0.48 µs abs)
-did; dirty-wake + focused suites green.
+**#150 this pass:** no new thin holds (shipped fresh pirateDisengage empty combatant angle).
+Abs before ~4.02 µs/call — well clear of the flybyFocus / bountyHunt thin-abs band.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -78,20 +77,21 @@ Tool cite: fresh `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip
 through #64 @ `e1b3f26a3`). Idle **65.2%**. Long tasks **17**. Soft-GPU /
 native GL / bloom admission owners ignored for portable ranking.
 Cross-check `settled-20s-stacked-20260924ad`: salvage residual after #146/#147;
-this pass claimed bountyHunt empty hunter census under registry.step / law wanted·ambient.
+#149 claimed bountyHunt; this pass claimed pirateDisengage empty combatant dual
+census under registry.step / combat.
 
 ### Top portable src/ self (aggregated) — climb targets
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after …+#149 bountyHunt; preStep / packCombat still open |
+| 323 | `registry.step` | residual after …+#150 pirateDisengage; preStep / packCombat still open |
 | 269 | `classifyWorld` | residual after …+#141; flying-early-latch held ~1.3×; NPC/disc-admission still thin |
 | 202 | `syncEntityViews` | residual after …+#142; asteroid settled + render-entity-frame retain thin |
 | 186 | `prepareFrame` | residual after …+#126 (quiet-VFX floors still held) |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
-### Notable callees (post-#149)
+### Notable callees (post-#150)
 
 - syncEntityViews → presentationQueries.query (#74+#77+#**142** pose-dirty retain),
   refreshVisibleEntity (#76), updateCraftMicroMotion (#57), noteRealtimeShadowCasterPose (#81),
@@ -107,6 +107,7 @@ this pass claimed bountyHunt empty hunter census under registry.step / law wante
   lawSecurity sanctuary (#**147** empty quiet latch);
   salvageActions unstable (#**148** empty quiet latch);
   bountyHunt empty hunters (#**149** empty quiet latch);
+  pirateDisengage empty combatants (#**150** empty quiet latch);
   tumbleStates (#140) + tacticalAI (#139)
   + CM/fields/bombs/far/optic/decode/field/poi/dock shipped;
   pose-rematch / sleeping-clocks / compact-skip / dirty-publish / quiet-compact-skip remain held
@@ -115,15 +116,16 @@ this pass claimed bountyHunt empty hunter census under registry.step / law wante
 
 | # | Package | Evidence |
 |---:|---|---|
-| **149** | **bounty-hunt-empty-quiet-latch** | Isolated `bountyHunt.update` median **~4.91–5.25×** / floorMin **≥4.05×** (5×11-pair @ 60k quiet roster, `--expose-gc` children); dirty-wake OK (hunter spawn → normalize); focused **55/55**. Soft-GPU fps not claimed. |
+| **150** | **pirate-disengage-empty-quiet-latch** | Isolated `pirateDisengage.update` median **~45.1–46.8×** / floorMin **≥36.87×** (5×11-pair @ 60k quiet roster, `--expose-gc` children); dirty-wake OK (pirate spawn → normalize); focused **58/58**. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| **bountyHunt empty quiet latch** | **SHIP #149** — median ~4.91–5.25× / floor ≥4.05×; dirty-wake hunter→normalize OK. Fresh law/wanted-adjacent residual after #148. |
+| **pirateDisengage empty quiet latch** | **SHIP #150** — median ~45.1–46.8× / floor ≥36.87×; dirty-wake pirate→clear OK. Fresh combat residual after #149. |
 | flybyFocus quiet-idle / impulseCharges empty / updateDockRange far / spatial all-sleeping sketch | **not casually retried** (held from #145/#148) |
-| packCombat single-dirty / flying-early-latch / NPC visit / spatial stub / asteroid settled / render-entity-frame retain / pose-rematch / sleeping-clocks / dirty-publish / quiet-VFX / zoneAt / preStep-all-sleeping / stampNearWork-empty / projectile-evidence surface-cadence / env-machinery far / hazards far / weapons residual deepen / quiet-compact-skip | **not casually retried** (held) |
+| packCombat single-dirty / flying-early-latch / NPC visit / spatial stub / asteroid settled / render-entity-frame retain / pose-rematch / sleeping-clocks / dirty-publish / quiet-VFX / zoneAt / preStep-all-sleeping / stampNearWork-empty / projectile-evidence surface-cadence / env-machinery far / hazards far / weapons residual deepen / quiet-compact-skip / bountyHunt deepen | **not casually retried** (held / shipped) |
+| loot-magnet empty buckets / law-heat-telegraph idle | **not packaged** — magnet only pays when `lootMagnetRange>0` (mod unlocked); telegraph is prepareFrame quiet-VFX-adjacent held cluster |
 
 ## Rock audit (unchanged)
 
@@ -136,17 +138,17 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    ~1.12×; **flying-early-latch held ~1.3×**; id-replay ~1.16×; rock context ~1.09×).
    Prefer angles that still move residual under flying retain without replaying
    the early-latch skip of extents+selectClassify.
-2. registry.step after …+#149 (preStep residual / packCombatTable residual /
+2. registry.step after …+#150 (preStep residual / packCombatTable residual /
    lifetimeSweep quiet-clocks shipped; weapons NPC quiet shipped; customs cones
    shipped; catch-nets shipped; sanctuary shipped; salvage unstable shipped;
-   bountyHunt empty hunters shipped;
+   bountyHunt empty hunters shipped; pirateDisengage empty combatants shipped;
    **quiet-compact-skip thin floor held**;
    pose-rematch / sleeping-clocks / compact-skip / dirty-publish fair remain held;
    tumbleStates + tacticalAI quiet residuals; lawSecurity wanted / ambient residual
    deepen; HUD NEW angles; flybyFocus quiet-idle deferred thin abs).
    Prefer NEW preStep / packCombat / law wanted·ambient deepen / HUD angles that are not
    single-dirty / all-sleeping / stamp-empty / cones / catch-nets / sanctuary / salvage /
-   bountyHunt.
+   bountyHunt / pirateDisengage.
 3. syncEntityViews residual after #15+#44+#57+#74+#76+#77+#81+#142 (closures /
    microMotion / ordnance / applySnapshotPose hold ~0.85×; query pose-dirty shipped;
    asteroid settled ~1.14× + render-entity-frame retain ~1.21× held).
@@ -165,7 +167,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 ## Scratch
 
 - Branch: `vm-work/hillclimb-20260924m`
-- Tip: `8d1e8ae957dc3c31fd38d71f75a4d3e84ec16a6b`
+- Tip: `259e98de323a84dfa64da32215c140da0f9136db`
 - Worktree: `/workspace/spaceface-scratch/hillclimb-20260924h`
 - Master tip: `97c88f92b`
-- Clean master patch (am verify): `93dc4db5e` on `97c88f92b`
+- Clean master patch (am verify): `8dbf201ee` on `97c88f92b`
