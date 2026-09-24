@@ -101,6 +101,12 @@ test('only injected non-transition workloads hold the measured pose', async () =
   assert.match(source, /entity\.pos\.set\(hold\.x, 0, hold\.z\)[\s\S]*stabilizeAuthoredPose\(entity\)/);
   assert.match(source, /if \(snapshot\.poseHoldTimer != null\) clearInterval\(snapshot\.poseHoldTimer\)/);
   assert.match(source, /activityStopped: snapshot\.activityTimer == null && snapshot\.poseHoldTimer == null/);
+  // A measured-pose scenario parks the player inside a live hostile sector; an ambient kill
+  // opens the pausing death screen (scale:0) mid-wait and strands every queued destroy behind
+  // a frozen clock. flags.invuln is journaled, armed, and round-tripped.
+  assert.match(source, /snapshot\.playerInvulnWas = player\.flags\?\.invuln === true[\s\S]*player\.flags\.invuln = true/);
+  assert.match(source, /player\.flags\.invuln = snapshot\.playerInvulnWas/);
+  assert.match(source, /playerInvuln: snapshot\.playerInvulnWas == null \|\| player\?\.flags\?\.invuln === snapshot\.playerInvulnWas/);
 });
 
 test('presentation-world scenarios use live owner journals and restore temporary authority exactly', async () => {

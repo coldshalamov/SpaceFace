@@ -106,6 +106,14 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       player.vel.set(0, 0, 0);
       player.prevPos.copy(player.pos);
       snapshot.physicsPoseSynchronized = syncPlayerPhysics(player, snapshot.player.noInterp);
+      // The scenario parks a measured pose inside a live hostile sector for as long as
+      // admission takes. Ambient traffic can kill the parked player mid-wait — observed: a
+      // Solar Concord Navy Hornet breached the hull ~6.7 min into a starved ready wait, the
+      // death screen held ui:pausing-screen scale:0, and every queued entity:destroyed sat
+      // unflushed behind a frozen clock. The window measures combat VFX workload, not
+      // survival — the damage system already honours flags.invuln.
+      snapshot.playerInvulnWas = player.flags?.invuln === true;
+      if (player.flags) player.flags.invuln = true;
     }
 
     const spawnFleet = async (count, { transparentHeavy = false, combat = false } = {}) => {
@@ -1449,6 +1457,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       }
     }
     state.timeScale = snapshot.timeScale;
+    if (player?.flags && snapshot.playerInvulnWas != null) player.flags.invuln = snapshot.playerInvulnWas;
     if (state.player && !routeProgression) state.player.targetId = snapshot.playerTargetId;
     const checks = routeProgression ? {
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
@@ -1461,6 +1470,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
       timeScale: state.timeScale === snapshot.timeScale,
       playerTarget: state.player?.targetId === snapshot.playerTargetId,
+      playerInvuln: snapshot.playerInvulnWas == null || player?.flags?.invuln === snapshot.playerInvulnWas,
       playerPosition: sameVector(player?.pos, snapshot.player.pos),
       playerPreviousPosition: sameVector(player?.prevPos, snapshot.player.prevPos),
       playerVelocity: sameVector(player?.vel, snapshot.player.vel),
