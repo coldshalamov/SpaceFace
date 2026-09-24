@@ -869,6 +869,8 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     detail.queueRemaining = queueEarly;
     detail.meshesSize = renderSystemEarly?._meshes?.size ?? null;
     detail.activeJobs = Number(state.render?.scene?.userData?.authoredUpgradeDiagnostics?.activeJobs || 0);
+    detail.timeScale = state.timeScale ?? null;
+    detail.timeScaleRequests = sf.timeEffects?.describeRequests?.() || null;
     const diagJobs = state.render?.scene?.userData?.authoredUpgradeDiagnostics?.jobs;
     if (Array.isArray(diagJobs)) {
       detail.runningJobs = diagJobs.filter((j) => j && j.status === 'running').slice(-4).map((j) => ({
@@ -1382,6 +1384,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
           ? state.tick - prev.tick : null,
         simTimeDelta: prev && Number.isFinite(prev.simTime) && Number.isFinite(state?.simTime)
           ? state.simTime - prev.simTime : null,
+        timeScaleRequests: sf?.timeEffects?.describeRequests?.() || null,
       };
       window.__SF_SCENARIO_RESTORE_WAIT_LAST__ = detail;
       if (stuckIds.length) return false;
