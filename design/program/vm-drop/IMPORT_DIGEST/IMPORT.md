@@ -1,4 +1,6 @@
-# IMPORT — IMPORT_DIGEST
+# IMPORT — DIGEST 20260924bj
 
-Digest-only. No live `src/` wiring. Import packages from
-`design/program/vm-drop/<job>/` in order; see `report.md`.
+Owner applies vm-drop packages in numeric order. This digest tip records
+hillclimb through **#103 `energy-quiet-hide-latch`**.
+
+See `report.md` for stack, holds, and next poles.
