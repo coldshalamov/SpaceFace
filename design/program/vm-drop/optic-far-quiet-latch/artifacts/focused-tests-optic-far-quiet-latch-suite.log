@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 1 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 7.926046
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 2 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.747217
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 3 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.669754
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 4 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.304348
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 5 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 2.35524
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 6 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 41.090515
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 7 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.134445
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 8 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 0.967858
+  ...
+# Subtest: decode-runway promote reports field presence without spatial rock query
+ok 9 - decode-runway promote reports field presence without spatial rock query
+  ---
+  duration_ms: 2.571169
+  ...
+# Subtest: quiet latch engages when no optic interest nearby
+ok 10 - quiet latch engages when no optic interest nearby
+  ---
+  duration_ms: 7.654598
+  ...
+# Subtest: field.version bump wakes optic quiet latch
+ok 11 - field.version bump wakes optic quiet latch
+  ---
+  duration_ms: 1.092547
+  ...
+# Subtest: membership bump wakes optic quiet latch
+ok 12 - membership bump wakes optic quiet latch
+  ---
+  duration_ms: 0.755808
+  ...
+# Subtest: player move beyond wake radius clears optic quiet latch path
+ok 13 - player move beyond wake radius clears optic quiet latch path
+  ---
+  duration_ms: 0.910734
+  ...
+# Subtest: nearby optic field rock prevents latch and promotes on approach
+ok 14 - nearby optic field rock prevents latch and promotes on approach
+  ---
+  duration_ms: 2.073019
+  ...
+# Subtest: bench toggle off restores always-walk
+ok 15 - bench toggle off restores always-walk
+  ---
+  duration_ms: 1.873324
+  ...
+# Subtest: stone eats an energy bolt, metal sends it back, a kinetic round ignores the lattice
+ok 16 - stone eats an energy bolt, metal sends it back, a kinetic round ignores the lattice
+  ---
+  duration_ms: 3.06794
+  ...
+# Subtest: a diamond splits once per family into eight headings, then later bolts die in it
+ok 17 - a diamond splits once per family into eight headings, then later bolts die in it
+  ---
+  duration_ms: 0.817023
+  ...
+# Subtest: the family cap stops a lattice from spawning without bound
+ok 18 - the family cap stops a lattice from spawning without bound
+  ---
+  duration_ms: 0.256215
+  ...
+# Subtest: the Ceres gallery is a fuse into a closed diamond field
+ok 19 - the Ceres gallery is a fuse into a closed diamond field
+  ---
+  duration_ms: 7.258669
+  ...
+# Subtest: a swept energy bolt prisms, the forward splinter lights the next diamond, and stone eats a splinter
+ok 20 - a swept energy bolt prisms, the forward splinter lights the next diamond, and stone eats a splinter
+  ---
+  duration_ms: 3.297042
+  ...
+# Subtest: each live swarm room has one lattice that clears the player
+ok 21 - each live swarm room has one lattice that clears the player
+  ---
+  duration_ms: 1.152918
+  ...
+# Subtest: the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot
+ok 22 - the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot
+  ---
+  duration_ms: 47.128708
+  ...
+# Subtest: optic lattices stamp only on FULL residency and leave on eviction
+ok 23 - optic lattices stamp only on FULL residency and leave on eviction
+  ---
+  duration_ms: 7.204482
+  ...
+# Subtest: optic lattices promote inside the decode disc and shelve past exit
+ok 24 - optic lattices promote inside the decode disc and shelve past exit
+  ---
+  duration_ms: 14.39926
+  ...
+# Subtest: visited diamond keys treat number and string ids as the same surface
+ok 25 - visited diamond keys treat number and string ids as the same surface
+  ---
+  duration_ms: 0.541856
+  ...
+# Subtest: metal reflect keeps the same body alive after physics sets alive=false
+ok 26 - metal reflect keeps the same body alive after physics sets alive=false
+  ---
+  duration_ms: 0.516134
+  ...
+# Subtest: reflect stamps a travel budget so metal ping-pong cannot run forever
+ok 27 - reflect stamps a travel budget so metal ping-pong cannot run forever
+  ---
+  duration_ms: 1.557759
+  ...
+# Subtest: bindOpticReflectTravel shrinks remaining range and refuses a spent budget
+ok 28 - bindOpticReflectTravel shrinks remaining range and refuses a spent budget
+  ---
+  duration_ms: 0.285759
+  ...
+# Subtest: prism children strip attackRuntime, keep generation, and spawn outside the parent
+ok 29 - prism children strip attackRuntime, keep generation, and spawn outside the parent
+  ---
+  duration_ms: 0.452611
+  ...
+# Subtest: optic settle alone leaves hit damage; weapons-style suppress clears it before combat
+ok 30 - optic settle alone leaves hit damage; weapons-style suppress clears it before combat
+  ---
+  duration_ms: 0.313598
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 415.767145

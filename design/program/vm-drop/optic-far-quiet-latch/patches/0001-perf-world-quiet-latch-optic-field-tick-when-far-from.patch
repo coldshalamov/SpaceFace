@@ -1,0 +1,292 @@
+From e0a069c3b621fd7917da3b83857d294209326dc1 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:42:58 -0400
+Subject: [PATCH] =?UTF-8?q?perf(world):=20quiet-latch=20optic=20field=20ti?=
+ =?UTF-8?q?ck=20when=20far=20from=20lattices=20(~20=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid queryAsteroidField over the authored-prefetch
+disc plus an entityList optic shelve scan every tick with no optic interest
+nearby. Latch after an empty-interest probe; wake on asteroidField.version,
+entity-index membership, player move beyond ~15% of enter, or a 0.5 s rescan.
+Soft-GPU fps not claimed.
+---
+ src/world/asteroidField.js          |  74 +++++++++++++-
+ test/optic-far-quiet-latch.test.mjs | 148 ++++++++++++++++++++++++++++
+ 2 files changed, 221 insertions(+), 1 deletion(-)
+ create mode 100644 test/optic-far-quiet-latch.test.mjs
+
+diff --git a/src/world/asteroidField.js b/src/world/asteroidField.js
+index 143fe83e8..a6ad71300 100644
+--- a/src/world/asteroidField.js
++++ b/src/world/asteroidField.js
+@@ -323,6 +323,32 @@ function opticTableRadii(state, player) {
+   return { enter, exit, enter2: enter * enter, exit2: exit * exit };
+ }
+ 
++/** Bench A/B: production default ON. Quiet latch skips optic query+shelve when no interest. */
++let OPTIC_FAR_QUIET_LATCH = true;
++export function setOpticFarQuietLatchForBench(enabled) {
++  OPTIC_FAR_QUIET_LATCH = enabled !== false;
++}
++export function getOpticFarQuietLatchForBench() {
++  return OPTIC_FAR_QUIET_LATCH !== false;
++}
++
++/** Membership / field-version rescan while latched (0.5 s @ 60 Hz). */
++const OPTIC_FAR_QUIET_RESCAN_TICKS = 30;
++
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version
++    : null;
++}
++
++function publishOpticQuiet(state, latched) {
++  const world = state && state.world;
++  if (!world) return;
++  const rt = world.opticFieldRuntime || (world.opticFieldRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ /**
+  * Optic lattices stay field-resident until the player enters the authored decode
+  * disc, then promote like far actors. Beyond exit they shelve again so a quiet
+@@ -334,11 +360,39 @@ export function tickOpticFieldRocks(state, helpers) {
+     ? state.entities.get(state.playerId)
+     : null;
+   if (!player || !player.pos) return { promoted: 0, shelved: 0 };
+-  const radii = opticTableRadii(state, player);
++
++  // Quiet settled flight: when no optic lattice sits in the decode disc and no live
++  // optic body needs exit-shelve, production still paid queryAsteroidField (large
++  // authored-prefetch disc) + entityList optic scan every tick. Latch after an empty
++  // interest probe; wake on asteroidField.version, entity-index membership, player
++  // move beyond a fraction of enter, or a 0.5 s rescan.
++  const field = state.world && state.world.asteroidField;
++  const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
++  const membership = entityIndexVersion(state);
+   const px = finite(player.pos.x);
+   const pz = finite(player.pos.z);
++  if (OPTIC_FAR_QUIET_LATCH !== false) {
++    const quiet = tickOpticFieldRocks._quiet;
++    const tick = state.tick | 0;
++    if (quiet
++      && quiet.fieldVersion === fieldVersion
++      && quiet.membership === membership
++      && ((tick - (quiet.armedTick | 0)) < OPTIC_FAR_QUIET_RESCAN_TICKS)) {
++      const mdx = px - quiet.x;
++      const mdz = pz - quiet.z;
++      if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
++        publishOpticQuiet(state, true);
++        return { promoted: 0, shelved: 0 };
++      }
++    }
++  } else if (tickOpticFieldRocks._quiet) {
++    tickOpticFieldRocks._quiet = null;
++  }
++
++  const radii = opticTableRadii(state, player);
+   let promoted = 0;
+   let shelved = 0;
++  let opticInterest = false;
+ 
+   const hits = queryAsteroidField(state, player.pos, radii.enter, tickOpticFieldRocks._scratch || (tickOpticFieldRocks._scratch = []));
+   for (let i = 0; i < hits.length; i++) {
+@@ -347,6 +401,7 @@ export function tickOpticFieldRocks(state, helpers) {
+     const dx = rec.pos.x - px;
+     const dz = rec.pos.z - pz;
+     if (dx * dx + dz * dz > radii.enter2) continue;
++    opticInterest = true;
+     const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
+     if (ent) promoted += 1;
+   }
+@@ -356,11 +411,28 @@ export function tickOpticFieldRocks(state, helpers) {
+     const entity = list[i];
+     if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+     if (!isOpticRockData(entity.data) || !entity.pos) continue;
++    opticInterest = true;
+     const dx = entity.pos.x - px;
+     const dz = entity.pos.z - pz;
+     if (dx * dx + dz * dz <= radii.exit2) continue;
+     if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
+   }
++
++  if (OPTIC_FAR_QUIET_LATCH !== false && promoted === 0 && shelved === 0 && !opticInterest) {
++    const wakeR = Math.max(32, radii.enter * 0.15);
++    tickOpticFieldRocks._quiet = {
++      fieldVersion,
++      membership,
++      armedTick: state.tick | 0,
++      x: px,
++      z: pz,
++      wakeMove2: wakeR * wakeR,
++    };
++    publishOpticQuiet(state, true);
++  } else {
++    tickOpticFieldRocks._quiet = null;
++    publishOpticQuiet(state, false);
++  }
+   return { promoted, shelved };
+ }
+ 
+diff --git a/test/optic-far-quiet-latch.test.mjs b/test/optic-far-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..144bd4cd3
+--- /dev/null
++++ b/test/optic-far-quiet-latch.test.mjs
+@@ -0,0 +1,148 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  tickOpticFieldRocks,
++  setOpticFarQuietLatchForBench,
++  getOpticFarQuietLatchForBench,
++  insertAsteroidFieldRock,
++  ensureAsteroidField,
++} from '../src/world/asteroidField.js';
++
++function boot(opts = {}) {
++  const state = createGameState(opts.seed || 21);
++  state.mode = 'flight';
++  state.meta.seed = opts.seed || 21;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  player.maxSpeed = 160;
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    if (!Number.isFinite(state.entityIndex.version)) state.entityIndex.version = 1;
++  }
++  ensureAsteroidField(state);
++  return { state, bus, helpers, player };
++}
++
++function step(state, helpers) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  return tickOpticFieldRocks(state, helpers);
++}
++
++test('quiet latch engages when no optic interest nearby', () => {
++  setOpticFarQuietLatchForBench(true);
++  assert.equal(getOpticFarQuietLatchForBench(), true);
++  const { state, helpers } = boot();
++  // Dense non-optic field near player + far optic gallery.
++  for (let i = 0; i < 40; i++) {
++    insertAsteroidFieldRock(state, {
++      pos: { x: (i % 8) * 40, z: Math.floor(i / 8) * 40 },
++      radius: 12,
++      data: { typeId: 'ast_common_rock' },
++    });
++  }
++  for (let i = 0; i < 8; i++) {
++    insertAsteroidFieldRock(state, {
++      pos: { x: 5000 + i * 30, z: 5000 },
++      radius: 14,
++      data: { opticMaterial: 'diamond', opticStructureId: 'gallery_far' },
++    });
++  }
++  const r1 = step(state, helpers);
++  assert.equal(r1.promoted, 0);
++  assert.equal(r1.shelved, 0);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, true);
++  assert.ok(tickOpticFieldRocks._quiet);
++  const r2 = step(state, helpers);
++  assert.equal(r2.promoted, 0);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, true);
++});
++
++test('field.version bump wakes optic quiet latch', () => {
++  setOpticFarQuietLatchForBench(true);
++  const { state, helpers } = boot();
++  step(state, helpers);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, true);
++  const armed = tickOpticFieldRocks._quiet.armedTick;
++  insertAsteroidFieldRock(state, {
++    pos: { x: 10, z: 10 },
++    radius: 10,
++    data: { typeId: 'ast_common_rock' },
++  });
++  const r = step(state, helpers);
++  // Fresh probe after version bump; still no optic interest → re-arms.
++  assert.equal(r.promoted, 0);
++  assert.ok(tickOpticFieldRocks._quiet);
++  assert.notEqual(tickOpticFieldRocks._quiet.armedTick, armed);
++});
++
++test('membership bump wakes optic quiet latch', () => {
++  setOpticFarQuietLatchForBench(true);
++  const { state, helpers } = boot();
++  step(state, helpers);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, true);
++  const armed = tickOpticFieldRocks._quiet.armedTick;
++  state.entityIndex.version++;
++  step(state, helpers);
++  assert.ok(tickOpticFieldRocks._quiet);
++  assert.notEqual(tickOpticFieldRocks._quiet.armedTick, armed);
++});
++
++test('player move beyond wake radius clears optic quiet latch path', () => {
++  setOpticFarQuietLatchForBench(true);
++  const { state, helpers, player } = boot();
++  step(state, helpers);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, true);
++  // Jump far enough that wakeMove2 fails closed and full path runs.
++  player.pos.x = 4000;
++  player.pos.z = 0;
++  step(state, helpers);
++  // Full path ran; if still no optic interest at new pos it re-arms at new coords.
++  assert.ok(tickOpticFieldRocks._quiet);
++  assert.equal(tickOpticFieldRocks._quiet.x, 4000);
++});
++
++test('nearby optic field rock prevents latch and promotes on approach', () => {
++  setOpticFarQuietLatchForBench(true);
++  const { state, helpers, player } = boot();
++  insertAsteroidFieldRock(state, {
++    pos: { x: 80, z: 0 },
++    radius: 14,
++    data: { opticMaterial: 'diamond', opticStructureId: 'near_gallery' },
++  });
++  const r = step(state, helpers);
++  assert.ok(r.promoted >= 1);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, false);
++  assert.equal(tickOpticFieldRocks._quiet, null);
++  // Keep player near so live optic stays in exit disc — still no latch.
++  player.pos.x = 80;
++  const r2 = step(state, helpers);
++  assert.equal(r2.promoted, 0);
++  assert.equal(state.world.opticFieldRuntime.quietLatched, false);
++});
++
++test('bench toggle off restores always-walk', () => {
++  setOpticFarQuietLatchForBench(false);
++  assert.equal(getOpticFarQuietLatchForBench(), false);
++  const { state, helpers } = boot();
++  step(state, helpers);
++  assert.equal(tickOpticFieldRocks._quiet, null);
++  assert.equal(state.world.opticFieldRuntime?.quietLatched, false);
++  setOpticFarQuietLatchForBench(true);
++});
+-- 
+2.47.3
+
