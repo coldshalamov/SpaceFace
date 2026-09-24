@@ -1,0 +1,23 @@
+{
+  "name": "weapon-presenter-composite-quiet-latch",
+  "iters": 80000,
+  "pairs": 13,
+  "medianSpeedup": 6.114,
+  "minSpeedup": 5.125,
+  "maxSpeedup": 7.387,
+  "all": [
+    5.125,
+    5.235,
+    5.334,
+    5.422,
+    6.081,
+    6.095,
+    6.114,
+    6.203,
+    6.264,
+    6.421,
+    6.596,
+    6.749,
+    7.387
+  ]
+}
