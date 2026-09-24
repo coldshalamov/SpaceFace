@@ -49,6 +49,44 @@ function shipLikeHasDespawnAt(index) {
   return false;
 }
 
+
+// Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
+// then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
+// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
+// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
+// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
+export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
+  LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
+}
+export function getLifetimeSweepQuietClocksSkipForBench() {
+  return LIFETIME_SWEEP_QUIET_CLOCKS_SKIP !== false;
+}
+
+function shortLivedClockLanesEmpty(index) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+  const empty = (lane) => !lane || lane.length === 0;
+  return empty(index.projectiles)
+    && empty(index.fx)
+    && empty(index.bombs)
+    && empty(index.charges)
+    && empty(index.pickups)
+    && empty(index.payloads)
+    && empty(index.mines)
+    && empty(index.vectorMines)
+    && empty(index.snares);
+}
+
+function shipLikeHasDespawnAt(index) {
+  const ships = index && index.shipLike;
+  if (!ships || ships.length === 0) return false;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
+    if (e && e.alive && e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
+}
+
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
 export const core = {
