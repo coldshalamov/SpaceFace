@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24y (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24z (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #59; +#60 measured on
-stacked tip @ `6357d192c`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #60; +#61 measured on
+stacked tip @ `e16cc07d5`.
 
 ### Already on stack (do not rediscover)
 
@@ -45,6 +45,7 @@ stacked tip @ `6357d192c`.
 | 57 | `micromotion-settled-skip` |
 | 58 | `event-trace-thrust-sanitize` |
 | 59 | `prestep-movables-trust` |
+| 60 | `select-classify-epoch-seen` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -68,25 +69,25 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59 |
+| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
 | 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60 |
 | 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57 |
 | 181 | `syncEntityViews` | residual after #15+#44+#57 |
 | 153 | `hud.frame` | radar.draw + setLagTranslate |
-| 45 | `selectClassifyEntities` | **#60 shipped** |
+| 45 | `selectClassifyEntities` | residual after #60 |
 
 ### Notable callees (post-#57 / pre-#60)
 
 - prepareFrame → syncEntityViews (**#57**), camera.follow, packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics
-- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget, input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
+- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 60 | `select-classify-epoch-seen` | Portable quiet selectClassify seen-membership **~2.89×** median (12k × 11; admit parity 220). Uint32Array id-epoch marks; focused activity suites 64/64. |
+| 61 | `stamp-near-work-awake-cache` | Portable quiet stampNearWorkBudget always-awake cache **~1.65×** median (80 shipLike × 80k; floor ≥1.56× / five isolated runs; admit + production parity). Volatile-AI cadence refresh; focused suites 93/93. |
 
 ## Scour attempts / misses
 
@@ -95,7 +96,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | resolvePins rockBody skip + normalize | ~1.07× — under bar (confirms prior rock-resolvePins miss) |
 | bitfield materialize pins (replace normalize) | ~0.87× — slower than normalize on quiet pins (miss) |
 | selectClassify Map-epoch marks (isolated) | ~1.46× — under bar; replaced by dense Uint32Array |
-| stampNearWorkBudget always-awake cache | ~1.58× isolated — ready next; not shipped this pass |
+| stampNearWorkBudget always-awake cache | **#61 shipped** ~1.65× (was ready ~1.58×) |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -111,9 +112,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    packFence / residual closures / camera.follow).
 2. classifyWorld after #37+#38+#45+#48+#60 (resolvePins+normalizePinReasons /
    reusablePins / shouldSyncPhysics; selectClassify residual).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59 (preStep residual /
-   lifetimeSweep / stampNearWorkBudget always-awake cache ~1.58× ready /
-   tacticalAI).
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
+   lifetimeSweep / tacticalAI).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.
