@@ -1,0 +1,6 @@
+ab169-bare-1 {"glWait":10571,"glSubmit":31,"threeProgramJs":78,"readinessJs":3,"busy":16760,"preFlightS":18.29}
+ab169-bare-2 {"glWait":7557,"glSubmit":21,"threeProgramJs":60,"readinessJs":2,"busy":13026,"preFlightS":18.85}
+ab169-bare-3 {"glWait":4519,"glSubmit":35,"threeProgramJs":67,"readinessJs":1,"busy":10402,"preFlightS":12.010000000000002}
+ab169f-bare-1 {"glWait":5936,"glSubmit":35,"threeProgramJs":72,"readinessJs":8,"busy":12220,"preFlightS":13.77}
+ab169f-bare-2 {"glWait":5287,"glSubmit":30,"threeProgramJs":67,"readinessJs":3,"busy":12993,"preFlightS":14.84}
+ab169f-bare-3 {"glWait":975,"glSubmit":20,"threeProgramJs":36,"readinessJs":4,"busy":5252,"preFlightS":10.899999999999999}

@@ -1,3 +1,108 @@
+# IMPORT_DIGEST report — 20260926b (post-#167; **#168 ship** glb-body-in-place + **#169 ship** shader-readiness-no-isprogram)
+
+Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.
+
+## #168/#169 pass — admission / hitch pole 1 (opening + streaming)
+
+This pass took the two poles the last digest had filed as owner/vendor side. It fixed both with in-repo patches
+that keep the picture identical. Import order: **#166 → #167 → #168 → `glb-body-in-place/patches-after-167` →
+#169**. Every order and subset was checked with `git apply --cached`, including on top of
+`vm-work/stack-20260924u`.
+
+- **SHIP #168 `glb-body-in-place`.** The vendored GLTFLoader no longer copies the GLB BIN chunk out of the fetched
+  buffer inside the synchronous `parse()` (`GLTFBinaryExtension` `data.slice`). The body is a range on the
+  caller's GLB:
+  - meshopt sources are viewed in place;
+  - plain bufferViews (KTX2/PNG images, uncompressed accessors) are sliced straight off it. Those copies are kept,
+    because they are cached, Blob-ed or transferred, and a view would pin the GLB;
+  - `body` is materialized lazily only if something else asks for it.
+
+  Results:
+  - **Identity:** everything handed downstream is identical across all **259** render packages and the 936 other
+    tracked GLBs (KTX2 buffers, PNG Blobs, bufferViews, attributes/indices, nodes). The body is never
+    materialized. Mutation checks fail as they should.
+  - **Sync parse block, 10 largest packages:** 112 → 15 ms, **−97.6 ms**, **7.32× median / 6.71× floor**
+    (7.59× / 7.16× on #167). Whole parse 1.43×.
+  - **Kestrel package:** −19.4 ms on its frame (15×).
+  - **All 259 packages:** −166 ms.
+  - **Live from-launch:** `GLTFBinaryExtension` lane 147.2 / 43.9 / 46.6 → 0.6 / 8.5 / 1.4 ms; bursts up to
+    20.2 ms removed.
+
+  The "~147 ms loadBufferView" was the KTX2 image-view slices; #167 already removes that copy. #168 adds a small
+  after-167 patch so #167's direct slice also reads the range.
+  **Owner decision:** the retail bundle resolves `three/addons` from node_modules, so it only gets this cut if the
+  bundle aliases the vendor loader.
+
+- **SHIP #169 `shader-readiness-no-isprogram`.** The bloom readiness waits (`drain` and `checkProgramsReady`) no
+  longer make the 1-per-2-s `gl.isProgram()` handle recheck. Each recheck waited for the whole GPU link queue, and
+  in flight the drawables it guarded were already hidden. Dead handles are now read non-blocking from
+  `isReady() === null` (WebGL answers null for a handle the context does not own), alongside the context-loss
+  generation and destroy().
+
+  Results (12 master vs 6 patched from-launch runs):
+  - in-flight isProgram **0.42–4.9 s per 30 s → 0 in every run**;
+  - in-flight GL wait median **~4.2 s → ~0.18 s**;
+  - largest in-flight block median **~1.9 s → ~76 ms** (7/12 master runs had a 1.7–3.8 s freeze);
+  - blocks >50 ms: 11 → 1;
+  - launch-to-flight and pre-flight GL wait at parity.
+
+  **Owner decision:** this reverses an owner-tuned safety recheck. A silently forgotten handle is now bounded by
+  the existing 20 s deadline instead of ~1–2 s. It has never been observed, and the pinned test was replaced.
+
+- **Cost map of the "~5.1 s bloom readiness / shadow-sweep links"** (pre-flight, 6 bare runs):
+  - driver / GPU-process link waits (`getProgramParameter` at first-use touch draws + isProgram): **1.0–10.6 s**;
+  - native submits: 20–35 ms;
+  - three's JS program build: 36–78 ms;
+  - SpaceFace readiness JS: **1–8 ms**.
+
+  CPU-side JS is under 0.1 s. Poll cadence, key dedupe (three already dedupes by cacheKey) and LINK_STATUS
+  avoidance all have negligible ceilings. Before flight, removing the recheck only moves the wait into first-use
+  (`ab169x-nocheck`), which is soft-GPU link time. The opening shadow-sweep / `rehearseScenePass` measured
+  0.003–0.12 s this pass, so it is not a pole now.
+
+- **Focused suite (96 files: the #167 list plus every GLTFLoader, bloom and readiness test):**
+
+  | Build | pass / total |
+  |---|---|
+  | #168 | 688/725 |
+  | #169 | 686/723 |
+  | bare master | 684/721 |
+
+  The **failure set is identical** (36 fail + 1 cancelled, the same pre-existing set as #166/#167).
+
+### Holds / misses this pass
+
+- **#169 pending-age gate (recheck only after 8 s pending): MISS.** Soft-GPU link queues keep programs pending
+  more than 8 s, so single isProgram blocks stayed at 3.4 s. Superseded by the null-detection variant.
+- **Pre-flight shader admission on soft-GPU: no VM cut.** It is driver link time, and it moves rather than shrinks.
+  Real-hardware numbers need the owner iGPU.
+- **Keeping bufferView copies as views: HOLD by design.** Geometry arrays would pin the entire GLB, KTX2 bytes
+  included, for the life of the geometry. That is a memory regression.
+
+### Largest remaining costs → next poles (ranked)
+
+1. three render CPU (`drawPreparedFrame` ~55 ms/s + `updateMatrixWorld` ~10.6 ms/s). **Owner side** (batching).
+2. Opening first-use link waits at the touch draws (soft-GPU driver time, 1–10 s pre-flight). **Owner/GPU:** fewer
+   program keys, or real-HW parallel compile.
+   - One observed residual: a first-use COMPLETION_STATUS read inside an in-flight opening touch draw can block
+     (~0.8 s once in 6 runs). This is the owner's touch design.
+3. Per-image KTX2 slice (the one copy #167 leaves, because KTX2Loader transfers it). Removing it needs a
+   transcoder-worker protocol change (hand the whole body once). **Vendor/owner.**
+4. sg02 carry decision (~1.35–1.45×). **Owner.**
+5. Gamepad poll gating / tether preview. Held.
+
+VM-side opening/streaming CPU work is now **largely exhausted**. What remains is driver link time or owner design.
+
+### Scratch
+
+- #168: `vm-work/hillclimb-20260926b` @ `03c406090`
+- #167 + #168 + after-167: `vm-work/hillclimb-20260926c` @ `619537c2e`
+- #169: `vm-work/hillclimb-20260926d` @ `ef721f941`
+
+All in `/workspace/spaceface-scratch/master-20260924u`. Untouched master: `/workspace/spaceface-scratch/bare-20260926`.
+
+## Previous digest header (20260926a)
+
 # IMPORT_DIGEST report — 20260926a (post-#165; **#166 ship** render-package-digest-zero-copy + **#167 ship** embedded-ktx2-single-copy)
 
 Master tip: **`97c88f92b`** (fetched; unchanged since digest 20260924ea). No restack needed, and no vm-drop package has been imported since dz.

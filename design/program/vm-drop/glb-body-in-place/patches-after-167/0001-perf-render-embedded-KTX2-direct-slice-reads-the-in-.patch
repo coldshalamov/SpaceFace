@@ -1,0 +1,82 @@
+From 619537c2e62a555d90f747210ca98a779d3a2f3b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 18:43:43 -0400
+Subject: [PATCH] perf(render): embedded KTX2 direct slice reads the in-place
+ GLB body (#167 on #168)
+
+With #168 the vendored loader keeps the GLB body as a range on the fetched buffer.
+#167's direct slice asked for the 'buffer' dependency, which would materialize that
+body (the full copy #168 removes). Slice the same clamped range off the fetched GLB
+instead; loaders without the range helper keep #167's path.
+---
+ src/render/embeddedKtx2Textures.js   |  8 ++++++
+ test/embedded-ktx2-textures.test.mjs | 37 ++++++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+
+diff --git a/src/render/embeddedKtx2Textures.js b/src/render/embeddedKtx2Textures.js
+index db33d3e8e..8ce93cc3c 100644
+--- a/src/render/embeddedKtx2Textures.js
++++ b/src/render/embeddedKtx2Textures.js
+@@ -136,6 +136,14 @@ function transferableSourceBytes(parser, bufferViewIndex) {
+   if (!plain) {
+     return parser.getDependency('bufferView', bufferViewIndex).then((bufferView) => bufferView.slice(0));
+   }
++  // With the vendored loader's in-place GLB body (#168), slice the same range straight off the fetched
++  // GLB so the body itself is never materialized; ArrayBuffer.prototype.slice clamping is preserved.
++  const range = typeof parser.glbBodySliceRange === 'function'
++    ? parser.glbBodySliceRange(def.buffer, def.byteOffset || 0, def.byteLength)
++    : null;
++  if (range) {
++    return Promise.resolve(range).then((r) => r.source.slice(r.byteOffset, r.byteOffset + r.byteLength));
++  }
+   return parser.getDependency('buffer', def.buffer).then((buffer) => {
+     const byteOffset = def.byteOffset || 0;
+     return buffer.slice(byteOffset, byteOffset + def.byteLength);
+diff --git a/test/embedded-ktx2-textures.test.mjs b/test/embedded-ktx2-textures.test.mjs
+index b71324af6..a155c2999 100644
+--- a/test/embedded-ktx2-textures.test.mjs
++++ b/test/embedded-ktx2-textures.test.mjs
+@@ -228,3 +228,40 @@ test('real render package: KTX2 bytes handed to the transcoder are identical wit
+     setEmbeddedKtx2DirectSliceForBench(true);
+   }
+ });
++
++test('on the vendored loader (#168 in-place GLB body) the direct slice reads the fetched GLB and never materializes the body', async () => {
++  const { readFileSync } = await import('node:fs');
++  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
++  const { GLTFLoader: VendoredGLTFLoader } = await import('../vendor/addons/loaders/GLTFLoader.js');
++  const glb = readFileSync(new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url));
++  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
++  await MeshoptDecoder.ready;
++
++  async function collect(Loader, on) {
++    setEmbeddedKtx2DirectSliceForBench(on);
++    const seen = [];
++    let parser = null;
++    const loader = new Loader();
++    loader.setMeshoptDecoder(MeshoptDecoder);
++    loader.register(registerEmbeddedKtx2Textures);
++    loader.register((p) => { parser = p; return { name: 'ktx2-168-probe' }; });
++    loader.setKTX2Loader({
++      parse(buffer, onLoad) {
++        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
++        structuredClone(buffer, { transfer: [buffer] });
++        onLoad(new THREE.CompressedTexture([], 4, 4));
++      },
++    });
++    await loader.parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '');
++    return { seen: seen.sort(), binary: parser.extensions.KHR_binary_glTF };
++  }
++  try {
++    const stockOff = await collect(GLTFLoader, false);
++    const vendoredOn = await collect(VendoredGLTFLoader, true);
++    assert.ok(stockOff.seen.length > 0);
++    assert.deepEqual(vendoredOn.seen, stockOff.seen);
++    assert.equal(vendoredOn.binary._body, null, 'the GLB body is never copied out');
++  } finally {
++    setEmbeddedKtx2DirectSliceForBench(true);
++  }
++});
+-- 
+2.47.3
+
