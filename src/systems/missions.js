@@ -1971,9 +1971,11 @@ export const missions = {
     if (!fact || fact.kind !== 'price_move' || !fact.chainId || !fact.saleStationId) return false;
     const info = stationInfoFor(this.state, fact.saleStationId);
     if (!info) return false;
-    const commodity = CMDTY_BY_ID.get('cmdty_scrap_metal');
-    const qty = 4;
+    const spilledId = typeof fact.commodityId === 'string' ? fact.commodityId : '';
+    const commodity = CMDTY_BY_ID.get(spilledId) || CMDTY_BY_ID.get('cmdty_scrap_metal');
+    const qty = Math.max(1, Math.min(12, Math.floor(Number(fact.qty) || 0) || 4));
     const unit = commodity ? commodity.basePrice : 10;
+    const goodsName = commodity ? commodity.name : 'the spilled cargo';
     const epoch = this._epoch();
     const offer = {
       id: `cksalv_${fact.chainId}`,
@@ -1981,7 +1983,7 @@ export const missions = {
       type: 'salvage_retrieval',
       stationId: info.id,
       factionId: info.factionId,
-      reward_cr: 640,
+      reward_cr: Math.max(120, Math.round(unit * qty * 1.4)),
       time_limit_s: 900,
       duration_s: 900,
       collateral_cr: 0,
@@ -1991,7 +1993,7 @@ export const missions = {
       destSectorId: info.sectorId,
       distance: 600,
       params: {
-        cmdtyId: 'cmdty_scrap_metal',
+        cmdtyId: commodity ? commodity.id : spilledId,
         qty,
         cargoValue: unit * qty,
         fValue: 1.2,
@@ -1999,8 +2001,8 @@ export const missions = {
         wreckPos: fact.pos ? { x: fact.pos.x, z: fact.pos.z } : null,
         sectorId: fact.sectorId || info.sectorId,
       },
-      title: `Recover ${qty}u ${commodity ? commodity.name : 'Scrap Metal'} for ${info.name}`,
-      brief: `A witness marked the hull. ${info.name} pays for the scrap that is still out there.`,
+      title: `Recover ${qty}u ${goodsName} for ${info.name}`,
+      brief: `A witness marked the hull. ${info.name} pays for the ${goodsName} that is still out there.`,
       summary: fact.moved
         ? `Witness at the kill. ${fact.commodityId} moved at the destination.`
         : 'Witness at the kill. The wreck is still recoverable.',

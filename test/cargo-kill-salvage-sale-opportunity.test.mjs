@@ -169,6 +169,9 @@ test('a cargo-ship kill, salvage, and sale opens one salvage contract and moves 
     assert.equal(offer.preloadedCargo, false);
     assert.equal(offer.cause.witness, true);
     assert.equal(offer.cause.tag, 'salvage');
+    assert.equal(offer.params.cmdtyId, COMMODITY, 'the contract is for the goods that spilled');
+    assert.match(offer.title, /Provisions/);
+    assert.doesNotMatch(offer.title, /Scrap Metal/);
     assert.match(first.toasts[0].text, /Salvage contract live/);
 
     assert.equal(second.offers[0].id, offer.id, 'same seed, same contract');
