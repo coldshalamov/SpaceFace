@@ -16,6 +16,10 @@ import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { createChainBeam } from '../../orrery/chainBeam.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -88,6 +92,10 @@ export function createIndustryScreen(ctx) {
   const stageEl = el.querySelector('.sx-ind__stage');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
   let picked = false; // land on a recipe buildable at THIS station on first open
+  // ORRERY (design/frontend/ORRERY.md §6 Industry): the blueprint as a production chain -- inputs
+  // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
+  let chain = null;
+  const stopDecrypt = [];
 
   function renderList(state) {
     const stn = stationType(ctx);
@@ -173,6 +181,36 @@ export function createIndustryScreen(ctx) {
           `</button>` +
         `</li></ul>` +
       `</div>`;
+    composeStage(bp, it, r, canBuild);
+  }
+
+  /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
+  function composeStage(bp, it, r, canBuild) {
+    if (chain) { chain.dispose(); chain = null; }
+    const fab = stageEl.querySelector('.sx-fab');
+    if (!fab) return;
+    const host = document.createElement('div');
+    host.className = 'orr-ind-chain';
+    host.setAttribute('aria-hidden', 'true');
+    const heroes = fab.querySelector('.sx-fab-heroes');
+    if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
+    chain = createChainBeam(host);
+    chain.set({
+      inputs: Object.keys(bp.inputs || {}).map((id) => ({ nameHtml: escapeHtml(matName(id)), have: Math.floor(it[id] || 0), need: bp.inputs[id] })),
+      process: CAT_LABEL[bp.category] || bp.category,
+      timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
+      output: { qty: bp.outputs.qty || 1, unit: `${bp.outputs.kind || 'unit'} per run` },
+      live: !!canBuild,
+    });
+    const build = fab.querySelector('.sx-fab-build[data-build]');
+    if (build) dressLampKey(build);
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (reducedMotion()) return;
+    const targets = [
+      fab.querySelector('.sx-fab-head__name .sf-entity-link') || fab.querySelector('.sx-fab-head__name'),
+      ...fab.querySelectorAll('.k-caps'),
+    ].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
   }
 
   function renderAll(state) { renderList(state); renderStage(state); }
@@ -246,6 +284,8 @@ export function createIndustryScreen(ctx) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
       }
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (chain) { chain.dispose(); chain = null; }
     },
   };
 }

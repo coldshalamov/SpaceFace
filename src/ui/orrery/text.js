@@ -35,6 +35,41 @@ export function decrypt(element, text, { duration = 260, delay = 0 } = {}) {
 }
 
 /**
+ * Typewriter: a spoken line arrives a character at a time at `cps` characters per second, with a
+ * short rest at sentence ends. Returns a stop function; `onDone` fires when the line is complete
+ * (immediately under reduced motion). Cosmetic only, like decrypt.
+ */
+export function typewriter(element, text, { cps = 48, delay = 0, onDone = null } = {}) {
+  if (!element) return () => {};
+  const target = String(text ?? '');
+  const done = () => { if (typeof onDone === 'function') onDone(); };
+  if (reducedMotion() || typeof requestAnimationFrame !== 'function' || !target) {
+    element.textContent = target;
+    done();
+    return () => {};
+  }
+  let start = null;
+  let stopped = false;
+  let shown = 0;
+  let rest = 0;
+  const off = onFrame((now) => {
+    if (stopped) return false;
+    if (start == null) start = now + delay;
+    const due = Math.floor(((now - start) / 1000) * cps) - rest;
+    if (due < 0) { element.textContent = ''; return true; }
+    while (shown < Math.min(target.length, due)) {
+      const ch = target[shown];
+      shown += 1;
+      if (/[.!?]/.test(ch) && shown < target.length) rest += Math.round(cps * 0.28);
+    }
+    element.textContent = target.slice(0, shown);
+    if (shown >= target.length) { done(); return false; }
+    return true;
+  });
+  return () => { stopped = true; off(); element.textContent = target; };
+}
+
+/**
  * Counter: every digit is a column of 0-9 that rolls (with a slight mechanical overshoot) to its
  * value. Non-digits (separators, units) are static glyphs. `set(value)` rebuilds only when the
  * digit count or separator layout changes.

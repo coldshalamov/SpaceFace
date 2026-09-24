@@ -26,6 +26,9 @@ import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
 import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
+import { createCrestOrbit, standingScaleSvg } from '../../orrery/crestOrbit.js';
+import { decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 
 const STATION_FACTION = new Map();
 for (const sector of SECTORS) {
@@ -124,6 +127,16 @@ export function createFactionsScreen(ctx) {
   const railEl = el.querySelector('.sx-fac__rail');
   const stageEl = el.querySelector('.sx-fac__stage');
   railEl.setAttribute('role', 'tablist');
+  // ORRERY (design/frontend/ORRERY.md §6 Factions): the fourteen crests on an Orbit Ring with the
+  // Hand at the chosen one and a standing arc round each, the reading beside it. The orbit lives
+  // once in the stage and swings between renders; the reading is rebuilt as words.
+  const orbitHost = document.createElement('div');
+  orbitHost.className = 'orr-fac-orbit';
+  const readingEl = document.createElement('div');
+  readingEl.className = 'sx-fac-reading';
+  stageEl.append(orbitHost, readingEl);
+  let orbit = null;
+  const stopDecrypt = [];
 
   function renderRail(state) {
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
@@ -203,7 +216,7 @@ export function createFactionsScreen(ctx) {
       );
     }).join('');
 
-    stageEl.innerHTML =
+    readingEl.innerHTML =
       `<div class="sx-fac-overview">` +
         `<span class="sx-fac-crest" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
@@ -218,6 +231,8 @@ export function createFactionsScreen(ctx) {
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
             `<p class="k-caps">Standing ladder</p>` +
+            // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
+            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: 560 }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
@@ -236,6 +251,26 @@ export function createFactionsScreen(ctx) {
           `</div>` +
         `</div>` +
       `</div>`;
+    composeStage(state, f);
+  }
+
+  /** The orbit swings to the chosen power; the reading's labels resolve. */
+  function composeStage(state, f) {
+    if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 150 });
+    const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
+    orbit.set({
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name }; }),
+      selectedId: f.id,
+      authorityId,
+      swing: picked,
+    });
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (reducedMotion()) return;
+    const targets = [
+      readingEl.querySelector('.sx-fac-ident__name .sf-entity-link') || readingEl.querySelector('.sx-fac-ident__name'),
+      ...readingEl.querySelectorAll('.sx-fac-overview > .k-caps, .sx-fac__detail .k-caps'),
+    ].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
   }
 
   function refresh(c) {
@@ -300,6 +335,8 @@ export function createFactionsScreen(ctx) {
     refresh,
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('faction:repChanged', onRepChanged);
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (orbit) { orbit.dispose(); orbit = null; }
     },
   };
 }

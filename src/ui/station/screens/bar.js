@@ -24,6 +24,9 @@ import {
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
+import { createWaveform } from '../../orrery/waveform.js';
+import { typewriter, decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
@@ -114,6 +117,12 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
+  // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
+  // spoken with a Waveform breathing under the name, the words resolving on arrival.
+  let wave = null;
+  let spokenText = null;   // the line the waveform has already voiced
+  let stopType = null;
+  const stopDecrypt = [];
   let pendingMissionOffer = null;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
@@ -353,6 +362,33 @@ export function createBarScreen(ctx) {
     const big = stageEl.querySelector('[data-bigpic]');
     if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 640, eager: true }); } catch (_) {} }
     dressStage();
+    composeStage(c);
+  }
+
+  /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
+  function composeStage(c) {
+    if (wave) { wave.dispose(); wave = null; }
+    if (stopType) { stopType(); stopType = null; }
+    for (const stop of stopDecrypt.splice(0)) stop();
+    const idEl = stageEl.querySelector('.sx-talk__id');
+    const nameEl = stageEl.querySelector('.sx-talk__name');
+    if (idEl && nameEl) {
+      const host = document.createElement('div');
+      host.className = 'orr-bar-wave';
+      nameEl.insertAdjacentElement('afterend', host);
+      wave = createWaveform(host, { bars: 30 });
+    }
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+      spokenText = saidText;
+      const text = reply.textContent;
+      const ms = Math.min(6000, 300 + text.length * 22);
+      if (wave) wave.speak(ms);
+      stopType = typewriter(reply, text, { cps: 46, onDone: () => { if (wave) wave.idle(); stopType = null; } });
+    } else if (!saidText) spokenText = null;
+    if (reducedMotion()) return;
+    const targets = [...stageEl.querySelectorAll('.sx-talk__role, .sx-choice')].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 220, delay: 40 + i * 40 })); });
   }
 
   // ---------- leads: intel + survey + board jobs ----------
@@ -555,6 +591,11 @@ export function createBarScreen(ctx) {
     el,
     onShow(c) { renderAll((c || ctx).state || {}); },
     refresh(c) { renderAll((c || ctx).state || {}); },
-    dispose() { pinnedContact = null; },
+    dispose() {
+      pinnedContact = null;
+      if (wave) { wave.dispose(); wave = null; }
+      if (stopType) { stopType(); stopType = null; }
+      for (const stop of stopDecrypt.splice(0)) stop();
+    },
   };
 }
