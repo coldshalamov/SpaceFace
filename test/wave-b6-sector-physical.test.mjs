@@ -33,7 +33,8 @@ test('each of six sectors differs from Helios by exactly one physical ratio', ()
     seen.set(id, { key, ratio });
     console.log(`${id} ${key} ${ratio}× Helios`);
   }
-  assert.equal(asteroidMass('sector_ceres_belt', 10), 1080);
+  assert.equal(asteroidMass('sector_ceres_belt', 10), 600);
+  assert.equal(sectorPhysical('sector_ceres_belt').patrolResponse, 1.6);
   assert.equal(asteroidMass('sector_vesta_forge', 10), 1320);
   assert.equal(asteroidMass('sector_io_reach', 10), 390);
   const heliosDelay = authorityResponsePolicy(0.42).dispatchDelayS;

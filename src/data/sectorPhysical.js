@@ -10,7 +10,7 @@ const ROW = (rockMass, trafficSpeed, gravity, patrolResponse) => Object.freeze({
 
 export const SECTOR_PHYSICAL = Object.freeze({
   sector_helios_prime: ROW(1, 1, 1, 1),
-  sector_ceres_belt: ROW(1.8, 1, 1, 1),
+  sector_ceres_belt: ROW(1, 1, 1, 1.6),
   sector_tethys_junction: ROW(1, 1, 1, 0.8),
   sector_vesta_forge: ROW(2.2, 1, 1, 1),
   sector_pallas_drift: ROW(1, 1, 1, 1.75),

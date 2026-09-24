@@ -72,8 +72,8 @@ export function reserveArrivalPoint({
       const near = pointAt(stationOrigin, toward, launch);
       const far = pointAt(stationOrigin, toward + Math.PI, launch);
       const minLeg = RESERVE_STATION_LAUNCH_MIN_LEG_WU;
-      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(near, aggressor, frameHalfWu));
-      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(far, aggressor, frameHalfWu));
+      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(near, aggressor, frameHalfWu, station));
+      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(far, aggressor, frameHalfWu, station));
     }
   }
   const radius = Math.max(2000, Math.max(0, Number(jurisdictionRadius) || 0) + 700);
@@ -81,23 +81,43 @@ export function reserveArrivalPoint({
   const first = pointAt(origin, angle, radius);
   const opposite = pointAt(origin, angle + Math.PI, radius);
   const picked = distanceSq(first, aggressor) >= 900 * 900 ? first : opposite;
-  return Object.freeze(pullIntoFrame(picked, aggressor, frameHalfWu));
+  return Object.freeze(pullIntoFrame(picked, aggressor, frameHalfWu, station));
 }
 
-function pullIntoFrame(point, aggressor, frameHalfWu) {
+function pullIntoFrame(point, aggressor, frameHalfWu, station) {
   const half = Number(frameHalfWu);
   if (!(half > 0)) return point;
   const dx = point.x - aggressor.x;
   const dz = point.z - aggressor.z;
   const dist = Math.hypot(dx, dz);
   const keepOff = 40;
-  if (dist <= half && dist >= keepOff) return point;
   // The chase picture is shorter than the 126 WU screen constant along the
   // near edge, so the visible ring sits at half of that constant.
   const edge = Math.max(keepOff, Math.min(half * 0.5, half - 16));
-  if (dist < 1e-6) return { x: aggressor.x + edge, z: aggressor.z };
-  const scale = edge / dist;
-  return { x: aggressor.x + dx * scale, z: aggressor.z + dz * scale };
+  let placed;
+  if (dist <= half && dist >= keepOff) placed = { x: point.x, z: point.z };
+  else if (dist < 1e-6) placed = { x: aggressor.x + edge, z: aggressor.z };
+  else {
+    const scale = edge / dist;
+    placed = { x: aggressor.x + dx * scale, z: aggressor.z + dz * scale };
+  }
+  const origin = station && station.pos;
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return placed;
+  const clear = Math.max(Number(station.launchRadius) || 0, 80);
+  const clearOfStation = (p) => Math.hypot(p.x - origin.x, p.z - origin.z) >= clear;
+  if (clearOfStation(placed)) return placed;
+  const base = Math.atan2(placed.z - aggressor.z, placed.x - aggressor.x);
+  const radius = Math.max(keepOff, Math.hypot(placed.x - aggressor.x, placed.z - aggressor.z));
+  for (let step = 1; step <= 16; step++) {
+    const ang = base + step * (Math.PI / 16);
+    const candidate = {
+      x: aggressor.x + Math.cos(ang) * radius,
+      z: aggressor.z + Math.sin(ang) * radius,
+    };
+    const fromAggressor = Math.hypot(candidate.x - aggressor.x, candidate.z - aggressor.z);
+    if (clearOfStation(candidate) && fromAggressor >= keepOff && fromAggressor <= half) return candidate;
+  }
+  return placed;
 }
 
 function pointAt(origin, angle, radius) {
