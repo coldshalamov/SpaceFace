@@ -1,0 +1,460 @@
+TAP version 13
+# Subtest: still-player latch engages with nearby non-touching rocks
+ok 1 - still-player latch engages with nearby non-touching rocks
+  ---
+  duration_ms: 5.843048
+  ...
+# Subtest: asteroidField.version bump wakes still-player latch
+ok 2 - asteroidField.version bump wakes still-player latch
+  ---
+  duration_ms: 0.778667
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.642897
+  ...
+# Subtest: player unpark (speed) clears latch and re-queries
+ok 4 - player unpark (speed) clears latch and re-queries
+  ---
+  duration_ms: 0.668821
+  ...
+# Subtest: touching rock promotes on first probe before latch
+ok 5 - touching rock promotes on first probe before latch
+  ---
+  duration_ms: 1.573648
+  ...
+# Subtest: bench toggle off restores always-query (no latch)
+ok 6 - bench toggle off restores always-query (no latch)
+  ---
+  duration_ms: 0.601372
+  ...
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 7 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 2.114125
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 8 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.562071
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+ok 9 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 0.56336
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 10 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.535822
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 11 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.219042
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 12 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.327032
+  ...
+# Subtest: early quiet latch arms after frame-retain on parked disc
+ok 13 - early quiet latch arms after frame-retain on parked disc
+  ---
+  duration_ms: 6.661445
+  ...
+# Subtest: early quiet latch skips visit work while keys hold
+ok 14 - early quiet latch skips visit work while keys hold
+  ---
+  duration_ms: 1.143045
+  ...
+# Subtest: player move wakes early quiet latch
+ok 15 - player move wakes early quiet latch
+  ---
+  duration_ms: 2.010352
+  ...
+# Subtest: membership bump wakes early quiet latch
+ok 16 - membership bump wakes early quiet latch
+  ---
+  duration_ms: 1.083555
+  ...
+# Subtest: mining pin intent wakes early quiet latch
+ok 17 - mining pin intent wakes early quiet latch
+  ---
+  duration_ms: 1.005744
+  ...
+# Subtest: bench toggle disables early quiet latch
+ok 18 - bench toggle disables early quiet latch
+  ---
+  duration_ms: 3.990997
+  ...
+# Subtest: flying player never early-latches
+ok 19 - flying player never early-latches
+  ---
+  duration_ms: 5.132485
+  ...
+# Subtest: rock pose jump wakes early quiet latch
+ok 20 - rock pose jump wakes early quiet latch
+  ---
+  duration_ms: 0.947113
+  ...
+# Subtest: frame quiet retain keeps glass/runway and reports frame-retain mode
+ok 21 - frame quiet retain keeps glass/runway and reports frame-retain mode
+  ---
+  duration_ms: 6.628818
+  ...
+# Subtest: frame quiet retain wakes on rock pose change
+ok 22 - frame quiet retain wakes on rock pose change
+  ---
+  duration_ms: 1.217252
+  ...
+# Subtest: frame quiet retain wakes on player speed
+ok 23 - frame quiet retain wakes on player speed
+  ---
+  duration_ms: 1.769966
+  ...
+# Subtest: frame quiet retain wakes on mining pinFacts
+ok 24 - frame quiet retain wakes on mining pinFacts
+  ---
+  duration_ms: 0.918777
+  ...
+# Subtest: bench toggle off restores per-entity \#127 path
+ok 25 - bench toggle off restores per-entity \#127 path
+  ---
+  duration_ms: 0.682739
+  ...
+# Subtest: rock-visit quiet retain republishes glass/runway on parked ticks
+ok 26 - rock-visit quiet retain republishes glass/runway on parked ticks
+  ---
+  duration_ms: 7.25703
+  ...
+# Subtest: rock-visit quiet retain wakes on rock pose change
+ok 27 - rock-visit quiet retain wakes on rock pose change
+  ---
+  duration_ms: 1.981789
+  ...
+# Subtest: rock-visit quiet retain wakes on player speed
+ok 28 - rock-visit quiet retain wakes on player speed
+  ---
+  duration_ms: 2.104667
+  ...
+# Subtest: rock-visit quiet retain wakes on mining pin fact
+ok 29 - rock-visit quiet retain wakes on mining pin fact
+  ---
+  duration_ms: 1.184719
+  ...
+# Subtest: quiet latch engages when no CM/PDS interest
+ok 30 - quiet latch engages when no CM/PDS interest
+  ---
+  duration_ms: 3.133094
+  ...
+# Subtest: deploy edge wakes quiet latch
+ok 31 - deploy edge wakes quiet latch
+  ---
+  duration_ms: 0.571162
+  ...
+# Subtest: membership + fitted CM wakes quiet latch
+ok 32 - membership + fitted CM wakes quiet latch
+  ---
+  duration_ms: 3.936099
+  ...
+# Subtest: bench toggle restores always-walk
+ok 33 - bench toggle restores always-walk
+  ---
+  duration_ms: 0.458073
+  ...
+# Subtest: player with CM fitted never quiet-latches
+ok 34 - player with CM fitted never quiet-latches
+  ---
+  duration_ms: 0.237466
+  ...
+# Subtest: quiet latch engages when far table empty
+ok 35 - quiet latch engages when far table empty
+  ---
+  duration_ms: 3.871798
+  ...
+# Subtest: farActors.version bump wakes empty quiet latch
+ok 36 - farActors.version bump wakes empty quiet latch
+  ---
+  duration_ms: 0.550558
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 37 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.463464
+  ...
+# Subtest: far rows present refuse empty latch and still query
+ok 38 - far rows present refuse empty latch and still query
+  ---
+  duration_ms: 2.009011
+  ...
+# Subtest: bench toggle off restores always-walk (no latch)
+ok 39 - bench toggle off restores always-walk (no latch)
+  ---
+  duration_ms: 0.423891
+  ...
+# Subtest: queryFarActors empty early-return matches empty grid result
+ok 40 - queryFarActors empty early-return matches empty grid result
+  ---
+  duration_ms: 0.368228
+  ...
+# Subtest: far quiet latch engages beyond approach band
+ok 41 - far quiet latch engages beyond approach band
+  ---
+  duration_ms: 6.19613
+  ...
+# Subtest: near station prevents latch
+ok 42 - near station prevents latch
+  ---
+  duration_ms: 1.371265
+  ...
+# Subtest: dirty-wake on player move beyond wake disc
+ok 43 - dirty-wake on player move beyond wake disc
+  ---
+  duration_ms: 2.671231
+  ...
+# Subtest: dirty-wake on membership bump
+ok 44 - dirty-wake on membership bump
+  ---
+  duration_ms: 1.192101
+  ...
+# Subtest: bench toggle off forces full walk
+ok 45 - bench toggle off forces full walk
+  ---
+  duration_ms: 0.705548
+  ...
+# Subtest: capture/approach inside band never latches
+ok 46 - capture/approach inside band never latches
+  ---
+  duration_ms: 0.530789
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 47 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 8.404169
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 48 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 1.018452
+  ...
+# Subtest: bench toggle off refuses latch
+ok 49 - bench toggle off refuses latch
+  ---
+  duration_ms: 0.755541
+  ...
+# Subtest: far rows present never skip restore path
+ok 50 - far rows present never skip restore path
+  ---
+  duration_ms: 2.361983
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 51 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 0.936509
+  ...
+# Subtest: rescan clears latch after window
+ok 52 - rescan clears latch after window
+  ---
+  duration_ms: 0.750856
+  ...
+# Subtest: quiet latch engages on idle flight with no field interest
+ok 53 - quiet latch engages on idle flight with no field interest
+  ---
+  duration_ms: 5.339565
+  ...
+# Subtest: membership bump wakes idle quiet latch
+ok 54 - membership bump wakes idle quiet latch
+  ---
+  duration_ms: 6.263168
+  ...
+# Subtest: player cone deploy leaves idle and clears latch
+ok 55 - player cone deploy leaves idle and clears latch
+  ---
+  duration_ms: 1.166854
+  ...
+# Subtest: bench toggle restores always-walk idle path
+ok 56 - bench toggle restores always-walk idle path
+  ---
+  duration_ms: 2.464796
+  ...
+# Subtest: latched idle skips discover until rescan window
+ok 57 - latched idle skips discover until rescan window
+  ---
+  duration_ms: 0.669882
+  ...
+# Subtest: tumble end opens a stabilization window instead of snapping to tactics
+ok 58 - tumble end opens a stabilization window instead of snapping to tactics
+  ---
+  duration_ms: 7.219975
+  ...
+# Subtest: stabilization damps spin, disrupts thrust, and holds fire
+ok 59 - stabilization damps spin, disrupts thrust, and holds fire
+  ---
+  duration_ms: 1.270613
+  ...
+# Subtest: the window closes recognizably and tactics resume at full authority
+ok 60 - the window closes recognizably and tactics resume at full authority
+  ---
+  duration_ms: 1.010969
+  ...
+# Subtest: the player never stabilizes: no window, no events
+ok 61 - the player never stabilizes: no window, no events
+  ---
+  duration_ms: 0.564352
+  ...
+# Subtest: the sensor frame carries recovery like any other helm fact
+ok 62 - the sensor frame carries recovery like any other helm fact
+  ---
+  duration_ms: 1.165246
+  ...
+# Subtest: quiet latch engages when no optic interest nearby
+ok 63 - quiet latch engages when no optic interest nearby
+  ---
+  duration_ms: 4.604163
+  ...
+# Subtest: field.version bump wakes optic quiet latch
+ok 64 - field.version bump wakes optic quiet latch
+  ---
+  duration_ms: 0.658501
+  ...
+# Subtest: membership bump wakes optic quiet latch
+ok 65 - membership bump wakes optic quiet latch
+  ---
+  duration_ms: 0.435118
+  ...
+# Subtest: player move beyond wake radius clears optic quiet latch path
+ok 66 - player move beyond wake radius clears optic quiet latch path
+  ---
+  duration_ms: 0.451073
+  ...
+# Subtest: nearby optic field rock prevents latch and promotes on approach
+ok 67 - nearby optic field rock prevents latch and promotes on approach
+  ---
+  duration_ms: 1.293083
+  ...
+# Subtest: bench toggle off restores always-walk
+ok 68 - bench toggle off restores always-walk
+  ---
+  duration_ms: 0.438977
+  ...
+# Subtest: all-identified quiet latch engages
+ok 69 - all-identified quiet latch engages
+  ---
+  duration_ms: 10.894766
+  ...
+# Subtest: unidentified POI prevents latch
+ok 70 - unidentified POI prevents latch
+  ---
+  duration_ms: 3.281305
+  ...
+# Subtest: dirty-wake on pois.length
+ok 71 - dirty-wake on pois.length
+  ---
+  duration_ms: 1.494417
+  ...
+# Subtest: dirty-wake on sector change
+ok 72 - dirty-wake on sector change
+  ---
+  duration_ms: 1.206062
+  ...
+# Subtest: proximity identify still works when unlatched
+ok 73 - proximity identify still works when unlatched
+  ---
+  duration_ms: 1.396435
+  ...
+# Subtest: bench toggle off disables latch
+ok 74 - bench toggle off disables latch
+  ---
+  duration_ms: 1.012387
+  ...
+# Subtest: production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+ok 75 - production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+  ---
+  duration_ms: 2.11628
+  ...
+# Subtest: injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+ok 76 - injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+  ---
+  duration_ms: 0.30028
+  ...
+# Subtest: off-table passive tactical actors sleep while near and hostile actors stay awake
+ok 77 - off-table passive tactical actors sleep while near and hostile actors stay awake
+  ---
+  duration_ms: 35.494905
+  ...
+# Subtest: skipped decision ticks revoke cached fire immediately when the live target dies
+ok 78 - skipped decision ticks revoke cached fire immediately when the live target dies
+  ---
+  duration_ms: 12.470689
+  ...
+# Subtest: one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+ok 79 - one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+  ---
+  duration_ms: 6.401291
+  ...
+# Subtest: bench toggle defaults ON
+ok 80 - bench toggle defaults ON
+  ---
+  duration_ms: 1.268005
+  ...
+# Subtest: player-only quiet flight latches tacticalAI
+ok 81 - player-only quiet flight latches tacticalAI
+  ---
+  duration_ms: 6.288551
+  ...
+# Subtest: dormant NPCs latch; due thinker wakes
+ok 82 - dormant NPCs latch; due thinker wakes
+  ---
+  duration_ms: 5.667979
+  ...
+# Subtest: membership spawn wakes quiet latch
+ok 83 - membership spawn wakes quiet latch
+  ---
+  duration_ms: 1.824806
+  ...
+# Subtest: bench toggle OFF refuses latch
+ok 84 - bench toggle OFF refuses latch
+  ---
+  duration_ms: 1.374103
+  ...
+# Subtest: quiet latch arms after a quiet walk and skips subsequent ticks
+ok 85 - quiet latch arms after a quiet walk and skips subsequent ticks
+  ---
+  duration_ms: 4.746435
+  ...
+# Subtest: bench toggle OFF forces every-tick walk
+ok 86 - bench toggle OFF forces every-tick walk
+  ---
+  duration_ms: 0.896878
+  ...
+# Subtest: impulse provenance generation wakes the quiet latch
+ok 87 - impulse provenance generation wakes the quiet latch
+  ---
+  duration_ms: 1.298439
+  ...
+# Subtest: hitstun begin clears quiet latch (dirty wake)
+ok 88 - hitstun begin clears quiet latch (dirty wake)
+  ---
+  duration_ms: 1.183566
+  ...
+# Subtest: membership spawn wakes quiet latch
+ok 89 - membership spawn wakes quiet latch
+  ---
+  duration_ms: 1.033677
+  ...
+# Subtest: rescan wakes after RESCAN ticks even when still quiet
+ok 90 - rescan wakes after RESCAN ticks even when still quiet
+  ---
+  duration_ms: 0.644469
+  ...
+1..90
+# tests 90
+# suites 0
+# pass 90
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 717.338904

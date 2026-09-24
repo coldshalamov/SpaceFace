@@ -1,5 +1,4 @@
-# IMPORT — IMPORT_DIGEST
+# IMPORT — IMPORT_DIGEST 20260924cw
 
-Read `report.md` for the current tip digest (**20260924cv**, post-#139).
-No code patch. Owner imports numbered packages under `vm-drop/<job>/` in
-order; this folder is the running scoreboard + hold list.
+Digest-only update after #140 tumble-states-quiet-latch. No code patch here.
+Apply `design/program/vm-drop/tumble-states-quiet-latch/patches/` for the ship.
