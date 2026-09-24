@@ -2666,8 +2666,8 @@ export function createHud(ctx, alerts) {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 980px;
-    height: 600px;
+    width: min(980px, calc(100vw - 32px));
+    height: min(600px, calc(100vh - 32px));
     background: color-mix(in srgb, var(--panel) 96%, transparent);
     border: 1px solid var(--visor-cyan);
     border-radius: 12px;
@@ -2724,19 +2724,9 @@ export function createHud(ctx, alerts) {
     font-weight: bold;
     color: var(--visor-cyan);
   }
-  .sf-cargo-panel__close {
-    background: none;
-    border: 1px solid var(--ink-mute);
-    border-radius: 4px;
-    color: var(--ink-dim);
-    font-size: 12px;
-    padding: 4px 12px;
-    cursor: pointer;
-  }
-  .sf-cargo-panel__close:hover {
-    border-color: var(--visor-cyan);
-    color: var(--visor-cyan);
-  }
+  .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
+  .sf-cargo-panel__close:hover,
+  .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
   .sf-cargo-body {
     display: flex;
     flex: 1;
@@ -2745,36 +2735,26 @@ export function createHud(ctx, alerts) {
   }
   .sf-cargo-left-rail {
     width: 160px;
+    flex: 0 0 160px;
     border-right: 1px solid var(--panel-edge);
     background: color-mix(in srgb, var(--panel-2) 20%, transparent);
     display: flex;
     flex-direction: column;
     padding: 15px 10px;
     gap: 10px;
+    overflow-y: auto;
   }
-  .sf-cargo-rail-btn {
-    background: none;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    color: var(--ink-dim);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 10px 15px;
-    text-align: left;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    transition: all 0.2s ease;
-  }
-  .sf-cargo-rail-btn:hover {
-    background: color-mix(in srgb, var(--visor-cyan) 8%, transparent);
-    color: var(--visor-cyan);
-  }
-  .sf-cargo-rail-btn.active {
-    background: color-mix(in srgb, var(--visor-cyan) 12%, transparent);
-    border-color: var(--visor-cyan-dim);
-    color: var(--visor-cyan);
-    font-weight: bold;
-  }
+  .sf-cargo-left-rail { --k-signal: var(--dp-lamp); }
+  .sf-cargo-rail-btn { width: 100%; text-align: left; white-space: normal; }
+  .sf-cargo-rail-btn:hover,
+  .sf-cargo-rail-btn:active { translate: none; box-shadow: none; filter: none; }
+  .sf-cargo-panel .k-word:hover,
+  .sf-cargo-panel .k-word:focus-visible,
+  .sf-cargo-panel .k-word:active { color: var(--k-text-live); }
+  .sf-cargo-panel .k-word--primary:is(:hover, :focus-visible, :active),
+  .sf-cargo-panel .k-word[aria-current="true"] { color: var(--k-signal, var(--dp-lamp)); }
+  .sf-cargo-panel .k-word--danger:is(:hover, :focus-visible, :active) { color: var(--k-red); }
+  .sf-cargo-panel .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
   .sf-cargo-centerpiece {
     flex: 1;
     position: relative;
@@ -3114,6 +3094,8 @@ export function createHud(ctx, alerts) {
   // ---- cargo panel overlay ----
   const cargoPanel = document.createElement('div');
   cargoPanel.className = 'sf-cargo-panel';
+  cargoPanel.setAttribute('role', 'dialog');
+  cargoPanel.setAttribute('aria-label', 'Cargo hold');
   cargoPanel.innerHTML = `
     <div class="sf-cargo-panel__head">
       <div class="sf-cargo-title-group">
@@ -3128,15 +3110,15 @@ export function createHud(ctx, alerts) {
           <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
         </div>
       </div>
-      <button class="sf-cargo-panel__close" type="button">ESC</button>
+      <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
     </div>
     <div class="sf-cargo-body">
-      <div class="sf-cargo-left-rail">
-        <button class="sf-cargo-rail-btn active" data-tab="cargo" type="button">CARGO</button>
-        <button class="sf-cargo-rail-btn" data-tab="materials" type="button">MATERIALS</button>
-        <button class="sf-cargo-rail-btn" data-tab="salvage" type="button">SALVAGE</button>
-        <button class="sf-cargo-rail-btn" data-tab="mission" type="button">MISSION</button>
-        <button class="sf-cargo-rail-btn" data-tab="ledger" type="button">LEDGER</button>
+      <div class="sf-cargo-left-rail" role="tablist" aria-label="Cargo hold">
+        <button class="k-word k-word--emph k-word--primary sf-cargo-rail-btn active" data-tab="cargo" type="button" role="tab" aria-selected="true" aria-current="true">Cargo</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="materials" type="button" role="tab" aria-selected="false">Materials</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="salvage" type="button" role="tab" aria-selected="false">Salvage</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="mission" type="button" role="tab" aria-selected="false">Mission</button>
+        <button class="k-word k-word--emph sf-cargo-rail-btn" data-tab="ledger" type="button" role="tab" aria-selected="false">Ledger</button>
       </div>
       <div class="sf-cargo-centerpiece">
         <div class="sf-cargo-hex-bg"></div>
@@ -3380,17 +3362,19 @@ export function createHud(ctx, alerts) {
     if (isLocked) {
       jetBtn.disabled = true;
       jetBtn.onclick = null;
+      jetBtn.textContent = 'Jettison';
       if (persistent) {
         jetBtn.title = 'Personal effects cannot be jettisoned';
-        jetBtn.textContent = 'LOCK: PERSISTENT';
+        jetBtn.setAttribute('aria-label', 'Jettison unavailable. Personal effects cannot be jettisoned');
       } else {
         jetBtn.title = 'Contract cargo cannot be jettisoned';
-        jetBtn.textContent = 'LOCK: CONTRACT';
+        jetBtn.setAttribute('aria-label', 'Jettison unavailable. Contract cargo cannot be jettisoned');
       }
     } else {
       jetBtn.disabled = false;
       jetBtn.title = `Jettison all ${qty} units of ${name}`;
-      jetBtn.textContent = 'JETTISON';
+      jetBtn.textContent = 'Jettison';
+      jetBtn.setAttribute('aria-label', `Jettison all ${qty} units of ${name}`);
       jetBtn.onclick = async () => {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         const ok = await confirm({
@@ -3639,10 +3623,19 @@ export function createHud(ctx, alerts) {
   }
 
   const railBtns = cargoPanel.querySelectorAll('.sf-cargo-rail-btn');
+  function markCargoRail(btn) {
+    railBtns.forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('active', on);
+      b.classList.toggle('k-word--primary', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    });
+  }
   railBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      railBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      markCargoRail(btn);
       activeTab = btn.dataset.tab;
       selectedCommodityId = null;
       refreshCargoPanel();
@@ -3682,6 +3675,7 @@ export function createHud(ctx, alerts) {
 
     if (cargoPanelOpen) {
       refreshCargoPanel();
+      try { cargoCloseBtn.focus({ preventScroll: true }); } catch { /* pointer still closes the hold */ }
       gridFx.reveal({
         resolveTo: (c, r, cols, rows) => {
           return 0.1 + 0.4 * Math.sin(c * 0.5) * Math.cos(r * 0.5);

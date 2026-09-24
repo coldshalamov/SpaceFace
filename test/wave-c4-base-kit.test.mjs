@@ -14,4 +14,6 @@ test('claimed-body verbs are kit words, not filled accent buttons', () => {
   assert.match(source, /--k-signal: var\(--dp-lamp\)/);
   assert.doesNotMatch(source, /linear-gradient\(180deg/);
   assert.doesNotMatch(source, /#sf-base button\.sf-btn/);
+  assert.doesNotMatch(source, /padding:6px/);
+  assert.match(source, /didCommit === 'denied'/);
 });

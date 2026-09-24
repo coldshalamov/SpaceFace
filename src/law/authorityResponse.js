@@ -106,18 +106,28 @@ function pullIntoFrame(point, aggressor, frameHalfWu, station) {
   const clear = Math.max(Number(station.launchRadius) || 0, 80);
   const clearOfStation = (p) => Math.hypot(p.x - origin.x, p.z - origin.z) >= clear;
   if (clearOfStation(placed)) return placed;
-  const base = Math.atan2(placed.z - aggressor.z, placed.x - aggressor.x);
-  const radius = Math.max(keepOff, Math.hypot(placed.x - aggressor.x, placed.z - aggressor.z));
-  for (let step = 1; step <= 16; step++) {
-    const ang = base + step * (Math.PI / 16);
-    const candidate = {
-      x: aggressor.x + Math.cos(ang) * radius,
-      z: aggressor.z + Math.sin(ang) * radius,
-    };
-    const fromAggressor = Math.hypot(candidate.x - aggressor.x, candidate.z - aggressor.z);
-    if (clearOfStation(candidate) && fromAggressor >= keepOff && fromAggressor <= half) return candidate;
+  // The close ring can sit entirely inside a station when the fight is beside
+  // the port. Walk outward, both ways, and stop at the first point that is
+  // still on the glass and outside the body.
+  const away = Math.atan2(aggressor.z - origin.z, aggressor.x - origin.x);
+  const inner = Math.max(keepOff, Math.hypot(placed.x - aggressor.x, placed.z - aggressor.z));
+  const outer = Math.max(inner, half - 1);
+  for (let ring = 0; ring <= 8; ring++) {
+    const radius = inner + (outer - inner) * (ring / 8);
+    for (let step = 0; step < 32; step++) {
+      const turn = Math.ceil(step / 2) * (Math.PI / 16);
+      const ang = away + (step % 2 === 0 ? turn : -turn);
+      const candidate = {
+        x: aggressor.x + Math.cos(ang) * radius,
+        z: aggressor.z + Math.sin(ang) * radius,
+      };
+      if (clearOfStation(candidate)) return candidate;
+    }
   }
-  return placed;
+  return {
+    x: aggressor.x + Math.cos(away) * outer,
+    z: aggressor.z + Math.sin(away) * outer,
+  };
 }
 
 function pointAt(origin, angle, radius) {

@@ -43,6 +43,9 @@ test('a short window can scroll to the foot, and a narrow window stacks it', () 
 test('the live asteroid works report is a kit key, not the old browser button', () => {
   assert.match(liveSource, /closeBtn\.className = 'fh-key fh-key--primary'/);
   assert.match(liveSource, /closeBtn\.textContent = 'Close extraction report'/);
+  assert.match(liveSource, /color:#1a1206/);
+  assert.match(liveSource, /outline:2px solid var\(--dp-lamp\) !important/);
+  assert.match(liveSource, /e\.stopPropagation\(\)/);
   assert.doesNotMatch(liveSource, /sf-btn/);
 });
 

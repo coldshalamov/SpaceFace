@@ -44,6 +44,26 @@ test('a far reserve is pulled inside the composed frame and stays off the hull',
   }
 });
 
+test('a kill beside the station does not drop the patrol inside the station', () => {
+  const station = { pos: { x: 0, z: 0 }, launchRadius: 120 };
+  const aggressor = { x: 44, z: 0 };
+  const arrived = reserveArrivalPoint({
+    anchor: aggressor,
+    aggressorPos: aggressor,
+    jurisdictionRadius: 1400,
+    seed: 4242,
+    incidentId: 'law:beside-station',
+    station,
+    frameHalfWu: WITNESS_FRAME_HALF_WU,
+  });
+  const fromAggressor = dist(arrived, aggressor);
+  const fromStation = dist(arrived, station.pos);
+  assert.ok(fromAggressor >= 40 && fromAggressor < WITNESS_FRAME_HALF_WU,
+    `beside-station range ${fromAggressor}`);
+  assert.ok(fromStation >= station.launchRadius,
+    `beside-station patrol is inside the station at ${fromStation}`);
+});
+
 test('without a frame request the far ring is unchanged', () => {
   const arrived = reserveArrivalPoint({
     anchor: { x: 0, z: 0 },

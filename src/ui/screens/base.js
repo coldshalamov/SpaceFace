@@ -89,7 +89,8 @@ function injectStyle() {
 #sf-base { --k-signal: var(--dp-lamp); }
 #sf-base .k-word { width:auto; }
 #sf-base .k-word:focus-visible { outline:2px solid var(--dp-lamp) !important; outline-offset:3px; }
-#sf-base .k-word:hover, #sf-base .k-word:active { translate:none; box-shadow:none; filter:none; }
+#sf-base .k-word:hover, #sf-base .k-word:focus-visible, #sf-base .k-word:active { color:var(--k-text-live); translate:none; box-shadow:none; filter:none; }
+#sf-base .k-word--primary:is(:hover, :focus-visible, :active) { color:var(--k-signal, var(--dp-lamp)); }
 #sf-base .k-word:disabled { opacity:.45; }
 #sf-base .base-ico { display:inline-flex; align-items:center; margin-right:7px; vertical-align:-2px; }
 #sf-base .base-ico svg { display:block; }
@@ -156,7 +157,8 @@ export function describeBaseInvestmentConfirm(item, player = {}, body = {}, opti
 /** Keep the claims owner entirely behind the player's confirmation decision. */
 export async function applyConfirmedBaseInvestment(confirmOptions, apply, requestConfirm = confirm) {
   if (confirmOptions && !(await requestConfirm(confirmOptions))) return false;
-  return typeof apply === 'function' && apply() === true;
+  const committed = typeof apply === 'function' && apply() === true;
+  return committed ? true : 'denied';
 }
 
 export function describeBaseBuildAction(mod, player = {}, body = {}) {
@@ -516,8 +518,8 @@ export const baseScreen = {
           describeBaseInvestmentConfirm(spec, player, body, { kind: 'specialization' }),
           () => claims.specialize(body.id, spec.id),
         );
-        if (didCommit) this._render();
-        else if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        if (didCommit === true) this._render();
+        else if (didCommit === 'denied' && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       });
       card.append(name, verb, effect, risk, btn);
       specGrid.appendChild(card);
@@ -649,7 +651,6 @@ export const baseScreen = {
       if (!built) {
         const btn = document.createElement('button');
         btn.className = 'k-word k-word--emph k-word--primary';
-        btn.style.cssText = 'width:100%;margin-top:8px;padding:6px;';
         btn.textContent = buildAction.label;
         btn.disabled = buildAction.disabled;
         btn.title = buildAction.title;
@@ -663,8 +664,8 @@ export const baseScreen = {
             describeBaseInvestmentConfirm(mod, player, body),
             () => claims.buildModule(body.id, mod.id),
           );
-          if (didCommit) this._render();
-          else if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          if (didCommit === true) this._render();
+          else if (didCommit === 'denied' && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
         });
         card.appendChild(btn);
       }
