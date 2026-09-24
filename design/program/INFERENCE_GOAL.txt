@@ -16,7 +16,17 @@ If the unit is flight/combat guts (the ship ignores you, shove does nothing,
 camera loses the fight), switch to design/program/FUN_CONVERGENCE_GOAL.txt
 and come back. Do not hide a handling bug inside new content.
 
-If the owner said only INFERENCE (no number, no MISSIONS/NPCS/WORLD/…):
+If design/program/INFERENCE_IDEAS.md has an OPEN catalog line, that line is
+the job (law: INFERENCE_LANES.md §0.1). Do the line as written. Do not invent
+a different feature, a new system, or a build_map.md §23 campaign. N is how
+many catalog lines you finish. The next line is a different group when one
+is free. If the done check is already true, mark the line and take the next.
+
+Look-then-rotate (below) is only when the catalog has no OPEN line, or they
+named a domain instead of the catalog.
+
+If the owner said only INFERENCE (no number, no MISSIONS/NPCS/WORLD/…) and
+the catalog is empty:
   N = 5. Unscoped. You have to FIND what is weak or ill-built.
   Look at the ordinary route, the live owners, and the code a stranger hits.
   Name two or three real weaknesses in player words. Pick the one that would
@@ -27,12 +37,18 @@ If the owner said only INFERENCE (no number, no MISSIONS/NPCS/WORLD/…):
   If the hint disagrees with what you saw, ignore it. If you cannot explain
   the unit without a detect score, you have not inferred yet.
 
-If they said INFERENCE N with no scope: same loop, that N.
+If they said INFERENCE N with no scope: same rule, that N. Catalog lines
+first. Look-then-rotate only when no OPEN line remains.
 
 If they named a scope (INFERENCE 3 MISSIONS): stay in that domain, rotate
 kinds inside it, still by looking. N is the number they wrote.
 
-The loop for every unit. Do not skip CONSIDER. Do not stop after a thin row.
+The loop for every unit. Do not stop after a thin row.
+
+On a catalog line, CONSIDER means: read the named owner, confirm the done
+check is still false, then do that change. Do not invent a substitute.
+
+On look-then-rotate, do not skip CONSIDER:
 
 1. CONSIDER. Read the live owner. Name the deficit in player words. Invent
    two or three real alternatives (different verbs or places, not paraphrases).
@@ -72,6 +88,6 @@ node scripts/inference-ledger.mjs, pick the weakest/stalest domain you can
 verify by looking, INSPECT the live owner, GRADE it, IMPROVE one thing
 completely (build, polish, simplify, optimize, or delete), RECORD the row
 in place plus inference-record, ROTATE. Stale notes are rumors — re-inspect
-before building on them. If they gave an idea (INFERENCE 3 — <idea> /
-INFERENCE IDEA: <idea> / an INFERENCE_IDEAS.md line): EXPAND it first,
-then run the loop; an idea never excuses a thin row.
+before building on them. A catalog line is executed, not expanded. An
+owner one-liner (INFERENCE 3 — <idea> / INFERENCE IDEA: <idea>) is EXPAND
+first, then the loop. An idea never excuses a thin row.

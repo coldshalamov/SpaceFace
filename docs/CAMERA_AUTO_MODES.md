@@ -59,7 +59,7 @@ These never switch modes; they bias the ordinary camera. All are damped and slew
 | 12 | **Tether composition** | Any active tether | Bias ≤64 wu toward the anchored object, zoom ≤ +9 %; plus the zoom floor that stops speed-zoom collapsing on the work area (camera.js:1529) | LOW — this is now the sole owner of towing after the takeover fix | Keep |
 | 13 | **Speed zoom** | Smoothed speed vs governed combat speed | 0.88–1.35×; physics-earned exceptional speed up to 3.5× via the owner-bound velocity record; EMA-smoothed | The 3.5× exceptional pull-back is large — authored velocity contract, owner feel call | Keep; exceptional band on the feel watchlist |
 | 14 | **Boost zoom** | `flags.boosting` | Damped in/out, reduced-motion suppressed | LOW | Keep |
-| 15 | **Look-ahead + velocity lead + aim lead** | Velocity vector (0.5 s of velocity, ≤400 wu); velocity-language band lead; aim point (≤18 wu) | Damped; combat scales look-ahead to 0.6 | LOW | Keep |
+| 15 | **Look-ahead + velocity lead + aim lead** | Velocity vector (0.5 s of velocity, ≤400 wu); velocity-language band lead; aim point (≤18 wu) | Velocity-derived offset smoothed over 0.10 s to align fixed-tick velocity with the interpolated ship pose; focus damped; combat scales look-ahead to 0.6 | LOW | Keep |
 | 16 | **Safe-rect clamp** | Always | Keeps focus within ~half a frame of the player | none — this is the safety net for everything above | Keep |
 | 17 | **FR-5 ease-recenter** | Boost release, tether slingshot, physics-earned massline release | Eases accumulated bias back to center over ~0.4 s (×0.25 under reduced motion) | LOW | Keep |
 

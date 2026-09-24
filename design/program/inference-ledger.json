@@ -1,13 +1,22 @@
 {
   "schema": "spaceface.inferenceLedger.v1",
-  "updated": "2026-09-22",
+  "updated": "2026-09-23",
   "domains": {
     "WF-01": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "A",
+      "updated": "2026-09-23",
+      "inspections": [
+        {
+          "date": "2026-09-23",
+          "atCommit": "918a19f1d381d1a9038ffda44ad57ca9f976f2a5",
+          "paths": [
+            "src/systems/traffic.js"
+          ],
+          "finding": "rescue craft (trafficRole rescue) was empty station loop; now full response/recovery choreography (distress tracking, unattended pod recovery, station delivery receipt, violence flee), proven 3/3"
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "examine non-Ceres yard tender and salvage cutter interaction in dense mining sectors"
     },
     "WF-02": {
       "grade": "U",
@@ -31,18 +40,38 @@
       "next": ""
     },
     "WF-05": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "A",
+      "updated": "2026-09-23",
+      "inspections": [
+        {
+          "date": "2026-09-23",
+          "atCommit": "f2dd8ef9e8b57d63131c8a923060d6ed62bef58c",
+          "paths": [
+            "src/data/weapons.js",
+            "src/data/tech.js"
+          ],
+          "finding": "added wpn_concussion_cannon_s for light hardpoints: 520 impulse / 35 tumble trades damage for momentum on S slots, proven 6/6"
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "audit medium-slot tractor/repulsor utility heads"
     },
     "WF-06": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "A",
+      "updated": "2026-09-23",
+      "inspections": [
+        {
+          "date": "2026-09-23",
+          "atCommit": "2ba76a7c17f2fb1ddbd3631e2ed51f813ead076b",
+          "paths": [
+            "src/data/commodityVolatileClasses.js",
+            "src/systems/lootShards.js"
+          ],
+          "finding": "expanded volatile cargo classes to 4 families (explosive, corrosive, superdense, cryogenic) and 12 commodities with cryogenic flash physics applying CRYO_LOCK_STATUS_ID, proven 6/6"
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "audit dynamic trade pressure on regional supply routes when freighters drop volatile pods"
     },
     "WF-07": {
       "grade": "U",
@@ -60,7 +89,7 @@
     },
     "WF-09": {
       "grade": "B",
-      "updated": "2026-09-17",
+      "updated": "2026-09-23",
       "inspections": [
         {
           "date": "2026-09-17",
@@ -71,6 +100,16 @@
             "src/data/encounters/060-named-hunter.js"
           ],
           "finding": "named kills left only a flag+toast; now hulk marker + durable death record + rumor, proven 4/4. Rep/bounty already flowed via factions/combat."
+        },
+        {
+          "date": "2026-09-23",
+          "atCommit": "9b0d2dfd8376c1b314157c640bc8197ccff7273c",
+          "paths": [
+            "src/data/factionContactGrammar.js",
+            "src/data/barks.js",
+            "src/systems/combat.js"
+          ],
+          "finding": "Choir attack, warn, and tithe lines already existed. No contact grammar meant a zealot spawn carried no Pattern word and no opening situation. The grammar now stamps contactWord PATTERN, demand tithe, and the attack line. Focused proof: spawn spec plus live profile on seed 4242. Revenge-thread gap still open."
         }
       ],
       "gaps": [
@@ -80,11 +119,11 @@
           "status": "open"
         }
       ],
-      "next": "audit other narrative threads (depth-h series, ledger synthesis coverage)"
+      "next": "Audit other narrative threads (depth-h series, ledger synthesis coverage)."
     },
     "WF-10": {
-      "grade": "B",
-      "updated": "2026-09-17",
+      "grade": "A",
+      "updated": "2026-09-22",
       "inspections": [
         {
           "date": "2026-09-17",
@@ -107,16 +146,20 @@
             "src/data/encounters.js"
           ],
           "finding": "re-verified after U2 touched shared director files: chain still 8/8, hunks disjoint (whisper vs namedHunter). No change needed."
-        }
-      ],
-      "gaps": [
+        },
         {
-          "id": "discovery-audit",
-          "note": "only the whisper chain is verified complete; audit other discovery chains for thin links",
-          "status": "open"
+          "date": "2026-09-22",
+          "atCommit": "0ff1c9ba710d425aa521e49c10a100df7888fe22",
+          "paths": [
+            "src/world/explorationJournal.js",
+            "src/data/sectors.js",
+            "src/data/frontierRegions/north.js"
+          ],
+          "finding": "Authoritative unique wrecks (D1-D12) now generate rich Discovery Plates in the Codex/exploration journal upon scan-fix or salvage resolution, and count toward galaxy exploration trophies. Key corridor and frontier POIs (Bonded Cold Locker, Outer Yard Frame, Haumea Ice Fissure) carry authored discovery plates instead of generic procedural fallback."
         }
       ],
-      "next": "audit remaining discovery coverage (quiessence census, scanner/POI verbs)"
+      "gaps": [],
+      "next": "Inspect deep anomalies across south and east frontier regions for additional specialized discovery plates."
     },
     "WF-11": {
       "grade": "U",
@@ -133,8 +176,8 @@
       "next": ""
     },
     "WF-13": {
-      "grade": "C",
-      "updated": "2026-09-22",
+      "grade": "B",
+      "updated": "2026-09-23",
       "inspections": [
         {
           "date": "2026-09-22",
@@ -146,14 +189,37 @@
             "src/systems/onboarding.js"
           ],
           "finding": "First-hour tutorial lines were silent text. They now ride one instructor radio (key, register, squelch) in emit order, including lines the screen hides. Cold open and proof milestones are audible. The rest of the soundscape was not listened to."
+        },
+        {
+          "date": "2026-09-22",
+          "atCommit": "f3bf397b273cd7217618de624231bc7cdc350c8a",
+          "paths": [
+            "src/audio/audioSystem.js",
+            "src/data/audioRecipes.js",
+            "src/audio/sampleLibrary.js",
+            "src/systems/traffic.js",
+            "src/render/ceresJobActionVfx.js"
+          ],
+          "finding": "Ceres job receipts were visibly punctuated but silent. Five mining/cargo jobs now speak with four positional, sample-backed work cues at actor or target, deterministic three-rate variation, ambient mixing, and distance culling. Player mining and impact already have mature live families; patrol/escort remain quiet by design. Focused proof: 24/24."
+        },
+        {
+          "date": "2026-09-23",
+          "atCommit": "296dab39ea20939c455f64952a26e4866fec1182",
+          "paths": [
+            "src/ui/fuelReserveWarning.js",
+            "src/ui/hud.js",
+            "src/ui/alerts.js",
+            "src/audio/audioSystem.js"
+          ],
+          "finding": "Hull and shields keep a lamp while failing. Fuel only spoke on fuel:empty. The flight HUD now raises FUEL LOW under a quarter, says it once through the existing alert tone, and leaves a loaded-low tank silent until the next downward crossing. Focused proof: the crossing table."
         }
       ],
       "gaps": [],
-      "next": "Listen to a different family (mining or impact), not another tutorial voice."
+      "next": "Listen to a place layer that is not an alarm: sector bed or station machinery."
     },
     "WF-14": {
       "grade": "B",
-      "updated": "2026-09-17",
+      "updated": "2026-09-23",
       "inspections": [
         {
           "date": "2026-09-17",
@@ -162,10 +228,22 @@
             "src/ui/floatingText.js"
           ],
           "finding": "comms:log was emit-only (0 consumers); now one callsign toast per line, salvage skipped (self-toasts). Completes U1/U2 line readability. 5/5."
+        },
+        {
+          "date": "2026-09-23",
+          "atCommit": "918a19f1d381d1a9038ffda44ad57ca9f976f2a5",
+          "paths": [
+            "src/data/mining.js",
+            "src/systems/scanner.js",
+            "src/ui/galaxyMap.js",
+            "src/ui/screens/localmap.js",
+            "src/careers/origins/prospectorOriginAppraisal.js"
+          ],
+          "finding": "Lock names already said Silicate or Exotic. The pulse stamped common rock Ore and platinoid Fe, and the appraisal called silicate iron. One glyph table now feeds the pulse, both charts, and the appraisal. Focused proof 3/3 on seed 4242."
         }
       ],
       "gaps": [],
-      "next": "audit remaining information gaps (standing screen exists; tier toasts exist; what else evaporates?)"
+      "next": "The class line still says Mineable Asteroid; that is the verb. Next information hole is a different surface."
     },
     "WF-15": {
       "grade": "U",

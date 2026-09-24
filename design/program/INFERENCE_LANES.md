@@ -68,6 +68,33 @@ Glance at detect at most once per batch if a count would change your mind.
 If the hint disagrees with what you saw, **ignore the hint**. If you cannot
 explain the unit without quoting a detect score, you have not inferred yet.
 
+## 0.1 Directed catalog — the grunt pass
+
+Owner, 2026-09-22. Two kinds of agent work this repo.
+
+- A strong agent takes an open campaign in [`../../build_map.md`](../../build_map.md) §23.
+  The campaign is a feeling. Invent the system. If it needs an outside resource, use the named
+  list in [`../../docs/OPEN_SOURCE_INTAKE.md`](../../docs/OPEN_SOURCE_INTAKE.md) §0. A better
+  foundation than the paragraph is the point.
+- This pass, when [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) has an OPEN catalog line,
+  **does the line**. The line is already considered. It names the player-visible change,
+  the owner, the done check, and what not to invent.
+
+When the catalog has an OPEN line, that line outranks look-then-rotate (§0) and outranks a
+§23 campaign. `N` is how many catalog lines you finish. Take the first OPEN line whose
+paths are not in a live NOW row and not named by another CLAIMED line. The next line is a
+different group (picture, verb, world, instrument) when one is free.
+
+Do not EXPAND a catalog line into a new fantasy, a new system, or a second queue. If the
+live owner already meets the done check, mark the line SHIPPED with "already true" and
+take the next. If the line fights the vision, CUT it with one causal sentence and record
+`--verdict cut`.
+
+Look-then-rotate is what you do when the catalog has no OPEN line, or the owner named a
+domain (`INFERENCE 3 MISSIONS`) instead of the catalog. A named domain still rotates kinds
+inside that domain. It does not shop the catalog for a different domain unless the owner
+said to.
+
 `INFERENCE 8` is the same loop with a longer batch. `INFERENCE 3 MISSIONS`
 stays in missions and rotates kinds inside that domain — still by looking,
 not by adding three rows.
@@ -78,8 +105,9 @@ not by adding three rows.
 production units**, not an effort multiplier, candidate-pool size, review
 quota, document count, or acceptance campaign.
 
-Bare `INFERENCE` (no number, no scope) means **N = 5** and the look-then-rotate
-loop in §0. `INFERENCE 8` is the same loop with a longer batch.
+Bare `INFERENCE` (no number, no scope) means **N = 5**. If the directed catalog
+has an OPEN line, those lines are the N (§0.1). Otherwise it is the
+look-then-rotate loop in §0. `INFERENCE 8` is the same rule with a longer batch.
 A named scope always needs a number: `INFERENCE 3 MISSIONS`, not
 `INFERENCE MISSIONS`.
 

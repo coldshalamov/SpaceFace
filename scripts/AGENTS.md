@@ -32,4 +32,5 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
 - Runtime liveness: `probe-runtime-witness.mjs` → `.devshots/runtime-witness/`.
 - Browser/Electron: launcher/probe scripts plus the shared game server and validation broker.
+- Frontend look/iteration: `node scripts/ui-bench.mjs` ([`../docs/UI_VISUAL_ITERATION.md`](../docs/UI_VISUAL_ITERATION.md)). A screen the bench mounts does not need a game boot.
 - Assets / UI: the focused reachability, a11y, contrast, labels, and compositor checks.

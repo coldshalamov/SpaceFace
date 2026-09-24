@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "ashfall-radiation-aftermath",
-      "date": "2026-08-12",
-      "wf": "WF-16",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Defeating Iron Maw now physically weakens Ashfall's persistent radiation burn and the calmer hazard rematerializes from the durable boss record.",
-      "fingerprint": "verb=calm-hazard,subject=ashfall-radiation,sector=sector_ashfall_reach,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "9be6fb50",
-      "verification": "focused_green"
-    },
-    {
       "id": "authored-discovery-audio",
       "date": "2026-08-12",
       "wf": "WF-13",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "9b0d2dfd8376c1b314157c640bc8197ccff7273c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-wf06-volatile-cargo-expansion",
+      "date": "2026-09-23",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "expanded volatile cargo to 4 classes and 12 commodities with cryogenic flash physics and cryo lock status application on impact",
+      "fingerprint": "verb=detonate,subject=volatile_cargo,sector=freight,layer=simulation,tempo=tactical,domain=economy",
+      "references": [],
+      "integration": "live",
+      "commit": "f1dcdffe9aaa42a0399ba119e1f3b21901336885",
       "verification": "focused_green"
     }
   ],
