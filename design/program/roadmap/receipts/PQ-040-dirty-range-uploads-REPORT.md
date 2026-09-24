@@ -711,6 +711,79 @@ next attempt needs one census-quiet window per runtime (~12 min each of
 post-consume execution); claims mint fresh quota on the next candidate
 digest, which this record's commit provides.
 
+## Native acceptance attempt — 2026-09-24 (second cell)
+
+Continuation on `.worktrees/pq040-native`, candidate advanced through
+`a1ff2003b`. Two acceptance runs and three diagnostic runs this cell;
+all three fast gates green on each candidate digest.
+
+**Harness defect found and repaired — scenario restore could never
+satisfy on a busy world.** Two acceptance runs (claims
+`30832-c26367d9f5ad625743b69499` @ 16:31Z and
+`30792-69b140c2951b46a5537d99f9` @ 17:29Z) completed the full public
+route and the baseline variant's sample, then burned the entire
+scenario-restore wait and died with `another performance scenario is
+already active` on the full-span variant's prepare. Three independent
+couplings were repaired in the driver:
+
+- `restorePerformanceScenario` removed injected entities with the
+  default `removeEntity`, which only marks `alive=false`; actual removal
+  waits for `coreSystem.lifetimeSweep` on the next fixed step. Switched
+  to the supported `{ immediate: true }` option (`2b228a85d`) — the same
+  `entity:destroyed` event and `recordDestroy` publication still fire.
+- The ready/restore waits' host-speed bounds (120 s ready / 30 s
+  restore) were hardcoded; `SF_SCENARIO_READY_TIMEOUT_MS` now overrides
+  them without touching the waited-for conditions (`8ee843e5d`).
+- **Root cause, found by instrumented starvation evidence:** an injected
+  entity killed mid-scenario has its id pushed to `state.freeIds`;
+  ambient combat/traffic spawning recycles that id into a new live
+  entity, so the restore wait's `!entities.has(id)` predicate can never
+  hold. Per-poll detail (`871456491`, logged via `3f45888bf`) showed the
+  same ids stuck with fresh presentation slots across polls —
+  `{"id":299,"inEntities":true,"inMeshes":true,"slot":98}` — new bodies
+  reusing retired ids, not stale ones. Restore now splices injected ids
+  out of `freeIds` inside the same evaluate so nothing can respawn onto
+  them (`a1ff2003b`).
+
+Verification: browser diagnostic runs then completed **both** scenario
+restores in ~20–30 s each and produced real measurement windows for
+both variants — the first windows this task has ever collected:
+
+```yaml
+rangedLogicalBytes: 552032
+fullSpanLogicalBytes: 797244
+logicalByteDriftFraction: 0.3076
+rangedRequestedUploadBytes: 562848
+fullSpanRequestedUploadBytes: 14785600
+ownerRequestedByteReductionFraction: 0.9450   # ≥ 25% PASS
+rangedDriverUploadBytes: 27268628             # total GL buffer upload traffic
+fullSpanDriverUploadBytes: 38433828           # (absolute fall ≈ 29%)
+rangedDriverBytesPerLogicalByte: 49.40
+fullSpanDriverBytesPerLogicalByte: 48.21
+driverUploadByteReductionFraction: -0.0247    # ≥ 25% FAIL
+```
+
+**Metric reading.** The owner-requested track shows the shipped
+dirty-range path cutting requested upload bytes 94.5% — the mechanism
+works. The driver metric divides *all* Tier-1 buffer-upload bytes (the
+tracked buffer is a minority of total GL traffic) by each window's own
+logical writes; the full-span window accumulated 44% more logical
+writes under ambient combat drift, so the ratio comparison lands near
+zero even though absolute driver uploads fell ~29%. The metric is
+winnable only when the two windows see comparable write volume — it is
+systematically biased against the ranged (first) window under host
+load, because wall-time between variants lets ambient combat write
+more dirty data into the second window. That bias is a comparator/
+scenario-variance finding, not evidence about the implementation.
+
+Disposition: **PARTIAL** — route repaired, three restore-time harness
+defects repaired and verified by diagnostics, first real comparison
+numbers captured and published above. Numeric acceptance still
+**unproven**: the remaining gates are window-validity (post-boot shader
+compiles/links/render-target allocations during the window — host
+contention) and the driver-upload ratio needing a comparable-workload
+window pair. Claims re-mint on this record's digest.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
