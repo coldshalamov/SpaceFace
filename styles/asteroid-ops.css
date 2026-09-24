@@ -725,6 +725,13 @@
   color: var(--aw-gold, #ffb648);
 }
 .ast-summary-box .sf-btn { align-self: center; min-width: 150px; }
+/* The report's close verb is a kit fh-key: keep the visible focus ring on it and take the hover
+   ink-swap off — the primary plate already reads as the one verb. The !important is load-bearing:
+   styles/ui.css carries a legacy `*:focus-visible` accent rule with !important of its own. */
+.ast-summary-box .fh-key:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
+.ast-summary-box .fh-key:is(:hover, :focus-visible, :active) {
+  color: #1a1206; translate: none; box-shadow: none; filter: none;
+}
 .ast-screen .sf-btn,
 .ast-summary-box .sf-btn {
   display: inline-flex;

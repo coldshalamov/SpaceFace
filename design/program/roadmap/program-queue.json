@@ -16553,7 +16553,7 @@
       "priority": 418,
       "title": "The watch list",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00",
         "PQ-162.00"
@@ -16574,7 +16574,9 @@
         "npm run check:entity-links",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-183.01-REPORT.md"
+      ],
       "brief": "Pin a price, a rival, a deadline, a faction standing; pins render on the HUD in the receipts channel within the attention rules. DONE WHEN: Three pin types live; HUD attention contract still green."
     },
     {

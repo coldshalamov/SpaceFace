@@ -13,6 +13,7 @@
 import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { createScreenMemory } from '../ui/screenMemory.js';
+import { normalizeWatchlist } from '../ui/watchlist.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
@@ -478,6 +479,8 @@ export const save = {
       // J4 screen state memory (build map §11.12). UI-only: state.ui is NOT in
       // core/simSnapshot.js's allow-list, so this cannot drift the 47a replay hashes.
       ['uiScreenMemory', () => this._serializeScreenMemory()],
+      // PQ-183.01 watch list: pinned refs are UI-owned player state, same persistence lane.
+      ['uiWatchlist', () => this._serializeWatchlist()],
       // Worker autosave must include continuation; omitting it reseeds on Continue.
       ['entropy', () => this._serializeEntropy()],
     ];
@@ -536,6 +539,8 @@ export const save = {
     data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
     data.uiScreenMemory = this._serializeScreenMemory();
+    // PQ-183.01 watch list: UI-owned pinned refs; outside the simSnapshot allow-list.
+    data.uiWatchlist = this._serializeWatchlist();
     // H9: authoritative RNG continuation (seed + draw position). Restore must not reseed to zero.
     data.entropy = this._serializeEntropy();
     return data;
@@ -695,6 +700,16 @@ export const save = {
    *  trackedMissionId are nulled on load), or that pass would run against a half-built ui object. */
   _restoreScreenMemory(raw) {
     createScreenMemory(this.state).deserialize(raw);
+  },
+
+  /** PQ-183.01 watch list. normalizeWatchlist re-screens every field, so a hand-edited save
+   *  cannot smuggle an unbounded or mistyped bag into state.ui. */
+  _serializeWatchlist() {
+    return normalizeWatchlist(this.state && this.state.ui && this.state.ui.watchlist);
+  },
+  _restoreWatchlist(raw) {
+    if (!this.state.ui || typeof this.state.ui !== 'object') this.state.ui = {};
+    this.state.ui.watchlist = normalizeWatchlist(raw);
   },
 
   _serializeNav() {
@@ -3106,6 +3121,7 @@ export const save = {
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
       this._restoreScreenMemory(data.uiScreenMemory);
+      this._restoreWatchlist(data.uiWatchlist);
       this._reconcileFlightReadyAfterLoad();
 
       // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.

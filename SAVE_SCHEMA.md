@@ -55,6 +55,7 @@ Current save version: `14`
 - `nav`
 - `settings`
 - `uiScreenMemory`
+- `uiWatchlist`
 - `entropy`
 
 ## Migration Chain
@@ -393,5 +394,6 @@ Current save version: `14`
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |
 | `$.uiScreenMemory.v` | number | 1 |
+| `$.uiWatchlist` | array | length 0 |
 | `$.v2Flavor` | object | {} |
 | `$.world` | object | {} |

@@ -29,6 +29,7 @@
 // than a door into an empty room.
 
 import { resolveEntity } from './entityResolver.js';
+import { pinKindForRef, isWatched, toggleWatchPin } from './watchlist.js';
 
 const MAX_BACK = 12;   // capped: the trail is a convenience, not a history feature (J6 owns history)
 
@@ -214,6 +215,36 @@ export function createEntityLinks(ctx) {
         // AND leave stale content on screen.
         const prevRef = back[back.length - 2];
         if (show(prevRef, { push: false })) back.pop();
+      });
+      verbs.push(btn);
+    }
+    // PQ-183.01 the watch list: a pinnable dossier offers Watch/Unwatch as a quiet apron verb.
+    // Pinning is a toggle on state.ui.watchlist; the pins themselves render in the HUD receipts
+    // lane (watchlistHud.js), never on the drawer.
+    const watchKind = pinKindForRef(d.ref);
+    if (watchKind) {
+      const watched = isWatched(state, d.ref);
+      const btn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', {
+        text: watched ? 'Unwatch' : 'Watch',
+        attrs: { type: 'button' },
+      });
+      btn.addEventListener('click', () => {
+        const result = toggleWatchPin(state, d.ref, {
+          label: d.label,
+          stationId: state && state.ui && state.ui.dockedStationId || null,
+        });
+        if (bus && bus.emit) {
+          bus.emit('watch:changed', { ref: d.ref, pinned: result.pinned });
+          if (result.pinned) {
+            bus.emit('toast', { text: `Watching ${d.label || d.ref} — pinned to the HUD.`, kind: 'info', ttl: 2200 });
+            btn.textContent = 'Unwatch';
+          } else if (result.reason === 'removed') {
+            bus.emit('toast', { text: `Watch removed — ${d.label || d.ref} is off the HUD.`, kind: 'info', ttl: 2000 });
+            btn.textContent = 'Watch';
+          } else if (result.reason === 'full') {
+            bus.emit('toast', { text: 'Watch list is full — unpin something first.', kind: 'warn', ttl: 2600 });
+          }
+        }
       });
       verbs.push(btn);
     }
