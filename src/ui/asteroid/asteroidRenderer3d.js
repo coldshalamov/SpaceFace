@@ -58,6 +58,7 @@ import {
 import {
   createWorksPartLoader,
   resolveWorksConduitPiece,
+  WORKS_CONDUIT_TEMPLATE_IDS,
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
@@ -167,6 +168,24 @@ export function isolateWorksConduitMaterials(meshes, { family, key, scope } = {}
   return scope.bind(meshes, family, key);
 }
 
+// D34 mount watchdog defaults. A template acquisition that never settles (starved behind the
+// shared admission queue, or a decoder promise that hangs) used to park the mount in `loading`
+// forever — no failure, no retry, no network on glass. The watchdog bounds that: a 30s budget
+// per attempt and four re-acquisitions — give-up at 150s. Measured on the contended host: a
+// stalled acquisition's loads have landed as late as ~90s after the §7 window opened (the run
+// that bounced this unit showed 'authored 8/8' in the register section right after the 60s
+// settle had already given up), so the mount keeps fighting well past that tail while staying
+// bounded; a genuinely dead acquisition still fails LOUDLY instead of silently never. Loads
+// that land late always mount — a retry generation adopts the settled templates. Wall clock is
+// legal here: this is render-side load plumbing, not sim state (determinism law binds
+// state.rng/state.simTime).
+const CONDUIT_WATCHDOG_TIMEOUT_MS = 30000;
+const CONDUIT_WATCHDOG_MAX_RETRIES = 4;
+const defaultScheduleWatchdog = (fire, ms) => {
+  const id = setTimeout(fire, ms);
+  return () => clearTimeout(id);
+};
+
 // Atomic authored-conduit transaction.  A generation acquires a deduplicated template set first,
 // prepares every cell off-scene, and only then mounts the complete set. A missing package fails
 // closed: accepted authored art is never silently co-rendered with the removed procedural bodies.
@@ -179,6 +198,11 @@ export function createConduitMountLifecycle({
   createScope = () => null,
   releaseScope = () => {},
   isClosed = () => false,
+  watchdogTimeoutMs = CONDUIT_WATCHDOG_TIMEOUT_MS,
+  watchdogMaxRetries = CONDUIT_WATCHDOG_MAX_RETRIES,
+  scheduleWatchdog = defaultScheduleWatchdog,
+  now = () => Date.now(),
+  onWatchdogEvent = null,
 } = {}) {
   for (const [name, fn] of Object.entries({ acquireTemplates, prepare, mount, unmount, release, createScope, releaseScope })) {
     if (typeof fn !== 'function') throw new TypeError(`[conduitMount] ${name} must be a function`);
@@ -188,9 +212,62 @@ export function createConduitMountLifecycle({
   let currentTemplates = null;
   let currentScope = null;
   let state = Object.freeze({ generation, phase: 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
+  // D34 watchdog state. `watchdog` arms the pending acquisition's timer; `lastDesired` is the
+  // latest requested topology so a retry rebuilds what the player asked for NOW, never a stale
+  // capture; the retry budget resets whenever templates actually flow again.
+  let watchdog = null;
+  let lastDesired = [];
+  let watchdogRetriesLeft = watchdogMaxRetries;
   const publish = (next) => {
     state = Object.freeze({ generation, ...next });
     return state;
+  };
+  const disarmWatchdog = () => {
+    if (!watchdog) return;
+    watchdog.cancel();
+    watchdog = null;
+  };
+  const disarmWatchdogFor = (attempt) => {
+    if (watchdog && watchdog.attempt === attempt) disarmWatchdog();
+  };
+  const armWatchdog = (attempt) => {
+    disarmWatchdog();
+    watchdog = {
+      attempt,
+      deadline: now() + watchdogTimeoutMs,
+      cancel: scheduleWatchdog(() => fireWatchdog(attempt), watchdogTimeoutMs),
+    };
+  };
+  // The frame-loop half of the watchdog. On a contended host the page's setTimeout queue itself
+  // can starve for the whole settle window while rAF frames keep running (measured: two §7 runs
+  // sat in `loading` for 60s with the armed timer never serviced) — so the renderer's update
+  // loop calls tick() every frame and the deadline is enforced on the game's own heartbeat.
+  // Whichever driver runs first disarms the other; fire is idempotent per attempt.
+  const tick = () => {
+    if (watchdog && now() >= watchdog.deadline) fireWatchdog(watchdog.attempt);
+  };
+  const fireWatchdog = (attempt) => {
+    if (!watchdog || watchdog.attempt !== attempt || isClosed()) return;
+    if (watchdogRetriesLeft > 0) {
+      watchdogRetriesLeft -= 1;
+      onWatchdogEvent?.('retry', {
+        attempt, desiredCount: lastDesired.length, retriesLeft: watchdogRetriesLeft, timeoutMs: watchdogTimeoutMs,
+      });
+      // A rebuild supersedes the stalled attempt (its eventual settle lands on the cancelled
+      // branch) and re-arms a fresh watchdog for the re-acquisition.
+      void rebuild(lastDesired).catch(() => {});
+      return;
+    }
+    disarmWatchdog();
+    const seconds = Math.round(((watchdogMaxRetries + 1) * watchdogTimeoutMs) / 1000);
+    onWatchdogEvent?.('failed', { attempt, desiredCount: lastDesired.length, timeoutMs: watchdogTimeoutMs });
+    publish({
+      phase: 'failed',
+      desiredCount: lastDesired.length,
+      authoredCount: current.length,
+      templateCount: currentTemplates?.ids?.length || 0,
+      failure: `conduit templates did not settle within ${seconds}s — mount watchdog gave up after ${watchdogMaxRetries + 1} attempts`,
+    });
   };
   const releaseRecord = (record) => {
     if (!record || record.released) return false;
@@ -215,6 +292,9 @@ export function createConduitMountLifecycle({
     const desired = Array.isArray(desiredInput) ? desiredInput.slice() : [];
     generation += 1;
     const attempt = generation;
+    // A newer attempt supersedes any pending acquisition, so its watchdog timer dies here.
+    disarmWatchdog();
+    lastDesired = desired;
     publish({
       phase: desired.length ? 'loading' : 'empty',
       desiredCount: desired.length,
@@ -227,6 +307,7 @@ export function createConduitMountLifecycle({
       publish({ phase: 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
       return { status: 'empty', state };
     }
+    armWatchdog(attempt);
     let templates = null;
     let scope = null;
     const staged = [];
@@ -242,6 +323,8 @@ export function createConduitMountLifecycle({
       const ids = [...new Set(desired.map((part) => part.assetId))];
       templates = await acquireTemplates(ids);
       if (!templates) throw new Error('authored conduit templates are unavailable');
+      // Templates flowed again: the watchdog budget is whole for any future stall.
+      watchdogRetriesLeft = watchdogMaxRetries;
       scope = createScope(desired);
       if (cancelled(attempt)) {
         releaseStaged();
@@ -304,14 +387,18 @@ export function createConduitMountLifecycle({
         failure,
       });
       return { status: 'failed', state };
+    } finally {
+      // This attempt settled (authored, cancelled, or failed): its watchdog timer is done.
+      disarmWatchdogFor(attempt);
     }
   }
   function cancel(reason = 'cancelled') {
     generation += 1;
+    disarmWatchdog();
     retire();
     publish({ phase: reason === 'disposed' ? 'disposed' : 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
   }
-  return Object.freeze({ rebuild, cancel, stats: () => state });
+  return Object.freeze({ rebuild, cancel, tick, stats: () => state });
 }
 
 // A late authored asset must never mount into a record/ghost that was replaced while the network
@@ -959,6 +1046,14 @@ function injectOverlayStyle() {
   rgba(255,98,66,0) 0%, rgba(255,98,66,0) 46%, rgba(255,98,66,.34) 82%, rgba(255,98,66,.66) 100%); }
 .ast3d-flash-cargo { background:radial-gradient(ellipse 58% 58% at 50% 50%,
   rgba(255,182,72,0) 0%, rgba(255,182,72,0) 52%, rgba(255,182,72,.18) 84%, rgba(255,182,72,.38) 100%); }
+/* D34: the conduit mount's bounded watchdog signal. Board weather on the renderer-owned overlay
+   (never a modal wash): a hairline chip on the bottom edge while template acquisition is slow,
+   louder when the retry budget is spent. Static — reduced-motion safe; §11.3/§11.4-safe sizing. */
+.ast3d-conduit-fault { position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+  display:none; padding:5px 12px; font-size:12px; color:#ffd9a0; white-space:nowrap;
+  background:rgba(24,16,7,.85); border:1px solid rgba(255,182,72,.4); border-radius:3px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8); }
+.ast3d-conduit-fault.ast3d-conduit-fault-hard { color:#ffb648; border-color:rgba(255,98,66,.55); }
 `;
   document.head.appendChild(s);
 }
@@ -1315,8 +1410,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       worksLoader = createWorksPartLoader({ renderer });
       worksLoader.setRegister(zoomRegister);
       acquireInclusionKit();
+      prewarmWorksConduitTemplates();
     }
     return worksLoader;
+  }
+
+  // D34 prewarm: admit the whole authored conduit template set during the calm screen-boot
+  // window instead of at the moment a network first mounts. On a contended host the mount-time
+  // acquisition was the thing being starved (the §7 repro: the settle window opens with the
+  // loads at the back of everything the tab is doing); a prewarmed runtime cache turns that
+  // first real acquire into a cache read that settles within one task boundary. The handle
+  // holds the resident templates until the loader retires; a failed or stalled prewarm costs
+  // nothing — the mount-time acquire simply loads as before and the watchdog still bounds it.
+  let conduitPrewarm = null;
+  function prewarmWorksConduitTemplates() {
+    if (conduitPrewarm) return;
+    conduitPrewarm = worksLoader.acquireWorksConduitTemplates(WORKS_CONDUIT_TEMPLATE_IDS)
+      .then((handle) => {
+        if (!handle) conduitPrewarm = null;
+        return handle;
+      })
+      .catch(() => {
+        conduitPrewarm = null;
+        return null;
+      });
   }
 
   // ---- PQ-131.10 authored inclusion kit ------------------------------------------------------
@@ -1515,6 +1632,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     clearAuthoredDerrick();
     const loader = worksLoader;
     worksLoader = null;
+    // Release the D34 prewarm retain so retirement owns every standing template reference.
+    if (conduitPrewarm) conduitPrewarm.then((handle) => { handle?.release?.(); });
+    conduitPrewarm = null;
     const token = { n: ++worksRetireGen, reason };
     const runtimeDone = loader ? loader.dispose(reason) : 0;
     const mine = Promise.resolve(runtimeDone).then(() => {
@@ -3612,7 +3732,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
-  const dom = { root: null, floaters: [], flashGas: null, flashCargo: null };
+  const dom = { root: null, floaters: [], flashGas: null, flashCargo: null, conduitFault: null };
   function buildDomOverlay() {
     if (dom.root) return;
     const root = document.createElement('div');
@@ -3622,7 +3742,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     dom.flashGas.className = 'ast3d-vignette ast3d-flash-gas';
     dom.flashCargo = document.createElement('div');
     dom.flashCargo.className = 'ast3d-vignette ast3d-flash-cargo';
-    root.append(dom.flashGas, dom.flashCargo);
+    dom.conduitFault = document.createElement('div');
+    dom.conduitFault.className = 'ast3d-conduit-fault';
+    root.append(dom.flashGas, dom.flashCargo, dom.conduitFault);
     // The stage (canvas' full-bleed parent) so the overlay hugs the canvas box exactly — but
     // inserted IMMEDIATELY AFTER THE CANVAS, not appended at the end. The screen mounts the rig
     // cluster and its drawers into this same stage after the canvas, and an appended overlay
@@ -3633,6 +3755,27 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (canvas.parentElement === host && canvas.nextSibling) host.insertBefore(root, canvas.nextSibling);
     else host.appendChild(root);
     dom.root = root;
+  }
+
+  // D34 loud signal. 'retry' = template acquisition is slow but the mount is still fighting;
+  // 'failed' = the bounded budget is spent and the network layer is honestly absent. Both live on
+  // the renderer-owned board-weather overlay — never a modal wash over the rock.
+  function showConduitMountFault(kind) {
+    buildDomOverlay();
+    if (!dom.conduitFault) return;
+    dom.conduitFault.textContent = kind === 'retry'
+      ? 'network layer slow — retrying'
+      : 'network layer unavailable — works conduits failed to load';
+    dom.conduitFault.classList.toggle('ast3d-conduit-fault-hard', kind !== 'retry');
+    dom.conduitFault.style.display = 'block';
+  }
+  function hideConduitMountFault() {
+    if (dom.conduitFault) dom.conduitFault.style.display = 'none';
+  }
+  function onConduitMountWatchdogEvent(kind, info) {
+    if (kind === 'retry') console.warn('[asteroidRenderer3d] conduit mount watchdog retry', info);
+    else console.error('[asteroidRenderer3d] conduit mount watchdog failed', info);
+    showConduitMountFault(kind);
   }
 
   // ---------------------------------------------------------------- sizing + zoom registers
@@ -5350,7 +5493,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     seat.position.set(worldX(rec.c), worldY(rec.r) + rec.off, Z.overlay);
     seat.rotation.z = rec.rotation;
     seat.add(source);
-    return {
+    const prepared = {
       ...rec,
       source,
       seat,
@@ -5358,6 +5501,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       mats: [component.material],
       textures: component.flowSampler ? [component.flowSampler] : [],
     };
+    // Dress at mount time: the clone starts on the board in its CURRENT live/dark state instead
+    // of the material-default emissive, even if no frame runs between this microtask and the
+    // first probe of the runs (the D34 prewarm makes that window real on a stalled host).
+    dressAuthoredConduitComponent(prepared, lensName === 'network' ? 2.2 : 1, 0);
+    return prepared;
   }
 
   function ensureConduitMountLifecycle() {
@@ -5385,6 +5533,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         else if (group?.parent) group.parent.remove(group);
       },
       isClosed: () => worksTearingDown || disposed || glTeardownDone,
+      onWatchdogEvent: onConduitMountWatchdogEvent,
     });
     return conduitMountLifecycle;
   }
@@ -5394,6 +5543,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     else disposeLegacyProceduralOverlayParts();
     laneFlows.length = 0;
     flowDots.count = 0;
+    hideConduitMountFault();
   }
 
   function rebuildOverlays(site, projection = null) {
@@ -5401,7 +5551,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     laneFlows.length = 0;
     flowDots.count = 0;
     rebuildLaneFlows(site, projection, plan.shared, plan.laneOff);
-    void ensureConduitMountLifecycle().rebuild(plan.desired).catch((error) => {
+    void ensureConduitMountLifecycle().rebuild(plan.desired).then((result) => {
+      // An authored mount or a cleared board means templates flowed: the fault strip goes away.
+      // A stale-attempt 'cancelled' must NOT clear it — the live attempt may still be failed.
+      if (result.status === 'authored' || result.status === 'empty') hideConduitMountFault();
+    }).catch((error) => {
       console.error('[asteroidRenderer3d] authored conduit transaction failed', error);
     });
   }
@@ -5529,12 +5683,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       for (const comp of projection.lanes) {
         const active = comp.machineIds.some((id) => running.has(id));
+        // The screen caches the projection between identity shifts (the cheap-idle ruling), so
+        // the snapshot `comp.stored` goes stale the moment production moves stock with no paint,
+        // install, or session change in the window — lane density and the dots froze on glass.
+        // `comp.store` is the LIVE runtime store the projection already references, and reading
+        // it live is what syncCrates already does for the port pile: no re-derivation, no
+        // allocation, and §7 "the buffer reads as dot density" holds frame-by-frame again.
+        const stored = comp.store ? storeTotal(comp.store) : comp.stored;
         // `stored` may legally exceed capacity (the A10 over-capacity ruling), so the DISPLAY
         // density clamps — the dots must never claim a spacing tighter than a full lane's.
-        const density = comp.capacity > 0 ? Math.min(1, comp.stored / comp.capacity) : 0;
+        const density = comp.capacity > 0 ? Math.min(1, stored / comp.capacity) : 0;
         netState.lane.set(comp.key, {
-          live: comp.machineIds.length > 0 && (comp.stored > 0 || active),
-          active, density, stored: comp.stored, capacity: comp.capacity,
+          live: comp.machineIds.length > 0 && (stored > 0 || active),
+          active, density, stored, capacity: comp.capacity,
         });
       }
     }
@@ -5566,36 +5727,45 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (const part of authoredOverlayParts) {
       if (updatedComponents.has(part.component)) continue;
       updatedComponents.add(part.component);
-      const state = part.family === 'power'
-        ? netState.power.get(part.key)
-        : netState.lane.get(part.key);
-      const live = !!(state && state.live);
-      const color = part.family === 'power'
-        ? (live ? CABLE_LIVE : CABLE_DEAD)
-        : (live ? LANE_LIVE : LANE_DEAD);
-      let intensity = 0.02;
-      let emissiveHex = 0x000000;
-      if (part.family === 'power' && live) {
-        emissiveHex = 0xffb648;
-        intensity = Math.min(0.55, (state.ratio >= 1 ? 0.18 : 0.03 + state.ratio * 0.12) * lensK);
-      } else if (part.family === 'lane' && live) {
-        emissiveHex = 0x5c7480;
-        intensity = Math.min(0.18, ((state.active && !motionReduce) ? 0.07 : 0.035) * lensK);
-      }
-      const material = part.component.material;
-      if (material.color) material.color.copy(color);
-      if (material.emissive) material.emissive.setHex(emissiveHex);
-      if ('emissiveIntensity' in material) material.emissiveIntensity = intensity;
-      // All instance-owned sampler roles move in lockstep. No material/texture needsUpdate is set:
-      // offset is uniform state, not a shader recompilation or a shared-atlas mutation.
-      if (part.family === 'lane' && live && state.active && !motionReduce) {
-        part.component.texturePhase = (part.component.texturePhase + dt * 0.58) % 1;
-        if (part.component.flowSampler?.offset) {
-          part.component.flowSampler.offset.x = part.component.texturePhase;
-        }
-      }
+      dressAuthoredConduitComponent(part, lensK, dt);
     }
     syncFlowDots(dt, lensK);
+  }
+
+  // The live/dark dressing for one authored conduit component (law §7): jacket colour, emissive
+  // and the flow-sampler phase, read off netState. Called per frame by syncNetworks AND once at
+  // mount time by prepareAuthoredOverlay (dt=0) so a freshly mounted run never wears the material
+  // default emissive — with the prewarm the mount can land between frames, and a probe (or an
+  // eye) reading the runs before the next frame must see the honest live/dark state, not 1.
+  function dressAuthoredConduitComponent(part, lensK, dt) {
+    const state = part.family === 'power'
+      ? netState.power.get(part.key)
+      : netState.lane.get(part.key);
+    const live = !!(state && state.live);
+    const color = part.family === 'power'
+      ? (live ? CABLE_LIVE : CABLE_DEAD)
+      : (live ? LANE_LIVE : LANE_DEAD);
+    let intensity = 0.02;
+    let emissiveHex = 0x000000;
+    if (part.family === 'power' && live) {
+      emissiveHex = 0xffb648;
+      intensity = Math.min(0.55, (state.ratio >= 1 ? 0.18 : 0.03 + state.ratio * 0.12) * lensK);
+    } else if (part.family === 'lane' && live) {
+      emissiveHex = 0x5c7480;
+      intensity = Math.min(0.18, ((state.active && !motionReduce) ? 0.07 : 0.035) * lensK);
+    }
+    const material = part.component.material;
+    if (material.color) material.color.copy(color);
+    if (material.emissive) material.emissive.setHex(emissiveHex);
+    if ('emissiveIntensity' in material) material.emissiveIntensity = intensity;
+    // All instance-owned sampler roles move in lockstep. No material/texture needsUpdate is set:
+    // offset is uniform state, not a shader recompilation or a shared-atlas mutation.
+    if (dt > 0 && part.family === 'lane' && live && state.active && !motionReduce) {
+      part.component.texturePhase = (part.component.texturePhase + dt * 0.58) % 1;
+      if (part.component.flowSampler?.offset) {
+        part.component.flowSampler.offset.x = part.component.texturePhase;
+      }
+    }
   }
 
   // Dots on the lane floor. Constant speed; the BUFFER sets the spacing, so a full lane reads as a
@@ -8343,6 +8513,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // global emissive writes this replaced painted every cable on the rock with the worst net's
     // news, so one brownout in a corner dimmed a spine that was running fine.
     syncNetworks(site, projection, dt, timeS);
+    // D34: enforce the conduit mount watchdog deadline on the frame heartbeat too — the
+    // setTimeout half can starve for the whole settle window on a contended host while frames
+    // keep running. No-op unless an acquisition is actually stalled past its budget.
+    if (conduitMountLifecycle) conduitMountLifecycle.tick();
     syncCrates(site, projection);
     syncUmbilical(d, rx, ry, moving, dt);
 
