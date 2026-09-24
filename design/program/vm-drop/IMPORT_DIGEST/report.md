@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24aa (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ab (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #61; +#62 measured on
-stacked tip @ `fc9ff75bb`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #62; +#63 measured on
+stacked tip @ `5acfe2f38`.
 
 ### Already on stack (do not rediscover)
 
@@ -47,6 +47,8 @@ stacked tip @ `fc9ff75bb`.
 | 59 | `prestep-movables-trust` |
 | 60 | `select-classify-epoch-seen` |
 | 61 | `stamp-near-work-awake-cache` |
+| 62 | `classify-physics-partition-cache` |
+| 63 | `camera-clearance-asteroid-span-reject` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -74,14 +76,14 @@ native GL / bloom admission owners ignored for portable ranking.
 |---:|---|---|
 | 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
 | 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62 |
-| 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57 |
+| 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57+#63 |
 | 181 | `syncEntityViews` | residual after #15+#44+#57 |
 | 153 | `hud.frame` | radar.draw + setLagTranslate |
 | 45 | `selectClassifyEntities` | residual after #60 |
 
 ### Notable callees (post-#57 / pre-#60)
 
-- prepareFrame → syncEntityViews (**#57**), camera.follow, packPresentationWorldToFence, spaceBackground (hold)
+- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63** clearance), packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**)
@@ -90,7 +92,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 62 | `classify-physics-partition-cache` | Portable quiet classify physics partition cache **~4.1×** median (180 mixed × 80k; floor minSpeedup ≥3.70× / five isolated runs; admit + production parity). Focused suites 74/74. |
+| 63 | `camera-clearance-asteroid-span-reject` | Portable quiet camera clearance asteroid span-hint reject **~3.1×** median (60 rocks + 3 stations + capital × 8k drifted; floor minSpeedup ≥2.98× / five isolated runs; capital + station parity). Focused suites 68/68. |
 
 ## Scour attempts / misses
 
@@ -112,8 +114,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58 (syncEntityViews /
-   packFence / residual closures / camera.follow).
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63 (syncEntityViews /
+   packFence / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62 (resolvePins+normalizePinReasons /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
