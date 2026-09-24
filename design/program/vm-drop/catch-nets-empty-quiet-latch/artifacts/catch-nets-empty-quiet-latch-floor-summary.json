@@ -1,0 +1,32 @@
+{
+  "name": "catch-nets-empty-quiet-latch-floor",
+  "floors": [
+    {
+      "medianSpeedup": 9.898,
+      "minSpeedup": 8.498,
+      "maxSpeedup": 11.684
+    },
+    {
+      "medianSpeedup": 9.983,
+      "minSpeedup": 8.538,
+      "maxSpeedup": 13.475
+    },
+    {
+      "medianSpeedup": 10.11,
+      "minSpeedup": 9.001,
+      "maxSpeedup": 12.63
+    },
+    {
+      "medianSpeedup": 10.001,
+      "minSpeedup": 9.364,
+      "maxSpeedup": 11.258
+    },
+    {
+      "medianSpeedup": 9.713,
+      "minSpeedup": 8.915,
+      "maxSpeedup": 11.767
+    }
+  ],
+  "medianOfMedians": 9.983,
+  "floorMin": 8.498
+}
