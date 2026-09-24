@@ -771,7 +771,10 @@ async function launchElectron(
 ) {
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
-  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
+  // 240 s launch bound: on a host running other lanes' headed checks, the Electron driver
+  // handshake (ws connect -> app ready) can starve past the 90 s default before the first
+  // window even exists — the third busy-host boot seam tonight (goto, load-state, launch).
+  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId, timeout: 240_000 });
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
@@ -863,23 +866,44 @@ export async function awaitElectronInitialCanonicalLoad(
   assert(electronApp && typeof electronApp.browserWindow === 'function',
     'Electron initial-load ownership requires a page-bound BrowserWindow seam');
   assertIsolatedElectronRootUrl(rootUrl);
-  await page.waitForLoadState('load', { timeout: timeoutMs });
+  // Same busy-host shape as the browser route's initial goto: a host running other lanes'
+  // headed checks can starve the first window's load past the default bound — retry once
+  // with a wide bound before declaring the runtime dead. The boot floor anchors at
+  // navigation start (read after this resolves), so a slow first wait is not game evidence.
+  try {
+    await page.waitForLoadState('load', { timeout: timeoutMs });
+  } catch (loadError) {
+    console.warn(`[probe] electron initial load-state wait timed out on a busy host; retrying once with a 180 s bound (${String(loadError && loadError.message || loadError).slice(0, 140)})`);
+    await page.waitForLoadState('load', { timeout: 180_000 });
+  }
   // BrowserWindow.loadURL() resolves in Electron main after did-finish-load. Crossing one main-loop
   // turn makes that promise settlement an explicit prerequisite rather than racing it from the
   // Playwright renderer connection returned by firstWindow(). Resolve the BrowserWindow from that
   // exact page rather than accepting an unrelated same-root sibling, and always release the handle.
-  const browserWindow = await electronApp.browserWindow(page);
+  // A host saturated by other lanes' headed checks can starve Electron main past the dispatcher's
+  // command bound — one settle-and-retry before declaring the runtime dead, and the failure must
+  // stay a caught rejection instead of escaping uncaught through the launch promise.
+  const probeMainWindow = async () => {
+    const browserWindow = await electronApp.browserWindow(page);
+    try {
+      return await browserWindow.evaluate(async (win, expectedRootUrl) => {
+        await new Promise((resolve) => setImmediate(resolve));
+        return {
+          url: win.webContents.getURL(),
+          loadingMainFrame: win.webContents.isLoadingMainFrame(),
+        };
+      }, rootUrl);
+    } finally {
+      await browserWindow.dispose();
+    }
+  };
   let observation;
   try {
-    observation = await browserWindow.evaluate(async (win, expectedRootUrl) => {
-      await new Promise((resolve) => setImmediate(resolve));
-      return {
-        url: win.webContents.getURL(),
-        loadingMainFrame: win.webContents.isLoadingMainFrame(),
-      };
-    }, rootUrl);
-  } finally {
-    await browserWindow.dispose();
+    observation = await probeMainWindow();
+  } catch (windowError) {
+    console.warn(`[probe] electron initial BrowserWindow probe failed on a busy host; retrying once after a settle beat (${String(windowError && windowError.message || windowError).slice(0, 140)})`);
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    observation = await probeMainWindow();
   }
   assert(observation, 'Electron initial canonical BrowserWindow disappeared before Tier-1 reload');
   assert.equal(observation.loadingMainFrame, false,

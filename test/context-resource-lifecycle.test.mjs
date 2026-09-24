@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   collectContextLossRoots,
@@ -8,9 +9,11 @@ import {
   deferWebGlContextRestore,
   describeWebGlDisposeListenerProvenance,
   detachStaleWebGlDisposeListeners,
+  detachStashedStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
   pauseSimForContextLoss,
   resumeSimAfterContextRestore,
+  stashStaleWebGlDisposeProvenance,
 } from '../src/render/contextResourceLifecycle.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import {
@@ -357,6 +360,79 @@ test('successful restore resumes the sim; failed states stay halted without a re
   assert.equal(resumeSimAfterContextRestore(state), 1);
   assert.equal(resumeSimAfterContextRestore(null), 1);
   assert.equal(pauseSimForContextLoss(null), 0);
+});
+
+// The v6 Electron storm's residual: parked trees (procedural world-site fixtures on detached
+// structures) kept the dying generation's dispose callbacks, and their later teardown fired
+// them against dead handles — every delete logged as `object does not belong to this context`.
+// The renderer stashes the dying generation's provenance at loss; the boundary-teardown
+// chokepoint strips those exact identities before any dispose fires.
+test('the loss stash is a no-op until a provenance is stashed, then strips only stashed identities from a parked tree', () => {
+  // No loss has stashed anything yet: the teardown strip must touch nothing at all.
+  assert.equal(detachStashedStaleWebGlDisposeListeners([]), null);
+
+  const staleGeometryListener = opaqueListener('stale-onGeometryDispose');
+  const staleMaterialListener = opaqueListener('stale-onMaterialDispose');
+  const foreignListener = opaqueListener('app-owned-dispose');
+  const unstashedGeometryListener = opaqueListener('unrelated-generation');
+
+  const fixtureGeometry = resource({ isBufferGeometry: true }, [staleGeometryListener, unstashedGeometryListener]);
+  const fixtureMaterial = resource({ isMaterial: true }, [staleMaterialListener, foreignListener]);
+  // A parked world-site-shaped tree: root -> fixture mount -> fixture mesh (geometry + material).
+  const fixtureMesh = resource({ geometry: fixtureGeometry, material: fixtureMaterial }, []);
+  const parkedRoot = { traverse: (visitor) => visitor(fixtureMesh) };
+
+  assert.equal(stashStaleWebGlDisposeProvenance({
+    geometries: new Set([staleGeometryListener]),
+    materials: new Set([staleMaterialListener]),
+  }), true);
+
+  const receipt = detachStashedStaleWebGlDisposeListeners([parkedRoot]);
+  assert.ok(receipt, 'a stashed provenance must arm the strip');
+  assert.equal(receipt.geometries, 1);
+  assert.equal(receipt.materials, 1);
+  assert.equal(receipt.listenersDetached, 2);
+  // The stale identities are gone; every listener the stash does not name survives.
+  assert.deepEqual(fixtureGeometry._listeners.dispose, [unstashedGeometryListener]);
+  assert.deepEqual(fixtureMaterial._listeners.dispose, [foreignListener]);
+  assert.equal(fixtureGeometry.hasEventListener('dispose', staleGeometryListener), false);
+  assert.equal(fixtureMaterial.hasEventListener('dispose', staleMaterialListener), false);
+});
+
+test('repeated losses merge provenance into one stash; empty stashes are rejected without disturbance', () => {
+  const firstLossListener = opaqueListener('gen1-onGeometryDispose');
+  const secondLossListener = opaqueListener('gen2-onGeometryDispose');
+  assert.equal(stashStaleWebGlDisposeProvenance({ geometries: new Set([firstLossListener]) }), true);
+  assert.equal(stashStaleWebGlDisposeProvenance({ geometries: new Set([secondLossListener]) }), true);
+  assert.equal(stashStaleWebGlDisposeProvenance(null), false);
+  assert.equal(stashStaleWebGlDisposeProvenance({}), false);
+
+  const geometry = resource({ isBufferGeometry: true }, [firstLossListener, secondLossListener]);
+  // Residency hands raw resources as roots, so the strip sees the geometry itself.
+  const receipt = detachStashedStaleWebGlDisposeListeners([geometry]);
+  assert.equal(receipt.listenersDetached, 2);
+  assert.deepEqual(geometry._listeners.dispose, []);
+});
+
+test('renderer wiring: the loss handler stashes the consumed provenance and teardown strips before any dispose fires', () => {
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const lostAt = source.indexOf("lifecycle.listen(canvas, 'webglcontextlost'");
+  const lostEnd = source.indexOf("lifecycle.listen(canvas, 'webglcontextrestored'", lostAt);
+  const lostHandler = source.slice(lostAt, lostEnd);
+  assert.ok(lostAt >= 0 && lostEnd > lostAt, 'the webglcontextlost listener must be inspectable');
+  assert.match(
+    lostHandler,
+    /stashStaleWebGlDisposeProvenance\(preparedPoolResources\.provenance\);/,
+    'the loss handler must stash the provenance the detach pass consumed',
+  );
+
+  const disposeAt = source.indexOf('function disposeObject(obj)');
+  assert.ok(disposeAt >= 0, 'disposeObject must be inspectable');
+  const disposeBody = source.slice(disposeAt, source.indexOf('\nfunction ', disposeAt + 10));
+  const stripAt = disposeBody.indexOf('detachStashedStaleWebGlDisposeListeners([obj]);');
+  const traverseAt = disposeBody.indexOf('obj.traverse((c) => {');
+  assert.ok(stripAt >= 0, 'teardown must strip stashed stale listeners from the tree');
+  assert.ok(traverseAt > stripAt, 'the strip must run before the disposal traversal — any later and the world-site controller disposes fixture geometries through stale callbacks before their strip');
 });
 
 function resource(fields, listeners) {
