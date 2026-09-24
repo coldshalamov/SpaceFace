@@ -12451,7 +12451,7 @@
       "priority": 275,
       "title": "The frontier as texture",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12473,8 +12473,10 @@
         "npm run check:atlas-integrity",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Fourteen frontier sectors get rumours, one texture one-off each, and no story promise; the stale 'not wired' comment corrected. DONE WHEN: Atlas integrity green; each frontier sector has one memorable object."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-153.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-24: all fourteen frontier sectors verified live on the atlas with one memorable object each and rumour cards firing at all 17 frontier bars with no story promise (test/pq-153-03-frontier-texture.test.mjs, 4/4 on seed 15330); atlas integrity green. The stale 'not wired'/'not yet merged' headers in north.js and west.js were corrected to name the ./index.js aggregation, and the pin test now asserts the correction. Receipt: design/program/roadmap/receipts/PQ-153.03-REPORT.md."
     },
     {
       "id": "PQ-143.00",

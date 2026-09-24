@@ -1,8 +1,8 @@
 // src/data/frontierRegions/west.js — M2b WEST frontier cluster (additive pack).
 //
-// Self-contained pure data for four stable frontier regions. Not yet merged into
-// SECTORS / SECTOR_GLOBAL_ORIGINS / SECTOR_ANCHORS / SECTOR_ZONES — later canonical
-// integration will splice these records without rewriting story geography.
+// Self-contained pure data for four stable frontier regions. Wired: ./index.js aggregates
+// these records into FRONTIER_SECTORS / FRONTIER_ORIGINS / FRONTIER_ANCHORS /
+// FRONTIER_ZONES, which merge into live SECTORS via sectors.js.
 //
 // Contract:
 //   * Deterministic: no unseeded RNG, wall-clock, or runtime deps/imports.

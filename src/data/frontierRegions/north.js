@@ -1,8 +1,9 @@
 // src/data/frontierRegions/north.js
 // M2b NORTH frontier cluster — self-contained canonical-compatible region pack.
 //
-// Not wired into live SECTORS / SECTOR_ANCHORS / SECTOR_ZONES / SECTOR_GLOBAL_ORIGINS.
-// Integration is a later graph-gate task. This file freezes the original 10 story
+// Wired: ./index.js aggregates these records into FRONTIER_SECTORS / FRONTIER_ANCHORS /
+// FRONTIER_ZONES / FRONTIER_ORIGINS, which merge into live SECTORS via sectors.js.
+// This file freezes the original 10 story
 // region IDs and ships four additive frontier sectors with:
 //   - sector cards (same shape as src/data/sectors.js)
 //   - 4096-lattice galactic origins (same mapping as sectorCoordinates.js)
