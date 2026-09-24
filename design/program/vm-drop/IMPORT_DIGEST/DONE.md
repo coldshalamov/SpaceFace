@@ -1,5 +1,5 @@
-# DONE — IMPORT_DIGEST 20260924cy
+# DONE — IMPORT_DIGEST 20260924cz
 
-Post-#141 miss digest for #142. Master tip `4b28a8323` unchanged. No package
-shipped. Hold: classify flying-early-latch under #141 (~1.3–1.4× / floor ~1.2×).
-Prior holds carried from cx.
+Post-#141 ship digest for #142 presentation-query-pose-dirty-retain. Master tip
+`4b28a8323` unchanged. Package #142 shipped on vm-drop. Prior holds carried from
+cy (including flying-early-latch ~1.3×).

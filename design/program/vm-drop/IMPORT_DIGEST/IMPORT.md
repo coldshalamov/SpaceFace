@@ -1,5 +1,5 @@
-# IMPORT — IMPORT_DIGEST 20260924cy
+# IMPORT — IMPORT_DIGEST 20260924cz
 
-Digest-only update after #142 miss (flying-early-latch thin). No code patch here.
-#141 classify-flying-rock-retain remains the latest ship; apply its patches from
-`classify-flying-rock-retain/patches/` on master when importing.
+Digest update after #142 presentation-query-pose-dirty-retain ship. Apply
+`presentation-query-pose-dirty-retain/patches/` on master when importing (after
+#141 classify-flying-rock-retain). No other code in this digest folder.
