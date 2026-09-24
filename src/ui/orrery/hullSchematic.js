@@ -139,7 +139,7 @@ const INERT = Object.freeze({
  * @param {() => Element[]} [o.avoid] chrome the labels and the ship keep clear of (title, keys)
  * @param {number} [o.labelWidth] label column width in px
  */
-export function createHullSchematic({ host, avoid = () => [], onPick = null, labelWidth = 300, gap = 34, edge = 72 } = {}) {
+export function createHullSchematic({ host, avoid = () => [], onPick = null, labelWidth = 300, gap = 34, edge = 72, allowNone = false } = {}) {
   const doc = host && host.ownerDocument;
   if (!doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function'
     || typeof doc.createElement !== 'function') return INERT;
@@ -545,7 +545,8 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     layer.appendChild(rise(hg, 360));
     const first = !arrived;
     arrived = true;
-    if (litIndex < 0 || litIndex >= nodes.length) litIndex = 0;
+    // the refit always has a hardpoint in hand; a screen that rests with nothing chosen passes allowNone
+    if (litIndex >= nodes.length || (!allowNone && litIndex < 0)) litIndex = allowNone ? -1 : 0;
     markLabels();
     paintLit(first || now() - litChangedAt > 450);
     paintHand(spring.value);

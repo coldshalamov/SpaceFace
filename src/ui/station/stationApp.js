@@ -48,6 +48,7 @@ import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
+import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 
@@ -233,6 +234,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     rootEl.classList.add('screen', 'sx-berth', 'sx-observatory', 'dp-frame', 'dp-frame--screen', 'orr-station');
     // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
     injectOrreryStation(rootEl.ownerDocument || globalThis.document);
+    injectOrreryStationTabs(rootEl.ownerDocument || globalThis.document);
     rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');

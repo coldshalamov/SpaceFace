@@ -11,7 +11,7 @@ const f2 = (n) => Math.round(n * 100) / 100;
  * The power circuit as one dial: the core's capacity is the arc, the continuous draw is lit along
  * it system by system with a notch between each, and the quarter ticks read the scale.
  */
-export function powerDialSvg({ cap = 0, draws = [] } = {}) {
+export function powerDialSvg({ cap = 0, draws = [], ghost = null } = {}) {
   const w = 176; const h = 118; const cx = 88; const cy = 70; const r = 58; const from = -128; const to = 128;
   const span = to - from;
   const capacity = Math.max(1, Number(cap) || 0);
@@ -29,10 +29,16 @@ export function powerDialSvg({ cap = 0, draws = [] } = {}) {
     at = end;
   }
   const over = draws.reduce((s, [, d]) => s + Math.max(0, Number(d) || 0), 0) > capacity;
+  let ghostArc = '';
+  if (Array.isArray(ghost)) {
+    const total = ghost.reduce((s, [, d]) => s + Math.max(0, Number(d) || 0), 0);
+    const end = from + span * Math.min(1.08, total / capacity);
+    if (total > 0) ghostArc = `<path class="orr-power__ghost${total > capacity ? ' is-over' : ''}" d="${arcD(cx, cy, r + 9, from, Math.min(to + 10, end))}"/>`;
+  }
   return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 4, from, to, inward: false })}"/>`
-    + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '')
+    + lit + (notches ? `<path class="orr-power__notch" d="${notches}"/>` : '') + ghostArc
     + `</svg>`;
 }
 
@@ -65,11 +71,25 @@ ${W} .orr-sw-node.is-empty .orr-sw-node__name { color:rgb(${BONE} / .82); font-w
 ${W} .orr-sw-node__state { ${LABEL} font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66); white-space:nowrap; }
 ${W} .orr-sw-node.is-empty .orr-sw-node__state { color:rgb(${BONE} / .55); }
 ${W} .orr-sw-node.is-lit .orr-sw-node__name { color:var(--dp-hand-hot, #ffd98c); }
+${W} .orr-sw-node.is-stock .orr-sw-node__name { color:rgb(${BONE} / .9); font-weight:560; }
+${W} .orr-sw-node.is-preview .orr-sw-node__name { color:var(--dp-ice, #8fcbff) !important; }
+${W} .orr-sw-node.is-preview .orr-sw-node__state { color:var(--dp-ice, #8fcbff) !important; }
+${W} .orr-sw-jig .orr-hull__fitted.is-lit { stroke:rgb(248 244 234) !important; }
+/* the proposed fit's changes: one line of ice under the dial */
+${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { visibility:visible !important; position:absolute !important; left:0 !important; right:0 !important; top:auto !important;
+  bottom:8px !important; width:auto !important; height:auto !important; max-width:none !important; transform:none !important; z-index:6; margin:0 !important; padding:0 !important;
+  display:flex !important; flex-wrap:nowrap !important; justify-content:center !important; align-items:baseline !important; gap:0 18px !important; ${PLAIN}
+  font-size:12px !important; white-space:nowrap; color:var(--dp-ice, #8fcbff) !important; }
+${W}.orr-sw--jig .sx-sw__delta > * { position:static !important; transform:none !important; margin:0 !important; }
+${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
+/* while choosing, the screen's own verbs and the instruction step back */
+${W}.orr-sw--jig.is-choosing .sx-sw-verbs, ${W}.is-choosing .sx-sw-circuit__instruction { visibility:hidden !important; }
 ${W} .orr-sw-node.is-lit .orr-sw-node__num { color:var(--dp-hand, #f2b950); }
 
 /* the drawing takes the main column's height: the handling stands under the fleet in the left
    column, the screen's verbs under the ship's name, the six readings along the stage's foot */
-${W}.orr-sw--jig .sx-sw__stats { position:absolute !important; left:0 !important; bottom:0 !important; top:auto !important; width:230px !important; max-height:min(62%, 440px) !important;
+${W}.orr-sw--jig .sx-sw__stats { position:absolute !important; left:0 !important; top:170px !important; bottom:auto !important; width:230px !important; max-height:calc(100% - 180px) !important;
   margin:0 !important; overflow:hidden auto !important; }
 ${W}.orr-sw--jig.is-choosing .sx-sw__stats { visibility:hidden !important; }
 ${W}.orr-sw--jig .sx-sw__stats::before { inset:-30px -30px -20px -30px; }
@@ -128,7 +148,9 @@ ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-sw__slotfield .sx-hardpoint:focus-visible { outline:none !important; }
 /* the six readings under the hull: a ledger line of caps and figures */
-${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; }
+${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !important; }
+${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
+${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -144,8 +166,9 @@ ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !imp
   font-weight:560 !important; font-size:clamp(24px, 2.6vh, 32px) !important; line-height:1 !important; letter-spacing:.01em !important; color:rgb(248 244 234) !important;
   text-transform:none !important; text-shadow:none !important; }
 ${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
-${W} .sx-sw-hero.is-selected { background-image:linear-gradient(rgb(${BONE} / .85), rgb(${BONE} / .85)) !important; background-size:18px 2px !important;
-  background-position:0 100% !important; background-repeat:no-repeat !important; }
+${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
+${W} .sx-sw-bar.sx-sw-bar--topSpeed { display:none !important; }
+${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-band__meta { color:rgb(${BONE} / .6) !important; }
@@ -178,7 +201,7 @@ ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !im
   letter-spacing:.2em !important; color:rgb(${BONE} / .75) !important; }
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
-${W} .sx-chooser__x:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-chooser__kicker { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
 ${W} .sx-chooser__head h3 { ${LABEL} font-size:10px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
@@ -202,7 +225,8 @@ ${W} .sx-modrow .sx-modrow__metrics { font-size:11px !important; color:rgb(${BON
 ${W} .sx-modrow .sx-modrow__meta { display:none !important; }
 ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:11px !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
-${W} .sx-modrow .sx-modrow__act { display:block !important; margin-top:5px; width:auto !important; }
+${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
+${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important; min-width:0 !important; height:auto !important;
   padding:2px 0 !important; font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__buy::after { display:none !important; }
@@ -224,20 +248,22 @@ ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:n
 ${W} .sx-sw-circuit__core { position:relative; width:176px; height:118px; margin:6px 0 10px !important; display:block !important; }
 ${W} .sx-sw-circuit__core .orr-power { position:absolute; inset:0; width:176px; height:118px; overflow:visible; }
 ${W} .orr-power path { fill:none; }
-${W} .orr-power__track { stroke:rgb(${BONE} / .2); stroke-width:3; }
+${W} .sx-sw-circuit__core .orr-power .orr-power__track { stroke:rgb(${BONE} / .2) !important; stroke-width:3; fill:none !important; }
 ${W} .orr-power__ticks { stroke:rgb(${BONE} / .42); stroke-width:1; }
 ${W} .orr-power__lit { stroke:rgb(248 244 234); stroke-width:3; }
 ${W} .orr-power__notch { stroke:rgb(7 8 10); stroke-width:2; }
 ${W} .orr-power.is-over .orr-power__lit { stroke:var(--dp-danger, #ff5038); }
+${W} .orr-power__ghost { stroke:var(--dp-ice, #8fcbff); stroke-width:1.6; stroke-dasharray:4 3; }
+${W} .orr-power__ghost.is-over { stroke:var(--dp-danger, #ff5038); }
 ${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:0; top:44px; text-align:center; line-height:1 !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:0; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) { ${PLAIN} padding:5px 0 !important; min-height:0 !important; }
-${W} .sx-sw-flow { display:grid !important; grid-template-columns:minmax(0, 1fr) 76px 56px; align-items:baseline; column-gap:6px; }
-${W} .sx-sw-flow .sx-sw-flow__copy { display:contents !important; }
-${W} .sx-sw-flow .sx-sw-flow__copy > .k-row__sub { grid-column:2; text-align:right; font-variant-numeric:tabular-nums; }
+${W} .sx-sw-flow { display:grid !important; grid-template-columns:minmax(0, 1fr) 84px 56px; align-items:baseline; column-gap:6px; }
+${W} .sx-sw-flow .sx-sw-flow__copy { grid-column:1 / 3; display:flex !important; flex-direction:row !important; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
+${W} .sx-sw-flow .sx-sw-flow__copy > .k-row__sub { text-align:right; flex:none; font-variant-numeric:tabular-nums; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
 ${W} .sx-sw-flow > .k-row__num { grid-column:3; text-align:right; }
 ${W} .sx-sw-rack { margin-top:16px !important; padding-top:12px !important; border-top:1px solid rgb(${BONE} / .14) !important; }
 ${W} .sx-sw-circuit__active { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }

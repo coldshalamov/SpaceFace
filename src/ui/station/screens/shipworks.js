@@ -1331,7 +1331,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : null;
         const live = barValueText(bar);
         const ghostText = ghost && barValueText(ghost) !== live ? ` <span class="k-38 sx-sw-ghost">→ ${escapeHtml(barValueText(ghost))}</span>` : '';
-        return staticRow(bar.label, escapeHtml(live) + ghostText, { why: bar.why, bar: ghost ? ghost.bar : bar.bar, cls: 'sx-sw-bar' });
+        return staticRow(bar.label, escapeHtml(live) + ghostText, { why: bar.why, bar: ghost ? ghost.bar : bar.bar, cls: `sx-sw-bar sx-sw-bar--${String(bar.id || '').replace(/[^a-zA-Z0-9_-]/g, '')}` });
       }).join('');
       const profile = model.handling && model.handling.profile;
       const meta = profile ? `${profile.flightClass || ''}${profile.driveLabel ? ' · ' + profile.driveLabel : ''}` : '';
@@ -1453,7 +1453,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     dressApron();
   }
 
+  // The circuit's ghost arc: what the fittings being previewed would draw from the core.
+  function circuitDraws(def, fittings) {
+    const draws = new Map();
+    for (const f of fittings || []) {
+      const d = f && FITTABLE_BY_ID.get(f);
+      if (!d) continue;
+      const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
+      draws.set(d.slotType, (draws.get(d.slotType) || 0) + draw);
+    }
+    return [...draws.entries()];
+  }
+  function syncPowerGhost(def, afterFittings) {
+    const core = sideEl && sideEl.querySelector('.sx-sw-circuit__core');
+    const s = viewedShip();
+    if (!core || !def || !s) return;
+    const dial = core.querySelector('.orr-power');
+    const html = powerDialSvg({ cap: def.energyCap || 0, draws: circuitDraws(def, s.fittings), ghost: afterFittings ? circuitDraws(def, afterFittings) : null });
+    if (dial) dial.outerHTML = html;
+  }
+
   function restoreCurrentPreview() {
+    for (const n of jigHost ? jigHost.querySelectorAll('.orr-sw-node.is-preview') : []) n.classList.remove('is-preview');
+    { const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null; if (def) syncPowerGhost(def, null); }
     ghostActive = false;
     ghostSource = null;
     ghostBandModel = null;
@@ -1569,7 +1591,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // live stage shows as before.
   let jig = null;
   let jigHost = null;
-  let jigLit = 0;
+  let jigLit = -1;
   function ensureJig() {
     if (jig || host !== 'dock' || typeof document === 'undefined') return jig;
     jigHost = document.createElement('div');
@@ -1582,6 +1604,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       labelWidth: 220,
       gap: 30,
       edge: 40,
+      allowNone: true,
       onPick: (index) => {
         const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
         jigLit = index;
@@ -1602,6 +1625,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (typeof performance !== 'undefined' && performance.now() - jig.laidOutAt() < 420) return;
       jig.light(Number(node.getAttribute('data-slot')));
     });
+    jigHost.addEventListener('pointerleave', () => { if (jig) jig.light(selectedSlot >= 0 ? selectedSlot : -1); });
     // keyboard on the hidden hardpoint buttons moves the Hand to the same node
     slotfieldEl.addEventListener('focusin', (ev) => {
       const anchor = ev.target.closest && ev.target.closest('[data-spatial-slot]');
@@ -1630,9 +1654,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       existing.delete(String(i));
       const slotName = SLOT_LABEL[slot.type] || slot.type;
       const ring = hardpointClassOf(slot) === 'ring' ? ' · ring' : '';
+      const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.handling
+        && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel;
+      const name = fitted ? fitted.name : (stockDrive || slotName);
+      const state = fitted ? `${slotName} · ${slot.size || ''}${ring}` : (stockDrive ? `stock · ${slot.size || ''}` : `empty · ${slot.size || ''}${ring}`);
       const html = `<span class="orr-sw-node__num">${String(i + 1).padStart(2, '0')}</span>`
-        + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(fitted ? fitted.name : slotName)}</b>`
-        + `<span class="orr-sw-node__state">${escapeHtml(fitted ? `${slotName} · ${slot.size || ''}${ring}` : `empty · ${slot.size || ''}${ring}`)}</span></span>`;
+        + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(name)}</b>`
+        + `<span class="orr-sw-node__state">${escapeHtml(state)}</span></span>`;
+      node.classList.toggle('is-stock', !!stockDrive);
       if (node.innerHTML !== html) node.innerHTML = html;
       node.classList.toggle('is-fitted', !!fitted);
       node.classList.toggle('is-empty', !fitted);
@@ -1642,7 +1671,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
     j.setHull(def ? def.id : null);
     j.setNodes(nodes, { engraving: def ? `${shipName || def.name || ''} \u00b7 ${fittedCount} of ${nodes.length} fitted` : '' });
-    if (nodes.length) j.light(Math.max(0, Math.min(nodes.length - 1, selectedSlot >= 0 ? selectedSlot : jigLit)), { swing: false });
+    j.light(selectedSlot >= 0 && selectedSlot < nodes.length ? selectedSlot : -1, { swing: false });
   }
 
   function renderSpatialSlots() {
@@ -2475,7 +2504,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     el.classList.add('is-choosing');
     requestAnimationFrame(() => {
       chooserEl.classList.add('is-open');
-      const first = chooserEl.querySelector('[data-preview-module], [data-unfit], [data-close]');
+      const first = chooserEl.querySelector('[data-preview-module]') || chooserEl.querySelector('[data-unfit], [data-close]');
       if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
     });
   }
@@ -2621,6 +2650,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       syncGaugeValues(ghostBandModel, { ghost: true });
       syncPowerBand(ghostBandModel);
     }
+    const ghostSlot = Number.isInteger(slotIndex) ? slotIndex : selectedSlot;
+    const moduleDef = FITTABLE_BY_ID.get(ghost.moduleId || moduleId);
+    const previewNode = jigHost && jigHost.querySelector(`.orr-sw-node[data-slot="${ghostSlot}"]`);
+    if (previewNode && moduleDef) {
+      previewNode.classList.add('is-preview');
+      const nameEl = previewNode.querySelector('.orr-sw-node__name');
+      const stateEl = previewNode.querySelector('.orr-sw-node__state');
+      if (nameEl) nameEl.textContent = moduleDef.name;
+      if (stateEl) stateEl.textContent = 'preview';
+    }
+    syncPowerGhost(def, ghost.afterFittings);
     const changed = (ghost.changedRows || []).filter((row) => row.tone !== 'same').slice(0, 4);
     if (changed.length) {
       deltaEl.hidden = false;
