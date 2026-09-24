@@ -1,5 +1,5 @@
-# IMPORT — IMPORT_DIGEST 20260924db
+# IMPORT — IMPORT_DIGEST 20260924dc
 
-Digest + #143 code package `lifetime-sweep-quiet-clocks-skip/patches/` after
-prior #142 `presentation-query-pose-dirty-retain/`. Soft-GPU fps not claimed.
-Picture ON. Apply patches in numeric package order on master when importing.
+Miss-only digest after #143 `lifetime-sweep-quiet-clocks-skip/`. No new code
+patches this pass. Soft-GPU fps not claimed. Picture ON. Prior packages apply
+in numeric order on master when importing; #144 has nothing to am.
