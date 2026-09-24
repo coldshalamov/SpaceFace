@@ -1,0 +1,87 @@
+From b7cbe0606552500c803cd30faed1aa8bf0ff22ca Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:06:44 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-skip=20empty=20actions.ad?=
+ =?UTF-8?q?vance=20(~2.4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet prePhysics still paid processRequests (fresh due/future + requests
+rebind) and Object.keys(activeByActor).sort every tick with nothing queued.
+Early-out when requests empty and activeByActor has no keys; reuse due/future
+scratch and retain the requests array in place when work is pending.
+---
+ src/combat/actions.js | 45 ++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 38 insertions(+), 7 deletions(-)
+
+diff --git a/src/combat/actions.js b/src/combat/actions.js
+index 6081969a5..9866a3620 100644
+--- a/src/combat/actions.js
++++ b/src/combat/actions.js
+@@ -35,9 +35,26 @@ export function createActionService(context, attachments, routeDamage) {
+     return { ok: true, requestId: queued.id, request: queued };
+   }
+ 
++  // Quiet combat dominates prePhysics: empty requests + empty activeByActor still paid
++  // processRequests (fresh due/future arrays + requests rebind) and Object.keys().sort()
++  // every tick. for-in emptiness is O(1) on {}.
++  function hasActiveActionKeys(active) {
++    if (!active) return false;
++    for (const _ in active) return true;
++    return false;
++  }
++
++  const dueScratch = [];
++  const futureScratch = [];
++
+   function advance() {
+-    processRequests();
++    const requests = state.combat.actions.requests;
+     const active = state.combat.actions.activeByActor;
++    // Quiet empty path: no queued requests and no active instances → return.
++    if ((!requests || requests.length === 0) && !hasActiveActionKeys(active)) return;
++    if (requests && requests.length > 0) processRequests();
++    // processRequests may have started instances; re-check before Object.keys.sort.
++    if (!hasActiveActionKeys(active)) return;
+     for (const key of Object.keys(active).sort(compareEntityKeys)) {
+       const instance = active[key];
+       if (instance) tickAction(instance, key);
+@@ -45,14 +62,28 @@ export function createActionService(context, attachments, routeDamage) {
+   }
+ 
+   function processRequests() {
+-    const due = [];
+-    const future = [];
+-    for (const request of state.combat.actions.requests) {
+-      if (request.notBeforeTick <= state.tick) due.push(request); else future.push(request);
++    const requests = state.combat.actions.requests;
++    const due = dueScratch;
++    const future = futureScratch;
++    due.length = 0;
++    future.length = 0;
++    for (let i = 0; i < requests.length; i++) {
++      const request = requests[i];
++      if (request.notBeforeTick <= state.tick) due.push(request);
++      else future.push(request);
++    }
++    // Prefer in-place retain when every request is still future (common notBefore defer).
++    if (future.length === requests.length) {
++      // nothing due — keep the same array identity
++    } else if (future.length === 0) {
++      requests.length = 0;
++    } else {
++      requests.length = 0;
++      for (let i = 0; i < future.length; i++) requests.push(future[i]);
+     }
+-    state.combat.actions.requests = future;
++    if (due.length === 0) return;
+     due.sort((a, b) => a.seq - b.seq);
+-    for (const request of due) processRequest(request);
++    for (let i = 0; i < due.length; i++) processRequest(due[i]);
+   }
+ 
+   function processRequest(request) {
+-- 
+2.47.3
+

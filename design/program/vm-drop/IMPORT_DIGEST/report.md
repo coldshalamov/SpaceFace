@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ax (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ay (post-import hillclimb)
 
-Master tip: **`273f8bad7`** (fetched; unchanged from #84).
+Master tip: **`273f8bad7`** (fetched; unchanged from #85).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924i` on `origin/master` @ `273f8bad7`;
-through #84 @ `b72a29f06`; +#85 measured on stacked tip @ `265274b2f`. Profile
+through #85 @ `265274b2f`; +#86 measured on stacked tip @ `b7cbe0606`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -72,6 +72,7 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 83 | `combat-kernel-profile-reuse` |
 | 84 | `combat-status-subsystem-quiet-skip` |
 | 85 | `combat-prephysics-quiet-residual` |
+| 86 | `combat-actions-advance-quiet-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -113,7 +114,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85 |
+| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
 | 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81 |
@@ -125,12 +126,13 @@ native GL / bloom admission owners ignored for portable ranking.
 - prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), spaceBg (hold)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
-- registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
+- registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
+| 86 | `combat-actions-advance-quiet-skip` | Portable quiet `actions.advance` empty path **~2.37×** median (empty requests+active × 800k; floor minSpeedup ≥1.71×). Focused combat+doctrines suites 71/71. Soft-GPU fps not claimed. |
 | 85 | `combat-prephysics-quiet-residual` | Portable quiet combat prePhysics residual after #84 **~2.81×** median (48 combatants × 50k; floor minSpeedup ≥2.61×). Focused combat+momentum suites 70/70. Soft-GPU fps not claimed. |
 | 84 | `combat-status-subsystem-quiet-skip` | Portable quiet combat status+subsystem prePhysics **~6.39×** median (48 combatants × 6 subs × 50k; floor minSpeedup ≥5.58×). Focused combat suites 62/62. Soft-GPU fps not claimed. |
 | 83 | `combat-kernel-profile-reuse` | Portable quiet combat pre/post heat+bounds path **~2.50×** median (48 combatants × 40k; floor minSpeedup ≥2.18×). Focused combat suites 62/62. Soft-GPU fps not claimed. |
@@ -141,6 +143,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| combat actions.advance empty early-out + due/future scratch | **shipped #86 ~2.37×** |
 | combat ensure quiet-hit + cool heat0 skip + dynamic/sink gate | **shipped #85 ~2.81×** (ensure-only ~1.35× under bar; combined clears) |
 | combat status.advance empty early-out + subsystem pending-count skip | **shipped #84 ~6.39×** (status ~2.24× / subsystem ~10.7× components) |
 | combat kernel stash heatDissipation + status-gated sync + postPhysics skip-when-runtime | **shipped #83 ~2.50×** |

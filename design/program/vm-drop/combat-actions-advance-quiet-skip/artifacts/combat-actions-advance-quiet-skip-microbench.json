@@ -1,0 +1,65 @@
+{
+  "label": "combat-actions-advance-quiet-skip",
+  "primary": "quiet-actions-advance-empty-path",
+  "pairs": [
+    {
+      "beforeMs": 30.053,
+      "afterMs": 12.227,
+      "speedup": 2.458
+    },
+    {
+      "beforeMs": 30.718,
+      "afterMs": 12.719,
+      "speedup": 2.415
+    },
+    {
+      "beforeMs": 30.319,
+      "afterMs": 12.308,
+      "speedup": 2.463
+    },
+    {
+      "beforeMs": 29.575,
+      "afterMs": 12.456,
+      "speedup": 2.374
+    },
+    {
+      "beforeMs": 29.929,
+      "afterMs": 12.583,
+      "speedup": 2.378
+    },
+    {
+      "beforeMs": 29.987,
+      "afterMs": 13.115,
+      "speedup": 2.286
+    },
+    {
+      "beforeMs": 31.565,
+      "afterMs": 12.22,
+      "speedup": 2.583
+    },
+    {
+      "beforeMs": 29.111,
+      "afterMs": 14.106,
+      "speedup": 2.064
+    },
+    {
+      "beforeMs": 32.586,
+      "afterMs": 17.595,
+      "speedup": 1.852
+    },
+    {
+      "beforeMs": 30.846,
+      "afterMs": 14.066,
+      "speedup": 2.193
+    },
+    {
+      "beforeMs": 29.974,
+      "afterMs": 17.539,
+      "speedup": 1.709
+    }
+  ],
+  "medianSpeedup": 2.374,
+  "minSpeedup": 1.709,
+  "maxSpeedup": 2.583,
+  "note": "Before=processRequests alloc + Object.keys.sort every tick. After=empty early-out. Soft-GPU fps not claimed."
+}
