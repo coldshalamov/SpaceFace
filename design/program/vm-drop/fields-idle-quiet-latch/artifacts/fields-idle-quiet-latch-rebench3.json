@@ -1,0 +1,89 @@
+{
+  "iters": 60000,
+  "pairs": 11,
+  "ships": 64,
+  "medianSpeedup": 2.662,
+  "minSpeedup": 2.436,
+  "maxSpeedup": 2.842,
+  "pairRows": [
+    {
+      "offMs": 35.471,
+      "onMs": 13.137,
+      "speedup": 2.7,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 34.802,
+      "onMs": 13.076,
+      "speedup": 2.662,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 36.922,
+      "onMs": 14.344,
+      "speedup": 2.574,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 37.467,
+      "onMs": 13.182,
+      "speedup": 2.842,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 34.29,
+      "onMs": 12.917,
+      "speedup": 2.655,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 35.443,
+      "onMs": 14.202,
+      "speedup": 2.496,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 36.538,
+      "onMs": 13.188,
+      "speedup": 2.771,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 36.659,
+      "onMs": 13.716,
+      "speedup": 2.673,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 34.138,
+      "onMs": 14.013,
+      "speedup": 2.436,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 34.186,
+      "onMs": 13.597,
+      "speedup": 2.514,
+      "latched": true,
+      "wokeOnMembership": true
+    },
+    {
+      "offMs": 36.475,
+      "onMs": 13.304,
+      "speedup": 2.742,
+      "latched": true,
+      "wokeOnMembership": true
+    }
+  ],
+  "allLatched": true,
+  "allWoke": true
+}
