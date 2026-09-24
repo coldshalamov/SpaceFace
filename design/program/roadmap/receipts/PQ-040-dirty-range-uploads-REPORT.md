@@ -971,6 +971,63 @@ What the forensics found and fixed:
   D38. On a quiet host this leg completes in <60 s (the 18:44
   diagnostic ran route+scenario+restore end-to-end in ~3.5 min).
 
+**D37 resolved at the mechanism (commit 1b993a668).** The 22:28Z run
+produced both windows and a passing comparison (driver upload
+−68.6%, owner-requested −91.8%) but failed closure on
+`windows[0]-pipeline-cache-mismatch` plus three `[GPU brick]
+bloomScene` warnings owned by `ship_kestrel_DirectAuthoredAdmission`
+substrates — programs linking mid-window, which also moved the
+pipeline fingerprint. The predicted gap was found inside the warm
+touch itself: `touchSubjectOnExactTarget` rendered the lighting
+scene's graph, so (a) a *detached* subject — every composed authored
+root during the pre-commit prepare — was never drawn at all, (b)
+`withOnlySubjectsDrawable` kept only the subject and its ancestors,
+so a Group subject's own mesh descendants were hidden mid-touch, and
+(c) nothing disabled frustum culling, so even a visible subject could
+be skipped by camera aim. The touch was a silent no-op for exactly
+the authored-ship class that produced every observed brick. All three
+are fixed (park foreign subjects into the lighting scene, keep the
+subject subtree drawable, pin `frustumCulled` off during the touch —
+the same contract `bloom.js`/`compilePresentSlice.js` already keep),
+with regression pins for each. D37's ledger row left in the fixing
+commit. Three stale test pins broken by foreign lanes were repaired
+alongside (`compileOptions` arity, shared-observer count 5→7, two
+`cam.follow` signature relaxations) plus one stale fallback-surface
+assertion re-scoped to the PIC-11 empty-substrate contract.
+
+**Residual class closed at the publish seam (commit d2ca77980).**
+The 22:56Z retry on 1b993a668 produced both windows and a passing
+comparison but still logged two `bloomScene` bricks on Kestrel
+`LOD0_engine_*` / `LOD0_static_*` materials — each with
+`siblingKeys: []`, meaning those subtrees were never compiled or
+touched in their presented state at all. The pre-commit prepare runs
+while the authored root is detached and pre-final:
+`primeAuthoredState` resolves the presented LOD, canonical surface
+program keys stamp after upgrade resolution, and dedicated
+meshes/static batches/pool chunks can become drawable inside commit.
+A new `state.render.touchSubjectExactTarget` runs one exact-target
+warm on the attached, final-state root inside every publish seam
+(ship, place, cargo capsule, packaged scenario prop) while the
+boundary is still pre-`authored`, so any residual variant links in
+the admission continuation instead of the first presented bloom
+pass. The same run also carried a self-inflicted
+`worktree-not-clean` closure failure — this receipt was edited
+mid-capture; claims now mint only on a clean, committed head and no
+tracked edits happen while a run is live.
+
+```yaml
+unit: PQ-040.native-acceptance (browser+electron legs, pending)
+candidateHead: d2ca77980
+claims: >-
+  fresh broker claims mint on the committed head immediately before
+  each acceptance leg; see .devshots/perf/dirty-ranges/*/broker-claims/
+runs: >-
+  acceptance retry pending on d2ca77980; expected outcome is windows
+  free of bloomScene bricks now that publish-seam re-touch covers the
+  attached final-state root
+numericAcceptance: pending
+```
+
 ```yaml
 unit: PQ-040.native-acceptance (browser leg, fourth diagnostic series)
 candidateHead: 22cf0d8be
