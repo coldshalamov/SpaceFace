@@ -3,17 +3,17 @@
 ## Summary
 
 Post-import hillclimb on master **`abcccfd87`** (fetched; unchanged).
-Scratch `vm-work/hillclimb-20260924h` through #64; +#65 @ `31e445654`.
+Scratch `vm-work/hillclimb-20260924h` through #65; +#66 @ `2fcf7a7fc`.
 
 Fresh quiet profile `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU,
-tip through #64) cites ranking; #65 cuts residual `cameraClearanceFloorAt`
-structural walk of never-roof field rocks after #63.
+tip through #64) cites ranking; #66 cuts residual `liveFramesFor` /
+`entityContacts` spread-alloc after #39+#43+#49+#50+#55+#56+#58+#59+#61.
 
 **Shipped this pass:**
-- **#65 `camera-clearance-never-roof-exclude`** — portable quiet clearance
-  never-roof structural exclude **~1.78×** median (60-rock Ceres mix × 20k
-  floor queries with #63 pos-cache bust; floor minSpeedup ≥1.60× across five
-  isolated pairs; capital/station parity); focused suites **68/68**.
+- **#66 `sensor-contact-scratch-fill`** — portable quiet live sensor contact
+  scratch fill **~5.75×** median (6 observers × 18 contacts × 2500 iters with
+  PerceptionMemory-style Object.assign; floor minSpeedup ≥5.52×); focused
+  suites **20/20**.
 
 **Holds / misses:** lifetimeSweep dirty-publish trust full-pole ~1.08×;
 lifetimeSweep pose-publish-list(~1.00×); classify physics-partition fuse-only
@@ -29,8 +29,8 @@ Map-epoch marks. 11 rocks pinned.
    packFence / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
-   lifetimeSweep residual / tacticalAI).
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66 (preStep residual /
+   lifetimeSweep residual / tacticalAI residual).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.

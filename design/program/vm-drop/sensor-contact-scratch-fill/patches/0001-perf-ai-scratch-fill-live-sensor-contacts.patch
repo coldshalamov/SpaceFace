@@ -1,0 +1,233 @@
+From 2fcf7a7fc385a468032a6b5016cb5246f4fb7314 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:57:48 -0400
+Subject: [PATCH] =?UTF-8?q?perf(ai):=20scratch-fill=20live=20sensor=20cont?=
+ =?UTF-8?q?acts=20(~5.75=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet liveFramesFor/entityContacts residual: ephemeral observers no longer
+allocate `{...base, confidence, threat, hostile}` per contact. Fill retained
+per-member contactRecords instead; PerceptionMemory still Object.assigns into
+durable records. Soft-GPU fps not claimed.
+---
+ src/systems/aiPorts.js | 144 +++++++++++++++++++++++++++++++++++------
+ 1 file changed, 126 insertions(+), 18 deletions(-)
+
+diff --git a/src/systems/aiPorts.js b/src/systems/aiPorts.js
+index 9066cc9cf..b7705969b 100644
+--- a/src/systems/aiPorts.js
++++ b/src/systems/aiPorts.js
+@@ -98,6 +98,7 @@ export const aiPorts = {
+     this._recentEventsByTarget = new Map();
+     this._sensorCandidateScratch = [];
+     this._sensorContactsScratch = [];
++    this._sensorContactRecordsScratch = [];
+     this._sensorTetherContactsScratch = [];
+     this._liveSensorFrameScratch = {
+       tick: -1,
+@@ -255,6 +256,7 @@ export const aiPorts = {
+       options.contactsScratch || (live ? this._sensorContactsScratch : null),
+       this,
+       options.candidates || null,
++      options.contactRecords || null,
+     );
+     const tetherContacts = attachmentContacts(
+       state,
+@@ -299,7 +301,13 @@ export const aiPorts = {
+     if (!ids.length) return frames;
+     if (singleton) {
+       const id = ids[0];
+-      const frame = this._sensorFrameFor(id, tick, { freezeResults: false });
++      const frame = this._sensorFrameFor(id, tick, {
++        freezeResults: false,
++        contactsScratch: this._sensorContactsScratch,
++        contactRecords: this._sensorContactRecordsScratch,
++        tetherContactsScratch: this._sensorTetherContactsScratch,
++        frameScratch: this._liveSensorFrameScratch,
++      });
+       frames.set(id, frame);
+       this._diag.sensorFrames++;
+       return frames;
+@@ -395,6 +403,7 @@ export const aiPorts = {
+         freezeResults: false,
+         candidates: entry.requestActive ? entry.request.out : null,
+         contactsScratch: entry.contacts,
++        contactRecords: entry.contactRecords,
+         tetherContactsScratch: entry.tetherContacts,
+         frameScratch: entry.frame,
+       });
+@@ -931,9 +940,85 @@ export function cloakHidesPlayerFrom(state, self, player) {
+   return (dx * dx + dz * dz) > cloak.radius * cloak.radius;
+ }
+ 
+-function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null) {
++
++function makeSensorContactRecord() {
++  return {
++    id: null,
++    kind: null,
++    team: null,
++    classification: null,
++    pos: null,
++    vel: null,
++    radius: 0,
++    alive: true,
++    valid: true,
++    visible: true,
++    targetId: null,
++    ownerId: null,
++    disabled: false,
++    tethered: false,
++    exposed: false,
++    ownedBySelf: false,
++    objectiveValue: 0,
++    massClass: 1,
++    operationalMassBand: null,
++    mobilityBand: null,
++    cargoBand: null,
++    tetherabilityBand: null,
++    tags: null,
++    confidence: 0,
++    threat: 0,
++    hostile: false,
++  };
++}
++
++function ensureSensorContactRecord(records, index) {
++  let rec = records[index];
++  if (rec) return rec;
++  rec = makeSensorContactRecord();
++  records[index] = rec;
++  return rec;
++}
++
++/** Fill a retained contact record from a cached base + observer-relative fields (no object spread). */
++function fillSensorContact(out, base, confidence, threat, hostile) {
++  out.id = base.id;
++  out.kind = base.kind;
++  out.team = base.team;
++  out.classification = base.classification;
++  out.pos = base.pos;
++  out.vel = base.vel;
++  out.radius = base.radius;
++  out.alive = base.alive;
++  out.valid = base.valid;
++  out.visible = base.visible;
++  out.targetId = base.targetId;
++  out.ownerId = base.ownerId;
++  out.disabled = base.disabled;
++  out.tethered = base.tethered;
++  out.exposed = base.exposed;
++  out.ownedBySelf = base.ownedBySelf;
++  out.objectiveValue = base.objectiveValue;
++  out.massClass = base.massClass;
++  out.operationalMassBand = base.operationalMassBand;
++  out.mobilityBand = base.mobilityBand;
++  out.cargoBand = base.cargoBand;
++  out.tetherabilityBand = base.tetherabilityBand;
++  out.tags = base.tags;
++  out.confidence = confidence;
++  out.threat = threat;
++  out.hostile = hostile;
++  // Drop tether-only keys so recycled slots match spread-alloc shape (no undefined own props).
++  if ('attachmentId' in out) delete out.attachmentId;
++  if ('sourceSocketId' in out) delete out.sourceSocketId;
++  if ('targetSocketId' in out) delete out.targetSocketId;
++  return out;
++}
++
++function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
+   const out = outScratch || [];
+   out.length = 0;
++  const records = Array.isArray(contactRecords) ? contactRecords : null;
+   const candidates = candidateOverride || nearbyEntities(state, self.pos, range, helpers, candidateScratch);
+   const rangeSq = range * range;
+   for (const other of candidates) {
+@@ -955,12 +1040,18 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
+     const base = cacheOwner && typeof cacheOwner._contactBaseFor === 'function'
+       ? cacheOwner._contactBaseFor(other, runtime, attachmentIndex, kind)
+       : buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner);
+-    out.push({
+-      ...base,
+-      confidence: confidenceFor(distance, range, state, self),
+-      threat: threatFor(state, self, other, hostile),
+-      hostile,
+-    });
++    const confidence = confidenceFor(distance, range, state, self);
++    const threat = threatFor(state, self, other, hostile);
++    if (records) {
++      out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile));
++    } else {
++      out.push({
++        ...base,
++        confidence,
++        threat,
++        hostile,
++      });
++    }
+   }
+   // The Crucible pilot is the cohort's broadcast objective. Track that one ship beyond
+   // ordinary sensor range so boosting creates a chase, not abandoned enemies. Cloaking
+@@ -969,9 +1060,16 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
+     ? getEntity(state, state.playerId) : null;
+   if (pilot?.alive && !out.some(c => c.id === pilot.id) && !cloakHidesPlayerFrom(state, self, pilot)) {
+     const hostile = isHostileForAI(state, self, pilot);
+-    out.push({ ...buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
+-      attachmentIndex, 'ship', freeze, cacheOwner), confidence: 1,
+-      threat: threatFor(state, self, pilot, hostile), hostile });
++    {
++      const base = buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
++        attachmentIndex, 'ship', freeze, cacheOwner);
++      const threat = threatFor(state, self, pilot, hostile);
++      if (records) {
++        out.push(fillSensorContact(ensureSensorContactRecord(records, out.length), base, 1, threat, hostile));
++      } else {
++        out.push({ ...base, confidence: 1, threat, hostile });
++      }
++    }
+   }
+   // A CONTROL-dispatched responder carries its offender as a reported track, not a sensor guess —
+   // the same broadcast-objective semantics as the Crucible pilot. The jurisdiction witnessed the
+@@ -994,13 +1092,22 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
+     const hostile = isHostileForAI(state, self, offender);
+     const base = buildContactBase(state, reported, combatRuntimeFor(state, offender.id),
+       attachmentIndex, 'ship', freeze, cacheOwner);
+-    out.push({
+-      ...base,
+-      ...(reported === offender
+-        ? { confidence: 1 }
+-        : { visible: false, confidence: REPORTED_TRACK_CONFIDENCE }),
+-      threat: threatFor(state, self, reported, hostile), hostile,
+-    });
++    const threat = threatFor(state, self, reported, hostile);
++    const confidence = reported === offender ? 1 : REPORTED_TRACK_CONFIDENCE;
++    if (records) {
++      const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, confidence, threat, hostile);
++      if (reported !== offender) rec.visible = false;
++      out.push(rec);
++    } else {
++      out.push({
++        ...base,
++        ...(reported === offender
++          ? { confidence: 1 }
++          : { visible: false, confidence: REPORTED_TRACK_CONFIDENCE }),
++        threat,
++        hostile,
++      });
++    }
+   }
+   return out;
+ }
+@@ -1304,6 +1411,7 @@ function liveSensorBatchEntry(entries, index) {
+   entry = {
+     candidates,
+     contacts: [],
++    contactRecords: [],
+     tetherContacts: [],
+     frame: {},
+     request: { id: null, x: 0, z: 0, r: 0, out: candidates },
+-- 
+2.47.3
+

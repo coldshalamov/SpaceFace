@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ad (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ae (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #64; +#65 measured on
-stacked tip @ `31e445654`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #65; +#66 measured on
+stacked tip @ `2fcf7a7fc`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -52,6 +52,7 @@ stacked tip @ `31e445654`. Fresh profile `settled-45s-stacked-20260924ac`
 | 63 | `camera-clearance-asteroid-span-reject` |
 | 64 | `classify-normalize-pins-small-n` |
 | 65 | `camera-clearance-never-roof-exclude` |
+| 66 | `sensor-contact-scratch-fill` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -77,7 +78,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
+| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57 |
 | 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65 |
@@ -89,13 +90,13 @@ native GL / bloom admission owners ignored for portable ranking.
 - prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance), packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
-- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**)
+- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 65 | `camera-clearance-never-roof-exclude` | Portable quiet clearance never-roof structural exclude **~1.78×** median (60-rock Ceres × 20k floor; floor minSpeedup ≥1.60× / five isolated pairs; capital/station parity). Focused suites 68/68. |
+| 66 | `sensor-contact-scratch-fill` | Portable quiet live sensor contact scratch fill **~5.75×** median (6×18×2500 with PerceptionMemory Object.assign; floor minSpeedup ≥5.52×). Focused suites 20/20. |
 
 ## Scour attempts / misses
 
@@ -108,6 +109,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | bitfield materialize pins | prior miss — not retried (distinct from #64) |
 | normalizePinReasons small-n (n<=2) fast path | **shipped #64 ~1.92×** |
 | clearance never-roof structural exclude (after #63) | **shipped #65 ~1.78×** |
+| liveFramesFor entityContacts scratch fill | **shipped #66 ~5.75×** |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -123,8 +125,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    packFence / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
-   lifetimeSweep residual / tacticalAI / ai.stack liveFramesFor).
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66 (preStep residual /
+   lifetimeSweep residual / tacticalAI residual).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.
