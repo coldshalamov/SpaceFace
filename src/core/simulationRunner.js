@@ -198,6 +198,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
   // The step throw that triggered quarantine. Every later frame can only report
   // "SimulationRunner is closed", so the original error must be retained here.
   let closeCauseMessage = null;
+  // The stack's first frames name the throwing system — a bare "x is not defined" does not.
+  let closeCauseSite = null;
 
   function assertOpen() {
     if (closed) throw new Error('SimulationRunner is closed');
@@ -322,6 +324,12 @@ export function createSimulationRunner(state, registry, deps = {}) {
         closeCauseMessage = error && typeof error.message === 'string'
           ? error.message.slice(0, 240)
           : String(error).slice(0, 240);
+        const stackLines = error && typeof error.stack === 'string'
+          ? error.stack.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('at '))
+          : null;
+        closeCauseSite = stackLines && stackLines.length
+          ? stackLines.slice(0, 4).join(' | ').slice(0, 480)
+          : null;
         try {
           close();
         } catch (_) {
@@ -504,6 +512,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
         closeAttemptCount,
         closeFailureCount,
         closeCauseMessage,
+        closeCauseSite,
         completedTicksPendingAtClose,
         completedTicksDiscardedOnClose,
         inputPendingAtClose,

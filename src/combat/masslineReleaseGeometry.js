@@ -131,27 +131,35 @@ export function resolveThrowCollateral(solution, payloadPos, payloadRadius, spot
       || solution.degraded === true || solution.decisionStale === true) return null;
   if (!validPoint(payloadPos) || !validPoint(solution.predicted)) return null;
   const halfWidth = radius(payloadRadius) + THROW_COLLATERAL_PAD;
-  const waypoints = Array.isArray(solution.projectedPath) && solution.projectedPath.length > 0
-    ? solution.projectedPath.filter(validPoint)
-    : [];
-  const points = [payloadPos, ...waypoints, solution.predicted];
-  let best = null;
-  for (const spot of spots || []) {
+  const path = solution.projectedPath;
+  let bestLabel = '';
+  let bestClearance = Infinity;
+  let found = false;
+  const list = spots || [];
+  for (let s = 0; s < list.length; s++) {
+    const spot = list[s];
     if (!spot || !validPoint(spot) || !Number.isFinite(spot.r) || spot.r < 0) continue;
     let distance = Infinity;
-    for (let i = 0; i + 1 < points.length; i++) {
-      distance = Math.min(distance, segmentDistance(points[i], points[i + 1], spot));
+    let prev = payloadPos;
+    if (Array.isArray(path)) {
+      for (let i = 0; i < path.length; i++) {
+        const point = path[i];
+        if (!validPoint(point)) continue;
+        distance = Math.min(distance, segmentDistance(prev, point, spot));
+        prev = point;
+      }
     }
+    distance = Math.min(distance, segmentDistance(prev, solution.predicted, spot));
     if (!Number.isFinite(distance) || distance > spot.r + halfWidth) continue;
     const clearance = distance - spot.r;
-    if (!best || clearance < best.clearance) {
-      best = {
-        label: typeof spot.label === 'string' && spot.label ? spot.label : 'PROTECTED BODY',
-        clearance,
-      };
+    if (!found || clearance < bestClearance) {
+      found = true;
+      bestClearance = clearance;
+      bestLabel = typeof spot.label === 'string' && spot.label ? spot.label : 'PROTECTED BODY';
     }
   }
-  return best;
+  if (!found) return null;
+  return { label: bestLabel, clearance: bestClearance };
 }
 
 function segmentDistance(a, b, p) {

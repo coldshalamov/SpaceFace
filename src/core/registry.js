@@ -58,6 +58,7 @@ import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
+import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
 import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
@@ -399,6 +400,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
     ['combat', combat],

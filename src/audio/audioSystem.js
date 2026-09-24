@@ -849,6 +849,16 @@ export function resolveDryFireReadiness(player, state) {
     : { clack: false, reason: 'armed' };
 }
 
+/** INST-11 — a capital's pre-detonation ticks are a combat charge, never a menu hover. */
+export const CAPITAL_PREDET_RECIPE = 'sfx_doctrine_ranged_charge';
+
+/** Deterministic left/right offset from the victim id. No Math.random in the kill path. */
+export function capitalPredetonationOffset(id, index) {
+  const n = Math.imul(Number(id) || 0, 17) + (Number(index) || 0) * 5;
+  const unit = ((n % 1000) + 1000) % 1000 / 1000;
+  return unit - 0.5;
+}
+
 /** Radio punctuation timings: key-in click leads the voice, squelch tail follows it. */
 export const BARK_PUNCT = Object.freeze({
   keyLeadS: 0.09,
@@ -973,10 +983,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.drill_retry': 'sfx_mining_drill_retry',
   // Docking cradle: the magnetic guide takes hold inside the capture lane (feature 14).
   'presentation.dock.capture': 'sfx_dock_capture',
-  'presentation.combat.doctrine_setup': 'sfx_encounter_escalation',
-  'presentation.combat.doctrine_telegraph': 'sfx_encounter_escalation',
-  'presentation.combat.doctrine_commit': 'sfx_encounter_escalation',
-  'presentation.combat.doctrine_aftermath': 'sfx_encounter_escalation',
+  'presentation.combat.doctrine_setup': 'sfx_doctrine_tether_spool',
+  'presentation.combat.doctrine_telegraph': 'sfx_doctrine_ranged_charge',
+  'presentation.combat.doctrine_commit': 'sfx_doctrine_brawler_commit',
+  'presentation.combat.doctrine_aftermath': 'sfx_doctrine_withdraw',
   'presentation.combat.doctrine_break': 'sfx_doctrine_break',
   'presentation.combat.doctrine_withdraw': 'sfx_doctrine_withdraw',
   'presentation.combat.interceptor_flyby.setup': 'sfx_doctrine_flyby',
@@ -1901,10 +1911,9 @@ export const audio = {
     });
 
     // UI namespaced cue events (DOM UI may emit these directly).
-    bus.on('ui:click', () => this._onCue('click'));
-    bus.on('ui:hover', () => this._onCue('hover'));
+    // ui:confirm is the only ui:* semantic event with a producer (src/ui/input.js);
+    // every other UI sound arrives as an audio:cue with a concrete id.
     bus.on('ui:confirm', () => this._onCue('confirm'));
-    bus.on('ui:deny', () => this._onCue('deny'));
 
     // Rebuild graph on load (transient runtime is wiped on load). The save restore clears the
     // dock flags itself without a dock:undocked emit, so the docked latch and desired loops
@@ -3151,18 +3160,21 @@ export const audio = {
       // Breathless beat: the world goes quiet under the delayed explosion so its roar returns
       // against silence — scale reads through the contrast, not the loudness.
       this._triggerHush({ kind: 'capital', pos: p.pos });
-      const radius = p.victimRadius || p.radius || 120;
-      const pos1 = {
-        x: p.pos.x + (Math.random() - 0.5) * radius * 0.7,
-        z: p.pos.z + (Math.random() - 0.5) * radius * 0.7
-      };
-      const pos2 = {
-        x: p.pos.x + (Math.random() - 0.5) * radius * 0.7,
-        z: p.pos.z + (Math.random() - 0.5) * radius * 0.7
-      };
-      // Play two 30ms pre-detonation clicks
-      this.play('sfx_ui_hover', { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.9, rate: 0.5, critical: killedByPlayer });
-      this.play('sfx_ui_hover', { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.9, rate: 0.5, critical: killedByPlayer });
+      if (p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
+        const radius = p.victimRadius || p.radius || 120;
+        const span = radius * 0.7;
+        const pos1 = {
+          x: p.pos.x + capitalPredetonationOffset(p.id, 0) * span,
+          z: p.pos.z + capitalPredetonationOffset(p.id, 1) * span,
+        };
+        const pos2 = {
+          x: p.pos.x + capitalPredetonationOffset(p.id, 2) * span,
+          z: p.pos.z + capitalPredetonationOffset(p.id, 3) * span,
+        };
+        // Two short combat ticks, then the blast. Not menu hovers.
+        this.play(CAPITAL_PREDET_RECIPE, { position: pos1, startTime: ctx.currentTime + 0.05, gain: 0.55, rate: 1, critical: killedByPlayer });
+        this.play(CAPITAL_PREDET_RECIPE, { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.55, rate: 1.08, critical: killedByPlayer });
+      }
       // Play the main capital explosion in 400ms
       this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0, critical: killedByPlayer });
       if (killedByPlayer) {
@@ -4634,7 +4646,7 @@ export const audio = {
 
   _onCue(cue) {
     const id = typeof cue === 'string' ? cue : cue && cue.id;
-    if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
+    if (!id) return;
     // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
     // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
     if (resolveVisualEventCue(id) && !AUDIO_CUE_TO_RECIPE[id] && !AUDIO_RECIPE_BY_ID[id]) return;

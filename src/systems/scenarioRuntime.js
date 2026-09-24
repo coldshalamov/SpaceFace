@@ -674,9 +674,9 @@ function bindNarrativeActor(actor) {
   };
 }
 
-function findActorEntity(state, actor) {
+export function findActorEntity(state, actor) {
   if (!state || !actor) return null;
-  if (actor.id === 'player_kestrel' && state.playerId && state.entities) {
+  if (actor.id === 'player_kestrel' && state.playerId != null && state.entities) {
     const player = state.entities.get(state.playerId);
     if (player) return player;
   }

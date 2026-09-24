@@ -130,8 +130,10 @@ test('snapshot revision invalidates a retained index after same-array replacemen
 
   // Keep the same perception and contacts array, but replace the entry in place. This changes
   // both category membership and position; a contacts-array identity sentinel alone is stale.
-  perception.contacts[0] = {
-    ...perception.contacts[0],
+  // contacts[0] is the maneuver's own intercept target — a contact-seeking intent deliberately
+  // ignores its objective in the obstacle lane — so the reclassified contact is a bystander.
+  perception.contacts[1] = {
+    ...perception.contacts[1],
     kind: ContactKind.WAYPOINT,
     pos: { x: 18, z: 0 },
     tags: ['solid'],

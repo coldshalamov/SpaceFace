@@ -71,6 +71,19 @@ export function isUnsellableCargo(state, commodityId) {
   return false;
 }
 
+/** The lot a flight jettison dumps: the focused commodity, else the first positive lot. */
+export function selectedJettisonLot(state) {
+  const cargo = state && state.player && state.player.cargo;
+  const items = cargo && cargo.items;
+  if (!items || typeof items !== 'object') return null;
+  const focus = cargo.selectedId || (state.ui && state.ui.selectedCommodityId);
+  if (typeof focus === 'string' && Number(items[focus]) > 0 && !isUnsellableCargo(state, focus)) return focus;
+  const ids = Object.keys(items)
+    .filter((id) => Number(items[id]) > 0 && !isUnsellableCargo(state, id))
+    .sort();
+  return ids[0] || null;
+}
+
 // Exported addCargo/removeCargo calls need their state-local bus without relying on whichever
 // system instance initialized most recently. Bindings are weakly keyed by state so isolated
 // runtimes cannot cross-talk and disposed states do not stay alive through this module.
@@ -365,6 +378,11 @@ export const cargo = {
   },
 
   update(dt, state) {
+    if (state && state.input && state.input.actions && state.input.actions.jettisonLot) {
+      state.input.actions.jettisonLot = false;
+      const commodityId = selectedJettisonLot(state);
+      if (commodityId) this.jettison(commodityId, 1);
+    }
     const binding = stateBindings.get(state);
     const dirty = binding ? binding.dirty : this._dirty;
     const massDirty = binding ? binding.massDirty : this._massDirty;

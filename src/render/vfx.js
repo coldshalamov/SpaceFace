@@ -81,6 +81,7 @@ import {
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
+import { PROJECTILE_DRAW_PAD_WU, projectileOnReadableFrame } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
   collectStatusAttachedVictims,
@@ -90,6 +91,7 @@ import {
 import { addShieldContact } from './weapons/shieldContacts.js';
 import { impactAxisAngle, impactRead } from './combat/impactRead.js';
 import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
+import { readCustomsWeir } from '../presentation/customsWeir.js';
 import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
 import {
   createStationSideEventVfxFrameScratch,
@@ -3006,11 +3008,12 @@ export const vfx = {
     if (this._frameMembrane) this._frameMembrane.toGlobal(globalXZ, globalXZ);
     const local = this._toLocalXZ(globalXZ.x, globalXZ.z, this._spawnLocalXZ);
     sock.x = local.x;
-    sock.y = 0;
+    sock.y = this._socketWorldPos.y;
     sock.z = local.z;
     sock.ax = -this._socketForward.x;
     sock.ay = 0;
     sock.az = -this._socketForward.z;
+    sock.retroIris = socket.userData && socket.userData.retroIris;
     return true;
   },
 
@@ -4041,13 +4044,11 @@ export const vfx = {
       const col = this._shieldColor(fid);
       const r = (tgt && tgt.radius) || 8;
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
-      if (tgt) {
-        addShieldContact(tgt.id, nx, 0.12, nz, p.brokeShield ? 1.4 : 1.0);
-      }
+      const reducedFlash = this._isReduced();
 
       if (p.brokeShield) {
-        // Shield break: five fixed tangent tears crawl around the shell. No screen-facing annulus.
-        this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
+        // Shield break: the tear, not the scar as well. Five fixed tangent tears crawl the shell.
+        if (!reducedFlash) this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
         if (this._weaponPresenter && this._weaponPresenter.quarks) {
           const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
           this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
@@ -4069,12 +4070,10 @@ export const vfx = {
             0.28, 0.12, r * (0.45 + Math.random() * 0.28), 0.58, col,
             0, 0, tx, tz);
         }
-      } else {
-        // Ordinary shield receipt reinforces only the local tangent scar already established by
-        // the weapon-family contact. It cannot become another generic circular flash.
-        this._spawnProjectileTrailStreak(pos.x, 0.2, pos.z, 0.14, 0.20,
-          Math.min(4.2, r * 0.55), 0.40, col, 0, 0, -nz, nx);
-        this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
+      } else if (tgt) {
+        // Ordinary shield receipt is the contact scar only. A second streak reads as a second hit.
+        addShieldContact(tgt.id, nx, 0.12, nz, 1.0);
+        if (!reducedFlash) this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
       }
     }
     if (p.armorHit) {
@@ -4104,7 +4103,7 @@ export const vfx = {
       }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
-      this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
+      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
@@ -4135,14 +4134,12 @@ export const vfx = {
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
-      this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
+      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
       if (this._weaponPresenter && this._weaponPresenter.quarks && tgt && tgt.hp != null && tgt.maxHp != null && tgt.hp / tgt.maxHp < 0.35) {
         const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
         this._weaponPresenter.quarks.spawnDamageVenting(local.x, 0.35, local.z, nx, 0.2, nz, 6);
       }
     }
-    // player hits get a camera kick — STRONGER, proportional to damage
-    if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
   },
 
   _onPresentationCue(p) {
@@ -8363,6 +8360,21 @@ export const vfx = {
     mesh.visible = true;
   },
 
+  // Two edges, not a disc: Helios is a corridor, Tethys is a cone. Brighter while you are inside.
+  _updateCustomsWeirLines() {
+    const live = readCustomsWeir(this.state);
+    const segments = live && live.segments ? live.segments : [];
+    for (let i = 0; i < 2; i++) {
+      const slot = `_weirEdge${i}`;
+      const seg = segments[i];
+      if (!seg) {
+        if (this[slot] && this[slot].mesh) this[slot].mesh.visible = false;
+        continue;
+      }
+      this._writeWorldSegment(slot, 0x7ec8ff, seg.x0, seg.z0, seg.x1, seg.z1, live.seen ? 0.62 : 0.28);
+    }
+  },
+
   _updateRouteRibbon() {
     const ribbon = routeRibbon(this.state);
     if (!ribbon || ribbon.active !== true) {
@@ -11412,6 +11424,7 @@ export const vfx = {
     }
     this._updatePayloadReleaseGhost();
     this._updateWantedSearchRing();
+    this._updateCustomsWeirLines();
     this._updateRouteRibbon();
     if (this._masslineReleaseArcActive()) {
       sub.masslineReleaseArc = this._updateMasslineReleaseArc(dt) ? 1 : 0;
@@ -12673,8 +12686,8 @@ export const vfx = {
       // released brake can spool down attached to the hull — a frozen render-local pose would
       // stay behind in the world while the ship flies on (B10).
       this._retroHeldSockets = [
-        { lx: 0, lz: 0, lax: 1, laz: 0 },
-        { lx: 0, lz: 0, lax: 1, laz: 0 },
+        { lx: 0, ly: 0, lz: 0, lax: 1, laz: 0, role: 'reverse-left' },
+        { lx: 0, ly: 0, lz: 0, lax: 1, laz: 0, role: 'reverse-right' },
       ];
       this._retroHeldCount = 0;
       this._retroParams = { ...PLAYER_RETRO_VOLUME_RECIPE, drive: 0, boost: 0, turbulence: 0 };
@@ -13086,7 +13099,14 @@ export const vfx = {
     const energy = this._energy;
     const volume = energy && energy.retroVolume;
     if (!volume) return;
-    if (!player || !player.pos) { volume.reset(); return; }
+    if (!player || !player.pos) {
+      this._retroBrakeEngaged = false;
+      volume.reset();
+      return;
+    }
+    if (typeof volume.configure === 'function') {
+      volume.configure(this._engineProfileIdFor(player), player.radius);
+    }
 
     const pose = this._rcsPoseScratch;
     pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
@@ -13133,12 +13153,14 @@ export const vfx = {
           sock.ay = 0;
           sock.az = -jet.dirZ;
         }
+        sock.role = jet.role;
         view.push(sock);
         if (jet.intensity > peak) peak = jet.intensity;
       }
     }
 
     if (!view.length) {
+      this._retroBrakeEngaged = false;
       // Release tail: the demand is gone but the spool may still be winding down. Rebuild the
       // bow pose under the hull's CURRENT transform so the pair shrinks in place on the ship
       // instead of being left hanging at the world spot where the brake let go (B10).
@@ -13150,12 +13172,17 @@ export const vfx = {
         for (let i = 0; i < this._retroHeldCount; i++) {
           const held = this._retroHeldSockets[i];
           const sock = this._retroSockets[i];
-          sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
-          sock.y = 0;
-          sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
-          sock.ax = held.lax * cf - held.laz * sf;
-          sock.ay = 0;
-          sock.az = held.lax * sf + held.laz * cf;
+          const mounted = held.role === 'reverse-left'
+            ? authoredSockets && authoredSockets.retroPort
+            : authoredSockets && authoredSockets.retroStarboard;
+          if (!this._writeRetroSocketPose(mounted, sock)) {
+            sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
+            sock.y = held.ly || 0;
+            sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
+            sock.ax = held.lax * cf - held.laz * sf;
+            sock.ay = 0;
+            sock.az = held.lax * sf + held.laz * cf;
+          }
           view.push(sock);
         }
         const cam = this.state.render && this.state.render.camera;
@@ -13164,6 +13191,7 @@ export const vfx = {
         return;
       }
       volume.reset();
+      this._retroBrakeEngaged = false;
       return;
     }
 
@@ -13181,11 +13209,27 @@ export const vfx = {
         const dx = src.x - shipLocal.x;
         const dz = src.z - shipLocal.z;
         dst.lx = dx * cf + dz * sf;
+        dst.ly = src.y;
         dst.lz = -dx * sf + dz * cf;
         dst.lax = src.ax * cf + src.az * sf;
         dst.laz = -src.ax * sf + src.az * cf;
+        dst.role = src.role;
       }
     }
+
+    // The actuator supplies the real counter-force. A short view displacement at deliberate
+    // high-speed engagement makes the hull's initial change of acceleration readable without
+    // adding an unphysical velocity impulse or changing the ship's stopping distance.
+    const vx = Number.isFinite(player.vel?.x) ? player.vel.x : 0;
+    const vz = Number.isFinite(player.vel?.z) ? player.vel.z : 0;
+    const speed = Math.hypot(vx, vz);
+    const deliberateBrake = !!(actuators && actuators.pilotBrake && peak > 0.18 && speed > 20);
+    if (deliberateBrake && !this._retroBrakeEngaged && !(a11y && a11y.reducedMotion)) {
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.014, 0.32);
+      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34);
+    }
+    this._retroBrakeEngaged = deliberateBrake;
 
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);
@@ -14161,6 +14205,20 @@ export const vfx = {
     return false;
   },
 
+  _projectileTrailOnFrame(entity) {
+    const state = this.state;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    return projectileOnReadableFrame(
+      state,
+      entity && entity.pos,
+      player && player.pos,
+      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
+      this._projectileFrameLook || (this._projectileFrameLook = { x: 0, z: 0 }),
+    );
+  },
+
   _emitProjectileTrails(dt) {
     if (!this._scene) return false;
     resetProjectileTrailDiag(this._projectileTrailDiag);
@@ -14190,6 +14248,9 @@ export const vfx = {
       const prof = resolveProjectileTrailProfile(data.weaponId, data);
       const plan = buildProjectileTrailSpawnPlan(prof, e, burst, this._projectileTrailPlanScratch);
       if (plan.skip) continue;
+      // Trails are frame dressing. The round keeps flying; the wake is only
+      // painted while the body is on the glass.
+      if (!this._projectileTrailOnFrame(e)) continue;
       if (plan.mode === 'propelled') {
         plan.emitSmoke = ((this._projectileTrailFrameIndex + i) % 3) === 0;
       }
@@ -14798,7 +14859,7 @@ export function runProjectileTrailEmissionSelfCheck() {
   if (bolts.byEntity && bolts.byEntity.has(11)) fail('missile must keep its mesh body rather than an energy card');
 
   const offTableId = 15;
-  const offTableX = tableVfxDrawWuFromState({}) + 24;
+  const offTableX = tableVfxDrawWuFromState({}) + PROJECTILE_DRAW_PAD_WU + 24;
   const offTableSystem = _makeProjectileTrailSelfCheckHarness([
     _selfCheckProjectile(offTableId, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: offTableX, z: 0 }),
   ]);

@@ -44,8 +44,11 @@ test('production init + update order lengths match the live browser baseline', (
   // capitalBossEncounters initialises after the combat kernel (it validates
   // helpers.routeCombatDamage at init) and ticks immediately before the AI slot (score orders
   // precede AI action consumption on the same fixed tick), so init and update move together.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 156);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 117);
+  // 156 -> 157 init / 117 -> 118 update: emergent combat primitives. One fixed-step owner,
+  // after bombs and before impulseCharges, so it still sees chargeDetonate and queues forces
+  // before the physics solve.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 157);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 118);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -181,7 +184,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 152 with the Chronicler and the tension director (genie packet returns); 155 with the
   // nemesis packet (nemesis + nemesisEncounter + event-only nemesisSignals); 156 with packet 09's
   // capitalBossEncounters (one system in both orders; score orders precede AI action consumption).
-  assert.equal(registry.systems.length, 156);
+  // 157 with emergentPrimitives (one system in both orders; reads chargeDetonate before it is consumed).
+  assert.equal(registry.systems.length, 157);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

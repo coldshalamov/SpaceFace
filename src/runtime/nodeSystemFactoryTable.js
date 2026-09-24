@@ -58,6 +58,7 @@ import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
+import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
@@ -224,6 +225,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
     ['combat', combat],

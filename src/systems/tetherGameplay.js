@@ -2405,7 +2405,7 @@ function statusForReason(reason) {
 }
 
 function validateAcquisitionTarget(host, player, target, def, state) {
-  if (!isAttachable(target, player && player.id)) return 'target-lost';
+  if (!isAttachable(target, player && player.id, state)) return 'target-lost';
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
@@ -2692,9 +2692,24 @@ function aimWorldFor(player, state, range) {
 
 // Massline is a physical command, not a catalog verb. New world-object types do not need a
 // separate eligibility-list edit before a player can deliberately attach to them.
-export function isAttachable(entity, playerId) {
-  if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
+/** VERB-12 — a wreck made in this swarm round can be roped before the shop. */
+export function survivalRoundWreckLatchLegal(entity, state) {
+  if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) return false;
+  const data = entity.data || {};
+  if (data.runCohort !== 'survival') return false;
+  const run = state && state.run;
+  if (run && (run.phase === 'shop' || run.phase === 'inactive')) return false;
+  const wave = data.runWave;
+  const current = run && (run.wave != null ? run.wave : run.waveIndex);
+  if (wave != null && current != null && Number(wave) !== Number(current)) return false;
+  return Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+}
+
+export function isAttachable(entity, playerId, state) {
+  if (!entity || !entity.pos || entity.id === playerId) return false;
   if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  if (survivalRoundWreckLatchLegal(entity, state)) return true;
+  if (!entity.alive) return false;
   if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return false;
   const explicitlyTetherable = entity.data?.masslineTetherable === true
     || entity.flags?.masslineTetherable === true;

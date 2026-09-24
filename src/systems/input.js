@@ -264,6 +264,9 @@ const VERB_BINDINGS = {
   // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
   dropBomb:  ['Digit9'], // edge: release the selected drift bomb at current ship velocity
   cycleBomb: ['Comma'],  // edge: cycle the bomb bay's selected payload
+  // VERB-13: one flight key dumps the selected hold lot as the payload body cargo already spawns.
+  // Period is free of the verb tables and the UI bindings. Cargo owns the dump.
+  jettisonLot: ['Period'],
   // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -982,7 +985,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
-      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -1000,7 +1003,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
-      acts.dropBomb = false; acts.cycleBomb = false;
+      acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1296,6 +1299,7 @@ export const input = {
       && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
+    acts.jettisonLot = edge('jettisonLot');
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must

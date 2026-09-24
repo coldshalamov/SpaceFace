@@ -77,7 +77,7 @@ const TRAVEL_RAMP_FULL_S = 9;
  * as a wall"); the floor is what keeps it reachable in finite time instead of asymptotic forever.
  */
 const TRAVEL_RAMP_TAPER_FLOOR = 0.12;
-/** Exponential decay constant for a disengaged travel cap — mirrors the tether-exit sling decay. */
+/** Exponential decay constant for the disengaged cap record, not the ship's velocity. */
 const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
 
 /**
@@ -114,6 +114,18 @@ export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
   fadeStartRad: Math.PI / 2,
   fadeEndRad: Math.PI,
 });
+
+/**
+ * Coordinated-turn lead bound, rad (~16 deg). While the vectoring assist is live the nose may lead
+ * the velocity vector by at most this much before the yaw command is rate-matched to what the
+ * drive can actually bend the path by — see vectoringTurnBound. Without it a held turn spins the
+ * nose at maxYawRate (~2.6 rad/s) while the path follows at ~0.9 rad/s and the hull parks 40-80 deg
+ * off its own trail — a clean circle in the exhaust with the ship visibly pointing out of it. The
+ * allowance is small enough to read as a banked carve, not a sideways slide; the lead still snaps
+ * to it instantly, so twitch response is preserved, and the bound releases inside the flip band so
+ * reversals still swing the nose through.
+ */
+export const VECTORING_SLIP_LEAD_RAD = 0.28;
 
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
@@ -223,9 +235,9 @@ function normalizeTravelDrive(raw) {
  *
  * While Engaged the cap is a moving target climbing toward the ceiling, tapering as it closes so
  * the ceiling is approached rather than hit. In every other state the cap does not snap back to
- * the ordinary governed cap — it DECAYS exponentially and reports `physicsEarnedMomentum`, so the
- * excess velocity a burn earned is spent by the existing decay path rather than confiscated by a
- * reverse-thrust command. That is the same mechanism the tether/self-sling exit already uses.
+ * the ordinary governed cap — it DECAYS exponentially and reports `physicsEarnedMomentum`.
+ * Only the remembered thrust ceiling decays; earned velocity coasts until the pilot brakes or
+ * an actual environmental force acts on it.
  */
 function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
   const ceiling = drive.ceiling > 0
@@ -246,8 +258,8 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
     return { state: drive.state, cap, ceiling, ramping: cap < ceiling - EPS, physicsEarnedMomentum: false };
   }
 
-  // Off / Spooling / Cooldown: no cap contribution is being *added*, but anything already earned
-  // bleeds off gently. Spooling deliberately behaves like Off for the cap — it is the pre-engage
+  // Off / Spooling / Cooldown: no cap contribution is being added. The old cap record fades,
+  // while the ship retains its velocity. Spooling behaves like Off for the cap — it is the pre-engage
   // window the latch owner times, not a partial burn.
   const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
   const cap = decayed > baseCap ? decayed : 0;
@@ -297,16 +309,20 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const environmental = environmentalDragAcceleration(body, environment);
   accel = add2(accel, environmental);
 
-  const yaw = computeYawControl(body, input, profile, dt);
+  const turnBound = vectoringTurnBound(body, input, profile, limits, governor, combined.forward, dt);
+  const yaw = computeYawControl(body, input, profile, dt, turnBound);
   // Resource demand is taken from the thrust the pilot and the ordinary assist commanded; the
   // vectoring assist below redirects that thrust rather than burning more, so it adds no cost.
   const demand = resourceDemand(profile, accel, input.boost, dt);
   const nextRuntime = coolRuntime(runtime, profile, demand, dt);
-  accel = applyTravelCapSpend(accel, body, governor, dt);
   const vectoring = velocityVectoringAcceleration(body, input, profile, limits, governor, dt);
   if (vectoring && vectoring.active) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
+  }
+  if (vectoring) {
+    vectoring.slipRad = turnBound ? turnBound.slip : null;
+    vectoring.leadBounded = yaw.leadBounded === true;
   }
 
   const telemetry = {
@@ -390,8 +406,8 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
     ? speed * Math.exp(-step / decayTauS)
     : baseCap;
   // Engaged burns raise the cap. Once the burn is down, leftover boosted `burn.cap` is only a
-  // falling ceiling: throttle chases the decaying earned speed so the excess is spent rather
-  // than held at the old travel target. RC-4 still floors commanded reverse at coast.
+  // falling ceiling: throttle stops pushing at the old travel target. The ship keeps its
+  // earned velocity; RC-4 still floors commanded reverse at coast.
   const cap = travelEarned
     ? Math.max(baseCap, Math.min(earnedCap, burn.cap > 0 ? burn.cap : earnedCap))
     : Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
@@ -426,9 +442,8 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
     baseCap,
     engaged,
     overspeed: err < 0,
-    // A decaying travel cap IS earned momentum being spent. Reporting it here keeps one honest
-    // answer to "is the ship above its ordinary cap on purpose?" no matter which mechanism —
-    // tether sling or travel burn — earned the excess.
+    // A decaying travel cap records why the ship is above its ordinary cap. The velocity itself
+    // is preserved until the pilot brakes or an actual environmental force acts on it.
     physicsEarned: physicsEarned || !!(burn && burn.physicsEarnedMomentum),
   };
   // Shape gate, not just a behaviour gate. With the axis off this object must be byte-identical
@@ -441,7 +456,7 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
       cap: burn.cap,
       ceiling: burn.ceiling,
       ramping: burn.ramping,
-      // Disengage spends earned velocity through the existing decay rather than confiscating it.
+      // Disengage fades the thrust ceiling while earned velocity keeps coasting.
       earned: burn.physicsEarnedMomentum,
     };
   }
@@ -460,24 +475,6 @@ function controlMadeSpeedLimit(governor, profile) {
   const cap = finite(governor.cap, 0);
   if (!(cap > 0)) return solver;
   return Number.isFinite(solver) ? Math.min(cap, solver) : cap;
-}
-
-/**
- * Follow a disengaged travel cap by bleeding planar speed one exponential step toward it.
- * The governor's brake floor stays 0 (held throttle never commands reverse). This is the
- * decaying-ceiling spend: at most one `TRAVEL_DISENGAGE_DECAY_TAU_S` step from current speed,
- * so a stale leftover ceiling cannot slam the ship to combat speed in a tick.
- */
-function applyTravelCapSpend(accel, body, governor, dt) {
-  if (!governor || !governor.travel || !governor.travel.earned) return accel;
-  const speed = length2(body.vel);
-  const cap = finite(governor.cap, 0);
-  const step = Math.max(0, finite(dt, 0));
-  if (!(speed > cap + EPS) || !(step > 0)) return accel;
-  const decayed = speed * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S);
-  const target = Math.max(cap, decayed);
-  if (!(target < speed - EPS)) return accel;
-  return add2(accel, scale2(body.vel, (target / speed - 1) / step));
 }
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
@@ -506,7 +503,19 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
   const error = sub2(targetVelocity, body.vel);
   const response = positive(profile.responseHz, 4.5);
   const raw = scale2(error, response);
-  const braking = dot2(error, body.vel) < 0;
+  const speed = length2(body.vel);
+  // A lowered boost cap must not turn a gravimetric velocity servo into an automatic brake.
+  // Keep lateral steering authority, but let existing overspeed coast unless the pilot commands
+  // a turn past 90 degrees or presses the brake.
+  if (!input.brake && speed > maxSpeed && speed > EPS
+    && dot2(targetVelocity, body.vel) >= -EPS) {
+    const along = dot2(raw, body.vel) / speed;
+    if (along < 0) {
+      raw.x -= (body.vel.x / speed) * along;
+      raw.z -= (body.vel.z / speed) * along;
+    }
+  }
+  const braking = dot2(raw, body.vel) < -EPS;
   const accelLimit = braking
     ? positive(profile.maxBrakeAccel, positive(profile.maxAccel, 80))
     : positive(profile.maxAccel, 80);
@@ -700,16 +709,20 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     lateral: manualLocal.lateral + assist.local.lateral,
   }, controlLimits);
   let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
-  const yaw = computeYawControl(body, input, profile, dt);
+  const turnBound = vectoringTurnBound(body, input, effective, limits, governor, local.forward, dt);
+  const yaw = computeYawControl(body, input, profile, dt, turnBound);
   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
   const nextRuntime = coolRuntime({ ...runtime, family: profile.family, spool }, profile, demand, dt);
-  accel = applyTravelCapSpend(accel, body, governor, dt);
   // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
   // torch vectors as little as it pushes.
   const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt);
   if (vectoring && vectoring.active) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
+  }
+  if (vectoring) {
+    vectoring.slipRad = turnBound ? turnBound.slip : null;
+    vectoring.leadBounded = yaw.leadBounded === true;
   }
 
   const telemetry = {
@@ -929,6 +942,58 @@ function vectoringIdle(reason) {
   return { active: false, reason, rateRadS: 0, errorRad: 0, deltaRad: 0, saturated: false, accel: 0, ax: 0, az: 0 };
 }
 
+/**
+ * Coordinated-turn lead bound — how fast the nose may rotate once it already leads the path.
+ *
+ * The vectoring assist rotates the velocity vector at a bounded rate, but nothing stopped the yaw
+ * controller from spinning the nose far faster, so a held turn parked the hull dozens of degrees
+ * off its own trail. With the packet opted into vectoring (identical gates to
+ * velocityVectoringAcceleration), this returns the signed nose-vs-path slip and the rate the drive
+ * can actually rotate the velocity this tick: the assist's own rotation plus the nose-forward
+ * thrust's curvature at the allowed lead. computeYawControl then clamps the yaw-rate command only
+ * while it pushes FURTHER into an at-cap lead — so the lead snaps to VECTORING_SLIP_LEAD_RAD
+ * instantly (twitch preserved), then nose and path carve together, and turning back toward the
+ * path is always free. |slip| >= 90 deg returns null so flips/reversals still swing the nose.
+ * Opted-out packets return null and every result stays byte-identical.
+ */
+function vectoringTurnBound(body, input, profile, limits, governor, forwardAccel, dt) {
+  const tuning = input.velocityVectoring;
+  if (!tuning) return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
+  if (input.brake) return null;
+  if (!(input.throttle > deadInput)) return null;
+  const speed = length2(body.vel);
+  if (!(speed > positive(settings.deadSpeed, 0.18))) return null;
+  let cap = positive(profile.combatSpeed, 0) * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
+  if (governor && governor.travel && governor.travel.state === 'engaged') {
+    cap = Math.max(cap, finite(governor.cap, 0));
+  }
+  if (!(cap > 0)) return null;
+  const overCapScale = 1 - smoothstep(cap, cap + OVERCAP_ASSIST_BLEND_WU_S, speed);
+  if (!(overCapScale > 0)) return null;
+  const slip = wrapAngle(body.rot - Math.atan2(body.vel.z, body.vel.x));
+  if (Math.abs(slip) >= Math.PI / 2) return null;
+  const earnedScale = input.physicsEarnedMomentum
+    ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
+    : 1;
+  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed / cap, 0, 1))
+    * overCapScale * earnedScale;
+  const authority = positive(limits && limits.forward, 0);
+  const authorityRate = dt > EPS
+    ? 2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1)) / dt
+    : 0;
+  // followRate = this tick's achievable velocity rotation: the assist's own turn (bounded by the
+  // same drive authority the assist itself uses) plus the curvature the commanded nose-forward
+  // thrust already produces at the allowed lead. Using the post-governor forward accel — not the
+  // authority ceiling — keeps the bound honest at the cap, where the servo holds thrust near zero
+  // and a fixed-authority estimate would still let the nose outrun the path.
+  const followRate = Math.min(Math.max(0, rate), authorityRate)
+    + clamp(finite(forwardAccel, 0), 0, authority) * Math.sin(VECTORING_SLIP_LEAD_RAD) / speed;
+  return { slip, followRate: Math.max(0, followRate) };
+}
+
 /** `true` selects the band defaults without allocating; an object overrides individual keys. */
 function normalizeVelocityVectoring(raw) {
   if (!raw) return null;
@@ -953,21 +1018,33 @@ function coastHelmYawMultiplier(input, profile) {
   return COAST_HELM_YAW_MULT;
 }
 
-function computeYawControl(body, input, profile, dt) {
+function computeYawControl(body, input, profile, dt, turnBound = null) {
   const mode = normalizeAssistMode(input.assistMode);
   const turn = clamp(finite(input.turn, 0), -1, 1);
   if (mode === 'newtonian' && Math.abs(turn) < 0.001) {
-    return { targetYawRate: body.angVel, angularAcceleration: 0, coastHelm: false };
+    return { targetYawRate: body.angVel, angularAcceleration: 0, coastHelm: false, leadBounded: false };
   }
   const helm = coastHelmYawMultiplier(input, profile);
-  const targetYawRate = turn * positive(profile.maxYawRate, 2.5) * helm;
+  let targetYawRate = turn * positive(profile.maxYawRate, 2.5) * helm;
+  let leadBounded = false;
+  // Sustained-lead bound: once the nose already leads the path by VECTORING_SLIP_LEAD_RAD, a yaw
+  // command pushing FURTHER into the lead may only run as fast as the drive can rotate the
+  // velocity this tick — the carve stays welded instead of sliding the hull off its own trail.
+  // Turning back toward the path (opposite sign) is never clamped.
+  if (turnBound
+      && Math.abs(turnBound.slip) >= VECTORING_SLIP_LEAD_RAD
+      && Math.sign(targetYawRate) === Math.sign(turnBound.slip)
+      && Math.abs(targetYawRate) > turnBound.followRate) {
+    targetYawRate = Math.sign(targetYawRate) * turnBound.followRate;
+    leadBounded = true;
+  }
   const error = targetYawRate - body.angVel;
   const accelerating = Math.abs(targetYawRate) > Math.abs(body.angVel) && Math.sign(targetYawRate) === Math.sign(error);
   const maxAlpha = accelerating
     ? positive(profile.yawAccel, 8) * helm
     : positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * helm;
   const angularAcceleration = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
-  return { targetYawRate, angularAcceleration, coastHelm: helm > 1 };
+  return { targetYawRate, angularAcceleration, coastHelm: helm > 1, leadBounded };
 }
 
 function computeHeadingControl(body, desiredHeading, profile, dt, input = null) {

@@ -62,6 +62,7 @@ test('materials reflect, absorb, or do neither', () => {
   assert.equal(surfaceResponseFor('absorbent'), SURFACE_RESPONSE.absorb);
   assert.equal(surfaceResponseFor('furnace'), SURFACE_RESPONSE.absorb);
   assert.equal(surfaceResponseFor('rock'), SURFACE_RESPONSE.absorb);
+  assert.equal(surfaceResponseFor('bank_stone'), SURFACE_RESPONSE.reflect);
   assert.equal(surfaceResponseFor('ship'), SURFACE_RESPONSE.none);
   assert.equal(surfaceResponseFor('station'), SURFACE_RESPONSE.none);
   assert.equal(surfaceResponseFor('projectile'), SURFACE_RESPONSE.none);
@@ -160,6 +161,37 @@ test('absorbent surfaces consume without spending bounce budget', () => {
   assert.equal(runtime.budget.remaining, before);
   assert.equal(runtime.remaining.bounces, 1);
   assert.equal(body.vel.x, 12);
+});
+
+test('bank stone reflects a banked shot and consumes a shot without the trait', () => {
+  const bank = compile('wpn_pulse_laser_s', [['mod_bank_shot', 1]]);
+  const plain = compile('wpn_pulse_laser_s');
+  const banked = resolveRicochet(
+    lineageFor(bank),
+    bank,
+    plateReceipt({ material: 'bank_stone' }),
+    { id: 'bolt-bank', vel: { x: 12, z: 0 }, rot: 0 },
+  );
+  const enemy = resolveRicochet(
+    lineageFor(plain),
+    plain,
+    plateReceipt({ material: 'bank_stone' }),
+    { id: 'bolt-plain', vel: { x: 12, z: 0 }, rot: 0 },
+  );
+  assert.equal(banked.ok, true, JSON.stringify(banked));
+  assert.equal(banked.consume, false);
+  assert.equal(banked.velocity.x, -12);
+  assert.equal(enemy.ok, false);
+  assert.equal(enemy.consume, true);
+  assert.equal(enemy.reason, 'not_inherited');
+  const rock = resolveRicochet(
+    lineageFor(bank),
+    bank,
+    plateReceipt({ material: 'rock' }),
+    { id: 'bolt-rock', vel: { x: 12, z: 0 } },
+  );
+  assert.equal(rock.ok, false);
+  assert.equal(rock.reason, 'absorbed');
 });
 
 test('ordinary shots without Bank Shot do not bounce', () => {
