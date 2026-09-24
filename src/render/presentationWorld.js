@@ -141,6 +141,9 @@ export function createPresentationWorld(options = {}) {
 
   const world = {
     capacity: 0,
+    // Fence pack layout identity. Bumped when activeSlots membership/order changes so
+    // pose-only incremental packs can reuse a buffer's entityId→row Map safely.
+    layoutVersion: 1,
     alive: new Uint8Array(0),
     visible: new Uint8Array(0),
     slotGenerations: new Uint32Array(0),
@@ -253,6 +256,7 @@ export function createPresentationWorld(options = {}) {
     world.activeSlots[activeCount++] = slot;
     diagnostics.active = activeCount;
     diagnostics.highWater = Math.max(diagnostics.highWater, activeCount);
+    world.layoutVersion = (world.layoutVersion + 1) >>> 0 || 1;
   }
 
   function removeActive(slot) {
@@ -265,6 +269,7 @@ export function createPresentationWorld(options = {}) {
     world.activePositions[slot] = INVALID_INDEX;
     activeCount = lastPosition;
     diagnostics.active = activeCount;
+    world.layoutVersion = (world.layoutVersion + 1) >>> 0 || 1;
   }
 
   function recomputeMaxRadius() {

@@ -1,0 +1,376 @@
+From a16a8586c250bb0c3f0fe1824d64ac7186262590 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:06:48 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20snapshot=20fence=20dirty-increm?=
+ =?UTF-8?q?ental=20pack=20(~4.76=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Layout-stable prepareFrame packs copy the previous dense fence snapshot and
+rewrite TRANSFORM-dirty rows in place, reusing the buffer's entityId→row Map.
+Membership/layoutVersion churn still full-rebuilds. Quiet 400/4 dirty ~4.76×;
+oracle matches forceFull. Soft-GPU fps not claimed.
+---
+ src/render/presentationSnapshot.js            |  26 ++++
+ src/render/presentationWorld.js               |   5 +
+ src/render/snapshotFence.js                   | 132 +++++++++++++++---
+ .../snapshot-fence-dirty-incremental.test.mjs |  97 +++++++++++++
+ 4 files changed, 241 insertions(+), 19 deletions(-)
+ create mode 100644 test/snapshot-fence-dirty-incremental.test.mjs
+
+diff --git a/src/render/presentationSnapshot.js b/src/render/presentationSnapshot.js
+index 0ccd1a06a..a28e95f85 100644
+--- a/src/render/presentationSnapshot.js
++++ b/src/render/presentationSnapshot.js
+@@ -115,6 +115,32 @@ export function createPresentationSnapshot(options = {}) {
+       return this;
+     },
+ 
++    /**
++     * Pose-only fence reuse: copy dense columns from a predecessor pack and adopt its count.
++     * Does not touch the fence's entityId→row Map (caller keeps it when layoutVersion matches).
++     */
++    copyDenseFrom(sourceColumns, sourceCount) {
++      const n = Math.max(0, sourceCount | 0);
++      journalCount = 0;
++      generation++;
++      if (n > capacity) {
++        let next = capacity || 1;
++        while (next < n) next *= GROWTH_FACTOR;
++        allocate(next);
++      }
++      if (!sourceColumns) {
++        count = 0;
++        return this;
++      }
++      for (const [name, spec] of Object.entries(SNAPSHOT_COLUMNS)) {
++        const src = sourceColumns[name];
++        if (!src) continue;
++        columns[name].set(src.subarray(0, n * spec.stride));
++      }
++      count = n;
++      return this;
++    },
++
+     /**
+      * Append one entity. Returns its snapshot index. No object is created and no field is read
+      * through a pointer — the caller passes primitives, which is what keeps the loop linear.
+diff --git a/src/render/presentationWorld.js b/src/render/presentationWorld.js
+index 5d102fd28..6d4d89cae 100644
+--- a/src/render/presentationWorld.js
++++ b/src/render/presentationWorld.js
+@@ -141,6 +141,9 @@ export function createPresentationWorld(options = {}) {
+ 
+   const world = {
+     capacity: 0,
++    // Fence pack layout identity. Bumped when activeSlots membership/order changes so
++    // pose-only incremental packs can reuse a buffer's entityId→row Map safely.
++    layoutVersion: 1,
+     alive: new Uint8Array(0),
+     visible: new Uint8Array(0),
+     slotGenerations: new Uint32Array(0),
+@@ -253,6 +256,7 @@ export function createPresentationWorld(options = {}) {
+     world.activeSlots[activeCount++] = slot;
+     diagnostics.active = activeCount;
+     diagnostics.highWater = Math.max(diagnostics.highWater, activeCount);
++    world.layoutVersion = (world.layoutVersion + 1) >>> 0 || 1;
+   }
+ 
+   function removeActive(slot) {
+@@ -265,6 +269,7 @@ export function createPresentationWorld(options = {}) {
+     world.activePositions[slot] = INVALID_INDEX;
+     activeCount = lastPosition;
+     diagnostics.active = activeCount;
++    world.layoutVersion = (world.layoutVersion + 1) >>> 0 || 1;
+   }
+ 
+   function recomputeMaxRadius() {
+diff --git a/src/render/snapshotFence.js b/src/render/snapshotFence.js
+index b033c3708..f2d778755 100644
+--- a/src/render/snapshotFence.js
++++ b/src/render/snapshotFence.js
+@@ -2,6 +2,7 @@
+ // never live entity objects. Required before a simulation Worker.
+ 
+ import { createPresentationSnapshot } from './presentationSnapshot.js';
++import { PRESENTATION_DIRTY } from './presentationWorld.js';
+ 
+ export const SNAPSHOT_FENCE_BUFFERS = 3;
+ 
+@@ -50,6 +51,9 @@ export function createSnapshotFence(options = {}) {
+       // stream between them is continuous; a sector jump or a mirror rebuild reassigns slots and
+       // teleports every body, so packs on either side of one are not comparable.
+       poseEpoch: 0,
++      // Presentation-world activeSlots membership/order. Incremental packs reuse this
++      // buffer's entityId→row Map only while it still matches the world layoutVersion.
++      layoutVersion: -1,
+     };
+     const writable = {
+       get schema() { return snapshot.schema; },
+@@ -106,14 +110,56 @@ export function createSnapshotFence(options = {}) {
+   let packCount = 0;
+ 
+   return {
+-    beginPack(expectedCount, simTime = 0, poseEpoch = 0) {
++    beginPack(expectedCount, simTime = 0, poseEpoch = 0, layoutVersion = -1) {
+       const buffer = buffers[write];
+       buffer.writable.beginFrame(expectedCount);
+       buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
+       buffer.sequence = sequence + 1;
+       buffer.poseEpoch = Number.isFinite(poseEpoch) ? poseEpoch : 0;
++      buffer.layoutVersion = Number.isFinite(layoutVersion) ? layoutVersion : -1;
+       return buffer.writable;
+     },
++    /**
++     * Pose-only pack path. Copies the latest sealed dense snapshot into the write slot and
++     * keeps that slot's entityId→row Map when it already matches `layoutVersion`.
++     * Returns null when the caller must fall back to beginPack (membership/layout drift).
++     */
++    beginIncrementalPack(expectedCount, simTime = 0, poseEpoch = 0, layoutVersion = -1) {
++      if (latest < 0 || packCount < 1) return null;
++      if (!Number.isFinite(layoutVersion)) return null;
++      const prev = buffers[latest];
++      const buffer = buffers[write];
++      if (prev.layoutVersion !== layoutVersion || buffer.layoutVersion !== layoutVersion) return null;
++      const n = prev.snapshot.count | 0;
++      if (n !== (expectedCount | 0)) return null;
++      if (buffer.sealed) buffer.sealed = false;
++      buffer.snapshot.copyDenseFrom(prev.snapshot.columns, n);
++      buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
++      buffer.sequence = sequence + 1;
++      buffer.poseEpoch = Number.isFinite(poseEpoch) ? poseEpoch : 0;
++      buffer.layoutVersion = layoutVersion;
++      return buffer.writable;
++    },
++    rewritePose(index, px, py, pz, qy, qw, flags, bank, pitch) {
++      const buffer = buffers[write];
++      if (buffer.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
++      const snapshot = buffer.snapshot;
++      if (index < 0 || index >= snapshot.count) return false;
++      const columns = snapshot.columns;
++      const p = index * 3;
++      const q = index * 4;
++      columns.position[p] = px;
++      columns.position[p + 1] = py;
++      columns.position[p + 2] = pz;
++      columns.quaternion[q] = 0;
++      columns.quaternion[q + 1] = qy;
++      columns.quaternion[q + 2] = 0;
++      columns.quaternion[q + 3] = qw;
++      columns.flags[index] = flags >>> 0;
++      if (columns.bank) columns.bank[index] = Number(bank) || 0;
++      if (columns.pitch) columns.pitch[index] = Number(pitch) || 0;
++      return true;
++    },
+     commit() {
+       const buffer = buffers[write];
+       if (buffer.sealed) throw new Error('Presentation snapshot fence commit without beginPack');
+@@ -238,28 +284,22 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
+   return true;
+ }
+ 
+-export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoch = 0) {
+-  if (!world || !fence) return 0;
+-  const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
+-  const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
+-  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
++function yawQuatForSlot(world, slot) {
++  if (world.yawSin && world.yawCos) {
++    return { qy: world.yawSin[slot], qw: world.yawCos[slot] };
++  }
++  const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
++  const half = rot * 0.5;
++  return { qy: Math.sin(half), qw: Math.cos(half) };
++}
++
++function packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion) {
++  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch, layoutVersion);
+   let packed = 0;
+   for (let index = 0; index < active; index++) {
+     const slot = world.activeSlots[index];
+     if (world.alive[slot] !== 1) continue;
+-    // Prefer presentation-world half-yaw cache (filled on rot write). Fall back to sin/cos
+-    // for worlds that predate the cache columns or omit them in tests.
+-    let qy;
+-    let qw;
+-    if (world.yawSin && world.yawCos) {
+-      qy = world.yawSin[slot];
+-      qw = world.yawCos[slot];
+-    } else {
+-      const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
+-      const half = rot * 0.5;
+-      qy = Math.sin(half);
+-      qw = Math.cos(half);
+-    }
++    const { qy, qw } = yawQuatForSlot(world, slot);
+     const packedIndex = snapshot.write(
+       world.entityIds[slot] >>> 0,
+       world.typeCodes ? world.typeCodes[slot] : 0,
+@@ -283,6 +323,60 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
+   return packed;
+ }
+ 
++/**
++ * Pack the presentation world into the snapshot fence.
++ *
++ * Quiet flight marks only a few TRANSFORM-dirty movers per tick. When activeSlots
++ * membership is unchanged (layoutVersion stable across the fence ring), copy the
++ * previous dense snapshot and rewrite dirty rows in place — same contract as
++ * combat-table pose-incremental, without rebuilding the entityId→row Map.
++ */
++export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoch = 0, options = null) {
++  if (!world || !fence) return 0;
++  const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
++  const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
++  const layoutVersion = Number.isFinite(world.layoutVersion) ? world.layoutVersion : -1;
++  const dirtyMasks = world.dirtyMasks;
++  const forceFull = !!(options && options.forceFull === true);
++  const canIncremental = !forceFull
++    && active > 0
++    && layoutVersion >= 0
++    && dirtyMasks
++    && typeof fence.beginIncrementalPack === 'function'
++    && typeof fence.rewritePose === 'function';
++
++  if (canIncremental) {
++    const snapshot = fence.beginIncrementalPack(active, simTime, poseEpoch, layoutVersion);
++    if (snapshot && (snapshot.count | 0) === active) {
++      // activeSlots is dense (removeActive swaps compact). Row index == activeSlots index.
++      for (let index = 0; index < active; index++) {
++        const slot = world.activeSlots[index];
++        if (world.alive[slot] !== 1) {
++          // Invariant break — reset write slot via full pack below.
++          return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++        }
++        if ((dirtyMasks[slot] & PRESENTATION_DIRTY.ALL) === 0) continue;
++        const { qy, qw } = yawQuatForSlot(world, slot);
++        fence.rewritePose(
++          index,
++          world.x[slot],
++          world.y[slot],
++          world.z[slot],
++          qy,
++          qw,
++          world.flags[slot] >>> 0,
++          world.bank ? Number(world.bank[slot]) || 0 : 0,
++          world.pitch ? Number(world.pitch[slot]) || 0 : 0,
++        );
++      }
++      fence.commit();
++      return active;
++    }
++  }
++
++  return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++}
++
+ export function packEntityIntoSnapshot(snapshot, entity, options = {}) {
+   if (!snapshot || !entity || entity.alive === false) return -1;
+   const pos = entity.pos || {};
+diff --git a/test/snapshot-fence-dirty-incremental.test.mjs b/test/snapshot-fence-dirty-incremental.test.mjs
+new file mode 100644
+index 000000000..fb97aec66
+--- /dev/null
++++ b/test/snapshot-fence-dirty-incremental.test.mjs
+@@ -0,0 +1,97 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createPresentationWorld } from '../src/render/presentationWorld.js';
++import {
++  createSnapshotFence,
++  packPresentationWorldToFence,
++  snapshotIndexOf,
++} from '../src/render/snapshotFence.js';
++
++function seed(n) {
++  const world = createPresentationWorld({ capacity: n });
++  const entities = [];
++  for (let i = 0; i < n; i++) {
++    const entity = {
++      id: i + 1,
++      alive: true,
++      type: 'ship',
++      pos: { x: i * 10, y: 0, z: i },
++      rot: i * 0.01,
++      bank: 0,
++      pitch: 0,
++      radius: 4,
++    };
++    entities.push(entity);
++    world.allocateEntity(entity, 0);
++  }
++  return { world, entities };
++}
++
++function move(world, entity, dx) {
++  entity.pos.x += dx;
++  world.applyTransform({
++    entityId: entity.id,
++    generation: 0,
++    revision: (entity._rev = (entity._rev || 0) + 1),
++    x: entity.pos.x,
++    y: 0,
++    z: entity.pos.z,
++    rot: entity.rot,
++    bank: 0,
++    pitch: 0,
++  }, entity);
++}
++
++function clearDirty(world) {
++  const active = world.getDiagnostics().active;
++  for (let i = 0; i < active; i++) world.clearDirty(world.activeSlots[i]);
++}
++
++test('layout-stable dirty incremental matches forceFull pack poses', () => {
++  const { world, entities } = seed(48);
++  const fenceInc = createSnapshotFence({ capacity: 48 });
++  const fenceFull = createSnapshotFence({ capacity: 48 });
++  for (let i = 0; i < 3; i++) {
++    packPresentationWorldToFence(world, fenceInc, i, 1);
++    packPresentationWorldToFence(world, fenceFull, i, 1);
++    clearDirty(world);
++  }
++  move(world, entities[0], 5);
++  move(world, entities[7], -3);
++  packPresentationWorldToFence(world, fenceInc, 10, 1);
++  packPresentationWorldToFence(world, fenceFull, 10, 1, { forceFull: true });
++  const a = fenceInc.latestSnapshot();
++  const b = fenceFull.latestSnapshot();
++  assert.equal(a.count, b.count);
++  for (let i = 0; i < a.count; i++) {
++    const id = a.columns.entityId[i];
++    assert.equal(id, b.columns.entityId[i]);
++    const ia = snapshotIndexOf(a, id);
++    const ib = snapshotIndexOf(b, id);
++    assert.equal(ia, ib);
++    const p = ia * 3;
++    assert.ok(Math.abs(a.columns.position[p] - b.columns.position[p]) < 1e-5);
++    assert.ok(Math.abs(a.columns.position[p + 2] - b.columns.position[p + 2]) < 1e-5);
++  }
++  // Moved entities landed at new x
++  const p0 = snapshotIndexOf(a, entities[0].id) * 3;
++  assert.ok(Math.abs(a.columns.position[p0] - entities[0].pos.x) < 1e-5);
++});
++
++test('membership change falls back to full pack and stays indexed', () => {
++  const { world, entities } = seed(24);
++  const fence = createSnapshotFence({ capacity: 32 });
++  for (let i = 0; i < 3; i++) {
++    packPresentationWorldToFence(world, fence, i, 1);
++    clearDirty(world);
++  }
++  const layoutBefore = world.layoutVersion;
++  world.retire(entities[5].id);
++  assert.notEqual(world.layoutVersion, layoutBefore);
++  const packed = packPresentationWorldToFence(world, fence, 20, 1);
++  assert.equal(packed, 23);
++  const snap = fence.latestSnapshot();
++  assert.equal(snap.count, 23);
++  assert.equal(snapshotIndexOf(snap, entities[5].id), -1);
++  assert.ok(snapshotIndexOf(snap, entities[0].id) >= 0);
++});
+-- 
+2.47.3
+

@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24o (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24p (post-import hillclimb)
 
 Master tip: **`2e7ec656b`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #49; +#50 measured
-on stacked tip.
+Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #50; +#51 measured
+on stacked tip @ `a16a8586c`.
 
 ### Already on stack (do not rediscover)
 
@@ -35,6 +35,7 @@ on stacked tip.
 | 47 | `composition-threat-prefilter` |
 | 48 | `classify-rock-body-context` |
 | 49 | `stunt-threat-lock-prefilter` |
+| 50 | `combat-table-pose-incremental` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -44,7 +45,7 @@ physics S1-idle sleep, spatial-hash surface@600, hitch-opening-admission,
 midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss),
 classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar),
 imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×),
-selectClassify empty-projectile (~1.11×).
+selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -55,8 +56,8 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 | ms | owner | notes |
 |---:|---|---|
-| 100 | `registry.step` | residual after #39+#43+#49; **#50** cuts `packCombatTable` under preStep |
-| 66 | `prepareFrame` | residual after #13+#44+#46+#47 (pack/residency/spaceBg) |
+| 100 | `registry.step` | residual after #39+#43+#49+#50 |
+| 66 | `prepareFrame` | residual after #13+#44+#46+#47+#51 (residency/spaceBg; pack cut) |
 | 61 | `classifyWorld` | residual after #37+#38+#45+#48 |
 | 45 | `syncEntityViews` | residual after #15 + closure-gate + #44 |
 | 22 | `_stepCraft` | HOLD propulsion |
@@ -66,17 +67,18 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 50 | `combat-table-pose-incremental` | Portable quiet packCombatTable **~4.78×** (pose-only row refresh; membership full-rebuild). Combat+projectiles ~1.72×. pq-204 **24/24**. |
+| 51 | `snapshot-fence-dirty-incremental` | Portable quiet packPresentationWorldToFence **~4.76×** (400/4 dirty; layout-stable copy + dirty-row rewrite). 120/1 ~3.71×; 400/40 ~2.91×. Oracle 0 mismatches. Focused fence/presentation pass. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
+| isMovableEntity type-first | ~1.10× — under bar (new) |
 | classify rock-only resolvePins | ~1.02× — under bar (prior) |
 | selectClassify empty-projectile skip | ~1.11× indexed — under bar (prior) |
 | imminentCollision earlyout | prior ~1.22× — under bar |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
-| prepareFrame non-composition leftovers | Not shipped (pack/residency/bg still open) |
+| prepareFrame residency/spaceBg | Not shipped this pass |
 | classifyWorld non-rock visit | Not shipped this pass |
 | syncEntityViews micro-motion residual | Not shipped this pass |
 
@@ -86,7 +88,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47 (non-composition: pack/residency/spaceBg).
+1. prepareFrame residual after #13+#44+#46+#47+#51 (residency/spaceBg; pack cut).
 2. classifyWorld residual after #37+#38+#45+#48 (non-rock visit / selectClassify).
 3. registry.step after #39+#43+#49+#50 (physics / flight / AI holds).
 4. syncEntityViews residual (micro-motion / pose) after #15+#44.

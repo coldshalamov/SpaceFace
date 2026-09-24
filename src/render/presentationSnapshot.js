@@ -116,6 +116,32 @@ export function createPresentationSnapshot(options = {}) {
     },
 
     /**
+     * Pose-only fence reuse: copy dense columns from a predecessor pack and adopt its count.
+     * Does not touch the fence's entityId→row Map (caller keeps it when layoutVersion matches).
+     */
+    copyDenseFrom(sourceColumns, sourceCount) {
+      const n = Math.max(0, sourceCount | 0);
+      journalCount = 0;
+      generation++;
+      if (n > capacity) {
+        let next = capacity || 1;
+        while (next < n) next *= GROWTH_FACTOR;
+        allocate(next);
+      }
+      if (!sourceColumns) {
+        count = 0;
+        return this;
+      }
+      for (const [name, spec] of Object.entries(SNAPSHOT_COLUMNS)) {
+        const src = sourceColumns[name];
+        if (!src) continue;
+        columns[name].set(src.subarray(0, n * spec.stride));
+      }
+      count = n;
+      return this;
+    },
+
+    /**
      * Append one entity. Returns its snapshot index. No object is created and no field is read
      * through a pointer — the caller passes primitives, which is what keeps the loop linear.
      */
