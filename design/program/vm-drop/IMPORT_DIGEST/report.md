@@ -1,37 +1,61 @@
-# IMPORT_DIGEST report — 2026-09-24g (registry-step-dispatch)
+# IMPORT_DIGEST report — 2026-09-24h (scour / import-first)
 
-Master tip: **`37f50a70d`**.
+Master tip: **`37f50a70d`** (fetch confirmed; tip did not move).
 
-## Quiet CPU / hitch re-rank (prior pass cite)
+## Quiet CPU / hitch re-rank
 
-Tool: `node scripts/probe-main-thread-profile.mjs --ms=45000 --label=settled-45s-20260924b` on bare master tip (Picture ON, soft-GPU). Idle **68.7%**; long tasks **21**. Soft-GPU owners ignored for portable ranking.
+Tool cite: `node scripts/probe-main-thread-profile.mjs --ms=45000 --label=settled-45s-20260924b`
+on bare master tip (Picture ON, soft-GPU). Idle **68.7%**; long tasks **21**.
+Artifacts: `/workspace/spaceface-scratch/hillclimb-20260924b/.devshots/main-thread-profile/settled-45s-20260924b/`.
+
+Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 ### Top portable src/ self (aggregated) — coverage
 
 | ms | owner | coverage |
 |---:|---|---|
-| 173 | `queryFarActors` | pending **#1** far-actor-cell-key |
-| **123** | **`registry.step`** | **SHIPPED #39** content-gate + calendar (~1.74–2.88× quiet dispatch) |
-| 104 | `classifyWorld` | **SHIPPED #37** catch-up index (~135×) + **SHIPPED #38** signature-prune gate (~178× prune slice) + pending pinFacts cache |
-| **104** | **`refreshCredits`** | **SHIPPED #34** (layout N→0) |
+| 178 | `queryFarActors` | pending **#1** far-actor-cell-key |
+| 123 | `registry.step` | **SHIPPED #39** content-gate + calendar (~1.74–2.88× quiet dispatch) |
+| 106 | `classifyWorld` | **SHIPPED #37** + **#38** (+ pinFacts already on master) |
+| 104 | `refreshCredits` | **SHIPPED #34** (layout N→0) |
+| 52 | `queryAsteroidField` | pending **#17** asteroid-query-callers |
 | 52 | `prepareFrame` | pending **#13** prepare-pitch-settle |
-| 51 | `syncEntityViews` | pending **#15** submit-scratch |
-| 41 | `hud.frame` | residual (after caches on master) |
-| 41 | `queryAsteroidField` | pending **#17** asteroid-query-callers |
-| 35 | `renderPackageDigest` | worker path residual / cold |
-| 27 | `_stepCraft` / propulsion | HOLD flight-propulsion-scratch |
-| **24** | **`pruneEvidence`** | **SHIPPED #35** (~11× cadence) |
-| 21 | `radar.draw` | master radar packages |
+| 51 | `syncEntityViews` | pending **#15** submit-scratch (+ closure-gate companion) |
+| 41 | `hud.frame` | residual after master HUD caches; re-rank after **#34** |
+| 35 | `renderPackageDigest` | worker / cold residual |
+| 30 | `preStep` (coreSystem) | residual; no ≥1.5× cut this pass |
+| 28 | `_stepCraft` / propulsion | HOLD flight-propulsion-scratch |
+| 24 | `pruneEvidence` | **SHIPPED #35** |
+| 21 | `lifetimeSweep` | residual with preStep |
 | 19 | `setLagTranslate` | master hud-glag |
-| — | `sampleProjectileEvidence` / `materialSurface` | **SHIPPED #36** (~1.87× distance-first) |
+| 19 | `materialSurface` / projectile | **SHIPPED #36** |
+| 18 | `syncCombatantBounds` / `resolveCombatProfile` | prior early-out miss |
+| 18 | `spatialHash._syncDynamicLayer` | surface@600 HOLD; not retried |
+| 17 | `appendNearbyLedgerRows` | mostly #1+#17 query cost; re-measure post-import |
+| 16 | `_stepFixed` (sg02) | physics sleep residual — **MISS this pass** (see below) |
+| 14 | `isHostileForAI` | master hostile-earlyout residual; far-AI after #1 |
 
-Accounted pending digest packages conceptually — do not re-cut those poles.
+Accounted pending digest packages — do not re-cut those poles.
 
-## New packages
+## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 39 | `registry-step-dispatch` | Quiet dispatch **~1.74×** (Ceres) / **~2.88×** (deep); 11/11 clock tests |
+| — | *(none)* | No ≥~1.5× portable ship |
+
+## Scour attempts / misses
+
+| Attempt | Result |
+|---|---|
+| Physics S1-idle sleep expansion (`mayRapierIslandSleep` + S1_NEAR) | Kinematics stand-in **~1.41×** (under bar). Richer capture+give+refresh stand-in **~0.97×** — policy walk dominates. Live dynamics are S0/S1; S2–S4 sleep eligibility rarely applies (`entityNeedsPhysics` drops them). |
+| classifyWorld visit-loop cadence | Prior under bar — leave |
+| spatial-hash surface @600 | Hold — not retried |
+| same-material hull *draw* batch | Draw/GPU not portable pole after pending; soft-GPU fps ignored |
+| Admission w/o dummy prewarm | Prior hitch-opening-admission miss stands |
+| Remaining registry content-gates after #39 | No extra owner cleared ≥1.5× without post-import profile |
+
+Scratch: `vm-work/scour-20260924g` @ `/workspace/spaceface-scratch/scour-20260924g/`
+(`scratch-physics-s1-sleep-bench.mjs`, `scratch-physics-s1-sleep-bench2.mjs`).
 
 ## Still import — applies cleanly on `37f50a70d`
 
@@ -62,9 +86,9 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 4. `#34 hud-credits-pulse-no-reflow` — early-flight hitch
 5. `#35 prune-evidence-cadence`
 6. `#36 projectile-surface-distance-first`
-7. `#37 classify-closed-form-index` — selectClassify / classifyWorld catch-up
-8. `#38 classify-signature-prune-membership` — classifyWorld signature prune residual
-9. `#39 registry-step-dispatch` — quiet dispatcher residual after classify shrinks
+7. `#37 classify-closed-form-index`
+8. `#38 classify-signature-prune-membership`
+9. `#39 registry-step-dispatch`
 10. `#17 asteroid-query-callers`
 11. `#1 far-actor-cell-key`
 12. `#13 prepare-pitch-settle`
@@ -79,6 +103,8 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 | 19 | `flight-propulsion-scratch` | integrated ~0.85× on tip — hold |
 | 22 | `opening-residency-deadline` | patch drifts on renderer.js |
 | — | `classify-closed-form-scan` | superseded by #37 for walk shape |
+| — | physics S1-idle sleep | under bar this pass — leave |
+| — | spatial-hash surface @600 | hold |
 
 ## Rock audit (unchanged)
 
@@ -86,8 +112,9 @@ Quiet Ceres after #31: **11** live rocks pinned (8 geology / 2 collision / 1 act
 
 ## Scour-ranked next poles
 
-1. Import portable pending (esp. #31–#39 + #1 + #17).
-2. Remaining 11 live rocks still pinned — no legal cut.
-3. Same-material hull batch only if draw/GPU present is still the pole after table authority.
-4. classifyWorld visit-loop cadence still <1.5× e2e — leave.
-5. Ignore soft-GPU fps for shipping KPIs.
+1. **Import-first** portable pending (#31–#39 + #1 + #17 + #13 + #15 + #12).
+2. Far-AI residual after #1 lands (tickFarActors / aiPorts) — re-profile.
+3. HUD leftover after #34 (hud.frame ~41 ms) — re-profile.
+4. Presentation ledger residual after #1+#17.
+5. Remaining 11 live rocks still pinned — no legal cut.
+6. Ignore soft-GPU fps for shipping KPIs.
