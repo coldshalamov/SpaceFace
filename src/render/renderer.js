@@ -13859,7 +13859,11 @@ export const render = {
         // Post-submit diagnostic for late admissions the plan could not name. The evidence stays on
         // state.render; the mesh defer still releases after the first paint (see afterBrowserPaint
         // below) — a failed diagnostic must never strand flight without mesh streaming.
-        console.warn(
+        // Informational channel like the other admission diagnostics (first-visible-pass-residency
+        // above): exactly one per document, non-blocking, payload persisted on
+        // state.render.openingSubmissionValidation — a soak's zero-warnings contract must not fail
+        // on it.
+        console.info(
           `[render] opening submission post-submit validation failed ${JSON.stringify({
             reason: validation.reason || null,
             uncaptured: validation.uncaptured || [],

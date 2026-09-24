@@ -660,3 +660,86 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     partsLibrary.invalidatePartsLibraryCaches(renderer);
   }
 });
+
+// PQ-033.02 v6 warning class "whole-ship LOD demotion failed … release mode
+// requires …": the demotion's residency owner can die while the scoped
+// whole-ship-lod-family preload is in flight; the owner's loads resolve null by
+// design and the resident-only slot rewrite can leave the library without the
+// required body. ensureEntityLibrary must reject with the established
+// owner-inactive signal (handleAuthoredBoundaryAdmissionError and the demotion
+// owner-gone classifier both log it informationally and retry later) — never
+// resolve an incomplete library for compose to throw over.
+
+test('an owner that dies mid-preload aborts the whole-ship demand instead of resolving an incomplete library', async () => {
+  const lod1File = 'wholeships/massline_express_liner_v1_lod1.glb';
+  const expressMule = {
+    id: 'express-mule', type: 'ship', alive: true, team: 2, radius: 20,
+    data: { defId: 'ship_mule', trafficRole: 'express' },
+  };
+
+  // Case A — the scoped family library was evicted before the loop began
+  // (bootstrap plan empty): the inactive owner must abort, not resolve a
+  // library with zero whole-ship records.
+  {
+    const renderer = {};
+    const options = {
+      releaseMode: true,
+      loadAuthoredPart: async () => { throw new Error('an evicted library must not decode'); },
+      requiredWholeShip: true,
+      forceWholeShipFile: lod1File,
+      libraryScope: 'whole-ship-lod-family',
+      residencyRole: 'whole-ship-lod-family',
+      bootstrapPlan: {},
+      isResidencyOwnerActive: () => false,
+    };
+    const plan = partsLibrary.authoredPreloadPlanForEntity(expressMule, options);
+    assert.deepEqual(plan, { hull: [lod1File] },
+      'the v6 express-mule demotion identity must demand the lod1 massline body');
+    await assert.rejects(
+      partsLibrary.preloadAuthoredAssetsForEntity(renderer, expressMule, options),
+      /owner became inactive/,
+      'an inactive owner with an unsatisfied plan must abort, not resolve an incomplete library',
+    );
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+  }
+
+  // Case B — the body decoded while the owner lived, then the owner died and
+  // the sweep released it before the admission loop: same abort, and the load
+  // path itself must never be re-entered by a dead owner.
+  {
+    const renderer = {};
+    let ownerActive = true;
+    const loadedRecords = new Map();
+    const options = {
+      releaseMode: true,
+      loadAuthoredPart: async (url) => {
+        assert.equal(ownerActive, true, 'a dead owner must not re-enter the decode path');
+        const record = fixtureRecord(url);
+        record.residency = { state: 'resident' };
+        loadedRecords.set(url, record);
+        // The boundary dies while its demotion preload is still decoding.
+        ownerActive = false;
+        return record;
+      },
+      requiredWholeShip: true,
+      forceWholeShipFile: lod1File,
+      libraryScope: 'whole-ship-lod-family',
+      residencyRole: 'whole-ship-lod-family',
+      bootstrapPlan: { hull: [lod1File] },
+      isResidencyOwnerActive: () => {
+        // The soft-cap sweep drops the dead owner's retains; the first liveness
+        // probe after the death observes the post-sweep library.
+        if (!ownerActive) {
+          for (const record of loadedRecords.values()) record.residency = { state: 'released' };
+        }
+        return ownerActive;
+      },
+    };
+    await assert.rejects(
+      partsLibrary.preloadAuthoredAssetsForEntity(renderer, expressMule, options),
+      /owner became inactive/,
+      'a body released by the owner-gone sweep must abort the preload, not compose blind',
+    );
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+  }
+});

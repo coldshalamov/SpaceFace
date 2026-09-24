@@ -5927,14 +5927,25 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
   // Combat/traffic identity can land while a captured plan's GLB is still decoding. Keep admitting
   // until the live selector's records are in the library Map — sector prewarm residency is not
   // that Map, so compose would otherwise throw on a hull that was never admitted.
+  //
+  // An owner that goes inactive mid-preload must never hand compose an incomplete library as a
+  // success: its own loads resolve null by design (assetLoader cancels owner-departed decodes
+  // silently) and the resident-only slot rewrite can drop the required whole-ship record
+  // entirely. Resolving here made the whole-ship LOD demotion compose against that hole and warn
+  // "release mode requires … it did not pass the live authored-asset loader." Abort with the
+  // established owner-inactive signal instead — the admission error handler and the LOD-demotion
+  // owner-gone classifier both log it informationally and a later request retries.
+  const ownerInactive = () => (
+    typeof options.isResidencyOwnerActive === 'function' && options.isResidencyOwnerActive() !== true
+  );
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-      return library;
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);
     await admitEntityPlan(renderer, options, library, plan);
-    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-      return library;
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      throw new Error('Authored visual preparation owner became inactive during entity admission');
     }
     const currentPlan = authoredPreloadPlanForEntity(entity, options);
     if (libraryHasPreloadPlan(library, currentPlan)) {
