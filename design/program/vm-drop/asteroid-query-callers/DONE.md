@@ -1,5 +1,13 @@
 # DONE — asteroid-query-callers
 
+## Re-verify 2026-09-23 (master tip `568d1358e`)
+
+Patch **rebased** (`TABLE_DECODE_RUNWAY_SECONDS`). Offline microbench **~9.12×**
+(217.5 → 23.84 ms). Focused suite 25/26; the one fail is pre-existing on bare
+master (Ceres census). See `REBASE_20260923.md`.
+
+---
+
 ## Summary
 
 Call-site leftovers after integer cell keys on master:

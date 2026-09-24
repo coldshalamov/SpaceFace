@@ -1,139 +1,98 @@
 # Import digest — measured hitch packages (vm-drop only)
 
-**Master tip:** `35e519ebd75325e119c2c7fe61f6a234f2514c1e`  
-**vm-drop tip (at digest write):** (see latest vm-drop commit after this digest)  
-**Fresh profile:** `/workspace/spaceface-scratch/hitch-hillclimb-fresh-20260923/`  
-**When profiled:** 2026-09-23 ~00:09–00:11 EDT — settled held-thrust 60937 ms; idle 57.3%; long tasks 18; soft-GPU (llvmpipe). Picture defaults ON.
+**Master tip (this refresh):** `568d1358e518f595c064986b2ad3ca18fbfeb435`  
+**Prior digest tip:** `35e519ebd`  
+**When refreshed:** 2026-09-23 ~23:56 EDT  
 
-Reconciled by fetching `origin/master` + `origin/vm-drop` and checking code markers (e.g. asteroid numeric `cellKey`, `HITCH_FRAME_TICKS = 6.5`, far-actor still string `` `${cx}:${cz}` `` on master).
-
----
-
-## Recommended import order
-
-Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook stack, then residual alloc. Apply each package’s own `IMPORT.md` on a throwaway branch from `origin/master`; do **not** merge this digest to master.
-
-| # | Package | Scratch SHA | One-line evidence |
-|---:|---|---|---|
-| 1 | `far-actor-cell-key` | `070c58394` | Integer-packed far-actor grid keys; offline 8k×400×~4700 WU **271→123 ms (~2.2×)**; tests 28/28. Covers `queryFarActors` **111.6 ms** self. |
-| 2 | `radar-project-scratch` | `77064b0b5` | `projectRadarPoint` out-param + pooled hostile marks; **59.4→44.7 ms (~1.33×)**; tests 9/9. Part of `radar.draw` **398.9 ms**. |
-| 3 | `radar-contact-color-defer` | `2d7bc6c71` | Defer contact colour + range-plate cache stack; plate **92.2→3.7 ms (~25×)**, contacts **41.6→22.8 ms (~1.83×)**. |
-| 4 | `radar-range-plate-cache` | `81f70888d` | Cache `drawRangePlate` by `(range, expanded, metrics.size)`; **110.7→6.19 ms (~17.9×)**. Covers `drawRangePlate` **47.0 ms**. |
-| 5 | `trail-history-pool` | `d352c55af` | Recycle radar trail `{x,z}`; **100.1→46.0 ms (~2.18×)**; tests 9/9. |
-| 6 | `classify-pinfacts-cache` | `a23a8619e` | `rebuildPinFacts` membership/intent early-out; **54.5→1.0 ms (~54×)**. Covers `classifyWorld` **189.3 ms**. |
-| 7 | `classify-closed-form-scan` | `3e798170f` | Catch-up walk only stamped physics entities; **187.2→144.3 ms (~1.3×)**. |
-| 8 | `hud-settext-cache` | `941643eb8` | `setText` `_sfText` last-write; **36.5→26.2 ms (~1.40×)**; HUD suite 48/50 (2 also fail on bare master). |
-| 9 | `hud-screen-transform-cache` | `792186592` | Quantized early-out for `setHudScreenTransform`; settled-path win (see package DONE). |
-| 10 | `hud-glag-transform-cache` | `fe6fe56c3` | Optical G-lag translate hundredths early-out; settled-lag **106.2→8.4 ms (~12.6×)**. |
-| 11 | `threat-halo-transform-cache` | `933ac2e85` | Threat-halo `setHudTransform` tenths early-out; settled **61.0→3.3 ms (~18.6×)**; tests 7/7. |
-| 12 | `massline-settext-cache` | `c0718f881` | Massline `_sfText` cache (0 DOM text reads); HUD 33/33 + massline 69/69. Complements #8. |
-| 13 | `prepare-pitch-settle` | `847e893e3` | Settled-idle pitch skip + middle-band cadence; stand-in **129.6→57.0 ms (~2.27×)**; crucible worst **983→200 ms**. |
-| 14 | `sync-entity-views-closure-gate` | `4df3ba34f` | Cadence micro-motion with entity-view closures; **55.7→21.7 ms (~2.56×)**; tests 31/31. |
-| 15 | `sync-entity-views-submit-scratch` | `364b555f2` | Hidden short-circuit + submit options scratch; hidden **~12.5×**, full **~1.24×**; tests 11/11. |
-| 16 | `flight-dormant-skip` | `c2de7839b` | `entityNeedsFlightStep` shelves dormant S2/S3/S4; **264.7→104.5 ms (~2.53×)**; tests 15/15. Covers `registry.step` **170.2 ms**. |
-| 17 | `asteroid-query-callers` | `2e62210f4` | Tight rock discs + drop dead decode-runway scan; **233.2→24.0 ms (~9.7×)**; tests 25/25. Residual `queryAsteroidField`. |
-| 18 | `alloc-journal-churn` | `16c2a6810` | Cross-tick coalesce retained journal transform/visual; crucible worst **783→267 ms**; tests 12/12. Covers `presentationJournal.append`. |
-| 19 | `flight-propulsion-scratch` | `aa6ec09ec` | coolRuntime module scratch (~**174×**) + trust `_sfNormalized` bodySnapshot (~**10.7×**); propulsion suite 52/52. Covers `_stepCraft` / `makeResult` residual pole. |
-| 20 | `opening-plan-complete` | `f69e5c849` | Skip awaiting-authored markers so soft-GPU opening plan finishes; tests 24/24. Stack with #21–#22. |
-| 21 | `hitch-opening-drain` | `d6a1c419e` | Soft-GPU skip planWait/drainWait; `prepareOpeningGpuResources` **874→67 ms**; tests 4/4. |
-| 22 | `opening-residency-deadline` | `9fdb832df` | Soft-GPU residency stops at 750 ms deadline + receipt continue; residency wall **1254→880 ms**; tests 3/3. |
-| 23 | `combat-subsystem-key-cache` | `947d06c70` | Cache sorted subsystem ids; applyPending/recompute **~7.5×** offline; tests 24/24. Covers `applyPendingSubsystemTransitions` **36.3 ms** self. |
-| 24 | `npc-field-role-cache` | `4833a9989` | Cache `npcFieldRole` vs data/ai identities; **~3.6×** offline; tests 8/8. Covers `npcFieldRole` **20.0 ms** self. |
-| 25 | `docking-corridor-publish-scratch` | `8007735e1` | Reuse proxy-diag out/seen + station key cache; **~3.7×** offline; tests 40/40. Covers `_publishProxyDiagnostics` **20.2 ms** self. |
-| 26 | `customs-scan-cone-scratch` | `a0a063664` | WeakMap cone pool for `customsScanConeOf`; **~1.38×** offline; tests 11/11. Covers law long-tail **15.0 ms** self. |
-| 27 | `hostile-for-ai-earlyout` | `1ef01cc3c` | Structural early-outs for `isHostileForAI` (no tick-Map); NPC **~1.72×**, no-ai alloc **~2.67×**; tests 28/28. Covers `isHostileForAI` **39.6 ms** self. |
-| 28 | `stunt-flight-range-prefilter` | `342fde89b` | Type+2400 WU prefilter before stunt hostility scan; **~5.1×** offline; tests 20/20. Cuts `StuntFlightObserver.update` / hostility calls. |
-| 29 | `assign-flight-frame-ref` | `397d70741` | Attach `result.telemetry` by ref in `assignFlightFrame`; **~3.36×** offline; clears stale optional keys; tests 78/78. Covers `assignFlightFrame` **135 hits** self. |
-| 30 | `npc-jobs-id-list-cache` | `c34e1072f` | Cache `Object.keys(npcJobs.byId)` for per-tick drive; **~2.41×** offline; tests 89+15+12+5 pass. Covers `npcJobsRuntime.update` **59 hits** self. |
-
-### Optional / separate backlog (not in top portable poles)
-
-| Package | Note |
-|---|---|
-| `dynres-target-pool` | PERF #89 — zero realloc on scale sweep; picture default unchanged (`dynamicResolution` opt-in). |
-| `guard-the-wins` / `integrated-quality-preset` | Quality/guard series; import only with an explicit picture/perf plan. |
+Classification = `git apply --check` on clean master tip + distinctive markers / import commits. Soft-GPU fps is noise. Picture defaults ON.
 
 ---
 
-## SKIP list (do not import)
+## Already on master (do not re-import)
 
-| Package / miss | Why |
-|---|---|
-| **overview-contact-pool** | Microbench ~**1.04×** (643→618 ms); never shipped patches to vm-drop outbox. |
-| **radar-contact-list-reuse** | `.length=0` reuse ~**0.94×**; **no patches**. |
-| **shader-admission-slice** | Soft-GPU crucible hitch regress (e.g. 65→94 class); keep forensics only. |
-| **hold-prefetch-inbound** | Measured miss (worst frame / peak admission up); lane-c inbound **already on master** via `1198e70e7`. |
-| **hitch-opening-admission** | planWait skip alone moved cost to residency/drainWait; wall flat — **no patches**. |
-| **midflight-wave-hull-decode** | Hitch + game-speed miss on soft-GPU; Choice B already partially on master via lane-c. |
-| **combat-entity-key-cache** / syncCombatantBounds early-out | Offline: key cache ~0.98×; bounds early-out **slower** (~0.60×). |
-| **cloneUniforms ocean** | Avoid per brief (alloc-profile noise, not a portable win). |
-| **hitch-asteroid-cell-key** | **Already on master** (numeric `cellKey` in `asteroidField.js`). |
-| **hitch-shed-floor** | **Already on master** (`HITCH_FRAME_TICKS = 6.5`). |
+- **#2** `radar-project-scratch`
+- **#3** `radar-contact-color-defer`
+- **#4** `radar-range-plate-cache`
+- **#5** `trail-history-pool`
+- **#6** `classify-pinfacts-cache`
+- **#7** `classify-closed-form-scan`
+- **#8** `hud-settext-cache`
+- **#9** `hud-screen-transform-cache`
+- **#10** `hud-glag-transform-cache`
+- **#11** `threat-halo-transform-cache`
+- **#14** `sync-entity-views-closure-gate`
+- **#16** `flight-dormant-skip`
+- **#18** `alloc-journal-churn`
+- **#23** `combat-subsystem-key-cache`
+- **#24** `npc-field-role-cache`
+- **#25** `docking-corridor-publish-scratch`
+- **#26** `customs-scan-cone-scratch`
+- **#27** `hostile-for-ai-earlyout`
+- **#28** `stunt-flight-range-prefilter`
+- **#29** `assign-flight-frame-ref`
+- **#30** `npc-jobs-id-list-cache`
 
----
-
-## Apply quirks
-
-1. **`flight-propulsion-scratch` — CRLF on master**  
-   `src/core/flight/propulsionKernel.js` is CRLF on `origin/master`. Prefer:
-
-   ```bash
-   git apply --ignore-space-change design/program/vm-drop/flight-propulsion-scratch/patches/*.patch
-   ```
-
-   (Also documented in that package’s `IMPORT.md`.)
-
-2. **Radar / classify stacks** — Prefer the order above (#2→#5 and #6→#7). Some older contact-color patches also touched range-plate; if `git am` conflicts, take the later specialized package’s hunks and re-run the package’s focused tests.
-
-3. **Opening stack** — Import **#20 → #21 → #22** together on soft-GPU; measuring any one alone understates the cook wall.
-
-4. **HUD caches** — Independent; safe in any order relative to radar/classify. `massline-settext-cache` complements `hud-settext-cache` (different file).
-
-5. **`customs-scan-cone-scratch` — CRLF on master**  
-   `src/systems/lawSecurity.js` is CRLF on `origin/master`. Prefer:
-
-   ```bash
-   git apply --ignore-space-change design/program/vm-drop/customs-scan-cone-scratch/patches/*.patch
-   ```
-
-6. **Do not** `git merge` `vm-drop` into master. Copy/am each job folder on purpose.
+Also pre-digest on master: Lane C+D hitch floor / hold prefetch / wave hull; numeric asteroid `cellKey`; `HITCH_FRAME_TICKS = 6.5`.  
+Separate headed win: `f08946634` Flight HUD stop restyling ~730 elements/frame (complements #8–#11).
 
 ---
 
-## Fresh-profile portable poles → package map
+## Still import — applies cleanly on `568d1358e`
 
-| Pole (self) | Covered by |
-|---|---|
-| `radar.draw` 398.9 ms | #2–#5 |
-| `classifyWorld` 189.3 ms | #6–#7 |
-| `registry.step` 170.2 ms | #16 |
-| `queryFarActors` 111.6 ms | #1 |
-| `syncEntityViews` 69.2 ms | #14–#15 |
-| `prepareFrame` 63.9 ms | #13 |
-| `hud.frame` 61.5 ms | #8–#11 (+ #12 massline) |
-| `_stepCraft` 45.0 / `makeResult` 40.3 ms | #19 (+ further propulsion leftovers still open) |
-| `queryAsteroidField` residual | #17 (cellKey already on master) |
-| `presentationJournal.append` | #18 |
-| `applyPendingSubsystemTransitions` 36.3 ms | #23 |
-| `npcFieldRole` 20.0 ms | #24 |
-| `_publishProxyDiagnostics` 20.2 ms | #25 |
-| `customsScanConeOf` 15.0 ms | #26 |
-| `isHostileForAI` 39.6 ms | #27 (+ #28 reduces a hot caller) |
-| `StuntFlightObserver.update` (profile hits) | #28 |
-| `assignFlightFrame` 135 hits | #29 |
-| `npcJobsRuntime.update` 59 hits | #30 |
-| Soft-GPU `bufferData` / `isProgram` / bloom | **Ignore** for portable hillclimb |
+| # | Package | Evidence |
+|---:|---|---|
+| 1 | `far-actor-cell-key` | ~2.06× re-verified; patch applies |
+| 12 | `massline-settext-cache` | patch applies; _sfText not on master masslineHud |
+| 13 | `prepare-pitch-settle` | ~2.35× re-verified; patch applies |
+| 15 | `sync-entity-views-submit-scratch` | patch applies; hidden short-circuit primary |
+| 17 | `asteroid-query-callers` | ~9.12× REBASED for TABLE_DECODE_RUNWAY_SECONDS |
+| 20 | `opening-plan-complete` | patch applies; soft-GPU opening stack |
+| 21 | `hitch-opening-drain` | patch applies; soft-GPU planWait/drainWait skip |
+
+### Apply order (portable first)
+
+1. `#17 asteroid-query-callers` (rebased patch under `patches/`, not `archive/`) — largest offline win (~9× rock disc)
+2. `#1 far-actor-cell-key` (~2×)
+3. `#13 prepare-pitch-settle` (~2.3×)
+4. `#15 sync-entity-views-submit-scratch`
+5. `#12 massline-settext-cache`
+6. Soft-GPU opening: `#20` → `#21` (then rebase `#22` before importing)
 
 ---
 
-## How this folder was produced
+## Needs rebase before import
 
-Report-only under `design/program/vm-drop/IMPORT_DIGEST/`. No `src/` changes. Push is limited to this folder on branch `vm-drop`.
+| # | Package | Note |
+|---:|---|---|
+| 19 | `flight-propulsion-scratch` | coolRuntime/_sfNormalized; patch drifts on propulsionKernel.js |
+| 22 | `opening-residency-deadline` | soft-GPU residency deadline; patch drifts on renderer.js |
 
-## Hillclimb follow-ups (this session)
+---
 
-- **Shipped:** `combat-subsystem-key-cache` (above); then `npc-field-role-cache`, `docking-corridor-publish-scratch`, `customs-scan-cone-scratch`; then **`hostile-for-ai-earlyout`**, **`stunt-flight-range-prefilter`**; then **`assign-flight-frame-ref`**, **`npc-jobs-id-list-cache`**.
-- **Tried / miss:** `makeResult` / `normalizeInput` pooling on `propulsionKernel.js` — V8 short-lived alloc beat pooled fill+clear (~0.4–1.0×); travel-drive byte-identical fixture also forbids private result keys.
-- **Tried / miss this pass:** `lawfulPatrols` per-tick cache (once/update ~0.87×); `pruneEvidence` same-tick skip (~1.25× / empty-map noise) and watermark/lives-cadence (≤1.1× single-call or regress); `isHostileForAI` tick pair Map cache (~0.58×) — replaced by structural early-outs; `normalizeCraftInput` module scratch (~0.86×); `assignFlightFrame` for-in/hot-scalars with optional keys (~1.2×, not ≥2×) — **superseded by ref-attach #29**; customs sticky-boolean without invalidation (broke patrol-net null-after-break); `copyInput` seq-stable action-key skip (~1.32× / ~1.0× when seq bumps) and loop unroll (~1.10×) — not shipped; `lifetimeSweep` pose-already-dirty skip (~1.08×); `isHostileToPlayer` structural reorder (~1.28×); `materialSurface` entity cache (~0.95×).
-- **Tried / miss earlier:** `combat-entity-key-cache` / syncCombatantBounds early-out (see SKIP).
-- **Remaining portable heat (honest stop):** `pruneEvidence` residual, `lifetimeSweep`, `copyInput` (need ≥~1.5×), `normalizeCraftInput` (pooling loses), law long-tail beyond customs, soft-GPU bloom/`isProgram` (ignore). Top poles primarily covered by import rows **#1–#30**. Further micro-packages on the residual list are weak misses — stop adding until a clear ≥~1.5× approach appears.
+## SKIP (unchanged)
+
+- `overview-contact-pool`, `radar-contact-list-reuse`, `shader-admission-slice`
+- `hold-prefetch-inbound`, `hitch-opening-admission`, `midflight-wave-hull-decode`
+- `combat-entity-key-cache` / syncCombatantBounds early-out, `cloneUniforms ocean`
+- `hitch-asteroid-cell-key`, `hitch-shed-floor` (already on master)
+
+Residual micro misses (&lt;~1.5×): `copyInput`, `lifetimeSweep`, `pruneEvidence`, `normalizeCraftInput`.
+
+---
+
+## Scour-ranked next poles (after pending imports)
+
+1. **Import portable pending above** — covers queryFarActors / prepareFrame pitch / syncEntityViews submit / asteroid discs / massline DOM.
+2. **Rebase #19 flight-propulsion-scratch** — was ~174× coolRuntime + ~10.7× body trust on older tip; still a sim-tick pole if markers absent.
+3. **Table-authority Lane A** — quiet Ceres combat-list census still fails on bare master (`got 53` live asteroids). Empty `entityList` remains the crowded-frame 50% if headed confirms.
+4. **`emergentPrimitives` on production clock** (`50c7668bc`) — many full `entityList` walks/update; index/living-world/spatial before micro-pooling.
+5. **Fewer program keys / share unchanged ship materials** (`PERF_TOP10` #1/#6) — new-ship hitch; no dummy prewarm; picture ON.
+6. Ignore soft-GPU bloom/`isProgram`/`bufferData` for shipping KPIs.
+
+---
+
+## This refresh artifacts
+
+- `asteroid-query-callers/REBASE_20260923.md` + new patch
+- `far-actor-cell-key/REVERIFY_20260923.md` (~2.06×)
+- `prepare-pitch-settle/REVERIFY_20260923.md` (~2.35×)

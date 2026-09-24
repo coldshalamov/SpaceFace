@@ -1,14 +1,19 @@
-From 51802cdc36f2471fc619f277ffce1f3c6dc0a396 Mon Sep 17 00:00:00 2001
+From 2e62210f4482b43cb0729015c17125d499de1905 Mon Sep 17 00:00:00 2001
 From: coldshalamov <93robingattis@gmail.com>
-Date: Wed, 23 Sep 2026 23:55:42 -0400
+Date: Tue, 22 Sep 2026 23:37:29 -0400
 Subject: [PATCH] perf(world): tighten rock query discs; drop dead
  decode-runway rock scan
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Rebased onto master tip using TABLE_DECODE_RUNWAY_SECONDS (was
-TABLE_PROMOTE_HORIZON_SECONDS). Offline microbench ~9.12× vs shared far disc.
+Call-site leftovers after integer cell keys:
+1. appendNearbyLedgerRows shared the far-actor promote disc (~4700 WU) with
+   static field rocks; rocks only need collect-horizon + player travel (~9.7×
+   fewer cell visits offline).
+2. requestDecodeRunwayPromote queried the field every tick only to set
+   rocksSeen — rocksPromoted is always 0 by design; drop the scan.
+3. Remove redundant d2<=r2 branch in queryAsteroidField (reach>=r).
 ---
  src/world/asteroidField.js                    |  4 +--
  src/world/presentationSources.js              | 31 +++++++++++--------
@@ -17,10 +22,10 @@ TABLE_PROMOTE_HORIZON_SECONDS). Offline microbench ~9.12× vs shared far disc.
  create mode 100644 test/asteroid-query-callers-decode-rocks.test.mjs
 
 diff --git a/src/world/asteroidField.js b/src/world/asteroidField.js
-index 33e4cfd17..ed8f13711 100644
+index 5aeea0071..0720438da 100644
 --- a/src/world/asteroidField.js
 +++ b/src/world/asteroidField.js
-@@ -151,7 +151,6 @@ export function queryAsteroidField(state, pos, radius, out = []) {
+@@ -150,7 +150,6 @@ export function queryAsteroidField(state, pos, radius, out = []) {
    const x = finite(pos.x);
    const z = finite(pos.z);
    const r = radius;
@@ -28,7 +33,7 @@ index 33e4cfd17..ed8f13711 100644
    const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
    const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
    const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
-@@ -168,7 +167,8 @@ export function queryAsteroidField(state, pos, radius, out = []) {
+@@ -167,7 +166,8 @@ export function queryAsteroidField(state, pos, radius, out = []) {
          const dx = rec.pos.x - x;
          const dz = rec.pos.z - z;
          const reach = r + finite(rec.radius);
@@ -39,10 +44,10 @@ index 33e4cfd17..ed8f13711 100644
      }
    }
 diff --git a/src/world/presentationSources.js b/src/world/presentationSources.js
-index 3876142f3..4922316e6 100644
+index 09a7bf912..2b1fabbca 100644
 --- a/src/world/presentationSources.js
 +++ b/src/world/presentationSources.js
-@@ -23,7 +23,6 @@ import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+@@ -21,7 +21,6 @@ import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
  import { ENEMY_TYPES } from '../data/enemies.js';
  
  const _farPromoteScratch = [];
@@ -50,23 +55,23 @@ index 3876142f3..4922316e6 100644
  const _farPromoteIds = [];
  const _meshRockScratch = [];
  const _meshFarScratch = [];
-@@ -171,17 +170,20 @@ function appendNearbyLedgerRows(state, out) {
+@@ -180,17 +179,20 @@ function appendNearbyLedgerRows(state, out) {
    const radius = presentationCollectRadius(state);
    if (!(radius > 0)) return;
    const travel = tableTravelSpeed(state);
 -  // The scan disc must hold every row that can still reach the glass inside the
--  // longest admit window — hulls ride the decode runway, which exceeds both the
--  // collect and promote horizons, so sizing to either would strand a fast inbound
--  // ship between "scannable" and "admissible". The per-row time-to-glass test below
+-  // longest admit window — hulls ride the promote horizon, which exceeds the
+-  // collect horizon, so sizing to collect would strand a fast inbound ship
+-  // between "scannable" and "admissible". The per-row time-to-glass test below
 -  // decides admission, so the disc leaning wide does not wake receding traffic.
 -  const scanRadius = radius
-+  // Far actors (inbound hulls) need the decode runway + fastest approach pad —
++  // Far actors (inbound hulls) need the promote horizon + fastest approach pad —
 +  // sizing to collect would strand a fast ship between scannable and admissible.
 +  // Field rocks are static (or ignore their own vel in the filter below): only the
 +  // player's approach closes the disc, so the collect horizon is enough. Sharing
 +  // the far disc was ~18× more asteroid cell visits at reference travel.
 +  const farScanRadius = radius
-     + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
+     + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_PROMOTE_HORIZON_SECONDS;
 -  if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
 -    queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
 -    queryFarActors(state, origin, scanRadius, _meshFarScratch);
@@ -81,7 +86,7 @@ index 3876142f3..4922316e6 100644
    }
    const pvx = finite(player.vel && player.vel.x);
    const pvz = finite(player.vel && player.vel.z);
-@@ -291,8 +293,11 @@ export function requestDecodeRunwayPromote(state, helpers) {
+@@ -297,8 +299,11 @@ export function requestDecodeRunwayPromote(state, helpers) {
        admitPromotedToRunwayFrame(state, ent.id);
      }
    }

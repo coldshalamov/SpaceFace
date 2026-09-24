@@ -25,3 +25,13 @@ Clean on bare `origin/master` (cell-key already merged). Independent of
 ## Picture
 
 Untouched. Rock ledger collect still admits via time-to-glass on player approach.
+
+## Apply (2026-09-23+)
+
+Use the **current** patch under `patches/` (not `patches/archive/`). It targets
+master tips that use `TABLE_DECODE_RUNWAY_SECONDS`. Verify:
+
+```bash
+git apply --check design/program/vm-drop/asteroid-query-callers/patches/*.patch
+node --test test/asteroid-query-callers-decode-rocks.test.mjs test/presentation-mesh-collect.test.mjs
+```
