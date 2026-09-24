@@ -3,23 +3,25 @@
 ## Summary
 
 Post-import hillclimb on master **`2e7ec656b`** (fetched; unchanged).
-Scratch `vm-work/hillclimb-20260924h` through #54; +#55 measured on stack
-@ `f17566990`.
+Scratch `vm-work/hillclimb-20260924h` through #55; +#56 measured on stack
+@ `3faeb1e63`.
 
 Fresh quiet profile `settled-45s-stacked-20260924t` (Picture ON, soft-GPU,
-post-#54 tip): idle **57.9%**, long tasks **15** (was 49 @ 20260924r). Soft-GPU
-fps ignored. `#54` confirmed: `entityTimeToGlassSeconds` 85→17 samples;
-`kickDecode` 20→2.
+post-#54 tip): idle **57.9%**, long tasks **15**. Soft-GPU fps ignored.
+Cite still valid for ranking; #55+#56 cut registry.step / preStep / input.
 
 **Shipped this pass:**
-- **#55 `gamepad-idle-clean-skip`** — portable quiet disconnected gamepad poll
-  **~3.51×** cold (median ~23×; resets 40k→0); focused gamepad/input **21/21**.
+- **#56 `volatile-index-cadence`** — portable quiet `refreshVolatileEntityIndex`
+  **~4.46×** (120 ships × 24k ticks; refreshes 24k→3k); focused lifecycle /
+  weapons / core **pass**.
 
-**Holds / misses:** physics S1-idle, spatial-hash@600, visit-loop cadence,
-stamp-reuse/inert/near-disc, imminent-collision (~1.22×), rock-resolvePins (~1.02×),
-selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×),
-propulsion, soft-GPU draw-batch, spaceBg steady-state (pump was one-shot upload),
-midflight-wave-hull-decode, syncCombatantBounds (prior miss). 11 rocks pinned.
+**Holds / misses (unchanged + this scour):** physics S1-idle, spatial-hash@600,
+visit-loop cadence, stamp-reuse/inert/near-disc, imminent-collision (~1.22×),
+rock-resolvePins (~1.02×), selectClassify empty-projectile (~1.11×),
+isMovableEntity type-first (~1.10×), propulsion, soft-GPU draw-batch,
+spaceBg steady-state, midflight-wave-hull-decode, syncCombatantBounds,
+reusablePins pinBits short-circuit (slower than array compare on quiet pins).
+11 rocks pinned.
 
 ## Next poles
 
@@ -27,6 +29,7 @@ midflight-wave-hull-decode, syncCombatantBounds (prior miss). 11 rocks pinned.
    updateCraftMicroMotion / packFence).
 2. classifyWorld after #37+#38+#45+#48 (selectClassify / reusablePins /
    shouldSyncPhysics).
-3. registry.step after #39+#43+#49+#50+#55 (preStep / lifetimeSweep / tacticalAI).
+3. registry.step after #39+#43+#49+#50+#55+#56 (preStep residual / lifetimeSweep /
+   tacticalAI).
 4. syncEntityViews residual after #15+#44 (microMotion / ordnance / query).
 5. Soft-GPU fps is not a KPI.

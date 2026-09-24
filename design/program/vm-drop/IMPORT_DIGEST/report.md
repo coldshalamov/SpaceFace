@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24t (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24u (post-import hillclimb)
 
 Master tip: **`2e7ec656b`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #54; +#55 measured
-on stacked tip @ `f17566990`.
+Scratch `vm-work/hillclimb-20260924h` on `2e7ec656b` through #55; +#56 measured
+on stacked tip @ `3faeb1e63`.
 
 ### Already on stack (do not rediscover)
 
@@ -40,6 +40,7 @@ on stacked tip @ `f17566990`.
 | 52 | `asset-residency-diagnostics-cache` |
 | 53 | `authored-instance-camera-quantize` |
 | 54 | `decode-runway-top2-select` |
+| 55 | `gamepad-idle-clean-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -49,7 +50,8 @@ physics S1-idle sleep, spatial-hash surface@600, hitch-opening-admission,
 midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss),
 classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar),
 imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×),
-selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×).
+selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10×),
+reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -61,7 +63,7 @@ admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 301 | `registry.step` | residual after #39+#43+#49+#50; #55 cuts disconnected gamepad |
+| 301 | `registry.step` | residual after #39+#43+#49+#50; #55+#56 cut input + preStep volatile |
 | 289 | `classifyWorld` | residual after #37+#38+#45+#48 |
 | 190 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#54; syncEntityViews dominates |
 | 154 | `syncEntityViews` | residual after #15+#44; microMotion / ordnance / query |
@@ -74,18 +76,19 @@ admission owners ignored for portable ranking.
 - syncEntityViews → updateCraftMicroMotion, updateOrdnanceMotion, presentationQueries
 - classifyWorld → selectClassifyEntities, reusablePins, shouldSyncPhysicsBodyEntity,
   imminentCollisionFor (hold), rebuildPinFacts (cache already on stack)
-- registry.step → preStep, input.update (**#55**), lifetimeSweep, tacticalAI
+- registry.step → preStep (**#56**), input.update (**#55**), lifetimeSweep, tacticalAI
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 55 | `gamepad-idle-clean-skip` | Portable quiet disconnected gamepad poll **~3.51×** cold (median ~23×; `_resetState` 40k→0). Focused gamepad/input **21/21**. |
+| 56 | `volatile-index-cadence` | Portable quiet `refreshVolatileEntityIndex` **~4.46×** (120 ships × 24k ticks; refreshes 24k→3k). Mid-life attach oracle admits within period. Focused lifecycle/weapons/core pass. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
+| reusablePins pinBits short-circuit | ~0.54× — slower than short array compare (miss) |
 | isMovableEntity type-first | ~1.10× — under bar (prior) |
 | classify rock-only resolvePins | ~1.02× — under bar (prior) |
 | selectClassify empty-projectile skip | ~1.11× indexed — under bar (prior) |
@@ -105,6 +108,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    updateCraftMicroMotion / packFence).
 2. classifyWorld after #37+#38+#45+#48 (selectClassify / reusablePins /
    shouldSyncPhysics).
-3. registry.step after #39+#43+#49+#50+#55 (preStep / lifetimeSweep / tacticalAI).
+3. registry.step after #39+#43+#49+#50+#55+#56 (preStep residual / lifetimeSweep /
+   tacticalAI).
 4. syncEntityViews residual after #15+#44 (microMotion / ordnance / query).
 5. Soft-GPU fps is not a KPI.
