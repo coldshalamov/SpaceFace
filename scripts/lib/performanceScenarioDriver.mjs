@@ -281,7 +281,9 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       // carry a live thrust intent — under admission starvation they boost past the render
       // glass before their mesh lands, and the ready wait can never converge (observed:
       // unmeshed ships 1,300 WU out after a 300 s starve). Pin injected ships the same way so
-      // admission latency cannot relocate the measured scene.
+      // admission latency cannot relocate the measured scene. Hold positions are taken after
+      // the scenario arm, so station scenarios that relocate the player keep their moved pose.
+      const holdPlayerPos = player?.pos ? { x: player.pos.x, z: player.pos.z } : null;
       for (const entityId of snapshot.liveInjectedIds) {
         const entity = state.entities.get(entityId);
         if (entity?.data?.perfScenario && entity.pos) {
@@ -295,6 +297,14 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
           if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos || !hold) continue;
           entity.pos.set(hold.x, 0, hold.z);
           stabilizeAuthoredPose(entity);
+        }
+        // The player gets the same hold: vel.set(0) at arm is one-shot, and any later thrust
+        // input (undock recovery, stale intent) carries the camera 1,000+ WU from the spawn
+        // ring — the pinned ships then sit outside the render glass and never get meshes.
+        if (player?.pos && holdPlayerPos) {
+          player.pos.set(holdPlayerPos.x, 0, holdPlayerPos.z);
+          player.prevPos.copy(player.pos);
+          player.vel?.set?.(0, 0, 0);
         }
       }, 250);
     }
