@@ -1,4 +1,4 @@
-# IMPORT_DIGEST report — 2026-09-24bv (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24bw (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
@@ -186,6 +186,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 116 | `sprites-idle-commit-skip` | Portable quiet `_integrateSprites` idle reset+commit latch **~6.4×** median (4 buckets × 7 bindings × 200k; floor minSpeedup ≥5.89× across 4 package runs). Latch after first idle publish; wake on `_activateSprite`. Dirty-wake proved. Focused sprites latch+instanced-pool+structured-transients+vfx-save 16/16. Soft-GPU fps not claimed. |
 | 115 | `loot-magnet-quiet-empty-latch` | Portable quiet `_lootMagnetRelevant` empty pickups+payloads latch **~3.0×** median (200k; floor minSpeedup ≥2.48× across 4 package runs). Latch after empty-bucket observe when entityIndexVersion trustworthy; wake on version bump. Dirty-wake proved. No-index fallback refuses latch. Focused loot-magnet+inactive+field-force+bomb+speed-lines+swing-trace 16/16. Soft-GPU fps not claimed. |
 | 114 | `bomb-presentation-quiet-empty-latch` | Portable quiet `BombPresentationBatch.update` empty latch **~2.6×** median (200k; floor minSpeedup ≥2.15× across 4 package runs). Latch after empty publish when entityIndexVersion trustworthy; wake on version bump. Dirty-wake proved. No-index fallback refuses latch. Focused bomb latch+presentation 9/9 (+ ordnance 35/35 + choreography 20/20 + inactive 1/1). Soft-GPU fps not claimed. |
 | 113 | `field-force-quiet-empty-latch` | Portable quiet `FieldForcePresentation.update` empty latch **~2.5×** median (200k; floor minSpeedup ≥1.94× across 4 package runs). Latch after empty publish (no active / no residual slots / batch.count===0); wake on fields.active or releasing slots. Dirty-wake proved. Release residue still updates. Focused field-force latch+lifecycle+force-language+inf-043 44/44 (+ shield-shell 7/7 + inactive 1/1). Soft-GPU fps not claimed. |
@@ -214,6 +215,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| sprites idle commit skip (4-bucket reset+commit while liveSpriteCount===0) | **shipped #116 ~6.4×** (floor ≥5.89× across package runs; activate dirty-wake; mirrors #92 particles) |
 | bomb-presentation quiet empty latch (frustum + a11y + empty walk + publish(0) after owner exists) | **shipped #114 ~2.6×** (floor ≥2.15× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | loot-magnet quiet empty buckets (player + dual indexedTypeScan when pickups/payloads empty) | **shipped #115 ~3.0×** (floor ≥2.48× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | wreck-wisps quiet irrelevant latch (player + scan + Map.clear) | **hold** (with prior slots ~2.9×; never-created slots ~0.96× under bar for typical quiet) |
@@ -244,8 +246,9 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115
-   (syncEntityViews residual closures / microMotion; authored-instance
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116
+   (syncEntityViews residual closures / microMotion; sprites idle-commit shipped #116;
+   authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg; feel
    speed-lines shipped #112; field-force shipped #113; bomb telegraph shipped #114;

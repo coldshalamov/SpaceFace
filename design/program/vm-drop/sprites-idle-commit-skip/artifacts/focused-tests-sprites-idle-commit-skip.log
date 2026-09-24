@@ -1,0 +1,112 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: quiet empty sprites latch after first idle commit and skip reset+commit
+ok 1 - quiet empty sprites latch after first idle commit and skip reset+commit
+  ---
+  duration_ms: 96.893157
+  ...
+# Subtest: activateSprite dirty-wake clears idle latch then re-latches after drain
+ok 2 - activateSprite dirty-wake clears idle latch then re-latches after drain
+  ---
+  duration_ms: 30.73945
+  ...
+# Subtest: picture unchanged while latched — all four bucket meshes stay count 0
+ok 3 - picture unchanged while latched — all four bucket meshes stay count 0
+  ---
+  duration_ms: 17.428348
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: discrete VFX use four role-specific batched buckets instead of per-effect Sprite objects
+ok 4 - discrete VFX use four role-specific batched buckets instead of per-effect Sprite objects
+  ---
+  duration_ms: 117.209931
+  ...
+# Subtest: pipeline warmup compiles the same four sprite-batch shaders used in gameplay
+ok 5 - pipeline warmup compiles the same four sprite-batch shaders used in gameplay
+  ---
+  duration_ms: 251.510396
+  ...
+# Subtest: batched sprite shaders preserve Three output color and tone mapping
+ok 6 - batched sprite shaders preserve Three output color and tone mapping
+  ---
+  duration_ms: 21.610595
+  ...
+# Subtest: smoke participates in performance isolation and writes far-to-near
+ok 7 - smoke participates in performance isolation and writes far-to-near
+  ---
+  duration_ms: 27.294764
+  ...
+# Subtest: allocation-free instance writes degrade safely when a dense bucket is saturated
+ok 8 - allocation-free instance writes degrade safely when a dense bucket is saturated
+  ---
+  duration_ms: 1.25751
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-save-restore-destroy",
+#   "saveRestore": {
+#     "liveParticles": 0,
+#     "liveSprites": 0,
+#     "activeLights": 0
+#   },
+#   "normalDestroy": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   },
+#   "combatReason": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   }
+# }
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+ok 3 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+  ---
+  duration_ms: 591.635894
+  ...
+# Subtest: transient silhouette carriers occupy world-space depth instead of a camera-facing quad
+ok 10 - transient silhouette carriers occupy world-space depth instead of a camera-facing quad
+  ---
+  duration_ms: 30.056664
+  ...
+# Subtest: event progress and launch heading reach the resident GPU instance, independent of opacity
+ok 11 - event progress and launch heading reach the resident GPU instance, independent of opacity
+  ---
+  duration_ms: 4.52041
+  ...
+# Subtest: field animation and support stay bounded at saturation and invalid numeric inputs
+ok 12 - field animation and support stay bounded at saturation and invalid numeric inputs
+  ---
+  duration_ms: 3.911706
+  ...
+# Subtest: density film is an evolving bounded field, not one static mask with scrolling UVs
+ok 13 - density film is an evolving bounded field, not one static mask with scrolling UVs
+  ---
+  duration_ms: 11.011648
+  ...
+# Subtest: packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
+ok 14 - packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
+  ---
+  duration_ms: 35.066272
+  ...
+# Subtest: live transient pools share one density texture and do not add a back/front transparency pass
+ok 15 - live transient pools share one density texture and do not add a back/front transparency pass
+  ---
+  duration_ms: 2.208117
+  ...
+# Subtest: structural combat sheets have curved depth and independent lifetime animation
+ok 16 - structural combat sheets have curved depth and independent lifetime animation
+  ---
+  duration_ms: 4.769962
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 799.405912
