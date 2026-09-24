@@ -1,0 +1,287 @@
+TAP version 13
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 1 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 7.859527
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 2 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.270082
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 3 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.424508
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 4 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.150542
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 5 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 1.474461
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 6 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 33.684642
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 7 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.115632
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 8 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 1.174914
+  ...
+# {
+#   "seed": 14920,
+#   "sector": "sector_ceres_belt",
+#   "pocket": "ceres_refinery_pocket",
+#   "entityList": 54,
+#   "byType": {
+#     "ship": 14,
+#     "station": 17,
+#     "asteroid": 11,
+#     "fx": 10,
+#     "payload": 2
+#   },
+#   "asteroidFieldRocks": 321,
+#   "farActorRows": 21,
+#   "dressingRows": 24,
+#   "tickMs": {
+#     "p50": 2.466777000000093,
+#     "p95": 3.6413259999999354,
+#     "max": 8.767771000000266
+#   }
+# }
+# Subtest: quiet Ceres refinery pocket keeps the combat list in the tens
+ok 9 - quiet Ceres refinery pocket keeps the combat list in the tens
+  ---
+  duration_ms: 1886.845161
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 10 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.323356
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 11 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 5.413037
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 12 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 1.743469
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 13 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.470707
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 14 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.810779
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 15 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.403051
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 16 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.328583
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 17 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.244771
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 18 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.868814
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 19 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.446236
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 20 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 4.071159
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 21 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.751424
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 22 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 1.089312
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 23 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.925994
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 24 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.57621
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 25 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 7.811798
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 26 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.275524
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 27 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.115772
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 28 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 1.673198
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 29 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.43981
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 30 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.180803
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 31 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 0.983321
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 32 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.176312
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 33 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.39061
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 34 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 2.69768
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 35 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 0.975718
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 36 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.286339
+  ...
+# Subtest: stone eats an energy bolt, metal sends it back, a kinetic round ignores the lattice
+ok 37 - stone eats an energy bolt, metal sends it back, a kinetic round ignores the lattice
+  ---
+  duration_ms: 3.319734
+  ...
+# Subtest: a diamond splits once per family into eight headings, then later bolts die in it
+ok 38 - a diamond splits once per family into eight headings, then later bolts die in it
+  ---
+  duration_ms: 0.842422
+  ...
+# Subtest: the family cap stops a lattice from spawning without bound
+ok 39 - the family cap stops a lattice from spawning without bound
+  ---
+  duration_ms: 0.265919
+  ...
+# Subtest: the Ceres gallery is a fuse into a closed diamond field
+ok 40 - the Ceres gallery is a fuse into a closed diamond field
+  ---
+  duration_ms: 6.48063
+  ...
+# Subtest: a swept energy bolt prisms, the forward splinter lights the next diamond, and stone eats a splinter
+ok 41 - a swept energy bolt prisms, the forward splinter lights the next diamond, and stone eats a splinter
+  ---
+  duration_ms: 4.217264
+  ...
+# Subtest: each live swarm room has one lattice that clears the player
+ok 42 - each live swarm room has one lattice that clears the player
+  ---
+  duration_ms: 1.056021
+  ...
+# Subtest: the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot
+ok 43 - the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot
+  ---
+  duration_ms: 46.345811
+  ...
+# Subtest: optic lattices stamp only on FULL residency and leave on eviction
+ok 44 - optic lattices stamp only on FULL residency and leave on eviction
+  ---
+  duration_ms: 9.357888
+  ...
+# Subtest: optic lattices promote inside the decode disc and shelve past exit
+ok 45 - optic lattices promote inside the decode disc and shelve past exit
+  ---
+  duration_ms: 16.82585
+  ...
+# Subtest: visited diamond keys treat number and string ids as the same surface
+ok 46 - visited diamond keys treat number and string ids as the same surface
+  ---
+  duration_ms: 0.742957
+  ...
+# Subtest: metal reflect keeps the same body alive after physics sets alive=false
+ok 47 - metal reflect keeps the same body alive after physics sets alive=false
+  ---
+  duration_ms: 0.73023
+  ...
+# Subtest: reflect stamps a travel budget so metal ping-pong cannot run forever
+ok 48 - reflect stamps a travel budget so metal ping-pong cannot run forever
+  ---
+  duration_ms: 2.36894
+  ...
+# Subtest: bindOpticReflectTravel shrinks remaining range and refuses a spent budget
+ok 49 - bindOpticReflectTravel shrinks remaining range and refuses a spent budget
+  ---
+  duration_ms: 0.564917
+  ...
+# Subtest: prism children strip attackRuntime, keep generation, and spawn outside the parent
+ok 50 - prism children strip attackRuntime, keep generation, and spawn outside the parent
+  ---
+  duration_ms: 0.96171
+  ...
+# Subtest: optic settle alone leaves hit damage; weapons-style suppress clears it before combat
+ok 51 - optic settle alone leaves hit damage; weapons-style suppress clears it before combat
+  ---
+  duration_ms: 0.755775
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3070.168287

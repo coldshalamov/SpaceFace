@@ -1,103 +1,47 @@
-# Import digest — measured hitch packages (vm-drop only)
+# IMPORT_DIGEST report — 2026-09-23c (optic-field-resident)
 
-**Master tip (this refresh):** `568d1358e518f595c064986b2ad3ca18fbfeb435`  
-**Prior digest tip:** `35e519ebd`  
-**When refreshed:** 2026-09-23 ~23:56 EDT  
+Master tip: **`568d1358e`**.
 
-Classification = `git apply --check` on clean master tip + distinctive markers / import commits. Soft-GPU fps is noise. Picture defaults ON.
+## New package
 
----
-
-## Already on master (do not re-import)
-
-- **#2** `radar-project-scratch`
-- **#3** `radar-contact-color-defer`
-- **#4** `radar-range-plate-cache`
-- **#5** `trail-history-pool`
-- **#6** `classify-pinfacts-cache`
-- **#7** `classify-closed-form-scan`
-- **#8** `hud-settext-cache`
-- **#9** `hud-screen-transform-cache`
-- **#10** `hud-glag-transform-cache`
-- **#11** `threat-halo-transform-cache`
-- **#14** `sync-entity-views-closure-gate`
-- **#16** `flight-dormant-skip`
-- **#18** `alloc-journal-churn`
-- **#23** `combat-subsystem-key-cache`
-- **#24** `npc-field-role-cache`
-- **#25** `docking-corridor-publish-scratch`
-- **#26** `customs-scan-cone-scratch`
-- **#27** `hostile-for-ai-earlyout`
-- **#28** `stunt-flight-range-prefilter`
-- **#29** `assign-flight-frame-ref`
-- **#30** `npc-jobs-id-list-cache`
-
-Also pre-digest on master: Lane C+D hitch floor / hold prefetch / wave hull; numeric asteroid `cellKey`; `HITCH_FRAME_TICKS = 6.5`.  
-Separate headed win: `f08946634` Flight HUD stop restyling ~730 elements/frame (complements #8–#11).
-
----
+| # | Package | Evidence |
+|---:|---|---|
+| 31 | `optic-field-resident` | Census 96→54 / rocks 53→11; walk microbench ~1.64×; 51 focused tests; patch clean on `568d1358e` |
 
 ## Still import — applies cleanly on `568d1358e`
 
 | # | Package | Evidence |
 |---:|---|---|
+| 31 | `optic-field-resident` | ~1.64× walk; census green |
 | 1 | `far-actor-cell-key` | ~2.06× re-verified; patch applies |
-| 12 | `massline-settext-cache` | patch applies; _sfText not on master masslineHud |
+| 12 | `massline-settext-cache` | patch applies |
 | 13 | `prepare-pitch-settle` | ~2.35× re-verified; patch applies |
-| 15 | `sync-entity-views-submit-scratch` | patch applies; hidden short-circuit primary |
-| 17 | `asteroid-query-callers` | ~9.12× REBASED for TABLE_DECODE_RUNWAY_SECONDS |
-| 20 | `opening-plan-complete` | patch applies; soft-GPU opening stack |
-| 21 | `hitch-opening-drain` | patch applies; soft-GPU planWait/drainWait skip |
+| 15 | `sync-entity-views-submit-scratch` | patch applies |
+| 17 | `asteroid-query-callers` | ~9.12× REBASED |
+| 20 | `opening-plan-complete` | soft-GPU opening |
+| 21 | `hitch-opening-drain` | soft-GPU opening |
 
 ### Apply order (portable first)
 
-1. `#17 asteroid-query-callers` (rebased patch under `patches/`, not `archive/`) — largest offline win (~9× rock disc)
-2. `#1 far-actor-cell-key` (~2×)
-3. `#13 prepare-pitch-settle` (~2.3×)
-4. `#15 sync-entity-views-submit-scratch`
-5. `#12 massline-settext-cache`
-6. Soft-GPU opening: `#20` → `#21` (then rebase `#22` before importing)
+1. `#31 optic-field-resident` — table-authority membership (census)
+2. `#17 asteroid-query-callers`
+3. `#1 far-actor-cell-key`
+4. `#13 prepare-pitch-settle`
+5. `#15 sync-entity-views-submit-scratch`
+6. `#12 massline-settext-cache`
+7. Soft-GPU opening: `#20` → `#21` (then rebase `#22`)
 
----
-
-## Needs rebase before import
+## Needs rebase / hold
 
 | # | Package | Note |
 |---:|---|---|
-| 19 | `flight-propulsion-scratch` | coolRuntime/_sfNormalized; patch drifts on propulsionKernel.js |
-| 22 | `opening-residency-deadline` | soft-GPU residency deadline; patch drifts on renderer.js |
+| 19 | `flight-propulsion-scratch` | integrated ~0.85× on tip — hold |
+| 22 | `opening-residency-deadline` | patch drifts on renderer.js |
 
----
+## Scour-ranked next poles
 
-## SKIP (unchanged)
-
-- `overview-contact-pool`, `radar-contact-list-reuse`, `shader-admission-slice`
-- `hold-prefetch-inbound`, `hitch-opening-admission`, `midflight-wave-hull-decode`
-- `combat-entity-key-cache` / syncCombatantBounds early-out, `cloneUniforms ocean`
-- `hitch-asteroid-cell-key`, `hitch-shed-floor` (already on master)
-
-Residual micro misses (&lt;~1.5×): `copyInput`, `lifetimeSweep`, `pruneEvidence`, `normalizeCraftInput`.
-
----
-
-## Scour-ranked next poles (after pending imports)
-
-1. **Import portable pending above** — covers queryFarActors / prepareFrame pitch / syncEntityViews submit / asteroid discs / massline DOM.
-2. **Rebase #19 flight-propulsion-scratch** — was ~174× coolRuntime + ~10.7× body trust on older tip; still a sim-tick pole if markers absent.
-3. **Table-authority Lane A** — quiet Ceres combat-list census still fails on bare master (`got 53` live asteroids). Empty `entityList` remains the crowded-frame 50% if headed confirms.
-4. **`emergentPrimitives` on production clock** (`50c7668bc`) — many full `entityList` walks/update; index/living-world/spatial before micro-pooling.
-5. **Fewer program keys / share unchanged ship materials** (`PERF_TOP10` #1/#6) — new-ship hitch; no dummy prewarm; picture ON.
-6. Ignore soft-GPU bloom/`isProgram`/`bufferData` for shipping KPIs.
-
----
-
-## This refresh artifacts
-
-- `asteroid-query-callers/REBASE_20260923.md` + new patch
-- `far-actor-cell-key/REVERIFY_20260923.md` (~2.06×)
-- `prepare-pitch-settle/REVERIFY_20260923.md` (~2.35×)
-
-## Attempted this pass (miss)
-
-- **`flight-propulsion-scratch` rebase:** patch mostly applies (1 torch `spool` hunk drifted). After manual fix, integrated `stepPropulsion` microbench on `568d1358e` was **~0.85×** (255→300 ms / 200k) — **do not import** until an isolated coolRuntime/trust-body bench again clears ≥~1.5× on current tip. Left as needs-rebase / hold.
-
+1. Import portable pending (esp. #31 + #17).
+2. Remaining 11 live rocks (geology/collision/activity pins) — only shrink if pins allow.
+3. `emergentPrimitives` hot-path spatial / batch when `emergent.hot` (cool already early-outs).
+4. Fewer program keys / share unchanged ship materials — new-ship hitch; no dummy prewarm.
+5. Ignore soft-GPU fps for shipping KPIs.

@@ -1,0 +1,17 @@
+{
+  "systems": 40,
+  "iters": 800,
+  "before": {
+    "entityList": 96,
+    "liveAsteroids": 53,
+    "opticPromoted": 42,
+    "walkMs": 8.96
+  },
+  "after": {
+    "entityList": 54,
+    "liveAsteroids": 11,
+    "fieldOptic": 42,
+    "walkMs": 5.481
+  },
+  "speedup": 1.635
+}
