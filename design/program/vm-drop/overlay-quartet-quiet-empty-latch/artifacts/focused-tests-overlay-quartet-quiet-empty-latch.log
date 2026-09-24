@@ -1,0 +1,41 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: overlay-quartet quiet-latches when all four overlays inactive
+ok 1 - overlay-quartet quiet-latches when all four overlays inactive
+  ---
+  duration_ms: 95.96683
+  ...
+# Subtest: heatZone dirty-wake resumes then re-latches when cleared
+ok 2 - heatZone dirty-wake resumes then re-latches when cleared
+  ---
+  duration_ms: 19.058628
+  ...
+# Subtest: customsWeir ref dirty-wake resumes
+ok 3 - customsWeir ref dirty-wake resumes
+  ---
+  duration_ms: 17.463722
+  ...
+# Subtest: nav destination dirty-wake resumes
+ok 4 - nav destination dirty-wake resumes
+  ---
+  duration_ms: 18.059172
+  ...
+# Subtest: payloadReleaseGhost dirty-wake resumes
+ok 5 - payloadReleaseGhost dirty-wake resumes
+  ---
+  duration_ms: 15.992321
+  ...
+# Subtest: frame update keeps overlay quartet latched while quiet
+ok 6 - frame update keeps overlay quartet latched while quiet
+  ---
+  duration_ms: 21.085734
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 542.678379

@@ -1,0 +1,37 @@
+{
+  "package": "overlay-quartet-quiet-empty-latch",
+  "runs": [
+    {
+      "run": "primary",
+      "median": 16.478,
+      "min": 6.554,
+      "max": 18.421
+    },
+    {
+      "run": "rebench1",
+      "median": 16.642,
+      "min": 14.868,
+      "max": 18.418
+    },
+    {
+      "run": "rebench2",
+      "median": 17.877,
+      "min": 15.8,
+      "max": 27.283
+    },
+    {
+      "run": "rebench3",
+      "median": 16.743,
+      "min": 16.041,
+      "max": 18.356
+    },
+    {
+      "run": "rebench4",
+      "median": 16.402,
+      "min": 12.685,
+      "max": 19.324
+    }
+  ],
+  "floorMinAcrossRuns": 6.554,
+  "medianPrimary": 16.478
+}

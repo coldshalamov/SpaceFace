@@ -1,0 +1,176 @@
+TAP version 13
+# Subtest: the Helios weir is a corridor inside the lane, not the patrol disc
+ok 1 - the Helios weir is a corridor inside the lane, not the patrol disc
+  ---
+  duration_ms: 2.09294
+  ...
+# Subtest: standing in the corridor is seen, and the hull is not the price
+ok 2 - standing in the corridor is seen, and the hull is not the price
+  ---
+  duration_ms: 1.226135
+  ...
+# Subtest: a contraband body held in the weir is scanned once, and a legal body is not
+ok 3 - a contraband body held in the weir is scanned once, and a legal body is not
+  ---
+  duration_ms: 1.104299
+  ...
+# Subtest: no route means NOT VISIBLE — the ribbon is contextual, never a permanent panel
+ok 4 - no route means NOT VISIBLE — the ribbon is contextual, never a permanent panel
+  ---
+  duration_ms: 2.460191
+  ...
+# Subtest: a plotted route becomes visible without being engaged
+ok 5 - a plotted route becomes visible without being engaged
+  ---
+  duration_ms: 0.476059
+  ...
+# Subtest: resolveRouteRibbon never returns null and never throws on junk
+ok 6 - resolveRouteRibbon never returns null and never throws on junk
+  ---
+  duration_ms: 0.248359
+  ...
+# Subtest: legs before legIndex are done, legIndex is active, the rest are ahead
+ok 7 - legs before legIndex are done, legIndex is active, the rest are ahead
+  ---
+  duration_ms: 0.533387
+  ...
+# Subtest: fuel remaining excludes flown legs; the total stays the whole trip
+ok 8 - fuel remaining excludes flown legs; the total stays the whole trip
+  ---
+  duration_ms: 0.296114
+  ...
+# Subtest: an unresolved leg is surfaced BEFORE the follower turns it into an interruption
+ok 9 - an unresolved leg is surfaced BEFORE the follower turns it into an interruption
+  ---
+  duration_ms: 0.205778
+  ...
+# Subtest: the executor label wins over the bare sector name — it names the object being flown to
+ok 10 - the executor label wins over the bare sector name — it names the object being flown to
+  ---
+  duration_ms: 0.359703
+  ...
+# Subtest: arrival is the final leg destination, and the trip never orphans it
+ok 11 - arrival is the final leg destination, and the trip never orphans it
+  ---
+  duration_ms: 0.351955
+  ...
+# Subtest: sector names resolve from a Map as well as a plain object
+ok 12 - sector names resolve from a Map as well as a plain object
+  ---
+  duration_ms: 0.294349
+  ...
+# Subtest: interruption carries its reason and stays resumable
+ok 13 - interruption carries its reason and stays resumable
+  ---
+  duration_ms: 0.515687
+  ...
+# Subtest: an interrupted route does not report itself as FLYING
+ok 14 - an interrupted route does not report itself as FLYING
+  ---
+  duration_ms: 0.326337
+  ...
+# Subtest: ETA is exactly distance over speed, and carries its qualifier
+ok 15 - ETA is exactly distance over speed, and carries its qualifier
+  ---
+  duration_ms: 0.312627
+  ...
+# Subtest: a stationary ship gets a REFUSAL with a reason, never a fabricated number
+ok 16 - a stationary ship gets a REFUSAL with a reason, never a fabricated number
+  ---
+  duration_ms: 0.280188
+  ...
+# Subtest: no active leg means no ETA — a plotted route is not an in-progress one
+ok 17 - no active leg means no ETA — a plotted route is not an in-progress one
+  ---
+  duration_ms: 0.245769
+  ...
+# Subtest: align time is the summed authored charge of REMAINING legs only
+ok 18 - align time is the summed authored charge of REMAINING legs only
+  ---
+  duration_ms: 0.217741
+  ...
+# Subtest: every action carries a reason in BOTH states, and only available ones carry an event
+ok 19 - every action carries a reason in BOTH states, and only available ones carry an event
+  ---
+  duration_ms: 0.531353
+  ...
+# Subtest: PAUSE is permanently unavailable and names the shipped equivalent
+ok 20 - PAUSE is permanently unavailable and names the shipped equivalent
+  ---
+  duration_ms: 0.27325
+  ...
+# Subtest: engage / disengage / resume track real executor status
+ok 21 - engage / disengage / resume track real executor status
+  ---
+  duration_ms: 0.373647
+  ...
+# Subtest: with no route at all, nothing is available and engage says why
+ok 22 - with no route at all, nothing is available and engage says why
+  ---
+  duration_ms: 1.631533
+  ...
+# Subtest: interdiction bands are words as well as thresholds
+ok 23 - interdiction bands are words as well as thresholds
+  ---
+  duration_ms: 0.324289
+  ...
+# Subtest: each leg publishes its band AND its label
+ok 24 - each leg publishes its band AND its label
+  ---
+  duration_ms: 0.197441
+  ...
+# Subtest: durations format without ever emitting a bare NaN
+ok 25 - durations format without ever emitting a bare NaN
+  ---
+  duration_ms: 0.136286
+  ...
+# Subtest: the record is frozen and the inputs are never mutated
+ok 26 - the record is frozen and the inputs are never mutated
+  ---
+  duration_ms: 0.173555
+  ...
+# Subtest: ALL coordinates out of this module are GLOBAL — there is no drawPos anywhere (ADR D2.1)
+ok 27 - ALL coordinates out of this module are GLOBAL — there is no drawPos anywhere (ADR D2.1)
+  ---
+  duration_ms: 0.159057
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: overlay-quartet quiet-latches when all four overlays inactive
+ok 28 - overlay-quartet quiet-latches when all four overlays inactive
+  ---
+  duration_ms: 104.34682
+  ...
+# Subtest: heatZone dirty-wake resumes then re-latches when cleared
+ok 29 - heatZone dirty-wake resumes then re-latches when cleared
+  ---
+  duration_ms: 19.589564
+  ...
+# Subtest: customsWeir ref dirty-wake resumes
+ok 30 - customsWeir ref dirty-wake resumes
+  ---
+  duration_ms: 17.457062
+  ...
+# Subtest: nav destination dirty-wake resumes
+ok 31 - nav destination dirty-wake resumes
+  ---
+  duration_ms: 19.103729
+  ...
+# Subtest: payloadReleaseGhost dirty-wake resumes
+ok 32 - payloadReleaseGhost dirty-wake resumes
+  ---
+  duration_ms: 15.568212
+  ...
+# Subtest: frame update keeps overlay quartet latched while quiet
+ok 33 - frame update keeps overlay quartet latched while quiet
+  ---
+  duration_ms: 21.295433
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 559.01564

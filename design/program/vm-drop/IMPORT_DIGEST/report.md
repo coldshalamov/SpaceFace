@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24cc (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24cd (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924k` on `origin/master` @ `8ebdf5537`;
-through #121 @ `53a441406`; +#122 measured on stacked tip @ `c9d3972c9`. Profile
+through #122 @ `c9d3972c9`; +#123 measured on stacked tip @ `3dbecee59`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -158,7 +158,7 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **tether-web quiet empty latch (~0.93× — drop; empty-assign noise)**.
 **attachGraph same-ref skip (~1.42× — hold)**.
 **release-arc Active quiet latch (~0.93× — drop; Active check already cheap)**.
-**overlay-quartet quiet latch (wanted/customs/route/payload — hold; wake re-reads same truth)**.
+**overlay-quartet quiet latch truth-reread wake (hold ~0.99–1.03× bundle / wake re-reads same truth — superseded by #123 identity/ref wake ~16.5×)**.
 **weapon-presenter composite quiet early-out (probe ~5× synthetic — defer; prove multi-pool dirty-wake)**.
 **projectile-trails quiet empty latch (shipped #122 ~6.0× — supersedes idle scan+diag reset)**.
 **wreck-wisps quiet irrelevant latch (shipped #117 ~3.4× — version-only wake; supersedes prior hold that still re-scanned while latched ~0.96×)**.
@@ -183,7 +183,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), docking cradle quiet (**#109**), law-heat telegraph quiet (**#110**), swing-trace quiet (**#111**), speed-lines quiet (**#112**), field-force quiet empty (**#113**), bomb telegraph quiet empty (**#114**), loot-magnet quiet empty buckets (**#115**), sprites idle commit (**#116**), wreck-wisps quiet empty (**#117**), momentum-sink quiet empty (**#118**), npc-job-signatures quiet empty (**#119**), well-distortion empty (**#120**), persistent-beams callsite (**#121**), projectile-trails empty (**#122**), spaceBg (hold), hot plasma residual (volumetric/retro held)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), docking cradle quiet (**#109**), law-heat telegraph quiet (**#110**), swing-trace quiet (**#111**), speed-lines quiet (**#112**), field-force quiet empty (**#113**), bomb telegraph quiet empty (**#114**), loot-magnet quiet empty buckets (**#115**), sprites idle commit (**#116**), wreck-wisps quiet empty (**#117**), momentum-sink quiet empty (**#118**), npc-job-signatures quiet empty (**#119**), well-distortion empty (**#120**), persistent-beams callsite (**#121**), projectile-trails empty (**#122**), overlay-quartet identity wake (**#123**), spaceBg (hold), hot plasma residual (volumetric/retro held)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -192,6 +192,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 123 | `overlay-quartet-quiet-empty-latch` | Portable quiet inactive overlay quartet (wanted/customs/route/payload) **~16.5×** median (200k; floor minSpeedup ≥6.55× across 5 package runs). Latch after first empty observe; wake on identity/ref snapshot (heatZone flags, customsWeir/nav/tether/ghost refs) — **not** full truth re-read. Dirty-wake proved. Focused latch+customs+route 33/33. Soft-GPU fps not claimed. Different angle from held truth-reread / overlay-bundle ~0.99–1.03×. |
 | 122 | `projectile-trails-quiet-empty-latch` | Portable quiet empty projectile-trails relevant (indexedTypeScan + cache check + resetProjectileTrailDiag) **~6.0×** median (200k; floor minSpeedup ≥4.74× across 4 package runs). Latch after first empty observe; wake on entityIndexVersion / `_projectileCacheDirty`. Dirty-wake proved. Focused latch 4/4. Soft-GPU fps not claimed. |
 | 121 | `persistent-beams-quiet-callsite-skip` | Portable quiet combat-beam call-site prep (camDist + a11y + worldSize) while activeCount===0 **~5.0×** median (400k; floor minSpeedup ≥4.20× across 4 package runs). Stacks on #91 pool early-out. Dirty-wake proved (upsert/stop/clear). Focused callsite+pool 7/7. Soft-GPU fps not claimed. |
 | 120 | `well-distortion-quiet-empty-latch` | Portable quiet `_syncWellDistortion` empty-active a11y+CAP-zero+DistortionField.uTime **~2.16×** median (CAP 6 × 400k; floor minSpeedup ≥1.63× across 4 package runs). Latch after empty sync when fields.active empty; wake on active ref/len. Dirty-wake proved. Reduced-motion + live wells refuse empty-only latch. Focused latch+well+weapon-vfx+impact 50/50. Soft-GPU fps not claimed. **Different angle** from held sync-empty ~1.47× / floor ~1.18× (prior probe omitted DistortionField uTime write + real a11y resolve). |
@@ -227,10 +228,14 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| overlay-quartet quiet latch identity/ref wake (wanted/customs/route/payload; not truth-reread) | **shipped #123 ~16.5×** (floor ≥6.55× across package runs) |
+| weapon-presenter O1 multi-pool dirty-wake (spawnGen+indexVersion+fields) | **~1.15× under bar / hold** (synthetic pool-check composite still deferred) |
+| gas-a11y profile-id retain | **reconfirm hold ~ under bar** (prior ~0.99–1.03×) |
+| emergent empty presentationCount latch | **regress ~0.71× / hold** (reconfirm EmergentPrimitivePools) |
 | projectile-trails quiet empty latch (indexedTypeScan + diag reset; version/cache-dirty wake) | **shipped #122 ~6.0×** (floor ≥4.74× across package runs) |
 | attachGraph same-ref skip | **~1.42× under bar / hold** |
 | release-arc Active quiet latch | **~0.93× drop** (Active check already cheap) |
-| overlay-quartet quiet latch (wanted/customs/route/payload) | **probe only — wake re-reads same truth; hold pending cheaper wake** |
+| overlay-quartet quiet latch identity/ref wake (wanted/customs/route/payload) | **shipped #123 ~16.5×** (floor ≥6.55× across package runs; supersedes truth-reread / overlay-bundle hold) |
 | weapon-presenter composite quiet early-out | **probe ~5× synthetic — not shipped this pass (defer; prove dirty-wake across pools)** |
 | npc-job-signatures quiet sleep latch (relevant+sleep composite; npcJobs.revision wake) | **shipped #119 ~2.51×** (floor ≥2.07× across package runs; supersedes sleep-only hold ~1.56× / floor ~1.40×) |
 | persistent-beams quiet callsite prep (camDist + a11y + worldSize while activeCount===0; stacks on #91) | **shipped #121 ~5.0×** (floor ≥4.20× across package runs) |
@@ -240,7 +245,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | loot-magnet quiet empty buckets (player + dual indexedTypeScan when pickups/payloads empty) | **shipped #115 ~3.0×** (floor ≥2.48× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | wreck-wisps quiet irrelevant latch (player + scan + Map.clear; version-only wake) | **shipped #117 ~3.4×** (floor ≥2.87× across package runs; entityIndexVersion dirty-wake; supersedes prior re-scan wake hold ~0.96×) |
 | momentum-sink quiet empty latch (combat.entities for-in + MOMENTUM_SINK status probe; statusNextPendingSeq wake) | **shipped #118 ~137×** (floor ≥101.99× across package runs; statusNextPendingSeq dirty-wake; no-seq refuses latch) |
-| ceres-job-action / pending-detonations / overlay-bundle / gas-a11y quiet latches | **~0.99–1.03× under bar / hold** (thin residual; latch overhead ≥ saved work) |
+| ceres-job-action / pending-detonations / overlay-bundle (truth-reread; superseded by #123) / gas-a11y quiet latches | **~0.99–1.03× under bar / hold** (thin residual; latch overhead ≥ saved work; overlay identity wake shipped #123) |
 | contact-shadow retain commit-skip (N=8 unchanged) | **~1.04× under bar / hold** |
 | tether-web quiet empty latch (empty byId for-in + count/visible reassign) | **~0.93× drop** (empty-assign noise) |
 | field-force quiet empty latch (frustum + slot reserved walk + batch commit(0) when already empty) | **shipped #113 ~2.5×** (floor ≥1.94× across package runs; fields.active / residual-slot dirty-wake; release residue kept) |
@@ -269,19 +274,18 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118+#119+#120+#121+#122
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118+#119+#120+#121+#122+#123
    (syncEntityViews residual closures / microMotion; sprites idle-commit shipped #116;
    wreck-wisps empty shipped #117; momentum-sink empty shipped #118; npc-job-signatures
    empty shipped #119; well-distortion empty shipped #120; persistent-beams callsite shipped #121;
-   projectile-trails empty shipped #122; authored-instance
-   static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
-   retain held ~1.26×; applySnapshotPose identical-write held; spaceBg; feel
-   speed-lines shipped #112; field-force shipped #113; bomb telegraph shipped #114;
-   hot-drive plasma residual;
+   projectile-trails empty shipped #122; overlay-quartet identity wake shipped #123;
+   authored-instance static reuse held ~1.3×; under-roof clearance stamp-check path;
+   clearance movers retain held ~1.26×; applySnapshotPose identical-write held; spaceBg;
+   feel speed-lines shipped #112; field-force shipped #113; bomb telegraph shipped #114;
+   hot-drive plasma residual; weapon-presenter composite deferred (need multi-pool dirty-wake);
    volumetric/retro cold-reset held ~1.42–1.48×; emergent empty-assign/latch held
-   ~1.22–1.46×; massline release-arc
-   residual; target-contour quiet held ~1.0×;
-   tether-web empty-assign dropped ~0.93×).
+   ~1.22–1.46×; massline release-arc residual; target-contour quiet held ~1.0×;
+   tether-web empty-assign dropped ~0.93×; attachGraph same-ref held ~1.42×).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual; rock visit context-only held ~1.09×).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88
