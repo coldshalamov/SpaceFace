@@ -188,11 +188,13 @@ export const REBIND_LABELS = {
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
 // default button (the live resolved map prints the button on the right of each row).
 export const GAMEPAD_REBINDABLE = [
-  'accept', 'cancel', 'massline', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
 ];
 export const GAMEPAD_REBIND_LABELS = {
-  accept: 'Accept / dock',
+  accept: 'Accept',
+  dock: 'Dock (when prompted)',
+  deployRepulsor: 'Shove (repulsor)',
   cancel: 'Back / cancel',
   massline: 'Massline: tap latch/cut; hold line control',
   fire: 'Fire',

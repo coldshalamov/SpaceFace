@@ -651,7 +651,14 @@ export const input = {
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._cmHeld = false;
-    this._gamepadLifecycleQuarantine = null;
+    this._gamepadLifecycleQuarantine = {
+      massline: true,
+      countermeasure: true,
+      travelBurn: true,
+      autoTarget: true,
+      chargeDetonate: true,
+      deployRepulsor: true,
+    };
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects

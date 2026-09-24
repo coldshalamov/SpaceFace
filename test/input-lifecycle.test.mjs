@@ -211,6 +211,7 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     travelBurn: true,
     autoTarget: true,
     chargeDetonate: true,
+    deployRepulsor: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);
