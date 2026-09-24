@@ -97,6 +97,17 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_kestrel',
     sectorIds: Object.freeze(['sector_io_reach']),
   }),
+  Object.freeze({
+    // Charon Expanse claim face: one miner the seed-hash pick can always return, because this
+    // sector had no authored lane identity. Not a claimable body and not a new encounter.
+    id: 'lane_pell_claim_nine',
+    name: 'Pell of Claim Nine',
+    callsign: 'CLAIM-9',
+    role: 'miner',
+    gimmick: 'expanse-claim',
+    ship: 'ship_pelican',
+    sectorIds: Object.freeze(['sector_charon_expanse']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
@@ -231,4 +242,7 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   // WORLD-11 Io Reach frontier courier.
   'frontier-mail': 'FRONTIER MAIL',
   frontier_mail: 'FRONTIER MAIL',
+  // WORLD-12 Charon Expanse miner.
+  'expanse-claim': 'CLAIM TALLY',
+  expanse_claim: 'CLAIM TALLY',
 });

@@ -68,8 +68,9 @@ export function createHaulerOriginSystem() {
 
       // Mission authority feedback.
       bus.on('mission:completed', (p) => this._onMissionCompleted(p));
+      // Abandonment arrives as mission:failed { reason: 'abandoned' } — no
+      // mission:abandoned event exists on the bus.
       bus.on('mission:failed', (p) => this._onMissionFailed(p));
-      bus.on('mission:abandoned', (p) => this._onMissionFailed({ ...p, reason: 'abandoned' }));
 
       // Player origin UI intents (station hub / onboarding seam).
       bus.on('career:hauler:accept', () => this.accept());
@@ -83,10 +84,11 @@ export function createHaulerOriginSystem() {
         if (!p || !p.careerId || p.careerId === HAULER_CAREER_ID) this.decline();
       });
 
-      // Economy trade receipts (prefer detailed afterTrade-style if present).
-      bus.on('economy:trade', (p) => this._onTrade(p));
-      bus.on('ui:buy', (p) => this._onTrade({ ...p, side: 'buy' }));
-      bus.on('ui:sell', (p) => this._onTrade({ ...p, side: 'sell' }));
+      // Economy trade receipts (prefer detailed afterTrade-style if present). The
+      // executed receipt is economy:tradeCompleted; ui:buy/ui:sell are requests that
+      // carry no unitPrice/total and can still fail, so recording legs from them
+      // starves market_spread of real ticket prices.
+      bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
 
       // Manual delivery bridge when missions board is not yet integrated.
       bus.on('career:hauler:delivered', (p) => {
@@ -239,8 +241,10 @@ export function createHaulerOriginSystem() {
         source: 'economy_trade',
       }, simTimeOf(this.state));
 
-      // Auto-check spread when both legs present.
-      if (own.marketLegs.buy && own.marketLegs.sell) {
+      // Auto-check spread when both legs present. ensureHaulerOriginState reattaches
+      // a migrated copy on every call, so re-read — `own` above is already stale.
+      const after = ensureHaulerOriginState(this.state);
+      if (after && after.marketLegs.buy && after.marketLegs.sell) {
         const result = evaluateStepSignal(this.state, { kind: 'market_spread' }, simTimeOf(this.state));
         if (result.ok) emitAll(this.bus, result.intents);
       }

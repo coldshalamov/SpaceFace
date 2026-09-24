@@ -18,10 +18,10 @@ import { TRAFFIC_ROLES } from '../src/systems/traffic.js';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
-test('the six one-offs exist: five placed set pieces plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 5, 'five placed set pieces in worldOneOffs.js');
+test('the placed one-offs exist, plus the too-fast courier', () => {
+  assert.equal(WORLD_ONE_OFFS.length, 6, 'six placed set pieces in worldOneOffs.js');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
-  assert.ok(courier, 'the sixth one-off is the named express courier in laneContacts.js');
+  assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
   assert.equal(new Set(ids).size, ids.length, 'one-off ids are unique');
 });

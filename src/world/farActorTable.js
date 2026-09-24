@@ -1,6 +1,6 @@
 // Far ships and wrecks beyond the combat table. They stay as compact records and
-// rematerialize when the player approaches. They are not GameState combat entities
-// while shelved.
+// rematerialize when the player approaches, or when a projectile's flight reaches
+// them. They are not GameState combat entities while shelved.
 
 import { clearEntityRuntime } from '../core/entity.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';

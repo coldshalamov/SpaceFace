@@ -391,6 +391,51 @@ check('system reacts to dock:docked and career accept intents', () => {
   assert.equal(sys.getView().stepIndex, 1);
 });
 
+check('system records priced market legs from economy:tradeCompleted, not ui:buy/ui:sell requests', () => {
+  const state = seedIronSpreadMarkets(makeHaulerState({ simTime: 0 }));
+  const bus = makeBus();
+  attachCreditAuthority(bus, state);
+  const sys = createHaulerOriginSystem();
+  sys.init({ state, bus, helpers: {} });
+
+  const fire = (result) => {
+    if (result && result.intents) for (const i of result.intents) bus.emit(i.event, i.payload);
+  };
+  fire(onFirstDock(state, 'station_helios', 0));
+  fire(acceptOrigin(state, 1));
+  fire(evaluateStepSignal(state, { kind: 'manual_delivery', stationId: 'station_coalition' }, 2));
+  fire(chooseHaulerStep(state, 'bonded_express', 3));
+  fire(acceptOrigin(state, 3));
+  fire(evaluateStepSignal(state, { kind: 'manual_delivery', stationId: 'station_ceres' }, 4));
+  fire(acceptOrigin(state, 5));
+
+  // ensureHaulerOriginState migrates+reattaches on every call — always re-read.
+  assert.equal(ensureHaulerOriginState(state).activeContract.stepId, 'market_spread');
+
+  // A bare trade request is not a receipt — it can still fail at the economy
+  // authority and it carries no unitPrice/total, so it must not record a leg.
+  state.player.dockedStationId = 'station_beltout';
+  bus.emit('ui:buy', { commodityId: 'cmdty_ore_iron', qty: 10, expectedTotal: 260 });
+  assert.equal(ensureHaulerOriginState(state).marketLegs.buy, null);
+
+  // The executed receipt carries the real ticket the spread check requires.
+  bus.emit('economy:tradeCompleted', {
+    stationId: 'station_beltout', commodityId: 'cmdty_ore_iron', side: 'buy',
+    qty: 10, unitAvg: 26, total: 260,
+  });
+  const buyLeg = ensureHaulerOriginState(state).marketLegs.buy;
+  assert.equal(buyLeg.unitPrice, 26);
+  assert.equal(buyLeg.total, 260);
+  assert.equal(buyLeg.stationId, 'station_beltout');
+
+  state.player.dockedStationId = 'station_ceres';
+  bus.emit('economy:tradeCompleted', {
+    stationId: 'station_ceres', commodityId: 'cmdty_ore_iron', side: 'sell',
+    qty: 10, unitAvg: 32, total: 320,
+  });
+  assert.equal(ensureHaulerOriginState(state).status, 'completed');
+});
+
 check('system newGame resets origin without touching other careers root peers', () => {
   const state = makeHaulerState();
   state.careers.origins = { hunter: { status: 'active' } }; // peer origin blob — must survive

@@ -1,5 +1,6 @@
 // Compact asteroid field. Dormant rocks are not GameState combat entities.
-// Promote into entityList only for mine / ram / tether (and NPC mining picks).
+// Promote into entityList for mine / ram / tether, NPC mining picks, and a
+// projectile that actually reaches the rock — including one that has left the frame.
 
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
