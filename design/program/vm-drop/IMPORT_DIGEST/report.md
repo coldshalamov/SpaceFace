@@ -1,4 +1,97 @@
-# IMPORT_DIGEST report — 20260924ea (post-#163; **#164 ship** hull-integrity-quiet-latch + **#165 ship** perf-heap-sample-gate)
+# IMPORT_DIGEST report — 20260926a (post-#165; **#166 ship** render-package-digest-zero-copy + **#167 ship** embedded-ktx2-single-copy)
+
+Master tip: **`97c88f92b`** (fetched; unchanged since digest 20260924ea). No restack needed, and no vm-drop package has been imported since dz.
+
+## #166 pass — summary (NEW)
+
+A new pole: main-thread copies of streamed GLBs. In a bare-master 45 s profile
+(10–30 s flight window) every streamed render package was copied **three times**
+on the main thread:
+
+| Copy | Where | Cost |
+|---|---|---|
+| Digest-worker copy | `renderPackageDigest.js` `view.slice()` | 204 ms / 60 bursts in the heavy-streaming run |
+| Vendor GLB body copy | `GLTFLoader.js:1885`, `GLTFBinaryExtension` | ~214 ms |
+| Embedded-KTX2 second copy | `embeddedKtx2Textures.js:103` | ~200 ms / 52 bursts |
+
+`loadBufferView` adds another ~147 ms of vendor copies. No earlier vm-drop
+package touches renderPackageDigest, renderPackageLoader or embeddedKtx2.
+
+- **SHIP #166 `render-package-digest-zero-copy`.** The fetched buffer is
+  transferred to the digest worker, which transfers it back with the hex. No
+  copy on either thread.
+  - Live 45 s interleaved A/B (3+3 runs): main-thread digest lane
+    **11.7 / 17.7 / 10.7 → 1.1 / 0.8 / 0.8 ms**. Median ~14.6×, floor ≥9.7×.
+    The 2–9 ms per-package bursts are gone.
+  - Isolated lane: ~6× at 1 MB, ~26× at 4 MB, ~39× at 8 MB, ~57× at 16 MB.
+  - Fallbacks: a lost worker triggers a re-fetch; an error reply is hashed on
+    the calling thread.
+- **SHIP #167 `embedded-ktx2-single-copy`.** A plain KTX2 bufferView is sliced
+  once, straight off the GLB body, instead of bufferView slice + `slice(0)`.
+  - Bytes are identical across all 259 render packages.
+  - Lane 1.9–2.1× at 1–8 MB, floor 1.39× at 16 MB.
+  - Real-GLB parse of the 10 most KTX-heavy packages: **55.6 ms median
+    removed** (52–75 ms; ≈0.29 ms/MB of KTX2; ≈5.6 ms per heavy package;
+    whole parse 1.12–1.17×).
+  - Embedded KTX2 is 502.6 of 695.5 MB of all render packages.
+  - Not separable in the quiet 45 s live windows, which streamed only small
+    packages. This is a heavy-admission hitch cut.
+- **Focused suite (67 files):** patched 395/424, bare master 389/418. The
+  **identical pre-existing failure set** (28 fail + 1 cancelled) appears on
+  bare master, e.g.:
+  - packaged-Electron closure
+  - Kestrel V6
+  - opening remaster identity
+  - faction kits
+  - refinery promotion
+  - render-package pool admission (323–343)
+  - "all 74 release bodies"
+  - PQ-131.06 conduit
+
+  Earlier-noted bare failures still stand: loop-orchestration-perf 2,
+  m1-player-tell-hud 1, performance-lifecycle-manifests 1,
+  civilian-freighter-recovery 8, pq-141-03-ambush-flee-spill 1.
+
+### Holds this pass
+
+- **sg02 Rapier call diet** (priority 1): retained RawVector setters plus a
+  skip of wakeUp/isSleeping on never-sleep bodies. Poses are bit-identical
+  over 2400 mixed ticks, but it is **below bar**:
+
+  | Measurement | Result |
+  |---|---|
+  | Node owner bench | 1.19× |
+  | In-page | 1.09–1.13× |
+  | Live | ~0–8 µs/tick (noise) |
+
+  Getters (~260 ns each, allocating) can only be removed by the excluded
+  prestep carry. **HOLD:** `sg02-rapier-call-diet-hold/`.
+- **Early-flight tacticalAI** (priority 2): the #164 0–10 s spike (~0.95
+  ms/tick) was a one-off combat/capital-boss scenario. Fresh reruns give
+  ~3–10 ms/s on both stack and bare, and `_contactBaseFor` is already cached
+  per tick. **Not a pole.**
+- **radar.draw residual** (priority 3): bare ~97 ms/30 s at 10 Hz. The
+  remaining retain angles need the unimported #156/#158 still-layers, and the
+  animated glyphs carry picture risk. **SKIP.**
+- Thin: `assetResidentBytes` (~13 ms/30 s), `canonicalizeSurfaceProgramFamilyKey`
+  (~15 ms/30 s), `prefersReducedMotion`/`updateObjectiveKey` (a few µs).
+
+### Largest remaining costs → next poles (ranked)
+
+1. three render CPU (`drawPreparedFrame` ~55 ms/s + `updateMatrixWorld` ~10.6 ms/s). **Owner side** (batching).
+2. Bloom `checkProgramsReady` → `isProgram` / shadow-sweep program links, ~5.1 s of main thread in the first 15 s. Admission pole, **owner/GPU side**.
+3. Vendor GLTFLoader copies: GLB body `data.slice` (~214 ms) + `loadBufferView` (~147 ms) per heavy streaming window. **Owner/vendor side.** A local plugin could hand geometry views as subarrays, but that changes the vendor cache semantics.
+4. sg02: getters need the carry decision; diet + carry is estimated at ~1.35–1.45×. **Owner decision.**
+5. Gamepad poll gating and tether acquisition preview. Held (input/gameplay risk).
+
+VM-side portable sim work is **nearly exhausted**. The registry latch vein is
+done, sg02 glue sits below bar without the carry, and the tacticalAI spike does
+not reproduce. What remains big is owner-side: render CPU batching, program-link
+admission, vendor loader copies, and the sg02 carry decision.
+
+## Previous digest header (20260924ea)
+
+IMPORT_DIGEST report — 20260924ea (post-#163; **#164 ship** hull-integrity-quiet-latch + **#165 ship** perf-heap-sample-gate)
 
 Master tip: **`97c88f92b`** (fetched; unchanged since #161 / digests 20260924dx / dy / dz). No restack; no vm-drop package imported since dz.
 
@@ -66,6 +159,8 @@ cross-check; Picture ON, soft-GPU; tip through #64).
 | 163 | `combat-outcome-quiet-latch` (~2.05× @30k / ~2.38× @100k median; ≥1.80× floor quiet flee-scan) |
 | **164** | **`hull-integrity-quiet-latch`** (21.2× tight / 10.1× per-frame median; ≥8.6× floor; ~55 µs/frame) |
 | **165** | **`perf-heap-sample-gate`** (~52 µs/frame `performance.memory` read removed while Tier-1 off) |
+| **166** | **`render-package-digest-zero-copy`** (live digest lane ~14.6× median, ≥9.7× floor; 2–9 ms per-package bursts removed) |
+| **167** | **`embedded-ktx2-single-copy`** (lane 1.9–2.1×, floor 1.39×; −55.6 ms per 10 heaviest packages; bytes identical) |
 
 Including already-packaged but **not yet on master** (do not re-ship):
 `combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
@@ -152,6 +247,8 @@ Cross-check `settled-20s-stacked-20260924ad`.
 |---:|---|---|
 | **164** | **`hull-integrity-quiet-latch`** | Settled HUD DOM compare pass skipped; in-page 5 isolated Electron runs: tight **21.2×** median (floor 11.4×), per-frame **10.1×** (floor 8.6×), live-change parity; 6000-frame picture-identity test; focused **455/459** (4 pre-existing bare-master); am-verify `ae3f81c0f` |
 | **165** | **`perf-heap-sample-gate`** | `performance.memory` read gated on Tier-1: **~52 µs/frame** removed (50–61); live profile `get memory` 0.68 → 0.00 ms/s; am-verify `330d70d7a` |
+| **166** | **`render-package-digest-zero-copy`** | zero-copy worker digest lane: live main-thread digest 11.7/17.7/10.7 → 1.1/0.8/0.8 ms per 45 s (~14.6× median, ≥9.7× floor); isolated 6–57× @1–16 MB; am-verify `27e34501e` |
+| **167** | **`embedded-ktx2-single-copy`** | one slice off the GLB body per embedded KTX2: bytes identical ×259 packages; lane 1.9–2.1× (floor 1.39× @16 MB); −55.6 ms per 10 heaviest packages; am-verify `1203c460c` (both `24a2d1557`) |
 | 163 | `combat-outcome-quiet-latch` | Quiet flee-scan latch median **~2.05×** (30k) / **~2.38×** (100k warmed), floor **≥1.80×** (5×11 isolated @ N=40); dirty-wake ok (11 wake events + membership + 0.5 s rescan); focused **70/70**; am-verify `8a6d29ada` |
 
 ## Scour attempts / misses this pass

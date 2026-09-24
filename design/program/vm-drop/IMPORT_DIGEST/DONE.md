@@ -1,3 +1,20 @@
+# DONE — IMPORT_DIGEST 20260926a
+
+Post-#165 digest.
+
+- **#166** `render-package-digest-zero-copy`: the main-thread digest-copy lane
+  drops ~14.6× live (11.7 → 0.8 ms per 45 s run; floor ≥9.7×). The 2–9 ms
+  per-package bursts are gone. The isolated lane is 6–57× for packages of
+  1–16 MB.
+- **#167** `embedded-ktx2-single-copy`: KTX2 bytes are identical across all 259
+  packages. The lane is 1.9–2.1×, with a floor of 1.39×. It removes 55.6 ms per
+  set of the 10 heaviest packages (~0.29 ms/MB of KTX2).
+- Holds:
+  - sg02 Rapier call diet (bit-identical, but ~1.1× live)
+  - early tacticalAI (did not reproduce)
+  - radar residual (skipped)
+- Master tip unchanged: `97c88f92b`.
+
 # DONE — IMPORT_DIGEST 20260924ea
 
 Post-#163 digest.
