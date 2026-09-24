@@ -49,7 +49,9 @@ test('production init + update order lengths match the live browser baseline', (
   // before the physics solve.
   // 157 -> 158 init / 118 -> 119 update: the kill replay ring. It ticks after the swarm
   // chain so the five seconds it keeps are the positions this step already moved.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 158);
+  // 158 -> 159 init only: impoundPayPrompt is an event-only prompt-deck adapter (same
+  // posture as customsPrompt) — it subscribes at init and never ticks.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 159);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 119);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
@@ -188,7 +190,8 @@ test('browser production system set is unchanged vs production manifest constant
   // capitalBossEncounters (one system in both orders; score orders precede AI action consumption).
   // 157 with emergentPrimitives (one system in both orders; reads chargeDetonate before it is consumed).
   // 158 with the kill-replay ring (one system in both orders; records after the swarm chain).
-  assert.equal(registry.systems.length, 158);
+  // 159 with impoundPayPrompt (event-only prompt-deck adapter; init order only).
+  assert.equal(registry.systems.length, 159);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

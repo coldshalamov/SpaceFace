@@ -57,6 +57,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   'massSeedHud', 'fieldHud', 'planetHud', 'survivalHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
+  // impoundPayPrompt is event-only like customsPrompt — init order matters (bus subscriptions),
+  // it is deliberately absent from PRODUCTION_UPDATE_ORDER.
+  'impoundPayPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);

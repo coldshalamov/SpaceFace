@@ -3014,6 +3014,20 @@ export const lawSecurity = {
     const yard = entityById(state, pound.yardId);
     const lock = entityById(state, pound.lockId);
     pound.held = !!(yard && yard.alive !== false && overlapsImpoundPad(player, yard));
+    // Pay is a choice, not an overlap: standing at the clerk OFFERS the bill; the deck verb emits
+    // law:impoundPay and _payWantedImpound re-validates reach + credits before charging.
+    const clerk = entityById(state, pound.clerkId);
+    const clerkNear = !!(clerk && clerk.alive !== false && overlapsImpoundPad(player, clerk));
+    if (clerkNear !== !!this._impoundClerkNear) {
+      this._impoundClerkNear = clerkNear;
+      this._emit('law:impoundPayOffer', {
+        poundId: pound.poundId,
+        billId: bill.billId,
+        clerkId: clerk && clerk.id,
+        owedCr: Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0)),
+        clear: !clerkNear,
+      });
+    }
     if (lock && lock.alive !== false && overlapsImpoundPad(player, lock)) {
       this._recoverWantedImpound(state, pound, 'steal', player);
       return;
@@ -3069,6 +3083,7 @@ export const lawSecurity = {
     if (!pound || pound.open === false) return;
     pound.open = false;
     pound.held = false;
+    this._impoundClerkNear = false;
     pound.recoveredBy = method;
     pound.recoveredAt = state.simTime || 0;
     this._emit('law:impoundRecovered', {
@@ -3105,6 +3120,7 @@ export const lawSecurity = {
     unpin(pound ? entityById(state, pound.lockId) : null, 'wantedImpoundLock');
     unpin(pound ? entityById(state, pound.clerkId) : null, 'wantedImpoundClerk');
     own.wantedImpound = null;
+    this._impoundClerkNear = false;
     this._emit('law:impoundReleased', {
       poundId: pound && pound.poundId,
       billId: pound && pound.billId,

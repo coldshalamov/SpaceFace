@@ -60,7 +60,6 @@ surface — these are feature gaps a demo player can hit, not dead code to delet
 
 | Seam | Backend waits at | Gap |
 |---|---|---|
-| `law:impoundPay` | `lawSecurity.js:212` → `_onImpoundPay` | Impound bill posts; work-off and steal paths live; the *pay* intent has no interaction surface. Needs a prompt-deck/clerk verb (pay must be a choice — unlike the automatic overlaps). |
 | `ui:fitModule` | `ships.js:1437` → `fitModule` accepts `instanceId` | `ui:unfitModule` is emitted by shipworks, but nothing emits fit for owned `moduleInventory` rows — unfit modules are stranded except via presets. Needs a fit-from-inventory affordance in outfitting. |
 | `ui:setShipAppearance` | `ships.js:1446` → `setShipAppearance` | Livery backend fully unsurfaced; no UI references appearance. Surface it in shipworks or mark the seam out-of-demo. |
 | `world:requestSectorScan` | `world.js:468` → `_beginScan` (reveals stations/fields/POIs) | The sector sweep is a whole feature with no trigger — `scan:pulse` (KeyC) is the separate entity scanner. Needs an input/map surface or an auto-fire rule (e.g. on `sector:enter`). |
