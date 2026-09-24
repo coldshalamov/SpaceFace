@@ -417,40 +417,58 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       geo.angles[i] = bearing(hx, hy, ex, ey);
       // inside the ring the line leaves the node at 45 degrees and runs level to the rim (an
       // engineer's elbow, never a stray diagonal); outside it runs flat to its label
-      const dyIn = ey - p.y;
-      const dxIn = ex - p.x;
-      const elbow = Math.abs(dxIn) >= Math.abs(dyIn)
-        ? { x: p.x + Math.sign(dxIn || side) * Math.abs(dyIn), y: ey }
-        : { x: p.x, y: ey - Math.sign(dyIn || 1) * Math.abs(dxIn) };
-      const innerPts = [p, elbow, { x: ex, y: ey }];
-      const outer = Math.abs(cy - ey) < 4
-        ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
-        : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
-      const stop = `M ${colEdge.toFixed(1)} ${(cy - 5).toFixed(1)} L ${colEdge.toFixed(1)} ${(cy + 5).toFixed(1)}`;
-      // where it crosses the ship it is a hidden line, a fine dash over the drawing; over open glass
-      // it is a plain line -- the run is split at the silhouette
+      // where the line is over the drawing (the ship's own alpha, sampled once per picture)
       const overShip = (x, y) => {
         if (!alphaMap) return true;
         const u = (x - imgRect.left) / imgW; const v = (y - imgRect.top) / imgH;
         if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
         return alphaMap[(((v * 256) | 0) * 256 + ((u * 256) | 0)) * 4 + 3] > 120;
       };
-      // the elbowed run is walked as one parameter, so a hidden stretch can span the corner
-      const legLen = [Math.hypot(innerPts[1].x - innerPts[0].x, innerPts[1].y - innerPts[0].y), Math.hypot(innerPts[2].x - innerPts[1].x, innerPts[2].y - innerPts[1].y)];
-      const runLen = legLen[0] + legLen[1];
-      const pointAt = (t) => {
-        const dist = runLen * t;
-        if (dist <= legLen[0] || legLen[1] === 0) {
-          const u = legLen[0] > 0 ? dist / legLen[0] : 0;
-          return [innerPts[0].x + (innerPts[1].x - innerPts[0].x) * u, innerPts[0].y + (innerPts[1].y - innerPts[0].y) * u];
+      // a short level stub carries the line to the silhouette's edge on its label's side (walked on the
+      // drawing's own alpha), and only outside the hull does it elbow at 45 degrees up to the rim
+      let edge = { x: p.x, y: p.y };
+      if (alphaMap) {
+        let wx = p.x;
+        for (let k = 0; k < 200; k += 1) {
+          const nx = wx + side * 2;
+          if (!overShip(nx, p.y) || Math.abs(nx - hx) > R) break;
+          wx = nx;
         }
-        const u = (dist - legLen[0]) / legLen[1];
-        return [innerPts[1].x + (innerPts[2].x - innerPts[1].x) * u, innerPts[1].y + (innerPts[2].y - innerPts[1].y) * u];
+        edge = { x: wx + side * 6, y: p.y };
+        if (side < 0 ? edge.x < ex + 8 : edge.x > ex - 8) edge = { x: p.x, y: p.y };
+      }
+      const dyIn = ey - edge.y;
+      const dxIn = ex - edge.x;
+      const elbow = Math.abs(dxIn) >= Math.abs(dyIn)
+        ? { x: edge.x + Math.sign(dxIn || side) * Math.abs(dyIn), y: ey }
+        : { x: edge.x, y: ey - Math.sign(dyIn || 1) * Math.abs(dxIn) };
+      const innerPts = edge.x === p.x ? [p, elbow, { x: ex, y: ey }] : [p, edge, elbow, { x: ex, y: ey }];
+      const outer = Math.abs(cy - ey) < 4
+        ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
+        : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
+      const stop = `M ${colEdge.toFixed(1)} ${(cy - 5).toFixed(1)} L ${colEdge.toFixed(1)} ${(cy + 5).toFixed(1)}`;
+      // where it crosses the ship it is a hidden line, a fine dash over the drawing; over open glass
+      // it is a plain line -- the run is split at the silhouette
+      // the elbowed run is walked as one parameter, so a hidden stretch can span the corner
+      const legLen = innerPts.slice(1).map((q, k) => Math.hypot(q.x - innerPts[k].x, q.y - innerPts[k].y));
+      const runLen = legLen.reduce((s, l) => s + l, 0);
+      const pointAt = (t) => {
+        let dist = runLen * t;
+        for (let k = 0; k < legLen.length; k += 1) {
+          if (dist <= legLen[k] || k === legLen.length - 1) {
+            const u = legLen[k] > 0 ? Math.min(1, dist / legLen[k]) : 0;
+            return [innerPts[k].x + (innerPts[k + 1].x - innerPts[k].x) * u, innerPts[k].y + (innerPts[k + 1].y - innerPts[k].y) * u];
+          }
+          dist -= legLen[k];
+        }
+        return [innerPts[innerPts.length - 1].x, innerPts[innerPts.length - 1].y];
       };
       const steps = Math.max(2, Math.ceil(runLen / 4));
       const runs = [];
       let from = 0; let state = overShip(p.x, p.y);
-      const cornerT = runLen > 0 ? legLen[0] / runLen : 0;
+      // every corner is a point the drawn run passes through, so the elbows stay sharp
+      const cornerTs = [];
+      { let acc = 0; for (let k = 0; k < legLen.length - 1; k += 1) { acc += legLen[k]; cornerTs.push(runLen > 0 ? acc / runLen : 0); } }
       for (let k = 1; k <= steps; k += 1) {
         const t = k / steps;
         const [sx, sy] = pointAt(t);
@@ -459,9 +477,10 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       }
       // a run that crosses the corner is drawn through the corner point, so the elbow stays sharp
       const at = (t) => { const [x, y] = pointAt(t); return `${x.toFixed(1)} ${y.toFixed(1)}`; };
-      const seg = (r) => (r[0] < cornerT && r[1] > cornerT
-        ? `M ${at(r[0])} L ${at(cornerT)} L ${at(r[1])}`
-        : `M ${at(r[0])} L ${at(r[1])}`);
+      const seg = (r) => {
+        const inside = cornerTs.filter((c) => r[0] < c && r[1] > c);
+        return `M ${at(r[0])} ${inside.map((c) => `L ${at(c)}`).join(' ')} L ${at(r[1])}`;
+      };
       const hiddenD = runs.filter((r) => r[2]).map(seg).join(' ');
       const openD = runs.filter((r) => !r[2]).map(seg).join(' ');
       const lineUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });

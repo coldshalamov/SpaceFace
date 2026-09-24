@@ -114,7 +114,7 @@ export function createIndustryScreen(ctx) {
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(output)}</span>` +
-                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier} · ${escapeHtml(shortBlockLabel(bp, r))}</span>` +
+                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier}<span class="sx-ind-row__why"> · ${escapeHtml(shortBlockLabel(bp, r))}</span></span>` +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
               `</button></li>`;
@@ -199,7 +199,7 @@ export function createIndustryScreen(ctx) {
       inputs: Object.keys(bp.inputs || {}).map((id) => ({ nameHtml: escapeHtml(matName(id)), have: Math.floor(it[id] || 0), need: bp.inputs[id] })),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
-      output: { qty: bp.outputs.qty || 1, unit: `${bp.outputs.kind || 'unit'} per run` },
+      output: { qty: bp.outputs.qty || 1, unit: `${niceName(bp.outputs.id, bp.outputs.kind)} · per run` },
       live: !!canBuild,
     });
     const build = fab.querySelector('.sx-fab-build[data-build]');

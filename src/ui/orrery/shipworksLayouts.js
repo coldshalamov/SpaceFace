@@ -424,6 +424,55 @@ ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
   ${W} .sx-spec > li { padding:3px 0 !important; }
 }
 
+/* ================================ ROUND 7 ==================================================== */
+/* the readouts: a ruled ladder in the right column, under the rack (one floor for every column) */
+${W} .orr-sw-readouts.sx-sw__gauges { position:static !important; display:grid !important; grid-template-columns:1fr 1fr; gap:2px 22px !important; margin:18px 0 0 !important;
+  padding:12px 0 0 !important; justify-content:start !important; white-space:normal; background:linear-gradient(90deg, rgb(${BONE} / .24), rgb(${BONE} / 0)) 0 0 / 100% 1px no-repeat !important; }
+${W} .orr-sw-readouts .sx-sw-gauge { display:grid !important; grid-template-columns:1fr auto; column-gap:10px; padding:4px 0 !important; }
+${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:9.5px !important; letter-spacing:.14em !important; }
+${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:13px !important; text-align:right; }
+${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
+/* the proposed fit reads on the readouts' ghosts and the dial; the separate line retires */
+${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta, ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { display:none !important; }
+${W} .orr-sw-jig { inset:0 !important; }
+/* the core's word stands inside the dial's foot */
+${W} .sx-sw-circuit__core .k-hero__w { top:98px; font-size:8.5px !important; letter-spacing:.12em !important; }
+/* the chooser: a scale with minor ticks; a bone tick (not a second Hand) on the row in hand */
+${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .2) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:16px !important; width:11px !important; height:2px !important; margin-top:0 !important; clip-path:none !important;
+  background:rgb(248 244 234) !important; }
+/* the Lamp Key on the primary verbs: the chooser's fit, and at rest the range */
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey { display:inline-flex !important; padding:0 22px 0 18px !important; min-height:38px !important; font-size:13px !important; letter-spacing:.14em !important;
+  color:#1c1406 !important; background:none !important; background-image:none !important; text-shadow:none !important; margin-top:6px; }
+/* the row's chevron rule resets the pseudo with all:unset, so the key's field is declared again here */
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey::before, ${W} .sx-sw-verb.orr-lampkey::before { all:unset !important; content:"" !important; display:block !important; position:absolute !important;
+  inset:0 !important; z-index:-1 !important; background:var(--dp-hand, #f2b950) !important; clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before, ${W} .sx-sw-verb.orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before { background:var(--dp-hand-hot, #ffd98c) !important; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey:disabled::before, ${W} .sx-sw-verb.orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey::after, ${W} .sx-sw-verb.orr-lampkey::after { display:block !important; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey > .orr-lampkey__word, ${W} .sx-sw-verb.orr-lampkey > .orr-lampkey__word { position:relative; z-index:1; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey small { color:#3a2c0a !important; margin-left:10px; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey:is(:hover, :focus-visible) { color:#1c1406 !important; text-shadow:none !important; }
+${W} .sx-sw-verb.orr-lampkey { display:inline-flex !important; padding:0 22px 0 18px !important; min-height:38px !important; font-size:12.5px !important; letter-spacing:.16em !important;
+  color:#1c1406 !important; background:none !important; text-shadow:none !important; }
+${W} .sx-sw-verb.orr-lampkey:is(:hover, :focus-visible) { color:#1c1406 !important; }
+${W} .sx-sw-verb.orr-lampkey { position:relative !important; isolation:isolate; overflow:visible !important; }
+${W} .sx-modrow .sx-modrow__buy.orr-lampkey { position:relative !important; isolation:isolate; overflow:visible !important; align-items:center !important; }
+${W}.orr-sw--jig .sx-sw-verbs { gap:10px !important; }
+/* a fit verb with nothing chosen says nothing: the nodes are the choice */
+${W}.orr-sw--jig .sx-sw-verb[data-fit-action="fit-slot"]:disabled { display:none !important; }
+${W}.sx-sw--buying .sx-sw-verb[data-fit-action="fit-slot"] { display:none !important; }
+/* the hull spec lists one hardpoint per line */
+${W} .sx-spec > li > .k-row__num { line-height:1.5; }
+/* a deeper pool under the right column, so the engraved words hold against the lit set */
+${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
+@media (max-height:800px) {
+  ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr 1fr 1fr; gap:0 14px !important; margin-top:10px !important; padding-top:8px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge { padding:2px 0 !important; }
+  ${W} .sx-sw-verb.orr-lampkey { min-height:34px !important; font-size:11.5px !important; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

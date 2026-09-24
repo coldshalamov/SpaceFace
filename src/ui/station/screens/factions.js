@@ -156,7 +156,7 @@ export function createFactionsScreen(ctx) {
               // The crest rides the row. Fifteen names at identical weight was a spreadsheet;
               // a power is recognisable by its mark before its name is read.
               `<span class="sx-fac-row__crest" aria-hidden="true">${crest(f.id, 'badge')}</span>` +
-              `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority · </span>' : ''}${escapeHtml(f.name)}</span>` +
+              `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority</span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +
             `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}">${signed(rep)}</span>` +
@@ -192,16 +192,20 @@ export function createFactionsScreen(ctx) {
         `<span class="k-row__num sx-ladder__min">${t.min > 0 ? '+' : ''}${t.min}</span>` +
       `</li>`
     )).join('');
-    const contractLadder = factionContractLadderRows(rep).map((row) => (
-      `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}">` +
+    let marked = false;
+    const contractLadder = factionContractLadderRows(rep).map((row) => {
+      const next = !row.unlocked && !marked; if (next) marked = true;
+      return (
+      `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}${next ? ' is-next' : ''}">` +
         // A contract rung is a sentence -- "Recovery Work · R0-R1 local hauling · unlocked" -- so it
         // WRAPS. Truncating it with an ellipsis hides the part that says what the rung buys you.
         // The standing ladder above is one short tier name per row and keeps `k-row__name`.
         `<span class="sx-ladder__name sx-ladder__name--wrap${row.unlocked ? '' : ' k-62'}">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
-          `<span class="k-row__sub"> · ${row.aspirational ? 'future work' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
+          `<span class="k-row__sub"> · ${row.aspirational ? 'sealed' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
         `<span class="k-row__num sx-ladder__min">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
       `</li>`
-    )).join('');
+      );
+    }).join('');
     const relationRows = relations.map((relation) => {
       const related = factions.find((candidate) => candidate.id === relation.id);
       const name = related ? related.name : relation.id;
@@ -224,7 +228,7 @@ export function createFactionsScreen(ctx) {
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
           `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}">` +
-          heroHtml(`${escapeHtml(tier.name)} ${signed(rep)}`, escapeHtml(guidance.last), cls) +
+          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span>${signed(rep)}`, escapeHtml(guidance.last), cls) +
           heroHtml(next ? `${next.need}` : 'Peak held', next ? `reputation to ${escapeHtml(next.name)} · ${escapeHtml(guidance.next)}` : escapeHtml(guidance.next)) +
           heroHtml(`${buffer}`, `hostility buffer · ${escapeHtml(guidance.risk)}`, buffer <= 0 ? 'k-bad' : '') +
         `</div>` +
@@ -259,7 +263,7 @@ export function createFactionsScreen(ctx) {
     if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 150 });
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     orbit.set({
-      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name }; }),
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4 }; }),
       selectedId: f.id,
       authorityId,
       swing: picked,

@@ -14,7 +14,8 @@ const PLAIN = 'background:none !important; border:0 !important; border-image:non
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
 /** The rail of light down a list, a tick on every row, the Hand on the chosen one. */
 const rail = (list, row, chosen) => `
-${T} ${list} { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; }
+${T} ${list} { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .2) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
 ${T} ${row} { ${PLAIN} position:relative !important; padding-left:26px !important; }
 ${T} ${row}::after { display:none !important; }
 ${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1px !important;
@@ -206,6 +207,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size:1
 @media (max-width:1400px) {
   ${T} .sx-dossier { column-gap:24px; }
 }
+
+/* every figure in these tabs is the thin numeral (ORRERY §3.4) */
+${T} :is(.sx-fac-heroes, .sx-fab-heroes, .sx-ledger__read-hero) .k-hero__n { font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important; }
 
 /* ================================ FACTIONS ================================================== */
 /* the powers on the ladder: a name and its standing; the crests live on the orbit */
@@ -417,7 +421,7 @@ ${T} .sx-ledger .st-sub-h { font-family:var(--dp-face-display, "Archivo") !impor
 ${T} .sx-ledger .st-ledger-intro { font-size:13px !important; color:rgb(${BONE} / .7) !important; font-family:var(--dp-face-body, "Instrument Sans") !important; letter-spacing:0 !important;
   text-transform:none !important; font-weight:400 !important; margin-top:8px !important; }
 ${T} .sx-ledger .st-ledger-status { ${LABEL} font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; margin-top:14px !important; }
-${T} .sx-ledger .st-ledger-empty { ${PLAIN} display:block !important; flex:none !important; align-self:flex-start !important; min-height:0 !important; height:auto !important; padding:0 !important;
+${T} .sx-ledger .st-ledger-empty:not([hidden]) { ${PLAIN} display:block !important; flex:none !important; align-self:flex-start !important; min-height:0 !important; height:auto !important; padding:0 !important;
   font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:400 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .66) !important; margin-top:10px !important; max-width:44ch; }
 ${rail('.st-ledger-list', '.st-ledger-list .st-ledger-entry', '[aria-selected="true"]')}
@@ -446,6 +450,127 @@ ${T} .sx-ledger__read-title { font-size:clamp(22px, 2.6vh, 30px) !important; }
 ${T} .sx-ledger__read-line { font-size:15px !important; line-height:1.5; color:rgb(248 244 234) !important; max-width:52ch; }
 ${T} .sx-ledger__read-hand { font-size:13px !important; color:rgb(${BONE} / .72) !important; max-width:52ch; }
 ${T} .sx-ledger .st-ledger-detail { ${PLAIN} padding:0 !important; }
+
+
+/* ================================ ROUND 2: FACTIONS ========================================= */
+/* the figures stand under the rim names now; the ladder is the index and takes a bone cursor (the Hand is the arm) */
+${T} .sx-fac__rows .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(248 244 234) !important; filter:none !important; }
+${T} .sx-fac__rows:is(:focus-within, :hover) .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(255 250 240) !important; filter:drop-shadow(0 0 5px rgb(248 244 234 / .6)) !important; }
+${T} .sx-fac-row__name > .k-62 { display:block; margin-bottom:1px; }
+/* the standing figure: its tier as the label above the number; the two readings smaller; captions one line */
+${T} .sx-fac-heroes { align-items:flex-start !important; gap:16px 44px !important; }
+${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(48px, 7vh, 80px) !important; }
+${T} .sx-fac-heroes .k-hero__n .sx-fac-tier { ${LABEL} display:block; font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; margin-bottom:6px; }
+${T} .sx-fac-heroes .k-hero__n.k-bad .sx-fac-tier { color:var(--dp-danger, #ff5038) !important; }
+${T} .sx-fac-heroes .k-hero__w { font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100%; font-variation-settings:normal !important; font-weight:400 !important;
+  font-size:12.5px !important; letter-spacing:0 !important; text-transform:none !important; max-width:30ch !important; color:rgb(${BONE} / .66) !important; }
+${T} .sx-fac-heroes .k-hero__w::first-letter { text-transform:uppercase; }
+/* the contract ledger says where you stand: a light rule above the first rung not yet reached */
+${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:9px !important; }
+${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
+  width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
+${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
+  ${LABEL} font-size:7.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+/* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
+@media (max-height:800px) {
+  ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
+  ${T} .sx-fac__rail { display:none !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(380px, 44%) minmax(0, 1fr) !important; column-gap:28px !important; }
+  ${T} .orr-fac-orbit { height:clamp(330px, 56vh, 420px) !important; }
+  ${T} .sx-fac-heroes { flex-wrap:nowrap !important; gap:10px 26px !important; }
+  ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:44px !important; }
+  ${T} .sx-fac-heroes .k-hero__n { font-size:30px !important; }
+  ${T} .sx-fac-heroes .k-hero__w { font-size:11px !important; max-width:20ch !important; }
+  ${T} .sx-fac-ident__name { font-size:24px !important; }
+  ${T} .sx-fac-ident__flag { font-size:12px !important; }
+  ${T} .sx-fac__detail { gap:10px !important; margin-top:10px !important; }
+  ${T} .orr-standing { max-width:520px; }
+  ${T} .sx-fac-contracts .sx-ladder__step { padding:2px 0 !important; }
+  ${T} .sx-fac-contracts .sx-ladder__name { font-size:11.5px !important; }
+}
+
+/* ================================ ROUND 2: INDUSTRY ========================================= */
+/* the reading is three bands: the words, the chain taking every free pixel, the needs and the key */
+${T} .sx-fab { display:grid !important; grid-template-rows:auto auto auto minmax(140px, 1fr) auto auto auto auto auto; height:100%; align-content:stretch; }
+${T} .sx-fab-head__cat { grid-row:1; }
+${T} .sx-fab-head__name { grid-row:2; }
+${T} .sx-fab-head__desc { grid-row:3; }
+${T} .orr-ind-chain { grid-row:4; }
+${T} .sx-fab-col-k { grid-row:5; }
+${T} .sx-fab-inputs { grid-row:6; }
+${T} .sx-fab-notes { grid-row:7; }
+${T} .sx-fab-status { grid-row:8; }
+${T} .sx-fab-foot { grid-row:9; }
+${T} .sx-fab > .sx-muted { grid-row:6; }
+${T} .sx-fab > * + * { margin-top:0 !important; }
+${T} .sx-fab-head__name { margin-top:4px !important; }
+${T} .sx-fab-head__desc { margin-top:8px !important; }
+${T} .orr-ind-chain { height:auto !important; min-height:140px; margin:10px 0 6px !important; align-self:stretch; }
+${T} .sx-fab-heroes { display:none !important; }
+${T} .sx-fab-col-k { margin-top:4px !important; }
+/* needs: one line per material -- the name, the count, the way to source it */
+${T} .sx-fab-inputs { margin-top:2px !important; }
+${T} .sx-fab-in { grid-template-columns:minmax(0, 1fr) auto auto !important; column-gap:16px !important; padding:3px 0 !important; }
+${T} .sx-fab-in__q { display:inline-block !important; color:var(--dp-phos, #dfeeff) !important; font-size:12.5px !important; }
+${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .85) !important; }
+${T} .sx-fab-in.is-missing .sx-fab-in__source { order:3; }
+${T} .sx-fab-notes { margin-top:4px !important; }
+${T} .sx-fab-status { margin-top:8px !important; }
+${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
+/* the ladder: the reason only on the chosen row; the tier alone on the rest */
+${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
+${T} .sx-ind-row__tier { font-size:9px !important; color:rgb(${BONE} / .45) !important; }
+${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .6) !important; }
+${T} .sx-ind-process__items .sx-ind-row { padding-top:5px !important; padding-bottom:5px !important; }
+@media (max-height:800px) {
+  ${T} .sx-fab { grid-template-rows:auto auto auto minmax(100px, 1fr) auto auto auto auto auto; }
+  ${T} .orr-ind-chain { min-height:100px; margin:4px 0 2px !important; }
+  ${T} .sx-fab-head__desc { display:none !important; }
+  ${T} .sx-fab-notes { display:none !important; }
+  ${T} .sx-fab-status { margin-top:4px !important; font-size:11.5px !important; }
+  ${T} .sx-fab-foot { margin-top:6px !important; }
+  ${T} .sx-ind-process__items .sx-ind-row { padding-top:3px !important; padding-bottom:3px !important; }
+}
+
+/* ================================ ROUND 2: BAR ============================================== */
+/* the portrait is the full height of the bay, its face kept, only its edges dissolved; the words sit against it */
+${T} .sx-talk__avatar { right:-3% !important; top:-2% !important; width:auto !important; height:104% !important; aspect-ratio:1 !important; max-height:none !important; }
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 50% 50% at 52% 46%, #000 60%, transparent 84%) !important; mask-image:radial-gradient(ellipse 50% 50% at 52% 46%, #000 60%, transparent 84%) !important; }
+@media (min-width:1500px) {
+  ${T} .sx-bar__stage .sx-talk { padding-left:clamp(0px, calc(100% - 1100px), 300px) !important; }
+}
+/* the character's own words are the line; the stage direction steps back once spoken */
+${T} .sx-talk__memory { font-size:17px !important; line-height:1.45 !important; color:rgb(248 244 234) !important; max-width:40ch !important; text-shadow:0 0 18px rgb(0 0 0 / .8); }
+${T} .sx-talk__reply.is-idle { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; margin-top:12px !important; }
+${T} .sx-talk__reply.is-said { font-size:17px !important; }
+/* the waveform spans the name; each bar carries its bloom */
+${T} .orr-bar-wave { width:min(100%, 460px) !important; height:24px !important; gap:4px !important; }
+${T} .orr-bar-wave .orr-wave__bar { width:2px; box-shadow:0 0 5px 1px rgb(236 230 216 / .3); }
+/* what you can ask is its own short ladder: a rail, sentence case, a bone cursor on the first reply */
+${T} .sx-talk__choices { padding-left:0 !important; gap:2px !important;
+  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .2) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-talk__choices > li { position:relative; }
+${T} .sx-choice { ${PLAIN} font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100% !important; font-variation-settings:normal !important; font-weight:500 !important;
+  font-size:15px !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(${BONE} / .88) !important; padding:6px 0 6px 26px !important; min-height:0 !important; }
+${T} .sx-choice::before { all:unset !important; content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1px !important;
+  background:rgb(${BONE} / .38) !important; }
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} background:rgb(248 244 234) !important; }
+${T} .sx-choice:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${T} .sx-choice:is(:hover, :focus-visible)::before { background:var(--dp-hand, #f2b950) !important; }
+${T} .sx-choice:focus-visible::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} }
+/* a short screen: one row per contact, and each lead on one line with its pay */
+@media (max-height:800px) {
+  ${T} .sx-bar__rows .sx-bar-row { flex-direction:row !important; justify-content:flex-start !important; align-items:baseline !important; gap:10px !important; padding-top:4px !important; padding-bottom:4px !important; text-align:left !important; }
+  ${T} .sx-lead__body { display:contents !important; }
+  ${T} .sx-lead { grid-template-columns:minmax(0, 1fr) auto auto !important; column-gap:12px !important; }
+  ${T} .sx-lead__s { display:block !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-size:12px !important; letter-spacing:0 !important; text-transform:none !important;
+    color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
+  ${T} .sx-talk__avatar { height:100% !important; right:-6% !important; top:0 !important; }
+  ${T} .sx-talk__memory { font-size:14px !important; }
+  ${T} .sx-talk__reply.is-said { font-size:14px !important; }
+  ${T} .sx-choice { font-size:13.5px !important; padding-top:4px !important; padding-bottom:4px !important; }
+}
 
 `;
 

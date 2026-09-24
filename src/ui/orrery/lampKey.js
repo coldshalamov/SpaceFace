@@ -32,8 +32,9 @@ const CSS = `
 .orr-lampkey:focus-visible { outline:1px solid rgb(255 217 140 / .9) !important; outline-offset:4px !important; }
 .orr-lampkey:not(:disabled):active { transform:translateY(1px); }
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .55) !important; }
-.orr-lampkey:disabled::before { background:rgb(${BONE} / .14) !important; }
-.orr-lampkey:disabled::after { display:none !important; }
+.orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
+.orr-lampkey:disabled::after { display:block !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .96) !important; background-size:auto !important;
+  clip-path:polygon(0 0, calc(100% - 12.6px) 0, 100% 12.6px, 100% 100%, 0 100%) !important; }
 /* the hold ring: a 1px track, the fill an arc of the Hand, a bright bead at its leading edge; it hangs at the
    key's right end so the key never moves and a scrolling reading never clips it */
 .orr-lampkey[data-hold] { margin-left:0 !important; margin-right:76px !important; }
