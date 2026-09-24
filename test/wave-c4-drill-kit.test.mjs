@@ -10,6 +10,7 @@ import { resolveDrillControlMap } from '../src/ui/screens/drill.js';
 
 const source = readFileSync(new URL('../src/ui/screens/drill.js', import.meta.url), 'utf8');
 const liveSource = readFileSync(new URL('../src/ui/asteroid/asteroidScreen.js', import.meta.url), 'utf8');
+const liveStyle = readFileSync(new URL('../styles/asteroid-ops.css', import.meta.url), 'utf8');
 
 test('the bore rig has no default button chrome', () => {
   assert.equal(source.includes('sf-btn'), false, 'sf-btn is the old browser button');
@@ -43,9 +44,9 @@ test('a short window can scroll to the foot, and a narrow window stacks it', () 
 test('the live asteroid works report is a kit key, not the old browser button', () => {
   assert.match(liveSource, /closeBtn\.className = 'fh-key fh-key--primary'/);
   assert.match(liveSource, /closeBtn\.textContent = 'Close extraction report'/);
-  assert.match(liveSource, /color:#1a1206/);
-  assert.match(liveSource, /outline:2px solid var\(--dp-lamp\) !important/);
   assert.match(liveSource, /e\.stopPropagation\(\)/);
+  assert.match(liveStyle, /\.ast-summary-box \.fh-key:focus-visible \{ outline: 2px solid var\(--dp-lamp\) !important/);
+  assert.match(liveStyle, /\.ast-summary-box \.fh-key:is\(:hover, :focus-visible, :active\) \{[^}]*color: #1a1206/);
   assert.doesNotMatch(liveSource, /sf-btn/);
 });
 
