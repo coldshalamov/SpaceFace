@@ -90,6 +90,11 @@ import {
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
 import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import {
+  collisionDisplayDeltaV,
+  collisionImpactLight,
+  collisionImpactMagnitude,
+} from './combat/collisionImpactScale.js';
 import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
 import { readCustomsWeir } from '../presentation/customsWeir.js';
 import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
@@ -141,6 +146,14 @@ import {
   PlayerRetroJets,
   reverseNeedleEmissionAllowed,
 } from './thruster/systems/playerRetroVolume.js';
+import {
+  OverflowRibbonJets,
+  OVERFLOW_ROLE_MAIN,
+  OVERFLOW_ROLE_REVERSE_LEFT,
+  OVERFLOW_ROLE_REVERSE_RIGHT,
+  OVERFLOW_ROLE_VENT_PORT,
+  OVERFLOW_ROLE_VENT_STARBOARD,
+} from './thruster/systems/overflowRibbonJets.js';
 import {
   KESTREL_MAIN_PLUME_RECIPE,
   KESTREL_RCS_RECIPE,
@@ -1446,6 +1459,8 @@ export const vfx = {
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
 
+    invokeVfxDisposer(this._overflowJets, 'overflow jets');
+    this._overflowJets = null;
     invokeVfxCall(this._disposeEnergy, this, 'energy resources');
 
     const disposeState = createVfxDisposeState();
@@ -1635,6 +1650,7 @@ export const vfx = {
       this._weaponPresenter.getOwnerRoots?.() || this._weaponPresenter.getMeshes?.()
     );
     for (const root of presenterRoots || []) add(root);
+    add(this._overflowJets && this._overflowJets.group);
     if (this._energy) {
       add(this._energy.ribbon);
       add(this._energy.plasmaStream && this._energy.plasmaStream.group);
@@ -1816,6 +1832,7 @@ export const vfx = {
     const scene = state.render && state.render.scene;
     if (!scene) { this._scene = null; return; } // render not up yet (e.g. unit test) — degrade to no-op
     this._scene = scene;
+    this._ensureOverflowJets();
 
     const q = (state.settings.video && state.settings.video.particleQuality) || 'high';
     const cap = PARTICLE_CAP[q] || PARTICLE_CAP.high;
@@ -10003,9 +10020,11 @@ export const vfx = {
     const pos = p.pos;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reduced = acc.flashOpacityScale < 1;
-    const dv = Math.max(0, Number(p.deltaV) || 0);
+    // §22 B5: the slam's size reads the pre-solve closing speed, not the solver-capped share —
+    // a 150 WU/s ram must not draw a 40 WU/s nudge's flash.
+    const dv = collisionDisplayDeltaV(p);
     const hard = p.control === 'tumble';
-    const magnitude = Math.max(0.6, Math.min(2.4, dv / 14));
+    const magnitude = collisionImpactMagnitude(p);
     const authoredScale = magnitude;
     const scale = magnitude * acc.flashSizeScale;
     const op = acc.flashOpacityScale;
@@ -10066,8 +10085,9 @@ export const vfx = {
       }
     }
     if (acc.eventLightPeakScale > 0) {
+      const light = collisionImpactLight(p);
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
-        2.6 * magnitude, 9, 120 + dv * 3);
+        light.intensity, 9, light.range);
     }
     const victim = this._ent(p.targetId);
     const req = _arcadeStructuralBurstReq;
@@ -10882,17 +10902,20 @@ export const vfx = {
     if (!this._scene || !payload || payload.phase !== 'start') return;
     const owner = this._ent(payload.ownerId);
     if (!owner || !owner.pos) return;
-    const heading = Number.isFinite(owner.rot) ? owner.rot : 0;
-    // Dual lateral high-velocity steam vent jets perpendicular to ship heading
-    for (const sgn of [1, -1]) {
-      const jetAngle = heading + sgn * (Math.PI / 2);
-      const jvx = Math.cos(jetAngle) * 32;
-      const jvz = Math.sin(jetAngle) * 32;
-      for (let k = 0; k < 4; k++) {
-        this._spawnSprite(SPR_PUFF, owner.pos.x, 0.2, owner.pos.z,
-          0.55 + Math.random() * 0.2, 1.2, 3.5, 0.45, 0.0,
-          '#e2ecf8', jvx + (Math.random() - 0.5) * 8, jvz + (Math.random() - 0.5) * 8,
-          2.0, jetAngle);
+    // Lateral sheets when the overflow ribbon pool is live. Puffs stay only if that
+    // pool was never built — a missing helper, not a second art language on top.
+    if (!this._admitOverflowVent(owner)) {
+      const heading = Number.isFinite(owner.rot) ? owner.rot : 0;
+      for (const sgn of [1, -1]) {
+        const jetAngle = heading + sgn * (Math.PI / 2);
+        const jvx = Math.cos(jetAngle) * 32;
+        const jvz = Math.sin(jetAngle) * 32;
+        for (let k = 0; k < 4; k++) {
+          this._spawnSprite(SPR_PUFF, owner.pos.x, 0.2, owner.pos.z,
+            0.55 + Math.random() * 0.2, 1.2, 3.5, 0.45, 0.0,
+            '#e2ecf8', jvx + (Math.random() - 0.5) * 8, jvz + (Math.random() - 0.5) * 8,
+            2.0, jetAngle);
+        }
       }
     }
     if (this._weaponPresenter && this._weaponPresenter.distortion) {
@@ -10954,42 +10977,9 @@ export const vfx = {
   _emitReverseNozzleTrail(e, role, strength) {
     if (!this._scene || !e || !(strength > 0)) return;
     if (!reverseNeedleEmissionAllowed(this._usesProductionThruster(e))) return;
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const rx = -sf, rz = cf;
-    const side = role === 'reverse-left' ? -1 : 1;
-    const radius = e.radius || 6;
-    const px = e.pos.x + cf * radius * 0.72 + rx * side * radius * 0.34;
-    const pz = e.pos.z + sf * radius * 0.72 + rz * side * radius * 0.34;
-    const dirX = (cf + rx * side) * Math.SQRT1_2;
-    const dirZ = (sf + rz * side) * Math.SQRT1_2;
-    const dir = Math.atan2(dirZ, dirX);
-    const col = this._engineColor(e);
-    const burst = this._burst || 1;
-    const svx = (e.vel && e.vel.x) || 0;
-    const svz = (e.vel && e.vel.z) || 0;
-    this._spawnSprite(SPR_FLASH, px, 0, pz, 0.08, 1.8, 3.8 + strength * 2.0, 0.74, 0.0, '#ffffff', dirX * 2, dirZ * 2);
-    this._spawnSprite(SPR_FLASH, px, 0, pz, 0.14, 2.6, 5.8 + strength * 2.8, 0.42, 0.0, col, dirX * 2, dirZ * 2);
-    this._c0.set('#ffffff');
-    this._c1.set(col);
-    const count = Math.max(2, Math.round((3 + strength * 4) * burst));
-    for (let k = 0; k < count; k++) {
-      const a = dir + (Math.random() - 0.5) * 0.42;
-      const sp = 36 + strength * 48 + Math.random() * 28;
-      this._spawnParticle(
-        px + (Math.random() - 0.5) * 0.9,
-        pz + (Math.random() - 0.5) * 0.9,
-        svx + Math.cos(a) * sp,
-        svz + Math.sin(a) * sp,
-        0.16 + strength * 0.10,
-        1.2 + strength * 1.1,
-        0.0,
-        this._c0,
-        this._c1,
-        1.6,
-        0,
-        0
-      );
-    }
+    // Production reverse is the player bow pair. Everyone else gets one swept sheet
+    // per bow, or silence when the pool cannot admit them. No flash, no needle.
+    this._admitOverflowReverseJet(e, role, strength);
   },
 
   _onBoost(p, on) {
@@ -11194,87 +11184,178 @@ export const vfx = {
     return this._presentedAnchorXZ || (this._presentedAnchorXZ = { x: 0, z: 0 });
   },
 
-  // engine trail emitter — called per ship per frame from update(), throttled by accumulator
+  // engine trail emitter — called per ship per frame from update(), throttled by accumulator.
+  // Production ships keep the fleet / plasma stream. Overflow ships get a short swept ribbon,
+  // or nothing. The recorded flight-history wake is a different object and is not touched here.
   _emitEngineTrail(e, throttle, dt, out = this._trailSpawnScratch) {
     const result = out || (this._trailSpawnScratch = { particles: 0, streaks: 0 });
     result.particles = 0;
     result.streaks = 0;
-    if (!this._scene) return result;
+    if (!this._scene || !e) return result;
     if (this._usesProductionThruster(e)) return result;
     const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
     if (drive <= 0.03) return result;
-    const prof = this._engineProfile(e);
-    // Faction exhaust identity without allocating a blended profile object:
-    // lerp frozen base.coreColor toward faction thruster (matches prior blendHex 0.38).
-    const factionThruster = this._engineColor(e);
-    this._cFaction.set(prof.coreColor || '#88aaff');
-    if (factionThruster) this._cFaction.lerp(this._ctmp.set(factionThruster), 0.38);
-    const col0 = this._cFaction;
-    const streakLenMul = prof.streakLenMul || 1;
-    // Nozzle heading at the drawn hull's moment: the raw sim rot sits up to one tick of turn
-    // ahead of the fence-blended hull, and the fallback nozzle swings against it every tick.
+    this._admitOverflowMainJet(e, drive);
+    return result;
+  },
+
+  _ensureOverflowJets() {
+    if (this._overflowJets || !this._scene) return this._overflowJets || null;
+    const pool = new OverflowRibbonJets(THREE);
+    pool.attach(this._scene);
+    this._overflowJets = pool;
+    return pool;
+  },
+
+  _overflowDist2(e) {
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function'
+      ? entities.get(this.state.playerId)
+      : null;
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    const x = e && e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
+    const z = e && e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
+    const dx = x - px;
+    const dz = z - pz;
+    return dx * dx + dz * dz;
+  },
+
+  _placeOverflowJet(slot, originX, originZ, aftX, aftZ) {
+    const local = this._toLocalXZ(originX, originZ, this._spawnLocalXZ);
+    const nozzle = slot.nozzle;
+    nozzle.x = local.x;
+    nozzle.y = 0;
+    nozzle.z = local.z;
+    const len = Math.hypot(aftX, aftZ) || 1;
+    nozzle.aftX = aftX / len;
+    nozzle.aftY = 0;
+    nozzle.aftZ = aftZ / len;
+  },
+
+  _tintOverflowJet(e, slot) {
+    const rgb = this._factionRgbScratch;
+    if (!rgb || !slot || typeof slot.paint !== 'function') return;
+    this._factionThrusterRgbInto(e, rgb);
+    slot.paint(rgb.r, rgb.g, rgb.b);
+  },
+
+  _admitOverflowMainJet(e, drive) {
+    const pool = this._overflowJets;
+    if (!pool || !e) return null;
+    const slot = pool.claim(e.id, OVERFLOW_ROLE_MAIN, this._overflowDist2(e));
+    if (!slot) return null;
     const anchorAlpha = this._renderInterpolationAlpha();
     const anchorRot = presentedAnchorRot(e, anchorAlpha);
-    const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
-    const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
-    const cruising = e.id === this.state.playerId && this.state.player && this.state.player.cruise && this.state.player.cruise.phase === 'cruising';
-    const cruiseBlend = cruising ? 1 : 0;
-    // FR-4: engine glow reads SPEED — the faction plume color lerps toward white-hot as the ship
-    // nears its top-end (cruise = 4x maxSpeed). Suppressed while cruising so cyan (the cruise-STATE
-    // cue, FR-6) owns that state exclusively. Locked strain-amber is never used as a speed hue.
-    const _trailSpd = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
-    const _trailMax = Math.max(1, e.maxSpeed || (e.data && e.data.maxSpeed) || 1);
-    const glowT = cruiseBlend > 0 ? 0 : Math.min(1, _trailSpd / (_trailMax * 4));
-    // Hero assets carry SOCKET_Trail_Main at the authored nozzle; originate the plume there so it
-    // leaves the real engine, not a center-derived point (spec §9.9, §14.2). Falls back to the
-    // radial-behind formula for procedural ships that have no socket.
-    let bx, bz, baseA;
+    const cf = Math.cos(anchorRot);
+    const sf = Math.sin(anchorRot);
+    const boosting = e.flags && e.flags.boosting ? 1 : 0;
+    let ox;
+    let oz;
+    let aftX;
+    let aftZ;
     const sock = this._trailSocketWorldPose(e);
     if (sock) {
-      bx = sock.x; bz = sock.z; baseA = sock.angle;
-    }
-    else {
+      ox = sock.x;
+      oz = sock.z;
+      aftX = Math.cos(sock.angle);
+      aftZ = Math.sin(sock.angle);
+    } else {
       const back = (e.radius || 4) * 0.85;
       const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
-      bx = anchor.x - cf * back;
-      bz = anchor.z - sf * back;
-      baseA = Math.atan2(-sf, -cf);
+      ox = anchor.x - cf * back;
+      oz = anchor.z - sf * back;
+      aftX = -cf;
+      aftZ = -sf;
     }
-    const nozzleClearance = TRAIL_NOZZLE_CLEARANCE + boostBlend * 0.65 + cruiseBlend * 0.55;
-    bx += Math.cos(baseA) * nozzleClearance;
-    bz += Math.sin(baseA) * nozzleClearance;
+    const clearance = TRAIL_NOZZLE_CLEARANCE + boosting * 0.65;
+    ox += aftX * clearance;
+    oz += aftZ * clearance;
+    this._placeOverflowJet(slot, ox, oz, aftX, aftZ);
+    const lit = Math.max(0.2, Math.min(1.2, drive));
+    slot.shape.drive = lit;
+    slot.shape.boost = boosting;
+    slot.shape.dash = 0;
+    // Live jet only. Shorter than the player's plume, and not the recorded wake.
+    slot.shape.jetLength = 7.2 * (0.62 + drive * 0.45) * (1 + boosting * 0.28);
+    slot.shape.throatRadius = 0.9 * (1 + boosting * 0.06);
+    slot.shape.spread = 1.05;
+    slot.shape.opacity = 0.17;
+    slot.baseRadiance = 1.25 * (0.65 + drive * 0.45) * (1 + boosting * 0.35);
+    this._tintOverflowJet(e, slot);
+    return slot;
+  },
 
-    // Ship velocity must be added to exhaust so particles are "born" with the nozzle's world motion.
-    // This makes the jet shoot *out of the nozzle* (correct local direction) and then trail behind
-    // when the ship is moving (inertia). Without this, plumes always shoot heading-relative only and
-    // look detached or sideways when sliding.
-    const svx = (e.vel && e.vel.x) || 0;
-    const svz = (e.vel && e.vel.z) || 0;
+  _admitOverflowReverseJet(e, role, strength) {
+    const pool = this._overflowJets;
+    if (!pool || !e) return null;
+    const roleId = role === 'reverse-left' ? OVERFLOW_ROLE_REVERSE_LEFT : OVERFLOW_ROLE_REVERSE_RIGHT;
+    const slot = pool.claim(e.id, roleId, this._overflowDist2(e));
+    if (!slot) return null;
+    const anchorAlpha = this._renderInterpolationAlpha();
+    const rot = presentedAnchorRot(e, anchorAlpha);
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    const rx = -sf;
+    const rz = cf;
+    const side = role === 'reverse-left' ? -1 : 1;
+    const radius = e.radius || 6;
+    const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
+    const ox = anchor.x + cf * radius * 0.72 + rx * side * radius * 0.34;
+    const oz = anchor.z + sf * radius * 0.72 + rz * side * radius * 0.34;
+    this._placeOverflowJet(slot, ox, oz, cf + rx * side, sf + rz * side);
+    const lit = Math.max(0.35, Math.min(1.1, strength));
+    slot.shape.drive = lit;
+    slot.shape.boost = Math.min(1, strength);
+    slot.shape.dash = 0;
+    slot.shape.jetLength = 5.4 * (0.7 + strength * 0.35);
+    slot.shape.throatRadius = 0.78;
+    slot.shape.spread = 0.7;
+    slot.shape.opacity = 0.18;
+    slot.baseRadiance = 1.45 * (0.7 + strength * 0.4);
+    this._tintOverflowJet(e, slot);
+    return slot;
+  },
 
-    // Legacy ships use the same pooled streak substrate, but never the old moving point-particle
-    // exhaust. Those particles accumulated into long diagonal bead chains whenever an NPC crossed
-    // the camera. Alternate a narrow hot core and broader colored sheath at the nozzle; their life
-    // is deliberately shorter than an object-width traversal, and inherited ship velocity keeps
-    // the layers attached instead of leaving detached cards in world space.
-    const corePass = ((this._trailFrameIndex + (Number(e.id) || 0)) & 1) === 0;
-    if (corePass) this._c0.set('#ffffff');
-    else this._c0.copy(col0);
-    if (glowT > 0) this._c0.lerp(this._ctmp.set('#ffffff'), glowT * (corePass ? 0.25 : 0.6));
-    if (boostBlend > 0) this._c0.lerp(this._ctmp.set(prof.boostCore || '#a6d8ff'), corePass ? 0.35 : 0.62);
-    if (cruiseBlend > 0) this._c0.lerp(this._ctmp.set(prof.cruiseCore || '#39d0ff'), corePass ? 0.28 : 0.58);
-    const drift = 2.0 + drive * 2.6 + boostBlend * 1.8 + cruiseBlend * 1.5;
-    const pvx = svx + Math.cos(baseA) * drift;
-    const pvz = svz + Math.sin(baseA) * drift;
-    const life = 0.075 + drive * 0.018 + boostBlend * 0.018 + cruiseBlend * 0.015;
-    const width = (corePass ? 0.26 : 0.54) * (1 + drive * 0.18 + boostBlend * 0.34 + cruiseBlend * 0.24);
-    const length = (corePass ? 2.9 : 4.7)
-      * (1 + drive * 0.32 + boostBlend * 0.62 + cruiseBlend * 0.48) * streakLenMul;
-    this._spawnTrailStreak(
-      bx, 0, bz, life, width, length, corePass ? 0.62 : 0.34,
-      this._c0, pvx, pvz,
-    );
-    result.streaks = 1;
-    return result;
+  _admitOverflowVent(owner) {
+    const pool = this._overflowJets;
+    if (!pool || !owner) return false;
+    const anchorAlpha = this._renderInterpolationAlpha();
+    const heading = presentedAnchorRot(owner, anchorAlpha);
+    const anchor = presentedAnchorXZ(owner, anchorAlpha, this._presentedAnchorXZScratch());
+    const radius = owner.radius || 5;
+    for (let s = 0; s < 2; s++) {
+      const sgn = s === 0 ? 1 : -1;
+      const jetAngle = heading + sgn * (Math.PI / 2);
+      const role = s === 0 ? OVERFLOW_ROLE_VENT_PORT : OVERFLOW_ROLE_VENT_STARBOARD;
+      const slot = pool.claimVent(owner.id, role);
+      if (!slot) continue;
+      const ox = anchor.x + Math.cos(jetAngle) * radius * 0.55;
+      const oz = anchor.z + Math.sin(jetAngle) * radius * 0.55;
+      this._placeOverflowJet(slot, ox, oz, Math.cos(jetAngle), Math.sin(jetAngle));
+      slot.shape.drive = 0.9;
+      slot.shape.boost = 0;
+      slot.shape.dash = 0;
+      slot.shape.jetLength = 3.8;
+      slot.shape.throatRadius = 0.62;
+      slot.shape.spread = 0.55;
+      slot.shape.opacity = 0.2;
+      slot.baseRadiance = 1.15;
+      if (typeof slot.paintSteam === 'function') slot.paintSteam();
+    }
+    return true;
+  },
+
+  _presentOverflowJets(dt) {
+    const pool = this._overflowJets;
+    if (!pool) return;
+    const settings = this.state && this.state.settings;
+    const video = settings && settings.video;
+    const access = settings && settings.accessibility;
+    const motion = video && video.motionReduce ? 0.12 : 1;
+    const flash = access && access.flashReduce ? 0.72 : 1;
+    const cam = this.state && this.state.render && this.state.render.camera;
+    pool.endFrame(dt, cam || null, motion, flash);
   },
 
   // -------------------------------------------------------------------------
@@ -11514,6 +11595,7 @@ export const vfx = {
       this._emergentPools.update(this.state, (x, z, out) => this._toLocalXZ(x, z, out));
     }
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
+    this._presentOverflowJets(dt);
     // PQ-013 planetary skim — band scroll + reentry sheath pool; slept when no site is registered
     // (dormant sectors cost one boolean read; the sheath slots exist only after first relevance).
     if (this._planetSkimRelevant()) {
@@ -12599,6 +12681,7 @@ export const vfx = {
     // every fleet plume and RCS family) to the hidden idle state before the first picture; flight
     // re-lights whatever the ship actually commands.
     if (this._energy) this._hideEnergyPlumes();
+    if (this._overflowJets) this._overflowJets.reset();
     return { skipped: false };
   },
 
@@ -12894,7 +12977,7 @@ export const vfx = {
       if (tier === TRAIL_TIER.REDUCED && !this._trailCadenceAllows(e, tier)) continue;
       const profileId = this._engineProfileIdFor(e);
       // Always attempt admit when tier-eligible. At cap, admitShip returns null and
-      // increments saturated so overflow is truthful (legacy fallback, not silent drop).
+      // increments saturated. Overflow thrust is a short swept ribbon, or nothing.
       const ship = fleet.admitShip(e.id, profileId, false);
       if (!ship) continue;
       const socketCount = this._writeProductionPlumeSockets(e);
@@ -14281,7 +14364,8 @@ export const vfx = {
       if (e.flags && e.flags.docked) continue;
 
       const driveInfo = this._engineDriveFor(e);
-      if (driveInfo.drive < 0.055) continue; // idle ships emit nothing
+      const braking = !!(driveInfo.retroOnly || (driveInfo.reverse > 0.05));
+      if (driveInfo.drive < 0.055 && !braking) continue; // idle ships emit nothing
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
       if (tier === TRAIL_TIER.SKIP) {
         this._trailBudgetDiag.trailEmittersSkipped++;
@@ -14298,8 +14382,20 @@ export const vfx = {
         }
         reducedEmitted++;
       }
-      const spawned = this._emitEngineTrail(e, driveInfo.drive, step, this._trailSpawnScratch);
+      const spawned = this._trailSpawnScratch
+        || (this._trailSpawnScratch = { particles: 0, streaks: 0 });
+      spawned.particles = 0;
+      spawned.streaks = 0;
+      if (driveInfo.drive > 0.03) {
+        this._emitEngineTrail(e, driveInfo.drive, step, spawned);
+      }
       this._recordTrailBudget(tier, spawned);
+      // Overflow brake is a bow sheet. Production ships already own an honest retro jet.
+      if (braking && !this._usesProductionThruster(e)) {
+        const strength = Math.max(driveInfo.reverse || 0, driveInfo.brake || 0, 0.45);
+        this._emitReverseNozzleTrail(e, 'reverse-left', strength);
+        this._emitReverseNozzleTrail(e, 'reverse-right', strength);
+      }
       // Damage smoke: a wounded ship trails smoke so its state is readable at a glance (V2 §9:
       // particles are information). Two tiers — wounded (<40% hull) gets wispy grey smoke,
       // critical (<18%) adds orange embers + denser smoke. Even a stationary/idle damaged ship

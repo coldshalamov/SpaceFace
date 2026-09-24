@@ -703,21 +703,22 @@ test('legacy overflow exhaust preserves faction tint with real palette delta', (
     bus: createBus(),
     helpers: {},
   });
-  system._productionOwnedCount = 0; // force legacy streak path
-  // Sheath pass: corePass = ((trailFrameIndex + id) & 1) === 0 → pick odd sum so sheath uses tint.
-  // id=1 → trailFrameIndex even → sheath; id=2 → trailFrameIndex odd → sheath.
-  const colors = [];
-  const orig = system._spawnTrailStreak.bind(system);
-  system._spawnTrailStreak = function (...args) {
-    const c = args[7];
-    if (c && c.isColor) colors.push({ r: c.r, g: c.g, b: c.b });
-    return orig(...args);
-  };
-  system._trailFrameIndex = 0; // 0+1 odd → sheath for concord
+  system._productionOwnedCount = 0; // outside the production fleet: overflow ribbons, not streaks
+  let streakSpawns = 0;
+  system._spawnTrailStreak = () => { streakSpawns += 1; };
   system._emitEngineTrail(concord, 1, 1 / 60);
-  system._trailFrameIndex = 1; // 1+2 odd → sheath for reaver
   system._emitEngineTrail(reaver, 1, 1 / 60);
-  assert.equal(colors.length, 2, 'both faction sheath passes must emit a streak color');
+  assert.equal(streakSpawns, 0, 'overflow exhaust must not spawn a streak sprite');
+  const colors = [];
+  const slots = system._overflowJets && system._overflowJets.driveSlots;
+  assert.ok(slots, 'overflow ribbon pool must be live');
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    if (slot.entityId == null) continue;
+    const c = slot.plume.material.uniforms.uMidColor.value;
+    colors.push({ r: c.r, g: c.g, b: c.b });
+  }
+  assert.equal(colors.length, 2, 'both overflow ships take a ribbon slot');
   // Same structural engine profile
   assert.equal(system._engineProfileIdFor(concord), 'engine_vector');
   assert.equal(system._engineProfileIdFor(reaver), 'engine_vector');
