@@ -15,6 +15,7 @@ import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
+import { captureKillReplay } from './killReplay.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -445,6 +446,7 @@ export const survivalResults = {
     this._deathMark = null;
     this._defeatReceipt = null;
     this._stuntKills = [];
+    this._lastKillReplay = null;
   },
 
   _simNow() {
@@ -535,6 +537,7 @@ export const survivalResults = {
       ? this.state.entities.get(payload.id)
       : null;
     if (!runOwnsReward(victim)) return;
+    this._lastKillReplay = captureKillReplay(this.state, victim);
     this._kills += 1;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
     if (this._firstKillSimTime == null) this._firstKillSimTime = this._simNow();
@@ -818,6 +821,13 @@ export const survivalResults = {
     result.recordRules=this._stuntRules;
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
+    result.killReplay = this._lastKillReplay
+      ? {
+        ...this._lastKillReplay,
+        body: { ...this._lastKillReplay.body },
+        seed: Number.isInteger(run.seed) ? run.seed : this._lastKillReplay.seed,
+      }
+      : null;
     result.combo = this.state && this.state.stunts?.combo ? structuredClone(this.state.stunts.combo) : null;
     try {
       const settled = settleCrucibleRun({ result, run });

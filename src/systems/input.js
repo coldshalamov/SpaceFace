@@ -844,6 +844,7 @@ export const input = {
       travelBurn: true,
       autoTarget: true,
       chargeDetonate: true,
+      deployRepulsor: true,
     };
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
@@ -886,7 +887,7 @@ export const input = {
     const quarantine = this._gamepadLifecycleQuarantine;
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
-    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate']) {
+    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor']) {
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
@@ -1234,9 +1235,8 @@ export const input = {
     };
     const tetherHeld = this._held(state, 'tether');
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
-    const gpMasslineAllowed = !(state.ui && state.ui.dockInRange);
-    const gpMasslineHeld = !!(gpMasslineAllowed
-      && this._gamepadLifecycleActionAllowed('massline')
+    // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
+    const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
       && gpMassline && gpMassline.held);
     const masslineHeld = tetherHeld || gpMasslineHeld;
     const tetherActive = !!(state.player && (
@@ -1246,9 +1246,7 @@ export const input = {
     const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
     const rawOrbitDirection = kbdLineOrbit || gpTurn || tpTurn;
-    const masslineCommand = (!tetherHeld && gpMassline && gpMassline.held && !gpMasslineAllowed)
-      ? masslineGrammar.reset(true)
-      : masslineGrammar.step(dt, {
+    const masslineCommand = masslineGrammar.step(dt, {
         attached: tetherActive,
         held: masslineHeld,
         lineLength: rawLineLength,
@@ -1273,7 +1271,9 @@ export const input = {
     acts.deployMassSeed = edge('deployMassSeed');
     // PQ-012 field tools: three ordinary edge verbs (Digit5-7 default, rebindable like every flight verb).
     acts.deployWell = edge('deployWell');
-    acts.deployRepulsor = edge('deployRepulsor');
+    acts.deployRepulsor = edge('deployRepulsor') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('deployRepulsor')
+      && gp.actions.deployRepulsor && gp.actions.deployRepulsor.pressed);
     acts.toggleClearingCone = edge('toggleClearingCone');
     // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
     acts.toggleSkimCollector = edge('toggleSkimCollector');

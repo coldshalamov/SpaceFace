@@ -44,7 +44,7 @@ export const BINDINGS = Object.freeze({
 // UI actions that a single pad button performs directly. Verbs with no pad route (drill, cargo,
 // comms…) fall back to the keyboard label rather than print a pad lie.
 const PAD_ACTION_FOR = Object.freeze({
-  dock: 'accept',
+  dock: 'dock',
   localmap: 'map',
   starmap: 'map',
   codex: 'codex',

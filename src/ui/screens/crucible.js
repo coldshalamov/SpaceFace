@@ -33,6 +33,7 @@ import {
   buildCodeFor,
   buildNameFor,
 } from '../../systems/survivalResults.js';
+import { killReplayActions, replaySampleAt, skipKillReplay } from '../../systems/killReplay.js';
 import {
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
@@ -2313,6 +2314,40 @@ export const crucibleResultsScreen = {
       footWords.appendChild(li);
       return button;
     };
+
+    const replayLabels = killReplayActions(result);
+    if (replayLabels.length) {
+      const replayNote = el('p', 'k-t-fine sf-crres__replay', '');
+      let replayToken = 0;
+      const replay = addWord(word(replayLabels[0], 'k-word--emph'));
+      replay.addEventListener('click', () => {
+        const token = ++replayToken;
+        const started = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+        const durationMs = (result.killReplay.durationS || 5) * 1000;
+        const frame = (now) => {
+          if (token !== replayToken) return;
+          const elapsed = Math.max(0, (now - started) / 1000);
+          const sample = replaySampleAt(result.killReplay, elapsed);
+          if (sample) {
+            replayNote.textContent = `The kill, played back — body at ${sample.bx.toFixed(0)}, ${sample.bz.toFixed(0)}.`;
+          }
+          if (elapsed < result.killReplay.durationS && typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(frame);
+          }
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame((now) => frame(now || started));
+        else frame(started + durationMs);
+      });
+      const skip = addWord(word(replayLabels[1]));
+      skip.addEventListener('click', () => {
+        replayToken += 1;
+        skipKillReplay(result);
+        if (replay.parentElement) replay.parentElement.hidden = true;
+        if (skip.parentElement) skip.parentElement.hidden = true;
+        replayNote.textContent = '';
+      });
+      foot.appendChild(replayNote);
+    }
 
     const again = addWord(word('Run it again — same seed', 'k-word--emph k-word--primary'));
     again.addEventListener('click', () => {

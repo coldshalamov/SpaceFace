@@ -4,6 +4,7 @@ import { core } from './coreSystem.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
+import { killReplay } from '../systems/killReplay.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
@@ -362,6 +363,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['crucibleFocus', crucibleFocus],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
+    ['killReplay', killReplay],
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],

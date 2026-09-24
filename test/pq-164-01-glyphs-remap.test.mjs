@@ -136,18 +136,18 @@ test('PQ-164.01 seed 16401: prompt glyph chips follow the last-used device', () 
   console.log(`  missionLog | ${'—'.padEnd(8)} | ${'—'.padEnd(8)} | ${touch.missionLog}`);
 
   assert.equal(kbm.dock, `[ ${BINDINGS.dock.label} ]`, 'kbm dock chip is the live key label');
-  assert.equal(pad.dock, '[ A ]', 'pad dock chip is the A glyph');
-  assert.equal(pad.codex, '[ Y ]', 'pad codex chip is the Y glyph');
+  assert.equal(pad.dock, '[ B ]', 'pad dock chip is the B glyph');
+  assert.equal(pad.codex, '[ Home ]', 'pad codex chip is the guide button');
   assert.equal(pad.starmap, '[ View ]', 'pad star map chip is the View glyph');
   assert.equal(pad.drill, `[ ${BINDINGS.drill.label} ]`, 'pad has no drill verb — honest fallback to the key label');
   assert.equal(touch.dock, '[ Dock ]', 'touch dock chip names the overlay button');
   assert.equal(touch.missionLog, '[ Log ]', 'touch mission log chip names the overlay button');
 
-  // A pad remap re-labels the chip: move accept/dock to a free button (D-Pad Left).
-  setGamepadPromptBindings(resolveGamepadBindings(padState({ accept: ['dLeft'] }).settings));
+  // A pad remap re-labels the chip: free the guide button, then dock takes it.
+  setGamepadPromptBindings(resolveGamepadBindings(padState({ codex: [], dock: ['home'] }).settings));
   setPromptDevice('gamepad');
-  assert.equal(promptLabel('dock'), '[ D-Pad Left ]', 'remapped pad verb re-labels the dock chip');
-  assert.equal(gamepadGlyphForAction('accept'), 'D-Pad Left', 'glyph helper reads the live map');
+  assert.equal(promptLabel('dock'), '[ Home ]', 'remapped pad verb re-labels the dock chip');
+  assert.equal(gamepadGlyphForAction('dock'), 'Home', 'glyph helper reads the live map');
   setPromptDevice('kbm');
   setGamepadPromptBindings(null);
   assert.equal(promptLabel('dock'), `[ ${BINDINGS.dock.label} ]`, 'kbm chip restored on device flip');
@@ -157,8 +157,8 @@ test('PQ-164.01: resolver merges overrides and never lets stored data beat the s
   assert.equal(resolveGamepadBindings(null), GAMEPAD_DEFAULT_BINDINGS, 'no settings -> frozen default map');
   assert.equal(resolveGamepadBindings(padState(null).settings), GAMEPAD_DEFAULT_BINDINGS);
 
-  const moved = resolveGamepadBindings(padState({ fire: ['dDown'] }).settings);
-  assert.deepEqual(moved.fire, ['dDown'], 'override replaces the action list on a free button');
+  const moved = resolveGamepadBindings(padState({ chargeDetonate: [], fire: ['dDown'] }).settings);
+  assert.deepEqual(moved.fire, ['dDown'], 'override replaces the action list once that button is unbound');
   assert.deepEqual(moved.mine, GAMEPAD_DEFAULT_BINDINGS.mine, 'untouched actions keep defaults');
   assert.deepEqual(moved.brake, GAMEPAD_DEFAULT_BINDINGS.brake);
 
@@ -200,7 +200,7 @@ test('PQ-164.01: conflict detection names the holder and honors designed shares'
 
 test('PQ-164.01: shipped tick honours the remap; capture queue and captureMode work', () => {
   installedPad = makePad();
-  const state = padState({ fire: ['dDown'] });
+  const state = padState({ chargeDetonate: [], fire: ['dDown'] });
   const gp = createGamepad({ bus: createBus(), state });
   gp.tick(0.016, state);
   assert.equal(gp.connected, true);
@@ -272,7 +272,7 @@ test('PQ-164.01: UI tick routes captured presses and flips the prompt device on 
   installedPad.buttons[12] = { pressed: true, value: 1, touched: true };
   input.tick(0.016);
   assert.equal(getPromptDevice(), 'gamepad', 'pad activity edge flips the prompt device');
-  assert.equal(promptLabel('dock'), '[ A ]', 'dock chip reads as the pad glyph');
+  assert.equal(promptLabel('dock'), '[ B ]', 'dock chip reads as the pad glyph');
 
   // Capture: registered handler receives the raw button and the press cannot activate UI.
   const captured = [];
@@ -298,16 +298,16 @@ test('PQ-164.01: pad remap persists through the settings profile and an old save
   const first = createGameState(11);
   const firstBus = createBus();
   save.init({ state: first, bus: firstBus, helpers: {}, registry: { get: () => null } });
-  first.settings.controls.gamepad.bindings = { fire: ['dDown'], cancel: ['r2'] };
+  first.settings.controls.gamepad.bindings = { fire: ['dDown'], chargeDetonate: [], cancel: ['r2'] };
   firstBus.emit('settings:changed', { section: 'controls', key: 'gamepad', value: first.settings.controls.gamepad });
 
   const stored = JSON.parse(localStore.get(PROFILE_KEY));
-  assert.deepEqual(stored.settings.controls.gamepad.bindings, { fire: ['dDown'], cancel: ['r2'] },
+  assert.deepEqual(stored.settings.controls.gamepad.bindings, { fire: ['dDown'], chargeDetonate: [], cancel: ['r2'] },
     'profile store persists the pad remap');
 
   const booted = createGameState(22);
   save.init({ state: booted, bus: createBus(), helpers: {}, registry: { get: () => null } });
-  assert.deepEqual(booted.settings.controls.gamepad.bindings, { fire: ['dDown'], cancel: ['r2'] },
+  assert.deepEqual(booted.settings.controls.gamepad.bindings, { fire: ['dDown'], chargeDetonate: [], cancel: ['r2'] },
     'boot loads the pad remap from the profile');
   const live = resolveGamepadBindings(booted.settings);
   assert.deepEqual(live.fire, ['dDown'], 'the resolved live map reflects the persisted remap');
@@ -317,6 +317,6 @@ test('PQ-164.01: pad remap persists through the settings profile and an old save
   save._restoreSettings({
     settings: { controls: { gamepad: { enabled: true, deadzone: 0.2, invertY: true } } },
   });
-  assert.deepEqual(booted.settings.controls.gamepad.bindings, { fire: ['dDown'], cancel: ['r2'] },
+  assert.deepEqual(booted.settings.controls.gamepad.bindings, { fire: ['dDown'], chargeDetonate: [], cancel: ['r2'] },
     'profile pad remap survives an old save load');
 });

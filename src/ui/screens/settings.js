@@ -610,7 +610,7 @@ export const settingsScreen = {
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares

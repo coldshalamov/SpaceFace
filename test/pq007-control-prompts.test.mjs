@@ -42,7 +42,7 @@ const SCHEME_OVERRIDES = Object.freeze({
 
 const PRESERVED_NON_KBM = Object.freeze({
   gamepad: Object.freeze({
-    flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
+    flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  Y shove  •  R3 countermeasure  •  A/Cross Massline  •  B dock when prompted  •  X target  •  View star map  •  Start → Pause → Mission Log',
     mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
     combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  D-Pad Right bomb  •  D-Pad Left cycle bombs  •  RB boost to dodge  •  Start pause',
     station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',

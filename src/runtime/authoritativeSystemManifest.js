@@ -25,7 +25,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
-  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults',
+  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay',
   'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
@@ -104,7 +104,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'swarmArena', 'survivalWave', 'survivalRun',
   // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
   // survivalRun has already settled this tick.
-  'swarmChain',
+  'swarmChain', 'killReplay',
   'heat', 'traffic', 'drill', 'claims', 'chronicler',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
