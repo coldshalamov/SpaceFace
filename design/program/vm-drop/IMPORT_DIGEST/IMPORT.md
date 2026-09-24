@@ -1,4 +1,4 @@
-# IMPORT — DIGEST 20260924dm
+# IMPORT — DIGEST 20260924dn
 
-Read `report.md`. Ship #153 `bark-director-quiet-latch` after #152
-`flyby-focus-empty-quiet-latch` (digest 20260924dl).
+Read `report.md`. Ship #154 `combat-prephysics-quiet-latch` after #153
+`bark-director-quiet-latch` (digest 20260924dm).
