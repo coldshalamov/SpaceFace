@@ -434,6 +434,13 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       hideProceduralPropDrawables(root);
       root.add(packaged);
+      // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
+      // (owner chain, final visibility). One exact-target re-touch here pays any residual link
+      // inside this continuation instead of the first presented bloom pass.
+      const touch = admissionOptions().touchAuthoredExactTarget;
+      if (typeof touch === 'function') {
+        try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
+      }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;

@@ -2338,6 +2338,12 @@ function commitAuthoredCargoCapsuleBoundary(
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
   const publish = () => {
+    // Same residual-link guard as the ship commit: the exact-target prepare ran while this
+    // root was detached, so pay any leftover variant here rather than in a presented pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] cargo publish touch failed', error); }
+    }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
@@ -3007,6 +3013,12 @@ function commitAuthoredPlaceBoundary(
   boundary.userData.__socketCache = new Map();
 
   const publish = () => {
+    // Same residual-link guard as the ship commit: the exact-target prepare ran while this
+    // root was detached, so pay any leftover variant here rather than in a presented pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
+    }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts }); }
@@ -4166,6 +4178,10 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
     prepareAuthoredPipelines: liveState && liveState.render
       && typeof liveState.render.compileObjectPipelines === 'function'
       ? (root) => liveState.render.compileObjectPipelines(root)
+      : null,
+    touchAuthoredExactTarget: liveState && liveState.render
+      && typeof liveState.render.touchSubjectExactTarget === 'function'
+      ? (root) => liveState.render.touchSubjectExactTarget(root)
       : null,
     prepareAuthoredGpuResidency: liveState && liveState.render
       && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
@@ -5828,6 +5844,14 @@ async function commitAuthoredBoundary(
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
 
   const publish = () => {
+    // The pre-commit prepare touched this root while it was detached; publish-time state can
+    // still resolve a program key that touch never produced (final LOD from primeAuthoredState,
+    // owner bindings, parts minted inside commit). Pay any residual link here — in the
+    // admission continuation — instead of inside the first presented bloom pass.
+    if (typeof options.touchAuthoredExactTarget === 'function') {
+      try { options.touchAuthoredExactTarget(authored.root); }
+      catch (error) { console.warn('[partsLibrary] authored publish touch failed', error); }
+    }
     for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
       activateRenderPackagePoolAdmission(admission);
     }

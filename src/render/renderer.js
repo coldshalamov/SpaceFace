@@ -4003,6 +4003,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'scene', 'renderer', 'camera', 'meshes', 'cameraCtrl', 'vf', 'viewport', 'spaceBg', 'envMap',
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
+  'touchSubjectExactTarget',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
@@ -6006,6 +6007,27 @@ export const render = {
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject, admissionOptions);
+    };
+    state.render.touchSubjectExactTarget = (subject) => {
+      // Publish-seam warm: an authored boundary calls this on its attached, final-state root
+      // just before reveal. The pre-commit prepare touched the root while it was detached, and
+      // publish-time state can still resolve a program key the detached touch never produced
+      // (final LOD from primeAuthoredState, owner bindings, parts minted inside commit). Any
+      // residual variant links here — in the admission continuation — not inside the first
+      // presented bloom pass.
+      if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
+      const recovering = state.render
+        && state.render.contextRecovery && state.render.contextRecovery.pending === true;
+      if (recovering) return { skipped: true, reason: 'context-recovery' };
+      // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
+      // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
+      // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+      const restore = revealSubjectWithAncestors(subject);
+      try {
+        return touchExactTargetSubject(subject);
+      } finally {
+        restore();
+      }
     };
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
