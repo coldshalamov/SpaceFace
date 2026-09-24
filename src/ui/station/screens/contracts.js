@@ -329,6 +329,51 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
   );
 }
 
+/**
+ * The consequences as scales of light (ORRERY §3.2: a quantity is an arc or a scale): RISK as a
+ * five-tick ruler with a light cursor at the tier, STANDING as a centred scale with the gain
+ * marked to the right and the loss (red: a loss is the threat) to the left of zero.
+ */
+export function consequenceScalesSvg(m) {
+  const w = 520; const h = 66;
+  const f = (n) => Math.round(n * 100) / 100;
+  const r = Math.min(risk(m), 5);
+  const consequences = missionConsequenceSummary(m);
+  const gain = Math.max(0, Number(consequences.repReward) || 0);
+  const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
+  let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
+  // risk: five stops
+  const rx0 = 92; const rx1 = 272; const ry = 22;
+  out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
+  out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1"/>`;
+  let ticks = '';
+  for (let i = 0; i <= 5; i += 1) { const x = rx0 + ((rx1 - rx0) * i) / 5; ticks += `M ${f(x)} ${ry - 4} L ${f(x)} ${ry + 5} `; }
+  out += `<path class="orr-core orr-ct-scale__tick" d="${ticks}" stroke-width="1"/>`;
+  const rxc = rx0 + ((rx1 - rx0) * r) / 5;
+  out += `<path class="orr-core orr-ct-scale__fill${r >= 3 ? ' is-high' : ''}" d="M ${rx0} ${ry} L ${f(rxc)} ${ry}" stroke-width="3" stroke-linecap="butt"/>`;
+  out += `<path class="orr-bloom orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
+  out += `<path class="orr-core orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
+  out += `<text class="orr-ct-scale__word" x="${rx1 + 12}" y="${ry + 4}">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 18}" text-anchor="start">ROUTINE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx1}" y="${ry + 18}" text-anchor="end">SEVERE</text>`;
+  // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
+  const sy = 52; const sx0 = 92; const sx1 = 272; const mid = (sx0 + sx1) / 2; const span = 10;
+  const xOf = (v) => mid + ((sx1 - sx0) / 2) * Math.max(-1, Math.min(1, v / span));
+  out += `<text class="orr-ct-scale__key" x="0" y="${sy + 4}">STANDING</text>`;
+  out += `<path class="orr-core orr-ct-scale__rule" d="M ${sx0} ${sy} L ${sx1} ${sy}" stroke-width="1"/>`;
+  out += `<path class="orr-core orr-ct-scale__tick" d="M ${mid} ${sy - 5} L ${mid} ${sy + 6}" stroke-width="1.2"/>`;
+  if (gain > 0) out += `<path class="orr-core orr-ct-scale__fill" d="M ${mid} ${sy} L ${f(xOf(gain))} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
+  if (loss > 0) out += `<path class="orr-core orr-ct-scale__loss" d="M ${f(xOf(-loss))} ${sy} L ${mid} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
+  const words = [];
+  if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
+  if (loss > 0) words.push(`<tspan class="orr-ct-scale__lossword">−${loss}</tspan>`);
+  out += `<text class="orr-ct-scale__word" x="${sx1 + 12}" y="${sy + 4}">${words.length ? words.join('<tspan class="orr-ct-scale__sep">  ·  </tspan>') : 'NO CHANGE'}</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 18}" text-anchor="start">ON FAILURE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx1}" y="${sy + 18}" text-anchor="end">ON SUCCESS</text>`;
+  out += `</svg>`;
+  return out;
+}
+
 /** The risk in one sentence: the tier, then what success and failure do to the account. */
 function riskSentence(m, consequences, facShort) {
   const r = Math.min(risk(m), 5);
@@ -522,12 +567,15 @@ export function createContractsScreen(ctx) {
     }
     // A sub-row that would only repeat its job's title carries the dispatch's flag instead, and the
     // tradeoff is its line; a loose option keeps its own label.
+    // A sub-row is one tick line of facts (the first three of the tradeoff's clauses); the whole
+    // tradeoff stays in the accessible name.
     const optionHtml = ({ decision, option }, sub, jobTitle = '') => {
       const repeats = sub && jobTitle && String(option.label || '').trim().toLowerCase() === String(jobTitle).trim().toLowerCase();
+      const facts = sub ? String(option.tradeoff || '').split(' · ').slice(0, 3).join(' · ') : String(option.tradeoff || '');
       return (
         `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt${sub ? ' sx-decision__opt--sub' : ''}" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}" aria-label="${escapeHtml(`${option.label}. ${option.tradeoff}`)}">` +
           `<span class="k-row__name">${repeats ? 'Dispatch' : escapeHtml(option.label)}</span>` +
-          `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(facts)}</span>` +
         `</button>`
       );
     };
@@ -614,6 +662,16 @@ export function createContractsScreen(ctx) {
       dest: destSectorIdOf(m),
       destName: destName(m),
     });
+    // the consequences as instruments: the risk on a five-tick scale, the standing as a gain and a
+    // loss on one small scale (the loss red: it is the one threat here). The sentence stays for the ear.
+    const risky = dossier.querySelector('.sx-dossier__risk');
+    if (risky) {
+      const scales = document.createElement('div');
+      scales.className = 'orr-ct-scales';
+      scales.setAttribute('aria-hidden', 'true');
+      scales.innerHTML = consequenceScalesSvg(m);
+      risky.insertAdjacentElement('afterend', scales);
+    }
     // the words resolve; the reward rolls
     if (!reducedMotion()) {
       const targets = [

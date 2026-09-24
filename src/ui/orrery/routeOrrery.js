@@ -33,9 +33,9 @@ const CSS = `
 .orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
 .orr-svg .orr-route__ring { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-route__ring--near { stroke:rgb(${BONE} / .26); }
-.orr-svg .orr-route__lane { stroke:rgb(${BONE} / .18); }
-.orr-svg .orr-route__beam { stroke:var(--dp-ice, #8fcbff); }
-.orr-svg .orr-route__beam-bloom { stroke:var(--dp-ice, #8fcbff); opacity:.24; }
+.orr-svg .orr-route__lane { stroke:rgb(${BONE} / .16); }
+.orr-svg .orr-route__beam { stroke:rgb(${BONE} / .72); }
+.orr-svg .orr-route__beam-bloom { stroke:rgb(${BONE} / .9); opacity:.16; }
 .orr-svg .orr-route__pulse { fill:var(--dp-ice, #8fcbff); }
 .orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
 .orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
@@ -43,14 +43,14 @@ const CSS = `
 .orr-svg .orr-route__node--here { stroke:rgb(248 244 234); }
 .orr-svg .orr-route__here-core { fill:rgb(248 244 234); }
 .orr-svg .orr-route__hop { stroke:rgb(${BONE} / .88); }
-.orr-svg .orr-route__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.2; }
-.orr-svg .orr-route__hand-bead { fill:var(--dp-hand, #f2b950); }
+.orr-svg .orr-route__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.1; }
+.orr-svg .orr-route__hand-bead { fill:var(--dp-hand, #f2b950); opacity:.85; }
 .orr-svg .orr-route__hand-ring { stroke:var(--dp-hand, #f2b950); }
 .orr-svg .orr-route__threat { stroke:var(--dp-danger, #ff5038); opacity:.85; }
 .orr-svg .orr-route__threat-bloom { stroke:var(--dp-danger, #ff5038); opacity:.22; }
-.orr-svg text.orr-route__name { font-size:9.5px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .66); text-transform:uppercase;
+.orr-svg text.orr-route__name { font-size:10px; font-weight:650; letter-spacing:.1em; fill:rgb(${BONE} / .78); text-transform:uppercase;
   paint-order:stroke; stroke:rgb(4 6 9 / .85); stroke-width:3px; stroke-linejoin:round; }
-.orr-svg text.orr-route__name--faint { fill:rgb(${BONE} / .42); font-size:9px; }
+.orr-svg text.orr-route__name--faint { fill:rgb(${BONE} / .58); font-size:9.5px; }
 .orr-svg text.orr-route__name--live { fill:rgb(248 244 234); }
 .orr-svg text.orr-route__name--berth { fill:rgb(${BONE} / .7); font-size:8.5px; letter-spacing:.1em; }
 .orr-svg text.orr-route__tag { font-size:8px; font-weight:650; letter-spacing:.28em; fill:rgb(${BONE} / .5); }
@@ -281,7 +281,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const nameBoxes = [];
     const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
     const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
-    const labelSize = (text, small) => ({ w: text.length * (small ? 6.2 : 6.9), h: small ? 10 : 11 });
+    const labelSize = (text, small) => ({ w: text.length * (small ? 6.6 : 7.2), h: small ? 11 : 12 });
     function placeName(p, lines, { isDest = false, reserve = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
@@ -326,8 +326,9 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const firstHop = routePts.length > 1 ? routePts[1] : null;
     const below = !firstHop || firstHop.deg < 80 || firstHop.deg > 280 || (local && endPoint && endPoint.deg < 90);
     const hereName = String(data.originName || origin.name || '').toUpperCase();
-    const hereSpot = placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 180 : 0 }, [{ text: 'HERE', cls: 'orr-route__tag' }, { text: hereName, cls: 'orr-route__name--live' }], { reserve: true })
-      || placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 0 : 180 }, [{ text: 'HERE', cls: 'orr-route__tag' }, { text: hereName, cls: 'orr-route__name--live' }], { reserve: true });
+    const hereLines = [{ text: hereName, cls: 'orr-route__name--live' }];
+    const hereSpot = placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 180 : 0 }, hereLines, { reserve: true })
+      || placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 0 : 180 }, hereLines, { reserve: true });
     // then the destination: the sector it lies in, and the berth under it
     const destLines = dest && !local
       ? [{ text: String(SECTOR.get(dest).name || dest).toUpperCase(), cls: 'orr-route__name--live' }]
@@ -359,7 +360,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         laneParts.push(`M ${f(p.x)} ${f(p.y)} L ${f(q.x)} ${f(q.y)}`);
       }
     }
-    if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '2 4' }), 60));
+    if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4' }), 60));
 
     if (beamD) {
       const id = `orr-route-path-${++pathSeq}`;
@@ -423,7 +424,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       svg('circle', { cx: f(cx), cy: f(cy), r: 2.2, class: 'orr-route__here-core' }),
       svg('path', { d: ticksD(cx, cy, 13, 4, { len: 4, inward: true }), class: 'orr-core orr-route__crosshair', 'stroke-width': 1 }),
     );
-    if (hereSpot) here.appendChild(textLines(hereSpot, [{ text: 'HERE', cls: 'orr-route__tag' }, { text: hereName, cls: 'orr-route__name--live' }]));
+    if (hereSpot) here.appendChild(textLines(hereSpot, hereLines));
     layer.appendChild(fade(here, 80));
     // the Hand's bead on the destination, the sector's name and the berth's beside it
     if (endPoint) {

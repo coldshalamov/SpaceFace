@@ -34,14 +34,15 @@ const CSS = `
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .55) !important; }
 .orr-lampkey:disabled::before { background:rgb(${BONE} / .14) !important; }
 .orr-lampkey:disabled::after { display:none !important; }
-/* the hold ring: a 1px track, the fill an arc of the Hand, a bright bead at its leading edge */
-.orr-lampkey[data-hold] { margin-left:72px !important; }
-.orr-lampkey .dp-holdring { position:absolute !important; left:-72px !important; top:50% !important; width:58px !important; height:58px !important; margin:-29px 0 0 !important;
+/* the hold ring: a 1px track, the fill an arc of the Hand, a bright bead at its leading edge; it hangs at the
+   key's right end so the key never moves and a scrolling reading never clips it */
+.orr-lampkey[data-hold] { margin-left:0 !important; margin-right:76px !important; }
+.orr-lampkey .dp-holdring { position:absolute !important; left:auto !important; right:-74px !important; top:50% !important; width:58px !important; height:58px !important; margin:-29px 0 0 !important;
   display:block !important; border-radius:50% !important; vertical-align:baseline !important; flex:none !important; background:none !important;
   -webkit-mask:none !important; mask:none !important; }
 /* the ring itself is the span's own light, masked to a band; the bead is a child and stays unmasked */
 .orr-lampkey .dp-holdring::before { content:""; position:absolute; inset:0; border-radius:50%;
-  background:conic-gradient(var(--dp-hand, #f2b950) calc(var(--sf-hold-p, 0) * 360deg), rgb(${BONE} / .26) 0);
+  background:conic-gradient(var(--dp-hand, #f2b950) calc(var(--sf-hold-p, 0) * 360deg), rgb(${BONE} / .26) 0 332deg, rgb(255 80 56 / .8) 332deg 360deg);
   -webkit-mask:radial-gradient(circle, transparent 26.2px, #000 26.6px, #000 28px, transparent 28.4px);
   mask:radial-gradient(circle, transparent 26.2px, #000 26.6px, #000 28px, transparent 28.4px); }
 .orr-lampkey .dp-holdring > .orr-lampkey__bead { position:absolute; left:0; top:0; width:100%; height:100%; margin:0; pointer-events:none;
@@ -49,13 +50,13 @@ const CSS = `
 .orr-lampkey .orr-lampkey__bead::before { content:""; position:absolute; left:50%; top:1.7px; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
   background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 8px 2px rgb(255 217 140 / .6); }
 .orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
-.orr-lampkey.orr-lampkey--small[data-hold] { margin-left:60px !important; }
-.orr-lampkey.orr-lampkey--small .dp-holdring { left:-60px !important; width:46px !important; height:46px !important; margin-top:-23px !important; }
+.orr-lampkey.orr-lampkey--small[data-hold] { margin-left:0 !important; margin-right:62px !important; }
+.orr-lampkey.orr-lampkey--small .dp-holdring { left:auto !important; right:-60px !important; width:46px !important; height:46px !important; margin-top:-23px !important; }
 .orr-lampkey.orr-lampkey--small .dp-holdring::before { -webkit-mask:radial-gradient(circle, transparent 20.2px, #000 20.6px, #000 22px, transparent 22.4px);
   mask:radial-gradient(circle, transparent 20.2px, #000 20.6px, #000 22px, transparent 22.4px); }
-.orr-lampkey.orr-lampkey--small .orr-lampkey__note { left:-60px; width:46px; top:calc(50% + 27px); }
+.orr-lampkey.orr-lampkey--small .orr-lampkey__note { left:auto; right:-60px; width:46px; top:calc(50% + 27px); }
 .orr-lampkey.is-holding .orr-lampkey__bead { opacity:1; }
-.orr-lampkey .orr-lampkey__note { position:absolute; left:-72px; top:calc(50% + 34px); width:58px; text-align:center; pointer-events:none;
+.orr-lampkey .orr-lampkey__note { position:absolute; left:auto; right:-74px; top:calc(50% + 34px); width:58px; text-align:center; pointer-events:none;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8.5px; letter-spacing:.2em; text-transform:uppercase; color:rgb(${BONE} / .6); white-space:nowrap; }
 html.sf-reduce-motion .orr-lampkey::after { animation:none; }
 `;
