@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24v (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24w (post-import hillclimb)
 
-Master tip: **`abcccfd87`** (fetched; moved from `2e7ec656b`).
+Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` rebased onto `abcccfd87` through #56; +#57
-measured on stacked tip @ `8b280fb14`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #57; +#58 measured on
+stacked tip @ `df665a6bc`.
 
 ### Already on stack (do not rediscover)
 
@@ -42,6 +42,7 @@ measured on stacked tip @ `8b280fb14`.
 | 54 | `decode-runway-top2-select` |
 | 55 | `gamepad-idle-clean-skip` |
 | 56 | `volatile-index-cadence` |
+| 57 | `micromotion-settled-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -56,34 +57,33 @@ reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
-Tool cite: fresh `settled-45s-stacked-20260924t` (Picture ON, soft-GPU; post-#54
-stack before #55). Idle **57.9%**. Long tasks **15**. Soft-GPU / native GL / bloom
-admission owners ignored for portable ranking.
+Tool cite: fresh `settled-45s-stacked-20260924w` (Picture ON, soft-GPU; post-#57
+stack @ `8b280fb14` before #58). Idle **62.4%**. Long tasks **17**. Soft-GPU /
+native GL / bloom admission owners ignored for portable ranking.
 
 ### Top portable src/ self (aggregated) — climb targets
 
 | samples | owner | notes |
 |---:|---|---|
-| 301 | `registry.step` | residual after #39+#43+#49+#50; #55+#56 cut input + preStep volatile |
-| 289 | `classifyWorld` | residual after #37+#38+#45+#48 |
-| 190 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57; syncEntityViews / packFence |
-| 154 | `syncEntityViews` | residual after #15+#44+#57; ordnance / query / residual microMotion |
-| 124 | `hud.frame` | radar.draw + setLagTranslate |
-| 17 | `entityTimeToGlassSeconds` | **#54 confirmed** (was 85 @ 20260924r) |
+| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56; eventTrace under bus |
+| 310 | `classifyWorld` | residual after #37+#38+#45+#48 |
+| 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57 |
+| 181 | `syncEntityViews` | residual after #15+#44+#57 |
+| 153 | `hud.frame` | radar.draw + setLagTranslate |
+| 71 | `sanitizePayload` | **#58 target** (held-thrust ship:thrust every frame) |
 
-### Notable callees (post-#57)
+### Notable callees (post-#57 / pre-#58)
 
-- prepareFrame → syncEntityViews (**#57** micromotion settled), camera.follow, packPresentationWorldToFence
-- syncEntityViews → updateCraftMicroMotion (**#57**), updateOrdnanceMotion, presentationQueries
-- classifyWorld → selectClassifyEntities, reusablePins, shouldSyncPhysicsBodyEntity,
-  imminentCollisionFor (hold), rebuildPinFacts (cache already on stack)
-- registry.step → preStep (**#56**), input.update (**#55**), lifetimeSweep, tacticalAI
+- prepareFrame → syncEntityViews (**#57**), camera.follow, packPresentationWorldToFence, spaceBackground (hold)
+- syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
+- classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities, reusablePins, shouldSyncPhysics
+- registry.step → preStep (**#56**), packCombatTable, stampNearWorkBudget, input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 57 | `micromotion-settled-skip` | Portable quiet `updateCraftMicroMotion` **~1.81×** median (80 ships × 4k frames; min ~1.70×). Idle breath kept; angVel/yaw keeps observed-motion RCS. Focused micro-motion suites 35/35. |
+| 58 | `event-trace-thrust-sanitize` | Portable quiet `sanitizePayload` on ship:thrust envelope **~7.15×** median (30k × 7 runs; min band ~3.18×). JSON tapes identical (0 mismatches). Typed flightV3 fast path; legacy fallback for other shapes. |
 
 ## Scour attempts / misses
 
@@ -105,12 +105,12 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#57 (syncEntityViews /
-   packFence / residual closures).
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58 (syncEntityViews /
+   packFence / residual closures / camera.follow).
 2. classifyWorld after #37+#38+#45+#48 (selectClassify / reusablePins /
-   shouldSyncPhysics).
-3. registry.step after #39+#43+#49+#50+#55+#56 (preStep residual / lifetimeSweep /
-   tacticalAI).
+   shouldSyncPhysics / resolvePins+normalizePinReasons).
+3. registry.step after #39+#43+#49+#50+#55+#56+#58 (preStep residual /
+   lifetimeSweep / stampNearWorkBudget / tacticalAI).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.

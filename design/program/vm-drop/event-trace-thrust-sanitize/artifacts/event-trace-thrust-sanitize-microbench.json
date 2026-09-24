@@ -1,0 +1,11 @@
+{
+  "iters": 30000,
+  "runs": 7,
+  "beforeMedMs": 27.671,
+  "afterMedMs": 3.873,
+  "minSpeedup": 3.181,
+  "medSpeedup": 7.145,
+  "maxSpeedup": 8.768,
+  "jsonMismatches": 0,
+  "primary": "~7.15×"
+}
