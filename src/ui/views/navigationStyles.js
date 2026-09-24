@@ -458,6 +458,9 @@ export const CSS = `
 #sf-galaxymap .gm-navfoot .gm-nav-row {
   display: flex;
   flex-direction: column;
+  /* the base row's align-items:baseline survives the flex-column override, leaving children at
+     max-content width instead of stretching to the track -- long detail lines escape the band */
+  align-items: stretch;
   gap: calc(2px * var(--k-s));
   min-width: 0;
   min-height: 0;

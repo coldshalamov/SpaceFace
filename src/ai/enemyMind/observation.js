@@ -86,11 +86,18 @@ export function observePilot(record, member, perception, directive, now, tick, t
   if (target) record.lastTarget = target;
   else if (record.lastTarget && (record.lastTarget.id !== targetId || now - record.lastTarget.observedAt > tuning.maxMemoryAge)) record.lastTarget = null;
   const known = target || record.lastTarget;
+  const authority = authorityFor(member, perception, directive);
+  // A retreat order can carry an authored destination (custody escape point, scripted despawn
+  // lane). The mind owns break/rally phasing, never the destination — the waypoint below is the
+  // order's anchor, not an improvised fallback that could park inside the leash it must clear.
+  const retreatAnchor = self.activity?.anchor ?? member.activity?.anchor ?? null;
   return {
     id: member.id, key: record.key, squadId: record.squadId, team: self.team ?? null,
     pos: point(self.pos), vel: point(self.vel), hull, energy: unitValue(self.energyFraction, 1),
     heat: unitValue(self.heatFraction), disabled: self.disabled === true,
-    authority: authorityFor(member, perception, directive), target, known, friends,
+    authority,
+    retreatGoal: authority === 'retreat' && validPoint(retreatAnchor) ? point(retreatAnchor) : null,
+    target, known, friends,
     incoming: Math.min(1, incoming * 0.35), casualties: Math.min(1, casualties * 0.4), hit,
     targeted: !!target && target.targetId === member.id,
     range: target ? distance(self.pos, target.pos) : null,

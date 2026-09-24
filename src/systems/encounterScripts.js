@@ -2174,9 +2174,11 @@ function convoyTick(d, live, state, now, isConvoy) {
     }
   }
   const lead = haulers[0];
+  // Arrival is endpoint geometry only. A transit deadline does not book the freight: a
+  // drive-capable carrier keeps running, and a carrier that cannot continue is written off
+  // by the custody window as conserved loss, never as arrival pressure.
   const arrivedByPosition = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R;
-  const arrivedByDeadline = Number.isFinite(live.deadlineAt) && now >= live.deadlineAt;
-  if (!arrivedByPosition && !arrivedByDeadline) {
+  if (!arrivedByPosition) {
     // Demand mode: silence at the offer deadline keeps clear — the convoy just runs.
     // Physical arrival above still wins ties: freight truth beats indecision.
     if (live.phase === 'offer' && convoyHasDemand(live)

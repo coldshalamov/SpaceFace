@@ -207,11 +207,19 @@ function assertPlayerPlumeConstruction() {
     rates.boostFallTau > rates.boostRiseTau,
     `B10: boost must cool slower than it blasts (rise ${rates.boostRiseTau}, fall ${rates.boostFallTau})`,
   );
-  // 3 tau reaches ~95%. The owner asked for full thrust in half to three-quarters of a second.
+  // 3 tau reaches ~95%. The earlier owner window was 0.5-0.75s; the owner's own G10 wave
+  // (b7d48c6c2, "throttle grows the plume and the engine cue, then goes dark and quiet")
+  // retuned the answer to ~120 ms rise and a quarter-second dark. The bounds still fail closed:
+  // a zero tau would mean a pop, a slow tau would mean the limp spool the owner rejected.
   const spoolS = rates.spoolRiseTau * 3;
   assert.ok(
-    spoolS > 0.4 && spoolS < 0.9,
-    `B10: spool-to-full should land near 0.5-0.75s, computed ${spoolS.toFixed(2)}s`,
+    spoolS > 0.04 && spoolS < 0.25,
+    `B10: spool-to-full should land near 0.1-0.2s (G10 throttle answer), computed ${spoolS.toFixed(2)}s`,
+  );
+  const darkS = rates.spoolFallTau * 3;
+  assert.ok(
+    darkS < 0.5,
+    `B10: releasing the throttle should go dark inside about a quarter second, computed ${darkS.toFixed(2)}s`,
   );
 
   // B11 — the flight history must be laid down in world space and left there. The jet is allowed to be

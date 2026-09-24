@@ -575,7 +575,7 @@ ${GM} .gm-hints-title { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
 /* commands */
 ${printedKey(GM_KEYS)}
 ${GM_KEYS} { min-height:34px; font-size:12px; max-width:100%; white-space:nowrap; }
-${GM} .gm-frame-group .gm-frame-btn { width:100%; justify-content:flex-start; }
+${GM} .gm-frame-group .gm-frame-btn { width:100%; justify-content:flex-start; white-space:normal; }
 ${GM} :is(#gm-set-course-btn, #gm-engage-route-btn, .gm-plot-btn) { width:100%; min-height:40px; font-size:13px; }
 ${printedKey(`${GM} :is(#gm-set-course-btn, #gm-engage-route-btn, .gm-plot-btn)`)}
 ${lampKey(`${GM} :is(#gm-set-course-btn, #gm-engage-route-btn):not(:disabled):not([aria-disabled="true"])`)}
@@ -653,7 +653,7 @@ ${GM} .gm-tabs.k-words {
 ${GM} .gm-tab.k-word {
   display:flex; align-items:center; justify-content:flex-start; min-width:0; min-height:30px; margin:0; padding:0 2px;
   border:0; border-image:none; border-radius:0; box-shadow:none; background:${RAIL}; ${GM_ETCH} font-size:12px; letter-spacing:.1em; color:var(--dp-ink-dim);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+  white-space:normal; overflow-wrap:anywhere; cursor:pointer;
 }
 ${GM} .gm-tab.k-word::before { display:none; }
 ${GM} .gm-tab.k-word:hover { color:var(--dp-ink); }

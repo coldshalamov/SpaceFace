@@ -11,9 +11,11 @@ import {
   glassCornerWu,
   residencyPrefetchRadius,
   tableLookAtOrigin,
+  tablePrefetchZoomFromState,
   tableTravelSpeed,
   timeToEnterRadiusSeconds,
   TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_INBOUND_APPROACH_WU,
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
@@ -84,13 +86,7 @@ function presentationCollectRadius(state) {
   const speed = tableTravelSpeed(state);
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
-  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
-  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
-  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
-  const prefetchZoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || zoom;
+  const prefetchZoom = tablePrefetchZoomFromState(state);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -102,12 +98,7 @@ function presentationCollectRadius(state) {
 function presentationGlassCorner(state) {
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
-  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
-  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
-  const prefetchZoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || (Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144));
+  const prefetchZoom = tablePrefetchZoomFromState(state);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -181,12 +172,12 @@ function appendNearbyLedgerRows(state, out) {
   if (!(radius > 0)) return;
   const travel = tableTravelSpeed(state);
   // The scan disc must hold every row that can still reach the glass inside the
-  // longest admit window — hulls ride the promote horizon, which exceeds the
-  // collect horizon, so sizing to collect would strand a fast inbound ship
-  // between "scannable" and "admissible". The per-row time-to-glass test below
+  // longest admit window — hulls ride the decode runway, which exceeds both the
+  // collect and promote horizons, so sizing to either would strand a fast inbound
+  // ship between "scannable" and "admissible". The per-row time-to-glass test below
   // decides admission, so the disc leaning wide does not wake receding traffic.
   const scanRadius = radius
-    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_PROMOTE_HORIZON_SECONDS;
+    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
   if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
     queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
     queryFarActors(state, origin, scanRadius, _meshFarScratch);
@@ -228,13 +219,16 @@ function appendNearbyLedgerRows(state, out) {
     }
     const relVx = finite(rec.vel && rec.vel.x) - pvx;
     const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    // Ship-like rows ride the promote horizon: their authored decode is the long pole.
+    // Ship-like rows ride the decode runway: their authored GLB decode is the long
+    // pole, so the collect must surface them early enough for the prefetch kick to
+    // finish before contact. Boundary builds still gate on the tighter promote
+    // horizon inside isEntityRenderRelevant.
     const tEnter = timeToEnterRadiusSeconds(
       relX, relZ, relVx, relVz,
       glassR + finite(rec.radius, 8),
-      TABLE_PROMOTE_HORIZON_SECONDS,
+      TABLE_DECODE_RUNWAY_SECONDS,
     );
-    if (tEnter <= TABLE_PROMOTE_HORIZON_SECONDS) out.push(rec);
+    if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
   }
 }
 

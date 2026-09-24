@@ -124,6 +124,48 @@ test('decode runway sees an inbound far hull and can request promote', () => {
   assert.equal(resolveWorldPresentationEntity(state, rec.id), live);
 });
 
+test('mesh collect surfaces a far hull on the decode runway before its build horizon', () => {
+  const { state, player } = boot();
+  player.vel = { x: 0, z: 0 };
+  // ~7 s to the glass at 160 WU/s — outside the 5.5 s promote horizon a boundary
+  // build waits for, inside the decode runway the authored prefetch rides.
+  const inbound = insertFarActor(state, {
+    id: 601,
+    type: 'ship',
+    pos: { x: 1400, z: 0 },
+    vel: { x: -160, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  const receding = insertFarActor(state, {
+    id: 602,
+    type: 'ship',
+    pos: { x: -1400, z: 0 },
+    vel: { x: -160, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  const collected = collectMeshPresentationEntities(state);
+  assert.ok(collected.some((row) => row.id === inbound.id),
+    'a hull closing inside the decode runway must reach the prefetch kick');
+  assert.ok(!collected.some((row) => row.id === receding.id),
+    'a hull receding at the same range must not be collected');
+  assert.equal(isEntityRenderRelevant(inbound, state), false,
+    'the boundary build still waits for the tighter promote horizon');
+});
+
 test('a mesh already on the lip is kept when the live body is shelved', () => {
   const prefetch = residencyPrefetchRadius();
   const evict = residencyEvictRadius();

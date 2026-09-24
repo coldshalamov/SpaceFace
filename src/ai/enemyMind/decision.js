@@ -1,4 +1,4 @@
-import { add, clamp, compare, distance, dot, finite, mix, point, unit, unitValue } from './math.js';
+import { add, clamp, compare, distance, dot, finite, mix, point, unit, unitValue, validPoint } from './math.js';
 
 export const MIND_VERBS = Object.freeze(['press', 'flank_left', 'flank_right', 'bait', 'cover', 'punish', 'withdraw', 'panic', 'regroup']);
 const EPS = 1e-9;
@@ -133,7 +133,9 @@ export function makePlan(record, choice, obs, peers, now, tuning) {
   const side = choice.verb === 'flank_left' ? -1 : choice.verb === 'flank_right' ? 1 : record.side;
   const axis = point(toward);
   const perpendicular = { x: -axis.z * side, z: axis.x * side };
-  const goal = add(add(obs.pos, axis, -tuning.breakDistance), perpendicular, 32);
+  const goal = (choice.verb === 'withdraw' && choice.reason === 'retreat_order' && validPoint(obs.retreatGoal))
+    ? point(obs.retreatGoal)
+    : add(add(obs.pos, axis, -tuning.breakDistance), perpendicular, 32);
   // A covering ship states its own retreat lane. This is not a centroid command to the wing.
   const fallback = peers.find((peer) => peer.verb === 'cover' && peer.chargeId === obs.id);
   if (fallback && dot(unit(fallback.pos.x - obs.pos.x, fallback.pos.z - obs.pos.z), axis) < 0) {

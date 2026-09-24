@@ -329,6 +329,7 @@ import {
   TABLE_FRAME_SKIRT_WU,
   TABLE_BUILD_URGENT_SECONDS,
   TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_PROMOTE_HORIZON_SECONDS,
   TABLE_RESIDENCY_PREFETCH_SECONDS,
   TABLE_SUBMIT_APPROACH_SECONDS,
@@ -1640,12 +1641,19 @@ function kickDecodeRunwayAssets(owner, entities) {
   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
   const list = Array.isArray(entities) ? entities : [];
-  // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop.
+  const env = renderAdmissionEnv(state);
+  const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
+  const decodeSeconds = (entity) => entityTimeToGlassSeconds(
+    entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
+  // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
+  // the earliest glass deadline: the plan decode lane is serial, so the hull closest
+  // to contact always claims it first.
   const ordered = list.length > 1
     ? list.slice().sort((a, b) => {
       const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
       const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
-      return aw - bw;
+      if (aw !== bw) return aw - bw;
+      return decodeSeconds(a) - decodeSeconds(b);
     })
     : list;
   let started = 0;
@@ -1656,9 +1664,14 @@ function kickDecodeRunwayAssets(owner, entities) {
     if (!meshNeedsAuthoredDecode(owner, entity)) continue;
     if (pending.has(entity.id)) continue;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
-    // once the schedule has named them.
+    // once the schedule has named them. Other hulls earn a start either through the
+    // ordinary admission policy or through the longer decode runway: the authored
+    // GLB decode is the long pole on first contact and the canonical library dedupes
+    // by file, so a hull closing inside the decode window gets its plan warm while
+    // it is still off the glass rather than reaching contact as a resolving marker.
     if (!entityMatchesWaveHullRunway(entity, state)
-        && !isEntityAuthoredUpgradeRelevant(entity, state)) continue;
+        && !isEntityAuthoredUpgradeRelevant(entity, state)
+        && !(decodeSeconds(entity) <= TABLE_DECODE_RUNWAY_SECONDS)) continue;
     pending.add(entity.id);
     started += 1;
     const opts = entityMatchesWaveHullRunway(entity, state)
@@ -9914,6 +9927,7 @@ export const render = {
           this._openingShadowAdmission = null;
           this._openingPreSubmitRefusals = 0;
           state.render.openingFirstVisibleGpuCounts = null;
+          state.render.openingFirstDrawIdentityCensus = null;
           state.render.openingSubmissionPreSubmitValidation = null;
           state.render.openingSubmissionValidation = null;
           state.render.openingSubmissionReady = null;
@@ -13754,6 +13768,10 @@ export const render = {
           this.scene,
           this.state.render.openingSubmissionPlan,
         );
+        // D25: the post-submit receipt check consumes this census to tell queued admissions
+        // from genuinely unrecorded first-draw resources — persist it on state so a deferred
+        // validation frame still sees the baseline.
+        this.state.render.openingFirstDrawIdentityCensus = openingFirstDrawIdentityBefore;
       }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
@@ -13805,6 +13823,7 @@ export const render = {
       const receiptValidation = validateOpeningSubmissionReceipt(
         this.state.render.openingSubmissionReceipt,
         this.renderer,
+        this.state.render.openingFirstDrawIdentityCensus,
       );
       const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
       const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (

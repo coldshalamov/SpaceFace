@@ -98,6 +98,20 @@ async function waitForScreen(id) {
     const rect = el.getBoundingClientRect();
     return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 20 && rect.height > 20;
   }, id, { timeout: 20000 });
+  // Entrance reveals hold the screen's children hidden past the root becoming visible —
+  // gameOver's death slide keeps every child at visibility:hidden for ~400ms in onShow.
+  // Measure only once at least one control is actually visible; a screen that never
+  // populates falls through to the assertions, which still report it as empty.
+  await page.waitForFunction((screenId) => {
+    const el = document.querySelector(`[data-screen="${screenId}"]`);
+    if (!el) return false;
+    return [...el.querySelectorAll('h1, h2, h3, h4, label, button, th, td, p, li')]
+      .some((node) => {
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 && rect.height > 1;
+      });
+  }, id, { timeout: 5000 }).catch(() => {});
 }
 
 async function showScreen(id, viewport) {
@@ -170,7 +184,9 @@ async function assertVisiblePseudoHud() {
   const report = await page.evaluate(() => {
     const hud = document.getElementById('hud');
     const tracker = document.querySelector('.sf-mission-tracker');
-    const title = tracker && tracker.querySelector('.sf-mt-title');
+    // The live objective heading is `.sf-mt-obj`; `.sf-mt-title` is a permanently hidden legacy
+    // node (hud.js keeps titles and GOAL restatements off by design).
+    const title = tracker && tracker.querySelector('.sf-mt-obj');
     const tree = hud && document.createTreeWalker(hud, NodeFilter.SHOW_TEXT);
     const englishLeaks = [];
     let pseudoCount = 0;
@@ -203,6 +219,6 @@ async function assertVisiblePseudoHud() {
   assert.equal(report.horizontalOverflow, false, 'pseudo HUD must not widen the document');
   assert.ok(report.pseudoCount > 0, 'HUD must expose pseudo-localized copy');
   assert.deepEqual(report.englishLeaks, [], 'HUD must not leak visible English DOM copy');
-  assert.match(report.title || '', /^⟦.*⟧$/, 'HUD objective heading must use pseudo locale');
+  assert.match(report.title || '', /^⟦[\s\S]*⟧$/, 'HUD objective heading must use pseudo locale');
   return report;
 }

@@ -18,15 +18,15 @@ const STYLE_ID = 'sf-orrery-stopscale-style';
 const CSS = `
 .orr-stopscale { position:relative; width:var(--orr-scale-w, 460px); height:var(--orr-scale-h, 76px); margin:4px 0 2px; }
 .orr-stopscale > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-stopscale > .orr-stopscale__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-stopscale > .orr-stopscale__row { position:absolute !important; inset:0; width:auto !important; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stopscale > .orr-stopscale__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
 .orr-stoparc { position:relative; width:var(--orr-arc-w, 560px); height:var(--orr-arc-h, 220px); }
 .orr-stoparc > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; width:auto !important; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stoparc > .orr-stoparc__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
 .orr-turntable { position:absolute; inset:0; pointer-events:none; z-index:3; }
 .orr-turntable > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-turntable > .orr-turntable__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-turntable > .orr-turntable__row { position:absolute !important; inset:0; width:auto !important; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-turntable > .orr-turntable__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; pointer-events:auto; }
 .orr-turntable__art { position:absolute; transform:translateX(-50%); pointer-events:none; opacity:1; background:center / 178% auto no-repeat;
   filter:saturate(.75) brightness(.62) drop-shadow(0 10px 8px rgb(0 0 0 / .55)); transition:opacity .22s linear, filter .22s linear; }
@@ -80,6 +80,8 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
   const hasSub = !!row.querySelector('.k-word-sub, .dp-menu__note, .dp-lit__note');
   const H = ruleY + (hasSub ? 56 : 40);
   const pad = 46;
+  const minGap = 22;
+  const minPad = 12;
   const wrap = doc.createElement('div');
   wrap.className = 'orr-stopscale';
   wrap.style.setProperty('--orr-scale-w', `${width}px`);
@@ -91,27 +93,36 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
   row.classList.add('orr-stopscale__row');
 
   const items = () => [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
-  const n = Math.max(1, items().length);
-  const xs = Array.from({ length: n }, (_, i) => (n > 1 ? pad + (i * (width - pad * 2)) / (n - 1) : width / 2));
+  // Stations follow content, not a fixed ruler: the measured word widths set the station
+  // spacing so a longer localization widens the scale instead of clipping its labels (D34).
+  // Before first layout (offsetWidth 0) the caller's width holds an even spread.
+  function stationXs() {
+    const lis = items();
+    const n = Math.max(1, lis.length);
+    const ws = lis.map((li) => Math.max(0, li.offsetWidth || 0));
+    if (ws.some((w) => w <= 0)) {
+      return { W: width, xs: Array.from({ length: n }, (_, i) => (n > 1 ? pad + (i * (width - pad * 2)) / (n - 1) : width / 2)) };
+    }
+    const sumW = ws.reduce((a, w) => a + w, 0);
+    const W = Math.max(width, sumW + minGap * (n - 1) + minPad * 2);
+    const extra = (W - sumW - minPad * 2) / Math.max(1, n - 1);
+    const xs = [];
+    let x = minPad;
+    for (let i = 0; i < n; i++) {
+      x += ws[i] / 2;
+      xs.push(x);
+      x += ws[i] / 2 + (i + 1 < n ? extra : 0);
+    }
+    return { W, xs };
+  }
 
-  // the ruler: a line of light, fine graduations, a heavier tick at each station
-  const x0 = Math.max(2, pad - 26);
-  const x1 = Math.min(width - 2, width - pad + 26);
-  face.appendChild(svg('path', { d: `M ${x0} ${ruleY} L ${x1} ${ruleY}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
-  const fine = [];
-  for (let x = x0 + 4; x < x1; x += 8) fine.push(`M ${x.toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${ruleY + 4}`);
-  face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-  const stationTicks = xs.map((x) => {
-    const t = svg('path', { d: `M ${x.toFixed(1)} ${ruleY - 6} L ${x.toFixed(1)} ${ruleY + 8}`, class: 'orr-core orr-hi', 'stroke-width': 1.5 });
-    face.appendChild(t);
-    return t;
-  });
-  // the index: a short amber blade standing on the ruler, a bead at its foot, a faint bloom
+  let xs = [width / 2];
+  let stationTicks = [];
+  const arts = [];
   const bloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
   const blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
   const beadBloom = svg('circle', { r: 7, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
   const bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
-  face.append(bloom, blade, beadBloom, bead);
   const top = ruleY - 16;
   const paint = (x) => {
     blade.setAttribute('d', `M ${(x - 2).toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${top} L ${(x + 2).toFixed(1)} ${ruleY} Z`);
@@ -119,18 +130,43 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
     for (const b of [bead, beadBloom]) { b.setAttribute('cx', x.toFixed(1)); b.setAttribute('cy', String(ruleY)); }
   };
   const spring = createSpring({ value: xs[0], preset: { k: 300, c: 25 }, onUpdate: paint });
-  paint(xs[0]);
 
-  // seat each button under its station; the art stands above it
-  const arts = [];
+  // the ruler: a line of light, fine graduations, a heavier tick at each station — rebuilt
+  // whenever a relayout moves the stations
+  function layout() {
+    const geo = stationXs();
+    xs = geo.xs;
+    wrap.style.setProperty('--orr-scale-w', `${geo.W}px`);
+    face.setAttribute('viewBox', `0 0 ${geo.W} ${H}`);
+    face.textContent = '';
+    const x0 = Math.max(2, xs[0] - 26);
+    const x1 = Math.min(geo.W - 2, xs[xs.length - 1] + 26);
+    face.appendChild(svg('path', { d: `M ${x0} ${ruleY} L ${x1} ${ruleY}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
+    const fine = [];
+    for (let x = x0 + 4; x < x1; x += 8) fine.push(`M ${x.toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${ruleY + 4}`);
+    face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    stationTicks = xs.map((x) => {
+      const t = svg('path', { d: `M ${x.toFixed(1)} ${ruleY - 6} L ${x.toFixed(1)} ${ruleY + 8}`, class: 'orr-core orr-hi', 'stroke-width': 1.5 });
+      face.appendChild(t);
+      return t;
+    });
+    face.append(bloom, blade, beadBloom, bead);
+    // seat each button under its station; the art stands above it
+    items().forEach((li, i) => {
+      li.style.left = `${xs[i].toFixed(1)}px`;
+      li.style.top = `${ruleY + 14}px`;
+      if (arts[i]) arts[i].style.left = `${xs[i].toFixed(1)}px`;
+    });
+    current = -1;
+    update({ instant: true });
+  }
+
   items().forEach((li, i) => {
-    li.style.left = `${xs[i].toFixed(1)}px`;
-    li.style.top = `${ruleY + 14}px`;
     const action = li.querySelector('button').dataset.action;
     if (hasArt && art[action]) {
       const img = doc.createElement('div');
       img.className = 'orr-stopscale__art';
-      Object.assign(img.style, { left: `${xs[i].toFixed(1)}px`, top: `${(ruleY - 12 - artSize / 2).toFixed(1)}px`, width: `${artSize}px`, height: `${artSize}px`, backgroundImage: `url("${art[action]}")` });
+      Object.assign(img.style, { top: `${(ruleY - 12 - artSize / 2).toFixed(1)}px`, width: `${artSize}px`, height: `${artSize}px`, backgroundImage: `url("${art[action]}")` });
       wrap.insertBefore(img, row);
       arts[i] = img;
     }
@@ -155,11 +191,20 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
     mo = new MutationObserver(() => update());
     mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
   }
-  update({ instant: true });
+  let ro = null;
+  if (typeof ResizeObserver === 'function') {
+    ro = new ResizeObserver(() => layout());
+    ro.observe(row);
+    for (const li of items()) ro.observe(li);
+  }
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => layout());
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => layout());
+  layout();
   return {
     el: wrap,
     update,
-    dispose() { spring.stop(); if (mo) mo.disconnect(); },
+    measure: layout,
+    dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); },
   };
 }
 
@@ -372,7 +417,7 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
   host.appendChild(wrap);
   const items = () => [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
   const n = Math.max(1, items().length);
-  const T = n === 1 ? [0] : Array.from({ length: n }, (_, i) => -56 + (112 * i) / (n - 1));
+  let T = n === 1 ? [0] : Array.from({ length: n }, (_, i) => -56 + (112 * i) / (n - 1));
   let g = null;
   const pt = (t, k = 1) => [g.cx + g.rx * k * Math.sin(t * Math.PI / 180), g.cy + g.ry * k * Math.cos(t * Math.PI / 180)];
   const ring = (t0, t1, steps = 48, k = 1) => {
@@ -411,6 +456,15 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
     const rx = Math.min(ab.width * 0.3, 430);
     const ry = rx * 0.27;
     g = { cx: ab.left - hb.left + ab.width * 0.6, cy: Math.min(ab.top - hb.top + ab.height * 0.8, H - ry - 132), rx, ry };
+    // Long words must not reach past the host: shrink the station fan until each edge label's
+    // measured half-width sits inside the host box (D34 — pseudo-locale hull names clipped).
+    const lis = items();
+    if (lis.length > 1) {
+      const half = (i) => Math.max(0, (lis[i] && lis[i].offsetWidth) || 0) / 2 + 10;
+      const sMax = Math.max(0.1, Math.min(1, (g.cx - half(0)) / rx, (W - g.cx - half(lis.length - 1)) / rx));
+      const spread = Math.min(56, Math.asin(sMax) * 180 / Math.PI);
+      T = Array.from({ length: lis.length }, (_, i) => -spread + (2 * spread * i) / (lis.length - 1));
+    }
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
     track.setAttribute('d', ring(-104, 104));
     trackBloom.setAttribute('d', ring(-104, 104));
@@ -450,7 +504,12 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
     mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
   }
   let ro = null;
-  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => build()); ro.observe(host); }
+  if (typeof ResizeObserver === 'function') {
+    ro = new ResizeObserver(() => build());
+    ro.observe(host);
+    for (const li of items()) ro.observe(li);
+  }
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => build());
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => build());
   build();
   return { el: wrap, update, layout: build, get geometry() { return g; }, dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); } };

@@ -123,8 +123,14 @@ zooming so close the fight leaves the frame.
 3. **Substances.** Common rocks from beige clay to painted industrial stone (`AQ-SURFACE`); NPC
    plumes at parity with the player's.
 
+**Owner ruling (2026-09-23, later):** *"the background isn't really bad per se, I think there's a
+risk of denoising the background into nothing."* The sky, plates, nebulae and starfields stay rich
+and authored. Phase 2 is not a dimming pass: no further hero-body cuts, no plate darkening, no
+starfield or nebula removal. What remains here is the rocks' substance and the weight of the
+effect families (wakes, ring beats) relative to the bodies they mark.
+
 *Wrong:* a global grade; deleting the arena's readability; glow as substance; a photo texture on
-a hull.
+a hull; dimming or thinning the sky to win hierarchy.
 
 ### Phase 3 — THE HIT YOU CAN SEE *(consequence legibility)*
 

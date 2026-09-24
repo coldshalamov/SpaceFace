@@ -1693,13 +1693,8 @@ export const encounterDirector = {
       });
     }
     this.emit('freight:loss', { ...intent, encounterId: live.id });
-    if (intent.news) {
-      this.emit('news:headline', {
-        ...intent.news,
-        headline: null,
-        encounterId: live.id,
-      });
-    }
+    // marketNews.surfaceFreightLoss owns the resolved headline for encounter losses; emitting
+    // news:headline here too would double-publish the same intentId.
     return true;
   },
   dangerImpulse(live, kind, delta) {

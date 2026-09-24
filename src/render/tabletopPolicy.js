@@ -51,6 +51,16 @@ export const TABLE_INBOUND_APPROACH_WU = 600;
  */
 export const TABLE_PROMOTE_HORIZON_SECONDS = TABLE_AUTHORED_DECODE_SECONDS + 1.5;
 
+/**
+ * Longer runway reserved for the entity-level authored GLB prefetch. The plan decode is
+ * the long pole on first contact (serial per part root) while the canonical library
+ * dedupes by file, so it may start a full decode window ahead of the boundary-build
+ * horizon: a hull closing inside this window decodes its authored plan while it is
+ * still comfortably off the glass instead of reaching contact as a resolving marker.
+ */
+export const TABLE_DECODE_RUNWAY_SECONDS = TABLE_PROMOTE_HORIZON_SECONDS
+  + TABLE_AUTHORED_DECODE_SECONDS;
+
 /** Collect horizon for ledger rows that build procedurally once admitted. */
 export const TABLE_COLLECT_HORIZON_SECONDS = TABLE_RESIDENCY_PREFETCH_SECONDS + 1.0;
 
