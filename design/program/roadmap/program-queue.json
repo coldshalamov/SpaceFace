@@ -12132,7 +12132,7 @@
       "priority": 263,
       "title": "Confirm the six and their sentences",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12154,8 +12154,10 @@
         "npm run check:atlas-integrity",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Proposed: Helios Prime (the harbour: law, tutorial, calm), Ceres Belt (the working belt: mining, haulers, the Cathedral), Tethys Junction (the trade hub: traffic, customs, the black market), Vesta Forge (the foundry: furnace hazards, industry), Pallas Drift (the debris reef: wrecks, scavengers, reef pinball), Sker Haven (the outlaw port: the wanted loop's home, corrupt docks). A table per sector: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy. DONE WHEN: Table committed; the owner may swap any of the last three by name."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-153.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-23 (verified 2026-09-24): the confirmation table landed earlier as src/data/sectorWayOfLife.js with test/pq-153-00-six-sectors.test.mjs (3/3 green at HEAD); this tick binds the existing receipt and records the state the receipt already established. Six confirmed ids: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven; the owner may still swap the last three by name."
     },
     {
       "id": "PQ-045.tender-client-materialization",
