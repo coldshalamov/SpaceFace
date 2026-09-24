@@ -86,24 +86,17 @@ function injectStyle() {
 #sf-base .base-mod .meta { display:flex; justify-content:space-between; align-items:center; font-size:12px;
   color:var(--ink-dim); font-family:var(--mono); font-variant-numeric:tabular-nums; }
 #sf-base .base-foot { display:flex; gap:10px; justify-content:flex-end; }
-#sf-base button.sf-btn { width:auto; padding:8px 18px; border-radius:4px; font-weight:600; font-size:12px;
-  letter-spacing:.05em; text-transform:uppercase; cursor:pointer; transition:all .12s ease;
-  border:1px solid var(--panel-edge); background:color-mix(in srgb, var(--panel-2) 80%, transparent); color:var(--ink);
-  display:inline-flex; align-items:center; justify-content:center; }
-#sf-base button.sf-btn:hover:not(:disabled) { border-color:var(--accent); color:#fff;
-  background:color-mix(in srgb, var(--accent) 15%, transparent); box-shadow:0 0 12px color-mix(in srgb, var(--accent) 25%, transparent); transform:translateY(-1px); }
-#sf-base button.sf-btn:active:not(:disabled) { translate:0 1px; transform:none; filter:brightness(0.95); }
-#sf-base button.sf-btn:disabled { opacity:.45; cursor:default; transform:none; box-shadow:none; filter:none; }
-#sf-base .sf-btn-ico { display:inline-flex; align-items:center; margin-right:7px; vertical-align:-2px; }
-#sf-base .sf-btn-ico svg { display:block; }
-#sf-base button.sf-btn--primary { background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent));
-  border:1px solid color-mix(in srgb, var(--accent) 60%, transparent); color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.4); }
-#sf-base button.sf-btn--primary:hover:not(:disabled) { background:color-mix(in srgb, var(--accent) 85%, #fff);
-  box-shadow:0 0 16px color-mix(in srgb, var(--accent) 45%, transparent); transform:translateY(-1px); }
-/* Build buttons set an inline width:100%/padding:6px, which the fascia's left index notch would
-   sit on top of. Drop the notch for those and center the label instead. */
-#sf-base .base-mod button.sf-btn { text-align:center; justify-content:center; }
-#sf-base .base-mod button.sf-btn::before { display:none; }
+#sf-base { --k-signal: var(--dp-lamp); }
+#sf-base .k-word { width:auto; }
+#sf-base .k-word:focus-visible { outline:2px solid var(--dp-lamp) !important; outline-offset:3px; }
+#sf-base .k-word:hover, #sf-base .k-word:active { translate:none; box-shadow:none; filter:none; }
+#sf-base .k-word:disabled { opacity:.45; }
+#sf-base .base-ico { display:inline-flex; align-items:center; margin-right:7px; vertical-align:-2px; }
+#sf-base .base-ico svg { display:block; }
+#sf-base .base-ico { display:inline-flex; align-items:center; margin-right:7px; vertical-align:-2px; }
+#sf-base .base-ico svg { display:block; }
+#sf-base .base-mod .k-word { text-align:center; justify-content:center; width:100%; margin-top:8px; }
+#sf-base .base-mod .k-word::before { display:none; }
 @media (max-width:760px) {
   #sf-base .base-specializations { grid-template-columns:1fr; }
   #sf-base .base-ledger-grid { grid-template-columns:1fr 1fr; }
@@ -433,7 +426,7 @@ export const baseScreen = {
       const foot = document.createElement('div');
       foot.className = 'base-foot';
       const close = document.createElement('button');
-      close.className = 'sf-btn';
+      close.className = 'k-word k-word--emph';
       close.textContent = 'Close';
       close.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
       foot.appendChild(close);
@@ -509,7 +502,7 @@ export const baseScreen = {
       risk.className = 'risk';
       risk.textContent = '△ TRADEOFF · ' + spec.riskLine;
       const btn = document.createElement('button');
-      btn.className = 'sf-btn sf-btn--primary';
+      btn.className = 'k-word k-word--emph k-word--primary';
       btn.textContent = specAction.label;
       btn.disabled = specAction.disabled;
       btn.title = specAction.title;
@@ -580,7 +573,7 @@ export const baseScreen = {
           if (!available) continue;
           const deliver = document.createElement('button');
           const amount = Math.min(10, available);
-          deliver.className = 'sf-btn';
+          deliver.className = 'k-word k-word--emph';
           deliver.textContent = 'Deliver ' + amount + 'u · ' + pretty(goodId.replace(/^cmdty_/, ''));
           deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + pretty(goodId.replace(/^cmdty_/, '')) + ' to ' + body.name);
           deliver.addEventListener('click', () => {
@@ -592,7 +585,7 @@ export const baseScreen = {
       }
       if (ledger.stores && ledger.stores.outputU > 0) {
         const collect = document.createElement('button');
-        collect.className = 'sf-btn sf-btn--primary';
+        collect.className = 'k-word k-word--emph k-word--primary';
         collect.textContent = 'Collect output · ' + ledgerValue(ledger.stores.outputU, 'u');
         collect.setAttribute('aria-label', 'Collect stored output from ' + body.name);
         collect.addEventListener('click', () => {
@@ -615,12 +608,12 @@ export const baseScreen = {
     // teleport button if a teleporter is built
     if (body.modules.includes('mod_teleporter')) {
       const tp = document.createElement('button');
-      tp.className = 'sf-btn sf-btn--primary';
+      tp.className = 'k-word k-word--emph k-word--primary';
       tp.style.width = 'auto';
       tp.style.alignSelf = 'flex-start';
       // Drawn bolt from the shared icon set instead of the ⚡ emoji, which renders as a color
       // emoji glyph on emoji-font platforms and clashes with the menu button material.
-      tp.innerHTML = '<span class="sf-btn-ico">' + icon('energy', 14) + '</span>';
+      tp.innerHTML = '<span class="base-ico">' + icon('energy', 14) + '</span>';
       tp.appendChild(document.createTextNode(
         'Teleport to ' + (claims._stationName ? claims._stationName(body.linkedStationId) : 'linked station')
       ));
@@ -655,7 +648,7 @@ export const baseScreen = {
           + (materialLabel ? ' · ' + escapeHtml(materialLabel) : '') + '</span></div>';
       if (!built) {
         const btn = document.createElement('button');
-        btn.className = 'sf-btn sf-btn--primary';
+        btn.className = 'k-word k-word--emph k-word--primary';
         btn.style.cssText = 'width:100%;margin-top:8px;padding:6px;';
         btn.textContent = buildAction.label;
         btn.disabled = buildAction.disabled;
@@ -683,7 +676,7 @@ export const baseScreen = {
     const foot = document.createElement('div');
     foot.className = 'base-foot';
     const close = document.createElement('button');
-    close.className = 'sf-btn';
+    close.className = 'k-word k-word--emph';
     close.textContent = 'Close';
     close.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
     foot.appendChild(close);

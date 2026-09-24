@@ -2088,11 +2088,14 @@ export const asteroidScreen = {
         box.appendChild(row);
       }
       const closeBtn = document.createElement('button');
-      // The report's one verb is the kit's primary key. This modal mounts on #ui-root, OUTSIDE
-      // `.ast-screen`, so styles/asteroid-ops.css scopes its kit overrides to `.ast-summary-box`
-      // as well — without that pair the key would render in the kit's display face and caps.
-      closeBtn.className = 'sf-btn fh-key fh-key--primary';
-      closeBtn.textContent = 'Acknowledge';
+      closeBtn.type = 'button';
+      // The report's one verb is the kit's primary key. It mounts on #ui-root, outside
+      // `.ast-screen`, so the old summary chrome does not paint it.
+      closeBtn.className = 'fh-key fh-key--primary';
+      closeBtn.textContent = 'Close extraction report';
+      closeBtn.setAttribute('aria-label', 'Close extraction report');
+      closeBtn.style.alignSelf = 'center';
+      closeBtn.style.minWidth = '10rem';
       const close = () => {
         modal.classList.remove('active');
         setTimeout(() => modal.remove(), 250);
@@ -2100,14 +2103,20 @@ export const asteroidScreen = {
       closeBtn.addEventListener('click', close);
       modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
       modal.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { e.preventDefault(); close(); }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
         if (e.key === 'Tab') { e.preventDefault(); closeBtn.focus(); }
       });
       box.appendChild(closeBtn);
       modal.appendChild(box);
+      const focusStyle = document.createElement('style');
+      focusStyle.textContent = '.ast-summary-box .fh-key:focus-visible{outline:2px solid var(--dp-lamp) !important;outline-offset:3px}'
+        + '.ast-summary-box .fh-key:is(:hover,:focus-visible,:active){color:#1a1206;translate:none;box-shadow:none;filter:none}';
+      modal.appendChild(focusStyle);
       root.appendChild(modal);
-      setTimeout(() => modal.classList.add('active'), 20);
-      requestAnimationFrame(() => closeBtn.focus());
+      setTimeout(() => {
+        modal.classList.add('active');
+        try { closeBtn.focus(); } catch { /* the report still closes from the pointer */ }
+      }, 20);
     }
 
     this._startSession = startSession;

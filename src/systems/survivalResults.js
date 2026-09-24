@@ -305,9 +305,12 @@ export function storyMomentsFor(summary = {}) {
   }
   const stunts = Array.isArray(input.stuntKills) ? input.stuntKills : [];
   if (stunts.length > 0) {
-    const topStunt = stunts[0];
-    const stuntName = topStunt.name || topStunt.trickId || 'Stunt';
-    moments.push(`Stunt kill: ${stuntName}`);
+    const names = [];
+    for (const stunt of stunts) {
+      const stuntName = stunt && (stunt.name || stunt.trickId);
+      if (stuntName && !names.includes(stuntName)) names.push(stuntName);
+    }
+    if (names.length) moments.push(`Stunt kills: ${names.join(', ')}`);
   }
   if (Number.isFinite(input.firstKillInS) && input.firstKillInS >= 0) {
     const seconds = Math.round(input.firstKillInS * 10) / 10;
@@ -509,6 +512,9 @@ export const survivalResults = {
       || (Array.isArray(trick.victimLives) && trick.victimLives.some((v) => v && v.dead))
     );
     if (!isKill) return;
+    if (trick.targetId != null) {
+      this._stuntKills = this._stuntKills.filter((row) => !(row && row.provisional === true && row.victimId === trick.targetId));
+    }
     const name = trick.name || (trick.trickId && TRICK_DEFINITIONS[trick.trickId]?.name) || trick.trickId || 'Stunt';
     const existingIndex = trick.episodeId != null
       ? this._stuntKills.findIndex((s) => s.episodeId === trick.episodeId)
@@ -559,42 +565,45 @@ export const survivalResults = {
         simTime: this._simNow(),
       });
     } else if (cause === 'terrain_collision' || cause === 'shove') {
-      this._stuntKills.push({
+      this._pushProvisionalStunt(payload.id, {
         name: 'Rock Discovery',
         trickId: 'rock_discovery',
         family: 'impact',
         points: 50,
-        tick: this._tickNow(),
-        simTime: this._simNow(),
       });
     } else if (cause === 'ship_collision' || cause === 'slam') {
-      this._stuntKills.push({
+      this._pushProvisionalStunt(payload.id, {
         name: 'Wrecking Ball',
         trickId: 'wrecking_ball',
         family: 'tether',
         points: 90,
-        tick: this._tickNow(),
-        simTime: this._simNow(),
       });
     } else if (cause === 'throw') {
-      this._stuntKills.push({
+      this._pushProvisionalStunt(payload.id, {
         name: 'Bolas',
         trickId: 'bolas',
         family: 'tether',
         points: 90,
-        tick: this._tickNow(),
-        simTime: this._simNow(),
       });
     } else if (cause === 'field') {
-      this._stuntKills.push({
+      this._pushProvisionalStunt(payload.id, {
         name: 'Well Golf',
         trickId: 'well_golf',
         family: 'field',
         points: 140,
-        tick: this._tickNow(),
-        simTime: this._simNow(),
       });
     }
+  },
+
+  _pushProvisionalStunt(victimId, fields) {
+    if (victimId != null && this._stuntKills.some((row) => row && row.victimId === victimId && row.provisional !== true)) return;
+    this._stuntKills.push({
+      ...fields,
+      tick: this._tickNow(),
+      simTime: this._simNow(),
+      provisional: true,
+      victimId: victimId ?? null,
+    });
   },
 
   _onWaveCleared(payload) {

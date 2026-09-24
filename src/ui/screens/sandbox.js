@@ -384,7 +384,7 @@ export const sandboxScreen = {
     seedInput.spellcheck = false;
     seedInput.value = '1';
     seedInput.className = 'sf-fig';
-    const rollBtn = el('button', 'sf-btn', COMBAT_LAB_SURFACE.rollLabel);
+    const rollBtn = el('button', 'k-word k-word--emph', COMBAT_LAB_SURFACE.rollLabel);
     rollBtn.type = 'button';
     rollBtn.setAttribute('aria-label', COMBAT_LAB_SURFACE.rollLabel + ' seed');
     seedRow.appendChild(seedInput);
@@ -425,9 +425,9 @@ export const sandboxScreen = {
     labForm.appendChild(digestLine);
 
     const labActions = el('div', 'sf-sandbox-lab-actions');
-    const labLaunch = el('button', 'sf-btn sf-btn--primary', COMBAT_LAB_SURFACE.launchLabel);
+    const labLaunch = el('button', 'k-word k-word--emph k-word--primary', COMBAT_LAB_SURFACE.launchLabel);
     labLaunch.type = 'button';
-    const labRelaunch = el('button', 'sf-btn', COMBAT_LAB_SURFACE.relaunchLabel);
+    const labRelaunch = el('button', 'k-word k-word--emph', COMBAT_LAB_SURFACE.relaunchLabel);
     labRelaunch.type = 'button';
     labRelaunch.disabled = !lastCombatLabSetup;
     labActions.appendChild(labLaunch);
@@ -669,7 +669,7 @@ export const sandboxScreen = {
     };
 
     // --- Launch ---
-    const launch = el('button', 'sf-btn sf-btn--primary sf-sandbox-launch', 'Launch with these settings');
+    const launch = el('button', 'k-word k-word--emph k-word--primary sf-sandbox-launch', 'Launch with these settings');
     launch.type = 'button';
     launch.addEventListener('click', () => {
       const config = {
@@ -703,7 +703,7 @@ export const sandboxScreen = {
       o.textContent = w.name + ' — ' + w.size + ' ' + w.damageType + ' (dps ' + (w.dps || '?') + ')';
       weaponSel.appendChild(o);
     }
-    const giveWeaponBtn = el('button', 'sf-btn', 'Give & Equip');
+    const giveWeaponBtn = el('button', 'k-word k-word--emph', 'Give & Equip');
     giveWeaponBtn.type = 'button';
     giveWeaponBtn.addEventListener('click', () => {
       if (weaponSel.value) giveAndEquipItem(sandboxScreen._ctx, weaponSel.value);
@@ -717,7 +717,7 @@ export const sandboxScreen = {
       o.textContent = m.name + ' — ' + m.slotType + ' ' + m.size;
       moduleSel.appendChild(o);
     }
-    const giveModuleBtn = el('button', 'sf-btn', 'Give & Equip');
+    const giveModuleBtn = el('button', 'k-word k-word--emph', 'Give & Equip');
     giveModuleBtn.type = 'button';
     giveModuleBtn.addEventListener('click', () => {
       if (moduleSel.value) giveAndEquipItem(sandboxScreen._ctx, moduleSel.value);
@@ -732,14 +732,14 @@ export const sandboxScreen = {
       enemySel.appendChild(o);
     }
     enemySel.value = 'wasp_swarmer';
-    const spawnEnemyBtn = el('button', 'sf-btn', 'Spawn 1');
+    const spawnEnemyBtn = el('button', 'k-word k-word--emph', 'Spawn 1');
     spawnEnemyBtn.type = 'button';
     spawnEnemyBtn.addEventListener('click', () => {
       if (enemySel.value) spawnEnemyNow(sandboxScreen._ctx, enemySel.value, 1);
     });
 
     // Target drones button (no picker — fixed inert drone)
-    const spawnTargetsBtn = el('button', 'sf-btn', 'Spawn 3 target drones');
+    const spawnTargetsBtn = el('button', 'k-word k-word--emph', 'Spawn 3 target drones');
     spawnTargetsBtn.type = 'button';
     spawnTargetsBtn.addEventListener('click', () => {
       spawnTargetsNow(sandboxScreen._ctx, 3);
@@ -758,7 +758,7 @@ export const sandboxScreen = {
     sandboxScreen._liveEls = [weaponSel, moduleSel, enemySel, giveWeaponBtn, giveModuleBtn, spawnEnemyBtn, spawnTargetsBtn];
 
     // --- Back ---
-    const back = el('button', 'sf-btn', 'Back');
+    const back = el('button', 'k-word k-word--emph', 'Back');
     back.type = 'button';
     back.addEventListener('click', () => {
       const mgr = getManager(ctx);

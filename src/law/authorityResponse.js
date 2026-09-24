@@ -38,6 +38,8 @@ export function rankLawfulResponders(candidates, anchor, {
 export const RESERVE_STATION_LAUNCH_CLEARANCE_WU = 40;
 export const RESERVE_STATION_LAUNCH_MIN_LEG_WU = 150;
 
+export const WITNESS_FRAME_HALF_WU = 126;
+
 export function reserveArrivalPoint({
   anchor,
   aggressorPos,
@@ -45,6 +47,7 @@ export function reserveArrivalPoint({
   seed = 1,
   incidentId = 'law:incident',
   station = null,
+  frameHalfWu = null,
 } = {}) {
   const origin = finitePoint(anchor);
   const aggressor = finitePoint(aggressorPos, origin);
@@ -69,17 +72,32 @@ export function reserveArrivalPoint({
       const near = pointAt(stationOrigin, toward, launch);
       const far = pointAt(stationOrigin, toward + Math.PI, launch);
       const minLeg = RESERVE_STATION_LAUNCH_MIN_LEG_WU;
-      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(near);
-      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(far);
+      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(near, aggressor, frameHalfWu));
+      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(far, aggressor, frameHalfWu));
     }
   }
   const radius = Math.max(2000, Math.max(0, Number(jurisdictionRadius) || 0) + 700);
   const angle = hash32(seed, incidentId, 'law_reserve_arrival') / 0xffffffff * Math.PI * 2;
   const first = pointAt(origin, angle, radius);
   const opposite = pointAt(origin, angle + Math.PI, radius);
-  return Object.freeze(distanceSq(first, aggressor) >= 900 * 900
-    ? first
-    : opposite);
+  const picked = distanceSq(first, aggressor) >= 900 * 900 ? first : opposite;
+  return Object.freeze(pullIntoFrame(picked, aggressor, frameHalfWu));
+}
+
+function pullIntoFrame(point, aggressor, frameHalfWu) {
+  const half = Number(frameHalfWu);
+  if (!(half > 0)) return point;
+  const dx = point.x - aggressor.x;
+  const dz = point.z - aggressor.z;
+  const dist = Math.hypot(dx, dz);
+  const keepOff = 40;
+  if (dist <= half && dist >= keepOff) return point;
+  // The chase picture is shorter than the 126 WU screen constant along the
+  // near edge, so the visible ring sits at half of that constant.
+  const edge = Math.max(keepOff, Math.min(half * 0.5, half - 16));
+  if (dist < 1e-6) return { x: aggressor.x + edge, z: aggressor.z };
+  const scale = edge / dist;
+  return { x: aggressor.x + dx * scale, z: aggressor.z + dz * scale };
 }
 
 function pointAt(origin, angle, radius) {

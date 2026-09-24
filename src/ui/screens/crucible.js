@@ -1875,8 +1875,8 @@ export function featDiagram(result) {
       return {
         kind: 'stunt',
         text: pts > 0
-          ? `Best stunt: ${distinct.join(' → ')} · ${pts} banked`
-          : `Best stunt: ${distinct.join(' → ')}`,
+          ? `Stunt kills: ${distinct.join(', ')} · ${pts} banked`
+          : `Stunt kills: ${distinct.join(', ')}`,
       };
     }
   }

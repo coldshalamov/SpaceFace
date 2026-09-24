@@ -3008,40 +3008,12 @@ export function createHud(ctx, alerts) {
     flex-direction: column;
     gap: 10px;
   }
-  .sf-btn-fx {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: bold;
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s ease;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .sf-btn-route {
-    background: var(--visor-cyan-dim, color-mix(in srgb, var(--visor-cyan) 30%, transparent));
-    border: 1px solid var(--visor-cyan);
-    color: var(--visor-cyan);
-  }
-  .sf-btn-route:hover:not(:disabled) {
-    background: var(--visor-cyan);
-    color: var(--panel);
-  }
-  .sf-btn-jettison {
-    background: color-mix(in srgb, var(--danger) 15%, transparent);
-    border: 1px solid var(--danger);
-    color: var(--danger);
-  }
-  .sf-btn-jettison:hover:not(:disabled) {
-    background: var(--danger);
-    color: var(--ink);
-  }
-  .sf-btn-fx:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+  .sf-ins-actions { --k-signal: var(--dp-lamp); }
+  .sf-ins-actions .k-word { width: 100%; box-sizing: border-box; }
+  .sf-ins-actions .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
+  .sf-ins-actions .k-word:hover,
+  .sf-ins-actions .k-word:active { translate: none; box-shadow: none; filter: none; }
+  .sf-ins-actions .k-word:disabled { opacity: 1; }
   .sf-cargo-ledger {
     flex: 1;
     display: flex;
@@ -3186,8 +3158,8 @@ export function createHud(ctx, alerts) {
             <p class="sf-ins-buyer">Best Buyer: None</p>
           </div>
           <div class="sf-ins-actions">
-            <button class="sf-btn-route sf-btn-fx" type="button">SET COURSE</button>
-            <button class="sf-btn-jettison sf-btn-fx" type="button">JETTISON</button>
+            <button class="k-word k-word--emph k-word--primary sf-btn-route" type="button">Set course</button>
+            <button class="k-word k-word--danger sf-btn-jettison" type="button">Jettison</button>
           </div>
         </div>
       </div>
