@@ -201,7 +201,11 @@ test('a newer transition queued during restore error runs once and wins over rol
   const before = liveSnapshot(harness.state);
   const ok = harness.save.loadEnvelope(targetEnvelope(harness), 'target-slot');
 
-  assert.equal(ok, false, 'the superseded failing restore must not report target success');
+  // The destructive load did fail, but its error was superseded by a drained newer route, so
+  // the request reports the supersession (true), not a load failure — the contract introduced
+  // by 5672c0f1d ("there is no failure to report"). save:loaded for the dead target must still
+  // never fire; that is asserted separately below.
+  assert.equal(ok, true, 'a superseded failing restore reports the drained newer route');
   assert.equal(transitionRuns, 1, 'the newer queued transition must run exactly once');
   assert.equal(harness.state.fixtureRoute, 'newer-route', 'the newer route must remain authoritative');
   assert.equal(harness.state.mode, 'loading', 'the newer transition result must not be rolled back');
