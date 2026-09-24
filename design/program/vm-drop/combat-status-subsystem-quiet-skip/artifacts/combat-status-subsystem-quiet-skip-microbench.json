@@ -1,0 +1,60 @@
+{
+  "primary": "quiet-48-combatant-status-subsystem-prephysics",
+  "secondary": {
+    "statusAdvanceEmpty": "see combat-status-advance-quiet-skip-microbench.json",
+    "subsystemPendingSkip": "see combat-subsystem-pending-quiet-skip-microbench.json"
+  },
+  "iters": 50000,
+  "combatants": 48,
+  "subsystemsPer": 6,
+  "pairs": [
+    {
+      "beforeMs": 222.996,
+      "afterMs": 33.672,
+      "speedup": 6.623
+    },
+    {
+      "beforeMs": 282.252,
+      "afterMs": 50.491,
+      "speedup": 5.59
+    },
+    {
+      "beforeMs": 214.907,
+      "afterMs": 38.498,
+      "speedup": 5.582
+    },
+    {
+      "beforeMs": 221.189,
+      "afterMs": 38.148,
+      "speedup": 5.798
+    },
+    {
+      "beforeMs": 218.492,
+      "afterMs": 33.249,
+      "speedup": 6.571
+    },
+    {
+      "beforeMs": 207.068,
+      "afterMs": 34.438,
+      "speedup": 6.013
+    },
+    {
+      "beforeMs": 225.569,
+      "afterMs": 34.833,
+      "speedup": 6.476
+    },
+    {
+      "beforeMs": 215.335,
+      "afterMs": 32.494,
+      "speedup": 6.627
+    },
+    {
+      "beforeMs": 210.943,
+      "afterMs": 32.99,
+      "speedup": 6.394
+    }
+  ],
+  "medianSpeedup": 6.394,
+  "minSpeedup": 5.582,
+  "maxSpeedup": 6.627
+}

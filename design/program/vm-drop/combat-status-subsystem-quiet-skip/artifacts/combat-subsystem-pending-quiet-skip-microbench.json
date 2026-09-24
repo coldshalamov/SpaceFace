@@ -1,0 +1,53 @@
+{
+  "primary": "quiet-48-combatant-subsystem-pending-skip",
+  "pairs": [
+    {
+      "beforeMs": 249.837,
+      "afterMs": 20.553,
+      "speedup": 12.156
+    },
+    {
+      "beforeMs": 248.802,
+      "afterMs": 22.245,
+      "speedup": 11.184
+    },
+    {
+      "beforeMs": 225.769,
+      "afterMs": 21.092,
+      "speedup": 10.704
+    },
+    {
+      "beforeMs": 228.672,
+      "afterMs": 27.712,
+      "speedup": 8.252
+    },
+    {
+      "beforeMs": 218.525,
+      "afterMs": 21.447,
+      "speedup": 10.189
+    },
+    {
+      "beforeMs": 253.445,
+      "afterMs": 21.456,
+      "speedup": 11.812
+    },
+    {
+      "beforeMs": 218.022,
+      "afterMs": 22.52,
+      "speedup": 9.681
+    },
+    {
+      "beforeMs": 218.439,
+      "afterMs": 21.744,
+      "speedup": 10.046
+    },
+    {
+      "beforeMs": 242.526,
+      "afterMs": 20.092,
+      "speedup": 12.071
+    }
+  ],
+  "medianSpeedup": 10.704,
+  "minSpeedup": 8.252,
+  "maxSpeedup": 12.156
+}

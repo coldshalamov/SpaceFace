@@ -1,0 +1,298 @@
+From b72a29f0612e9f0266200bbe8607121a728d5aab Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:59:14 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-skip=20empty=20status=20a?=
+ =?UTF-8?q?dvance=20+=20pending=20subsystem=20walk=20(~6.4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet combat prePhysics residual after #83: statuses.advance still paid
+Object.keys().sort() twice and a fresh due[] on empty combatants, and
+applyPendingSubsystemTransitions walked every subsystem id looking for
+pendingTransition. Early-out empty status path (for-in + dueScratch);
+count pendingSubsystemTransitionCount so quiet applyPending skips the walk.
+Soft-GPU fps not claimed.
+---
+ src/combat/runtime.js                |  5 +-
+ src/combat/statuses.js               | 85 ++++++++++++++++++----------
+ src/combat/subsystems.js             | 57 ++++++++++++-------
+ test/seam-combat-subsystems.test.mjs |  6 +-
+ 4 files changed, 98 insertions(+), 55 deletions(-)
+
+diff --git a/src/combat/runtime.js b/src/combat/runtime.js
+index 5376f26a6..225cc645e 100644
+--- a/src/combat/runtime.js
++++ b/src/combat/runtime.js
+@@ -151,6 +151,7 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
+     subsystems: {},
+     statuses: {},
+     pendingStatuses: [],
++    pendingSubsystemTransitionCount: 0,
+     sockets: {},
+     revision: previous && Number.isInteger(previous.revision) ? previous.revision + 1 : 1,
+   };
+@@ -161,13 +162,15 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
+     const old = previous && previous.subsystems && previous.subsystems[subsystemId];
+     const maxHealth = Math.max(0, Number(def.health) || 0);
+     const oldFraction = old && old.maxHealth > 0 ? clamp(old.health / old.maxHealth, 0, 1) : 1;
++    const pendingTransition = old && old.pendingTransition ? cloneData(old.pendingTransition) : null;
++    if (pendingTransition) runtime.pendingSubsystemTransitionCount += 1;
+     runtime.subsystems[subsystemId] = {
+       id: subsystemId,
+       health: maxHealth * oldFraction,
+       maxHealth,
+       destroyed: old ? !!old.destroyed : false,
+       effectiveDisabled: old ? !!old.effectiveDisabled : false,
+-      pendingTransition: old && old.pendingTransition ? cloneData(old.pendingTransition) : null,
++      pendingTransition,
+       lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
+     };
+   }
+diff --git a/src/combat/statuses.js b/src/combat/statuses.js
+index edbae1ff0..67aade1f2 100644
+--- a/src/combat/statuses.js
++++ b/src/combat/statuses.js
+@@ -43,49 +43,72 @@ export function createStatusService(context) {
+     return { ok: true };
+   }
+ 
++  // Quiet combatants dominate prePhysics: empty statuses + empty pending still paid
++  // Object.keys().sort() twice and a fresh due[] every tick. for-in emptiness is O(1) on {}.
++  function hasActiveStatusKeys(statuses) {
++    if (!statuses) return false;
++    for (const _ in statuses) return true;
++    return false;
++  }
++
++  const dueScratch = [];
++
+   function advance(targetEntity, runtime, routeDamage) {
+     const tick = state.tick >>> 0;
++    const statuses = runtime.statuses || (runtime.statuses = {});
++    const pending = Array.isArray(runtime.pendingStatuses)
++      ? runtime.pendingStatuses
++      : (runtime.pendingStatuses = []);
+     let changed = runtime.statusModifiersDirty === true;
++    // Quiet empty path: no dirty flag, no pending apply, no active keys → return.
++    if (!changed && pending.length === 0 && !hasActiveStatusKeys(statuses)) {
++      return false;
++    }
+     if (changed) delete runtime.statusModifiersDirty;
+ 
+-    for (const statusId of Object.keys(runtime.statuses || {}).sort()) {
+-      const active = runtime.statuses[statusId];
+-      if (active.expiresTick > tick) continue;
+-      delete runtime.statuses[statusId];
+-      changed = true;
+-      appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
+-      if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId });
++    if (hasActiveStatusKeys(statuses)) {
++      for (const statusId of Object.keys(statuses).sort()) {
++        const active = statuses[statusId];
++        if (active.expiresTick > tick) continue;
++        delete statuses[statusId];
++        changed = true;
++        appendCombatTrace(state.combat, tick, 'status.expired', { targetId: targetEntity.id, statusId });
++        if (bus) bus.emit('combat:statusExpired', { targetId: targetEntity.id, statusId });
++      }
+     }
+ 
+-    const due = [];
+-    while (runtime.pendingStatuses.length && runtime.pendingStatuses[0].applyTick <= tick) due.push(runtime.pendingStatuses.shift());
+-    for (const pending of due) {
+-      if (applyActive(targetEntity, runtime, pending)) changed = true;
++    const due = dueScratch;
++    due.length = 0;
++    while (pending.length && pending[0].applyTick <= tick) due.push(pending.shift());
++    for (let i = 0; i < due.length; i++) {
++      if (applyActive(targetEntity, runtime, due[i])) changed = true;
+     }
+ 
+-    for (const statusId of Object.keys(runtime.statuses || {}).sort()) {
+-      const active = runtime.statuses[statusId];
+-      const def = catalog.statuses.get(statusId);
+-      if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
+-      while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
+-        if (typeof routeDamage === 'function') {
+-          const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
+-          packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
+-          packet.source = { statusId, attackerId: active.attackerId };
+-          routeDamage({
+-            attackerId: active.attackerId,
++    if (hasActiveStatusKeys(statuses)) {
++      for (const statusId of Object.keys(statuses).sort()) {
++        const active = statuses[statusId];
++        const def = catalog.statuses.get(statusId);
++        if (!active || !def || !def.periodic || !(def.periodic.everyTicks > 0)) continue;
++        while (active.nextPeriodicTick != null && active.nextPeriodicTick <= tick && active.expiresTick > active.nextPeriodicTick) {
++          if (typeof routeDamage === 'function') {
++            const packet = scalePacket(def.periodic.packet, Math.max(1, active.stacks || 1));
++            packet.flags = { ...(packet.flags || {}), ignoreFriendlyFire: true, statusPeriodic: true };
++            packet.source = { statusId, attackerId: active.attackerId };
++            routeDamage({
++              attackerId: active.attackerId,
++              targetId: targetEntity.id,
++              packet,
++              origin: { kind: 'status', id: statusId },
++            });
++          }
++          appendCombatTrace(state.combat, active.nextPeriodicTick, 'status.periodic', {
++            actorId: active.attackerId,
+             targetId: targetEntity.id,
+-            packet,
+-            origin: { kind: 'status', id: statusId },
++            statusId,
++            stacks: active.stacks,
+           });
++          active.nextPeriodicTick += def.periodic.everyTicks;
+         }
+-        appendCombatTrace(state.combat, active.nextPeriodicTick, 'status.periodic', {
+-          actorId: active.attackerId,
+-          targetId: targetEntity.id,
+-          statusId,
+-          stacks: active.stacks,
+-        });
+-        active.nextPeriodicTick += def.periodic.everyTicks;
+       }
+     }
+     return changed;
+diff --git a/src/combat/subsystems.js b/src/combat/subsystems.js
+index a003f42b3..55bd9f6f0 100644
+--- a/src/combat/subsystems.js
++++ b/src/combat/subsystems.js
+@@ -18,23 +18,33 @@ const EMPTY_ID_LIST = [];
+ export function applyPendingSubsystemTransitions(context, entity, runtime) {
+   const { state, catalog, attachments } = context;
+   const tick = state.tick >>> 0;
++  // Quiet combatants: no pending transitions and no dirty modifier flag → skip the
++  // sorted-subsystem walk entirely (profile: applyPending under combat prePhysics).
++  const hasPending = (runtime.pendingSubsystemTransitionCount | 0) > 0;
++  const dirty = runtime.statusModifiersDirty === true;
++  if (!hasPending && !dirty) return false;
+   let changed = false;
+   let transitionAttackerId = null;
+-  for (const subsystemId of sortedSubsystemIds(runtime)) {
+-    const subsystem = runtime.subsystems[subsystemId];
+-    const pending = subsystem.pendingTransition;
+-    if (!pending || pending.atTick > tick) continue;
+-    subsystem.pendingTransition = null;
+-    if (subsystem.destroyed !== !!pending.destroyed) {
+-      subsystem.destroyed = !!pending.destroyed;
+-      changed = true;
+-      if (pending.destroyed && pending.attackerId != null) transitionAttackerId = pending.attackerId;
+-      appendCombatTrace(state.combat, tick, subsystem.destroyed ? 'subsystem.destroyed' : 'subsystem.repaired', {
+-        targetId: entity.id,
+-        subsystemId,
+-        reason: pending.reason || null,
+-        health: subsystem.health,
+-      });
++  if (hasPending) {
++    for (const subsystemId of sortedSubsystemIds(runtime)) {
++      const subsystem = runtime.subsystems[subsystemId];
++      const pending = subsystem.pendingTransition;
++      if (!pending || pending.atTick > tick) continue;
++      subsystem.pendingTransition = null;
++      if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
++        runtime.pendingSubsystemTransitionCount -= 1;
++      }
++      if (subsystem.destroyed !== !!pending.destroyed) {
++        subsystem.destroyed = !!pending.destroyed;
++        changed = true;
++        if (pending.destroyed && pending.attackerId != null) transitionAttackerId = pending.attackerId;
++        appendCombatTrace(state.combat, tick, subsystem.destroyed ? 'subsystem.destroyed' : 'subsystem.repaired', {
++          targetId: entity.id,
++          subsystemId,
++          reason: pending.reason || null,
++          health: subsystem.health,
++        });
++      }
+     }
+   }
+   if (changed) {
+@@ -42,7 +52,7 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
+     recomputeCombatantModifiers(context, entity, runtime, attachments);
+     delete runtime.transitionAttackerId;
+   }
+-  else if (runtime.statusModifiersDirty === true) {
++  else if (dirty) {
+     // Statuses cleared outside advance() still change modifier inputs; statuses.advance would
+     // recompute after consuming this flag anyway, so derive here once instead.
+     delete runtime.statusModifiersDirty;
+@@ -139,7 +149,7 @@ export function damageSubsystem(context, entity, runtime, subsystemId, incomingD
+   const overflow = Math.max(0, incomingDamage - rawConsumed);
+ 
+   if (before > 0 && subsystem.health <= 0) {
+-    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero', context.currentAttackerId);
++    scheduleSubsystemTransition(subsystem, state.tick + 1, true, 'health_zero', context.currentAttackerId, runtime);
+   }
+   appendCombatTrace(state.combat, state.tick, 'subsystem.damage', {
+     attackerId: context.currentAttackerId == null ? null : context.currentAttackerId,
+@@ -162,7 +172,7 @@ export function repairSubsystem(context, entity, runtime, subsystemId, amount, r
+   subsystem.health = Math.min(subsystem.maxHealth, subsystem.health + amount);
+   const applied = subsystem.health - before;
+   if (subsystem.destroyed && subsystem.health > 0) {
+-    scheduleSubsystemTransition(subsystem, context.state.tick + 1, false, reason);
++    scheduleSubsystemTransition(subsystem, context.state.tick + 1, false, reason, null, runtime);
+   }
+   appendCombatTrace(context.state.combat, context.state.tick, 'subsystem.repair', {
+     targetId: entity.id,
+@@ -184,7 +194,7 @@ export function actionBlockedByCombatant(runtime, actionDef) {
+   return null;
+ }
+ 
+-export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason, attackerId = null) {
++export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason, attackerId = null, runtime = null) {
+   const next = {
+     atTick: Math.max(0, Math.floor(atTick)),
+     destroyed: !!destroyed,
+@@ -192,7 +202,14 @@ export function scheduleSubsystemTransition(subsystem, atTick, destroyed, reason
+     attackerId: attackerId == null ? null : attackerId,
+   };
+   const current = subsystem.pendingTransition;
+-  if (!current || next.atTick < current.atTick || (next.atTick === current.atTick && next.destroyed)) subsystem.pendingTransition = next;
++  if (!current || next.atTick < current.atTick || (next.atTick === current.atTick && next.destroyed)) {
++    const wasPending = !!current;
++    subsystem.pendingTransition = next;
++    // Count only freshly armed pendings so quiet applyPending can skip the walk.
++    if (!wasPending && runtime && typeof runtime === 'object') {
++      runtime.pendingSubsystemTransitionCount = (runtime.pendingSubsystemTransitionCount | 0) + 1;
++    }
++  }
+ }
+ 
+ function applyEffects(runtime, blocked, effects, stacks) {
+diff --git a/test/seam-combat-subsystems.test.mjs b/test/seam-combat-subsystems.test.mjs
+index 64bed4837..a9d481256 100644
+--- a/test/seam-combat-subsystems.test.mjs
++++ b/test/seam-combat-subsystems.test.mjs
+@@ -31,7 +31,7 @@ test('destroying power disables dependent drive and weapons', () => {
+     assert.equal(runtime.capabilities.drive, true);
+     assert.equal(runtime.capabilities.weapon, true);
+     assert.equal(entityWeaponBlocked(context.state, entity), false);
+-    scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1);
++    scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1, runtime);
+     const changed = applyPendingSubsystemTransitions(context, entity, runtime);
+     assert.equal(changed, true);
+     assert.equal(runtime.subsystems.subsystem_power.destroyed, true);
+@@ -51,7 +51,7 @@ test('a lone weapon kill does not take the drive offline', () => {
+   const { entity, runtime, context, bus } = bootShip();
+   try {
+     assert.equal(entityWeaponBlocked(context.state, entity), false);
+-    scheduleSubsystemTransition(runtime.subsystems.subsystem_weapon, context.state.tick, true, 'gun_hit', 1);
++    scheduleSubsystemTransition(runtime.subsystems.subsystem_weapon, context.state.tick, true, 'gun_hit', 1, runtime);
+     applyPendingSubsystemTransitions(context, entity, runtime);
+     assert.equal(runtime.subsystems.subsystem_weapon.destroyed, true);
+     assert.equal(runtime.capabilities.weapon, false);
+@@ -67,7 +67,7 @@ test('sensor destruction blocks weapon bursts through derived runtime capabiliti
+   const { entity, runtime, context, bus } = bootShip();
+   try {
+     assert.equal(entityWeaponBlocked(context.state, entity), false);
+-    scheduleSubsystemTransition(runtime.subsystems.subsystem_sensor, context.state.tick, true, 'sensor_hit', 1);
++    scheduleSubsystemTransition(runtime.subsystems.subsystem_sensor, context.state.tick, true, 'sensor_hit', 1, runtime);
+     applyPendingSubsystemTransitions(context, entity, runtime);
+     assert.equal(runtime.subsystems.subsystem_sensor.destroyed, true);
+     assert.equal(runtime.capabilities.sensor, false);
+-- 
+2.47.3
+
