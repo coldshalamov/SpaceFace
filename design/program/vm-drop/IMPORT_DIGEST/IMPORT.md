@@ -1,6 +1,6 @@
-# IMPORT — DIGEST 20260924bq
+# IMPORT — DIGEST 20260924br
 
 Owner applies vm-drop packages in numeric order. This digest tip records
-hillclimb through **#110 `law-heat-telegraph-quiet-skip`**.
+hillclimb through **#111 `swing-trace-quiet-idle-skip`**.
 
 See `report.md` for stack, holds, and next poles.

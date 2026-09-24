@@ -1,0 +1,102 @@
+{
+  "name": "swing-trace-quiet-idle-skip",
+  "iters": 200000,
+  "runs": 11,
+  "capacity": 96,
+  "medianSpeedup": 1.9225072628301985,
+  "minSpeedup": 1.6397901524274874,
+  "maxSpeedup": 2.466891499218497,
+  "medianBeforeMs": 8.284634000000011,
+  "medianAfterMs": 4.431998000000007,
+  "dirtyWakeOk": true,
+  "pairs": [
+    {
+      "i": 0,
+      "beforeMs": 7.866351000000002,
+      "afterMs": 4.7114660000000015,
+      "speedup": 1.669618543357842,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 1,
+      "beforeMs": 7.464433,
+      "afterMs": 4.552066000000011,
+      "speedup": 1.6397901524274874,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 2,
+      "beforeMs": 7.9861489999999975,
+      "afterMs": 4.154027999999997,
+      "speedup": 1.9225072628301985,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 3,
+      "beforeMs": 8.144936999999999,
+      "afterMs": 4.1203020000000095,
+      "speedup": 1.9767815563033924,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 4,
+      "beforeMs": 8.353183999999999,
+      "afterMs": 4.585228000000001,
+      "speedup": 1.8217597903528455,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 5,
+      "beforeMs": 9.076967999999994,
+      "afterMs": 4.431998000000007,
+      "speedup": 2.048053270782157,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 6,
+      "beforeMs": 8.629110999999995,
+      "afterMs": 4.306435999999991,
+      "speedup": 2.003770867603748,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 7,
+      "beforeMs": 10.024676999999997,
+      "afterMs": 4.776284000000004,
+      "speedup": 2.09884441544933,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 8,
+      "beforeMs": 9.979516000000004,
+      "afterMs": 4.045380999999992,
+      "speedup": 2.466891499218497,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 9,
+      "beforeMs": 8.284634000000011,
+      "afterMs": 4.766809999999992,
+      "speedup": 1.737982843872532,
+      "wakeOk": true,
+      "afterSkips": 200006
+    },
+    {
+      "i": 10,
+      "beforeMs": 7.201117999999994,
+      "afterMs": 4.07076099999999,
+      "speedup": 1.768985700708052,
+      "wakeOk": true,
+      "afterSkips": 200006
+    }
+  ]
+}
