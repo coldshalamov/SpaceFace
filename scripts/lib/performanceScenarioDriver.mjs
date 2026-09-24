@@ -1150,6 +1150,15 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       // the injected entities in state.entities and the restore wait never satisfies.
       if (state.entities.has(id)) sf.helpers.removeEntity(id, { immediate: true });
     }
+    // Retire the injected ids: removal pushed them onto state.freeIds, and ambient spawning
+    // recycles them into new live entities — the restore wait's !entities.has(id) predicate
+    // can then never hold (observed: ids 299/300/376/378 respawned with fresh slots mid-wait).
+    if (Array.isArray(state.freeIds) && state.freeIds.length) {
+      const retired = new Set(snapshot.injectedIds);
+      for (let i = state.freeIds.length - 1; i >= 0; i--) {
+        if (retired.has(state.freeIds[i])) state.freeIds.splice(i, 1);
+      }
+    }
     snapshot.restoreRequested = true;
     snapshot.legacyAdapterRestored = legacyAdapterRestored;
     snapshot.rebaseRestoreRequested = rebaseRestoreRequested;
@@ -1171,11 +1180,19 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       const state = sf?.state;
       const render = sf?.registry?.get?.('render');
       const world = render?._presentationWorld;
-      const stuckIds = ids.filter((id) => state?.entities?.has?.(id)
-        || render?._meshes?.has?.(id)
-        || (world && world.getSlotForEntityId(id) >= 0));
+      const stuck = ids.map((id) => ({
+        id,
+        inEntities: state?.entities?.has?.(id) === true,
+        inMeshes: render?._meshes?.has?.(id) === true,
+        slot: world ? world.getSlotForEntityId(id) : -1,
+        inFarActors: state?.world?.farActors?.byId?.has?.(id) === true,
+        inDressing: state?.world?.dressing?.byId?.has?.(id) === true,
+        inField: state?.world?.asteroidField?.byId?.has?.(id) === true,
+      })).filter((r) => r.inEntities || r.inMeshes || r.slot >= 0);
+      const stuckIds = stuck.map((r) => r.id);
       const detail = {
         stuckIds,
+        stuck,
         activeCount: world?.activeCount,
         boundCount: world?.boundCount,
         meshesSize: render?._meshes?.size,
