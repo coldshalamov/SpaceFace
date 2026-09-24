@@ -12,6 +12,7 @@ import {
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   IBL_SOURCE_REFLECTION_CARDS,
+  neutralizeHdrGreenCast,
   normalizeHdrMeanRadiance,
   resolveIblSource,
 } from '../src/render/foundryEnvironment.js';
@@ -94,6 +95,46 @@ test('normalization lands the HDR mean on the card rig band and preserves foundr
     peak > 25 * FOUNDRY_IBL_TARGET_MEAN_RADIANCE,
     `foundry specular structure lost: peak ${peak} after normalization`,
   );
+});
+
+test('green-cast pass neutralizes the painted floor and leaves warm content alone', async () => {
+  const parsed = await parseFoundryHdr();
+  const texture = new THREE.DataTexture(parsed.data, parsed.width, parsed.height);
+  const before = parsed.data.slice();
+  const touched = neutralizeHdrGreenCast(texture);
+  assert.ok(touched > 0, 'no green-dominant texels found in the foundry HDR');
+  // The floor's strong greens must land on the warm-neutral side; warm/neutral texels must be
+  // byte-identical so furnace and window structure survives untouched.
+  let strongGreenLeft = 0;
+  let warmChanged = 0;
+  for (let i = 0; i + 2 < parsed.data.length; i += 4) {
+    const r = parsed.data[i], g = parsed.data[i + 1], b = parsed.data[i + 2];
+    if (g > Math.max(r, b) * 1.3) strongGreenLeft += 1;
+    const br = before[i], bg = before[i + 1], bb = before[i + 2];
+    if (bg <= Math.max(br, bb) && (r !== br || g !== bg || b !== bb)) warmChanged += 1;
+  }
+  assert.equal(strongGreenLeft, 0, 'green-dominant texels remain after the neutralize pass');
+  assert.equal(warmChanged, 0, 'warm/neutral texels were altered');
+});
+
+test('neutralizeHdrGreenCast preserves luminance and rejects non-float data', () => {
+  const fake = { image: { data: new Uint16Array(12), width: 2, height: 2 } };
+  assert.equal(neutralizeHdrGreenCast(fake), null);
+  // One green-dominant texel beside one warm texel.
+  const tex = new THREE.DataTexture(
+    new Float32Array([0.2, 0.9, 0.15, 1, 0.8, 0.5, 0.3, 1]),
+    2, 1,
+  );
+  const lumBefore = 0.2126 * 0.2 + 0.7152 * 0.9 + 0.0722 * 0.15;
+  const touched = neutralizeHdrGreenCast(tex);
+  assert.equal(touched, 1);
+  const d = tex.image.data;
+  const lumAfter = 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
+  assert.ok(Math.abs(lumAfter - lumBefore) < 1e-6, `luminance drifted ${lumBefore} -> ${lumAfter}`);
+  assert.ok(d[1] <= Math.max(d[0], d[2]), 'green still dominant after neutralize');
+  for (const [k, want] of [[4, 0.8], [5, 0.5], [6, 0.3]]) {
+    assert.ok(Math.abs(d[k] - want) < 1e-7, `warm texel channel ${k} altered`);
+  }
 });
 
 test('normalizeHdrMeanRadiance rejects non-float data and degenerate targets', () => {

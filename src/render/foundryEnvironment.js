@@ -55,6 +55,7 @@ export async function loadFoundryIblTexture(THREE, { url = FOUNDRY_IBL_URL } = {
     const texture = await loader.loadAsync(url);
     texture.mapping = THREE.EquirectangularReflectionMapping;
     normalizeHdrMeanRadiance(texture, FOUNDRY_IBL_TARGET_MEAN_RADIANCE);
+    neutralizeHdrGreenCast(texture);
     texture.needsUpdate = true;
     return texture;
   } catch (_) {
@@ -88,4 +89,39 @@ export function normalizeHdrMeanRadiance(texture, targetMean) {
     data[i + 2] *= scaleFactor;
   }
   return { meanBefore, meanAfter: targetMean, scaleFactor, samples };
+}
+
+// The workshop floor is painted green — faithful in a foundry interior, wrong as the light of a
+// space scene: the lower equirect hemisphere is green-dominant, so every smooth metal mirrors it
+// as a lime cast (PQ-193 lane pins read as green sticks instead of dark gunmetal). Pull each
+// green-dominant texel toward a warm neutral at its own luminance, with a soft knee keyed on how
+// far green runs ahead of the warm channels; luminance and the furnace/window structure are
+// preserved, and warm or neutral texels are never touched. Returns the count of altered texels,
+// or null when the data is not float RGB(A) pixels.
+export function neutralizeHdrGreenCast(texture) {
+  const image = texture && texture.image;
+  const data = image && image.data;
+  if (!(data instanceof Float32Array)) return null;
+  const channels = Math.round(data.length / Math.max(1, image.width * image.height));
+  if (channels < 3 || channels > 4) return null;
+  let touched = 0;
+  for (let i = 0; i + 2 < data.length; i += channels) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) continue;
+    const warm = Math.max(r, b);
+    const over = g - warm;
+    if (over <= 0) continue;
+    // Soft knee: a mild lead desaturates gently; the painted floor (G ≈ 1.4-1.8x the warm
+    // channels) is fully neutralized rather than merely dimmed.
+    const t = Math.min(1, over / Math.max(warm * 0.4, 0.05));
+    const lum = 0.2126 * Math.max(0, r) + 0.7152 * Math.max(0, g) + 0.0722 * Math.max(0, b);
+    // Warm-neutral target keeps the foundry's cast instead of a sterile grey, normalized so the
+    // texel's luminance is preserved exactly.
+    const s = lum / (0.2126 * 1.1 + 0.7152 + 0.0722 * 0.78);
+    data[i] = r + (s * 1.1 - r) * t;
+    data[i + 1] = g + (s - g) * t;
+    data[i + 2] = b + (s * 0.78 - b) * t;
+    touched += 1;
+  }
+  return touched;
 }
