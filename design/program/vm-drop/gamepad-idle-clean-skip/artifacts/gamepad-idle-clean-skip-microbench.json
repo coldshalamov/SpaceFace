@@ -1,0 +1,52 @@
+{
+  "label": "gamepad-idle-clean-skip",
+  "primary": {
+    "iterations": 40000,
+    "beforeMs": 14.29,
+    "afterMs": 4.072,
+    "speedup": 3.509,
+    "beforeResets": 40000,
+    "afterResets": 0,
+    "note": "cold first run (conservative primary)"
+  },
+  "minSpeedup": 3.509,
+  "medianSpeedup": 23.026,
+  "runs": [
+    {
+      "beforeMs": 14.29,
+      "afterMs": 4.072,
+      "speedup": 3.509,
+      "beforeResets": 40000,
+      "afterResets": 0
+    },
+    {
+      "beforeMs": 14.401,
+      "afterMs": 0.44,
+      "speedup": 32.766,
+      "beforeResets": 40000,
+      "afterResets": 0
+    },
+    {
+      "beforeMs": 10.924,
+      "afterMs": 0.474,
+      "speedup": 23.026,
+      "beforeResets": 40000,
+      "afterResets": 0
+    },
+    {
+      "beforeMs": 10.268,
+      "afterMs": 0.452,
+      "speedup": 22.722,
+      "beforeResets": 40000,
+      "afterResets": 0
+    },
+    {
+      "beforeMs": 9.963,
+      "afterMs": 0.425,
+      "speedup": 23.422,
+      "beforeResets": 40000,
+      "afterResets": 0
+    }
+  ],
+  "note": "Portable CPU. Soft-GPU fps not claimed. Before=always rebuild action map each disconnected poll; After=idle-clean skip + in-place sample reuse."
+}
