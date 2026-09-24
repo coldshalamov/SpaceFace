@@ -84,6 +84,8 @@ test('a hot dock arrival spills two recoverable cargo pods', () => {
       assert.equal(pod.data.commodityId, FOOD);
       assert.equal(pod.data.amount, 1);
       assert.equal(pod.flags.persistent, true);
+      assert.ok(Math.hypot(pod.vel.x, pod.vel.z) < 8, 'a hot-dock pod stays in the bay');
+      assert.ok(Math.hypot(pod.pos.x - 100, pod.pos.z - 50) < 20, 'the pod is beside the hull');
     }
     assert.equal(harness.state.player.cargo.items[FOOD], 2);
     assert.equal(harness.spillReceipts.length, 1);
