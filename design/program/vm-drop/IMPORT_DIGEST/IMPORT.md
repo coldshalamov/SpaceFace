@@ -1,4 +1,5 @@
 # IMPORT — IMPORT_DIGEST
 
-Report-only job. No live `src/` wiring. Read `DONE.md` + `report.md` for the
-hillclimb digest (tip **20260924ap**). Soft-GPU fps is not a KPI.
+Digest tip **20260924aq**. Import packages through **#78
+`camera-clearance-floor-retain-pos-quantize`**. See `report.md` for stack order,
+holds, and next poles. Soft-GPU fps not a KPI.
