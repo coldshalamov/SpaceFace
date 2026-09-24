@@ -1,0 +1,102 @@
+{
+  "name": "persistent-beams-quiet-callsite-skip",
+  "primary": "quiet-combat-beams-callsite-prep",
+  "iterations": 400000,
+  "runs": 13,
+  "pairs": [
+    {
+      "beforeMs": 15.674859999999995,
+      "afterMs": 3.548840999999996,
+      "speedup": 4.416895544207254,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.10080400000001,
+      "afterMs": 3.3141839999999974,
+      "speedup": 4.556416903829124,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.627302999999998,
+      "afterMs": 3.2015659999999997,
+      "speedup": 4.881143477910498,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.258791000000002,
+      "afterMs": 3.0993020000000087,
+      "speedup": 4.923299181557641,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.956624000000005,
+      "afterMs": 3.1876239999999996,
+      "speedup": 5.0058049506466284,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.554205999999994,
+      "afterMs": 3.103248000000008,
+      "speedup": 5.012234278407641,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.765782000000002,
+      "afterMs": 3.133544999999998,
+      "speedup": 5.031292673314094,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.553168999999997,
+      "afterMs": 3.0585120000000074,
+      "speedup": 5.085207774237917,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.741967000000002,
+      "afterMs": 3.0878859999999975,
+      "speedup": 5.097975443393964,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 16.060302000000007,
+      "afterMs": 3.0746930000000106,
+      "speedup": 5.223383928086463,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.490662,
+      "afterMs": 2.8510810000000077,
+      "speedup": 5.433259174327197,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.68683399999999,
+      "afterMs": 2.8485749999999967,
+      "speedup": 5.506905733568542,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    },
+    {
+      "beforeMs": 15.782747999999998,
+      "afterMs": 2.8653539999999964,
+      "speedup": 5.5081319795041095,
+      "beforeUpdateCalls": 400000,
+      "afterUpdateCalls": 0
+    }
+  ],
+  "medianSpeedup": 5.031292673314094,
+  "minSpeedup": 4.416895544207254,
+  "maxSpeedup": 5.5081319795041095
+}

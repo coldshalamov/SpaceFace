@@ -1,0 +1,26 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: quiet empty callsite skips pool.update while activeCount===0
+ok 1 - quiet empty callsite skips pool.update while activeCount===0
+  ---
+  duration_ms: 104.510354
+  ...
+# Subtest: dirty-wake: upsert raises activeCount and resumes call-site update
+ok 2 - dirty-wake: upsert raises activeCount and resumes call-site update
+  ---
+  duration_ms: 22.15739
+  ...
+# Subtest: dirty-wake: stop last beam returns to quiet skip
+ok 3 - dirty-wake: stop last beam returns to quiet skip
+  ---
+  duration_ms: 18.733549
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 529.081209
