@@ -96,3 +96,8 @@ Residual micro misses (&lt;~1.5×): `copyInput`, `lifetimeSweep`, `pruneEvidence
 - `asteroid-query-callers/REBASE_20260923.md` + new patch
 - `far-actor-cell-key/REVERIFY_20260923.md` (~2.06×)
 - `prepare-pitch-settle/REVERIFY_20260923.md` (~2.35×)
+
+## Attempted this pass (miss)
+
+- **`flight-propulsion-scratch` rebase:** patch mostly applies (1 torch `spool` hunk drifted). After manual fix, integrated `stepPropulsion` microbench on `568d1358e` was **~0.85×** (255→300 ms / 200k) — **do not import** until an isolated coolRuntime/trust-body bench again clears ≥~1.5× on current tip. Left as needs-rebase / hold.
+
