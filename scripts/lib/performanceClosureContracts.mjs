@@ -63,6 +63,11 @@ const SCENARIOS = [
   scenario('combat_vfx_burst', 'combat-vfx-burst', {
     injectedState: true,
     actualRenderedEntitiesRequired: true,
+    // The burst injects a boosting hostile fleet and then waits out authored admission before
+    // the window opens. Without a held pose the fleet drifts past the render glass (unmeshed
+    // forever) and ambient traffic kills the parked player — observed twice: the death screen's
+    // ui:pausing-screen scale:0 froze the clock and stranded every queued entity:destroyed.
+    holdsMeasuredPose: true,
   }),
   scenario('jump_asset_admission', 'jump-asset-admission', {
     transitionWindow: true,
