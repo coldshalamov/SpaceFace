@@ -211,6 +211,7 @@ function ensureRuntime(state) {
       unstampedScratch: [],
       classifyOutScratch: [],
       classifySeenScratch: new Set(),
+      requestedReclassifyIds: new Set(),
       lastLiveCount: 0,
       pinResolveScratch: [],
       pinNormalizeScratch: { out: [], seen: new Set() },
@@ -637,6 +638,18 @@ export function skipUnstampedRescan(membershipVersion, lastMembershipVersion) {
 }
 
 /**
+ * Ask the next classify pass to re-stamp an entity that may sit outside the incremental visit
+ * set (for example a far ambient patrol that a law dispatch just enlisted). Without the request
+ * the actor keeps its shelved tier forever: physics-unmaterialized hulls are invisible to the
+ * spatial-hash radius query and are skipped by the physicsBody===false catch-up walk.
+ */
+export function requestActivityReclassify(state, entity) {
+  const runtime = state && RUNTIMES.get(state);
+  if (!runtime || !entity || entity.id == null) return;
+  runtime.requestedReclassifyIds.add(entity.id);
+}
+
+/**
  * Weapons fire mid-tick and bump the entity-index version. Re-running classifyWorld
  * for those shots is the crowded-combat hitch. Projectiles always need physics
  * without an activity stamp; append them to this tick's dynamics and keep the
@@ -708,6 +721,15 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
     out.push(entity);
   };
   for (let i = 0; i < unstamped.length; i++) add(unstamped[i]);
+  // Owner systems can promote a shelved actor mid-tick (a law dispatch enlisting a far ambient
+  // patrol is the live case): the incremental visit set would never reach it again, so the
+  // request queue forces one re-stamp on the next classify pass.
+  if (runtime.requestedReclassifyIds.size) {
+    for (const id of runtime.requestedReclassifyIds) {
+      add(state.entities && state.entities.get(id));
+    }
+    runtime.requestedReclassifyIds.clear();
+  }
   for (let i = 0; i < runtime.exactIds.length; i++) {
     add(state.entities && state.entities.get(runtime.exactIds[i]));
   }
@@ -904,6 +926,12 @@ function classifyWorld(state, runtime) {
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
       || (entity.flags && entity.flags.missionPinned)
+      // A lawful ship answering a law-security incident — chasing an aggressor or holding a
+      // witnessed wreck — is mission-critical even when it began as far ambient traffic; without
+      // this the aggregate gate below shelved the enlisted patrol in S4_AGGREGATE where it could
+      // never think or move (seed 8008 witnessed-kill chaser frozen at 250 WU with pins:[]).
+      // Mirrors the pin rule in activityClassification.classifyEntityPins.
+      || (ai && (ai.securityTargetId != null || ai.witnessRole != null))
       // K1 authored active presence is a named, durable combat actor even when its global sector
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.
