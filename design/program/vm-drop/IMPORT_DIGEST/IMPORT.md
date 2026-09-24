@@ -1,4 +1,3 @@
 # IMPORT — IMPORT_DIGEST
 
-Report-only. See `report.md` for ranked poles and shipped packages.
-Digest tip: **20260924ah**.
+Report job. See `report.md`. Digest id: **20260924ai**.
