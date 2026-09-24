@@ -10,6 +10,7 @@
 
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
+import { dressLampKey } from '../orrery/lampKey.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -266,6 +267,8 @@ export const gameOverScreen = {
     const bRetry = wordItem(list, 'Continue from recovery berth', 'k-word--primary sf-go-retry');
     bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
     bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
+    if (bRetry.childNodes) dressLampKey(bRetry);
+    else bRetry.classList.add('orr-lampkey');
     bRetry.addEventListener('click', () => {
       // Combat owns success/failure. Success closes via player:respawn; failure surfaces a toast
       // (and player:recoveryFailed) so a dead latch never looks like a no-op button.
