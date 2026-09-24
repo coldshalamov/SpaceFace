@@ -107,7 +107,9 @@ try {
         trend: text(r.querySelector('.sx-mkt-row__tr')),
       })),
       chart: !!document.querySelector('[data-screen="station"] .sx-mkt-chart'),
-      stats: [...document.querySelectorAll('[data-screen="station"] .sx-mkt-stats .sx-stat__k')].map((k) => text(k)),
+      // the four readings under the price trace (marketPresentation.js readoutsHtml): Buy, Sell,
+      // Galactic average, Demand -- each a dt with its mark
+      stats: [...document.querySelectorAll('[data-screen="station"] .sx-mkt-readouts dt')].map((k) => text(k)),
       // The docked credit readout lives in the fascia purse. `.sx-credits__v` was a SUPERSEDED
       // design: no JavaScript in src/ ever emitted that markup, so this assertion had been reading
       // an element that does not exist and reporting the game broken. Verified live in the station
@@ -141,7 +143,7 @@ try {
 
   // ---- cargo handoff: the common "sell what I hauled" action must open the same Market in
   // sell mode and focus its list on what is actually in the hold, even when Market is already open.
-  await domClick(page, '[data-screen="station"] .sxb-hstep[data-handoff="market"][data-handoff-mode="sell"]');
+  await domClick(page, '[data-screen="station"] .sxb-next[data-handoff="market"][data-handoff-mode="sell"]');
   await page.waitForFunction(() => {
     const active = document.querySelector('[data-screen="station"] .sx-seg__btn.is-on');
     return active && active.getAttribute('data-mode') === 'sell';

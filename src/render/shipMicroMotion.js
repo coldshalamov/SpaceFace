@@ -13,6 +13,7 @@
 //   6. Mining Drill Rotation: Auger bit spins rapidly when mining laser / extractor is active.
 //   7. Combat Damage & Collision Flinch: When struck by projectiles or collision, the hull receives an
 //      angular and positional jolt away from the impact vector, plus decaying strike shudder.
+//      The shot direction is the damage receipt's approach/normal — a hit from port dents port.
 //   8. Environmental Hazard Buffet: Violent atmospheric/ion turbulence injects roll/pitch jitter.
 //   9. Jump Drive Spool-Up Vibration: High-frequency reactor tremor ramps with jump charge progress,
 //      releasing with a dramatic warp-out forward snap and deceleration dive.
@@ -45,11 +46,30 @@
 //      collapse — a slow single-beat scale swell keyed off the live shield edge.
 //  25. Critical-Hull List: a ship under ~28% hull carries a seeded off-axis list, periodic strain
 //      coughs, and a sputtering gimbal — a dying craft reads dying before the kill lands.
+//  26. Contact Kicks (Newton's third law): jettison, beacon drops, countermeasure puffs, and scan
+//      discharges nudge the throwing hull forward with mass-scaled shudder; a seating clamp plate
+//      (charge:stuck) jolts the host away from the attach point with a lever-arm yaw twist.
+//  27. Contact Yield: a real shove shortens the hull along the push and bulges it across that
+//      axis, then one elastic rebound settles it. Lights crumple; a hauler under the same
+//      momentum barely flexes. Scrapes under the floor do not twitch the silhouette.
+//  28. Line Haul: while a tether is taut, both ends lean toward the line and a light hull
+//      stretches along it. Letting go collapses that pose and thumps the body back.
 //
 // PURE RENDER-ONLY PRESENTATION: Never mutates sim state, determinism-safe, zero per-frame garbage.
-// Transform-only mesh edits (position/rotation/scale); shared materials are never touched.
+// Transform edits stay on position/rotation/scale. Engine-bell cooldown clones a material onto
+// that bell once and writes only the clone, so a shared hull material is never tinted.
+//  29. Nozzle thermal decay: sustained burn charges the bells white-hot; releasing them cools
+//      through cherry to gunmetal over two seconds.
+//  30. Drift slipstream demand: cutting forward thrust while sliding or yawing publishes a
+//      cold-gas ribbon request the overhead presentation draws along the slide.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
+import { clampSlideAgainstHulls, deathSlideOffset, DEATH_SLIDE_S } from './deathSlide.js';
+import {
+  integrateBellHeat,
+  resolveSlipstreamInto,
+  sampleBellThermal,
+} from '../presentation/flightOverheadMath.js';
 
 function wrapAngle(a) {
   let res = (a + Math.PI) % (Math.PI * 2);
@@ -63,6 +83,27 @@ function clamp01(v) {
 
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+/**
+ * Is the wreck mesh actually presenting a drawable layer? The renderer unsubmits the whole root
+ * while a packaged-body admission is pending (authoredPending) — and attachPackagedBody also
+ * hides every procedural child until the authored group lands or the fallback is restored. The
+ * death spiral and materialize clocks must never elapse against a hulk that draws nothing.
+ */
+function wreckMeshPresenting(mesh) {
+  if (!mesh || mesh.visible === false) return false;
+  const state = mesh.userData && mesh.userData.authoredAssetState;
+  if (state == null
+      || state === 'authored'
+      || state === 'authored-with-cleanup-error'
+      || state === 'same-semantic-fallback'
+      || state === 'procedural-settled'
+      || state === 'fallback-after-error') {
+    return true;
+  }
+  const children = mesh.children;
+  return Array.isArray(children) && children.some((child) => !!(child && child.visible === true));
 }
 
 // --- Aerospace locomotion tuning (presentation judgment, not sim values) ---
@@ -133,6 +174,174 @@ function resolveRecoilClass(weaponId) {
   return RECOIL_DEFS.light;
 }
 
+// --- Contact kicks: Newton's third law for ship-initiated world interactions -----------------
+// Every throw has a thrower. Ejecting a pod aft, dropping a buoy, puffing chaff, discharging the
+// sensor array, or catching a magnetic clamp plate all push the hull — small, directional, and
+// mass-scaled (a hauler barely notices what a fighter feels). `push` is an axial recoil-velocity
+// impulse (+ = forward surge, the ejecta went aft); `yaw`/`pitch` are angular tickles; `shudder`
+// is the decaying strike rattle. Applied through the same recoil/flinch springs as gunfire, so
+// contact kicks compose with combat instead of fighting it.
+const CONTACT_KICK_DEFS = Object.freeze({
+  jettison: Object.freeze({ push: 0.55, shudder: 0.14, yaw: 0, pitch: 0 }),
+  beaconDrop: Object.freeze({ push: 0.32, shudder: 0.12, yaw: 0, pitch: 0 }),
+  scanPulse: Object.freeze({ push: 0, shudder: 0.05, yaw: 0, pitch: 0.25 }),
+  countermeasure: Object.freeze({ push: 0.18, shudder: 0.08, yaw: 0.3, pitch: 0 }),
+  chargeStuck: Object.freeze({ push: 0, shudder: 0.3, yaw: 1.1, pitch: 0 }),
+});
+
+const CONTACT_KICK_REF_MASS_T = 400; // a fighter reads the full kick; heavier hulls less
+
+/**
+ * Mass-scaled contact kick for a ship-initiated interaction. Pure and frozen.
+ * `amountScale` (jettison load) further scales the push, capped so a full-hold dump reads as one
+ * firm shove, not a launch. Unknown kinds and masses degrade to a soft neutral tickle.
+ */
+export function resolveContactKick(kind, massT, amountScale = 1) {
+  const def = CONTACT_KICK_DEFS[String(kind || '')] || CONTACT_KICK_DEFS.beaconDrop;
+  const mass = Number(massT);
+  const intensity = clamp(CONTACT_KICK_REF_MASS_T / (Number.isFinite(mass) && mass > 0 ? mass : CONTACT_KICK_REF_MASS_T), 0.2, 1.3);
+  const load = clamp(Number(amountScale), 0.35, 1.6);
+  return Object.freeze({
+    kind: String(kind || 'unknown'),
+    intensity,
+    push: def.push * intensity * (kind === 'jettison' ? load : 1),
+    shudder: Math.min(0.35, def.shudder * intensity * load),
+    yaw: def.yaw * intensity,
+    pitch: def.pitch * intensity,
+  });
+}
+
+// --- Contact yield: the hull is a body, so a shove changes its shape -------------------
+// A scrape (under the floor) must not twitch the silhouette — ordinary flying stays clean.
+// Above it, compression is Δv past the floor, scaled by mass: the same momentum that folds a
+// fighter leaves a hauler almost square. The spring is slightly underdamped so the shape
+// compresses, rebounds once, and settles. Render-only; the solver's velocity is untouched.
+export const CONTACT_YIELD_DV_FLOOR = 10;     // wu/s — below this the hit is a touch
+export const CONTACT_YIELD_DV_FULL = 34;      // wu/s — a fighter reads a full crumple here
+export const CONTACT_YIELD_MAX = 0.12;        // shorten fraction along the push
+export const CONTACT_YIELD_REBOUND = 0.032;   // brief elastic stretch on the way back
+export const CONTACT_YIELD_REF_MASS = 280;    // tonnes — a light hull takes the authored pose
+export const CONTACT_YIELD_POISSON = 0.42;    // cross-axis bulge per unit of compression
+const YIELD_SPRING_K = 82;
+const YIELD_SPRING_C = 10.5;
+const YIELD_VEL_KICK = 1.8;
+const YIELD_VEL_LIMIT = 3.2;
+
+export function massYieldScale(massT) {
+  const mass = Number(massT);
+  const m = Number.isFinite(mass) && mass > 0 ? mass : CONTACT_YIELD_REF_MASS;
+  return clamp(Math.sqrt(CONTACT_YIELD_REF_MASS / m), 0.14, 1.4);
+}
+
+/** 0..1.35 crumple impulse. Zero under the scrape floor. Heavier hulls return less. */
+export function contactYieldImpulse(dv, massT) {
+  const v = Number(dv);
+  if (!Number.isFinite(v) || v < CONTACT_YIELD_DV_FLOOR) return 0;
+  const span = CONTACT_YIELD_DV_FULL - CONTACT_YIELD_DV_FLOOR;
+  const u = clamp((v - CONTACT_YIELD_DV_FLOOR) / span, 0, 1.35);
+  return u * massYieldScale(massT);
+}
+
+/**
+ * Hull-local scale and center shift for a yield along (axisFwd, axisLat).
+ * Positive amount shortens along the push and bulges across it. `out` is reused
+ * by the per-ship record so the frame path does not allocate.
+ */
+export function hullYieldPose(amount, axisFwd, axisLat, out) {
+  const c = clamp(Number(amount) || 0, -CONTACT_YIELD_REBOUND, CONTACT_YIELD_MAX);
+  let fx = Number(axisFwd) || 0;
+  let fz = Number(axisLat) || 0;
+  const len = Math.hypot(fx, fz);
+  if (len < 1e-5) { fx = 1; fz = 0; }
+  else { fx /= len; fz /= len; }
+  const ux2 = fx * fx;
+  const uz2 = fz * fz;
+  const x = 1 - c * ux2 + c * CONTACT_YIELD_POISSON * uz2;
+  const y = 1 + c * CONTACT_YIELD_POISSON * 0.7;
+  const z = 1 - c * uz2 + c * CONTACT_YIELD_POISSON * ux2;
+  const shiftX = fx * c * 0.9;
+  const shiftZ = fz * c * 0.9;
+  if (out) {
+    out.x = x; out.y = y; out.z = z; out.shiftX = shiftX; out.shiftZ = shiftZ;
+    return out;
+  }
+  return { x, y, z, shiftX, shiftZ };
+}
+
+function noteContactYield(rec, pushFwd, pushLat, dv, mass) {
+  if (!rec) return;
+  const impulse = contactYieldImpulse(dv, mass);
+  if (!(impulse > 0)) return;
+  const len = Math.hypot(pushFwd, pushLat);
+  if (len > 1e-4) {
+    const fx = pushFwd / len;
+    const fz = pushLat / len;
+    const have = Math.hypot(rec.yieldFwd || 0, rec.yieldLat || 0);
+    if (have < 0.2) {
+      rec.yieldFwd = fx;
+      rec.yieldLat = fz;
+    } else {
+      const blend = clamp(0.4 + impulse * 0.6, 0, 1);
+      rec.yieldFwd += (fx - rec.yieldFwd) * blend;
+      rec.yieldLat += (fz - rec.yieldLat) * blend;
+    }
+  }
+  rec.yieldVel = clamp((rec.yieldVel || 0) + impulse * YIELD_VEL_KICK, -1.8, YIELD_VEL_LIMIT);
+}
+
+function stepYieldSpring(rec, dt) {
+  rec.yieldVel += (-YIELD_SPRING_K * rec.yieldAmt - YIELD_SPRING_C * rec.yieldVel) * dt;
+  const next = rec.yieldAmt + rec.yieldVel * dt;
+  if (next > CONTACT_YIELD_MAX) {
+    rec.yieldAmt = CONTACT_YIELD_MAX;
+    if (rec.yieldVel > 0) rec.yieldVel *= 0.35;
+  } else if (next < -CONTACT_YIELD_REBOUND) {
+    rec.yieldAmt = -CONTACT_YIELD_REBOUND;
+    if (rec.yieldVel < 0) rec.yieldVel *= 0.35;
+  } else {
+    rec.yieldAmt = next;
+  }
+}
+
+// --- Line haul: a taut tether is a force you can see in both hulls ---------------------
+export const LINE_HAUL_STRETCH = 0.14;  // light-hull elongate at full strain
+export const LINE_HAUL_BANK = 0.11;     // rad, lean into a line off the bow
+export const LINE_HAUL_YAW = 0.055;     // rad, nose yaws toward the line
+const LINE_HAUL_FOLLOW = 6.5;
+const LINE_RELEASE_FOLLOW = 14;
+const TAUT_LINE_PHASES = new Set(['capture', 'loaded', 'overload']);
+
+/**
+ * Scale / shift / bank / yaw for a hull being hauled along a ship-local pull.
+ * `stretch` is the mass-scaled 0..1 elongate. `lean` is the shared 0..1 pose so a
+ * heavy hull still noses toward the line when it barely stretches.
+ */
+export function lineHaulPose(stretch, lean, pullFwd, pullLat, out) {
+  const s = clamp(Number(stretch) || 0, 0, 1) * LINE_HAUL_STRETCH;
+  const leanN = clamp(Number(lean) || 0, 0, 1);
+  let fx = Number(pullFwd) || 0;
+  let fz = Number(pullLat) || 0;
+  const len = Math.hypot(fx, fz);
+  if (len < 1e-5) { fx = 1; fz = 0; }
+  else { fx /= len; fz /= len; }
+  const fx2 = fx * fx;
+  const fz2 = fz * fz;
+  const x = 1 + s * fx2 - s * 0.4 * fz2;
+  const y = 1 - s * 0.25;
+  const z = 1 + s * fz2 - s * 0.4 * fx2;
+  const shiftX = fx * (s * 4 + leanN * 0.12);
+  const shiftZ = fz * (s * 4 + leanN * 0.12);
+  const bank = fz * leanN * LINE_HAUL_BANK;
+  const yaw = fz * leanN * LINE_HAUL_YAW;
+  if (out) {
+    out.x = x; out.y = y; out.z = z;
+    out.shiftX = shiftX; out.shiftZ = shiftZ;
+    out.bank = bank; out.yaw = yaw;
+    return out;
+  }
+  return { x, y, z, shiftX, shiftZ, bank, yaw };
+}
+
 export function createShipMicroMotionTracker() {
   // Pool of active micro-motion records keyed by entity ID
   const craftMotion = new Map();
@@ -187,6 +396,21 @@ export function createShipMicroMotionTracker() {
         // solver deliberately strips player sim yaw — we replay its measured kick).
         impactYaw: 0,
         impactVelYaw: 0,
+        // Contact yield spring. Amount > 0 shortens the hull along (yieldFwd, yieldLat).
+        yieldAmt: 0,
+        yieldVel: 0,
+        yieldFwd: 1,
+        yieldLat: 0,
+        yieldPose: null,
+        // Taut-line haul. lineStrain is the mass-scaled stretch; lineLean is the shared nose-in.
+        lineStrain: 0,
+        lineLean: 0,
+        linePullFwd: 1,
+        linePullLat: 0,
+        lineLatched: false,
+        lineRelease: 0,
+        lineSnapStamp: -1,
+        haulPose: null,
         // Last-seen kinematics so physics:impact (a sim-tick event) can place the contact lever.
         mass: 400,
         px: 0,
@@ -205,6 +429,10 @@ export function createShipMicroMotionTracker() {
 
         // Hyperspace jump dynamics
         jumpCharging: false,
+        jumpKick: 0,
+        jumpKickShudder: 0,
+        deathSlideT: -1,
+        deathSlideVel: null,
         jumpProgress: 0,
 
         // Flight surge & settle
@@ -231,6 +459,9 @@ export function createShipMicroMotionTracker() {
         rcsLat: 0,
         rcsYaw: 0,
         rcsMain: 0,
+        bellHeat: 0,
+        bellCool: true,
+        slipstream: null,
 
         // Engine bell gimbal + boost ignition
         prevBoosting: false,
@@ -238,6 +469,7 @@ export function createShipMicroMotionTracker() {
         gimbalYaw: 0,
         gimbalPitch: 0,
         mountMesh: null,   // mesh identity the pivot caches below were scanned from
+        mountHull: null,   // hull object the scale base was captured from — changes on authored swap
         bells: null,       // lazy [{ node, baseY, baseZ, baseSX, baseSY, baseSZ, isPlume }]
         bellCount: 0,
         flareApplied: 1,   // last frame's plume flare factor (unapplied before re-flaring)
@@ -259,6 +491,14 @@ export function createShipMicroMotionTracker() {
         hullScaleX: 1,
         hullScaleY: 1,
         hullScaleZ: 1,
+        // Wreck arrival ramp: first frame a drawable layer actually presents (authored install,
+        // restored procedural fallback, or a plain procedural wreck) starts the same scale-in
+        // ships/drones get on spawn. Hidden roots never start it — a cold GLB decode can't burn
+        // the ramp (or the death spiral) off-screen.
+        wreckPresented: false,
+        wreckScaleBaseX: 1,
+        wreckScaleBaseY: 1,
+        wreckScaleBaseZ: 1,
 
         // Player-intent queue (dock/cloak/respawn events carry no entity id)
         pendingPlayer: null, // lazy array of kind strings
@@ -315,21 +555,45 @@ export function createShipMicroMotionTracker() {
   function onDamage(payload) {
     if (!payload || !payload.targetId) return;
     const rec = getRecord(payload.targetId);
-    const dmg = Number(payload.damage) || 10;
-    const hitNormal = payload.hitNormal || null;
+    const dmg = Number(payload.hullDamage) || Number(payload.applied)
+      || Number(payload.amount) || Number(payload.damage) || 10;
+    // approach is the shot's travel; normal is the surface. Either beats a random twitch.
+    const hitNormal = payload.hitNormal || payload.approach || payload.normal || null;
 
     const intensity = Math.min(1.2, Math.max(0.15, dmg / 35.0));
 
     if (hitNormal) {
-      rec.flinchVelRoll += (hitNormal.z || (Math.random() - 0.5)) * intensity * 3.5;
-      rec.flinchVelPitch += (hitNormal.x || (Math.random() - 0.5)) * intensity * 2.8;
-      rec.flinchX += (hitNormal.x || 0) * intensity * 0.25;
-      rec.flinchZ += (hitNormal.z || 0) * intensity * 0.25;
+      const nx = Number(hitNormal.x) || 0;
+      const nz = Number(hitNormal.z) || 0;
+      rec.flinchVelRoll += nz * intensity * 3.5;
+      rec.flinchVelPitch += nx * intensity * 2.8;
+      rec.flinchX += nx * intensity * 0.25;
+      rec.flinchZ += nz * intensity * 0.25;
     } else {
-      rec.flinchVelRoll += (Math.random() - 0.5) * intensity * 4.0;
-      rec.flinchVelPitch += (Math.random() - 0.5) * intensity * 3.0;
+      // No contact axis on the receipt: a stable shiver from the hull's own phase,
+      // not a fresh random draw, so the same hit reads the same way twice.
+      const wobble = Math.sin(rec.idlePhase * 4.1);
+      rec.flinchVelRoll += wobble * intensity * 2.2;
+      rec.flinchVelPitch += Math.cos(rec.idlePhase * 2.7) * intensity * 1.6;
     }
     rec.flinchShudder = Math.min(0.35, rec.flinchShudder + intensity * 0.25);
+
+    // Collisions already crumple through physics:impact. A second yield here doubles the dent.
+    const originKind = payload.origin && payload.origin.kind;
+    const fromContact = typeof originKind === 'string' && originKind.indexOf('collision') === 0;
+    if (!fromContact && !payload.emp) {
+      const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
+      const cf = Math.cos(rot);
+      const sf = Math.sin(rot);
+      const nx = hitNormal ? (Number(hitNormal.x) || 0) : 0;
+      const nz = hitNormal ? (Number(hitNormal.z) || 0) : 0;
+      const pushFwd = nx * cf + nz * sf;
+      const pushLat = nx * -sf + nz * cf;
+      let dv = Math.min(80, dmg * 0.55);
+      // The field takes a shield hit; the hull only shivers.
+      if (payload.shieldHit && !payload.hullHit) dv *= 0.3;
+      noteContactYield(rec, pushFwd, pushLat, dv, rec.mass);
+    }
   }
 
   function onImpact(payload) {
@@ -395,6 +659,7 @@ export function createShipMicroMotionTracker() {
     rec.flinchX += pushFwd * intensity * 0.30;
     rec.flinchZ += pushLat * intensity * 0.30;
     rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
+    noteContactYield(rec, pushFwd, pushLat, dv, mass);
   }
 
   function onHazardEnter(payload) {
@@ -429,21 +694,27 @@ export function createShipMicroMotionTracker() {
   }
 
   function onJumpStart(payload) {
-    const id = payload && (payload.playerId || payload.id);
+    const id = payload && payload.playerId;
     if (!id) return;
     const rec = getRecord(id);
     rec.jumpCharging = false;
-    rec.recoilVelX -= 8.5; // explosive hyperspace release kick
-    rec.flinchShudder = 0.55;
+    rec.jumpKick = -8.5;
+    rec.jumpKickShudder = 0.55;
   }
 
   function onJumpArrive(payload) {
-    const id = payload && (payload.playerId || payload.id);
+    const id = payload && payload.playerId;
     if (!id) return;
     const rec = getRecord(id);
     rec.jumpCharging = false;
-    rec.recoilVelX += 6.0; // deceleration surge
-    rec.flinchShudder = 0.45;
+    rec.jumpKick = 6;
+    rec.jumpKickShudder = 0.45;
+  }
+
+  function onPlayerDeathSlide(payload) {
+    const vel = payload && payload.victimVel;
+    if (!vel) return;
+    pendingDeathSlide = { x: Number(vel.x) || 0, z: Number(vel.z) || 0 };
   }
 
   function onJumpChargeAbort(payload) {
@@ -458,8 +729,12 @@ export function createShipMicroMotionTracker() {
   // harnesses emit them for script hops too, where no hull exists). Queue and resolve to the
   // player record on its next update.
   const pendingPlayerActions = [];
+  let pendingDeathSlide = null;
   // Player-only yaw swing queue (impacts carry no playerId; resolved on the player's next update).
   const pendingPlayerYawKicks = [];
+  // Last tether ends, so a let-go that carries only a target id can still thump both hulls.
+  let rememberedPlayerId = null;
+  let rememberedTargetId = null;
 
   function queuePlayerAction(kind) {
     if (pendingPlayerActions.length < 8) pendingPlayerActions.push(kind);
@@ -470,6 +745,11 @@ export function createShipMicroMotionTracker() {
     if (pendingPlayerYawKicks.length < 4) pendingPlayerYawKicks.push(kick);
     else { pendingPlayerYawKicks.shift(); pendingPlayerYawKicks.push(kick); }
   }
+
+  // Jettison load scale for the next queued 'jettison' action (cargo:jettisoned carries the
+  // dumped amount but no ship id, so the scale rides alongside the player queue and is consumed
+  // when the action applies). Max-wins: a burst of dumps reads as one firm shove.
+  let pendingJettisonLoad = 1;
 
   function applyPlayerAction(rec, kind, simTime) {
     if (kind === 'docked') {
@@ -485,6 +765,19 @@ export function createShipMicroMotionTracker() {
       rec.materializeT0 = simTime;
     } else if (kind === 'cloakOn' || kind === 'cloakOff') {
       rec.cloakWaveT0 = simTime;
+    } else if (kind === 'jettison') {
+      const kick = resolveContactKick('jettison', rec.mass, pendingJettisonLoad);
+      pendingJettisonLoad = 1;
+      rec.recoilVelX += kick.push; // pod went aft — the hull breathes forward
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+    } else if (kind === 'beaconDrop') {
+      const kick = resolveContactKick('beaconDrop', rec.mass);
+      rec.recoilVelX += kick.push; // buoy dropped aft — a soft mass-settle forward
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+    } else if (kind === 'scanPulse') {
+      const kick = resolveContactKick('scanPulse', rec.mass);
+      rec.flinchVelPitch += kick.pitch; // the array discharges — a sensor-mast rock
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
     }
   }
 
@@ -520,6 +813,94 @@ export function createShipMicroMotionTracker() {
     const targetId = payload && payload.targetId;
     if (targetId == null) return;
     getRecord(targetId).rebootT0 = lastSimTime;
+  }
+
+  // A magnetic clamp plate seats on a hull: a sharp local jolt away from the attach point plus a
+  // yaw swing off the lever arm — the same directional grammar as collision flinch, at clamp
+  // magnitude (fixed intensity: a seating clamp reads the same on any hull, mass only softens it).
+  function onChargeStuck(payload) {
+    const hostId = payload && payload.hostId;
+    if (hostId == null) return;
+    const rec = getRecord(hostId);
+    const kick = resolveContactKick('chargeStuck', rec.mass);
+    const hasPoint = payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z);
+    const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    let pushFwd = 0;
+    let pushLat = 0;
+    if (hasPoint) {
+      const invR = 1 / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12);
+      const rx = clamp((payload.pos.x - rec.px) * invR, -1.4, 1.4);
+      const rz = clamp((payload.pos.z - rec.pz) * invR, -1.4, 1.4);
+      // The plate struck the attach side — the hull rocks away from it.
+      pushFwd = -(rx * cf + rz * sf);
+      pushLat = -(rx * -sf + rz * cf);
+    }
+    // Lever yaw off the attach offset: an off-center clamp visibly twists the hull.
+    const yawKick = hasPoint
+      ? clamp(((payload.pos.x - rec.px) * -sf + (payload.pos.z - rec.pz) * cf)
+        / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12), -1.4, 1.4)
+      : 0;
+    rec.flinchVelPitch += -pushFwd * 2.2 * kick.intensity;
+    rec.flinchVelRoll += -pushLat * 2.4 * kick.intensity;
+    rec.impactVelYaw += yawKick * kick.yaw;
+    rec.flinchX += pushFwd * 0.22 * kick.intensity;
+    rec.flinchZ += pushLat * 0.22 * kick.intensity;
+    rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+  }
+
+  // Cargo pods leave aft at 60 wu/s — player inventory only, so this resolves via the queue.
+  function onJettison(payload) {
+    const amount = Number(payload && payload.amount);
+    if (Number.isFinite(amount) && amount > 0) {
+      pendingJettisonLoad = Math.max(pendingJettisonLoad, clamp(0.35 + amount / 60, 0.35, 1.6));
+    }
+    queuePlayerAction('jettison');
+  }
+
+  // Countermeasure puff: chaff/decoy blooms aft, the hull breathes forward with a whisper of yaw.
+  function onCountermeasure(payload) {
+    const shipId = payload && payload.shipId;
+    if (shipId == null) return;
+    const rec = getRecord(shipId);
+    const kick = resolveContactKick('countermeasure', rec.mass);
+    rec.recoilVelX += kick.push;
+    // Deterministic whisper direction from the hull's idle phase — no per-event RNG.
+    rec.impactVelYaw += Math.sin(rec.idlePhase * 3.7) * kick.yaw;
+    rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+  }
+
+  function onBeaconDeployed() { queuePlayerAction('beaconDrop'); }
+
+  function onScanPulse() { queuePlayerAction('scanPulse'); }
+
+  // The line let go. Collapse the haul on both ends and thump the body along the old pull.
+  // released and broke are mutually exclusive per cut, but a stamp guards a double emit.
+  function onTetherLetGo(payload) {
+    const targetId = payload && payload.targetId != null ? payload.targetId : rememberedTargetId;
+    const stamp = lastSimTime;
+    punchLineRelease(rememberedPlayerId, stamp);
+    punchLineRelease(targetId, stamp);
+  }
+
+  function punchLineRelease(id, stamp) {
+    if (id == null) return;
+    const rec = craftMotion.get(id);
+    if (!rec) return;
+    if (rec.lineSnapStamp === stamp) return;
+    if (!(rec.lineLean > 0.18 || rec.lineStrain > 0.08)) return;
+    rec.lineSnapStamp = stamp;
+    rec.lineRelease = 0.28;
+    rec.lineLatched = false;
+    const kick = 0.55 + rec.lineStrain * 1.5 + rec.lineLean * 0.35;
+    rec.yieldVel = clamp(rec.yieldVel + kick, -1.8, YIELD_VEL_LIMIT);
+    if (Math.hypot(rec.linePullFwd, rec.linePullLat) > 0.2) {
+      rec.yieldFwd = -rec.linePullFwd;
+      rec.yieldLat = -rec.linePullLat;
+    }
+    rec.impactVelYaw += (rec.linePullLat || 0) * (0.35 + rec.lineStrain);
+    rec.flinchShudder = Math.min(0.45, Math.max(rec.flinchShudder, 0.14 + rec.lineStrain * 0.3));
   }
 
   function onKilled(payload) {
@@ -596,8 +977,65 @@ export function createShipMicroMotionTracker() {
 
   // Iterative mount scan, duck-typed for THREE groups and plain mock graphs. Runs once per
   // mesh identity (rebuilds rescan); never on the steady-state path. Transform targets only.
+  function captureBellHeatSkin(entry) {
+    if (!entry || !entry.heatSkin || entry.heatMats) return;
+    const node = entry.node;
+    if (!node) return;
+    const src = node.material;
+    const list = Array.isArray(src) ? src : (src ? [src] : []);
+    const clones = new Array(list.length);
+    const base = new Array(list.length);
+    let any = false;
+    for (let i = 0; i < list.length; i++) {
+      const mat = list[i];
+      if (!mat || !mat.emissive || typeof mat.clone !== 'function' || typeof mat.emissive.setRGB !== 'function') {
+        clones[i] = null;
+        base[i] = null;
+        continue;
+      }
+      const cloned = mat.clone();
+      clones[i] = cloned;
+      base[i] = {
+        r: cloned.emissive.r,
+        g: cloned.emissive.g,
+        b: cloned.emissive.b,
+        intensity: Number.isFinite(cloned.emissiveIntensity) ? cloned.emissiveIntensity : 0,
+      };
+      any = true;
+    }
+    if (!any) return;
+    node.material = Array.isArray(src) ? clones.map((cloned, i) => cloned || list[i]) : clones[0];
+    entry.heatMats = clones;
+    entry.heatBase = base;
+  }
+
+  function applyBellThermal(rec, heat, flashReduce) {
+    const sample = sampleBellThermal(heat);
+    const flash = flashReduce ? 0.28 : 1;
+    for (let i = 0; i < rec.bellCount; i++) {
+      const bell = rec.bells[i];
+      if (!bell || !bell.heatSkin) continue;
+      if (!bell.heatMats) captureBellHeatSkin(bell);
+      const mats = bell.heatMats;
+      if (!mats) continue;
+      for (let m = 0; m < mats.length; m++) {
+        const mat = mats[m];
+        const base = bell.heatBase[m];
+        if (!mat || !base) continue;
+        if (sample.intensity <= 0.001) {
+          mat.emissive.setRGB(base.r, base.g, base.b);
+          mat.emissiveIntensity = base.intensity;
+        } else {
+          mat.emissive.setRGB(sample.r, sample.g, sample.b);
+          mat.emissiveIntensity = sample.intensity * flash;
+        }
+      }
+    }
+  }
+
   function scanMountPivots(rec, mesh, hull) {
     rec.mountMesh = mesh;
+    rec.mountHull = hull;
     rec.bellCount = 0;
     rec.rcsNozzleCount = 0;
     rec.flareApplied = 1;
@@ -655,6 +1093,12 @@ export function createShipMicroMotionTracker() {
             } else {
               entry.baseSX = 1; entry.baseSY = 1; entry.baseSZ = 1;
             }
+            entry.heatSkin = !entry.isPlume && !isSocket && (
+              lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
+              || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
+            );
+            entry.heatMats = null;
+            entry.heatBase = null;
             rec.bellCount++;
           }
         }
@@ -688,10 +1132,18 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('dock:docked', onDocked));
     busSubscribers.push(bus.on('dock:undocked', onUndocked));
     busSubscribers.push(bus.on('player:respawn', onPlayerRespawn));
+    busSubscribers.push(bus.on('player:death', onPlayerDeathSlide));
     busSubscribers.push(bus.on('cloak:engaged', onCloakEngaged));
     busSubscribers.push(bus.on('cloak:dropped', onCloakDropped));
     busSubscribers.push(bus.on('ship:swingDash', onSwingDash));
     busSubscribers.push(bus.on('combat:subsystemEnabled', onSubsystemEnabled));
+    busSubscribers.push(bus.on('charge:stuck', onChargeStuck));
+    busSubscribers.push(bus.on('cargo:jettisoned', onJettison));
+    busSubscribers.push(bus.on('countermeasure:deployed', onCountermeasure));
+    busSubscribers.push(bus.on('beacon:deployed', onBeaconDeployed));
+    busSubscribers.push(bus.on('scan:pulse', onScanPulse));
+    busSubscribers.push(bus.on('tether:released', onTetherLetGo));
+    busSubscribers.push(bus.on('tether:broke', onTetherLetGo));
   }
 
   function unbindEvents() {
@@ -702,6 +1154,8 @@ export function createShipMicroMotionTracker() {
     busRef = null;
     craftMotion.clear();
     clearSpiralMemory();
+    rememberedPlayerId = null;
+    rememberedTargetId = null;
   }
 
   function updateCraftMicroMotion(entity, mesh, simTime, frameDt, options = {}) {
@@ -752,6 +1206,21 @@ export function createShipMicroMotionTracker() {
     }
     if (shieldNow != null) rec.prevShield = shieldNow;
 
+    if (rec.jumpKick) {
+      if (!reducedMotion) {
+        rec.recoilVelX += rec.jumpKick;
+        rec.flinchShudder = Math.max(rec.flinchShudder, rec.jumpKickShudder || 0);
+      }
+      rec.jumpKick = 0;
+    }
+    if (pendingDeathSlide && entity.id === options.playerId) {
+      if (!reducedMotion) {
+        rec.deathSlideVel = pendingDeathSlide;
+        rec.deathSlideT = 0;
+      }
+      pendingDeathSlide = null;
+    }
+
     // 1. Recoil spring integration (Hooke's law + damping)
     const kRecoil = 240.0;
     const cRecoil = 22.0;
@@ -786,6 +1255,7 @@ export function createShipMicroMotionTracker() {
     const cYaw = 15.0;
     rec.impactVelYaw += (-kYaw * rec.impactYaw - cYaw * rec.impactVelYaw) * dt;
     rec.impactYaw = clamp(rec.impactYaw + rec.impactVelYaw * dt, -0.38, 0.38);
+    stepYieldSpring(rec, dt);
 
     // 3. Environmental hazard atmospheric buffet
     if (rec.inHazard && !reducedMotion) {
@@ -963,7 +1433,25 @@ export function createShipMicroMotionTracker() {
 
     // Engine bells steer with stern-local demand (translation minus yaw couple): the drive
     // visibly aims the push. Pitch nods with main-drive power.
-    if (rec.mountMesh !== mesh) scanMountPivots(rec, mesh, hull);
+    // The boundary root survives an authored-root swap while mesh.userData.hull is repointed at
+    // the new hull group — rescan on hull identity too or the scale base stays the pre-swap
+    // fallback's (scale 1) and the next scale channel flattens the authored radius fit to ~1 WU.
+    if (rec.mountMesh !== mesh || rec.mountHull !== hull) scanMountPivots(rec, mesh, hull);
+    const driveHeat = isBoosting ? 1 : mainN;
+    rec.bellHeat = integrateBellHeat(rec.bellHeat || 0, driveHeat, dt);
+    if (!((rec.bellHeat || 0) < 0.004 && rec.bellCool)) {
+      applyBellThermal(rec, rec.bellHeat, !!(options && options.flashReduce));
+      rec.bellCool = rec.bellHeat < 0.004;
+    }
+    if (!rec.slipstream) rec.slipstream = { active: false, intensity: 0, side: 0, yawCouple: 0 };
+    resolveSlipstreamInto({
+      throttle: mainN,
+      boosting: isBoosting,
+      lateralSpeed: latV,
+      yawRate,
+      lateralDemand: latN,
+      yawDemand: yawN,
+    }, rec.slipstream);
     const gimbalScale = reducedMotion ? 0.5 : 1.0;
     const targetGimbalYaw = (yawN - latN) * GIMBAL_YAW_MAX * gimbalScale;
     const targetGimbalPitch = -mainN * GIMBAL_PITCH_MAX * gimbalScale;
@@ -1042,6 +1530,58 @@ export function createShipMicroMotionTracker() {
       rec.rcsPulseCd = reducedMotion ? RCS_PULSE_COOLDOWN_REDUCED_S : RCS_PULSE_COOLDOWN_S;
     }
 
+    // 8b. Line haul — a taut tether leans both hulls toward the line and stretches a light one.
+    if (options && options.playerId != null) rememberedPlayerId = options.playerId;
+    if (options && options.tetherActive && options.tetherTargetId != null) {
+      rememberedTargetId = options.tetherTargetId;
+    }
+    let haulTargetLean = 0;
+    let haulTargetStretch = 0;
+    const haulInvolved = !!(options && options.tetherActive
+      && (entity.id === options.playerId || entity.id === options.tetherTargetId));
+    if (haulInvolved && options.tetherLoad > 0.05 && options.entities
+        && typeof options.entities.get === 'function') {
+      const otherId = entity.id === options.playerId ? options.tetherTargetId : options.playerId;
+      const other = options.entities.get(otherId);
+      if (other && other.pos && entity.pos) {
+        const hdx = other.pos.x - entity.pos.x;
+        const hdz = other.pos.z - entity.pos.z;
+        const hlen = Math.hypot(hdx, hdz);
+        if (hlen > 1) {
+          rec.linePullFwd = (hdx * cf + hdz * sf) / hlen;
+          rec.linePullLat = (hdx * -sf + hdz * cf) / hlen;
+          const taut = TAUT_LINE_PHASES.has(options.tetherPhase);
+          const loadPose = (taut ? 1 : 0.35) * clamp(options.tetherLoad, 0, 1);
+          haulTargetLean = loadPose;
+          haulTargetStretch = clamp(loadPose * massYieldScale(rec.mass), 0, 1);
+        }
+      }
+    }
+    if (!rec.lineLatched && haulTargetLean > 0.3) {
+      rec.lineLatched = true;
+      rec.flinchShudder = Math.max(rec.flinchShudder, 0.18);
+      rec.impactVelYaw += rec.linePullLat * 0.35;
+    }
+    if (haulTargetLean < 0.05) rec.lineLatched = false;
+    const haulFollow = rec.lineRelease > 0 ? LINE_RELEASE_FOLLOW : LINE_HAUL_FOLLOW;
+    if (rec.lineRelease > 0) rec.lineRelease = Math.max(0, rec.lineRelease - dt);
+    const haulBlend = 1 - Math.exp(-haulFollow * dt);
+    rec.lineLean += (haulTargetLean - rec.lineLean) * haulBlend;
+    rec.lineStrain += (haulTargetStretch - rec.lineStrain) * haulBlend;
+
+    const yieldVis = rec.yieldAmt * (reducedMotion ? 0.4 : 1);
+    if (!rec.yieldPose) rec.yieldPose = { x: 1, y: 1, z: 1, shiftX: 0, shiftZ: 0 };
+    hullYieldPose(yieldVis, rec.yieldFwd, rec.yieldLat, rec.yieldPose);
+    const haulVis = reducedMotion ? 0.45 : 1;
+    if (!rec.haulPose) {
+      rec.haulPose = { x: 1, y: 1, z: 1, shiftX: 0, shiftZ: 0, bank: 0, yaw: 0 };
+    }
+    lineHaulPose(rec.lineStrain * haulVis, rec.lineLean * haulVis, rec.linePullFwd, rec.linePullLat, rec.haulPose);
+    const yieldShiftX = rec.yieldPose.shiftX;
+    const yieldShiftZ = rec.yieldPose.shiftZ;
+    const haulShiftX = rec.haulPose.shiftX;
+    const haulShiftZ = rec.haulPose.shiftZ;
+
     // 9. High frequency shudder synthesis
     const shudderPhase = simTime * 140.0;
     const totalShudder = (rec.recoilShudder + rec.flinchShudder) * (reducedMotion ? 0.2 : 1.0);
@@ -1052,23 +1592,55 @@ export function createShipMicroMotionTracker() {
     // Apply composite displacements to hull.position (local space: +X forward, +Y up, +Z lateral)
     const surgeSquatX = rec.accelSurge * 0.8;
     if (!reducedMotion) {
-      hull.position.x = rec.recoilX + rec.flinchX + boostJitterX + surgeSquatX + jumpShudderX + rcsKickFwd;
+      hull.position.x = rec.recoilX + rec.flinchX + boostJitterX + surgeSquatX + jumpShudderX + rcsKickFwd
+        + yieldShiftX + haulShiftX;
       hull.position.y = idleBreathHeave + boostJitterY;
-      hull.position.z = rec.flinchZ + shudderOffset + jumpShudderZ + rcsKickLat;
+      hull.position.z = rec.flinchZ + shudderOffset + jumpShudderZ + rcsKickLat
+        + yieldShiftZ + haulShiftZ;
     } else {
-      hull.position.x = rec.recoilX * 0.3 + rcsKickFwd * 0.3;
+      hull.position.x = rec.recoilX * 0.3 + rcsKickFwd * 0.3 + yieldShiftX + haulShiftX;
       hull.position.y = 0;
-      hull.position.z = rcsKickLat * 0.3;
+      hull.position.z = rcsKickLat * 0.3 + yieldShiftZ + haulShiftZ;
+    }
+
+    if (rec.deathSlideT >= 0 && entity.pos && mesh && mesh.position) {
+      rec.deathSlideT += dt;
+      if (reducedMotion || rec.deathSlideT >= DEATH_SLIDE_S) {
+        mesh.position.x = entity.pos.x;
+        mesh.position.z = entity.pos.z;
+        rec.deathSlideT = -1;
+        rec.deathSlideVel = null;
+      } else {
+        const offset = deathSlideOffset(rec.deathSlideVel, rec.deathSlideT);
+        const hulls = [];
+        const entities = options.entities;
+        if (entities && typeof entities.forEach === 'function') {
+          entities.forEach((other) => {
+            if (!other || other.id === entity.id || !other.pos) return;
+            if (other.type !== 'ship' && other.type !== 'station' && other.type !== 'asteroid') return;
+            hulls.push({
+              id: other.id,
+              x: other.pos.x,
+              z: other.pos.z,
+              r: other.radius || 8,
+            });
+          });
+        }
+        clampSlideAgainstHulls(entity.pos, offset, hulls, entity.id);
+        mesh.position.x = entity.pos.x + offset.x;
+        mesh.position.z = entity.pos.z + offset.z;
+      }
     }
 
     // Additive secondary angular micro-motion
     hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll + swingBank + rebootRock
-      + critList + critCough) * (reducedMotion ? 0.3 : 1.0);
+      + critList + critCough + rec.haulPose.bank) * (reducedMotion ? 0.3 : 1.0);
     hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
     // Impact yaw swing on the hull channel — unowned here (entity sync only resets the root yaw,
     // which is −entity.rot, so sim-frame yaw writes mirrored). Absolute set around the authored
     // base, spring-decays back to it.
-    hull.rotation.y = (rec.hullYawBase || 0) - rec.impactYaw * (reducedMotion ? 0.3 : 1.0);
+    hull.rotation.y = (rec.hullYawBase || 0)
+      - (rec.impactYaw + rec.haulPose.yaw) * (reducedMotion ? 0.3 : 1.0);
 
     // Hull-scale channels: materialize ramp, cloak ripple, swing stretch, shield breath.
     // hull.scale is set-once-at-build everywhere, so this tracker owns it multiplicatively
@@ -1094,6 +1666,9 @@ export function createShipMicroMotionTracker() {
       }
     }
     if (swingStretch > 0) scaleX += swingStretch;
+    scaleX *= rec.yieldPose.x * rec.haulPose.x;
+    scaleY *= rec.yieldPose.y * rec.haulPose.y;
+    scaleZ *= rec.yieldPose.z * rec.haulPose.z;
     if (rec.shieldBreathT0 >= 0) {
       const k = (simTime - rec.shieldBreathT0) / SHIELD_BREATH_S;
       if (k >= 1) {
@@ -1245,6 +1820,44 @@ export function createShipMicroMotionTracker() {
     lastSimTime = simTime;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
+    const presenting = wreckMeshPresenting(mesh);
+
+    // Wreck materialize/scale-in on the first frame a drawable layer actually presents — the same
+    // MATERIALIZE_S ramp ships and drones get on spawn, driven here because updateCraftMicroMotion
+    // never runs for wrecks. Root scale is set-once-at-build, so this channel owns it
+    // multiplicatively off the captured base.
+    if (presenting && rec.wreckPresented !== true) {
+      rec.wreckPresented = true;
+      if (rec.materializeT0 < 0) rec.materializeT0 = simTime;
+      const base = mesh.scale;
+      rec.wreckScaleBaseX = base && Number.isFinite(base.x) ? base.x : 1;
+      rec.wreckScaleBaseY = base && Number.isFinite(base.y) ? base.y : 1;
+      rec.wreckScaleBaseZ = base && Number.isFinite(base.z) ? base.z : 1;
+    }
+    if (rec.materializeT0 >= 0 && mesh.scale) {
+      const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+        if (typeof mesh.scale.set === 'function') {
+          mesh.scale.set(rec.wreckScaleBaseX, rec.wreckScaleBaseY, rec.wreckScaleBaseZ);
+        } else {
+          mesh.scale.x = rec.wreckScaleBaseX;
+          mesh.scale.y = rec.wreckScaleBaseY;
+          mesh.scale.z = rec.wreckScaleBaseZ;
+        }
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        const f = (0.55 + 0.45 * e) * (1 + Math.sin(k * Math.PI) * MATERIALIZE_OVERSHOOT);
+        if (typeof mesh.scale.set === 'function') {
+          mesh.scale.set(rec.wreckScaleBaseX * f, rec.wreckScaleBaseY * f, rec.wreckScaleBaseZ * f);
+        } else {
+          mesh.scale.x = rec.wreckScaleBaseX * f;
+          mesh.scale.y = rec.wreckScaleBaseY * f;
+          mesh.scale.z = rec.wreckScaleBaseZ * f;
+        }
+      }
+    }
+
     if (rec.spiralState === 2) {
       if (rec.spiralY !== 0 && mesh.rotation) mesh.rotation.y += rec.spiralY;
       return true;
@@ -1254,6 +1867,10 @@ export function createShipMicroMotionTracker() {
       const data = entity.data || null;
       if (!data || data.parentType !== 'ship') return false;
       if (!entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+      // The spiral is a witnessed-kill read; igniting it while the packaged-body admission still
+      // draws nothing lets the whole spin (and its detonation flash) elapse behind an invisible
+      // root — the wreck then pops in mid/post-spiral on a cold GLB decode.
+      if (!presenting) return false;
       if (!matchFreshKill(entity.pos.x, entity.pos.z, simTime)) return false;
       spiralDone.set(entity.id, 1);
       rec.spiralState = 1;
@@ -1265,6 +1882,12 @@ export function createShipMicroMotionTracker() {
       rec.spiralPopCd = 0.12;
       rec.spiralRcsCd = 0;
       rec.spiralRcsSide = 1;
+    }
+    if (!presenting) {
+      // Hidden mid-spiral (kept-GPU recook, late re-admission): freeze the clock so the spin
+      // cannot finish off-screen — the flash still lands while the wreck is actually visible.
+      rec.spiralT0 += dt;
+      return true;
     }
     const reduced = !!(a11y && a11y.reducedMotion === true);
     const age = simTime - rec.spiralT0;
@@ -1341,6 +1964,37 @@ export function createShipMicroMotionTracker() {
     return true;
   }
 
+  function peekRecord(entityId) {
+    return craftMotion.get(entityId) || null;
+  }
+
+  function clearRecordMeshRefs(rec) {
+    if (!rec) return;
+    rec.mountMesh = null;
+    rec.mountHull = null;
+    rec.bellCount = 0;
+    rec.rcsNozzleCount = 0;
+    if (rec.bells) rec.bells.length = 0;
+    if (rec.rcsNozzles) rec.rcsNozzles.length = 0;
+  }
+
+  // Mesh teardown path: the entity may stay alive while its visual boundary is evicted,
+  // rebound, or disposed under a recycled id. The record keeps its motion state but must
+  // drop every Object3D reference or the old boundary tree stays anchored forever.
+  function releaseEntityMesh(entityId) {
+    clearRecordMeshRefs(craftMotion.get(entityId));
+  }
+
+  // Save-restore reissues ids, so a dead boundary can be pinned by a record whose key was
+  // recycled onto a different entity type (that entity's updates never rewrite mountMesh).
+  // Releasing by mesh identity covers every record regardless of key churn.
+  function releaseMesh(mesh) {
+    if (!mesh) return;
+    for (const rec of craftMotion.values()) {
+      if (rec.mountMesh === mesh) clearRecordMeshRefs(rec);
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of craftMotion.keys()) {
@@ -1376,10 +2030,19 @@ export function createShipMicroMotionTracker() {
     onCloakDropped,
     onSwingDash,
     onSubsystemEnabled,
+    onChargeStuck,
+    onJettison,
+    onCountermeasure,
+    onBeaconDeployed,
+    onScanPulse,
+    onTetherLetGo,
     onKilled,
     onSpawned,
     prune,
+    releaseEntityMesh,
+    releaseMesh,
     getRecord,
+    peekRecord,
   };
 }
 

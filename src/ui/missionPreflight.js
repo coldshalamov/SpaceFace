@@ -512,6 +512,48 @@ export function missionRouteIntel(m, state) {
   };
 }
 
+/**
+ * INF-065: one mission briefed as a physical situation. Escort-only: a compact diagram of the
+ * actual job — origin, destination, span, and the KNOWN lane danger from missionRouteIntel
+ * (sector signals the board already shows; never spawn or target detail) — paired with one
+ * concrete approach chosen from the live situation. The approach names only verbs the player
+ * already has (accept, track, launch, fly, dock). Returns null for every other mission type.
+ */
+export function missionBriefingDiagram(m, state, originLabel) {
+  if (!m || m.type !== 'escort') return null;
+  const intel = missionRouteIntel(m, state);
+  const pacing = missionTimePacing(m, state);
+  const jumps = m.jumps != null ? m.jumps : (m.routeJumps != null ? m.routeJumps : 0);
+  const distance = Number(m && m.distance);
+  const span = jumps > 0
+    ? `${jumps} jump${jumps > 1 ? 's' : ''}`
+    : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')}u` : null);
+  const danger = intel ? intel.danger : null;
+  // missionTimePacing prefixes its chip 'Critical ' / 'Tight ' exactly when those bands apply.
+  const chipText = (pacing && pacing.chip && pacing.chip.text) || '';
+  const critical = chipText.startsWith('Critical ');
+  const tight = chipText.startsWith('Tight ');
+  let approach;
+  if (critical) {
+    approach = { id: 'launch', line: 'Launch directly after accepting — the clock is critical, not the lane.' };
+  } else if (danger != null && danger >= ROUTE_RISK_WARNING_DANGER) {
+    approach = { id: 'screen', line: 'Stay with the convoy and screen its contacts — do not run ahead: the contract settles only once the convoy docks.' };
+  } else if (tight) {
+    approach = { id: 'launch', line: 'Launch directly after accepting — the timer is tight for this span.' };
+  } else {
+    approach = { id: 'sweep', line: 'Run ahead, sweep the lane, and fall back to the convoy before the destination.' };
+  }
+  return {
+    origin: String(originLabel || 'This station'),
+    destination: intel ? intel.targetName : (m.destStationId ? String(m.destStationId) : 'destination'),
+    span,
+    danger,
+    dangerLabel: intel ? intel.label : null,
+    convoyGate: true,
+    approach,
+  };
+}
+
 function missionTaskEstimate(m) {
   const p = m && m.params || {};
   const explicit = Number(p.taskTime);

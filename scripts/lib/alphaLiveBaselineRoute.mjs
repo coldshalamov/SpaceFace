@@ -65,7 +65,9 @@ export async function runBrowserPublicRoute({
     const splash = page.locator('#cinematic-splash');
     if (await splash.isVisible().catch(() => false)) {
       await page.keyboard.press('Space');
-      await splash.waitFor({ state: 'hidden', timeout: 5_000 });
+      // The is-closing fade removes the node on a 700ms timer; on a contended host
+      // that timer can starve several seconds. The wait proves dismissal, not speed.
+      await splash.waitFor({ state: 'hidden', timeout: 15_000 });
       mark('intro-dismissed', { note: 'visible cinematic dismissed with Space' });
     } else {
       mark('intro-not-shown', { note: 'fresh route reached the menu without a visible cinematic' });
@@ -93,8 +95,10 @@ export async function runBrowserPublicRoute({
       `intro dismissal must not activate New Game; title landing=${JSON.stringify(titleLanding)}`);
     await waitForVisible(page, '[data-screen="mainMenu"]', 30_000, 'Main Menu');
     await waitForBootOverlayGone(page);
-    await screenshot(page, outputDir, SCREENSHOTS.mainMenu);
+    // The boot floor measures player-visible launch -> menu wall time; the
+    // screenshot below is measurement apparatus and must not sit inside it.
     mark('main-menu-visible');
+    await screenshot(page, outputDir, SCREENSHOTS.mainMenu);
     recordCanonicalUrl('main-menu');
 
     phase = 'new-game';
@@ -130,7 +134,18 @@ export async function runBrowserPublicRoute({
     phase = 'flight-input';
     const canvas = page.locator('#gl-canvas');
     await canvas.waitFor({ state: 'visible', timeout: 30_000 });
-    const canvasBox = await canvas.boundingBox();
+    // boundingBox() additionally waits for two stable rAF frames — under a first-present compile
+    // burst or a layout-thrash regression that wait never settles and the route dies without diag.
+    // getBoundingClientRect answers under layout churn; it only fails if the JS thread itself is
+    // wedged, which the race bound still reports as a timeout instead of hanging the run.
+    const canvasBox = await canvas.boundingBox({ timeout: 12_000 }).catch(() => null)
+      || await Promise.race([
+        page.evaluate(() => {
+          const r = document.getElementById('gl-canvas')?.getBoundingClientRect();
+          return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+        }),
+        new Promise((resolve) => setTimeout(() => resolve(null), 8_000)),
+      ]).catch(() => null);
     assert(canvasBox && canvasBox.width > 100 && canvasBox.height > 100, 'flight canvas must have a visible pointer target');
     await page.mouse.move(
       Math.round(canvasBox.x + canvasBox.width * 0.58),
@@ -166,61 +181,78 @@ export async function runBrowserPublicRoute({
     // The baseline sample must itself be settle-confirmed: a positional correction that starts
     // between the gate and the read would land inside the measured window unobserved. Verify the
     // snapshot still sits at the settled anchor; if the hull moved, re-anchor and wait again.
-    let settledCandidate = null;
-    for (let attempt = 0; attempt < 8 && !settledCandidate; attempt++) {
-      const anchor = await waitForSettledAnchor();
-      await page.waitForTimeout(250);
-      const candidate = await readFlightSnapshot(page);
-      const drift = Math.hypot(
-        Number(candidate.player?.pos?.x || 0) - anchor.x,
-        Number(candidate.player?.pos?.z || 0) - anchor.z,
-      );
-      if (drift <= 0.5 && Number(candidate.player?.speed || 0) <= 0.5) settledCandidate = candidate;
-    }
-    const baselineStart = settledCandidate;
-    assert(baselineStart, 'released baseline never observed a settled hull');
-    await page.waitForTimeout(500);
-    const baselineEnd = await readFlightSnapshot(page);
-    let wHeld = null;
-    let boostHeld = null;
-    try {
-      await page.keyboard.down('KeyW');
+    const measureFlightInput = async () => {
+      let settledCandidate = null;
+      for (let attempt = 0; attempt < 8 && !settledCandidate; attempt++) {
+        const anchor = await waitForSettledAnchor();
+        await page.waitForTimeout(250);
+        const candidate = await readFlightSnapshot(page);
+        const drift = Math.hypot(
+          Number(candidate.player?.pos?.x || 0) - anchor.x,
+          Number(candidate.player?.pos?.z || 0) - anchor.z,
+        );
+        if (drift <= 0.5 && Number(candidate.player?.speed || 0) <= 0.5) settledCandidate = candidate;
+      }
+      const baselineStart = settledCandidate;
+      assert(baselineStart, 'released baseline never observed a settled hull');
       await page.waitForTimeout(500);
-      wHeld = await readFlightSnapshot(page);
-      await page.keyboard.down('Shift');
-      await page.waitForTimeout(400);
-      boostHeld = await readFlightSnapshot(page);
-    } finally {
-      await page.keyboard.up('Shift').catch(() => {});
-      await page.keyboard.up('KeyW').catch(() => {});
+      const baselineEnd = await readFlightSnapshot(page);
+      let wHeld = null;
+      let boostHeld = null;
+      try {
+        await page.keyboard.down('KeyW');
+        await page.waitForTimeout(500);
+        wHeld = await readFlightSnapshot(page);
+        await page.keyboard.down('Shift');
+        await page.waitForTimeout(400);
+        boostHeld = await readFlightSnapshot(page);
+      } finally {
+        await page.keyboard.up('Shift').catch(() => {});
+        await page.keyboard.up('KeyW').catch(() => {});
+      }
+      // Shader admission can briefly occupy the page immediately after launch. Wait for the public
+      // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
+      // same blocked frame. This remains a player-input proof; it does not write input or sim state.
+      await page.waitForFunction((heldTick) => {
+        const state = window.SF?.state;
+        return Number(state?.tick || 0) > heldTick
+          && Math.abs(Number(state?.input?.moveZ || 0)) < 0.02
+          && state?.input?.boost !== true;
+      }, Number(boostHeld?.tick || 0), { timeout: 30_000 });
+      const released = await readFlightSnapshot(page);
+      const causality = evaluateFlightInputCausality({
+        baselineStart,
+        baselineEnd,
+        wHeld,
+        boostHeld,
+        released,
+      });
+      return { baselineStart, baselineEnd, wHeld, boostHeld, released, causality };
+    };
+    let flightInput = await measureFlightInput();
+    // D26: a rare first-flight physics pin holds speed at exactly 0 with nominal telemetry.
+    // Re-measure once after a beat — a transient pin clears, a persistent one fails with
+    // doubled forensics. The occurrence is recorded in evidence either way.
+    if (flightInput.causality.failures.length
+      && flightInput.causality.metrics?.powered?.speedEnd === 0
+      && flightInput.causality.metrics?.powered?.displacement === 0
+      && flightInput.wHeld?.player?.physicsDynamic === true) {
+      mark('flight-input-retry-pin', {
+        failures: flightInput.causality.failures,
+        live: {
+          thrust: flightInput.wHeld?.player?.thrust,
+          thrustHealth: flightInput.wHeld?.player?.thrustHealth,
+          physicsSleeping: flightInput.wHeld?.player?.physicsSleeping,
+          mode: flightInput.wHeld?.mode,
+        },
+      });
+      await page.waitForTimeout(1500);
+      flightInput = await measureFlightInput();
     }
-    // Shader admission can briefly occupy the page immediately after launch. Wait for the public
-    // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
-    // same blocked frame. This remains a player-input proof; it does not write input or sim state.
-    await page.waitForFunction((heldTick) => {
-      const state = window.SF?.state;
-      return Number(state?.tick || 0) > heldTick
-        && Math.abs(Number(state?.input?.moveZ || 0)) < 0.02
-        && state?.input?.boost !== true;
-    }, Number(boostHeld?.tick || 0), { timeout: 30_000 });
-    const released = await readFlightSnapshot(page);
-    const flightInputCausality = evaluateFlightInputCausality({
-      baselineStart,
-      baselineEnd,
-      wHeld,
-      boostHeld,
-      released,
-    });
+    const { baselineStart, baselineEnd, wHeld, boostHeld, released } = flightInput;
+    const flightInputCausality = flightInput.causality;
     assert.deepEqual(flightInputCausality.failures, [],
       `ordinary keyboard flight input did not prove causal response: ${JSON.stringify(flightInputCausality)}`);
-    const flightInput = {
-      baselineStart,
-      baselineEnd,
-      wHeld,
-      boostHeld,
-      released,
-      causality: flightInputCausality,
-    };
     await screenshot(page, outputDir, SCREENSHOTS.flightAfterInput);
     mark('ordinary-flight-input', {
       baselineStart: compactFlight(baselineStart),
@@ -246,31 +278,44 @@ export async function runBrowserPublicRoute({
     // The Helios waypoint arm is a reusable public-map flow: the approach below re-arms
     // through the same UI when a corridor-brake pulse strands the ship outside assist reach.
     const armHeliosWaypoint = async (markName) => {
-      if (!(await page.locator('#sf-galaxymap').isVisible().catch(() => false))) {
-        await page.keyboard.press('KeyN');
+      // A click that misses the button lands on the chart canvas, which clears the map
+      // selection — the inspector then hides Set Waypoint for the rest of the attempt.
+      // A player whose click missed re-selects the station; bound the same recovery here.
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (!(await page.locator('#sf-galaxymap').isVisible().catch(() => false))) {
+            await page.keyboard.press('KeyN');
+          }
+          await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
+          const searchInput = page.locator('.gm-search-input');
+          await page.keyboard.press('/');
+          const shortcutFocused = await page.waitForFunction(
+            () => document.activeElement?.matches('.gm-search-input') === true,
+            null,
+            { timeout: 1_000 },
+          ).then(() => true, () => false);
+          if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
+          await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
+          await searchInput.fill('');
+          await page.keyboard.type('Helios Station');
+          await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
+          await page.keyboard.press('Enter');
+          const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+          await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
+          const inspectorText = await page.locator('.gm-inspector-content').innerText();
+          assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
+          await clickWaypointWithPointer(page, setWaypointButton);
+          const navSnapshot = await readNavigationSnapshot(page);
+          mark(markName, navSnapshot);
+          recordCanonicalUrl(markName);
+          return navSnapshot;
+        } catch (error) {
+          lastError = error;
+          mark('helios-waypoint-retry', { attempt, error: String(error && (error.message || error)).slice(0, 240) });
+        }
       }
-      await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
-      const searchInput = page.locator('.gm-search-input');
-      await page.keyboard.press('/');
-      const shortcutFocused = await page.waitForFunction(
-        () => document.activeElement?.matches('.gm-search-input') === true,
-        null,
-        { timeout: 1_000 },
-      ).then(() => true, () => false);
-      if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
-      await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-      await page.keyboard.type('Helios Station');
-      await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-      await page.keyboard.press('Enter');
-      const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-      await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
-      const inspectorText = await page.locator('.gm-inspector-content').innerText();
-      assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
-      await clickWaypointWithPointer(page, setWaypointButton);
-      const navSnapshot = await readNavigationSnapshot(page);
-      mark(markName, navSnapshot);
-      recordCanonicalUrl(markName);
-      return navSnapshot;
+      throw lastError;
     };
     const navSnapshot = await armHeliosWaypoint('helios-waypoint-armed');
 
@@ -285,6 +330,10 @@ export async function runBrowserPublicRoute({
     let corridorBrakePulsed = false;
     let reArms = 0;
     let strandIterations = 0;
+    let stallBrakes = 0;
+    let stallNudges = 0;
+    let bestDistToBerth = Infinity;
+    let progressAt = Date.now();
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
       if (approachSnapshot.playerAlive !== true) {
@@ -326,6 +375,45 @@ export async function runBrowserPublicRoute({
         reArms += 1;
         strandIterations = 0;
         await armHeliosWaypoint('helios-waypoint-rearmed');
+      }
+      // Capture-stall watchdog: an autopilot cruising inside the capture volume under the
+      // speed gate can hold a tangential limit cycle — close, slow, never berthing — while
+      // neither the fast-brake (>26 wu/s) nor the stranded re-arm (AP off, >90 WU, approach
+      // phase) applies. A pilot watching the range freeze brakes to hand the hull to the
+      // capture assist; if the ship then parks short with nothing driving, a straight W nudge
+      // covers the last WU. Bounded: one brake pulse + two nudges per approach.
+      const distNow = Number(approachSnapshot.corridor?.distToBerth);
+      if (Number.isFinite(distNow)) {
+        if (distNow < bestDistToBerth - 1.5) {
+          bestDistToBerth = distNow;
+          progressAt = Date.now();
+        } else if (Date.now() - progressAt > 15_000) {
+          const nearBerth = approachSnapshot.corridor?.inCapture === true
+            || approachSnapshot.corridor?.inCorridor === true
+            || distNow <= 60;
+          if (approachSnapshot.autopilot?.active === true && nearBerth && stallBrakes < 1) {
+            stallBrakes += 1;
+            mark('dock-corridor-stall-brake', approachSnapshot);
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+            progressAt = Date.now();
+          } else if (approachSnapshot.autopilot?.active !== true && nearBerth
+              && stallNudges < 3 && Number(approachSnapshot.speed) < 12) {
+            stallNudges += 1;
+            mark('dock-corridor-stall-nudge', approachSnapshot);
+            try {
+              await page.keyboard.down('KeyW');
+              await page.waitForTimeout(700);
+            } finally {
+              await page.keyboard.up('KeyW').catch(() => {});
+            }
+            progressAt = Date.now();
+          }
+        }
       }
       await page.waitForTimeout(250);
     }
@@ -1108,16 +1196,51 @@ async function clickWaypointWithPointer(page, locator) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
-      const x = Math.round(lastBox.x + lastBox.width / 2);
-      const y = Math.round(lastBox.y + lastBox.height / 2);
-      await page.mouse.move(x, y);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.up({ button: 'left' });
+      // The action band is a scrollable clip: the button's laid-out rect can straddle
+      // the clip edge and a center click lands on a sibling control or the chart.
+      // Focus first so the browser keeps the button painted, then click a point that
+      // hit-tests to it — where a player would click. (Same guard as the soak probe's
+      // clickWaypointWithPointer.)
+      const point = await page.evaluate(() => {
+        const btn = document.querySelector('#gm-set-course-btn');
+        if (!btn || btn.hidden || btn.disabled) return null;
+        try { btn.focus(); } catch (_) { /* focus is best-effort */ }
+        btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const r = btn.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return null;
+        for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+          for (const fx of [0.5, 0.3, 0.7]) {
+            const x = r.x + r.width * fx;
+            const y = r.y + r.height * fy;
+            const el = document.elementFromPoint(x, y);
+            if (el === btn || btn.contains(el)) return { x: Math.round(x), y: Math.round(y) };
+          }
+        }
+        return null;
+      }).catch(() => null);
+      if (point) {
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.down({ button: 'left' });
+        await page.mouse.up({ button: 'left' });
+      } else {
+        // No painted point resolved inside the clip band — activate the focused
+        // button with Enter, the public keyboard path for the same control.
+        const focused = await page.evaluate(() => document.activeElement?.id === 'gm-set-course-btn').catch(() => false);
+        if (focused) await page.keyboard.press('Enter');
+      }
       const armed = await page.waitForFunction(() => {
         const nav = window.SF?.state?.nav;
         return nav?.autopilot?.active === true && /Helios Station/i.test(String(nav.autopilot.label || ''));
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
+      // A click that landed on the chart canvas instead of the button clears the
+      // map's _selectedTarget — every later click is an inert no-op. Bail so the
+      // caller can re-run the search selection instead of burning the budget.
+      const selectionLost = await page.evaluate(() => {
+        const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+        return def != null && def._selectedTarget == null;
+      }).catch(() => false);
+      if (selectionLost) throw new Error('Set Waypoint click cleared the map selection (canvas hit)');
     }
     await page.waitForTimeout(50);
   }

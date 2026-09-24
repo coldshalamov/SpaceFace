@@ -12,7 +12,7 @@
 //      (reaction/{boost,unboosted,boost-just,earned-momentum}-above-cap, large-hull-above-cap,
 //      small-hull-boost, torch/{boost,unboosted}-above-cap); every other case is byte-identical.
 //   3. Engaged ramps the cap monotonically toward the per-family ceiling and never past it.
-//   4. Disengaging spends earned momentum through the existing decay path instead of confiscating it.
+//   4. Disengaging lets earned momentum coast while the old thrust ceiling fades.
 //   5. The ceiling is drive identity: a TORCH out-travels a REACTION.
 //
 // The flags are read at CALL TIME by the kernel, so every test that flips one restores it in a
@@ -240,7 +240,7 @@ test('the ramp approaches the ceiling asymptotically rather than hitting a wall'
   });
 });
 
-// --- 4. Disengage spends momentum, never confiscates it ------------------------------------
+// --- 4. Disengage keeps momentum -------------------------------------------------------------
 
 test('disengaging sets physicsEarnedMomentum instead of snapping the velocity down', () => {
   withFlags({ travelBurn: true, boostNeverBrakes: true }, () => {
@@ -265,7 +265,7 @@ test('disengaging sets physicsEarnedMomentum instead of snapping the velocity do
   });
 });
 
-test('disengaging spends leftover travel speed along the decaying cap over ~10s', () => {
+test('disengaging leaves travel speed intact while the thrust cap fades', () => {
   withFlags({ travelBurn: true, boostNeverBrakes: true }, () => {
     const profile = PROPULSION_PROFILES.drive_reaction_m;
     const mass = 20;
@@ -295,11 +295,11 @@ test('disengaging spends leftover travel speed along the decaying cap over ~10s'
       if (i % 60 === 0) samples.push(Math.hypot(vel.x, vel.z));
     }
     const finalSpeed = Math.hypot(vel.x, vel.z);
-    assert.ok(finalSpeed < 700 * 0.85, `velocity should be spent (700 -> ${finalSpeed.toFixed(1)})`);
+    assert.ok(finalSpeed >= 700 * 0.99, `vacuum velocity should be retained (700 -> ${finalSpeed.toFixed(1)})`);
     for (let i = 1; i < samples.length; i += 1) {
       assert.ok(
-        samples[i] > samples[i - 1] * 0.55,
-        `speed collapsed too abruptly at sample ${i} — that is confiscation, not spending`
+        samples[i] >= samples[i - 1] * 0.995,
+        `speed fell without a brake or environmental force at sample ${i}`
       );
     }
   });

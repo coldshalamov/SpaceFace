@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { BOMB_DEFS, BOMB_IDS, BOMB_DRIFT } from '../src/data/bombs.js';
+import { BOMB_DEFS, BOMB_DRIFT } from '../src/data/bombs.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { bombs } from '../src/systems/bombs.js';
 
@@ -53,7 +53,17 @@ function bootBombs({ playerVel = { x: 0, z: 0 }, selectedId = 'bomb_frag' } = {}
   };
   const system = Object.create(bombs);
   system.init({ state, bus, helpers });
-  state.bombs.selectedId = selectedId;
+  // The rack model (PQ-205.03): a selected payload must be loaded in a socket — the fixture
+  // loads it like a dock-side fit so `selectedId` means "the bay carries this".
+  if (selectedId) {
+    const rt = state.bombs, def = BOMB_DEFS[selectedId];
+    if (def && !rt.rack.cells.some((c) => c && c.id === selectedId && c.count > 0)) {
+      const free = rt.rack.cells.findIndex((c) => !c || !c.count);
+      if (free >= 0) rt.rack.cells[free] = { id: selectedId, count: def.magazine };
+      else { rt.rack.cells.push({ id: selectedId, count: def.magazine }); rt.rack.sockets = rt.rack.cells.length; }
+    }
+    rt.selectedId = selectedId;
+  }
   return {
     state, bus, system, routed, impulses, dropped, armed, detonated, fieldEnded, cycles, released,
     player, spawnRaw: helpers.spawnEntity,
@@ -264,13 +274,18 @@ function bootBombs({ playerVel = { x: 0, z: 0 }, selectedId = 'bomb_frag' } = {}
  test('the bay cycles payloads on the cycle verb and wraps', () => {
   const t = bootBombs();
   try {
-    for (let i = 0; i < BOMB_IDS.length; i++) {
+    // PQ-205.03: the cycle walks only loaded rack sockets — the starter rack carries
+    // frag + concussion, so cycling alternates the two fitted payloads and wraps.
+    const fitted = t.state.bombs.rack.cells.filter((c) => c && c.count > 0).map((c) => c.id);
+    assert.deepEqual(fitted, ['bomb_frag', 'bomb_concussion']);
+    for (let i = 0; i < fitted.length * 2; i++) {
       t.press('cycleBomb');
       t.tick(1);
     }
-    assert.equal(t.cycles.length, BOMB_IDS.length);
-    assert.equal(t.cycles[BOMB_IDS.length - 1].payloadId, BOMB_IDS[0], 'wraps to the first payload');
-    assert.equal(t.state.bombs.selectedId, BOMB_IDS[0]);
+    assert.equal(t.cycles.length, fitted.length * 2);
+    assert.ok(t.cycles.every((c) => fitted.includes(c.payloadId)), 'cycle never leaves the fitted rack');
+    assert.equal(t.cycles[fitted.length - 1].payloadId, fitted[0], 'wraps to the first fitted payload');
+    assert.equal(t.state.bombs.selectedId, fitted[0]);
   } finally {
     t.bus.clear();
   }

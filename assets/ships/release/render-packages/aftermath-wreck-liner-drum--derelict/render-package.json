@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "488ae71bca831d8186d543121adae6e7c98bbd79bfa03e8b3d06b6b4afb17f11",
+  "contentHash": "d4efcaa5a818eaabfd2de2b87a8f5119bc056d8e63ac6ef3c828fe5f3149521e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3808,14 +3808,14 @@
       "uri": "place_aftermath_wreck_liner_drum__derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 112436,
-    "sha256": "a4d530f8605b5499ef2fff7c6de61a82142edabd2296f3f20be1ae4db06a2781",
+    "sha256": "17539c4f53f7c11194988bea73b19e87ff5b9fb9a630b04e24fe9131c6b0bda0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3957,7 +3957,10 @@
       }
     ],
     "materialProfileRoles": {
-      "mechanical": 48
+      "glass": 8,
+      "hull": 6,
+      "mechanical": 30,
+      "rubber": 4
     },
     "materialProfiles": [
       {
@@ -4108,82 +4111,82 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -4193,12 +4196,12 @@
       {
         "allowTextures": true,
         "planIndex": 49,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 50,
-        "role": "mechanical"
+        "role": "rubber"
       }
     ],
     "nodeCount": 54,
@@ -5504,7 +5507,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
   },
-  "runtimeHash": "77bfae3c77cf930703f575e9146dd68fc305825a36586e0a5d0ae41beabbb32f",
+  "runtimeHash": "a536c257a16f7351a064bb34765f295bbdf5d746b2f925ab0342e37b11d16d5f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

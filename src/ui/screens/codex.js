@@ -5,11 +5,14 @@
 // seenComms, graffitiShown), so nothing is spoiled ahead of its beat. Unseen entries show a locked
 // placeholder ("— not yet encountered —") rather than the content.
 //
-// Field Hardware BENCH: stencil title, legend tab keys, engraved index, the focused entry on a
-// paper plate. Archive stills are imaged tiles. Built from the produced kit (assets/ui/kit);
-// this file owns no stylesheet. The hang holds the search, the eight section keys and the index
-// of entry names; the stage holds the one focused entry. Reads state.story + the pure-data
-// narrative tables; never mutates sim state.
+// AN ARCHIVE AND A READER (design/frontend/ONE_PHOTOGRAPH.md §9.2 #8, §9.3): the hang holds the
+// search, the eight section words and the index of entry names; the stage is a reading page for the
+// one focused entry: where it is filed and its place in the section, the entry's system mark (or the
+// figure's faction crest) as its illustration until the codex has painted plates, the text in a
+// measure, and a turn to the previous or next entry. The foot is the archive's catalogue: what has
+// been filed in each section, as readings. This file owns no stylesheet (the CODEX section of
+// src/ui/deckplate/screens.js dresses it). Reads state.story + the pure-data narrative tables;
+// never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
@@ -18,7 +21,9 @@ import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, dpMark, factionCrestName } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -90,12 +95,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': width,
-    'border-image-source': 'url("' + fhUrl('plates/' + file) + '")',
-    'border-image-slice': (variant === 'edge' ? '16' : '24') + ' fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': width,
+    ...platePins('raised', width),
     background: 'transparent',
     'box-sizing': 'border-box',
     padding: '10px 14px',
@@ -113,13 +113,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -166,12 +160,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -215,14 +204,8 @@ function paintRow(row, selected) {
   }
   if (selected && !forcedColorsActive()) {
     return pin(row, {
-      'border-style': 'solid',
-      'border-width': '8px 16px',
-      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
-      'border-image-slice': '8 16 8 16 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '8px 16px',
+      ...rowPins('8px 16px'),
       'box-shadow': 'none',
-      background: 'transparent',
       color: 'var(--fh-text)',
     });
   }
@@ -239,9 +222,6 @@ function paintRow(row, selected) {
 function paintTile(button, selected) {
   if (!button) return button;
   if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
-  const src = selected
-    ? fhUrl('windows/window.viewport.png')
-    : fhUrl('windows/window.glass.png');
   if (forcedColorsActive()) {
     return pin(button, {
       'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
@@ -256,14 +236,8 @@ function paintTile(button, selected) {
     padding: '0',
     cursor: 'pointer',
     'box-sizing': 'border-box',
-    background: 'transparent',
     color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + src + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins(selected ? 'viewport' : 'glass', '20px'),
   });
 }
 
@@ -529,7 +503,7 @@ function normalizeSearch(value) {
  * title at screen-title size, the meta in fine print, the body as sentences inside a measure, the
  * note as the emphasised sentence under a hairline. `signal` marks the filed endgame choice.
  */
-function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null }) {
+function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null, mark = '' }) {
   const article = el('article', 'sf-codex-entry fh-plate fh-plate--paper');
   paintPlate(article, 'paper');
   if (typeof image === 'string' && image) {
@@ -561,7 +535,28 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
     measure.appendChild(el('p', 'k-sentence k-sentence--emph' + (noteBad ? ' k-bad' : ''), note));
   }
   article.appendChild(measure);
-  return { id, name, sub, signal, locked, article, measure, requested: false };
+  return { id, name, sub, signal, locked, article, measure, mark, requested: false };
+}
+
+/** Take the reader's chrome (filed-under line, mark, turn) off an entry, leaving its own words. */
+function undressEntry(entry) {
+  if (!entry || !entry.article || typeof entry.article.querySelectorAll !== 'function') return;
+  for (const node of [...entry.article.querySelectorAll(':scope > .cx-chrome')]) node.remove();
+}
+
+/** The illustration a tab's entries carry until the codex has painted plates (§9.2 #8). */
+const TAB_MARKS = Object.freeze({
+  Story: 'mark-codex',
+  Comms: 'mark-codex',
+  Discoveries: 'mark-map',
+  Graffiti: 'mark-photo',
+  Figures: 'mark-codex',
+  Ship: 'mark-ship',
+});
+
+/** "Comms (25/45)" -> "Comms": a section's label without its running count. */
+function sectionTitle(label) {
+  return String(label || '').replace(/\s*\(\d+\/\d+\)\s*$/, '');
 }
 
 export const codexScreen = {
@@ -572,6 +567,10 @@ export const codexScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
+    // A fresh mount opens on the first section with no search (a deep link still picks its tab in
+    // onShow); a hidden-and-shown codex keeps the page the player left it on.
+    this._activeTab = 'Story';
+    this._query = '';
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-codex');
     rootEl.classList.add('k-screen', 'of-codex');
@@ -678,7 +677,13 @@ export const codexScreen = {
     rootEl.dataset.kReady = '1';
   },
 
-  refresh(ctx) { this._ctx = ctx; if (this._body) this._render(ctx); },
+  refresh(ctx, options) {
+    this._ctx = ctx;
+    // Live updates arrive on the bus listeners (story:beatAdvanced, comms:popup, graffiti:show,
+    // discovery:plateUnlocked); the shell's ~3 Hz periodic pass only reset the reader's scroll.
+    if (options && options.periodic) return;
+    if (this._body) this._render(ctx);
+  },
   onShow(ctx) {
     this._ctx = ctx;
     this._visible = true;
@@ -923,19 +928,39 @@ export const codexScreen = {
     this._section('Exploration Plates', entries);
   },
 
-  // The unlock-status strip: the heading in caps, the counts in one fine line, the note beneath.
+  // The archive's catalogue: what has been filed in each section, one reading per section (the
+  // numeral in phosphor, its words etched beneath). Why locked counts are low stays in the
+  // accessible description, not on the page.
   _renderStatus(ctx) {
     const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
     const box = this._status;
     box.innerHTML = '';
-    const cap = el('div', 'k-caps fh-legend', 'Codex Unlock Status');
-    paintLegend(cap, true);
+    box.classList.add('cx-index');
+    const cap = el('p', 'cx-index__cap', 'Codex Unlock Status');
     box.appendChild(cap);
-    // "Phase 1" already names its key; every other value is prefixed with its key word.
-    box.appendChild(el('p', 'k-t-fine k-62 fh-fine', summary.items
-      .map((item) => (String(item.value).startsWith(item.key) ? item.value : item.key + ' ' + item.value))
-      .join(' · ')));
-    box.appendChild(el('p', 'k-t-fine k-38 k-measure fh-body', summary.note));
+    const list = el('dl', 'cx-index__list');
+    for (const item of summary.items) {
+      const value = String(item.value);
+      let figure = value;
+      let words = item.key;
+      if (item.key === 'Phase') {
+        figure = value.replace(/^Phase\s*/, '');
+        words = 'Story phase';
+      } else {
+        const m = value.match(/^(\S+)\s*(.*)$/);
+        if (m) { figure = m[1]; words = (item.key + ' ' + m[2].replace(/[()]/g, '')).trim(); }
+      }
+      const cell = el('div', 'cx-index__item');
+      cell.dataset.key = item.key.toLowerCase();
+      cell.appendChild(el('dt', 'cx-index__w', words));
+      cell.appendChild(el('dd', 'cx-index__n', figure));
+      list.appendChild(cell);
+    }
+    box.appendChild(list);
+    const note = el('p', 'cx-index__note', summary.note);
+    note.id = 'sf-codex-index-note';
+    box.appendChild(note);
+    box.setAttribute('aria-describedby', note.id);
   },
 
   // The index: a caps row per section and a hairline row per entry that matches the search (the
@@ -943,6 +968,9 @@ export const codexScreen = {
   // content is never built, so it can never match.
   _applySearchFilter() {
     if (!this._index || !this._body) return;
+    // Search reads each entry's own words: the page chrome on the shown entry comes off first and
+    // goes back on when the focused entry is shown again below.
+    for (const entry of this._entries || []) undressEntry(entry);
     const query = normalizeSearch(this._query);
     const sections = this._sections.map((section) => ({
       ...section,
@@ -951,6 +979,9 @@ export const codexScreen = {
         : section.entries,
     }));
     const visible = sections.flatMap((section) => section.entries);
+    this._visibleEntries = visible;
+    this._sectionOf = new Map();
+    for (const section of sections) for (const entry of section.entries) this._sectionOf.set(entry.id, section);
     this._index.innerHTML = '';
     if (query && !visible.length) {
       this._index.appendChild(el('p', 'k-empty', 'No matching unlocked entries.'));
@@ -1018,13 +1049,71 @@ export const codexScreen = {
         const on = row.dataset.id === id;
         row.setAttribute('aria-selected', String(on));
         paintRow(row, on);
+        // A turn of the page keeps its row in view in the index.
+        if (on && typeof row.scrollIntoView === 'function') {
+          try { row.scrollIntoView({ block: 'nearest' }); } catch (_) { /* layout-free host */ }
+        }
       }
     }
     this._showEntry(entry);
   },
 
+  /**
+   * The reading page: where the entry is filed and its place in the section, its illustration, and
+   * a turn to the neighbouring entries. Chrome nodes carry .cx-chrome so search reads only the
+   * entry's own words; they are rebuilt each time the entry is shown.
+   */
+  _dressEntry(entry) {
+    const article = entry.article;
+    undressEntry(entry);
+    const visible = this._visibleEntries || [];
+    const section = this._sectionOf && this._sectionOf.get(entry.id);
+    const inSection = section ? section.entries.filter((candidate) => visible.includes(candidate)) : [entry];
+    const at = inSection.indexOf(entry);
+    const filed = el('p', 'cx-chrome cx-reader__filed',
+      [this._activeTab, section ? sectionTitle(section.label) : '', inSection.length > 1 ? (at + 1) + ' of ' + inSection.length : '']
+        .filter(Boolean).join(' · '));
+    article.prepend(filed);
+    // The figure's faction crest where the org is honestly known; otherwise the section's system mark.
+    const figureKey = String(entry.id).startsWith('figure:') ? entry.id.slice(7) : '';
+    const crest = figureKey && !entry.locked ? factionCrestName(FIGURE_FACTION[figureKey]) : '';
+    const markName = entry.mark || crest || TAB_MARKS[this._activeTab] || '';
+    const markHtml = markName ? dpMark(markName, { size: 'large' }) : '';
+    if (markHtml) {
+      const mark = el('div', 'cx-chrome cx-reader__mark');
+      mark.setAttribute('aria-hidden', 'true');
+      if (entry.locked) mark.classList.add('is-locked');
+      mark.innerHTML = markHtml;
+      article.insertBefore(mark, filed.nextSibling);
+    }
+    const index = visible.indexOf(entry);
+    if (visible.length > 1) {
+      const turn = el('nav', 'cx-chrome cx-reader__turn');
+      turn.setAttribute('aria-label', 'Turn the page');
+      const prev = visible[index - 1] || null;
+      const next = visible[index + 1] || null;
+      const word = (label, target, dir) => {
+        const b = el('button', 'k-word cx-reader__turn-key cx-reader__turn-key--' + dir, label);
+        b.type = 'button';
+        b.dataset.action = 'turn:' + dir;
+        if (target) {
+          b.setAttribute('aria-label', (dir === 'prev' ? 'Previous entry: ' : 'Next entry: ') + target.name);
+          b.addEventListener('click', () => { cue('move'); this._focus(target.id); });
+        } else {
+          b.setAttribute('aria-disabled', 'true');
+        }
+        return b;
+      };
+      turn.appendChild(word('Previous', prev, 'prev'));
+      turn.appendChild(el('span', 'cx-reader__turn-at', (index + 1) + ' / ' + visible.length));
+      turn.appendChild(word('Next', next, 'next'));
+      article.appendChild(turn);
+    }
+  },
+
   _showEntry(entry) {
     this._body.innerHTML = '';
+    this._dressEntry(entry);
     this._body.appendChild(entry.article);
     if (entry.requested) {
       entry.article.tabIndex = -1;

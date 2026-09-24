@@ -44,6 +44,27 @@ export const REDUCED_MOTION_INFORMATION_CUES = Object.freeze([
     information: 'same directional marker as a hull hit (shake may accompany it when motion is on)',
     owner: 'src/ui/damageIndicators.js',
   }),
+  Object.freeze({
+    id: 'objectiveLine',
+    sourceEvent: 'objective refresh',
+    vestibular: [],
+    information: 'mission-tracker destination + action text from flightDestinationSurface',
+    owner: 'src/ui/hud.js',
+  }),
+  Object.freeze({
+    id: 'lawChange',
+    sourceEvent: 'sector:enter / law:change',
+    vestibular: ['card transition'],
+    information: 'SECTOR · LEVEL change line, then the standing badge',
+    owner: 'src/ui/sectorLawPresenter.js',
+  }),
+  Object.freeze({
+    id: 'stuntName',
+    sourceEvent: 'stunt detected',
+    vestibular: ['stunt flourish'],
+    information: 'receipt prints the trick name; stunt kind admits ahead of combat-quiet',
+    owner: 'src/ui/hudAttention.js',
+  }),
 ]);
 
 export function buildReducedMotionContactCue(payload, playerId) {

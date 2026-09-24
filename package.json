@@ -24,6 +24,7 @@
     "check:jules-task-bank": "node scripts/jules-dispatch.mjs --validate && node --test test/jules-task-bank.test.mjs",
     "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json && node scripts/check-src-reachability.mjs",
     "check:playtest:gates": "node scripts/check-playtest-gates.mjs",
+    "check:adventure-decisions": "node --test test/adventure-decisions.test.mjs",
     "check:alpha:evidence": "node scripts/check-alpha-evidence.mjs",
     "check:alpha:evidence:contract": "node scripts/check-alpha-evidence.mjs --self-test",
     "check:time-effects": "node test/time-effects.test.mjs",
@@ -223,6 +224,7 @@
     "check:flavor-index": "node scripts/build-flavor-index.mjs --check && node --test test/depth-program-flavor-loader.test.mjs",
     "check:flavor-corpus": "node scripts/check-flavor-corpus.mjs",
     "check:faction-kit": "node scripts/check-faction-kit.mjs",
+    "check:faction-registers": "node scripts/check-faction-registers.mjs && node --test test/pq-178-02-registers.test.mjs",
     "check:doctrine-distinct": "node --test test/doctrine-distinct.test.mjs && node scripts/sim-doctrine-audit.mjs",
     "check:unique-loot": "node scripts/check-unique-loot.mjs",
     "check:blurb-voice": "node scripts/check-blurb-voice.mjs",
@@ -420,6 +422,7 @@
     "probe:data-states": "node scripts/probe-data-states.mjs",
     "capture:ui-matrix": "node scripts/capture-ui-matrix.mjs",
     "ui:stills": "node scripts/ui-stills.mjs",
+    "ui:bench": "node scripts/ui-bench.mjs",
     "capture:kit": "node scripts/capture-kit.mjs",
     "check:visual-regression": "node scripts/check-visual-regression.mjs",
     "optimize:ui-frame-references": "node scripts/optimize-ui-frame-references.mjs",
@@ -445,7 +448,7 @@
     "check:ui-identity": "node scripts/check-ui-identity.mjs",
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf:spatial-cache && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity && node scripts/check-ui-budgets.mjs",
     "check:ui:budgets": "node scripts/check-ui-budgets.mjs",
-    "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs",
+    "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs && npm run check:faction-registers",
     "check:smuggling-card": "node scripts/check-smuggling-card.mjs",
     "check:fact-ledger": "node scripts/check-fact-ledger.mjs",
     "check:market-chart": "node scripts/check-market-chart.mjs",
@@ -534,6 +537,8 @@
     "probe:runtime-witness": "node scripts/probe-runtime-witness.mjs",
     "probe:smooth-flight": "node scripts/probe-smooth-flight.mjs",
     "probe:smooth-flight:crucible": "node scripts/probe-smooth-flight.mjs --crucible",
+    "probe:body-scale": "node scripts/probe-body-scale.mjs",
+    "probe:solid-world": "node scripts/probe-solid-world.mjs --headless",
     "check:concept-index": "node scripts/check-concept-index.mjs",
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",
@@ -684,9 +689,11 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
+    "@elemaudio/web-renderer": "^4.0.3",
     "@floating-ui/dom": "^1.8.0",
     "electron-updater": "6.2.1",
     "three": "0.184.0",
+    "three-mesh-bvh": "^0.9.15",
     "three.quarks": "^0.17.1"
   }
 }

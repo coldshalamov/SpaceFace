@@ -68,6 +68,8 @@ import {
 import { estimateBrakingSolution } from '../src/core/flight/flightTelemetry.js';
 import { FRAME_REBASE_THRESHOLD_WU } from '../src/core/coordinates.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
+import { CURRENT_VERSION } from '../src/data/saveVersion.js';
+import { save } from '../src/save/saveSystem.js';
 
 const DT = 1 / 60;
 
@@ -548,6 +550,41 @@ test('the real ship spawns with a funded, bounded boost/dash pool', () => {
     boost.max / boost.drainRate > 1,
     `the pool must fund more than a second of boost (${boost.max / boost.drainRate}s)`
   );
+});
+
+test('every hull has twice its original boost meter and a matching recharge cadence', () => {
+  const priorMax = {
+    ship_kestrel: 100, ship_pelican: 70, ship_wasp: 110, ship_mule: 130,
+    ship_drifter: 110, ship_hornet: 130, ship_ironback: 60, ship_hawser: 80,
+    ship_bastion: 100, ship_atlas: 160, ship_ranger: 140, ship_warden: 90,
+    ship_colossus: 80, ship_leviathan: 70,
+  };
+  assert.equal(SHIPS.length, Object.keys(priorMax).length);
+  for (const hull of SHIPS) {
+    const spec = makeShipEntitySpec(hull.id, { isPlayer: true });
+    assert.equal(spec.boost.max, priorMax[hull.id] * 2, `${hull.id} capacity`);
+    assert.equal(spec.boost.energy, spec.boost.max, `${hull.id} starts full`);
+    assert.ok(spec.boost.max / spec.boost.regenRate <= priorMax[hull.id] / hull.boost.regenRate + 0.01,
+      `${hull.id} full recharge should take no longer than before`);
+  }
+});
+
+test('an existing half-full player save gains the new capacity without refilling', () => {
+  const saved = makeShipEntitySpec('ship_kestrel', { isPlayer: true });
+  saved.boost.max = 100;
+  saved.boost.energy = 50;
+  saved.boost.regenRate = 22;
+  const prepared = save._prepareEnvelope({
+    fmt: 'spaceface-save', version: CURRENT_VERSION,
+    data: {
+      player: { ownedShips: [{ defId: 'ship_kestrel' }], activeShipIndex: 0 },
+      entities: { player: saved },
+    },
+  });
+  assert.equal(prepared.ok, true, prepared.reason);
+  assert.equal(prepared.data.entities.player.boost.max, 200);
+  assert.equal(prepared.data.entities.player.boost.energy, 100);
+  assert.equal(prepared.data.entities.player.boost.regenRate, 44);
 });
 
 test('propulsion resource demand on the real ship is finite, non-negative and load-bearing', () => {

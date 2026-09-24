@@ -34,8 +34,15 @@
   /* colour — the only colours that exist */
   --k-bone-rgb: 234 230 223;
   --k-bone: rgb(var(--k-bone-rgb));
-  --k-bone-62: rgb(var(--k-bone-rgb) / 0.62);
-  --k-bone-38: rgb(var(--k-bone-rgb) / 0.38);
+  /* THE DIM TIERS ARE LEGIBILITY FLOORS, NOT DECORATION. 0.62 and 0.38 were picked as a visual
+     ramp; measured against the composited frame (scripts/ui-contrast.mjs) they put mission-log's
+     sub-labels at 1.43:1 -- text a player simply cannot read. A secondary reading should be
+     QUIETER than a primary one, never invisible, and fading toward the background is the laziest
+     way to express hierarchy: weight, tracking and size do it without costing contrast.
+     Deckplate overrides .k-38 / .k-62 on the screens it bridges (deckplate/screens.js), so these
+     values govern the surfaces it does not reach. Raised by measurement. */
+  --k-bone-62: rgb(var(--k-bone-rgb) / 0.82);
+  --k-bone-38: rgb(var(--k-bone-rgb) / 0.66);
   --k-hair: rgb(var(--k-bone-rgb) / 0.14);
   --k-ink: #0a0b0d;
   --k-gold: #f2b950;
@@ -172,11 +179,10 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   animation: k-plate-drift 36s var(--k-ease) alternate infinite;
 }
 /* A staged screen keeps its ground clear so the canvas below can be seen at all.
-   The attribute pair is load-bearing, not decoration: the legacy title ground
-   (`#screens .of-title.k-screen { background: #111817 }`, styles/orbital.css) is an ID rule that
-   paints an opaque fill over the whole viewport, and orbital.css loads AFTER this sheet. Two
-   attributes beat it on specificity from here, which is the only place in the write set that can
-   reach it. Without this line the stage renders perfectly and nobody can see it. */
+   The attribute pair is load-bearing, not decoration: a leftover opaque title ground
+   (historically `#screens .of-title.k-screen { background: #111817 }` in orbital.css) would
+   hide the stage. Two attributes beat that ID rule from here. Without this line the stage
+   renders perfectly and nobody can see it. */
 #screens .k-screen[data-screen][data-k-stage] { background: transparent; }
 /* ...and its darkening goes back to the kit's own scrim, so the words keep their contrast without
    a wall of flat colour between the reader and the world. A dense screen keeps its deeper scrim:
@@ -237,7 +243,7 @@ body.k-screen-top #screens::before { display: none !important; }
 .k-row__name { color: var(--k-text-live); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k-row__num  { font-size: var(--k-fs-emph); color: var(--k-text-live); text-align: right; white-space: nowrap; }
 .k-row__sub  { font-size: var(--k-fs-data); color: var(--k-bone-38); }
-.k-row:hover, .k-row:focus-visible, .k-row[aria-selected="true"] { color: var(--k-text-live); box-shadow: inset 2px 0 0 var(--k-signal); }
+.k-row:hover, .k-row:focus-visible, .k-row[aria-selected="true"] { color: var(--k-text-live); box-shadow: none; }
 .k-row[aria-selected="true"] .k-row__name { font-weight: 500; }
 .k-row--static { cursor: default; }
 .k-row--static:hover { box-shadow: none; color: var(--k-bone-62); }
@@ -252,7 +258,7 @@ body.k-screen-top #screens::before { display: none !important; }
 .k-table td.k-name { color: var(--k-text-live); }
 .k-table td.k-num  { font-size: var(--k-fs-emph); color: var(--k-text-live); }
 .k-table tbody tr { cursor: pointer; transition: box-shadow var(--k-d-focus) var(--k-ease); }
-.k-table tbody tr:hover, .k-table tbody tr:focus-visible, .k-table tbody tr[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--k-signal); }
+.k-table tbody tr:hover, .k-table tbody tr:focus-visible, .k-table tbody tr[aria-selected="true"] { box-shadow: none; }
 .k-table tbody tr[aria-selected="true"] td.k-name { font-weight: 500; }
 
 /* §6.4 hero blocks, titles, empty states, inputs, pins, crests, bars */
@@ -347,6 +353,19 @@ html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(-
 /* Task B additions */
 /* §1.1/§1.2: a hull bounded to the stage (new game, load) - the title's world canvas clipped to .k-stage. */
 .k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
+/* ONE_PHOTOGRAPH §9 asset #1: the produced hull render (src/ui/hullPosters.js) is the stage until the
+   authored hull draws; stageHull.js puts it after the canvas, so at the same z-index it paints over it,
+   then .is-live fades it out. Transparent film, so the dock the canvas draws shows round the hull. */
+.k-stage > .k-stage__poster {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1;
+  object-fit: contain; object-position: 50% 45%; pointer-events: none; user-select: none;
+  opacity: 1; transition: opacity 600ms var(--k-ease, ease-out);
+}
+.k-stage.is-live > .k-stage__poster { opacity: 0; }
+/* the canvas clears to an opaque frame until the dock and hull stream in: behind a poster it waits */
+.k-stage.has-poster > .k-world--stage { transition: opacity 600ms var(--k-ease, ease-out); }
+.k-stage.has-poster:not(.is-live) > .k-world--stage { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .k-stage > .k-stage__poster, .k-stage.has-poster > .k-world--stage { transition: none; } }
 /* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
 .k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
 /* §1.4: the HUD dims to 38 % only while Pause is the exposed screen. Pause is eagerly mounted,
@@ -414,7 +433,7 @@ body.k-screen-top #modal-backdrop { background: none; }
   background-image: var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 46%));
   border: 1px solid var(--glass-edge, rgb(188 220 255 / 0.2));
   border-radius: 10px;
-  box-shadow: var(--glass-drop, 0 10px 26px rgb(2 6 14 / 0.4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / 0.05)); }
+  box-shadow: none; }
 .sf-confirm__title { margin: 0; }
 .sf-confirm__title--danger { color: var(--k-red); }
 .sf-confirm__body { margin: 0; white-space: pre-line; }
@@ -466,7 +485,8 @@ body.k-screen-top #modal-backdrop { background: none; }
  * That is the screen FIELD_HARDWARE_PROGRAM.md §1 says ten passes converged on, and §3 rule 4
  * makes it a grep failure before it is a taste failure. Everything below hands the materials to
  * `.fh-*` from assets/ui/kit/kit/fh.css and adds only composition — where hardware sits, and how
- * big it is at this frame size.
+ * big it is at this frame size. Deckplate must not restyle `.of-title`: that overlay was the
+ * 15 px etched-word column the owner sees as words on black.
  *
  * NOT aesthetic, do not "simplify" (FIELD_HARDWARE_PROGRAM.md §7): the 12 px floor; the
  * forced-colours block at the end, without which every material here vanishes and takes the
@@ -541,13 +561,15 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-title .of-title-line {
   position: absolute; left: clamp(52px, 10.6vw, 204px); bottom: clamp(48px, 8vh, 87px);
   margin: 0; width: fit-content; max-width: 46ch;
-  border-style: solid; border-width: 12px 16px;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.legend.strip.png');
-  border-image-slice: 12 16 12 16 fill; border-image-repeat: stretch; border-image-width: 12px 16px;
   display: inline-flex; align-items: center; min-height: 20px; padding: 0 clamp(10px, 1vw, 20px);
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
   text-transform: uppercase; letter-spacing: 0.09em; font-size: var(--fh-size-fine);
   color: var(--fh-legend-now, var(--fh-legend));
+  border-style: solid;
+  border-color: transparent;
+  border-width: 12px 16px;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 /* Before the first render the readout has no text, and an empty lit plate floating over the world
    is a broken instrument, not a quiet one. */
@@ -613,7 +635,8 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-title :is(.k-word:hover, .k-word:focus-visible),
 #screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
+  background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
+  box-shadow: none;
 }
 #screens .of-title .k-word[aria-disabled='true']:hover {
   border-image-source: none; color: color-mix(in srgb, var(--fh-bone) 48%, transparent);
@@ -663,9 +686,6 @@ body.k-screen-top #modal-backdrop { background: none; }
   /* The right edge is the produced `plate.edge.small` nine-slice with NO `fill`, so only the
      plate's real relieved edge is drawn — a centre slice stretched across 700x1080 would wash its
      grain out. The face under it is the ground with the produced grain tile at the kit's own 6 %. */
-  border-style: solid; border-width: 0 16px 0 0;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.edge.small.png');
-  border-image-slice: 16; border-image-repeat: stretch; border-image-width: 16px;
   /* Opaque, and measured: at 0.95 the flight HUD that stays visible behind pause at 38 %
      (the kit's own `body.k-screen-top[data-k-screen="pause"] #hud` rule) showed through the
      bulkhead as unreadable ghost text across the brief and the lower half of the verb column.
@@ -683,10 +703,13 @@ body.k-screen-top #modal-backdrop { background: none; }
   --ofp-menu-size: clamp(15px, min(1.35vw, 2.05vh), 24px);
   --ofp-row-h: clamp(28px, min(3vw, 3.35vh), 38px);
   --ofp-indent: clamp(22px, 1.9vw, 34px);
+  border: 0 16px 0 0 solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 #screens .of-pause.k-screen::before {
   z-index: -1; background-color: transparent;
-  background-image: url('../assets/ui/kit/assets/tiles/tile.grain.png');
+  background-image: none;
   background-repeat: repeat; opacity: var(--fh-plate-grainOpacity, 0.06);
 }
 #screens .of-pause .k-t-title {
@@ -699,12 +722,15 @@ body.k-screen-top #modal-backdrop { background: none; }
    sliced it at 24 with `stretch`, which scaled the top light line (source lum 41 against a field
    of 5) over 24 px until it washed into a hairline — the well rendered as a thin-outlined web card
    and the brief read as a quote. Slice the rim at its own thickness so the recess keeps its light. */
+/* The brief is a READING on the veil, not a recess. It was a sunk well -- a rectangle with a hard
+   inner edge over the world, which section 4.1 kills -- and the etched rule under its head does
+   the separating a box was doing. */
 #screens .of-pause .sf-pause-brief {
   margin-top: clamp(12px, 1.7vh, 20px); box-sizing: border-box;
-  border-style: solid; border-width: 4px 6px;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.bench.sunk.png');
-  border-image-slice: 4 6 4 6 fill; border-image-repeat: stretch; border-image-width: 4px 6px;
-  background: none; padding: var(--fh-space-s) var(--fh-space-m);
+  padding: 0 0 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
@@ -721,7 +747,7 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:last-child {
   margin-top: 12px; padding-top: 10px; font-size: var(--fh-size-fine);
   color: var(--fh-text-tertiary);
-  background: url('../assets/ui/kit/assets/tiles/tile.etch.hairline.png') repeat-x top left;
+  background: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0) repeat-x top left;
 }
 /* THE VERB COLUMN — the approved title frame's grammar, scoped to the pause bulkhead. Words, not
    key sprites: a 160 px `key.legend` stretched across the 560 px column flattens into a black bar
@@ -777,7 +803,8 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-pause .k-word:is(:hover, :focus-visible),
 #screens .of-pause .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
+  background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
+  box-shadow: none;
 }
 /* Resume is the one primary verb (Task B §1.4): full-strength type at rest, and the same lit plate
    on focus as every other row — two selection signals on one row read as a mistake. */

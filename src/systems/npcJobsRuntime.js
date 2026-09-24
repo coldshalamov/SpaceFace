@@ -80,6 +80,29 @@ import {
   PRIORITY_COURIER_SERVICE,
   isPriorityCourierItinerary,
 } from '../data/laneContacts.js';
+import { SECTORS } from '../data/sectors.js';
+import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
+
+// INF: a hauler that loads against an empty shelf is the visible end of a broken feeder chain —
+// its miner died before posting a lot, and nothing in the world said so. The berth the run was
+// feeding now reports the shortfall in the station's own voice. Throttled per sector on a
+// session-transient map (a rewind must not inherit it), read-only over the job record: no
+// economy, credit, or reputation writes here.
+const SHORT_RUN_NEWS_WINDOW_S = 240;
+const STATION_NAME_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id && station.name) STATION_NAME_BY_ID.set(station.id, station.name);
+  }
+}
+
+function shortRunNewsText(seed, haulerJobId, stationId) {
+  const variants = HEADLINE_TEMPLATES.freight_short;
+  const station = STATION_NAME_BY_ID.get(stationId)
+    || String(stationId).replace(/^station_/, '').replace(/_/g, ' ');
+  const tpl = variants[hash32(seed >>> 0, 'freightShort', String(haulerJobId)) % variants.length];
+  return fillTemplate(tpl, { station });
+}
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -135,6 +158,7 @@ function forEachWorldRecordContender(state, worldRecordId, fn) {
 const NPC_TOW_ATTACHMENT_DEF_ID = 'tether_standard';
 const NPC_TOW_MAX_RANGE_WU = 390;
 const NPC_TOW_SCAN_INTERVAL_S = 0.5;
+const JOB_PERSIST_SWEEP_INTERVAL_S = 1.0;
 // At or above this the body is anchored scenery rather than freight (see isTowableCargoTarget).
 const NPC_TOW_PINNED_BODY_MASS = 1e6;
 const NPC_TOW_PHASES = new Set([
@@ -497,6 +521,87 @@ function unpinOccupationalLatch(entity) {
   }
 }
 
+// `flags.persistent` on a traffic/durable worker exists to carry mid-job state across
+// save/Continue. Once the job is gone the mark is dead weight: the hull's durable record
+// already preserves it across rematerialize, and an un-marked hull may demote to a far
+// row instead of serializing forever (PQ-033.02: jobless stamped hulls grew the save
+// ~1 hull / 10 cycles at ~8 KB each). Only the job's own release may clear it, and only
+// while no independent owner still needs the hull serialized.
+function jobPersistenceAnchorReason(entity) {
+  const d = (entity && entity.data) || {};
+  const f = (entity && entity.flags) || {};
+  const ai = d.ai || {};
+  if (d.persistent) return 'data.persistent';
+  if (d.persistenceOwner) return 'persistence-owner';
+  if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag
+    || d.missionTargetSlot || d.contractId) return 'mission';
+  if (d.itinerary || d.claimDepotId || d.claimTravelTrafficHookId) return 'itinerary';
+  if (d.freightCustodyPersistence || d.surrenderRecovery || d.freightCustody
+    || d.freightCustodyPod) return 'custody';
+  if (d.ceresActivityCast || d.ceresActivityJobOwned || d.activityActorSlotId
+    || d.activityObjectSlotId) return 'activity';
+  if (d.worldSiteTrafficHookId || d.worldRecordSlotId) return 'site';
+  if (d.namedLaneContactId || d.scenarioActorId || d.scenarioRole
+    || d.namedAceId || d.uniqueWreckId || d.uniqueWreck) return 'scripted';
+  if (d.isBoss || d.encounterBoss || d.missionBoss) return 'boss';
+  if (d.npcTowedByJobId != null) return 'tow';
+  if (f.tethered || d.tethered) return 'tethered';
+  if (d.wingman || d.role === 'wingman') return 'wingman';
+  // Terminal statuses ('cleared', 'cargo_escape', 'cargo_recovery', 'cargo_respilled') are
+  // cleanup residue the director never deletes — only live predation binds the hull.
+  if (d.predationRole || d.predationIdentityKey || ai.predationRole
+    || ai.predationStatus === 'standby' || ai.predationStatus === 'telegraph'
+    || ai.predationStatus === 'active') return 'predation';
+  if (ai.securityTargetId || ai.witnessRole) return 'security';
+  if (d.lotId || d.lotSource || d.custody) return 'lot';
+  if (d.manifestId || d.payloadType) return 'manifest-payload';
+  const manifest = d.cargoManifest;
+  if (manifest && (manifest.active === true || manifest.custody || manifest.lotId
+    || manifest.lotSource || manifest.special === true || manifest.protected === true
+    || manifest.reservedBy)) return 'manifest';
+  return null;
+}
+
+function dropPersistentMark(entity) {
+  if (!entity || !entity.flags || entity.flags.persistent !== true) return;
+  const next = { ...entity.flags };
+  delete next.persistent;
+  entity.flags = next;
+}
+
+// A hull eligible for the job-owned persistence contract: a durable worker. The mark
+// is stamped at spawn/dispatch so a mid-job worker survives save/Continue; once the
+// job is gone it is dead weight and the hull should demote to a far row.
+function isJobPersistenceEligible(entity) {
+  const d = (entity && entity.data) || {};
+  return !!(d.trafficRole || d.jobRole || d.worldRecordId || d.durable);
+}
+
+// A mid-job traffic worker must survive save/Continue with its work — the same contract the
+// traffic spawn stamps guarantee. release()/the sweep drop the mark when the hull goes idle,
+// so (re)taking a job restores it here. Anchored hulls (Ceres cast, site slots, missions,
+// custody…) already own their persistence — stamping them too would serialize a second copy
+// next to their own rematerialize path.
+function stampJobOwnedPersistence(entity) {
+  const d = (entity && entity.data) || {};
+  if (!d.trafficRole) return;
+  if (jobPersistenceAnchorReason(entity)) return;
+  entity.flags = Object.assign({}, entity.flags, { persistent: true });
+}
+
+// Clear the job-owned persistence mark after the entity's job fields are already gone.
+// Anchored hulls (Ceres cast, site slots, missions, custody…) own their persistence
+// through other systems and are never touched.
+function releaseJobOwnedPersistence(entity) {
+  // Loose bodies (towed lots, marked wrecks) carry no traffic/durable fields — the mark
+  // they hold is always a job/tow stamp, so eligibility extends to them. Anchored hulls
+  // of any type still keep their other owner's mark.
+  if (!isJobPersistenceEligible(entity)
+    && entity && entity.type !== 'payload' && entity.type !== 'wreck') return;
+  if (jobPersistenceAnchorReason(entity)) return;
+  dropPersistentMark(entity);
+}
+
 function isPatrolNetTarget(candidate, patrol, playerId) {
   if (!candidate || candidate === patrol || candidate.alive === false || candidate.type !== 'ship') {
     return false;
@@ -640,6 +745,9 @@ export const npcJobsRuntime = {
     this._threatQueryState = this.state;
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+    this._jobIds = null;
+    this._jobIdsById = null;
+    this._jobIdsDirty = true;
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -648,6 +756,9 @@ export const npcJobsRuntime = {
       if (this.bus && typeof this.bus.emit === 'function') {
         try { this.bus.emit(intent.event, intent); } catch { /* a listener must not corrupt the record */ }
       }
+      // INF-071: the miner→hauler handoff rides the same intents. Never throws: a ledger
+      // failure must not corrupt the deterministic record the kernel just wrote.
+      try { this._noteHandoffIntent(intent); } catch { /* ledger is advisory, the job is not */ }
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -748,14 +859,113 @@ export const npcJobsRuntime = {
   _ensureState() {
     const state = this.state;
     if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
-    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') state.npcJobs.byId = {};
+    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') {
+      state.npcJobs.byId = {};
+      this._invalidateJobIds();
+    }
     if (!state.npcJobs.siteCouriers || typeof state.npcJobs.siteCouriers !== 'object'
       || Array.isArray(state.npcJobs.siteCouriers)) {
       state.npcJobs.siteCouriers = {};
     }
+    // INF-071: the handoff ledger. One lot slot per sector: a miner's UNLOAD posts the lot,
+    // a hauler's LOAD claims it (same cargo identity on both intents). A claimed lot leaves
+    // the slot — it is aboard the hull and dies with it. Standing stock persists (and saves).
+    if (!state.npcJobs.lots || typeof state.npcJobs.lots !== 'object'
+      || Array.isArray(state.npcJobs.lots)) {
+      state.npcJobs.lots = {};
+    }
     return state.npcJobs;
   },
   _byId() { return this._ensureState().byId; },
+  _lots() { return this._ensureState().lots; },
+  _invalidateJobIds() { this._jobIdsDirty = true; },
+  _jobIdList() {
+    const byId = this._byId();
+    if (this._jobIdsDirty !== true
+      && this._jobIdsById === byId
+      && Array.isArray(this._jobIds)) {
+      return this._jobIds;
+    }
+    this._jobIdsById = byId;
+    this._jobIds = Object.keys(byId);
+    this._jobIdsDirty = false;
+    return this._jobIds;
+  },
+
+  /**
+   * INF-071: complete the miner→hauler handoff with one shared cargo identity. A miner's
+   * UNLOAD posts a lot at its sector; a hauler's LOAD claims the standing lot, and the claim
+   * names the miner's job — the same lot on both sides of the handoff, watchable on the bus.
+   * A claimed lot leaves the slot: it is aboard the hull and dies with it (ruling 5 ends the
+   * job; nothing is re-posted). A LOAD with no standing lot is announced as an empty run
+   * instead of departing with ghost freight. A post over an unclaimed lot replaces it openly
+   * (lotReplaced), never silently. Advisory only: the kernel flow never waits on the ledger.
+   */
+  _noteHandoffIntent(intent) {
+    if (!intent || typeof intent !== 'object') return;
+    const entry = intent.jobId != null ? this._byId()[intent.jobId] : null;
+    const sectorId = entry && entry.sectorId;
+    if (!sectorId) return;
+    const lots = this._lots();
+    const now = Number(this.state && this.state.simTime) || 0;
+    if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
+      const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
+      const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
+      const replaced = lots[sectorId] && lots[sectorId].lotId !== posted.lotId ? lots[sectorId] : null;
+      lots[sectorId] = posted;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        if (replaced) {
+          this.bus.emit('npcjobs:lotReplaced', { oldLotId: replaced.lotId, lotId: posted.lotId, sectorId, postedBy: posted.postedBy, simTime: now });
+        }
+        this.bus.emit('npcjobs:lotPosted', { lotId: posted.lotId, sectorId, postedBy: posted.postedBy, simTime: now });
+      }
+      return;
+    }
+    if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER) {
+      const standing = lots[sectorId] || null;
+      if (standing && standing.lotId) {
+        lots[sectorId] = null;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:lotClaimed', {
+            lotId: standing.lotId, sectorId, haulerJobId: intent.jobId,
+            sourceJobId: standing.postedBy, simTime: now,
+          });
+        }
+      } else {
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now });
+        }
+        this._publishShortRunNews(intent, entry, sectorId, now);
+      }
+    }
+  },
+
+  // INF: the destination berth of an empty run says the chain broke. The job's dest waypoint
+  // carries the durable station identity ('dest:<stationId>' — traffic's job-spec language), the
+  // line is picked deterministically from the freight_short family, and the throttle keeps a
+  // starved field to one headline per window instead of one per hauler loop.
+  _publishShortRunNews(intent, entry, sectorId, now) {
+    if (!entry || !entry.job || !Array.isArray(entry.job.route)) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const dest = entry.job.route.find((wp) => wp && typeof wp.id === 'string' && wp.id.startsWith('dest:'));
+    if (!dest) return;
+    const stationId = dest.id.slice('dest:'.length);
+    if (!stationId) return;
+    this._shortRunNewsAt = this._shortRunNewsAt || {};
+    const last = this._shortRunNewsAt[sectorId];
+    if (Number.isFinite(last) && now - last < SHORT_RUN_NEWS_WINDOW_S) return;
+    this._shortRunNewsAt[sectorId] = now;
+    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
+    const id = `npcjobs:short:${intent.jobId}:${Math.floor(now)}`;
+    this.bus.emit('news:publish', {
+      id,
+      text: shortRunNewsText(seed, intent.jobId, stationId),
+      kind: 'freight_short',
+      stationId,
+      sectorId,
+      sourceRef: id,
+    });
+  },
 
   // ── transient exact-Ceres formation authority ───────────────────────────────────────────────
   // This fixed two-slot cache is intentionally outside GameState/save data. It retains object
@@ -1552,10 +1762,12 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
-    this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
+    this._invalidateJobIds();
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
+    this._shortRunNewsAt = {};
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
     this._threatQueries?.reset();
@@ -1719,7 +1931,9 @@ export const npcJobsRuntime = {
       || job.materialized !== true || sectorId !== CERES_ACTIVITY_SECTOR_ID
       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
     byId[jobId] = entry;
+    this._invalidateJobIds();
     entity.data.jobId = jobId;
+    stampJobOwnedPersistence(entity);
     this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
@@ -1827,6 +2041,7 @@ export const npcJobsRuntime = {
       towNextScanSimT: 0,
     };
     this._byId()[jobId] = entry;
+    this._invalidateJobIds();
     this._threatQueryDirty = true;
     return entry;
   },
@@ -2008,7 +2223,12 @@ export const npcJobsRuntime = {
           extracted: false,
         },
       });
-      if (!jobId) return;
+      if (!jobId) {
+        // assign refused — the latched target was never attached, so unpin it here or its
+        // latch leaks a permanent 'tethered' persistence anchor.
+        unpinOccupationalLatch(target);
+        return;
+      }
       data.jobKind = 'salvor';
       data.towTargetId = target.id;
       adopted += 1;
@@ -2138,7 +2358,6 @@ export const npcJobsRuntime = {
         bestId = candidateId;
       }
     });
-    if (best) pinOccupationalLatch(best);
     return best;
   },
 
@@ -2204,8 +2423,15 @@ export const npcJobsRuntime = {
     }
     if (target && target.data) {
       if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
-      if (target.data.npcTowedByJobId === jobId) delete target.data.npcTowedByJobId;
+      // Unpin before the anchor check: the occupational latch's flags.tethered is itself an
+      // anchor, so checking first made the release path unreachable for live-attached lots.
       unpinOccupationalLatch(target);
+      if (target.data.npcTowedByJobId === jobId) {
+        delete target.data.npcTowedByJobId;
+        // The lot persisted to survive Continue with its tug; detached, it reverts to an
+        // ordinary loose body unless another owner still needs it serialized.
+        if (!jobPersistenceAnchorReason(target)) dropPersistentMark(target);
+      }
     }
     entry.towAttachmentId = null;
     entry.towTargetId = null;
@@ -2303,7 +2529,12 @@ export const npcJobsRuntime = {
       sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
       targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
     });
-    if (!created || created.ok !== true || !created.attachment) return false;
+    if (!created || created.ok !== true || !created.attachment) {
+      // The target was latched for this attach; a refused create leaves it pinned forever
+      // otherwise (the latch also vetoes its persistence release as a 'tethered' anchor).
+      unpinOccupationalLatch(target);
+      return false;
+    }
     const attachment = created.attachment;
     entry.towAttachmentId = attachment.id;
     entry.towTargetId = target.id;
@@ -2337,6 +2568,11 @@ export const npcJobsRuntime = {
       delete ent.data.jobId;
       delete ent.data.jobPhase;
       delete ent.data.jobProgress;
+      // The spawn stamp persisted this hull so a mid-job worker survives save/Continue.
+      // With the job gone the mark is dead weight — the durable record already preserves
+      // the hull, and clearing lets an idle worker demote to a far row instead of
+      // serializing forever (PQ-033.02). Anchored hulls keep their other owner's mark.
+      releaseJobOwnedPersistence(ent);
     }
     this._clearTugAttachment(entry, 'npc_tow_job_released');
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
@@ -2344,10 +2580,48 @@ export const npcJobsRuntime = {
     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
     else this._clearCeresRealTargetsForEntry(entry, true);
     delete byId[jobId];
+    this._invalidateJobIds();
     return true;
   },
 
-  // ── PQ-019B: control leases ───────────────────────────────────────────────────────────────────
+  // Drop the job-owned persistence mark from eligible hulls that no longer hold a job and
+  // have no other persistence owner. Jobs end through paths besides release() — sector
+  // despawn, convoy-cap refusal, restore-adopt — so the invariant is enforced here, not at
+  // each writer. Anchored hulls and mid-job workers are untouched.
+  _sweepJobOwnedPersistence() {
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list)) return;
+    // Sector exit and deserialize virtualize a job: they delete data.jobId while the entry
+    // lives on in byId, re-binding by worldRecordId when the hull rematerializes. A hull
+    // whose worldRecordId still owns a live entry is mid-job — stripping its mark here
+    // would shelf it into the far table where relink can never find it, stalling the job.
+    const held = new Set();
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const wr = byId[jobId] && byId[jobId].worldRecordId;
+      if (wr != null) held.add(wr);
+    }
+    for (const entity of list) {
+      if (!entity || entity.alive === false) continue;
+      const d = entity.data;
+      // A hull whose jobId resolves to a live entry is mid-job — re-earn the mark whenever
+      // it was lost. World records deliberately don't carry flags, so a rematerialized hull
+      // re-binds its job unmarked; stamping here (not inside _tryRelink) keeps the mark off
+      // the restore seam — a flag set mid-restore is culled by _spawnPersistentEntities as a
+      // stale body before the live tick ever runs.
+      if (d && d.jobId != null && byId[d.jobId]) {
+        stampJobOwnedPersistence(entity);
+        continue;
+      }
+      const flags = entity.flags;
+      if (!flags || flags.persistent !== true) continue;
+      if (d && d.jobId != null) continue;
+      if (d && d.worldRecordId != null && held.has(d.worldRecordId)) continue;
+      releaseJobOwnedPersistence(entity);
+    }
+  },
+
+  // ── PQ-019B: control leases ──────────────────────────────────────────────────────────────────────────────────────
   //
   // A lease lets another owner (a heist pursuit) borrow the HULL of a real, already-existing job
   // without inventing a ship and without a second system writing its movement intent. This is what
@@ -2763,8 +3037,20 @@ export const npcJobsRuntime = {
       this._adoptCeresScavengerTractors();
       this._stampCeresPirateInterceptCues();
     }
+    // Job-owned persistence invariant: a durable worker keeps flags.persistent only while it
+    // holds a job or another owner anchors it. Stamps outlive jobs through every job-loss path
+    // (sector despawn, convoy-cap refusal, restore-adopt — not just release), so normalize on a
+    // slow sim-clock sweep rather than chase each writer.
+    const persistSweepT = finite(this.state.simTime, 0);
+    const lastPersistSweepT = this._persistSweepLastSimT;
+    if (!Number.isFinite(lastPersistSweepT)
+      || persistSweepT < lastPersistSweepT
+      || persistSweepT - lastPersistSweepT >= JOB_PERSIST_SWEEP_INTERVAL_S) {
+      this._persistSweepLastSimT = persistSweepT;
+      this._sweepJobOwnedPersistence();
+    }
     const byId = this._byId();
-    const ids = Object.keys(byId);
+    const ids = this._jobIdList();
     const step = Math.max(0, finite(dt, 0));
     const simT = finite(this.state.simTime, 0);
     this._expireHeaveToLease(simT);
@@ -2837,7 +3123,7 @@ export const npcJobsRuntime = {
       }
 
       const entry = byId[jobId];
-      if (!entry || !entry.job) { delete byId[jobId]; continue; }
+      if (!entry || !entry.job) { delete byId[jobId]; this._invalidateJobIds(); continue; }
 
       if (entry.entityId == null) {
         // Virtualized: try to re-link if its hull has rematerialized in the current sector.
@@ -3423,11 +3709,35 @@ export const npcJobsRuntime = {
     const entry = this._byId()[jobId];
     if (!entry || !entry.job) return false;
     if (entry.control) return false;
+    const wasFlee = entry.job.phase === NPC_JOB_PHASE.FLEE;
     resume(entry.job);
+    // INF-073: a rescued worker says so. One contextual acknowledgment per genuine return —
+    // the bus event for watchers, a short toast for the pilot, both cooled down per job.
+    if (wasFlee && entry.job.phase !== NPC_JOB_PHASE.FLEE) this._noteResumed(entry, jobId, 'manual');
     entry.threatId = null;
     this._clearViolenceStamp(entry);
     this._threatQueryDirty = true;
     return true;
+  },
+
+  _noteResumed(entry, jobId, via) {
+    if (!entry || !entry.job || !this.bus || typeof this.bus.emit !== 'function') return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    // Every return is on the record; only the pilot-facing toast is cooled down.
+    const quiet = Number.isFinite(entry.lastResumeAckT) && now - entry.lastResumeAckT < 60;
+    if (!quiet) entry.lastResumeAckT = now;
+    const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier' }[entry.job.kind] || 'Crew';
+    try {
+      this.bus.emit('npcjobs:resumed', {
+        jobId, kind: entry.job.kind, phase: entry.job.phase,
+        sectorId: entry.sectorId || null, simTime: now, via: via || 'threat_clear',
+      });
+    } catch { /* advisory only */ }
+    if (!quiet) {
+      try {
+        this.bus.emit('toast', { text: `${kindLabel} back to work — thanks for the cover.`, kind: 'info', ttl: 4 });
+      } catch { /* advisory only */ }
+    }
   },
 
   _reconcileThreatResult(entry, resultId) {
@@ -3449,6 +3759,10 @@ export const npcJobsRuntime = {
       }
       if (violenceActive) return;
       resume(job);
+      // INF-073: the threat is gone and the worker returns — acknowledge the rescue once.
+      for (const [jobId, candidate] of Object.entries(this._byId())) {
+        if (candidate === entry) { this._noteResumed(entry, jobId, 'threat_clear'); break; }
+      }
       entry.threatId = null;
       this._clearViolenceStamp(entry);
       return;
@@ -3622,6 +3936,7 @@ export const npcJobsRuntime = {
       if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
       if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
       delete this._byId()['job:' + entry.worldRecordId];
+      this._invalidateJobIds();
       return true;
     }
     materialize(entry.job);
@@ -3721,6 +4036,12 @@ export const npcJobsRuntime = {
     if (couriers && typeof couriers === 'object' && !Array.isArray(couriers) && Object.keys(couriers).length) {
       out.siteCouriers = JSON.parse(JSON.stringify(couriers));
     }
+    // INF-071: standing handoff stock persists across Continue — material sitting at the
+    // pocket does not vanish on load. Validated on the way back in (see deserialize).
+    const lots = this.state.npcJobs && this.state.npcJobs.lots;
+    if (lots && typeof lots === 'object' && !Array.isArray(lots) && Object.keys(lots).length) {
+      out.lots = JSON.parse(JSON.stringify(lots));
+    }
     return out;
   },
 
@@ -3731,6 +4052,9 @@ export const npcJobsRuntime = {
     // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
+    // Session-transient, same law as aftermathWrecks.lastAmbientNewsAt: a rewind to an earlier
+    // save must not inherit a future timestamp that would suppress freight_short news for hours.
+    this._shortRunNewsAt = {};
     forEachLivingWorldActor(this.state, (entity) => {
       if (entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
@@ -3769,9 +4093,24 @@ export const npcJobsRuntime = {
         towNextScanSimT: 0,
       };
     }
-    this.state.npcJobs = { byId, siteCouriers: {} };
+    this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
+    this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+    }
+    // INF-071: restore standing handoff stock, dropping malformed rows (a corrupt lot is
+    // dropped, never resurrected — same fail-safe as corrupt job records above).
+    if (data && data.lots && typeof data.lots === 'object' && !Array.isArray(data.lots)) {
+      for (const [sectorId, lot] of Object.entries(data.lots)) {
+        if (!sectorId || !lot || typeof lot !== 'object' || typeof lot.lotId !== 'string' || !lot.lotId) continue;
+        this.state.npcJobs.lots[sectorId] = {
+          lotId: lot.lotId,
+          kind: 'ore',
+          postedBy: typeof lot.postedBy === 'string' ? lot.postedBy : null,
+          postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
+          sectorId,
+        };
+      }
     }
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;

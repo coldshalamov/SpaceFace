@@ -6,9 +6,12 @@ Parent contract: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) (execution law) an
 mindset and memory that make repeated "make it better" batches converge instead
 of polishing the same corner forever.
 
-You are the developer on duty. Act like one: look at the state of the game,
-figure out what most needs you today, improve one thing completely, leave a
-note so the next session starts smarter, and go somewhere else next.
+You are the developer on duty. If [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md)
+has an OPEN catalog line, that line is what needs you: do it, leave the note,
+and take a line from another group. If the catalog is empty, look at the state
+of the game, improve one thing completely, leave a note so the next session
+starts smarter, and go somewhere else next. Open feelings are `build_map.md`
+§23; this pass does not invent them.
 
 ## 1. Progressive disclosure (read little, know enough)
 
@@ -18,7 +21,7 @@ note so the next session starts smarter, and go somewhere else next.
 | Whole-game state | `node scripts/inference-ledger.mjs` (~30 lines) | always, at batch start |
 | One domain's notes | the ledger's `WF-XX` entry (printed by the same command with `--wf`) | only the domain you touch |
 | The domain's standard | that WF file's "One production unit" + failure modes | when grading or finishing |
-| Owner raw material | [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) (capped) | only on an idea run |
+| Grunt assignment | [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) catalog | when any line is OPEN — do the line, do not invent |
 
 Never read all domain entries. Never sweep `design/`, archives, or transcripts
 for an ordinary unit. If the ledger grows past what fits on one screen, it is
@@ -33,8 +36,9 @@ READ the ledger → PICK → INSPECT → GRADE → IMPROVE → RECORD → ROTATE
 **READ.** Run the ledger. It shows every domain's grade, last touch, whether
 its inspection is still valid, open gaps, and one suggested next move.
 
-**PICK.** Take the weakest or stalest domain you can *verify by looking* —
-an uninspected domain, a stale inspection, a C/D grade, an open gap. The
+**PICK.** If the directed catalog has an OPEN line, take that line (lanes
+§0.1). Otherwise take the weakest or stalest domain you can *verify by looking*
+— an uninspected domain, a stale inspection, a C/D grade, an open gap. The
 ledger suggests three; looking beats the suggestion. Never pick what you
 just polished because it is familiar.
 
@@ -62,10 +66,11 @@ the production unit in `inference-memory.json` as usual. Small notes or none.
 batches, rotation plus the ledger's dates is what rounds out the game: a
 fresh A means go elsewhere; an old C means come back.
 
-Owner ideas ([`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) or inline
-`INFERENCE 3 — <idea>`) enter at PICK: EXPAND the idea into fantasy, verbs,
-place, people, script, density, consequence, and live owners, then run the
-loop. An idea never excuses a thin row and never waives the standards basis
+A directed catalog line in [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) is not
+expanded. Execute it (lanes §0.1). An owner one-liner that is not a catalog
+row (`INFERENCE 3 — <idea>`) still enters at PICK: EXPAND it into fantasy,
+verbs, place, people, script, density, consequence, and live owners, then run
+the loop. An idea never excuses a thin row and never waives the standards basis
 (`ARCHITECTURE.md`, `build_map.md` §1.3 craft floors, single writers,
 determinism, perf and accessibility rules). If the idea fights the vision,
 keep the fantasy and change the mechanism, and say so in one line.
@@ -89,8 +94,10 @@ longer knows is stale by definition.
   what you found, you have not understood it yet.
 - Gaps close or die: a gap fixed is marked done with the unit id; a gap
   that stops mattering is deleted with one causal line, not carried.
-- The ideas inbox caps at 20 open lines; untouched lines older than 60
-  days are deleted, not curated.
+- Owner-dropped raw lines cap at 20; untouched raw lines older than 60 days
+  are deleted, not curated. The directed catalog in `INFERENCE_IDEAS.md` is
+  the grunt assignment and is not that cap. A catalog line leaves when it
+  ships or is cut. Do not add a vague line to the catalog.
 
 ## 5. Finishing questions (judgment, not a script)
 

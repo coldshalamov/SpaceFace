@@ -25,6 +25,7 @@
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
+import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
@@ -261,6 +262,7 @@ function disposeEntity(state, bus, entity, reason, helpers = null) {
     throw new Error('survivor pod disposal requires canonical helpers.removeEntity');
   }
   entity.alive = false;
+  clearEntityRuntime(entity);
   if (state.entities && typeof state.entities.delete === 'function') {
     state.entities.delete(entity.id);
   }

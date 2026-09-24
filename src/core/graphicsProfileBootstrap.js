@@ -7,6 +7,7 @@ export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
 export const AUDIO_DEFAULT_MUTE_VERSION = 2;
 export const GAME_MOTION_DEFAULT_VERSION = 1;
+export const SHADOWS_DEFAULT_VERSION = 1;
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
   'physicsBackend',
@@ -95,6 +96,28 @@ export function migrateGameMotionDefault(settings) {
   return settings;
 }
 
+/**
+ * Sun shadow-maps default OFF. The live shadow pass renders a single low-res directional map
+ * over the local table neighbourhood; at that texel density it read as crawling miscolored
+ * clumps on hulls rather than depth (owner report, 2026-09-21). Grounding is carried by the
+ * pooled contact shadow and the four-light rig, so the default picture drops the depth pass.
+ * Profiles written before this policy cannot distinguish a deliberate shadows:true from the old
+ * default, so they all receive one migration to off — the Settings toggle (and the Quality
+ * preset) remains live-applied for anyone who wants the extra pass, and a stamp from a NEWER
+ * policy version is left alone.
+ */
+export function migrateDefaultShadowsProfile(settings) {
+  if (!isPlainObject(settings)) return settings;
+  if (!isPlainObject(settings.video)) settings.video = {};
+  const video = settings.video;
+  const stamp = video.shadowsDefaultVersion;
+  if (typeof stamp !== 'number' || stamp < SHADOWS_DEFAULT_VERSION) {
+    video.shadows = false;
+    video.shadowsDefaultVersion = SHADOWS_DEFAULT_VERSION;
+  }
+  return settings;
+}
+
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
@@ -111,9 +134,9 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
 
 export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
   if (!state || !isPlainObject(state.settings)) return false;
-  const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
+  const profile = migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
     migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
-  ));
+  )));
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);
   return true;

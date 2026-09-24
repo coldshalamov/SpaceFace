@@ -182,10 +182,19 @@ export function createNemesisEncounterHost({ makeSpawnSpec, approveEncounter = n
     _end(p) {
       const deployment = this.state.nemesisDeployment, reservation = deployment.reservation;
       if (!p || !reservation || reservation.requestId !== p.encounterId) return;
+      // The boss rides reservation slot zero by construction (see _deploy); the ended
+      // event does not always repeat it, so fall back to the slot rather than undefined.
+      const bossId = p.bossId != null ? p.bossId : reservation.ids[0];
+      const flown = p.outcome === 'rival_escaped';
       // Combat owns a destroyed captain until rewards/death processing has completed.
       deployment.retirement = reservation.ids.filter((id) =>
-        !(id === p.bossId && ['destroyed', 'lost'].includes(p.outcome)))
+        !(id === bossId && ['destroyed', 'lost'].includes(p.outcome))
+        // An earned escape leaves a live hull behind. The rival opened 1800 WU of real
+        // distance to confirm the escape; sector cleanup must not despawn the flight it
+        // just verified. Bookkeeping is released below without removing the hull.
+        && !(flown && id === bossId))
         .map((id) => ({ id, requestId: p.encounterId }));
+      if (flown) this._releaseId(bossId);
     },
     _retire() {
       const d = this.state.nemesisDeployment;

@@ -6674,8 +6674,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 48306,
-      "bytes": 12589996,
+      "tris": 13306,
+      "bytes": 1188568,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6707,17 +6707,17 @@
           -4.55
         ],
         "max": [
-          5.7,
-          1.353253,
+          5.78,
+          1.294,
           4.55
         ],
         "dimensionsM": [
-          10.8,
-          2.403252,
+          10.88,
+          2.344,
           9.1
         ]
       },
-      "note": "Fleet remaster production Hornet. Live player interceptor. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+      "note": "PQ-050.01 chase_form_v17. Cycle 5: darker hull, plate course, HN/07 lettering, hull-wide dirt, extra hoses/cargo. Hitch/Kestrel untouched. Chase Hitch-plus PASS for the four C4 notes."
     },
     {
       "id": "wholeship_inspection_cutter",
@@ -7258,8 +7258,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 37670,
-      "bytes": 1968608,
+      "tris": 24744,
+      "bytes": 3125096,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7287,22 +7287,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.885,
-          -1.282,
-          -3.318
+          -8.62,
+          -3.453,
+          -0.971
         ],
         "max": [
-          9,
-          13.03,
-          2.18
+          7.15,
+          3.453,
+          1.88
         ],
         "dimensionsM": [
-          18.885,
-          14.312,
-          5.498
+          15.77,
+          6.906,
+          2.851
         ]
       },
-      "note": "Fleet remaster production Ranger. Live player explorer. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+      "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
     },
     {
       "id": "wholeship_repair_tender",

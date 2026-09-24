@@ -1,3 +1,5 @@
+import { writePayloadReleaseGhost } from '../presentation/releaseGhost.js';
+
 // Massline kinematics telemetry — read-only observer.
 // Prompt 01: this system only reads state (player, target, tether) and writes its own runtime
 // subtree at state.player.masslineTelemetry. It never mutates entities, attachments, or the
@@ -13,6 +15,7 @@
 // phase reaches loaded/overload instead of stalling back to slack. Quality is swing conversion:
 // |tangentialSpeed at completion| / relative speed at the snap (the massline-feel bar: >=85%
 // tangential preserved = clean). Emitted at most once per latch; mirrored at telemetry.snapCatch.
+
 const SNAP_CATCH_WINDOW_S = 1.0;   // taut within this of latch = a snag, not a slow reel
 const SNAP_CATCH_MIN_SPEED = 25;   // wu/s relative speed at the taut moment = a moving catch
 const SNAP_CATCH_CLEAN = 0.85;     // quality tiers mirror the release-rating bands
@@ -175,6 +178,7 @@ export const masslineTelemetry = {
     // Rung 11: arc-preview — the predicted sling if the player cut right now. Pure data recomputed
     // from this tick's kinematics; the render (rung 12) reads it. Observer-only, no events.
     updateArcPreview(telemetry, player, target, kinematics, phase, restLength, playerSpeed, targetSpeed);
+    writePayloadReleaseGhost(telemetry, state);
 
     // Rung 05: snap-catch detection. Observer-only except for exactly one event (tether:snapCatch),
     // emitted at most once per latch and mirrored at telemetry.snapCatch. See header for the trick
@@ -422,6 +426,7 @@ function writeInactive(telemetry) {
   telemetry.reelPump = null;
   // arcPreview is a live-swing projection; a released/missing line has no arc to preview.
   telemetry.arcPreview = null;
+  telemetry.payloadReleaseGhost = null;
 }
 
 // Rung 11: write the arc-preview projection in place (one reused object per latch — no per-tick

@@ -2,6 +2,7 @@
 //
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
+import { hash32 } from '../core/rng.js';
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
@@ -462,15 +463,208 @@ export function contactHailAvailability(state) {
   };
 }
 
+// ── Faction × stance hail voice ───────────────────────────────────────────────────────────────
+//
+// Every hail offer's second line is the contact's own voice answering the channel. The line is
+// keyed by the target's faction and its stance toward the player (rep band, same thresholds as
+// the band-radio repBand), so a Meridian hostile hail reads nothing like a Quiet allied one.
+// Pure data + deterministic pick: the index is hashed from save seed + target id, so a given
+// ship greets the same way inside one save. One sentence, one consequence.
+
+export const CONTACT_HAIL_STANCES = Object.freeze(['hostile', 'neutral', 'allied']);
+
+export const CONTACT_HAIL_LINES = Object.freeze({
+  faction_scn: Object.freeze({
+    hostile: Object.freeze([
+      'CONCORD CHANNEL. YOUR TRANSPONDER IS FLAGGED — KEEP THIS SHORT.',
+      'CONCORD CHANNEL. STATE YOUR BUSINESS AND DO NOT MANEUVER.',
+      'CONCORD CHANNEL. YOU ARE ON A LIST — TALK.',
+    ]),
+    neutral: Object.freeze([
+      'CONCORD CHANNEL. STATE YOUR BUSINESS PLAINLY.',
+      'CONCORD CHANNEL. THIS CALL IS LOGGED FOR THE RECORD.',
+      'CONCORD CHANNEL. IDENTIFY YOURSELF FOR THE FILE.',
+    ]),
+    allied: Object.freeze([
+      'CONCORD CHANNEL. GOOD STANDING NOTED — WHAT DO YOU NEED?',
+      'CONCORD CHANNEL. YOUR RECORD CLEARS YOU TO SPEAK.',
+      'CONCORD CHANNEL. REGISTERED ALLY — GO AHEAD.',
+    ]),
+  }),
+  faction_mts: Object.freeze({
+    hostile: Object.freeze([
+      'SYNDICATE LINE. THIS CALL IS COSTING YOU ALREADY.',
+      'MERIDIAN LINE. SPEAK — THE METER IS RUNNING.',
+      'SYNDICATE LINE. YOU ARE NOT A CUSTOMER — YET.',
+    ]),
+    neutral: Object.freeze([
+      'MERIDIAN LINE. EVERYTHING IS NEGOTIABLE ON THIS CHANNEL.',
+      'SYNDICATE LINE. TALK — THE RATE IS FAIR TODAY.',
+      'MERIDIAN LINE. STATE YOUR OFFER.',
+    ]),
+    allied: Object.freeze([
+      'MERIDIAN LINE. PREFERRED CLIENT — GO AHEAD.',
+      'SYNDICATE LINE. FRIENDS GET THE GOOD RATE — SPEAK.',
+      'MERIDIAN LINE. YOUR ACCOUNT IS HEALTHY — TALK.',
+    ]),
+  }),
+  faction_dmc: Object.freeze({
+    hostile: Object.freeze([
+      'DRIFT LINE. YOU ARE THE LAST SIGNAL WE WANTED TODAY.',
+      'COLLECTIVE LINE. MAKE IT QUICK — WE ARE ARMED AND TIRED.',
+      'DRIFT LINE. YOU HAVE THIRTY SECONDS OF OUR PATIENCE.',
+    ]),
+    neutral: Object.freeze([
+      'DRIFT LINE. LONG SHIFT — KEEP IT SHORT.',
+      'COLLECTIVE LINE. YOU LOST OR YOU WORKING?',
+      'DRIFT LINE. SPEAK PLAIN AND WE WILL GET ALONG.',
+    ]),
+    allied: Object.freeze([
+      'DRIFT LINE. FRIEND OF THE BELT — WHAT DO YOU NEED?',
+      'COLLECTIVE LINE. THE CREW REMEMBERS YOU — TALK.',
+      'DRIFT LINE. GOOD TO HEAR A FRIENDLY BEACON.',
+    ]),
+  }),
+  faction_reach: Object.freeze({
+    hostile: Object.freeze([
+      'REACH LINE. THIS CALL BETTER BE ABOUT SURRENDER.',
+      'REACH LINE. TALK FAST — WE WEIGH WHILE YOU TALK.',
+      'REACH LINE. YOUR HULL JUST GOT HEAVIER.',
+    ]),
+    neutral: Object.freeze([
+      'REACH LINE. STATE YOUR MASS AND YOUR BUSINESS.',
+      'REACH LINE. TALK — WE ARE COUNTING.',
+      'REACH LINE. EVERY WORD COSTS SOMETHING.',
+    ]),
+    allied: Object.freeze([
+      'REACH LINE. FRIENDS TALK FREE — WHAT IS IT?',
+      'REACH LINE. THE PACK REMEMBERS YOU — SPEAK.',
+      'REACH LINE. YOU ARE ON THE GOOD SIDE OF THE SCALES.',
+    ]),
+  }),
+  faction_quiet: Object.freeze({
+    hostile: Object.freeze([
+      'SPEAK ONCE.',
+      'QUIET LINE. LAST WORDS?',
+      'SAY IT. SLOWLY.',
+    ]),
+    neutral: Object.freeze([
+      'QUIET CHANNEL. SAY IT.',
+      'SPEAK. BRIEFLY.',
+      'YOU CALLED. ANSWER.',
+    ]),
+    allied: Object.freeze([
+      'KNOWN. SPEAK.',
+      'QUIET LINE. WE OWE YOU WORDS.',
+      'SPEAK. WE KEPT YOUR NAME.',
+    ]),
+  }),
+  faction_choir: Object.freeze({
+    hostile: Object.freeze([
+      'THE CHORUS LISTENS. YOUR DISSONANCE IS NOTED.',
+      'SPEAK, AND BE MEASURED.',
+      'THE PATTERN HEARS YOU. CHOOSE THE NOTE.',
+    ]),
+    neutral: Object.freeze([
+      'CHOIR CHANNEL. YOUR WORDS JOIN THE PATTERN.',
+      'SPEAK. THE VERSE MAKES ROOM.',
+      'WE LISTEN. THE PATTERN WEIGHS ALL SOUND.',
+    ]),
+    allied: Object.freeze([
+      'CHOIR CHANNEL. A FRIENDLY VOICE ENTERS THE CHORUS.',
+      'SPEAK, MARKED ONE. THE PATTERN REMEMBERS.',
+      'THE CHORUS OPENS FOR YOU.',
+    ]),
+  }),
+  faction_free: Object.freeze({
+    hostile: Object.freeze([
+      'FRONTIER LINE. YOU HAVE NERVE CALLING AFTER LAST TIME.',
+      'FRONTIER LINE. TALK — OUR FINGER IS NOT FAR FROM THE TRIGGER.',
+      'FRONTIER LINE. MAKE IT GOOD.',
+    ]),
+    neutral: Object.freeze([
+      'FRONTIER LINE. WHAT IS ON YOUR MIND?',
+      'FRONTIER LINE. TALK FREE — IT IS THE LAST CHEAP THING OUT HERE.',
+      'FRONTIER LINE. GO AHEAD, NEIGHBOR.',
+    ]),
+    allied: Object.freeze([
+      'FRONTIER LINE. GOOD TO HEAR A FRIENDLY VOICE.',
+      'FRONTIER LINE. FRIENDS ALWAYS GET THROUGH — WHAT IS IT?',
+      'FRONTIER LINE. WE OWE YOU A GOOD ANSWER.',
+    ]),
+  }),
+  faction_vael: Object.freeze({
+    hostile: Object.freeze([
+      'THIS-VESSEL ANSWERS UNDER PROTEST. STATE YOUR TERM.',
+      'CHANNEL OPEN UNDER DURESS-CLAUSE. SPEAK.',
+      'YOUR CALL IS A BREACH WE PERMIT ONCE.',
+    ]),
+    neutral: Object.freeze([
+      'VAEL CHANNEL. YOUR TRANSMISSION IS BEING ASSESSED.',
+      'CHANNEL OPEN UNDER PROVISIONAL TERMS. STATE YOUR STANDING.',
+      'VAEL CONSENSUS RECEIVES. SPEAK WITHIN THE TERMS.',
+    ]),
+    allied: Object.freeze([
+      'VAEL CHANNEL. A PARTY OF RECORD MAY SPEAK FREELY.',
+      'CHANNEL OPEN. YOUR STANDING ADMITS YOU.',
+      'VAEL CONSENSUS WELCOMES A TERM-HOLDER. PROCEED.',
+    ]),
+  }),
+});
+
+function hailFactionId(entity) {
+  const data = entity && entity.data || {};
+  const id = entity && entity.factionId || data.factionId;
+  return (typeof id === 'string' && CONTACT_HAIL_LINES[id]) ? id : 'faction_free';
+}
+
+/** Stance of the hailed entity toward the player: rep band (−250/+250) or live hostility. */
+export function contactHailStanceFor(state, entity) {
+  const factionId = hailFactionId(entity);
+  const ai = entity && entity.data && entity.data.ai || {};
+  if (ai.securityTargetId != null && ai.securityTargetId === (state && state.playerId)) return 'hostile';
+  const row = state && state.factions && state.factions[factionId];
+  const rep = Number(row && row.rep) || 0;
+  if (rep <= -250) return 'hostile';
+  if (rep >= 250) return 'allied';
+  return 'neutral';
+}
+
+/** Deterministic faction×stance hail line. rng: seeded fn or numeric index; falls back safely. */
+export function contactHailLineFor(factionId, stance, rng) {
+  const cell = (factionId && CONTACT_HAIL_LINES[factionId]) || CONTACT_HAIL_LINES.faction_free;
+  const lines = cell[stance] && cell[stance].length ? cell[stance] : cell.neutral;
+  let idx = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    idx = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    idx = Math.floor((f < 0 ? 0 : (f >= 1 ? 0.9999999 : f)) * lines.length);
+  }
+  const line = lines[idx];
+  return (typeof line === 'string' && line.length) ? line : 'CHANNEL OPEN.';
+}
+
+/** The hailed ship's own voice answering the channel, stable per target inside one save. */
+function hailVoiceLine(state, entity) {
+  const factionId = hailFactionId(entity);
+  const stance = contactHailStanceFor(state, entity);
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 1;
+  const idx = hash32(seed, 'contact-hail-voice', factionId, stance, String(entity && entity.id));
+  return contactHailLineFor(factionId, stance, idx);
+}
+
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
+  const voice = hailVoiceLine(state, availability.entity);
   if (availability.kind === 'patrol') {
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     return {
       requestId, targetId: availability.targetId, kind: 'patrol', expiresAt,
-      lines: [`${name} · LAWFUL PATROL`, 'CHANNEL OPEN.'],
+      lines: [`${name} · LAWFUL PATROL`, voice],
       actions,
     };
   }
@@ -497,7 +691,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, 'CHANNEL OPEN.'],
+      lines: [`${name} · WORKING TRAFFIC`, voice],
       actions,
     };
   }
@@ -525,7 +719,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     return {
       requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-      lines: [`${name} · PRIORITY COURIER`, 'CHANNEL OPEN.'],
+      lines: [`${name} · PRIORITY COURIER`, voice],
       actions,
     };
   }
@@ -534,7 +728,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, 'CHANNEL OPEN.'],
+    lines: [`${name} · CIVILIAN FREIGHT`, voice],
     actions,
   };
 }

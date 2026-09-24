@@ -67,6 +67,20 @@ for (const sector of SECTORS) {
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
 
+/** A station's shop listing on a fittable def: docked there, the shop stocks it at the listed
+ *  price and the catalog research gate does not apply at the counter. Returns null elsewhere. */
+export function stationShopOffer(def, stationId) {
+  const offers = def && def.shopOffers;
+  const offer = offers && stationId ? offers[stationId] : null;
+  const price = offer && Number(offer.price);
+  return Number.isFinite(price) ? { price: Math.max(0, price) } : null;
+}
+
+function dockedShopStationId(state) {
+  const ui = state && state.ui;
+  return ui && ui.docked === true ? ui.dockedStationId : null;
+}
+
 /** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
  * requires a shipyard; module purchase/fitting also works at a module fabricator. */
 export function shipworksAccessForServices(services) {
@@ -861,6 +875,64 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
  * recomputes handling from mass. Starts the ship at FULL hull/shield/cap.
  */
 export function getDerivedStats(defId, fittings = [], player = null) {
+  const key = derivedStatsKey(defId, fittings, player);
+  const hit = derivedStatsCache.get(key);
+  if (hit) {
+    // LRU refresh; the clone keeps the canonical immune to key-rebinding writers (combat).
+    derivedStatsCache.delete(key);
+    derivedStatsCache.set(key, hit);
+    return { ...hit };
+  }
+  const fresh = computeDerivedStats(defId, fittings, player);
+  if (derivedStatsCache.size >= DERIVED_STATS_CACHE_MAX) {
+    const oldest = derivedStatsCache.keys().next();
+    if (!oldest.done) derivedStatsCache.delete(oldest.value);
+  }
+  derivedStatsCache.set(key, fresh);
+  return { ...fresh };
+}
+
+/**
+ * INF-097: derived-stat memo. Shipworks re-derives the same hull composition on every
+ * refresh/hover, and each full fold walks every fitted module. The cache keys on the EXACT
+ * inputs the fold reads (hull, positional fittings, the player fields that alter numbers:
+ * efficiency mults/presence, cargo usedMass, identity flags, combat profile). Any change that
+ * alters numbers misses the key and recomputes — invalidation is structural, not manual.
+ *
+ * Contract: the cached canonical is never handed out. Every call returns a fresh TOP-LEVEL
+ * clone, because combat rebinds `derived.propulsion` on entity-owned blocks and ship code
+ * stores blocks on entities. Nested blocks (propulsion, flightModel, roleIdentity) are shared
+ * and must be treated read-only — replace keys, never mutate in place (no such writer exists).
+ * LRU-bounded (64) so ghost-hover spam cannot grow it.
+ *
+ * The key does NOT cover catalog contents (SHIPS / MODULES records): the game treats them as
+ * immutable authored data and nothing in src/ writes them. A fixture that patches a catalog
+ * record in place (e.g. `MODULES[i].mods.radarRangePct = NaN`) must call
+ * resetDerivedStatsCache() after the patch AND after restoring it, or it reads a stale entry.
+ */
+const DERIVED_STATS_CACHE_MAX = 64;
+const derivedStatsCache = new Map();
+
+/** Drop every memoized derived block. Test seam for in-place catalog patches (see above). */
+export function resetDerivedStatsCache() {
+  derivedStatsCache.clear();
+}
+
+function derivedStatsKey(defId, fittings, player) {
+  const eff = (player && player.efficiencyMods) || {};
+  return JSON.stringify([
+    defId || 'ship_kestrel',
+    Array.isArray(fittings) ? fittings : [],
+    player ? {
+      s: eff.shieldRegenMult, e: eff.energyRegenMult, c: eff.cargoCapMult,
+      h: eff.hiddenCargoPct, k: eff.scannerCloak, ep: player.efficiencyMods != null,
+      m: player.cargo && player.cargo.usedMass,
+      ip: player.isPlayer, id: player.id, st: player.stats != null, cp: player.combatProfile,
+    } : null,
+  ]);
+}
+
+function computeDerivedStats(defId, fittings = [], player = null) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const eff = (player && player.efficiencyMods) || {};
   const miningYieldMult = 1; // not applied to ship stats; mining system reads efficiencyMods itself
@@ -1064,7 +1136,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
   // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
   const bdef = shipDef.boost || {};
-  const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
+  // A doubled reservoir should not double the wait between runs. Preserve each hull's authored
+  // recovery time by scaling recharge with the larger meter.
+  const boostRegen = (bdef.regenRate || 18) * 2 * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
   const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
   const flightModel = buildFlightModel({
@@ -1734,11 +1808,13 @@ export const ships = {
     }
   },
 
-  /** A ship/module def is buyable iff it has no requiresTech, or that tech is researched. */
+  /** A ship/module def is buyable iff it has no requiresTech, that tech is researched, or the
+   *  docked station stocks it on the shop rack. */
   isUnlocked(def) {
     if (!def) return false;
     if (!def.requiresTech) return true;
-    return this.state.player.researchedNodes.includes(def.requiresTech);
+    if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
+    return !!stationShopOffer(def, dockedShopStationId(this.state));
   },
 
   // ---- module shop: buy a module/weapon into inventory -----------------------------------
@@ -1753,7 +1829,8 @@ export const ships = {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
-    const price = def.price || 0;
+    const offer = stationShopOffer(def, dockedShopStationId(this.state));
+    const price = offer ? offer.price : (def.price || 0);
     if (price > 0 && p.credits < price) {
       this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
       return false;

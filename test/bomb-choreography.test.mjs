@@ -42,13 +42,15 @@ function openField(t, id = 'bomb_goo') {
   assert.equal(sweptBombContact(NaN, 0, 1, 0, 10), Infinity);
 });
 
- test('drift bombs are excluded from both physics-body enrollment and foreign interpolation ownership', () => {
+ test('drift bombs stay out of Rapier and keep bomb-owned kinematics, but join the spatial-dynamic layer so the projectile-sweep hash follows them', () => {
   const t = bombScenario({ velocity: { x: 80, z: 0 } });
   try {
     const bomb = t.drop(), x = bomb.pos.x;
     assert.equal(shouldSyncPhysicsBodyEntity(bomb), false);
+    assert.equal(bomb.physicsBody, false);
     assert.equal(t.state.entityIndex.physicsBodies.includes(bomb), false);
-    assert.equal(t.state.entityIndex.movables.includes(bomb), false);
+    assert.equal(t.state.entityIndex.movables.includes(bomb), true, 'kinematic interp + sweep hash');
+    assert.equal(t.state.entityIndex.collidables.includes(bomb), true, 'projectile-sweep proxy');
     t.tick(); near(bomb.prevPos.x, x);
     const x2 = bomb.pos.x; assert.ok(x2 > x, 'the live index actually advances the bomb'); t.tick(); near(bomb.prevPos.x, x2);
     t.player.vel.x = -300;
@@ -240,8 +242,11 @@ function openField(t, id = 'bomb_goo') {
     assert.equal(readRailModel(t.state, t.state.simTime)[2].state, 'armed');
     t.state.bombs.selectedId = 'bomb_concussion';
     assert.equal(readBombBayModel(t.state, t.state.simTime).state, 'ready');
+    // PQ-205.03: save:loaded sweeps live bomb entities only — the owner deserializer restores
+    // the rack bag; the event itself never resets selection or payload cooldowns.
     t.bus.emit('save:loaded', {});
-    assert.equal(t.state.bombs.selectedId, BOMB_IDS[0]); assert.deepEqual(t.state.bombs.cooldowns, {});
+    assert.equal(t.state.bombs.selectedId, 'bomb_concussion');
+    assert.ok(t.state.bombs.cooldowns.bomb_singularity > 0, 'payload cooldowns survive the load boundary');
   } finally { t.close(); }
 });
 

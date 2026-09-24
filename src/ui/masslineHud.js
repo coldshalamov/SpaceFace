@@ -35,6 +35,11 @@ import {
 // consumes (state.massline2.throw.solution) — one authority, two surfaces: the world diamond
 // below names WHERE the intercept sits, the panel names WHEN/status. No second model exists.
 import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
+// INF-078: the throw preview names protected bodies inside the predicted corridor using
+// the law's own protected definition and the release geometry's advisory corridor. Read
+// only on both sides — the cue never touches release authority.
+import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -63,6 +68,89 @@ const DENIAL_NEXT_ACTION = Object.freeze({
 });
 export function denialNextAction(status, reason) {
   return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
+}
+
+// Wave G1 — the bracket says one state. A three-word reason rides with DENIED.
+// Sentences and next-action tutorials stay off this mark.
+const BRACKET_DENIAL_REASON = Object.freeze({
+  'LINE BLOCKED': 'LINE IS BLOCKED',
+  'PROTECTED': 'BODY IS PROTECTED',
+  'COOLDOWN': 'LINE ON COOLDOWN',
+  'ENDPOINT LOST': 'ENDPOINT WAS LOST',
+  'REACQUIRE': 'AIM AND REACQUIRE',
+  'ONE HEAVY ENDPOINT MAX': 'PAIR TOO HEAVY',
+  'WOULD FORM LOOP': 'WOULD FORM LOOP',
+  'CUT ACTIVE LINE': 'CUT ACTIVE LINE',
+  'NO TARGET': 'NO BODY AIMED',
+  'LINE FAILED': 'LINE DID NOT',
+  'UNAVAILABLE': 'LATCH NOT READY',
+});
+
+export function resolveMasslineBracketRead(status, reason) {
+  const copy = previewStatusCopy(status, reason);
+  if (status === 'ready' || copy === 'READY') {
+    return { state: 'CAN', text: 'CAN', reason: '' };
+  }
+  if (copy === 'OUT OF RANGE' || copy === 'PAIR OUT OF RANGE') {
+    return { state: 'OUT OF RANGE', text: 'OUT OF RANGE', reason: '' };
+  }
+  const words = BRACKET_DENIAL_REASON[copy] || 'LATCH NOT READY';
+  return { state: 'DENIED', text: 'DENIED', reason: words };
+}
+
+export function bracketReadText(read) {
+  if (!read) return '';
+  return read.reason ? `${read.text} · ${read.reason}` : read.text;
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// Words sit on the bracket. If that box would cover the player hull, push them off it.
+export function placeBracketWords(mark, hull, label, viewport) {
+  const w = Math.max(1, Number(label && label.w) || 1);
+  const h = Math.max(1, Number(label && label.h) || 1);
+  const gap = 16;
+  const vw = viewport && viewport.w > 0 ? viewport.w : 1440;
+  const vh = viewport && viewport.h > 0 ? viewport.h : 900;
+  const clamp = (rect) => ({
+    x: Math.max(8, Math.min(rect.x, Math.max(8, vw - w - 8))),
+    y: Math.max(8, Math.min(rect.y, Math.max(8, vh - h - 8))),
+    w,
+    h,
+  });
+  const candidates = [
+    { x: mark.x - w / 2, y: mark.y - h - gap },
+    { x: mark.x - w / 2, y: mark.y + gap },
+    { x: mark.x + gap, y: mark.y - h / 2 },
+    { x: mark.x - w - gap, y: mark.y - h / 2 },
+  ];
+  for (const candidate of candidates) {
+    const rect = clamp(candidate);
+    if (!hull || !rectsOverlap(rect, hull)) return rect;
+  }
+  const hx = hull.x + hull.w / 2;
+  const hy = hull.y + hull.h / 2;
+  const dx = mark.x - hx;
+  const dy = mark.y - hy;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) {
+    return clamp({ x: hx - w / 2, y: hull.y - h - gap });
+  }
+  const push = Math.max(hull.w, hull.h) + gap + Math.max(w, h);
+  return clamp({
+    x: hx + (dx / len) * push - w / 2,
+    y: hy + (dy / len) * push - h / 2,
+  });
+}
+
+function playerHullScreenRect(player, w2s) {
+  if (!player || !player.pos || typeof w2s !== 'function') return null;
+  const screen = projectWorld(w2s, player.pos.x, player.pos.z);
+  if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y)) return null;
+  const size = 64;
+  return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
 }
 
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
@@ -171,15 +259,15 @@ export const MASSLINE_HUD_CSS = `
   gap:6px 10px; align-items:center; max-width:min(560px, 60vw); }
 #sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px;
   border-radius:var(--dp-r-instrument, 3px);
-  background-color:var(--dp-metal-1, #12151a); background-image:var(--dp-plate-img, none);
-  border:0; box-shadow:var(--dp-plate-bevel, 0 2px 10px rgb(0 0 0 / .5));
+  background-color:var(--dp-metal-1, #12151a); background-image:none;
+  border:0; box-shadow:none;
   font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:var(--dp-ink-dim, #cbd5e1); }
 #sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:var(--dp-metal-3, rgba(148,163,184,0.22));
   position:relative; overflow:hidden; }
 #sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, var(--dp-lamp, #f2b950)); }
-#sf-ml2 .ml2-pill.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
+#sf-ml2 .ml2-pill.ml2-on { box-shadow:0 0 8px var(--dp-lamp-bloom, rgba(242,185,80,0.35)); color:var(--dp-lamp-hot, #ffd98c); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
-#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px rgba(159,139,255,.3); color:#efeaff; }
+#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:0 0 8px rgba(159,139,255,.3); color:#efeaff; }
 #sf-ml2 .ml2-pill.ml2-strain .ml2-fill i { background:var(--dp-lamp, #f2b950); }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn { color:#ffd08a; border:1px solid #8a6b3a; }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn .ml2-fill i { background:#ff9d5c; }
@@ -245,6 +333,35 @@ export function resolveReleaseCue(projection, options = {}) {
   };
 }
 
+const SCREEN_QUERY = { x: 0, y: 0, z: 0 };
+
+function projectWorld(w2s, x, z) {
+  SCREEN_QUERY.x = x;
+  SCREEN_QUERY.y = 0;
+  SCREEN_QUERY.z = z;
+  return w2s(SCREEN_QUERY);
+}
+
+/**
+ * VERB-08 — the meeting diamond is the throw intercept. Hide it when the player is the body
+ * that will move: the latched body is the player, or it outweighs the player (a heavy anchor
+ * or a self-sling). A lighter payload still gets the diamond.
+ */
+export function meetingDiamondHidden(throwState, state) {
+  if (!throwState || !state || state.playerId == null) return false;
+  if (throwState.payloadId === state.playerId) return true;
+  const get = state.entities && state.entities.get;
+  if (typeof get !== 'function' || throwState.payloadId == null) return false;
+  const player = get.call(state.entities, state.playerId);
+  const anchor = get.call(state.entities, throwState.payloadId);
+  if (!player || !anchor) return false;
+  const anchorBody = Number(anchor.physicsBody && anchor.physicsBody.mass);
+  const playerBody = Number(player.physicsBody && player.physicsBody.mass);
+  const anchorMass = Number.isFinite(anchorBody) && anchorBody > 0 ? anchorBody : Number(anchor.mass);
+  const playerMass = Number.isFinite(playerBody) && playerBody > 0 ? playerBody : Number(player.mass);
+  return Number.isFinite(anchorMass) && Number.isFinite(playerMass) && anchorMass > playerMass;
+}
+
 // Resolve the world anchor independently from DOM projection. R3B release targets are captured
 // when the line latches (or when a current precision-input intent repaints them), so a fixed point
 // must stay fixed even when gun/UI selection or a stale aimWorld changes underneath the throw.
@@ -282,6 +399,61 @@ export function resolveThrowMarkWorldPoint(throwState, state) {
     z: payload.pos.z + Math.sin(solution.interceptAngle) * 220,
     targetKind: 'point',
   };
+}
+
+// INF-078: collateral-cue inputs. Only KNOWN bodies qualify — alive with a finite
+// position and a measurable radius. The dead, the unpositioned, and the unmeasurable
+// are uncertainty, not evidence, so they never trigger the cue. The actors (payload,
+// player, aim target) are not bystanders.
+function throwPayloadEntity(throwState, state) {
+  const id = throwState && throwState.payloadId;
+  if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  return state.entities.get(id) || null;
+}
+
+function throwPayloadPoint(throwState, state) {
+  const payload = throwPayloadEntity(throwState, state);
+  return payload && payload.pos ? { x: payload.pos.x, z: payload.pos.z } : null;
+}
+
+function throwPayloadRadius(throwState, state) {
+  const payload = throwPayloadEntity(throwState, state);
+  return payload && Number.isFinite(payload.radius) ? payload.radius : 0;
+}
+
+const COLLATERAL_SPOTS = [];
+
+function throwCollateralSpots(state, throwState) {
+  const spots = COLLATERAL_SPOTS;
+  let count = 0;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.forEach !== 'function') {
+    spots.length = 0;
+    return spots;
+  }
+  const releaseTarget = throwState && throwState.releaseTarget;
+  const aimId = throwState && throwState.aimTargetId != null
+    ? throwState.aimTargetId
+    : releaseTarget && releaseTarget.targetId;
+  entities.forEach((entity) => {
+    if (!entity || entity.id === (throwState && throwState.payloadId)
+        || entity.id === state.playerId || entity.id === aimId) return;
+    if (entity.alive === false || !entity.pos
+        || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+        || !Number.isFinite(entity.radius)) return;
+    if (!isLawProtectedBody(entity)) return;
+    const data = entity.data || {};
+    const raw = data.displayName || data.name || data.label || entity.type || 'body';
+    let spot = spots[count];
+    if (!spot) spot = spots[count] = { x: 0, z: 0, r: 0, label: '' };
+    spot.x = entity.pos.x;
+    spot.z = entity.pos.z;
+    spot.r = entity.radius;
+    spot.label = String(raw).slice(0, 28).toUpperCase();
+    count += 1;
+  });
+  spots.length = count;
+  return spots;
 }
 
 const EMPTY_HUD_OBJECT = Object.freeze({});
@@ -405,18 +577,22 @@ function writeMasslineHudFields(fields, state, player) {
   // changes because the signature rolls with them.
   fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
     || finite(player && player.mass));
-  fields[index++] = selected.targetId != null && state.entities && typeof state.entities.get === 'function'
-    ? Math.round(finite(state.entities.get(selected.targetId)?.physicsBody?.mass)
-      || finite(state.entities.get(selected.targetId)?.mass))
-    : 0;
+  let selectedMass = 0;
+  if (selected.targetId != null && state.entities && typeof state.entities.get === 'function') {
+    const selectedEntity = state.entities.get(selected.targetId);
+    const bodyMass = selectedEntity && selectedEntity.physicsBody && selectedEntity.physicsBody.mass;
+    selectedMass = Math.round(finite(bodyMass) || finite(selectedEntity && selectedEntity.mass));
+  }
+  fields[index++] = selectedMass;
   // INF-014: solver-owned strain (quantized so the bar rolls with it).
-  fields[index++] = (() => {
-    if (!(playerState.tether && playerState.tether.active)) return 0;
+  let strain = 0;
+  if (playerState.tether && playerState.tether.active) {
     const raw = Number.isFinite(playerState.tether.strain)
       ? playerState.tether.strain
       : finite(playerState.masslineTelemetry && playerState.masslineTelemetry.strain);
-    return Math.round(finite(raw) * 50) / 50;
-  })();
+    strain = Math.round(finite(raw) * 50) / 50;
+  }
+  fields[index++] = strain;
   fields[index++] = bridle.phase
     ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
     : '';
@@ -553,7 +729,7 @@ export const masslineHud = {
     if (!selected || tethered) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
-    const targetScreen = w2s({ x: target.pos.x, y: 0, z: target.pos.z });
+    const targetScreen = projectWorld(w2s, target.pos.x, target.pos.z);
     if (!targetScreen || !Number.isFinite(targetScreen.x) || !Number.isFinite(targetScreen.y)) {
       return this._hideAcquisitionPreview(dom);
     }
@@ -567,34 +743,17 @@ export const masslineHud = {
     const cueX = pinned ? pinned.x : targetScreen.x;
     const cueY = pinned ? pinned.y : targetScreen.y;
     const ready = selected.status === 'ready';
-    // M4: print the body's mass, not the disambiguation confidence — "640 t" reads as the load
-    // the line will couple into the helm; the old floored percent never meant that.
-    const targetMass = Math.round(finite(target.physicsBody && target.physicsBody.mass)
-      || finite(target.mass));
-    const massText = targetMass > 0 ? `${targetMass} t` : '— t';
-    // INF-013: compact relative-mass read from the same effective masses the solver couples.
-    const playerMass = Math.round(finite(player.physicsBody && player.physicsBody.mass)
-      || finite(player.mass));
-    const massRead = resolveMassInterpretation(playerMass, targetMass);
-    const massTag = massRead ? ` · ${massRead.short}` : '';
-    const status = previewStatusCopy(selected.status, selected.reason);
-    const intent = String(selected.intentLabel || selected.context || 'PICK').toUpperCase();
-    const label = String(selected.targetLabel || selected.targetType || 'Target');
-    const text = `${label} · ${intent} · ${massText}${massTag} · ${status}`;
-
-    // Keep the caption beside the mark and inside the frame. The estimate only decides which SIDE
-    // of the mark it sits on; a wrong guess shifts the caption, it never hides information.
+    const read = resolveMasslineBracketRead(selected.status, selected.reason);
+    const text = bracketReadText(read);
     const captionWidth = estimateCaptionWidth(text);
-    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
-    // never lies across the hull), unless that side has no room.
-    const preferLeft = cueX < viewportWidth / 2
-      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
-      : cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = preferLeft
-      ? Math.max(8 + captionWidth, cueX - 20)
-      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
-    const labelShift = preferLeft ? ' translateX(-100%)' : '';
-    const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    const labelX = placed.x;
+    const labelY = placed.y;
 
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewSourceMark, 'display', 'none');
@@ -609,9 +768,10 @@ export const masslineHud = {
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
     setStyle(dom.previewSvg, 'display', 'none');
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}${massRead ? `, ${massRead.title.toLowerCase()}` : ''}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    setAttr(dom.previewEl, 'data-bracket-state', read.state);
+    setAttr(dom.previewEl, 'aria-label', offscreen ? `${text}, offscreen` : text);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
     setAttr(dom.previewEl, 'data-target-id', String(selected.targetId));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
@@ -627,7 +787,7 @@ export const masslineHud = {
     const denied = denial.targetId != null && state.entities && state.entities.get
       ? state.entities.get(denial.targetId) : null;
     const anchor = denied && denied.pos ? denied.pos : player.pos;
-    const screen = w2s({ x: anchor.x, y: 0, z: anchor.z });
+    const screen = projectWorld(w2s, anchor.x, anchor.z);
     if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
     const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
     const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
@@ -637,20 +797,17 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
-    const status = previewStatusCopy('invalid', denial.reason);
-    const action = denialNextAction('invalid', denial.reason);
-    const text = `MASSLINE · ${status} — ${action}`;
+    const read = resolveMasslineBracketRead('invalid', denial.reason);
+    const text = bracketReadText(read);
     const captionWidth = estimateCaptionWidth(text);
-    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
-    // never lies across the hull), unless that side has no room.
-    const preferLeft = cueX < viewportWidth / 2
-      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
-      : cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = preferLeft
-      ? Math.max(8 + captionWidth, cueX - 20)
-      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
-    const labelShift = preferLeft ? ' translateX(-100%)' : '';
-    const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    const labelX = placed.x;
+    const labelY = placed.y;
     setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
     if (denied) {
       setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
@@ -663,9 +820,10 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}, ${action.toLowerCase()}`);
+    setAttr(dom.previewEl, 'data-bracket-state', read.state);
+    setAttr(dom.previewEl, 'aria-label', text);
     setAttr(dom.previewEl, 'data-receipt-id', '');
     setAttr(dom.previewEl, 'data-target-id', String(denial.targetId ?? ''));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
@@ -685,8 +843,8 @@ export const masslineHud = {
   },
 
   _updateSnarePreview(dom, preview, w2s) {
-    const source = w2s({ x: preview.source.x, y: 0, z: preview.source.z });
-    const target = w2s({ x: preview.target.x, y: 0, z: preview.target.z });
+    const source = projectWorld(w2s, preview.source.x, preview.source.z);
+    const target = projectWorld(w2s, preview.target.x, preview.target.z);
     if (!finiteProjection(source) || !finiteProjection(target)) {
       this._hideAcquisitionPreview(dom);
       return;
@@ -731,7 +889,7 @@ export const masslineHud = {
       this._hideAcquisitionPreview(dom);
       return;
     }
-    const sourceScreen = w2s({ x: sourceEntity.pos.x, y: 0, z: sourceEntity.pos.z });
+    const sourceScreen = projectWorld(w2s, sourceEntity.pos.x, sourceEntity.pos.z);
     if (!finiteProjection(sourceScreen)) {
       this._hideAcquisitionPreview(dom);
       return;
@@ -753,7 +911,7 @@ export const masslineHud = {
       ? setup.lastDenial
       : null;
     const targetScreen = targetEntity && targetEntity.pos
-      ? w2s({ x: targetEntity.pos.x, y: 0, z: targetEntity.pos.z })
+      ? projectWorld(w2s, targetEntity.pos.x, targetEntity.pos.z)
       : null;
     const hasTarget = finiteProjection(targetScreen) && !sameEndpoint;
     let anchorX = sx;
@@ -820,12 +978,15 @@ export const masslineHud = {
 
   _updateThrowMark(dom, throwState, state, w2s) {
     const solution = throwState && throwState.armed ? throwState.solution : null;
-    if (!solution || !solution.valid) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    if (!solution || !solution.valid || meetingDiamondHidden(throwState, state)) {
+      setStyle(dom.throwEl, 'display', 'none');
+      return;
+    }
     // Place the diamond on the intercept ray at either the aim entity or a fixed reach — the
     // POSITION names the consequence ("the rock goes THERE"), the COLOR names the timing.
     const mark = resolveThrowMarkWorldPoint(throwState, state);
     if (!mark) { setStyle(dom.throwEl, 'display', 'none'); return; }
-    const proj = w2s({ x: mark.x, y: 0, z: mark.z });
+    const proj = projectWorld(w2s, mark.x, mark.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
       viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
@@ -844,6 +1005,23 @@ export const masslineHud = {
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
+    // INF-078: one advisory collateral cue. A known protected body inside the predicted
+    // corridor is NAMED, never vetoed: this only extends the caption, release authority
+    // and law adjudication are untouched. Stale/degraded solutions and unknown bodies
+    // stay silent via the corridor helper's own suppression.
+    if (!degradedThrow) {
+      const collateral = resolveThrowCollateral(solution,
+        throwPayloadPoint(throwState, state), throwPayloadRadius(throwState, state),
+        throwCollateralSpots(state, throwState));
+      if (collateral) {
+        const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
+        if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
+          dom.throwLabel.textContent = advisory;
+        }
+        setAttr(dom.throwEl, 'aria-label',
+          `${cue.ariaLabel}, possible collateral risk near ${collateral.label.toLowerCase()}`);
+      }
+    }
     if (degradedThrow) {
       if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
       setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
@@ -852,12 +1030,13 @@ export const masslineHud = {
   },
 
   _updateSelfMark(dom, throwState, state, w2s) {
-    const self = throwState && !throwState.armed ? throwState.selfSolution : null;
+    const playerMoves = meetingDiamondHidden(throwState, state);
+    const self = throwState && (playerMoves || !throwState.armed) ? throwState.selfSolution : null;
     if (!self) { setStyle(dom.selfEl, 'display', 'none'); return; }
     const target = self.targetId != null ? state.entities.get(self.targetId) : null;
     const targetPos = target && target.pos ? target.pos : self.targetPos;
     if (!targetPos) { setStyle(dom.selfEl, 'display', 'none'); return; }
-    const proj = w2s({ x: targetPos.x, y: 0, z: targetPos.z });
+    const proj = projectWorld(w2s, targetPos.x, targetPos.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
       viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
@@ -887,8 +1066,8 @@ export const masslineHud = {
       setStyle(dom.ringSvg, 'display', 'none');
       return;
     }
-    const center = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
-    const edge = w2s({ x: player.pos.x + cloakState.radius, y: 0, z: player.pos.z });
+    const center = projectWorld(w2s, player.pos.x, player.pos.z);
+    const edge = projectWorld(w2s, player.pos.x + cloakState.radius, player.pos.z);
     if (!center || !Number.isFinite(center.x) || !edge || !Number.isFinite(edge.x)) {
       setStyle(dom.ringSvg, 'display', 'none');
       return;

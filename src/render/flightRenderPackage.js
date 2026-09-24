@@ -77,6 +77,11 @@ export function computeLoadoutFingerprint(loadout = {}) {
   return parts.join('|');
 }
 
+// Published records are immutable loadout metadata — rebuilt cheaply on a miss — so the map is
+// safe to bound: station-traffic variety otherwise grows it by a record per new composition for
+// the whole session.
+const FLIGHT_RENDER_PACKAGE_CACHE_LIMIT = 64;
+
 export function createFlightRenderPackageCache() {
   const byFingerprint = new Map();
   return {
@@ -99,6 +104,11 @@ export function createFlightRenderPackageCache() {
         metadata: pkg.metadata ? immutableMetadata(pkg.metadata) : null,
       };
       const frozen = Object.freeze(record);
+      while (byFingerprint.size >= FLIGHT_RENDER_PACKAGE_CACHE_LIMIT) {
+        const oldest = byFingerprint.keys().next().value;
+        if (oldest == null) break;
+        byFingerprint.delete(oldest);
+      }
       byFingerprint.set(fingerprint, frozen);
       return frozen;
     },

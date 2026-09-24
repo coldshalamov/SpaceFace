@@ -142,6 +142,10 @@ class ParallaxLayers {
     this._motionReduce = null;
 
     this._chipTemplate = createFracturedDebrisGeometry();
+    // First boot constructs us before preloadRockSurfaceLibrary resolves (renderer init order),
+    // so the bands are built with bare clay materials. update() re-checks each frame and seats
+    // the shared maps into the existing materials the moment the library publishes — the chips
+    // gain their rock surface a few frames in instead of staying untextured for the session.
     this._sharedMaps = getReadyRockSurfaceTextures();
 
     this._debrisSpinUniforms = {
@@ -158,6 +162,9 @@ class ParallaxLayers {
 
   update(dt) {
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0;
+    // Late rock-surface arrival (first boot): the constructor raced the library decode and the
+    // chips were built bare. Seat the shared, frozen maps in place — no respawn, no re-init.
+    if (!this._sharedMaps) this._seatRockSurfaceMaps(getReadyRockSurfaceTextures());
     this._detectPaletteChange();
     this._syncQuality();
 
@@ -333,6 +340,26 @@ class ParallaxLayers {
     this._layers.push({ group, factor: spec.factor, tile: spec.tile, y: spec.y, effTile: spec.tile, motionUniforms });
     this._bandMaterials.push({ material, colorMul });
     return { group, mesh, motionUniforms };
+  }
+
+  // Wire the shared common-rock maps into the existing band materials, matching the texture
+  // slots createChipMaterial fills when the library is already decoded at construction. The
+  // palette finish keeps owning the roughness/metalness scalars (_applyPaletteColor wrote them
+  // unconditionally at construction), so only the map slots are seated. needsUpdate re-links
+  // each band program once — the same reskin cost upgradeBareRockMaterials accepts for rocks.
+  _seatRockSurfaceMaps(maps) {
+    if (!maps) return;
+    this._sharedMaps = maps;
+    for (let i = 0; i < this._bandMaterials.length; i++) {
+      const material = this._bandMaterials[i] && this._bandMaterials[i].material;
+      if (!material) continue;
+      material.map = maps.baseColor || null;
+      material.normalMap = maps.normal || null;
+      material.roughnessMap = maps.orm || null;
+      material.metalnessMap = maps.orm || null;
+      material.aoMap = maps.orm || null;
+      material.needsUpdate = true;
+    }
   }
 
   _syncQuality() {

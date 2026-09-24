@@ -18,10 +18,12 @@ import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -156,6 +158,10 @@ export const save = {
     this._rollbackCaptureActive = false; // strict serializer mode for the pre-load rollback copy
     this._rollbackInProgress = false;  // prevents a failed rollback from recursively retrying itself
     this._sharedStoreReady = !sharedPlayerStoreAvailable();
+    // INF-092: mirror health is independent of boot-sync readiness. True when no shared store
+    // is configured (localStorage is then the only — and fully durable — store), false once a
+    // configured mirror demonstrably misses a write, until a later write lands.
+    this._sharedStoreMirrorHealthy = true;
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
     this._dirtyJournal = createSaveDirtyJournal();
@@ -284,22 +290,41 @@ export const save = {
     return this._sharedStoreReady === false;
   },
 
+  // INF-092: truthful mirror health for the status path. Local keys are written synchronously
+  // at every save boundary, so this device is always the durable store; the shared mirror is
+  // best-effort and reported as such.
+  isSharedStoreMirrorHealthy() {
+    return this._sharedStoreMirrorHealthy !== false;
+  },
+
   async _syncSharedPlayerStore() {
     if (this._sharedStoreReady) return;
+    // No configured mirror: local-only shell, nothing to reconcile and nothing at risk.
+    const mirrorConfigured = sharedPlayerStoreAvailable();
+    let ok = true;
+    let error = null;
     try {
       const remote = await fetchSharedPlayerStore();
       const local = collectLocalSharedStoreKeys();
       const merged = mergeSharedStoreKeys(local, remote || {});
       applySharedStoreKeys(merged);
       if (remote != null || Object.keys(local).length > 0) {
-        await pushSharedPlayerStore(merged);
+        const pushed = await pushSharedPlayerStore(merged);
+        if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
-    } catch {
+    } catch (err) {
       // Store absence or a failed merge must not block the title screen.
+      ok = false;
+      error = (err && err.message) || 'sync_failed';
     } finally {
       this._sharedStoreReady = true;
+      this._sharedStoreMirrorHealthy = !mirrorConfigured || ok;
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('save:store-synced', { ok: true });
+        // Still emitted in both outcomes: achievements merge + title refresh key off the
+        // timing, and now off a truthful ok. No save write and no transition rides along.
+        this.bus.emit('save:store-synced', Object.assign({ ok, durableStore: 'local' },
+          mirrorConfigured ? { mirror: 'shared' } : { mirror: 'none' },
+          error ? { error } : null));
       }
     }
   },
@@ -318,7 +343,23 @@ export const save = {
       const keys = this._sharedStorePatch;
       this._sharedStorePatch = null;
       if (!keys) return;
-      pushSharedPlayerStore(keys, { keepalive: true }).catch(() => {});
+      // INF-092: a missed mirror write flips health (no toast per save — the flag is the
+      // status); a later landed write clears it with one recovery notice. Neither arm
+      // duplicates a save nor touches transitions.
+      pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
+        if (landed) {
+          if (this._sharedStoreMirrorHealthy === false) {
+            this._sharedStoreMirrorHealthy = true;
+            if (this.bus && typeof this.bus.emit === 'function') {
+              this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true });
+            }
+          }
+        } else {
+          this._sharedStoreMirrorHealthy = false;
+        }
+      }, () => {
+        this._sharedStoreMirrorHealthy = false;
+      });
     };
     if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);
     else flush();
@@ -387,9 +428,16 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      // PQ-205.03: the bomb rack (fitted cells, socket count, hangar stock, cooldowns,
+      // selection) is owned and serialized by the bombs system. Absent owner → {} →
+      // deserialize applies the starter kit (additive default for pre-rack saves).
+      ['bombs', () => this._callSerialize('bombs') || {}],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
+      // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
+      // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
+      ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -449,9 +497,11 @@ export const save = {
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
+    data.bombs = this._callSerialize('bombs') || {};
     data.stunts = this._callSerialize('stuntGrammar');
     data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
+    data.capitalBoss = this._callSerialize('capitalBossEncounters');
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
@@ -725,7 +775,12 @@ export const save = {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
-      if (!isPlayer && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
+      // Live projectiles ride the persistent list without being flagged persistent: the
+      // ballistic flight budget keeps a round collidable for many seconds, so a save/continue
+      // that dropped every in-flight shot would silently lose real combat state. Restore keeps
+      // their finite ttl and leaves them transient.
+      const liveProjectile = e.type === 'projectile';
+      if (!isPlayer && !liveProjectile && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {
@@ -754,7 +809,8 @@ export const save = {
 
   _hasPlayerEntity() {
     const state = this.state;
-    return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+    return !!(state && state.playerId != null && state.entities
+      && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
   },
 
   /**
@@ -1220,7 +1276,7 @@ export const save = {
           endgameChoice: meta && meta.endingChoice,
           endgameResolved: true,
         }))
-        .sort((a, b) => slotMetaScore(b) - slotMetaScore(a));
+        .sort(compareOccupiedSlotNewestFirst);
     for (const meta of candidates) {
       const prepared = this._prepareNewGamePlusSlot(meta && meta.slot);
       if (!prepared) continue;
@@ -1264,13 +1320,33 @@ export const save = {
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
   _latestSlot() {
     const idx = this._slotIndexWithFallback();
-    let best = null, bestT = -1;
-    for (const slot in idx) {
-      if (!isOccupiedSlotMeta(idx[slot])) continue;
-      const t = slotMetaScore(idx[slot]);
-      if (t >= bestT) { bestT = t; best = slot; }
-    }
-    return best;
+    return selectLatestOccupiedSlot(idx);
+  },
+
+  // INF-091: when Continue resolves past a NEWER raw-indexed slot, say so explicitly instead of
+  // silently downgrading. Returns { slot, reason, recoveryReason } when the newest raw-indexed
+  // slot has no playable generation in either copy, else null. Both generations are re-validated
+  // here (never trusted from meta), transient storage failures yield null rather than a verdict,
+  // and no bytes are touched — the dead copies stay on disk for forensics/manual export.
+  _newerUnplayableSkip() {
+    let raw = null;
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      raw = normalizeSlotIndex(this._readIndex());
+    } catch (err) { return null; }
+    const best = selectLatestOccupiedSlot(raw);
+    if (!best) return null;
+    if (this._latestSlot() === best) return null; // newest is playable — no skip
+    let primaryRaw = null, backupRaw = null;
+    try {
+      primaryRaw = localStorage.getItem(LS_PREFIX + best);
+      backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+    } catch (err) { return null; }
+    const primary = this._prepareEnvelopeString(primaryRaw);
+    if (primary.ok) return null;
+    const backup = this._prepareEnvelopeString(backupRaw);
+    if (backup.ok) return null;
+    return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
 
   deleteSlot(slot) {
@@ -2565,16 +2641,27 @@ export const save = {
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot) {
     slot = slot || 'quick';
+    // INF-091: the Continue route resolves 'latest' past a dead newest slot. Compute the skip
+    // BEFORE resolving so both the loaded receipt and the failure below can name it explicitly.
+    let skippedNewer = null;
     if (slot === 'latest') {
+      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
       const resolved = this._latestSlot();
-      if (!resolved) { this.bus.emit('save:error', { slot, reason: 'no_save' }); return false; }
+      if (!resolved) {
+        this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
+          skippedNewer ? { skippedNewer } : null));
+        return false;
+      }
       slot = resolved;
     }
     let raw = null;
     try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
     catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     const primary = this._prepareEnvelopeString(raw);
-    if (primary.ok) return this._restorePreparedEnvelope(primary, slot);
+    if (primary.ok) {
+      return this._restorePreparedEnvelope(primary, slot,
+        skippedNewer ? { skippedNewer } : undefined);
+    }
 
     // A named load and title Continue both recover from the previous valid generation. Validation
     // happens before any destructive restore, and the corrupt bytes are never rotated over backup.
@@ -2583,7 +2670,8 @@ export const save = {
     catch (err) { /* primary failure below remains the player-facing reason */ }
     const backup = this._prepareEnvelopeString(backupRaw);
     if (backup.ok) {
-      const restored = this._restorePreparedEnvelope(backup, slot, { emitError: false, recovered: true });
+      const restored = this._restorePreparedEnvelope(backup, slot, Object.assign(
+        { emitError: false, recovered: true }, skippedNewer ? { skippedNewer } : null));
       if (restored) {
         let promoted = false;
         try {
@@ -2603,7 +2691,9 @@ export const save = {
         return true;
       }
     }
-    this.bus.emit('save:error', { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' });
+    this.bus.emit('save:error', Object.assign(
+      { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
+      skippedNewer ? { skippedNewer } : null));
     return false;
   },
 
@@ -2760,6 +2850,8 @@ export const save = {
           reason: 'load_failed',
           rollback: rollbackError ? 'failed' : 'restored',
           error: restoreErrorMessage(err),
+          // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
+          ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
         };
         if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
         this.bus.emit('save:error', payload);
@@ -2926,6 +3018,10 @@ export const save = {
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       this._restoreCombat(data.combat, entityIdRemap);
+      // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
+      // selection). No entity ids inside — live bomb actors are transient and never persist.
+      // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
+      this._callDeserialize('bombs', data.bombs);
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);
@@ -2992,6 +3088,13 @@ export const save = {
         }
         this.state.enemyMind = data.enemyMind;
       }
+      // Packet 09: capital boss fights restore AFTER world + persistent entities + combat + the
+      // mission owner (ledgers/target ids reconciled above), never before. Restore puts the saved
+      // score records back at the same saved tick; rematerialized runtime ids are then resolved
+      // per fight through the durable role keys and the overlay rebinds (new runtime ids cancel
+      // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
+      // no-op; a present slice without its owner is a hard error rather than silent loss.
+      this._restoreCapitalBossFights(data.capitalBoss);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -3025,6 +3128,9 @@ export const save = {
         slot,
         visualGatePending: !!finalizeLoadedGame,
         recovered: options.recovered === true,
+        // INF-091: Continue resolved past a dead newer slot — the receipt names it explicitly
+        // instead of silently downgrading. Absent for named loads.
+        ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
         // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
@@ -3218,6 +3324,44 @@ export const save = {
     restoreCombatState(state, d, resolveEntityRef);
   },
 
+  /**
+   * Packet 09: restore the capital boss scores, then rebind each non-terminal fight onto the
+   * rematerialized runtime ids. Ordering contract (INTEGRATION-NOTES §6): world/combat/mission
+   * owners restore FIRST (the score alone cannot preserve native subsystem damage), then the
+   * score's restore() replays the saved records at the same saved tick, and finally the durable
+   * role keys resolve the new ids. A fight whose boss did not rematerialize stays unresolved/
+   * suspended (absence is not a kill); rebind is only called when a COMPLETE binding exists.
+   */
+  _restoreCapitalBossFights(snapshot) {
+    if (snapshot == null) return;
+    const sys = this.registry && this.registry.get && this.registry.get('capitalBossEncounters');
+    if (!sys || typeof sys.restore !== 'function') {
+      throw new Error('Capital boss save present but the capitalBossEncounters owner is missing');
+    }
+    sys.restore(snapshot);
+    const state = this.state;
+    const fights = (state.capitalBossEncounters && state.capitalBossEncounters.fights) || {};
+    const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
+    for (const record of Object.values(fights)) {
+      // Mission owner reconciles its numeric target ids and the two issuance ledgers against the
+      // durable actor/wing keys at the same point the score rebinds.
+      if (missionsSys && typeof missionsSys.reconcileCapitalBossOwner === 'function') {
+        try {
+          missionsSys.reconcileCapitalBossOwner(record);
+        } catch (error) {
+          console.error('[save] capital boss mission reconcile', record && record.fightId, error);
+        }
+      }
+      if (record.terminal) continue;
+      const binding = resolveCapitalBossRoleBinding({
+        record,
+        targetId: state.playerId,
+        entities: state.entityList || [],
+      });
+      if (binding && typeof sys.rebind === 'function') sys.rebind(record.fightId, binding);
+    }
+  },
+
   _restoreSettings(d) {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
@@ -3273,6 +3417,9 @@ export const save = {
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       e.alive = false;
+      // Restore reissues entity objects under the same ids; anything still holding this corpse
+      // (module scratches, deferred closures) would otherwise pin its mesh tree forever.
+      clearEntityRuntime(e);
       try {
         this.bus.emit('entity:destroyed', {
           id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
@@ -3336,9 +3483,30 @@ export const save = {
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
-      delete spec.id; delete spec._isPlayer;
-      if (spec.type !== 'projectile' && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
-      spec.flags = Object.assign({}, spec.flags, { persistent: true, noInterp: true });
+      delete spec._isPlayer;
+      // Reclaim the saved id when it is still free. entityList order at save time is not id
+      // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
+      // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
+      // treats a positive spec.id as a reservation and falls back when it is taken.
+      if (!(Number.isSafeInteger(spec.id) && spec.id > 0
+          && !(state.entities && state.entities.has(spec.id))
+          && !worldLedgerHoldsId(state.world, spec.id))) {
+        delete spec.id;
+      }
+      const isProjectile = spec.type === 'projectile';
+      if (!isProjectile && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
+      // A restored round stays transient: it must not survive sector regeneration outlive its
+      // clock, and a repeat save re-admits it through the same live-projectile clause.
+      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile, noInterp: true });
+      if (isProjectile && entityIdRemap) {
+        const mappedOwner = spec.ownerId != null ? entityIdRemap.get(String(spec.ownerId)) : null;
+        if (mappedOwner != null) spec.ownerId = mappedOwner;
+        const target = spec.data && spec.data.targetId;
+        if (target != null) {
+          const mappedTarget = entityIdRemap.get(String(target));
+          if (mappedTarget != null) spec.data.targetId = mappedTarget;
+        }
+      }
       const savedActivity = spec.activity;
       delete spec.activity;
       const e = this.helpers.spawnEntity(spec);
@@ -3814,10 +3982,16 @@ function normalizeVitals(out, base, repairGarbage = false) {
   out.drag = positiveNumber(out.drag, base.drag);
   if (!out.boost || typeof out.boost !== 'object' || Array.isArray(out.boost)) out.boost = clonePlain(base.boost || {});
   else {
-    out.boost.max = nonNegativeNumber(out.boost.max, base.boost && base.boost.max);
-    out.boost.energy = boundedVital(out.boost.energy, out.boost.max, base.boost && base.boost.energy, true);
+    // The ship definition owns the meter size. Rebase an older save's charge by its fill
+    // fraction so capacity increases apply to existing pilots without gifting a refill.
+    const savedMax = nonNegativeNumber(out.boost.max, base.boost && base.boost.max);
+    const savedEnergy = boundedVital(out.boost.energy, savedMax, base.boost && base.boost.energy, true);
+    out.boost.max = nonNegativeNumber(base.boost && base.boost.max, savedMax);
+    out.boost.energy = savedMax > 0
+      ? out.boost.max * Math.min(1, savedEnergy / savedMax)
+      : out.boost.max;
     out.boost.drainRate = nonNegativeNumber(out.boost.drainRate, base.boost && base.boost.drainRate);
-    out.boost.regenRate = nonNegativeNumber(out.boost.regenRate, base.boost && base.boost.regenRate);
+    out.boost.regenRate = nonNegativeNumber(base.boost && base.boost.regenRate, out.boost.regenRate);
     out.boost.dashImpulse = nonNegativeNumber(out.boost.dashImpulse, base.boost && base.boost.dashImpulse);
     out.boost.dashCd = nonNegativeNumber(out.boost.dashCd, base.boost && base.boost.dashCd);
     out.boost.dashCdT = nonNegativeNumber(out.boost.dashCdT, 0);
@@ -4312,6 +4486,66 @@ function slotMetaScore(meta) {
   if (t) return t;
   const playtimeS = Number(meta && meta.playtimeS);
   return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+
+function slotPlaytimeScore(meta) {
+  const playtimeS = Number(meta && meta.playtimeS);
+  return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+
+/**
+ * Latest-slot authority for Continue, load('latest'), and New Run+.
+ * Higher saved-at time wins. When those times match, higher playtime wins.
+ * When both match, the greater slot id in UTF-16 code-unit order wins.
+ * Object insertion order and integer-index enumeration are not inputs.
+ * Returns the winning key, or null when no occupied slot is present.
+ */
+export function selectLatestOccupiedSlot(slots) {
+  if (!slots || typeof slots !== 'object') return null;
+  let bestKey = null;
+  let bestMeta = null;
+  for (const key of Object.keys(slots)) {
+    if (!key || key === 'index' || isUnsafePlainKey(key)) continue;
+    const meta = slots[key];
+    if (!isOccupiedSlotMeta(meta)) continue;
+    const candidate = {
+      slot: key,
+      savedAt: meta.savedAt,
+      lastSavedAt: meta.lastSavedAt,
+      playtimeS: meta.playtimeS,
+    };
+    if (bestMeta == null || slotMetaBeats(candidate, bestMeta)) {
+      bestKey = key;
+      bestMeta = candidate;
+    }
+  }
+  return bestKey;
+}
+
+function slotMetaBeats(candidate, incumbent) {
+  const scoreDelta = slotMetaScore(candidate) - slotMetaScore(incumbent);
+  if (scoreDelta !== 0) return scoreDelta > 0;
+  const playDelta = slotPlaytimeScore(candidate) - slotPlaytimeScore(incumbent);
+  if (playDelta !== 0) return playDelta > 0;
+  return String(candidate.slot) > String(incumbent.slot);
+}
+
+function compareOccupiedSlotNewestFirst(a, b) {
+  const left = {
+    slot: String((a && a.slot) || ''),
+    savedAt: a && a.savedAt,
+    lastSavedAt: a && a.lastSavedAt,
+    playtimeS: a && a.playtimeS,
+  };
+  const right = {
+    slot: String((b && b.slot) || ''),
+    savedAt: b && b.savedAt,
+    lastSavedAt: b && b.lastSavedAt,
+    playtimeS: b && b.playtimeS,
+  };
+  if (slotMetaBeats(left, right)) return -1;
+  if (slotMetaBeats(right, left)) return 1;
+  return 0;
 }
 
 function slotMetaFromEnvelope(slot, env) {

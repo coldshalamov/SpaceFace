@@ -347,8 +347,10 @@ const RAW_UNIQUE_WRECKS = [
     hazardContext: { label: 'Helios outer yard', anchorType: 'sector', anchorId: 'sector_helios_prime', zoneId: 'zone_helios_core', hazardTypes: [], placementRule: 'near_spawn_outer_yard', approachGate: null },
     complications: [
       { id: 'choir_tender_reactor_leak', kind: 'reactor', trigger: 'wreck_fixed', gentle: true },
-      { id: 'choir_tender_investigator', kind: 'report_or_loot', trigger: 'salvaged', factionId: 'faction_scn' },
+      { id: 'choir_tender_investigator', kind: 'report_or_loot', trigger: 'salvaged', factionId: 'faction_scn',
+        encounterRef: 'unique_wreck_choir_tender_investigator' },
     ],
+    encounterRefs: ['unique_wreck_choir_tender_investigator'],
     bonusCargo: [{ commodityId: 'cmdty_medical', qty: 50 }], reactor: { timerS: 60, damage: 12 },
     placement: { anchorLocal: { x: 0, z: 0 }, minRadius: 700, maxRadius: 920, bearingRadiusMin: 260, bearingRadiusMax: 420 },
     decision: salvageDecision({

@@ -1,9 +1,10 @@
 import { COMBAT_CUE_IDS } from '../data/combatDefs.js';
+import { BOMB_DEFS } from '../data/bombs.js';
 
 const PHASES = ['startup', 'active', 'recovery'];
 const TARGET_KINDS = new Set(['none', 'entity', 'attachment', 'point']);
 const EFFECT_TIMINGS = new Set(['startupStart', 'activeStart', 'activeEachTick', 'recoveryStart']);
-const EFFECT_TYPES = new Set(['createAttachment', 'reelAttachment', 'cutAttachment', 'damage']);
+const EFFECT_TYPES = new Set(['createAttachment', 'reelAttachment', 'cutAttachment', 'damage', 'dropBomb']);
 const STATUS_STACKING = new Set(['refresh', 'stack', 'replace', 'ignore']);
 const VOLUME_SHAPES = new Set(['circle', 'box', 'capsule']);
 
@@ -112,6 +113,7 @@ function validateAction(def, ctx) {
     if (effect.at === 'startupStart' && durations.startup === 0) ctx.errors.push(`${effectPath} is unreachable because startupTicks is 0`);
     if (effect.at === 'recoveryStart' && durations.recovery === 0) ctx.errors.push(`${effectPath} is unreachable because recoveryTicks is 0`);
     if (effect.type === 'createAttachment' && !ctx.attachmentById.has(effect.attachmentDefId)) ctx.errors.push(`${effectPath}.attachmentDefId does not resolve`);
+    if (effect.type === 'dropBomb' && !(effect.payloadId && BOMB_DEFS[effect.payloadId])) ctx.errors.push(`${effectPath}.payloadId does not resolve to a bomb def`);
     if (effect.type === 'damage') {
       const packetResult = validateDamagePacket(effect.packet || {});
       for (const error of packetResult.errors) ctx.errors.push(`${effectPath}: ${error}`);

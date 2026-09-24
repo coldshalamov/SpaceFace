@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "daa2123386fe9f0f33d617bbb9df4d04c035232e348025c3b4c370ced31dff7d",
+  "contentHash": "634bbb6efb0dddade897e1bf8b90161ae9d18a84d43680b4dbbabccef1d8358a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1438,14 +1438,14 @@
       "uri": "place_power_skid_patched.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 47388,
-    "sha256": "41277ff93ff44f9b9753a89c25fee35bae69500f1fcffc46d20076be583110f1",
+    "sha256": "f650e61164f8c4e97aab688b48b427d6951f33491c0db8821f6775b8cf523e94",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2069,7 +2069,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
   },
-  "runtimeHash": "7696e2dc0e35843f1c3b47c50cc0d28ecb8bd42c23444c984ce9ae8d6d3292ff",
+  "runtimeHash": "eacc1d37f29064a68ba2056c9393296bf27f800d21ad16dcdd2fef5850bd0fe6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

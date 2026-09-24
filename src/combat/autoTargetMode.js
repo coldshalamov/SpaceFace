@@ -1,4 +1,5 @@
-// Auto-target combat mode: G owns weapon lead plus the clutchable draw-to-fly trackpad route.
+// Combat target assist runs by default from the selected hostile. G separately enables the
+// clutchable draw-to-fly trackpad route; Backspace releases the combat lock for free aim.
 //
 // TARGET RECONCILIATION (the "two variables" rule). There are two target-ish values on the player:
 //   state.player.targetId        — the player's SELECTION. It seeds a newly latched throw's
@@ -42,14 +43,14 @@ export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()
   if (inp.autoTargetPath) inp.autoTargetPath.active = false;
   if (inp.autoFire) {
     runtime.refreshT = AUTO_TARGET_REFRESH_S;
-    if (bus) bus.emit('ui:targetNearestHostileToPlayer');
+    if (bus && inp.targetAssistDisabled !== true) bus.emit('ui:targetNearestHostileToPlayer');
   } else {
     runtime.refreshT = 0;
-    if (inp.autoAim) inp.autoAim = null;
+    if (inp.autoAim && inp.targetAssistDisabled === true) inp.autoAim = null;
   }
   if (bus) {
     bus.emit('toast', {
-      text: inp.autoFire ? 'Auto-target ON · draw to fly' : 'Auto-target OFF',
+      text: inp.autoFire ? 'Draw-to-fly ON' : 'Draw-to-fly OFF',
       kind: 'info',
       ttl: 2,
     });
@@ -64,7 +65,7 @@ export function lockedHostileEntity(state) {
   if (!e || e.alive === false || !e.pos) return null;
   if (e.type !== 'ship' && e.type !== 'drone') return null;
   const player = state.entities.get(state.playerId);
-  if (state.input?.autoFire && (!player || !isHostileToPlayer(e, player.team, state))) return null;
+  if (!player || !isHostileToPlayer(e, player.team, state)) return null;
   return e;
 }
 
@@ -139,7 +140,7 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   // Clear only when the marker is actually present: assigning `null` unconditionally would mint the
   // key on every input object in the game and change the 47-A snapshot hash for a field nothing in
   // that replay reads.
-  if (!inp || !inp.autoFire || (state.mode && state.mode !== 'flight')
+  if (!inp || (state.mode && state.mode !== 'flight')
     || inp.blocked || state.ui?.screenStack?.length) {
     if (inp && inp.autoAim) inp.autoAim = null;
     runtime.refreshT = 0;
@@ -157,12 +158,16 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     return;
   }
 
-  const target = resolvePlayerGunTarget(state);
+  const target = inp.targetAssistDisabled === true ? null : resolvePlayerGunTarget(state);
   if (target) {
     const lead = computeLockedLeadPoint(state) || target.pos;
     inp.aimAngle = Math.atan2(lead.z - player.pos.z, lead.x - player.pos.x);
-    inp.aimWorld.x = lead.x;
-    inp.aimWorld.z = lead.z;
+    // Keep the physical cursor point for Massline acquisition. G's draw mode retains its
+    // historical lead-point presentation; ordinary assisted combat does not move the cursor.
+    if (inp.autoFire) {
+      inp.aimWorld.x = lead.x;
+      inp.aimWorld.z = lead.z;
+    }
   }
   // Publish WHOSE lead this aim angle is. inp.aimAngle can only carry one solution, and it is the
   // primary mount's; a mixed battery gimbaled to it fires every other barrel on the wrong intercept.
@@ -180,9 +185,9 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     inp.autoAim = null;
   }
 
-  const pathApplied = followAutoTargetPath(inp, player, state, runtime, dt);
+  const pathApplied = inp.autoFire && followAutoTargetPath(inp, player, state, runtime, dt);
   const vector = inp.autoTargetVector;
-  if (!pathApplied && vector && vector.active) {
+  if (inp.autoFire && !pathApplied && vector && vector.active) {
     const rawX = finite(vector.worldX);
     const rawZ = finite(vector.worldZ);
     const length = Math.hypot(rawX, rawZ);
@@ -200,7 +205,7 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   }
 
   runtime.refreshT = Math.max(0, (runtime.refreshT || 0) - dt);
-  if (runtime.refreshT <= 0) {
+  if (runtime.refreshT <= 0 && inp.targetAssistDisabled !== true) {
     runtime.refreshT = AUTO_TARGET_REFRESH_S;
     if (bus) bus.emit('ui:targetNearestHostileToPlayer', { quiet: true });
   }
@@ -250,7 +255,7 @@ function finite(value, fallback = 0) {
 }
 
 export function projectLockedReticle(state, w2s, viewport = {}) {
-  if (!state || !state.input || !state.input.autoFire) return null;
+  if (!state || !state.input || state.input.targetAssistDisabled === true) return null;
   const lead = computeLockedLeadPoint(state);
   const target = resolvePlayerGunTarget(state);
   const point = lead || (target && target.pos) || null;

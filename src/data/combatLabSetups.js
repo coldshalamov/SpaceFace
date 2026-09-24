@@ -29,7 +29,7 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
     blurb: 'Bank a stream of bullets around cover. Shove the pack into the rocks, then boost through.',
     hullId: 'ship_hornet',
     loadout: [
-      { slotIndex: 0, defId: 'wpn_autocannon_m' },
+      { slotIndex: 0, defId: 'wpn_bank_stream_m' },
       { slotIndex: 1, defId: 'wpn_concussion_cannon_m' },
       { slotIndex: 5, defId: 'mod_bank_shot' },
       { slotIndex: 6, defId: 'mod_repulsion_trap_s' },

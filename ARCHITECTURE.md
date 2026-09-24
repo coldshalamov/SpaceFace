@@ -150,9 +150,11 @@ Two distinct quantities that specs conflated:
 - **Authored art is the normal release path.** GLB/KTX2 assets, textures, generated materials, and
   procedural rendering may be combined. Primitive/canvas geometry is a fallback or a deliberate
   stylistic/tooling choice, never a quality ceiling.
-- **Static dev server + Electron release shell.** Runtime/build dependencies are allowed when they
-  materially improve quality and their license, bundle/performance, determinism/save, and
-  maintenance impact are documented.
+- **Static dev server + Electron release shell.** Runtime/build dependencies are allowed when
+  they materially improve quality and their license, bundle/performance, determinism/save, and
+  maintenance impact are documented. The ones to actually bring in are named in
+  [`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0. The page loads ESM through the
+  import map. Unreal Engine code is not one of those dependencies.
 
 ### 1.2 DOM layering (single `index.html`)
 ```

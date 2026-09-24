@@ -4,6 +4,16 @@
 // jobs. The opening/loading window and a short post-first-playable settle may overlap two
 // CPU admissions so Helios/hub decode finishes before the player is looking at a live frame.
 
+import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './cameraDirector.js';
+import {
+  TABLE_BAND,
+  TABLE_FRAME_SKIRT_WU,
+  classifyTableBand,
+  glassHalfExtents,
+  tableLookAtDelta,
+  tablePrefetchZoomFromState,
+} from './tabletopPolicy.js';
+
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
 export const AUTHORED_UPGRADE_SETTLE_MS = 0;
@@ -69,4 +79,89 @@ export function isInsideSectorArrivalBand(distanceWU) {
     && Number.isFinite(distanceWU)
     && distanceWU >= 0
     && distanceWU <= SECTOR_ARRIVAL_NEAR_PUBLISH_WU;
+}
+
+// The fight outranks the furniture.
+//
+// A hostile ship inside the camera's active-attacker fit range is part of the picture the player
+// is acting on right now: its authored body must reach the serial admission lane before station
+// props, rocks, place dressing and fx — and before a critical-hub job that is merely queued.
+// The rung sits between the player's own hull (0) and the critical starting hub (1): the hub
+// stays the gate of last resort for a fresh sector but cannot starve a ship that is already
+// shooting at the player. Ordering only — a job already in flight is never pre-empted.
+//
+// The range is the camera director's combat-fit envelope, not a new gameplay constant: it is the
+// same reach the composition uses to keep every active attacker on the glass.
+export const COMBATANT_ADMISSION_PRIORITY = 0.5;
+
+function livePlayerEntity(liveState) {
+  const entities = liveState && liveState.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  return entities.get(liveState.playerId) || null;
+}
+
+/**
+ * Combatant rung for one admission job, or null when the job is ordinary dressing.
+ * Reads the live player at the moment it is applied, never at enqueue time.
+ */
+export function combatantAdmissionPriority(entity, liveState) {
+  if (!entity || entity.type !== 'ship' || entity.alive === false || entity.isPlayer === true) {
+    return null;
+  }
+  const player = livePlayerEntity(liveState);
+  if (!player) return null;
+  // isHostileToPlayer's coarse shape, cheap enough for a per-sort call: allied (0), same-team and
+  // law (2) never take the combatant rung; every other faction inside the envelope does.
+  if (entity.team == null || entity.team === player.team || entity.team === 0 || entity.team === 2) {
+    return null;
+  }
+  const distance = planarRangeWU(entity, player);
+  if (distance === null || distance > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM) return null;
+  return COMBATANT_ADMISSION_PRIORITY;
+}
+
+// A live survival run is one small room with a known fight roster, but the renderer still mounts
+// the staging sector the arena was carved from. Stations, rocks, place dressing and fx that the
+// composed frame cannot show still queue through the same serial lane and starve the combatants
+// that gate the fight (and the dead hulk exemplars that gate the wrecks). The defer criterion is
+// the renderer's own on-glass classifier: the live look-at table plus the frame skirt and the
+// body's radius. A body in the glass or runway band can be on the picture — it queues; only a
+// body provably beyond the band is refused at enqueue. The ordinary approach trigger re-requests
+// anything the frame ever reaches, and anything still pending re-requests once the run ends.
+const SURVIVAL_DEFERRED_DRESSING_TYPES = new Set(['station', 'asteroid', 'fx', 'place']);
+const _arenaDressingDelta = { x: 0, z: 0 };
+
+export function survivalDefersArenaDressingJob(entity, liveState) {
+  const run = liveState && liveState.run;
+  if (!run || run.kind !== 'survival' || !run.phase || run.phase === 'inactive') return false;
+  if (!entity || entity.alive === false || entity.isPlayer === true) return false;
+  if (!SURVIVAL_DEFERRED_DRESSING_TYPES.has(entity.type)) return false;
+  const pos = entity.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+  // Until the camera has composed a single frame nothing is provably off the glass — early cook
+  // sweeps admit normally and the combatant rung keeps that work behind the fight.
+  const camera = liveState.camera || {};
+  if (!Number.isFinite(camera.liveZoom) && !Number.isFinite(camera.composedZoom)) return false;
+  const player = livePlayerEntity(liveState);
+  const focus = camera.focus || {};
+  if ((!Number.isFinite(focus.x) || !Number.isFinite(focus.z))
+      && !(player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z))) {
+    return false;
+  }
+  const zoom = tablePrefetchZoomFromState(liveState);
+  const video = liveState.settings && liveState.settings.video || {};
+  const fov = Number.isFinite(camera.fov) ? camera.fov : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const delta = tableLookAtDelta(liveState, player && player.pos, pos, _arenaDressingDelta);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    radius: Math.max(0, Number(entity.radius) || 0),
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+  });
+  return band === TABLE_BAND.BEYOND;
 }

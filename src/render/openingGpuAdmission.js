@@ -265,6 +265,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
 
 export function withOnlySubjectsDrawable(scene, subjects, fn) {
   const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+  // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
+  // hiding one would make the subject's "draw" a silent no-op and leave its program cold.
+  for (const subject of [...keep]) {
+    for (let p = subject.parent; p; p = p.parent) keep.add(p);
+  }
   const saved = [];
   if (scene && typeof scene.traverse === 'function') {
     scene.traverse((object) => {
@@ -284,9 +289,14 @@ export function withOnlySubjectsDrawable(scene, subjects, fn) {
  * Draw one already-compiled subject to the exact HDR/screen target so ANGLE links the program
  * and uploads its buffers. Other drawables stay in the graph for lights but are hidden so this
  * is not a whole-scene discovery pass.
+ *
+ * `subject` may also be an array: every listed subject draws in ONE render. Each subject still
+ * gets exactly the draw it would get alone (same program, same buffers, same target, same
+ * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
  */
 export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene) {
-  if (!renderer || typeof renderer.render !== 'function' || !subject || !lightingScene) {
+  const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
+  if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
   }
   const previousTarget = typeof renderer.getRenderTarget === 'function'
@@ -296,11 +306,13 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   try {
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
-    withOnlySubjectsDrawable(lightingScene, [subject], () => {
-      if (typeof subject.updateMatrixWorld === 'function') subject.updateMatrixWorld(true);
+    withOnlySubjectsDrawable(lightingScene, subjects, () => {
+      for (const item of subjects) {
+        if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+      }
       renderer.render(lightingScene, camera);
     });
-    return { skipped: false };
+    return { skipped: false, subjects: subjects.length };
   } finally {
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {
@@ -314,8 +326,10 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
   const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
-  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
   const started = now();
   const deadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 0;
   const overBudget = () => deadlineMs > 0 && (now() - started) > deadlineMs;
@@ -359,17 +373,51 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const issued = [];
   let compiled = [];
   let drained = null;
+  // Where the step's wall time went. A cook that reads "110 s" in the ledger is unreadable
+  // without knowing whether it was issuing, waiting on the driver, or touching.
+  let issueMs = 0;
+  let drainMs = 0;
+  let touchMs = 0;
+  // `issueKeyFor` is a producer-side program signature (material manifest + object/geometry
+  // features). Units dedupe by material OBJECT, so thousands of palette-cloned subjects share
+  // one signature: only the first needs its compile issued — the linked program is keyed by
+  // signature, not material identity. A covered subject still owes its touch (its own geometry
+  // buffers and material uniforms upload on that draw), and a signature miss degrades to the
+  // same blocking link an unissued subject already pays inside a batched touch — never worse.
+  const issueKeyFor = typeof options.issueKeyFor === 'function' ? options.issueKeyFor : null;
+  const seenIssueKeys = issueKeyFor ? new Set() : null;
+  let issueDedupeSkips = 0;
   try {
     // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
     // executor and then suspends on the batch, so the whole cohort reaches the driver before the
     // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
+    const issueStarted = now();
     for (let index = 0; index < ordered.length; index++) {
       if (overBudget()) break;
-      issued.push(compileOne ? compileOne(ordered[index]) : null);
+      const subject = ordered[index];
+      let issueKey = null;
+      if (issueKeyFor) {
+        try { issueKey = issueKeyFor(subject); } catch (_) { issueKey = null; }
+      }
+      if (issueKey && seenIssueKeys.has(issueKey)) {
+        // Keep `issued` index-aligned with `ordered` so the touch gate still counts this
+        // subject as issued — its program is covered by the sibling's in-flight compile.
+        issued.push(Promise.resolve({ skipped: true, reason: 'program-signature-covered' }));
+        issueDedupeSkips += 1;
+        continue;
+      }
+      if (issueKey) seenIssueKeys.add(issueKey);
+      issued.push(compileOne ? compileOne(subject) : null);
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
+    issueMs = now() - issueStarted;
+    const drainStarted = now();
     drained = await batch.drain();
-    compiled = await Promise.all(issued);
+    // One rejected compile must not discard the cohort's touches — every issued unit that skips
+    // its draw still links inside the first presented scene pass. Settle each and keep going.
+    compiled = (await Promise.allSettled(issued))
+      .map((entry) => (entry && entry.status === 'fulfilled' ? entry.value : null));
+    drainMs = now() - drainStarted;
   } finally {
     batch.close();
     // Settling only RESOLVES each suspended compile; the `finally` that restores its captured
@@ -379,21 +427,71 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
   }
   const results = [];
-  for (let index = 0; index < ordered.length; index++) {
-    if (overBudget()) break;
-    results.push({
-      compiled: compiled[index] ?? null,
-      touched: touchOne ? touchOne(ordered[index]) : null,
-    });
-    if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+  const touchStarted = now();
+  // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects
+  // in the same order, each drawn exactly as touchOne would draw it; what is shared is the
+  // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
+  const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
+  const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
+  // link/bufferData inside the first presented scene pass, which is the brick this admission
+  // exists to remove. Every issued subject is drawn even over budget; subjects that were never
+  // issued stay budget-gated, since their touch would pay a full blocking link under the shell.
+  if (touchMany && touchBatchSize > 1) {
+    for (let index = 0; index < ordered.length; index += touchBatchSize) {
+      if (overBudget() && index >= issued.length) break;
+      // A batch must not straddle the issued boundary: an unissued subject pays a full
+      // blocking link under the shell, which is exactly what the deadline exists to avoid.
+      const group = ordered.slice(index, Math.min(index + touchBatchSize, issued.length));
+      if (!group.length) break;
+      // A throwing touch reports per-row and keeps the rest of the cohort drawing — every
+      // skipped issued subject would otherwise link inside the first presented scene pass.
+      let touched = null;
+      let touchError = null;
+      try {
+        touched = touchMany(group);
+      } catch (error) {
+        touchError = error;
+      }
+      for (let offset = 0; offset < group.length; offset++) {
+        results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
+      }
+      if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
+    }
+  } else {
+    for (let index = 0; index < ordered.length; index++) {
+      if (overBudget() && index >= issued.length) break;
+      let touched = null;
+      let touchError = null;
+      try {
+        touched = touchOne ? touchOne(ordered[index]) : null;
+      } catch (error) {
+        touchError = error;
+      }
+      results.push({
+        compiled: compiled[index] ?? null,
+        touched,
+        touchError,
+      });
+      if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+    }
   }
+  touchMs = now() - touchStarted;
   return {
     batched: true,
     contextLost: drained ? drained.contextLost === true : false,
     skipped: ordered.length === 0,
     subjects: ordered.length,
+    issued: issued.length,
+    issueDedupeSkips,
+    touched: results.length,
     materials: Number(units.materialCount) || (units.programSubjects || []).length,
     geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+    timing: {
+      issueMs: Math.round(issueMs),
+      drainMs: Math.round(drainMs),
+      touchMs: Math.round(touchMs),
+    },
     results,
   };
 }

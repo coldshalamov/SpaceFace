@@ -46,6 +46,12 @@ quality, planning graphics/VFX work, or declaring a bug fixed. Root `AGENTS.md` 
   `design/program/INFERENCE_GOAL.txt`. Captures remain not the review.
 - Browser and Electron are shells of the same game; they must share player saves and must not drift
   as separate copies.
+- The outside resources for this game are a named list, not a search (owner, 2026-09-22).
+  CAS, Elementary Audio, a few Sonniss recordings, Kenney only to fill a missing cue, and the
+  named CC0 material and lighting sources. `meshoptimizer` is already here and is how a far hull
+  stays the same ship. Unreal Engine code is not a source we can paste in. The list and the
+  refusals: [`OPEN_SOURCE_INTAKE.md`](./OPEN_SOURCE_INTAKE.md) §0. A grunt catalog line stays
+  inside the files it names.
 
 ## Verified workspace facts
 

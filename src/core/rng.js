@@ -70,15 +70,36 @@ export function drawSeeded(obj, key, fallbackSeed) {
   return next.value;
 }
 
-/** Deterministic uint32 hash of the given args (FNV-1a over their joined string). */
-export function hash32(...args) {
-  let h = 0x811c9dc5;
-  const str = args.join('|');
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
+function fnvStep(h, code) {
+  h ^= code;
+  return Math.imul(h, 0x01000193);
+}
+
+function fnvArg(h, arg) {
+  // Array#join semantics: null/undefined contribute no characters, everything else String(arg).
+  if (arg == null) return h;
+  const s = typeof arg === 'string' ? arg : String(arg);
+  for (let i = 0; i < s.length; i++) h = fnvStep(h, s.charCodeAt(i));
+  return h;
+}
+
+/**
+ * Deterministic uint32 hash of the given args (FNV-1a over their joined string).
+ * Named parameters + arguments.length keep the common path (<= 8 args) allocation-free:
+ * no rest array, no joined string. The loop only runs for wider calls.
+ */
+export function hash32(a, b, c, d, e, f, g, h) {
+  let acc = fnvArg(0x811c9dc5, a);
+  const n = arguments.length;
+  if (n > 1) acc = fnvArg(fnvStep(acc, 0x7c), b);
+  if (n > 2) acc = fnvArg(fnvStep(acc, 0x7c), c);
+  if (n > 3) acc = fnvArg(fnvStep(acc, 0x7c), d);
+  if (n > 4) acc = fnvArg(fnvStep(acc, 0x7c), e);
+  if (n > 5) acc = fnvArg(fnvStep(acc, 0x7c), f);
+  if (n > 6) acc = fnvArg(fnvStep(acc, 0x7c), g);
+  if (n > 7) acc = fnvArg(fnvStep(acc, 0x7c), h);
+  for (let i = 8; i < n; i++) acc = fnvArg(fnvStep(acc, 0x7c), arguments[i]);
+  return acc >>> 0;
 }
 
 /** Wrap an angle (radians) to (-PI, PI]. */

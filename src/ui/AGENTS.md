@@ -2,15 +2,24 @@
 
 DOM/CSS overlay. Reads state and emits gameplay intents. Narrow direct-write exception:
 UI/input-owned selection such as `state.player.targetId`. Root `AGENTS.md` §6 first.
-Frontend direction: `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md` (2026-09-10; frames under
-`design/frontend/direction/approved/` outrank prose). Do not style screens by hand: every visual
-element is assembled from the produced kit under `assets/ui/kit/` (packet P21). Why:
-`design/FRONTEND_DIRECTION.md` §14.
+**Deckplate (`src/ui/deckplate/`) is the design system.** Every colour, size, radius, duration, face
+and panel recipe on a player surface comes from `--dp-*` and the `.dp-*` classes; a screen assembles
+them and never restyles them. Adding a token root is the defect — this tree grew four of them
+(`--k-` 926 declarations, `--sf-` 501, `--fh-` 420, `--dp-` 112) because each programme wrote system
+number five instead of finishing system number four. The standard is
+[`../../design/frontend/THE_BAR.md`](../../design/frontend/THE_BAR.md); progress and order are
+[`../../design/frontend/UNIFICATION_LEDGER.md`](../../design/frontend/UNIFICATION_LEDGER.md).
+
+A screen owning a stylesheet is a defect. Screen-specific CSS is *placement* and belongs in
+`deckplate/screens.js`; material never does. The produced renders under `assets/ui/kit/` remain the
+texture budget — retire the `--fh-` tokens, not the assets. Historical direction, for context only:
+`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`.
 
 ## Standing rules
 
 - **Clean NON-diegetic HUD.** No visor/cockpit/helmet framing, screen-edge arcs, or pilot portraits.
-- Choose panel treatment per screen; measure compositor cost. No universal opaque-panel recipe.
+- Panel treatment comes from the system (`dp-plate`, `dp-glass`, `dp-mfd`): pick the material that
+  fits the job, never mix a new one. Measure compositor cost; no `backdrop-filter` in flight.
 - Match the surface to the decision (HUD, card, modal, full screen). Avoid duplicate simultaneous copy.
 - **Flight transient routing (HUD_FLIGHT_ATTENTION):** a timed decision with verbs → the prompt
   deck; a fact/result → a receipt line (`toasts.js` / `admitReceipt`); continuous state → a HUD
@@ -39,30 +48,17 @@ interactive children opt in.
 
 ## Seeing the UI before changing it
 
-Two instruments, and the split between them is the rule:
+The iteration system is [`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md). You are the reviewer: open the PNG in the same pass, and walk every control on the screens you changed.
 
-| You want | Use | Cost |
-|---|---|---|
-| Look at a 2D screen, click every control, judge composition/type/spacing, iterate | `node scripts/ui-bench.mjs` → open `tools/ui-bench.html?screen=pause` (add `&bg=.devshots/ui-stills/flight.png`, `&chrome=0` for a clean frame), or `--shot=pause` for a PNG | seconds |
-| Ask what a control DOES on the live route, or a screen the bench cannot mount | `node scripts/ui-look.mjs --only=<id>` | one boot |
-| Judge a screen over the live world (HUD, chart, anything the world lights) | `npm run ui:stills -- --world --headed --only=<ids>` | ~1 min |
+```
+node scripts/ui-bench.mjs --shot=pause
+node scripts/ui-bench.mjs --shot=station-market --walk
+node scripts/ui-bench.mjs --list
+```
 
-The bench mounts the **real** screen module with a real `GameState` and the real kit stylesheets over
-a frozen still, and logs what each control asked for. It is a look instrument, never acceptance:
-its state is synthetic, so a bench still proves composition, type, spacing, hover/focus and "does
-this verb do anything", while the live route stays the evidence for behaviour. `ui-look` is the live
-register — it clicks every control and prints what each one did (opened `<screen>`, raised a
-confirm, repainted, or nothing at all). **A screen whose verb does nothing is a defect, not a style
-question**, and it is the first thing to check.
+The bench mounts the real screen module with a real `GameState` over a frozen still. It does not boot the game. Synthetic state is evidence of composition, type, spacing, hover, and what a control asks for. Behaviour on the live route, for a screen the bench cannot mount, is `node scripts/ui-look.mjs --only=<id>`.
 
-Never restyle a screen without a still of it in hand; never claim a fix without the after-still. (For
-a purely visual change the *look* is what closes the work — but a capture is not a gate: root
-[`AGENTS.md`](../../AGENTS.md) §13 governs, and a GPU/Chromium failure never blocks the task.) The
-look-fix-look loop, the four judgment tests and the end-of-pass review step are
-[`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md).
-
-The full matrix is `npm run capture:ui-matrix`, and layout measurement is
-`npm run check:ui:layout` (add `--pixels` to measure type against what is actually drawn behind it).
+A control that does nothing visible is a defect. Layout measurement for a check is `npm run check:ui:layout`.
 
 ## Verification
 

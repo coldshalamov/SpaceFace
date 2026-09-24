@@ -26,11 +26,6 @@
 // SPACEFACE_SIGNAL_TABLEAUX_INTEGRATION_4_CONTINUUM
 import { createSignalTableaux } from './loadingSignalTableaux.js';
 
-// Phase timing shared with the DOM telemetry below.
-const ACT_COUNT = 5;
-const ACT_SECONDS = 6.5;
-const LOOP_SECONDS = ACT_COUNT * ACT_SECONDS;
-
 /**
  * The 2D fallback engine. `host` abstracts the host thread:
  *   post(msg)  — send a message out (worker: self.postMessage, main: no-op)
@@ -717,7 +712,7 @@ float gvno(vec2 p){
 }
 float gfbm(vec2 p){
   float a = 0.5, s = 0.0;
-  for (int i = 0; i < 4; i++){ s += a*gvno(p); p = p*2.03 + 7.31; a *= 0.5; }
+  for (int i = 0; i < 3; i++){ s += a*gvno(p); p = p*2.03 + 7.31; a *= 0.5; }
   return s;
 }
 `;
@@ -755,7 +750,7 @@ vec2 curl2(vec2 p){
   // Analytical derivative of the existing value-noise fBm. Four lattice
   // evaluations instead of sixteen finite-difference fBm evaluations.
   vec2 grad=vec2(0.0);float amp=0.5,freq=1.0;
-  for(int k=0;k<4;k++){
+  for(int k=0;k<3;k++){
     vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f),du=6.0*f*(1.0-f);
     float a=gh2(i),b=gh2(i+vec2(1.0,0.0)),c=gh2(i+vec2(0.0,1.0)),d=gh2(i+vec2(1.0,1.0));
     grad+=amp*freq*du*vec2(mix(b-a,d-c,u.y),mix(c-a,d-b,u.x));
@@ -892,7 +887,7 @@ void main(){
   prev = max(vec3(0.0), mix(vec3(pl), prev, mix(1.04, 1.002, uTableauActive)));
   // Hot phosphor cools quickly; faint trails survive. This preserves fresh
   // mechanical detail inside the feedback instead of smearing it into bloom.
-  prev /= 1.0 + max(pl,0.0)*0.10*uTableauActive*clamp(uSignalStep,0.0,3.0);
+  prev /= 1.0 + max(pl,0.0)*0.16*uTableauActive*clamp(uSignalStep,0.0,3.0);
 
   // ── new energy ───────────────────────────────────────────────────────────
   float uL = uAux.x;
@@ -905,12 +900,16 @@ void main(){
     // The drawing is the emitter. Retain a quiet living substrate without
     // running a second, disconnected set of fireworks under it.
     float mist=gvno(cc*2.7+uFlow.xy*uT*.25);
-    inj=pal(mist)*smoothstep(.60,.92,mist)*.35;
+    inj=pal(mist)*smoothstep(.42,.88,mist)*.8;
   }
-  // living fog: a full-frame, ever-evolving luminous substrate so the picture
-  // never has dead zones — the emitters ride on top of it
-  float fogN = gfbm(cc*1.15 + uFlow.xy*uT*0.05 + 3.7);
-  vec3 fog = pal(0.22 + fogN*0.5)*pow(gfbm(cc*0.85 - uT*0.03), 2.0)*uAux.z;
+  // One fBm, with a floor. A high power here collapsed the field to black
+  // once the history was allowed to keep it.
+  float fogN = gfbm(cc*0.82 + uFlow.xy*uT*0.03 + 2.4);
+  float body = 0.55 + 0.45*fogN;
+  // uAux.z is the authored fog amount; a floor keeps a dead uniform from
+  // blanking the field. The coefficient below is the per-frame add, and the
+  // history decay turns it into the standing brightness.
+  vec3 fog = max(pal(0.16 + fogN*0.28), vec3(0.045, 0.075, 0.085)) * body * max(uAux.z, 0.55);
   // One material: source strokes deposit energy INTO the advected feedback.
   // Moving matte coverage resolves inside history; nothing is a static overlay.
   float morph = 0.45 + 0.2*sin(uT*0.137);
@@ -922,17 +921,24 @@ void main(){
   float absorption = figure.a*(1.0-smoothstep(0.001, 0.006, ink))*uTableauActive*mix(.10,1.0,uHardShadow);
   float step60 = clamp(uSignalStep, 0.0, 3.0);
   float headroom = 1.0/(1.0 + max(pl,0.0)*1.35);
-  vec3 signal = emission*(1.02 + 0.04*beat)*step60*headroom;
-  vec3 substrate = (inj*0.018 + fog*0.012)*step60;
+  vec3 signal = emission*(1.08 + 0.06*beat)*step60*headroom;
+  // History now survives in the gaps, so this is an equilibrium add, not a
+  // one-frame wash. Tuned so the current reads as dark water, not a void.
+  vec3 substrate = (inj*0.02 + fog*0.03)*step60;
   // Moving matte surfaces occlude old emission instead of accumulating into
   // chalk-white silhouettes. Trails remain in the uncovered flow, not smeared
   // across every newly exposed hull panel. This is inside the feedback pass.
   float matteRetention = pow(max(.001,1.0-figure.a*.87),step60);
   vec3 coupled = prev*matteRetention + signal + substrate;
   // Reduced motion is a settled exposure, independent of previous-frame age.
-  coupled = mix(coupled, emission*1.65 + fog*0.012, uAux.y);
+  coupled = mix(coupled, emission*1.65 + fog*0.08, uAux.y);
   coupled *= 1.0-absorption;
   vec3 col = mix(prev + inj*(1.0-uAux.y*0.55) + fog, coupled, uTableauActive);
+  // Open water only. The opaque core stays black.
+  if (uTableauActive > 0.5) {
+    float open = 1.0 - smoothstep(0.04, 0.4, figure.a);
+    col = mix(col, max(col, vec3(0.05, 0.11, 0.12)), open);
+  }
 
   // dither defeats 8-bit feedback banding and keeps dark areas alive
   col += (gh2(gl_FragCoord.xy + fract(uT)*vec2(157.0, 113.0)) - 0.5)*mix(0.012, 0.0015, uTableauActive)*(1.0-absorption);
@@ -941,14 +947,34 @@ void main(){
 }
 `;
 
+// ── Highlight bloom ─────────────────────────────────────────────────────────
+// One quarter-resolution pass. The history buffers stay unmipped and sharp;
+// glow is highlights only, so midtones are not a second blurred copy of the frame.
+const GLSL_BLOOM = `
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uRes;
+uniform vec2 uTexel;
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 s = texture2D(uSrc, uv).rgb * 0.36;
+  s += texture2D(uSrc, uv + vec2(uTexel.x, 0.0)).rgb * 0.16;
+  s += texture2D(uSrc, uv + vec2(-uTexel.x, 0.0)).rgb * 0.16;
+  s += texture2D(uSrc, uv + vec2(0.0, uTexel.y)).rgb * 0.16;
+  s += texture2D(uSrc, uv + vec2(0.0, -uTexel.y)).rgb * 0.16;
+  float l = dot(s, vec3(0.299, 0.587, 0.114));
+  gl_FragColor = vec4(s * smoothstep(0.28, 0.92, l), 1.0);
+}
+`;
+
 // ── The character screen (post) ─────────────────────────────────────────────
-// The simulation is displayed as a dense phosphor character grid: ~3px cells
-// pick a 16-step density glyph with per-cell color, plus barrel distortion,
-// chromatic aberration, mip-bloom, aperture grille, scanlines, retrace band,
-// tear/dropout glitch and the CRT power-on band.
+// Display pass over the sharp simulation: restrained barrel, chromatic fringe,
+// one highlight bloom, then the film grade. The glyph ramp is the fallback
+// picture only — when the sculptures are driving, it is not sampled.
 const GLSL_POST = `
 precision highp float;
 uniform sampler2D uScene;
+uniform sampler2D uBloom;
 uniform sampler2D uAtlas;
 uniform sampler2D uTableau;
 uniform float uTableauActive;
@@ -969,34 +995,35 @@ void main(){
   // Smooth analytic phase, not random scanline jumps or alternating frames.
   float sheet = exp(-pow((uv.x + uv.y*0.29 - 0.62 - 0.38*sin(uTime*0.117))/0.07,2.0));
   buv += uTableauActive*sheet*vec2(sin(uv.y*19.0+uTime*.71),cos(uv.x*17.0-uTime*.63))*.0014;
-  float ab = mix(0.0008,0.00038+sheet*.00095,uTableauActive) + uGlitch*0.0032;
+  float ab = mix(0.00055,0.00022+sheet*.00055,uTableauActive) + uGlitch*0.0032;
   vec3 col;
   col.r = texture2D(uScene, clamp(buv+vec2(ab,0.0), 0.001, 0.999)).r;
   col.g = texture2D(uScene, clamp(buv, 0.001, 0.999)).g;
   col.b = texture2D(uScene, clamp(buv-vec2(ab,0.0), 0.001, 0.999)).b;
-  vec3 bloom = texture2D(uScene, clamp(buv, 0.001, 0.999), 3.0).rgb;
-  col += bloom*mix(0.45,0.62,uTableauActive);
-  vec3 bloom2 = texture2D(uScene, clamp(buv, 0.001, 0.999), 5.0).rgb;
-  col += bloom2*0.30*uTableauActive;
-  // character cell: glyph ramp + per-cell color
+  vec3 bloom = texture2D(uBloom, clamp(buv, 0.001, 0.999)).rgb;
+  col += bloom*mix(0.32,0.68,uTableauActive);
+  // Glyph reconstruction is the source-free fallback. The sculpture path
+  // already has the sharp simulation in col and must not re-sample it.
   vec2 cellId = floor(gl_FragCoord.xy/uCellPx);
-  vec2 cuv = (cellId*uCellPx + uCellPx*0.5)/uRes;
-  vec2 cellSzUv = uCellPx / uRes;
-  vec3 cellCol = vec3(0.0);
-  cellCol += texture2D(uScene, clamp(cuv + vec2(-0.22, -0.22) * cellSzUv, 0.001, 0.999)).rgb;
-  cellCol += texture2D(uScene, clamp(cuv + vec2(0.22, -0.22) * cellSzUv, 0.001, 0.999)).rgb;
-  cellCol += texture2D(uScene, clamp(cuv + vec2(-0.22, 0.22) * cellSzUv, 0.001, 0.999)).rgb;
-  cellCol += texture2D(uScene, clamp(cuv + vec2(0.22, 0.22) * cellSzUv, 0.001, 0.999)).rgb;
-  cellCol *= 0.25;
-  cellCol += texture2D(uScene, clamp(cuv, 0.001, 0.999), 2.0).rgb*0.32;
-  float lum = dot(cellCol, vec3(0.299, 0.587, 0.114));
-  lum += (ph2(cellId + floor(uTime*61.0)) - 0.5)*0.025;   // animated grain
-  float gi = clamp(floor(pow(max(lum, 0.0), 0.75)*15.0 + 0.5), 0.0, 15.0);
   vec2 cf = fract(gl_FragCoord.xy/uCellPx);
-  float ga = texture2D(uAtlas, vec2((gi + clamp(cf.x, 0.02, 0.98))/16.0, clamp(cf.y, 0.02, 0.98))).r;
-  float dotMask = smoothstep(0.48, 0.08, length(cf - 0.5));
-  float shiftPulse = smoothstep(0.58, 0.98, 0.5 + 0.5*sin(uTime*0.74 + cellId.x*0.09 + cellId.y*0.05));
-  float glyphMix = mix(dotMask, ga, clamp(0.28 + uAsciiShift*0.72*shiftPulse, 0.0, 1.0));
+  vec3 cellCol = col;
+  float glyphMix = 0.0;
+  if (uTableauActive < 0.5) {
+    vec2 cuv = (cellId*uCellPx + uCellPx*0.5)/uRes;
+    vec2 cellSzUv = uCellPx / uRes;
+    cellCol = texture2D(uScene, clamp(cuv + vec2(-0.22, -0.22) * cellSzUv, 0.001, 0.999)).rgb;
+    cellCol += texture2D(uScene, clamp(cuv + vec2(0.22, -0.22) * cellSzUv, 0.001, 0.999)).rgb;
+    cellCol += texture2D(uScene, clamp(cuv + vec2(-0.22, 0.22) * cellSzUv, 0.001, 0.999)).rgb;
+    cellCol += texture2D(uScene, clamp(cuv + vec2(0.22, 0.22) * cellSzUv, 0.001, 0.999)).rgb;
+    cellCol *= 0.25;
+    float lum = dot(cellCol, vec3(0.299, 0.587, 0.114));
+    lum += (ph2(cellId + floor(uTime*61.0)) - 0.5)*0.025;
+    float gi = clamp(floor(pow(max(lum, 0.0), 0.75)*15.0 + 0.5), 0.0, 15.0);
+    float ga = texture2D(uAtlas, vec2((gi + clamp(cf.x, 0.02, 0.98))/16.0, clamp(cf.y, 0.02, 0.98))).r;
+    float dotMask = smoothstep(0.48, 0.08, length(cf - 0.5));
+    float shiftPulse = smoothstep(0.58, 0.98, 0.5 + 0.5*sin(uTime*0.74 + cellId.x*0.09 + cellId.y*0.05));
+    glyphMix = mix(dotMask, ga, clamp(0.28 + uAsciiShift*0.72*shiftPulse, 0.0, 1.0));
+  }
   // Ink/rotoscope finish is a value-and-edge treatment, NOT pose quantizing.
   float L = max(dot(col,vec3(.299,.587,.114)),.0001);
   float bands = (floor(L*9.0)+smoothstep(.22,.80,fract(L*9.0)))/9.0;
@@ -1025,25 +1052,26 @@ void main(){
   }
   // dropout
   if (uGlitch > 0.3 && ph2(cellId + floor(uTime*47.0)) > 0.93) outc *= 0.2;
-  outc *= 1.0 - 0.3*r2;   // vignette
+  outc *= 1.0 - mix(0.30, 0.18, uTableauActive)*r2;
   outc = pow(max(outc, vec3(0.0)), vec3(0.96));
   outc += vec3(uFlash);
-  outc = mix(outc, 1.0-exp(-outc*1.16), uTableauActive);
+  outc = mix(outc, 1.0-exp(-outc*1.32), uTableauActive);
   // ── film finish: graded, not raw ─────────────────────────────────────────
   // Lift the blacks a whisper, split-tone the shadows cool / highlights warm,
   // gentle S-curve, then fine animated grain. Only where the source drives.
   float fin = uTableauActive;
-  outc = mix(outc, outc*outc*(3.0-2.0*outc)*.94 + vec3(.012,.016,.019), fin*.55);
+  outc = mix(outc, outc*outc*(3.0-2.0*outc)*.98 + vec3(.016,.022,.026), fin*.22);
   float lAvg = dot(outc, vec3(.299,.587,.114));
   outc = mix(outc, outc*vec3(.94,1.0,1.10), (1.0-smoothstep(.05,.45,lAvg))*fin*.5);
   outc = mix(outc, outc*vec3(1.07,1.0,.90), smoothstep(.35,.9,lAvg)*fin*.28);
-  float gr = ph2(gl_FragCoord.xy + fract(uTime)*vec2(311.0, 197.0)) - .5;
-  outc += gr * .028 * fin * (0.35 + 0.65*smoothstep(.02,.4,lAvg));
+  // Smooth grain orbit. fract(uTime) teleports the field once a second.
+  vec2 gOff = vec2(sin(uTime*1.7), cos(uTime*1.3))*36.0;
+  float gr = ph2(floor(gl_FragCoord.xy*0.5) + gOff) - .5;
+  outc += gr * .014 * fin * (0.22 + 0.78*smoothstep(.02,.45,lAvg));
   // Absorption is also applied AFTER mip-bloom: the singularity has a real
   // black interior instead of a luminous grey disk. No source color is added.
-  vec4 mask = texture2D(uTableau, vec2(buv.x,1.0-buv.y));
-  float maskInk = max(mask.r,max(mask.g,mask.b));
-  outc *= 1.0-mask.a*(1.0-smoothstep(0.001,0.006,maskInk))*uTableauActive*mix(.12,1.0,uHardShadow);
+  // The black core is absorbed inside the feedback pass, before bloom.
+  // A second cut here sampled the wrong texture and erased the open field.
   gl_FragColor = vec4(outc, 1.0);
 }
 `;
@@ -1059,6 +1087,7 @@ const GL_SOURCES = {
   vert: GLSL_VERT,
   common: GLSL_COMMON,
   scene: GLSL_SCENE,
+  bloom: GLSL_BLOOM,
   post: GLSL_POST,
 };
 
@@ -1081,7 +1110,7 @@ function createEngineGL(host) {
   // Shader sources MUST arrive via host (this factory is stringified into the
   // worker and cannot close over module scope).
   const SRC = host && host.sources;
-  if (!SRC || !SRC.vert || !SRC.common || !SRC.scene || !SRC.post) {
+  if (!SRC || !SRC.vert || !SRC.common || !SRC.scene || !SRC.post || !SRC.bloom) {
     if(tableau)tableau.dispose();
     return host && host.engine2D ? host.engine2D(host) : { receive() {} };
   }
@@ -1123,6 +1152,11 @@ function createEngineGL(host) {
     sgl.attachShader(pp, cShader(sgl, sgl.FRAGMENT_SHADER, postSrc));
     sgl.linkProgram(pp);
     if (!sgl.getProgramParameter(pp, sgl.LINK_STATUS)) throw new Error(sgl.getProgramInfoLog(pp));
+    const pb = sgl.createProgram();
+    sgl.attachShader(pb, sv);
+    sgl.attachShader(pb, cShader(sgl, sgl.FRAGMENT_SHADER, SRC.bloom));
+    sgl.linkProgram(pb);
+    if (!sgl.getProgramParameter(pb, sgl.LINK_STATUS)) throw new Error(sgl.getProgramInfoLog(pb));
     validated = true;
   } catch (e) {
     return fallback2D('validate:' + e.message);
@@ -1216,10 +1250,11 @@ function createEngineGL(host) {
   // ── live state ──────────────────────────────────────────────────────────
   let gl = null, canvas = null, ctx2dWave = null;
   let W = 640, H = 380, WW = 200, WH = 48;
-  let progScene = null, progPost = null, quadBuf = null;
+  let progScene = null, progPost = null, progBloom = null, quadBuf = null;
   let texA = null, texB = null, fbA = null, fbB = null, atlasTex = null;
-  let renderScale = 0.90;
-  let uniformScene=null, uniformPost=null, attribScene=-1, attribPost=-1;
+  let bloomTex = null, bloomFb = null, bloomBlack = null;
+  let renderScale = 1;
+  let uniformScene=null, uniformPost=null, uniformBloom=null, attribScene=-1, attribPost=-1, attribBloom=-1;
   let hdrOK = false;
   let dead = false;
   let running = false, rafId = null;
@@ -1282,15 +1317,17 @@ function createEngineGL(host) {
     return tex;
   }
 
-  function makeFBO(gl2, w, h) {
+  function makeFBO(gl2, w, h, hdr) {
+    const useHdr = hdr !== false && !!hdrOK;
     const tex = gl2.createTexture();
     gl2.bindTexture(gl2.TEXTURE_2D, tex);
-    gl2.texImage2D(gl2.TEXTURE_2D, 0, hdrOK ? gl2.RGBA16F : gl2.RGBA8, w, h, 0, gl2.RGBA, hdrOK ? gl2.HALF_FLOAT : gl2.UNSIGNED_BYTE, null);
-    gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR_MIPMAP_LINEAR);
+    gl2.texImage2D(gl2.TEXTURE_2D, 0, useHdr ? gl2.RGBA16F : gl2.RGBA8, w, h, 0, gl2.RGBA, useHdr ? gl2.HALF_FLOAT : gl2.UNSIGNED_BYTE, null);
+    // Linear, no mips. A mip chain on the history buffer both blurred the
+    // feedback and forced a full generateMipmap of a half-float target every frame.
+    gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR);
     gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR);
     gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE);
     gl2.texParameteri(gl2.TEXTURE_2D, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE);
-    gl2.generateMipmap(gl2.TEXTURE_2D);
     const fb = gl2.createFramebuffer();
     gl2.bindFramebuffer(gl2.FRAMEBUFFER, fb);
     gl2.framebufferTexture2D(gl2.FRAMEBUFFER, gl2.COLOR_ATTACHMENT0, gl2.TEXTURE_2D, tex, 0);
@@ -1313,10 +1350,11 @@ function createEngineGL(host) {
     if(!gl)return;
     try {
       if(texA)gl.deleteTexture(texA);if(texB)gl.deleteTexture(texB);if(atlasTex)gl.deleteTexture(atlasTex);
-      if(fbA)gl.deleteFramebuffer(fbA);if(fbB)gl.deleteFramebuffer(fbB);
-      if(quadBuf)gl.deleteBuffer(quadBuf);if(progScene)gl.deleteProgram(progScene);if(progPost)gl.deleteProgram(progPost);
+      if(bloomTex)gl.deleteTexture(bloomTex);if(bloomBlack)gl.deleteTexture(bloomBlack);
+      if(fbA)gl.deleteFramebuffer(fbA);if(fbB)gl.deleteFramebuffer(fbB);if(bloomFb)gl.deleteFramebuffer(bloomFb);
+      if(quadBuf)gl.deleteBuffer(quadBuf);if(progScene)gl.deleteProgram(progScene);if(progPost)gl.deleteProgram(progPost);if(progBloom)gl.deleteProgram(progBloom);
     } catch {}
-    texA=texB=atlasTex=fbA=fbB=quadBuf=progScene=progPost=null;
+    texA=texB=atlasTex=bloomTex=bloomBlack=fbA=fbB=bloomFb=quadBuf=progScene=progPost=progBloom=null;
   }
   function clearHistory(){
     if(tableau)tableau.resetHistory();
@@ -1351,17 +1389,18 @@ function createEngineGL(host) {
     reduced = !!msg.reducedMotion;
     progScene = link(gl, SRC.vert, sceneSrc);
     progPost = link(gl, SRC.vert, postSrc);
-    uniformScene = {}; uniformPost = {};
+    progBloom = link(gl, SRC.vert, SRC.bloom);
+    uniformScene = {}; uniformPost = {}; uniformBloom = {};
     for (const name of ['uPrev','uRes','uT','uGyro','uWarp','uFlow','uLook','uDrive','uAux','uPalA','uPalB','uPalC','uPalD','uSignalStep','uHardShadow']) uniformScene[name]=gl.getUniformLocation(progScene,name);
-    for (const name of ['uScene','uAtlas','uTableau','uTableauActive','uHardShadow','uRes','uCellPx','uTime','uGlitch','uPowerOn','uFlash','uGrille','uAsciiShift']) uniformPost[name]=gl.getUniformLocation(progPost,name);
-    attribScene=gl.getAttribLocation(progScene,'aPos'); attribPost=gl.getAttribLocation(progPost,'aPos');
+    for (const name of ['uScene','uBloom','uAtlas','uTableau','uTableauActive','uHardShadow','uRes','uCellPx','uTime','uGlitch','uPowerOn','uFlash','uGrille','uAsciiShift']) uniformPost[name]=gl.getUniformLocation(progPost,name);
+    for (const name of ['uSrc','uRes','uTexel']) uniformBloom[name]=gl.getUniformLocation(progBloom,name);
+    attribScene=gl.getAttribLocation(progScene,'aPos'); attribPost=gl.getAttribLocation(progPost,'aPos'); attribBloom=gl.getAttribLocation(progBloom,'aPos');
     quadBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     atlasTex = buildAtlasTex(gl);
     if (!atlasTex) throw new Error('no-atlas');
-    const rw = Math.max(2, Math.round(W * renderScale));
-    const rh = Math.max(2, Math.round(H * renderScale));
+    const [rw, rh] = simSize();
     let fa = makeFBO(gl, rw, rh), fb = makeFBO(gl, rw, rh);
     if((!fa||!fb)&&hdrOK){
       if(fa){gl.deleteTexture(fa.tex);gl.deleteFramebuffer(fa.fb);}
@@ -1374,16 +1413,55 @@ function createEngineGL(host) {
       throw new Error('no-fbo');
     }
     texA = fa.tex; fbA = fa.fb; texB = fb.tex; fbB = fb.fb;
+    if (!allocBloom(rw, rh)) blackBloom();
     clearHistory();
     gl.viewport(0, 0, W, H);
     running = true;
     rafId = host.raf(frame);
   }
 
+  const SIM_PIXELS = 1280 * 720;
+  const SIM_EDGE = 1280;
+  function simSize() {
+    let rw = Math.max(2, Math.round(W * renderScale));
+    let rh = Math.max(2, Math.round(H * renderScale));
+    const edge = Math.max(rw, rh);
+    if (edge > SIM_EDGE) {
+      const s = SIM_EDGE / edge;
+      rw = Math.max(2, Math.round(rw * s));
+      rh = Math.max(2, Math.round(rh * s));
+    }
+    if (rw * rh > SIM_PIXELS) {
+      const s = Math.sqrt(SIM_PIXELS / (rw * rh));
+      rw = Math.max(2, Math.round(rw * s));
+      rh = Math.max(2, Math.round(rh * s));
+    }
+    return [rw, rh];
+  }
+  function allocBloom(rw, rh) {
+    const bw = Math.max(2, rw >> 2), bh = Math.max(2, rh >> 2);
+    const fl = makeFBO(gl, bw, bh, false);
+    if (!fl) return false;
+    if (bloomTex) gl.deleteTexture(bloomTex);
+    if (bloomFb) gl.deleteFramebuffer(bloomFb);
+    bloomTex = fl.tex; bloomFb = fl.fb;
+    return true;
+  }
+  function blackBloom() {
+    if (bloomBlack || !gl) return bloomBlack;
+    bloomBlack = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, bloomBlack);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return bloomBlack;
+  }
+
   function resizeFBOs() {
     try {
-      const rw = Math.max(2, Math.round(W * renderScale));
-      const rh = Math.max(2, Math.round(H * renderScale));
+      const [rw, rh] = simSize();
       const fa = makeFBO(gl, rw, rh);
       const fb = makeFBO(gl, rw, rh);
       if (fa && fb) {
@@ -1392,6 +1470,11 @@ function createEngineGL(host) {
         if (fbA) gl.deleteFramebuffer(fbA);
         if (fbB) gl.deleteFramebuffer(fbB);
         texA = fa.tex; fbA = fa.fb; texB = fb.tex; fbB = fb.fb;
+        gl.clearColor(0, 0, 0, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbA); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbB); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        allocBloom(rw, rh);
       } else {
         if(fa){gl.deleteTexture(fa.tex);gl.deleteFramebuffer(fa.fb);}
         if(fb){gl.deleteTexture(fb.tex);gl.deleteFramebuffer(fb.fb);}
@@ -1401,7 +1484,7 @@ function createEngineGL(host) {
 
   function bindQuad(prog) {
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-    const loc = prog===progScene ? attribScene : attribPost;
+    const loc = prog===progScene ? attribScene : prog===progBloom ? attribBloom : attribPost;
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   }
@@ -1452,10 +1535,10 @@ function createEngineGL(host) {
     }
     const powerOn = (labAct === 0 || (labAct < 0 && act === 0 && tt < ACT_LEN)) ? (tt < 0.9 ? tt / 0.9 : -1) : -1;
 
-    if (frameCounter > 0 && frameCounter % 90 === 0) {
+    if (frameCounter > 12 && frameCounter % 24 === 0) {
       const previousScale = renderScale;
-      if (frameCostAvg > 23 && renderScale > 0.60) renderScale = Math.max(0.60, renderScale - 0.1);
-      else if (frameCostAvg < 10 && renderScale < 1.0) renderScale = Math.min(1.0, renderScale + 0.05);
+      if (frameCostAvg > 11 && renderScale > 0.62) renderScale = Math.max(0.62, Math.round((renderScale - 0.08) * 100) / 100);
+      else if (frameCostAvg < 5.5 && renderScale < 1) renderScale = Math.min(1, Math.round((renderScale + 0.04) * 100) / 100);
       if (renderScale !== previousScale) resizeFBOs();
     }
 
@@ -1467,20 +1550,22 @@ function createEngineGL(host) {
     // These feedback modulations run on the UNWRAPPED clock: only the source
     // sculptures wrap (on their exact grid), the current itself never jumps.
     if (tableau?.continuous) {
-      pp.zoom=1.0010+.00025*Math.sin(T*.091);
-      pp.rot=.0011*Math.sin(T*.083);
-      pp.flowScale=.92+.11*Math.sin(T*.071);
-      pp.dx=.037+.008*Math.cos(T*.079);
-      pp.dy=.021+.005*Math.sin(T*.067);
-      pp.flowAmp=.0060+.0012*Math.sin(T*.097);
-      pp.swirl=.0034+.0009*Math.sin(T*.063);
-      pp.jitter=0;pp.decay=.936;pp.hue=.0006*Math.sin(T*.1);
-      pp.symAmt=0;pp.symN=1;pp.fog=.42;pp.white=0;pp.u=.5;
-      pp.energy=.33+.07*Math.sin(T*.047);pp.mode=0;pp.period=1;
-      pp.palA_0=.23;pp.palA_1=.30;pp.palA_2=.30;
-      pp.palB_0=.12;pp.palB_1=.14;pp.palB_2=.12;
+      // These steps integrate in the history now. Keep them small so the
+      // wake stays near the sculptures instead of shearing the frame apart.
+      pp.zoom=1;
+      pp.rot=.00012*Math.sin(T*.083);
+      pp.flowScale=.84+.08*Math.sin(T*.071);
+      pp.dx=.016+.004*Math.cos(T*.079);
+      pp.dy=.009+.003*Math.sin(T*.067);
+      pp.flowAmp=.0026+.0006*Math.sin(T*.097);
+      pp.swirl=.0011+.0003*Math.sin(T*.063);
+      pp.jitter=0;pp.decay=.946;pp.hue=.00035*Math.sin(T*.1);
+      pp.symAmt=0;pp.symN=1;pp.fog=.78;pp.white=0;pp.u=.5;
+      pp.energy=.36+.06*Math.sin(T*.047);pp.mode=0;pp.period=1;
+      pp.palA_0=.08;pp.palA_1=.13;pp.palA_2=.15;
+      pp.palB_0=.05;pp.palB_1=.04;pp.palB_2=.035;
       pp.palC_0=1;pp.palC_1=1;pp.palC_2=1;
-      pp.palD_0=.12;pp.palD_1=.16;pp.palD_2=.21;
+      pp.palD_0=.02;pp.palD_1=.10;pp.palD_2=.22;
     }
     const transportGain=tableau?.continuous ? .80 : 0.20+0.80*sstep(.66,1,pp.u);
     const mScale = reduced ? 0 : frameStep*transportGain;
@@ -1489,8 +1574,7 @@ function createEngineGL(host) {
     const beat = tableau?.continuous ? .5+.18*Math.sin(T*.91) : Math.pow(1 - beatPh, 1.7) * (reduced ? 0.6 : 1);
     energy = pp.energy * (0.7 + beat * 0.5);
 
-    const rw = Math.max(2, Math.round(W * renderScale));
-    const rh = Math.max(2, Math.round(H * renderScale));
+    const [rw, rh] = simSize();
     try {
       // pass 1: feedback simulation — read texA (previous frame), write texB
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
@@ -1524,10 +1608,22 @@ function createEngineGL(host) {
       gl.uniform3f(uniformScene.uPalD, pp.palD_0, pp.palD_1, pp.palD_2);
       bindQuad(progScene);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.bindTexture(gl.TEXTURE_2D, texB);
-      gl.generateMipmap(gl.TEXTURE_2D);
 
-      // pass 2: character screen — display texB to the real canvas
+      if (bloomFb && progBloom) {
+        const bw = Math.max(2, rw >> 2), bh = Math.max(2, rh >> 2);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomFb);
+        gl.viewport(0, 0, bw, bh);
+        gl.useProgram(progBloom);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texB);
+        gl.uniform1i(uniformBloom.uSrc, 0);
+        gl.uniform2f(uniformBloom.uRes, bw, bh);
+        gl.uniform2f(uniformBloom.uTexel, 2.25 / rw, 2.25 / rh);
+        bindQuad(progBloom);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+
+      // pass 2: display texB to the real canvas
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, W, H);
       gl.useProgram(progPost);
@@ -1535,6 +1631,9 @@ function createEngineGL(host) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texB);
       gl.uniform1i(uniformPost.uScene, 0);
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, bloomTex || blackBloom() || texB);
+      gl.uniform1i(uniformPost.uBloom, 3);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, atlasTex);
       gl.uniform1i(uniformPost.uAtlas, 1);
@@ -1549,7 +1648,7 @@ function createEngineGL(host) {
       gl.uniform1f(uniformPost.uGlitch, glitch);
       gl.uniform1f(uniformPost.uPowerOn, tableau ? -1 : powerOn);
       gl.uniform1f(uniformPost.uFlash, 0);
-      gl.uniform1f(uniformPost.uGrille, tableau?.continuous ? .10 : 1.0);
+      gl.uniform1f(uniformPost.uGrille, tableau?.continuous ? .04 : 1.0);
       const asciiShift = tableau?.continuous ? .12 : reduced ? 0.42 : (0.62 + 0.12 * Math.sin(T * 0.31 + Math.sin(T * 0.09) * 0.5));
       gl.uniform1f(uniformPost.uAsciiShift, asciiShift);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -1842,25 +1941,7 @@ export function createTerminalArtwork({
   let lastDomTime = 0;
   // DOM writes below allocate (innerHTML rebuilds, string repeat); skip any write whose
   // rendered output would be identical to the last one so the loading tick stays cheap.
-  let lastDiagAct = -1;
-  let lastSubsysKey = -1;
-  let lastSegsText = '';
   let lastPctText = '';
-  let lastStageName = '';
-  const actTitles = [
-    'THE_PILOT // PRESSURE VESSEL',
-    'THE_COURIER // FREE VECTOR',
-    'THE_ANCHORAGE // ORBITAL MACHINE',
-    'BORROWED_MOMENTUM // MASSLINE',
-    'EVENT_HORIZON // SIGNAL RETURN',
-  ];
-  const actLogs = [
-    '[PHASE_01] THE_PILOT // LIFE_SUPPORT',
-    '[PHASE_02] THE_COURIER // KINETIC_THRUST',
-    '[PHASE_03] THE_ANCHORAGE // PERIMETER_SCAN',
-    '[PHASE_04] BORROWED_MOMENTUM // TETHER_LOAD',
-    '[PHASE_05] EVENT_HORIZON // RETURN_TO_VISOR',
-  ];
 
   function updateTelemetry(time) {
     if (time - lastDomTime < 90) return;
@@ -1876,86 +1957,13 @@ export function createTerminalArtwork({
       clockEl.textContent = `00:${mins}:${secs}.${ms}`;
     }
 
-    const elapsed = (time - startTime) / 1000;
-    const actIdx = Math.floor((elapsed % LOOP_SECONDS) / ACT_SECONDS) % ACT_COUNT;
-
-    const diagStreamEl = overlay.querySelector('[data-loading-diag-stream]');
-    if (diagStreamEl && actIdx !== lastDiagAct) {
-      lastDiagAct = actIdx;
-      let html = '';
-      for (let i = 0; i < actLogs.length; i++) {
-        if (i < actIdx) {
-          html += `<div class="boot-diag-line is-done"><span class="diag-tag">[OK]</span> ${actLogs[i]}</div>`;
-        } else if (i === actIdx) {
-          html += `<div class="boot-diag-line is-done is-latest"><span class="diag-tag">[⌖]</span> ${actLogs[i]}</div>`;
-        } else {
-          html += `<div class="boot-diag-line is-pending"><span class="diag-tag">[..]</span> ${actLogs[i]}</div>`;
-        }
-      }
-      diagStreamEl.innerHTML = html;
-    }
-
-    const hexEl = overlay.querySelector('[data-loading-hex]');
-    if (hexEl) {
-      const baseAddr = 0x7fa0 + Math.floor((time / 160) % 64) * 0x10;
-      const b1 = Math.floor(Math.sin(time * 0.003 + 1) * 127 + 128).toString(16).padStart(2, '0').toUpperCase();
-      const b2 = Math.floor(Math.cos(time * 0.005 + 2) * 127 + 128).toString(16).padStart(2, '0').toUpperCase();
-      hexEl.textContent = `0x${baseAddr.toString(16).toUpperCase()}: ${b1} ${b2} 53 46 20 4C 49 44 41 52 20 4F 4E`;
-    }
-
-    const subsysEl = overlay.querySelector('[data-loading-subsystems]');
-    if (subsysEl) {
-      const p = currentProgress;
-      const pwr = Math.round(Math.min(100, 52 + p * 48));
-      const ion = Math.round(Math.min(100, 20 + p * 80));
-      const opt = Math.round(Math.min(100, 30 + p * 70));
-      const nav = Math.round(Math.min(100, 40 + p * 60));
-
-      const subsysKey = (pwr << 21) | (ion << 14) | (opt << 7) | nav;
-      if (subsysKey !== lastSubsysKey) {
-        lastSubsysKey = subsysKey;
-        const renderLedBar = (pct) => {
-          const segs = 14;
-          const activeCount = Math.round((pct / 100) * segs);
-          let barHtml = '<div class="subsys-led-bar">';
-          for (let s = 0; s < segs; s++) {
-            const cls = s < activeCount ? 'subsys-seg active' : 'subsys-seg';
-            barHtml += `<span class="${cls}"></span>`;
-          }
-          barHtml += '</div>';
-          return barHtml;
-        };
-        subsysEl.innerHTML = `
-          <div class="boot-subsys-row"><span class="subsys-name">PWR_CORE</span>${renderLedBar(pwr)}<span class="subsys-val">${pwr}%</span></div>
-          <div class="boot-subsys-row"><span class="subsys-name">AVIONICS</span>${renderLedBar(ion)}<span class="subsys-val">${ion}%</span></div>
-          <div class="boot-subsys-row"><span class="subsys-name">OPT_ARRAY</span>${renderLedBar(opt)}<span class="subsys-val">${opt}%</span></div>
-          <div class="boot-subsys-row"><span class="subsys-name">NAV_LINK</span>${renderLedBar(nav)}<span class="subsys-val">${nav}%</span></div>
-        `;
-      }
-    }
-
-    const segsEl = overlay.querySelector('[data-loading-segments]');
     const pctEl = overlay.querySelector('[data-loading-pct]');
-    const stageNameEl = overlay.querySelector('[data-loading-stage-name]');
-    if (segsEl) {
-      const count = 28;
-      const filled = Math.round(currentProgress * count);
-      const text = `[${'█'.repeat(filled)}${'·'.repeat(Math.max(0, count - filled))}]`;
-      if (text !== lastSegsText) {
-        lastSegsText = text;
-        segsEl.textContent = text;
-      }
-    }
     if (pctEl) {
       const text = `${Math.round(currentProgress * 100)}%`;
       if (text !== lastPctText) {
         lastPctText = text;
         pctEl.textContent = text;
       }
-    }
-    if (stageNameEl && actTitles[actIdx] !== lastStageName) {
-      lastStageName = actTitles[actIdx];
-      stageNameEl.textContent = actTitles[actIdx];
     }
   }
 
@@ -2072,8 +2080,11 @@ export function ensureBootTerminalCanvas(document = globalThis.document) {
   const canvas = document.createElement('canvas');
   canvas.id = 'boot-terminal-canvas';
   canvas.className = 'boot-canvas';
-  canvas.width = 640;
-  canvas.height = 380;
+  const box = typeof canvas.getBoundingClientRect === 'function' ? canvas.getBoundingClientRect() : null;
+  const viewW = (typeof globalThis.innerWidth === 'number' && globalThis.innerWidth) || 1280;
+  const viewH = (typeof globalThis.innerHeight === 'number' && globalThis.innerHeight) || 720;
+  canvas.width = Math.max(2, Math.round((box && box.width) || viewW));
+  canvas.height = Math.max(2, Math.round((box && box.height) || viewH));
   const scrim = typeof overlay.querySelector === 'function' ? overlay.querySelector('.boot-scrim') : null;
   if (scrim && scrim.parentNode === overlay) overlay.insertBefore(canvas, scrim);
   else overlay.insertBefore(canvas, overlay.firstChild);

@@ -27,9 +27,11 @@ import {
   resolveBackgroundComposition,
   resolveBackgroundStructure,
   resolveBackgroundPaintedSky,
+  resolveSectorVisualProfile,
   estimatePhenomenonCoverage,
 } from '../data/sectorVisualProfiles.js';
 import { DeepSkyPlateResidency, deepSkyPeakResidentBytes } from './deepSkyPlates.js';
+import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import {
   resolveDeepFieldStructureRecipe,
   sampleAuthoredWidth,
@@ -183,12 +185,10 @@ const LAYER_DEFS = [
 export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
-// How many celestial hero bodies may be resident at once. Was an inline `< 1`, which meant the far
-// field held exactly one planet however many the sector generated (heroPlacement typically ~17).
-// Two gives the backdrop an actual depth relationship — a near landmark and a further body — which
-// is the "back/middle/front" independent review asked for. Each costs one baked impostor and one
-// sprite draw call, so keep this small.
-const MAX_VISIBLE_PLANETS = 2;
+// "One sky" (ZERO_TO_HERO §4 Phase 2): at most ONE hero celestial body is resident at a time —
+// a planet or a wormhole, counting both. The slot is shared across kinds rather than a per-kind
+// budget, so planets never stack beside each other or beside the wormhole. See _refreshHeroes
+// for the admission/retirement rules that hold the single slot.
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
@@ -358,7 +358,9 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D uL1;
   uniform sampler2D uL2;
   uniform sampler2D uPaintedSky;
+  uniform sampler2D uPaintedSkyNext;
   uniform float uPaintedSkyStrength;
+  uniform float uPaintedSkyBlend;
   uniform vec2 uPaintedSkyOffset;
   uniform vec2 uPaintedSkyScale;
   uniform vec2 uRepeat0;
@@ -406,7 +408,11 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     if (uPaintedSkyStrength > 0.0) {
       vec2 skyUv = (vSkyClip.xy / vSkyClip.w) * 0.5 + 0.5;
       skyUv = (skyUv - 0.5) * uPaintedSkyScale + 0.5 + uPaintedSkyOffset;
-      color = mix(color, texture2D(uPaintedSky, skyUv).rgb, uPaintedSkyStrength);
+      vec3 plate = texture2D(uPaintedSky, skyUv).rgb;
+      if (uPaintedSkyBlend > 0.0) {
+        plate = mix(plate, texture2D(uPaintedSkyNext, skyUv).rgb, uPaintedSkyBlend);
+      }
+      color = mix(color, plate, uPaintedSkyStrength);
     }
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
@@ -1235,6 +1241,12 @@ export class SpaceBackground {
     this.heroPlacement = [];
     this._lastPlanetGX = null; this._lastPlanetGZ = null;
     this._lastWormGX = null; this._lastWormGZ = null;
+    // Deferred-nebula admission bookkeeping (see _pumpDeferredNebulaBake / _spawnWormhole):
+    // late-frame skip counters for the budgeted promotion, plus a wormhole spec whose spawn is
+    // waiting on the L1 tile bake rather than stalling its own presented frame.
+    this._nebulaBakeSkips = 0;
+    this._wormholeBakeSkips = 0;
+    this._deferredWormhole = null;
 
     // ---- bake rig -----------------------------------------------------------------
     this.bakeScene = new THREE.Scene();
@@ -1353,11 +1365,11 @@ export class SpaceBackground {
   // after construction is a no-op safety net; this exists for an actual tier CHANGE (SF.bg.forceTier,
   // a future settings-driven quality switch). Rebuilds only if the tier actually changed.
   //
-  // Known gap, deliberately not fixed here: this does not invalidate planetCache, so a live re-tier
-  // leaves already-baked planet impostors at the previous resolution (_bakePlanetTarget sizes off
-  // this.lowTier). That used to bite every boot on a software renderer — the guessed 'mid' build
-  // baked 512² planets and the cache kept them after the drop to 'low' — which the detect-first
-  // ordering removes at its source. Add a cache purge here if live re-tiering ever ships.
+  // planetCache needs no explicit purge: _planetCacheKey carries tierName, so a live re-tier
+  // simply stops matching the previous resolution's impostors and the LRU retires them. (A stale
+  // cache used to bite every boot on a software renderer — the guessed 'mid' build baked 512²
+  // planets and the cache kept them after the drop to 'low' — which the detect-first ordering
+  // removes at its source.)
   applyGpuTier() {
     const was = this.tierName;
     this._resolveTier();
@@ -1656,6 +1668,10 @@ export class SpaceBackground {
     // profiles, and _ensureNebulaBake() promotes the stubs to real tiles the instant a consumer
     // appears — either the opacity is raised, or a wormhole spawns (the wormhole samples uL1
     // directly and does NOT go through uNebulaOpacity, so it needs a real tile at zero opacity).
+    // _pumpDeferredNebulaBake() runs that promotion one tile per budgeted frame AHEAD of the
+    // consumer, so the first wormhole or opacity rise does not pay a full-res bake plus the
+    // first NEBULA_FRAG link inside a presented frame; the consumers stay as last-resort
+    // fallbacks for paths that outran the pump.
     // Deferral is tracked PER LAYER because the two tiles have different consumers: the wormhole
     // lens samples L1 only. Promoting both for a wormhole would hand back the larger half of the
     // saving for a tile nothing reads.
@@ -1737,7 +1753,7 @@ export class SpaceBackground {
     for (const planet of this.planets) {
       const spec = planet && planet.spec;
       if (!spec) continue;
-      const key = `${spec.type}_${spec.seed}_${spec.ring ? 1 : 0}`;
+      const key = this._planetCacheKey(spec);
       const target = this.planetCache.get(key);
       if (!target) continue;
       activePlanetKeys.add(key);
@@ -1804,6 +1820,31 @@ export class SpaceBackground {
     }
   }
 
+  // Deferred nebula promotion, budgeted like the deep-sky plate upload: at most one tile per
+  // admitted frame, and never started on a frame that is already late. L1 goes first — it is
+  // the composite's dominant tile and the wormhole lens input. Consumers that force a decision:
+  //   wormholeChance > 0 (or a deferred wormhole already waiting) → L1
+  //   nebulaOpacity > 0 (a sector transition eased the veil in)    → L1 then L2
+  // Without this a sector whose opacity rose kept sampling transparent stubs forever, and the
+  // first wormhole in a suppressed-nebula sector paid the bake inside its spawn frame.
+  _pumpDeferredNebulaBake() {
+    const pending = this._nebulaBakePending;
+    if (!pending || (!pending.L1 && !pending.L2)) return;
+    const opacityLive = this.nebulaOpacity > 0;
+    const wormholeCapable = this.wormhole != null || this._deferredWormhole != null
+      || !!(this.backgroundComposition && this.backgroundComposition.wormholeChance > 0);
+    const wantL1 = pending.L1 && (opacityLive || wormholeCapable);
+    const wantL2 = pending.L2 && opacityLive;
+    if (!wantL1 && !wantL2) { this._nebulaBakeSkips = 0; return; }
+    const lastPresentDtMs = this.state && this.state.render
+      ? this.state.render.lastPresentDtMs : undefined;
+    const gate = shouldStartHeavyAdmissionEventually(lastPresentDtMs, this._nebulaBakeSkips || 0);
+    this._nebulaBakeSkips = gate.skippedCount;
+    if (!gate.start) return;
+    if (wantL1) this._ensureNebulaBake('L1');
+    else if (wantL2) this._ensureNebulaBake('L2');
+  }
+
   _disposeBakeTargets() {
     for (const t of [this.l0Target, this.l1Target, this.l2Target]) { if (t) t.dispose(); }
     this.l0Target = this.l1Target = this.l2Target = null;
@@ -1842,7 +1883,9 @@ export class SpaceBackground {
         uL1: { value: l1.tex },
         uL2: { value: l2.tex },
         uPaintedSky: { value: this.paintedSky || l0.tex },
+        uPaintedSkyNext: { value: this.paintedSky || l0.tex },
         uPaintedSkyStrength: { value: this._paintedSkyStrength },
+        uPaintedSkyBlend: { value: 0 },
         uPaintedSkyOffset: { value: new THREE.Vector2() },
         uPaintedSkyScale: { value: new THREE.Vector2(0.88, 0.88) },
         uRepeat0: { value: new THREE.Vector2(this.quadSize / l0.tile, this.quadSize / l0.tile) },
@@ -2154,6 +2197,9 @@ export class SpaceBackground {
         wgx === this._lastWormGX && wgz === this._lastWormGZ) return;
     this._lastPlanetGX = pgx; this._lastPlanetGZ = pgz;
     this._lastWormGX = wgx; this._lastWormGZ = wgz;
+    // A forced rebuild (rebake, palette switch, re-tier, initial sector) re-derives hero
+    // placement from the new seed/composition; a wormhole spec parked under the old one is stale.
+    if (force) this._deferredWormhole = null;
 
     const windowR = this.quadSize * 0.5;
     // Membership changes may introduce candidates; they must never replace a still-visible
@@ -2214,31 +2260,111 @@ export class SpaceBackground {
       }
     }
     this.heroPlacement = list;
+    this._admitHero();
+  }
 
-    // The signature anchor has first claim at boot; fill remaining slots by proximity rather
-    // than grid iteration order. Existing residents win until they have left the window.
-    list.sort((a, b) => {
-      if (a === this._signatureHeroAnchor) return -1;
-      if (b === this._signatureHeroAnchor) return 1;
-      const ap = a.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      const bp = b.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      return Math.hypot(a.bx - this.camX * ap, a.bz - this.camZ * ap)
-        - Math.hypot(b.bx - this.camX * bp, b.bz - this.camZ * bp);
-    });
-    let planetsSpawned = this.planets.length;
-    for (const spec of list) {
+  // Approximate drawn body radius for a not-yet-spawned spec (world units at the hero plane).
+  _specRadiusWorld(spec) {
+    if (!spec || !Number.isFinite(spec.frac)) return 0;
+    const k = Math.max(1.15, Number.isFinite(this.heroSizeK) ? this.heroSizeK : 1.15);
+    if (spec.kind === 'wormhole') return spec.frac * this.H * k * 1.1;
+    return spec.frac * this.H * k * 0.29 / 0.42;
+  }
+
+  // Project a hero body's world bounds through the live chase camera and answer whether any of
+  // it touches the viewport. Harnesses without a camera keep the previous wide-window check as
+  // the conservative fallback, so "offscreen" is still judged rather than assumed.
+  _heroOnGlass(spec, par, radiusWorld) {
+    if (!spec) return false;
+    const cam = this.camera;
+    if (!cam || !cam.isCamera) {
+      const windowR = this.quadSize * 0.5;
+      return Math.abs(spec.bx - this.camX * par) <= windowR
+        && Math.abs(spec.bz - this.camZ * par) <= windowR;
+    }
+    const v = this._heroProjA || (this._heroProjA = new THREE.Vector3());
+    const e = this._heroProjB || (this._heroProjB = new THREE.Vector3());
+    const g = this.group ? this.group.position : { x: 0, y: 0, z: 0 };
+    const r = Number.isFinite(radiusWorld) && radiusWorld > 0 ? radiusWorld : 0;
+    v.set(g.x + spec.bx - this.camX * par, g.y + HERO_DEPTH, g.z + spec.bz - this.camZ * par);
+    e.copy(v);
+    const me = cam.matrixWorld.elements;
+    e.x += me[0] * r; e.y += me[1] * r; e.z += me[2] * r;
+    v.applyMatrix4(cam.matrixWorldInverse);
+    if (v.z >= 0) return false;
+    e.applyMatrix4(cam.matrixWorldInverse);
+    v.applyMatrix4(cam.projectionMatrix);
+    e.applyMatrix4(cam.projectionMatrix);
+    if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) return false;
+    const rNdc = Math.hypot(e.x - v.x, e.y - v.y);
+    return Math.abs(v.x) <= 1 + rNdc && Math.abs(v.y) <= 1 + rNdc;
+  }
+
+  _residentOnGlass() {
+    for (const p of this.planets) {
+      const r = p.sprite && p.sprite.scale ? p.sprite.scale.x * 0.5 : this._specRadiusWorld(p.spec);
+      if (this._heroOnGlass(p.spec, PLANET_PAR, r) !== false) return true;
+    }
+    const w = this.wormhole;
+    if (w && this._heroOnGlass(w.spec, WORM_PAR,
+        Number.isFinite(w.radius) ? w.radius : this._specRadiusWorld(w.spec)) !== false) return true;
+    return false;
+  }
+
+  _candidateVisible(spec) {
+    if (!spec) return false;
+    const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
+    return this._heroOnGlass(spec, par, this._specRadiusWorld(spec));
+  }
+
+  // The one shared slot: a parked deferred wormhole holds it only while its spec is on-glass,
+  // a resident holds it while any of its body projects into the frame. Otherwise the signature
+  // anchor wins when it actually intersects the frame, else the nearest projected-visible
+  // candidate. An offscreen survivor is retired as the replacement lands, never while visible.
+  _admitHero() {
+    const deferred = this._deferredWormhole;
+    if (deferred) {
+      if (this._heroOnGlass(deferred, WORM_PAR, this._specRadiusWorld(deferred)) !== false) return;
+      this._deferredWormhole = null;
+    }
+    if (this._residentOnGlass()) return;
+    const sig = this._signatureHeroAnchor;
+    let pick = this._candidateVisible(sig) ? sig : null;
+    let pickDist = pick ? -1 : Infinity;
+    for (const spec of this.heroPlacement || []) {
+      if (spec === sig || !this._candidateVisible(spec)) continue;
       const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      const ox = spec.bx - this.camX * par;
-      const oz = spec.bz - this.camZ * par;
-      if (Math.abs(ox) > windowR || Math.abs(oz) > windowR) continue;
-      if (spec.kind === 'planet' && this.planets.some(p => p.spec.bx === spec.bx
-          && p.spec.bz === spec.bz && p.spec.seed === spec.seed)) continue;
-      if (spec.kind === 'planet' && planetsSpawned < MAX_VISIBLE_PLANETS) {
-        this._spawnPlanet(spec);
-        planetsSpawned++;
-      } else if (spec.kind === 'wormhole' && !this.wormhole) {
-        this._spawnWormhole(spec);
-      }
+      const d = Math.hypot(spec.bx - this.camX * par, spec.bz - this.camZ * par);
+      if (d < pickDist) { pickDist = d; pick = spec; }
+    }
+    if (!pick) return;
+    this._clearResidentHeroes();
+    if (pick.kind === 'planet') this._spawnPlanet(pick);
+    else this._spawnWormhole(pick);
+  }
+
+  // Between grid crossings the camera still moves; at a bounded cadence re-check the projected
+  // slot so a departed resident yields and an arriving candidate lands without a cell boundary.
+  _reconcileHeroViewport() {
+    const bound = (Number.isFinite(this.H) ? this.H : 96) * 0.5;
+    const lx = Number.isFinite(this._heroVisCamX) ? this._heroVisCamX : this.camX - bound;
+    const lz = Number.isFinite(this._heroVisCamZ) ? this._heroVisCamZ : this.camZ;
+    const dx = this.camX - lx, dz = this.camZ - lz;
+    if (dx * dx + dz * dz < bound * bound) return;
+    this._heroVisCamX = this.camX; this._heroVisCamZ = this.camZ;
+    this._admitHero();
+  }
+
+  // Remove every resident hero. The shared slot is one body wide, so admission of a replacement
+  // starts by retiring whatever offscreen survivors the margin rules kept.
+  _clearResidentHeroes() {
+    for (const p of this.planets) this.group.remove(p.sprite);
+    this.planets.length = 0;
+    if (this.wormhole) {
+      this.group.remove(this.wormhole.mesh);
+      this.wormhole.mesh.geometry.dispose();
+      this.wormhole.material.dispose();
+      this.wormhole = null;
     }
   }
 
@@ -2281,7 +2407,7 @@ export class SpaceBackground {
     sprite.position.z = spec.bz - this.camZ * PLANET_PAR;
     sprite.userData = spec;
     this.group.add(sprite);
-    this.planets.push({ sprite, mat, spec });
+    this.planets.push({ sprite, mat, spec, radius: quad * 0.5 });
   }
 
   /** Dispose retired card or geometry macro structure. */
@@ -2575,10 +2701,17 @@ export class SpaceBackground {
     this.structureTexOrder.length = 0;
   }
 
+  // Bake resolution is tier-owned (256² on low, 512² otherwise — see _bakePlanetTarget), so the
+  // tier travels in the key. A live re-tier then simply stops matching the previous resolution's
+  // impostors instead of serving them under a key that ignores the tier, and the LRU retires them.
+  _planetCacheKey(spec) {
+    return `${spec.type}_${spec.seed}_${spec.ring ? 1 : 0}_${this.tierName}`;
+  }
+
   _getPlanetTexture(spec) {
     const painted = this.paintedPlanets?.get(spec);
     if (painted) return painted;
-    const key = `${spec.type}_${spec.seed}_${spec.ring ? 1 : 0}`;
+    const key = this._planetCacheKey(spec);
     if (this.planetCache.has(key)) return this.planetCache.get(key).texture;
     const rt = this._bakePlanetTarget(spec);
     this.planetCache.set(key, rt);
@@ -2615,6 +2748,24 @@ export class SpaceBackground {
     // one consumer that needs a real nebula tile even in a sector whose nebula is fully suppressed.
     // Promote before reading the texture; the mesh captures the reference at construction.
     // L1 ONLY — the lens never reads L2, so L2 stays deferred and keeps its share of the saving.
+    //
+    // That promotion is a full-res tile bake plus the first NEBULA_FRAG link and mip chain. When it
+    // is still pending on a frame that is already late, do not pay it inside this present: park the
+    // spec and let update() retry on a frame the heavy-admission budget accepts — the wormhole
+    // arrives a few frames late instead of stalling the one it rolled into. The budgeted pump in
+    // update() normally promotes L1 before a spawn ever reaches this point.
+    if (this._nebulaBakePending && this._nebulaBakePending.L1) {
+      const lastPresentDtMs = this.state && this.state.render
+        ? this.state.render.lastPresentDtMs : undefined;
+      const gate = shouldStartHeavyAdmissionEventually(lastPresentDtMs, this._wormholeBakeSkips || 0);
+      this._wormholeBakeSkips = gate.skippedCount;
+      if (!gate.start) {
+        this._deferredWormhole = spec;
+        return;
+      }
+    }
+    this._wormholeBakeSkips = 0;
+    this._deferredWormhole = null;
     this._ensureNebulaBake('L1');
     const size = spec.frac * this.H * this.heroSizeK * 2.2;
     const pal = PALETTES[this.currentPaletteName];
@@ -2626,7 +2777,7 @@ export class SpaceBackground {
       lowTier: this.lowTier,
       tierName: this.tierName,
     });
-    this.wormhole = { mesh, material: mesh.material, spec };
+    this.wormhole = { mesh, material: mesh.material, spec, radius: size * 0.5 };
     mesh.position.x = spec.bx - this.camX * WORM_PAR;
     mesh.position.z = spec.bz - this.camZ * WORM_PAR;
     this.group.add(mesh);
@@ -2841,6 +2992,28 @@ export class SpaceBackground {
       // before plates existed.
       if (skyTarget === 0 && this._paintedSkyStrength < 0.002) this._paintedSkyStrength = 0;
       un.uPaintedSkyStrength.value = this._paintedSkyStrength;
+      if (un.uPaintedSkyBlend) {
+        let blend = 0;
+        const jump = this.state && this.state.jump;
+        const video = this.state && this.state.settings && this.state.settings.video;
+        const reduced = !!(video && video.motionReduce);
+        if (!reduced && jump && jump.state === 'JUMPING' && jump.blend > 0 && this.deepSkyPlates) {
+          const sectors = this.state.world && this.state.world.sectors;
+          const target = sectors && jump.targetSectorId ? sectors[jump.targetSectorId] : null;
+          const art = resolveBackgroundPaintedSky(resolveSectorVisualProfile(target));
+          if (art && art.plate && art.plate !== this.deepSkyPlates.activeId) {
+            this.deepSkyPlates.request(art.plate);
+            if (this.deepSkyPlates.pendingDecoded
+              && this.deepSkyPlates.pendingTexture
+              && this.deepSkyPlates.pendingId === art.plate) {
+              blend = jump.blend;
+              un.uPaintedSkyNext.value = this.deepSkyPlates.pendingTexture;
+            }
+          }
+        }
+        un.uPaintedSkyBlend.value = blend;
+        if (blend === 0 && un.uPaintedSky) un.uPaintedSkyNext.value = un.uPaintedSky.value;
+      }
       const skyParallax = skyArt?.parallax || 0.003;
       // Cover the viewport without stretching the painted forms on wide or tall displays.
       const canvas = this.renderer?.domElement;
@@ -2939,12 +3112,36 @@ export class SpaceBackground {
       sc.mesh.position.z = sc.bz - cz * sc.par;
     }
 
+    // Promote deferred nebula tiles on a budgeted frame, BEFORE a consumer reaches for one:
+    // a wormhole-capable sector needs L1 for the lens even at zero opacity, and a positive
+    // uNebulaOpacity (eased in by the sector transition above) needs both layers. Ordered ahead
+    // of _refreshHeroes so an admitted bake lands before a wormhole roll can force it.
+    this._pumpDeferredNebulaBake();
+    // A wormhole that outran its tile promotion waits here instead of stalling its spawn frame.
+    // Re-check the ordinary offscreen-retirement rule so a spec that scrolled past while it
+    // waited retires instead of landing somewhere it no longer belongs. The reservation shares
+    // the one-sky slot: it holds only while its own spec is on-glass — a stale request clears
+    // so it can never starve a visible candidate.
+    if (this._deferredWormhole) {
+      const deferredSpec = this._deferredWormhole;
+      if (!this._heroOnGlass(deferredSpec, WORM_PAR, this._specRadiusWorld(deferredSpec))) {
+        this._deferredWormhole = null;
+      } else if (!this._residentOnGlass()) {
+        this._deferredWormhole = null;
+        this._clearResidentHeroes();
+        this._spawnWormhole(deferredSpec);
+      }
+    }
+
     this._updateRegionTint(cx, cz, dt, vl && vl.region);
     this._updateComet(dt);
     // A sector seam must not compete with the frame that is easing into it. The existing
     // world-space hero window still refreshes naturally on the next settled frame, so a jump or
     // membership change never forces the old synchronous hero rebuild into the boundary frame.
-    if (!sectorTransitionActive) this._refreshHeroes(false);
+    if (!sectorTransitionActive) {
+      this._refreshHeroes(false);
+      this._reconcileHeroViewport();
+    }
   }
 
   _updateSectorVisualTransition(dt) {
@@ -2960,6 +3157,9 @@ export class SpaceBackground {
     const t = easeSectorTransition(rawT);
     this.bgIntensity = transition.startIntensity
       + (transition.targetIntensity - transition.startIntensity) * t;
+    // A positive opacity makes the deferred nebula tiles visible — _pumpDeferredNebulaBake() in
+    // update() sees it and promotes the stubs on a budgeted frame. Do NOT call _ensureNebulaBake
+    // here: the promotion is a full-res bake and this transition runs inside presented frames.
     this.nebulaOpacity = transition.startNebulaOpacity
       + (transition.targetNebulaOpacity - transition.startNebulaOpacity) * t;
     this._sectorTintCurrent.lerpColors(this._sectorTintStart, this._sectorTintTarget, t);
@@ -3135,6 +3335,10 @@ export class SpaceBackground {
       this._sectorTintTarget.copy(this._sectorTintCurrent);
       this._sectorTransition.active = false;
       this.bakeAll(pal);
+      // A wormhole-capable opening sector will need the real L1 tile for the lens even while the
+      // nebula itself is suppressed — admit that promotion inside the loading route rather than
+      // inside whichever early flight frame first rolls a wormhole.
+      if (this.backgroundComposition.wormholeChance > 0) this._ensureNebulaBake('L1');
       this._rebuildStarsAndFlares();
       this._spawnStructureCard();
       this._refreshHeroes(true);

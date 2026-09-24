@@ -1,1616 +1,287 @@
 <!-- GENERATED FROM ../task-bank.json; DO NOT EDIT BY HAND -->
+
 # Small creative production slices
 
 Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer without adding speculative frameworks.
 
-**Tasks:** 50 · **Range:** `JULES-0951`–`JULES-1000`
+**Tasks:** 9 · **Range:** `JULES-0163`–`JULES-0171`
 
-## JULES-0951 — Massline salvage and towing contracts — build one complete core activity
+## JULES-0163 — Massline salvage — the hulk is the haul: one tow-to-beacon salvage contract
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
 
-**Objective:** Design and implement one small complete activity for Massline salvage and towing contracts. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
+**Objective:** Add one salvage contract in which a destroyed ship leaves a durable hulk that must be tethered and towed to a claim beacon for pay: the tow is the mission, not a menu hand-in.
 
-**Context:** Massline salvage and towing contracts: small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework.
+**Context:** The signature verb should earn a living. Wrecks already persist through the aftermath owner and the rope already tows bodies; this wires one contract type that pays for bringing the body in, so a kill becomes cargo without a second mission framework.
 
-**Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
+**Inspect:** `src/systems/missions.js` `src/systems/aftermathWrecks.js` `src/systems/tetherGameplay.js` `src/systems/economy.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the aftermath wreck owner, the tether/tow owner, and the existing contract schemas; reuse the live job board instead of adding a framework.
+2. Author one contract: a wreck is registered as salvage with a named delivery beacon and a payout that scales with hulk mass through the economy owner.
+3. Wire delivery: latch and tow across the finish radius pays once; destroying the hulk forfeits the job and closes it honestly.
+4. Prove it with a deterministic fixture: spawn wreck, latch, tow, deliver, and assert a single payout; add a second fixture where the hulk is destroyed and the job closes with consequence.
 
 **Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
+- A fixture delivers a towed hulk to the beacon and exactly one payout lands through the economy owner.
+- The decisive action is the rope (latch, tow, release), reachable on the default route, not a menu-only resolution.
+- Failure mutates the situation (hulk destroyed closes the job with a visible consequence), never a fail-and-reload flag.
+- Save/reload keeps the contract, hulk, and beacon state coherent; no new framework file is added.
 
 **Suggested proof:**
+- `npm run check:baseline`
 - `npm run check:massline`
-- `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0951 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0163 --format prompt`
 
-## JULES-0952 — Massline salvage and towing contracts — add one physical complication variant
+## JULES-0164 — Mining events — the starter field is somebody’s shift: one working-miner cycle
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
 
-**Objective:** Add one variant to Massline salvage and towing contracts whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
+**Objective:** Add one working-miner event to the starter field: an NPC miner works a seam on a visible cycle (mine, fill, haul away) that continues whether or not the player exists.
 
-**Context:** Massline salvage and towing contracts: small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework.
+**Context:** The opening harbour should show one living job chain without a mission accept. Traffic, NPC jobs, and field depletion already simulate the pieces; the session only has to show one honest cycle and let interference matter.
 
-**Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
+**Inspect:** `src/systems/traffic.js` `src/systems/npcJobs.js` `src/systems/fieldDepletion.js` `src/systems/world.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:massline`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0952 --format prompt`
-
-## JULES-0953 — Massline salvage and towing contracts — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
-
-**Objective:** Add one bounded choice to Massline salvage and towing contracts that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** Massline salvage and towing contracts: small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework.
-
-**Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the traffic, NPC-job, and field-depletion owners and pick the starter-field seam the cycle works on.
+2. Author one miner loop with authored beats: approach, work, fill, haul away, return, on the sim clock.
+3. Let the player interfere (skim the spill, steal the seam, shove the miner) and make the next beat adapt visibly without spawning a fail flag or a mission prompt.
+4. Prove it with a fixed-seed fixture: the unattended cycle completes its beats, and an interference case shows the adapted next beat.
 
 **Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:massline`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0953 --format prompt`
-
-## JULES-0954 — Massline salvage and towing contracts — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
-
-**Objective:** Make one completed or failed Massline salvage and towing contracts situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** Massline salvage and towing contracts: small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework.
-
-**Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:massline`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0954 --format prompt`
-
-## JULES-0955 — Massline salvage and towing contracts — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-massline-salvage`
-
-**Objective:** Take one existing or newly added Massline salvage and towing contracts slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** Massline salvage and towing contracts: small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework.
-
-**Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small missions that make towing, orbiting, controlled release, and delivery the decisive verb without inventing a parallel mission framework and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:massline`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0955 --format prompt`
-
-## JULES-0956 — Mining risk-reward micro-events — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
-
-**Objective:** Design and implement one small complete activity for mining risk-reward micro-events. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** mining risk-reward micro-events: bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions.
-
-**Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:mining:2`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0956 --format prompt`
-
-## JULES-0957 — Mining risk-reward micro-events — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
-
-**Objective:** Add one variant to mining risk-reward micro-events whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** mining risk-reward micro-events: bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions.
-
-**Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:mining:2`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0957 --format prompt`
-
-## JULES-0958 — Mining risk-reward micro-events — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
-
-**Objective:** Add one bounded choice to mining risk-reward micro-events that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** mining risk-reward micro-events: bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions.
-
-**Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:mining:2`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0958 --format prompt`
-
-## JULES-0959 — Mining risk-reward micro-events — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
-
-**Objective:** Make one completed or failed mining risk-reward micro-events situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** mining risk-reward micro-events: bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions.
-
-**Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:mining:2`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0959 --format prompt`
-
-## JULES-0960 — Mining risk-reward micro-events — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-mining-events`
-
-**Objective:** Take one existing or newly added mining risk-reward micro-events slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** mining risk-reward micro-events: bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions.
-
-**Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded deterministic events that turn greed, noise, unstable rock, rich material, or hauling choices into visible player decisions and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:mining:2`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0960 --format prompt`
-
-## JULES-0961 — Lawful patrol operations and readable enforcement — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
-
-**Objective:** Design and implement one small complete activity for lawful patrol operations and readable enforcement. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** lawful patrol operations and readable enforcement: patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility.
-
-**Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0961 --format prompt`
-
-## JULES-0962 — Lawful patrol operations and readable enforcement — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
-
-**Objective:** Add one variant to lawful patrol operations and readable enforcement whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** lawful patrol operations and readable enforcement: patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility.
-
-**Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0962 --format prompt`
-
-## JULES-0963 — Lawful patrol operations and readable enforcement — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
-
-**Objective:** Add one bounded choice to lawful patrol operations and readable enforcement that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** lawful patrol operations and readable enforcement: patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility.
-
-**Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0963 --format prompt`
-
-## JULES-0964 — Lawful patrol operations and readable enforcement — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
-
-**Objective:** Make one completed or failed lawful patrol operations and readable enforcement situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** lawful patrol operations and readable enforcement: patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility.
-
-**Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0964 --format prompt`
-
-## JULES-0965 — Lawful patrol operations and readable enforcement — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
-
-**Objective:** Take one existing or newly added lawful patrol operations and readable enforcement slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** lawful patrol operations and readable enforcement: patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility.
-
-**Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses patrol, inspection, escort, warning, and intervention situations with explicit motive and response windows rather than surprise hostility and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0965 --format prompt`
-
-## JULES-0966 — Pirate interdiction choices and counterplay — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
-
-**Objective:** Design and implement one small complete activity for pirate interdiction choices and counterplay. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** pirate interdiction choices and counterplay: compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes.
-
-**Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:core-combat-loop`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0966 --format prompt`
-
-## JULES-0967 — Pirate interdiction choices and counterplay — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
-
-**Objective:** Add one variant to pirate interdiction choices and counterplay whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** pirate interdiction choices and counterplay: compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes.
-
-**Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:core-combat-loop`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0967 --format prompt`
-
-## JULES-0968 — Pirate interdiction choices and counterplay — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
-
-**Objective:** Add one bounded choice to pirate interdiction choices and counterplay that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** pirate interdiction choices and counterplay: compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes.
-
-**Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:core-combat-loop`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0968 --format prompt`
-
-## JULES-0969 — Pirate interdiction choices and counterplay — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
-
-**Objective:** Make one completed or failed pirate interdiction choices and counterplay situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** pirate interdiction choices and counterplay: compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes.
-
-**Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:core-combat-loop`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0969 --format prompt`
-
-## JULES-0970 — Pirate interdiction choices and counterplay — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
-
-**Objective:** Take one existing or newly added pirate interdiction choices and counterplay slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** pirate interdiction choices and counterplay: compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes.
-
-**Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses compact cruise interruption situations with physical escape, toll, bluff, fight, or pursuit choices and readable outcomes and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:core-combat-loop`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0970 --format prompt`
-
-## JULES-0971 — Civilian rescue and emergency encounters — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
-
-**Objective:** Design and implement one small complete activity for civilian rescue and emergency encounters. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** civilian rescue and emergency encounters: drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence.
-
-**Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
+- A fixture observes the full unattended cycle with no player input and no mission accepted.
+- An interference fixture shows the miner’s next beat change visibly, with no fail flag, fine, or tutorial popup.
+- No new director, pocket system, or traffic-density knob is introduced; existing owners carry the behavior.
+- The cycle is deterministic on the standard fixed seeds and cheap enough to leave running.
 
 **Suggested proof:**
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0971 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0164 --format prompt`
 
-## JULES-0972 — Civilian rescue and emergency encounters — add one physical complication variant
+## JULES-0165 — Patrol operations — law you can watch: one readable inspection stop
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-patrol-operations`
 
-**Objective:** Add one variant to civilian rescue and emergency encounters whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
+**Objective:** Add one inspection situation: a patrol stops a suspicious hauler with an explicit signal, a hold-position window, an inspection, and an outcome, all visible before any hostility.
 
-**Context:** civilian rescue and emergency encounters: drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence.
+**Context:** Enforcement should be a visible situation rather than surprise hostility. The law, encounter, and bark owners already exist; this wires one authored sequence of beats with authored response windows.
 
-**Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
+**Inspect:** `src/systems/lawSecurity.js` `src/systems/encounterDirector.js` `src/systems/barkDirector.js` `src/systems/traffic.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the law, encounter-director, and bark owners; reuse the existing heat and witness machinery, adding no second heat system.
+2. Author one inspection encounter: signal the stop (bark + position), hold the window, inspect, then resolve clean, warned, or escalated.
+3. Let the player watch, interfere, or be the one inspected; interference escalates through the same windows instead of skipping to weapons.
+4. Prove beat order and windows with a fixed-seed fixture, including one interference escalation case.
 
 **Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
+- A fixture asserts the beats in order (signal before hold before outcome) with the authored windows on a fixed seed.
+- Interference escalates through the same explicit windows; no instant hostility and no new heat math.
+- A bystander player is never attacked without a witnessed act feeding the existing law owners.
+- The situation ends in a world state (release, fine handoff, or pursuit), never a mission-fail flag.
 
 **Suggested proof:**
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0972 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0165 --format prompt`
 
-## JULES-0973 — Civilian rescue and emergency encounters — add one faction or civilian choice
+## JULES-0166 — Pirate interdiction — the winner flies off with the pod: the getaway raider
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-pirate-interdiction`
 
-**Objective:** Add one bounded choice to civilian rescue and emergency encounters that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
+**Objective:** When the opening raid succeeds unopposed, the pod-holding raider flies a real route to a finite in-sector fence point; catching or killing them spills the pod; the raider must not despawn while the loot is in custody.
 
-**Context:** civilian rescue and emergency encounters: drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence.
+**Context:** A raid the player ignored should still change the sky. The opening encounter and custody machinery exist; this gives the loser’s prize a body and a destination, making the chase a second scene with the same verbs.
 
-**Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
+**Inspect:** `src/data/encounters/015-opening-hauler-raid.js` `src/data/pirateDoctrines.js` `src/systems/encounterDirector.js` `src/systems/traffic.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the opening raid encounter and its doctrine data; extend the success branch instead of authoring a second encounter.
+2. On raid success, assign the pod to one raider with a finite in-sector destination and a real flight route through the traffic owner.
+3. Make catching or killing that raider spill the pod, and forbid despawn while the pod is in custody.
+4. Prove two fixtures: the unopposed success path (pod host, finite destination, spill on destruction) and the player-preempt path (no second pod is grown).
 
 **Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
+- Fixture A: the raid resolves in the pirates’ favor, the pod’s host id is the fleeing raider, and the destination is a finite in-sector point.
+- Fixture A: destroying the fleeing raider spills the pod as a loose, collectible body.
+- Fixture B: spilling the pod before resolution never grows a replacement pod on the raiders.
+- No mission-fail flag, no scripted cutscene, and deterministic behavior on the standard fixed seeds.
 
 **Suggested proof:**
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0973 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0166 --format prompt`
 
-## JULES-0974 — Civilian rescue and emergency encounters — leave one persistent aftermath
+## JULES-0167 — Civilian rescue — repair is staying attached: one tether-repair rescue
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
 
-**Objective:** Make one completed or failed civilian rescue and emergency encounters situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
+**Objective:** Add one rescue where holding the tether on a disabled friendly hull repairs it tick by tick; releasing freezes progress where it is; finishing the repair frees the ship to thrust again.
 
-**Context:** civilian rescue and emergency encounters: drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence.
+**Context:** Rescue becomes a flight problem: hold the line, drag them out of the rocks, do not get hit. The tether owner already publishes latch state and the law owner already knows witnesses; no med-beam and no menu repair.
 
-**Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
+**Inspect:** `src/systems/tetherGameplay.js` `src/systems/lawSecurity.js` `src/systems/ships.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the tether latch receipt and the disabled-ship state; implement repair-ticks-while-taut for disabled friendly hulls at an authored rate.
+2. Break or release the latch and progress freezes at the partial value; the hull never heals for enemies or for tethered rocks.
+3. Finishing the repair frees the ship and restores thrust, with the latch receipt as the only repair channel.
+4. Prove three fixtures: taut advances hull, early release freezes partial, and a held latch frees the ship.
 
 **Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
+- Fixture A: hull increases only while the tether is taut, at the authored rate, on the sim clock.
+- Fixture B: an early release freezes hull at the partial value and the ship remains disabled.
+- Fixture C: holding to completion restores thrust and clears the disabled state.
+- No instant repair on contact, no fail timer, no repair of hostiles, and no new UI beyond the existing hull readout.
 
 **Suggested proof:**
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0974 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0167 --format prompt`
 
-## JULES-0975 — Civilian rescue and emergency encounters — give the activity a readable presentation pass
+## JULES-0168 — Aftermath — so then: one failure becomes the next job
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-civilian-rescue`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
 
-**Objective:** Take one existing or newly added civilian rescue and emergency encounters slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
+**Objective:** Add one causal chain where a convoy loss the player did not prevent leaves capped, persistent aftermath, and a station surfaces one follow-up job that references the actual wreck.
 
-**Context:** civilian rescue and emergency encounters: drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence.
+**Context:** Failure should mutate the situation instead of reloading it. The aftermath wreck owner and station side events exist; this joins them so the story is tellable as “so then”: the convoy died, so there is salvage, so someone wants it moved.
 
-**Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
+**Inspect:** `src/systems/aftermathWrecks.js` `src/data/stationSideEvents.js` `src/systems/economy.js` `src/systems/missions.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses drift, disabled-drive, cargo spill, medevac, escort, or hazard rescues that use existing flight and Massline verbs and leave a remembered consequence and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the aftermath wreck owner (cap included) and the station side-event owner; join them without a second aftermath system.
+2. On a seeded convoy kill, register the wreck with its commodity hint and surface one station job that references that wreck or commodity.
+3. Let completing the job consume or mark the wreck so the chain closes; let repeated losses respect the aftermath cap.
+4. Prove it with a fixture: kill produces aftermath, the offered job references the same wreck, and the cap holds across repeated kills.
 
 **Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
+- A fixture asserts the offered job references the actual wreck id or commodity hint, not generic fetch text.
+- Repeated losses respect the aftermath cap; save/reload keeps the wreck and the job coherent.
+- The job is completable with the normal verbs (collect, tow, or haul) and pays through the economy owner.
+- No fine, no mission-fail flag, and no unbounded graveyard of past kills.
 
 **Suggested proof:**
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0975 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0168 --format prompt`
 
-## JULES-0976 — Battle-aftermath vignettes and persistent consequences — build one complete core activity
+## JULES-0169 — Crucible — the wreck is the next answer: durable swarm wrecks across rounds
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
 
-**Objective:** Design and implement one small complete activity for battle-aftermath vignettes and persistent consequences. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
+**Objective:** Make a capped number of kills per swarm round leave durable wrecks that are latchable bodies in the next round, surviving the between-round shop transition.
 
-**Context:** battle-aftermath vignettes and persistent consequences: small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play.
+**Context:** The wreck the player made should be terrain and ammunition one round later. The swarm run, results, and shop transition already have the seams; this carries a capped wreck list across them.
 
-**Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
+**Inspect:** `src/systems/survivalSwarm.js` `src/systems/survivalRun.js` `src/systems/survivalResults.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the swarm run and results owners; carry a small capped wreck list across rounds instead of persisting every kill.
+2. Materialize carried wrecks as physical bodies with mass that the Massline can latch.
+3. Keep the carry deterministic and bounded; older wrecks past the cap drop off.
+4. Prove it with a fixture: a kill leaves a durable wreck id, the next round latches it, and the latch survives the shop transition.
 
 **Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
+- A fixture asserts the kill leaves a durable wreck id and the next round’s rope latches that body.
+- The latch survives the shop transition with position and mass coherent.
+- The wreck count respects its cap on repeated rounds, and the fixture proves the drop-off.
+- Determinism holds on a fixed seed, and no new persistence system is added.
 
 **Suggested proof:**
-- `npm run check:battle-aftermath`
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0976 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0169 --format prompt`
 
-## JULES-0977 — Battle-aftermath vignettes and persistent consequences — add one physical complication variant
+## JULES-0170 — Station logistics — the station has a day: one shortage job from live market state
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
 
-**Objective:** Add one variant to battle-aftermath vignettes and persistent consequences whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
+**Objective:** Add one shortage contract generated from live station state: when a station runs low on a commodity it actually stocks, a short-haul job appears, and delivering visibly relieves the shortage at live prices.
 
-**Context:** battle-aftermath vignettes and persistent consequences: small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play.
+**Context:** A station should read as a place with a day, not a static mission list. The market, cargo, and side-event owners exist; this joins a stock floor to one contract offer and one delivery effect.
 
-**Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
+**Inspect:** `src/systems/economy.js` `src/systems/cargo.js` `src/data/stationSideEvents.js` `src/ui/station/adBoard.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the economy, cargo, and station owners; define an authored stock floor for one stocked commodity.
+2. When live stock drops below the floor, surface one short-haul contract (buy elsewhere, deliver N) through the existing job board.
+3. Make delivery raise the station stock through the economy owner at live prices, and let ordinary trade also relieve the shortage so the job adapts.
+4. Prove it with a fixture that drives a shortage, asserts the offer, delivers, and asserts the stock and price movement.
 
 **Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
+- A fixture drives the authored shortage and asserts the contract offer appears on the live job board.
+- Delivery raises stock at live prices through the economy owner, and the offer retires when the shortage clears.
+- Ordinary trading can also clear the shortage, and the job adapts instead of dangling.
+- No static mission-list entry, no second market system, and save/reload keeps stock and job coherent.
 
 **Suggested proof:**
-- `npm run check:battle-aftermath`
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0977 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0170 --format prompt`
 
-## JULES-0978 — Battle-aftermath vignettes and persistent consequences — add one faction or civilian choice
+## JULES-0171 — Anomalies — the sector surprises you once: one physical oddity on a rumor
 
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
+**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P1 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
 
-**Objective:** Add one bounded choice to battle-aftermath vignettes and persistent consequences that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
+**Objective:** Add one authored physical oddity to a named sector, joined to a rumor so a stranger can fly to it: it must create a physical interaction or navigation problem, never a passive marker.
 
-**Context:** battle-aftermath vignettes and persistent consequences: small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play.
+**Context:** Not every interesting thing needs seven systems; one specific thing beats a scatter of beacons. The unique-wreck, sector, and scanner owners exist; humor and memorability come from the physics.
 
-**Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
+**Inspect:** `src/data/uniqueWrecks.js` `src/data/sectors.js` `src/systems/scanner.js` `src/systems/world.js`
 
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
-1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
+1. Read the unique-wreck and sector data owners and pick one named sector and one oddity with a real physical hook (a grinding derelict pair, a mass that bends the lane, a machine mouth that eats loose bodies).
+2. Implement the physical interaction through the existing field, force, or wreck owners; it must move or change a body that enters it.
+3. Join one rumor line so the map or a bearing leads a stranger there without a mission.
+4. Prove it with a fixture: a body entering the oddity’s volume is measurably affected, and the rumor join is reachable from the default route.
 
 **Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
+- A fixture shows a body’s velocity or state measurably changed by the oddity through existing force owners.
+- The rumor-to-discovery path is reachable without accepting a mission, using the existing scanner or bearing owners.
+- Save/reload keeps the oddity coherent, and it adds no new hazard system or damage volume.
+- The oddity is deterministic and cheap: no per-frame cost the probe would name.
 
 **Suggested proof:**
-- `npm run check:battle-aftermath`
 - `npm run check:baseline`
 
 **Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
 
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0978 --format prompt`
-
-## JULES-0979 — Battle-aftermath vignettes and persistent consequences — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
-
-**Objective:** Make one completed or failed battle-aftermath vignettes and persistent consequences situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** battle-aftermath vignettes and persistent consequences: small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play.
-
-**Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:battle-aftermath`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0979 --format prompt`
-
-## JULES-0980 — Battle-aftermath vignettes and persistent consequences — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-aftermath`
-
-**Objective:** Take one existing or newly added battle-aftermath vignettes and persistent consequences slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** battle-aftermath vignettes and persistent consequences: small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play.
-
-**Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses small aftermath scenes where wrecks, survivors, scavengers, claims, evidence, or faction memory turn a finished fight into later play and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:battle-aftermath`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0980 --format prompt`
-
-## JULES-0981 — Crucible wave modifiers and attack synergies — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
-
-**Objective:** Design and implement one small complete activity for Crucible wave modifiers and attack synergies. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** Crucible wave modifiers and attack synergies: bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible.
-
-**Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:crucible:arc`
-- `npm run check:attack-spec`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0981 --format prompt`
-
-## JULES-0982 — Crucible wave modifiers and attack synergies — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
-
-**Objective:** Add one variant to Crucible wave modifiers and attack synergies whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** Crucible wave modifiers and attack synergies: bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible.
-
-**Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:crucible:arc`
-- `npm run check:attack-spec`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0982 --format prompt`
-
-## JULES-0983 — Crucible wave modifiers and attack synergies — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
-
-**Objective:** Add one bounded choice to Crucible wave modifiers and attack synergies that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** Crucible wave modifiers and attack synergies: bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible.
-
-**Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:crucible:arc`
-- `npm run check:attack-spec`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0983 --format prompt`
-
-## JULES-0984 — Crucible wave modifiers and attack synergies — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
-
-**Objective:** Make one completed or failed Crucible wave modifiers and attack synergies situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** Crucible wave modifiers and attack synergies: bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible.
-
-**Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:crucible:arc`
-- `npm run check:attack-spec`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0984 --format prompt`
-
-## JULES-0985 — Crucible wave modifiers and attack synergies — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-crucible`
-
-**Objective:** Take one existing or newly added Crucible wave modifiers and attack synergies slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** Crucible wave modifiers and attack synergies: bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible.
-
-**Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses bounded combat modifiers that alter movement, projectile topology, target priority, arena use, or physical counterplay while remaining legible and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:crucible:arc`
-- `npm run check:attack-spec`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0985 --format prompt`
-
-## JULES-0986 — Enemy behavior archetypes and formation logic — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-enemy-archetypes`
-
-**Objective:** Design and implement one small complete activity for enemy behavior archetypes and formation logic. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** enemy behavior archetypes and formation logic: distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation.
-
-**Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:combat-outcome`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0986 --format prompt`
-
-## JULES-0987 — Enemy behavior archetypes and formation logic — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-enemy-archetypes`
-
-**Objective:** Add one variant to enemy behavior archetypes and formation logic whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** enemy behavior archetypes and formation logic: distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation.
-
-**Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:combat-outcome`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0987 --format prompt`
-
-## JULES-0988 — Enemy behavior archetypes and formation logic — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-enemy-archetypes`
-
-**Objective:** Add one bounded choice to enemy behavior archetypes and formation logic that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** enemy behavior archetypes and formation logic: distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation.
-
-**Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:combat-outcome`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0988 --format prompt`
-
-## JULES-0989 — Enemy behavior archetypes and formation logic — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-enemy-archetypes`
-
-**Objective:** Make one completed or failed enemy behavior archetypes and formation logic situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** enemy behavior archetypes and formation logic: distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation.
-
-**Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:combat-outcome`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0989 --format prompt`
-
-## JULES-0990 — Enemy behavior archetypes and formation logic — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-enemy-archetypes`
-
-**Objective:** Take one existing or newly added enemy behavior archetypes and formation logic slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** enemy behavior archetypes and formation logic: distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation.
-
-**Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses distinct enemy plans expressed through approach, spacing, target choice, retreat, formation, and telegraph rather than stat inflation and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:47a:tactics`
-- `npm run check:combat-outcome`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0990 --format prompt`
-
-## JULES-0991 — Station logistics and industrial jobs — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
-
-**Objective:** Design and implement one small complete activity for station logistics and industrial jobs. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** station logistics and industrial jobs: short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text.
-
-**Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:balance`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0991 --format prompt`
-
-## JULES-0992 — Station logistics and industrial jobs — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
-
-**Objective:** Add one variant to station logistics and industrial jobs whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** station logistics and industrial jobs: short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text.
-
-**Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:balance`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0992 --format prompt`
-
-## JULES-0993 — Station logistics and industrial jobs — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
-
-**Objective:** Add one bounded choice to station logistics and industrial jobs that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** station logistics and industrial jobs: short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text.
-
-**Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:balance`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0993 --format prompt`
-
-## JULES-0994 — Station logistics and industrial jobs — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
-
-**Objective:** Make one completed or failed station logistics and industrial jobs situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** station logistics and industrial jobs: short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text.
-
-**Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:balance`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0994 --format prompt`
-
-## JULES-0995 — Station logistics and industrial jobs — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-station-logistics`
-
-**Objective:** Take one existing or newly added station logistics and industrial jobs slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** station logistics and industrial jobs: short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text.
-
-**Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses short cargo, repair, procurement, shortage, convoy, and timed-delivery work tied to live market and station state rather than generic fetch text and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:balance`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0995 --format prompt`
-
-## JULES-0996 — Frontier anomalies and physical discoveries — build one complete core activity
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
-
-**Objective:** Design and implement one small complete activity for frontier anomalies and physical discoveries. Use existing mission/activity schemas and live verbs; begin with the player decision, then wire setup, action, outcome, reward/consequence, and cleanup.
-
-**Context:** frontier anomalies and physical discoveries: discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker.
-
-**Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The activity is reachable through existing content selection or a deterministic scenario.
-- Its decisive action uses a SpaceFace verb rather than a menu-only or prose-only resolution.
-- Success, failure, abandonment, save/reload, and repeated eligibility are coherent.
-- The slice includes focused proof and no new framework.
-
-**Suggested proof:**
-- `npm run check:scan-reveal`
-- `npm run check:map-confidence`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0996 --format prompt`
-
-## JULES-0997 — Frontier anomalies and physical discoveries — add one physical complication variant
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
-
-**Objective:** Add one variant to frontier anomalies and physical discoveries whose difficulty comes from mass, momentum, geometry, timing, formation, hazard, tether, or projectile behavior—not inflated health or hidden percentages.
-
-**Context:** frontier anomalies and physical discoveries: discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker.
-
-**Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The complication is telegraphed before consequence and offers at least one readable counterplay.
-- It composes with existing physics/combat/mining owners and remains deterministic.
-- The variant is detectably different in play, not merely renamed or recolored.
-- Failure returns the player to a coherent state or creates an intentional aftermath.
-
-**Suggested proof:**
-- `npm run check:scan-reveal`
-- `npm run check:map-confidence`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0997 --format prompt`
-
-## JULES-0998 — Frontier anomalies and physical discoveries — add one faction or civilian choice
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
-
-**Objective:** Add one bounded choice to frontier anomalies and physical discoveries that changes who benefits, who remembers, what resource is spent, or what future situation becomes likely. Reuse faction, economy, mission, and memory owners.
-
-**Context:** frontier anomalies and physical discoveries: discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker.
-
-**Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- At least two options have materially different costs/consequences rather than cosmetic dialogue.
-- The choice is visible before commitment and settles exactly once.
-- Reputation/heat/credits/cargo changes flow through canonical writers.
-- The remembered result survives save/reload and can be surfaced later without a new narrative engine.
-
-**Suggested proof:**
-- `npm run check:scan-reveal`
-- `npm run check:map-confidence`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0998 --format prompt`
-
-## JULES-0999 — Frontier anomalies and physical discoveries — leave one persistent aftermath
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
-
-**Objective:** Make one completed or failed frontier anomalies and physical discoveries situation leave a bounded physical or systemic aftermath: wreck, marker, price pressure, survivor, claim, rumor, changed patrol state, or later callback.
-
-**Context:** frontier anomalies and physical discoveries: discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker.
-
-**Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The aftermath has a clear lifetime and cleanup/revisit rule.
-- It is visible or actionable in ordinary play and not just a hidden ledger bit.
-- It cannot duplicate on reload/re-entry and uses existing persistence owners.
-- The consequence creates a later opportunity, risk, or recognition rather than permanent clutter.
-
-**Suggested proof:**
-- `npm run check:scan-reveal`
-- `npm run check:map-confidence`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0999 --format prompt`
-
-## JULES-1000 — Frontier anomalies and physical discoveries — give the activity a readable presentation pass
-
-**Model:** Pro (`gemini-3.1-pro`) · **Priority:** P2 · **Risk:** high · **Size:** m · **Collision:** `creative-anomalies`
-
-**Objective:** Take one existing or newly added frontier anomalies and physical discoveries slice and complete its anticipation, active-state, success/failure, and aftermath cues using existing camera, VFX, audio, comms, HUD, and accessibility buses.
-
-**Context:** frontier anomalies and physical discoveries: discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker.
-
-**Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
-
-**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
-
-**Work:**
-1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
-2. Select one small causal idea that uses discoveries that create a physical interaction, navigation problem, risk, choice, or persistent map/story change instead of another passive marker and can be completed through current owners in one PR.
-3. Implement the full playable slice—setup, decision/action, response, outcome, cleanup/persistence, and presentation—without a new framework.
-4. Prove reachability and the decisive gameplay difference with a focused deterministic scenario or normal-route evidence.
-
-**Acceptance:**
-- The player can tell what is about to happen, what is happening, and why it ended.
-- One primary transient voice wins; persistent context remains available without chatter.
-- Cues are driven by canonical state, deduped, and cleaned when stale.
-- The presentation reads at normal camera/window and respects reduced motion/flash.
-
-**Suggested proof:**
-- `npm run check:scan-reveal`
-- `npm run check:map-confidence`
-- `npm run check:baseline`
-
-**Honest negative result:** Return NO_CHANGE when no distinct bounded slice fits current owners. Do not submit a design-only document, candidate list, placeholder, recolor, or hidden unused content.
-
-**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-1000 --format prompt`
+**Dispatch:** `node scripts/jules-dispatch.mjs --id JULES-0171 --format prompt`

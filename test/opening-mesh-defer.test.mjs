@@ -154,6 +154,7 @@ test('the paint latch stays armed for the opening flight and does not refire aft
   };
   assert.equal(shouldScheduleFirstPlayablePaintRelease(opening), true);
   opening._firstPlayablePaintScheduled = true;
+  opening._firstPlayablePaintScheduledAtMs = performance.now();
   assert.equal(shouldScheduleFirstPlayablePaintRelease(opening), false);
   const steady = {
     state: { mode: 'flight', render: { firstPlayableFrameAt: 1234 } },
@@ -167,6 +168,39 @@ test('the paint latch stays armed for the opening flight and does not refire aft
     _deferNoncriticalMeshStreaming: true,
   };
   assert.equal(shouldScheduleFirstPlayablePaintRelease(docked), false);
+});
+
+test('a stale armed paint latch re-arms while the first-playable stamp is still missing', () => {
+  // Live regression: the armed afterBrowserPaint chain (rAF -> timer -> rAF) can drop its
+  // callback without a trace; _firstPlayablePaintScheduled then stayed true forever and
+  // firstPlayableFrameAt never stamped — streaming, the residency hold, and the probe's
+  // flight wait all wedged behind a frame that had already submitted. The release is
+  // idempotent, so once the arm outlives the rearm grace the latch must schedule again.
+  const wedged = {
+    state: { mode: 'flight', render: {} },
+    _firstPlayablePaintScheduled: true,
+    _firstPlayablePaintScheduledAtMs: performance.now() - 60000,
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(wedged), true);
+  assert.equal(wedged._firstPlayablePaintRearms, 1);
+  wedged.state.render.firstPlayableFrameAt = 4321;
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(wedged), false,
+    'a stamped receipt never re-arms even with a stale scheduled flag');
+});
+
+test('a flag armed without a timestamp re-arms immediately while the stamp is missing', () => {
+  // releaseOpeningMeshDefer sets _firstPlayablePaintScheduled = true during flight without a
+  // timestamp — the opening-picture failsafe calls it directly. That state means "released, no
+  // chain pending": if firstPlayableFrameAt is still missing the next frame must re-arm at once
+  // rather than waiting out a grace measured from nothing.
+  const released = {
+    state: { mode: 'flight', render: {} },
+    _firstPlayablePaintScheduled: true,
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(released), true);
+  assert.equal(released._firstPlayablePaintRearms, 1);
 });
 
 test('the paint release keeps working when the first painted frame is no longer flight', () => {

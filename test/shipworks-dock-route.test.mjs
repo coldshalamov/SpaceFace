@@ -77,14 +77,21 @@ test('calculateSpatialSlotLayout keeps hardpoint cards outside the ship silhouet
   for (const card of leftCards) {
     assert.ok(card.visualCardRight <= cx - 100, `left card right (${card.visualCardRight}) must clear ship center (${cx - 100})`);
     assert.ok(card.visualCardLeft >= 12, 'left card must stay inside stage bounds');
-    assert.ok(card.leaderD.startsWith('M 0 17'), 'left leader line must connect from left reticle edge');
+    // 2026-09-23: leaders leave the rim of the mount bead (0,0 is the dot's centre) toward the card
+    // and end on the card's inner edge; the old contract measured from the corner of a 34 px
+    // reticle the callout no longer draws.
+    assert.match(card.leaderD, /^M -\d+ 0 /, 'left leader line must leave its mount bead toward the left');
+    const lEnd = card.leaderD.trim().split(/\s+/).slice(-2).map(Number);
+    assert.ok(Math.abs(lEnd[0] - (card.visualCardRight - card.x)) <= 8, 'left leader ends at the right edge of its card (within the gap)');
   }
 
   // Right cards must sit completely to the right of the center ship zone
   for (const card of rightCards) {
     assert.ok(card.visualCardLeft >= cx + 100, `right card left (${card.visualCardLeft}) must clear ship center (${cx + 100})`);
     assert.ok(card.visualCardRight <= stageWidth - 12, 'right card must stay inside stage bounds');
-    assert.ok(card.leaderD.startsWith('M 34 17'), 'right leader line must connect from right reticle edge');
+    assert.match(card.leaderD, /^M \d+ 0 /, 'right leader line must leave its mount bead toward the right');
+    const rEnd = card.leaderD.trim().split(/\s+/).slice(-2).map(Number);
+    assert.ok(Math.abs(rEnd[0] - (card.visualCardLeft - card.x)) <= 8, 'right leader ends at the left edge of its card (within the gap)');
   }
 
   // Cards on the same flank must not overlap vertically

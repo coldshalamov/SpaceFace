@@ -5,7 +5,7 @@
 import {readFile,writeFile,rename,unlink} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-import {MISSIONS_BASE_BLOB,patchMissionsSeams,SEAMS} from './lib/patch-missions-owner.mjs';
+import {MISSIONS_BASE_BLOBS,patchMissionsSeams,SEAMS} from './lib/patch-missions-owner.mjs';
 const args=process.argv.slice(2);
 const root=path.resolve(args.find((a)=>!a.startsWith('--')) || '.');
 const file=path.join(root,'src/systems/missions.js');
@@ -19,7 +19,7 @@ if(source.includes("import { priceProceduralOffer, offerMixForTier, economicRisk
   }
   console.log('All primary missions economy hook markers are present; no write performed. Run native owner tests to validate the full integration.');
 } else {
-  if(hash!==MISSIONS_BASE_BLOB) throw new Error(`Refusing missions owner drift: expected ${MISSIONS_BASE_BLOB}, got ${hash}. Port patches manually; do not overwrite parallel agent work.`);
+  if(!MISSIONS_BASE_BLOBS.has(hash)) throw new Error(`Refusing missions owner drift: expected one of ${[...MISSIONS_BASE_BLOBS].join(' / ')}, got ${hash}. Port patches manually; do not overwrite parallel agent work.`);
   const next=patchMissionsSeams(source);
   if(args.includes('--apply')) {
     const backup=file+'.economy-pulse.bak';

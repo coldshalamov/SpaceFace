@@ -100,6 +100,16 @@ export const autoTargetAssist = {
     this._unsubDock = this.bus && this.bus.on
       ? this.bus.on('dock:docked', () => this.reset())
       : null;
+    // INF-093: a save transition rebuilds entities with remapped ids. A stale autoAim lock or
+    // in-progress draw path would aim — and mark — the wrong ship after Continue, on routes
+    // where no mode detour disarms the mode first. Release at restore start and again on
+    // loaded (idempotent), mirroring bulletTime's lease-safety set.
+    this._unsubSaveRestoring = this.bus && this.bus.on
+      ? this.bus.on('save:restoring', () => this.reset())
+      : null;
+    this._unsubSaveLoaded = this.bus && this.bus.on
+      ? this.bus.on('save:loaded', () => this.reset())
+      : null;
 
     this._onKeyDown = (e) => {
       if (shouldNeutralizeFlightInput(this.state, modalInputActive())
@@ -167,6 +177,8 @@ export const autoTargetAssist = {
     }
     if (this._unsubMode) this._unsubMode();
     if (this._unsubDock) this._unsubDock();
+    if (this._unsubSaveRestoring) this._unsubSaveRestoring();
+    if (this._unsubSaveLoaded) this._unsubSaveLoaded();
     if (typeof removeEventListener === 'function') {
       if (this._onKeyDown) removeEventListener('keydown', this._onKeyDown, { capture: true });
       if (this._onKeyUp) removeEventListener('keyup', this._onKeyUp, { capture: true });
@@ -179,6 +191,8 @@ export const autoTargetAssist = {
     this._onPointerDown = null;
     this._unsubMode = null;
     this._unsubDock = null;
+    this._unsubSaveRestoring = null;
+    this._unsubSaveLoaded = null;
     this._gHeld = false;
   },
 

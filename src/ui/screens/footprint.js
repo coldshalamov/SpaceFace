@@ -23,6 +23,7 @@ import { mountDataState, settleDataState } from '../uiPrimitives.js';
 import { openGalaxyMap, MAP_FOCUS } from '../mapAuthority.js';
 import { resolveMapOpenTarget, applyMapOpenIntentToView } from '../galaxyMap.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
+import { entitySpanHtml, decorateEntityNode, entityLabel } from '../entityResolver.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
 const TITLE_BY_ID = new Map(TITLES.map((entry) => [entry.id, entry]));
@@ -212,9 +213,12 @@ export function footprintReadoutHtml(chain, node, state) {
   const outcome = escapeHtml(outcomeWord(chain.outcome) || 'witnessed');
   const reason = escapeHtml(why || (node ? 'No additional receipt text for this node.' : 'Pick a node on the board to read its receipt.'));
   const openState = escapeHtml(chainOpenReason(chain, state));
-  const sector = escapeHtml(asString(chain.sectorId) || 'unfiled');
+  const sectorId = asString(chain.sectorId);
+  const sector = sectorId
+    ? entitySpanHtml('sector:' + sectorId, escapeHtml(entityLabel('sector:' + sectorId) || sectorId))
+    : 'unfiled';
   const factionLine = faction
-    ? `Faction focus ${escapeHtml(shortFactionName(faction))}.`
+    ? `Faction focus ${entitySpanHtml('faction:' + faction, escapeHtml(shortFactionName(faction)))}.`
     : 'Faction focus unresolved.';
   return `
       <p class="k-sentence k-sentence--emph">${rootKind} · ${outcome}</p>
@@ -308,14 +312,27 @@ function chainStampText(chain) {
   return `${cycleText(t)} · tick ${chainStamp(chain)}`;
 }
 
-/** A hairline row that is read, not picked (`.k-row--static`). */
+/** A hairline row that is read, not picked (`.k-row--static`). `name`/`sub` may be a Node so a
+ *  noun inside them can carry an entity link instead of being flattened to text. */
 function staticRow(name, sub, num) {
   const row = el('li', 'k-row k-row--static');
   const body = el('div');
-  body.append(el('span', 'k-row__name', name));
-  if (sub) body.append(el('div', 'k-row__sub', sub));
+  const nameEl = el('span', 'k-row__name');
+  if (name && typeof name !== 'string') nameEl.append(name); else nameEl.textContent = String(name || '');
+  body.append(nameEl);
+  if (sub) {
+    const subEl = el('div', 'k-row__sub');
+    if (typeof sub !== 'string') subEl.append(sub); else subEl.textContent = sub;
+    body.append(subEl);
+  }
   row.append(body, el('span', 'k-row__num', num || ''));
   return row;
+}
+
+/** A span stamped as an entity door; unknown refs stay plain text (resolver discipline). */
+function entityNode(text, ref) {
+  const node = el('span', '', text);
+  return ref ? decorateEntityNode(node, ref) : node;
 }
 
 /** A caps heading and its static rows, appended to the record. */
@@ -1021,11 +1038,14 @@ export const footprintScreen = {
     list.setAttribute('aria-label', 'Chain record');
     if (!nodeRows.length) list.append(staticRow('No nodes on this chain.', '', ''));
     for (const { node: entry } of nodeRows) {
-      const faction = shortFactionName(asString(entry.factionId) || asString(entry.srcFaction));
+      const factionId = asString(entry.factionId) || asString(entry.srcFaction);
+      const faction = shortFactionName(factionId);
       const tier = asString(entry.newTier);
       const reason = repReasonLabel(entry.reason);
       const note = nodeWhy(entry) || asString(entry.text) || '';
-      const name = `${sentenceCase(asString(entry.k) || 'entry')} · ${faction}`;
+      const name = el('span');
+      name.append(`${sentenceCase(asString(entry.k) || 'entry')} · `);
+      name.append(entityNode(faction, factionId ? 'faction:' + factionId : null));
       const sub = [`${cycleText(entry.t)} · tick ${asInteger(entry.tick, 0)}`, reason, tier, note].filter(Boolean).join(' · ');
       list.append(staticRow(name, sub, deltaText(entry.delta)));
     }
@@ -1038,9 +1058,18 @@ export const footprintScreen = {
       : [['No ship-ledger prose on this run.', '', '']]);
 
     const incident = findChainIncident(chain);
+    const incidentStationId = incident && asString(incident.stationId);
+    const incidentSub = el('span');
+    if (incidentStationId) {
+      incidentSub.append('station ');
+      incidentSub.append(entityNode(
+        entityLabel('station:' + incidentStationId) || incidentStationId,
+        'station:' + incidentStationId,
+      ));
+    }
     appendRecordSection(record, 'Incident', [[
       incident ? (asString(incident.text) || asString(incident.cause) || 'Recorded') : 'No incident node on this chain.',
-      incident && asString(incident.stationId) ? `station ${incident.stationId}` : '',
+      incidentStationId ? incidentSub : '',
       '',
     ]]);
 
@@ -1049,9 +1078,17 @@ export const footprintScreen = {
       ? state.aceMemory[aceNode.aceId]
       : null;
     const aceData = aceNode ? aceById(aceNode.aceId) : null;
+    const aceName = el('span');
+    if (aceRecord) {
+      aceName.append(entityNode(
+        aceRecord.name || (aceData && aceData.name) || aceNode.aceId,
+        'captain:' + aceNode.aceId,
+      ));
+      aceName.append(` · ${aceRecord.crew || (aceData && aceData.crew) || 'Unknown crew'} · ${aceRecord.gimmickTag || (aceData && aceData.gimmickTag) || 'ace'}`);
+    }
     appendRecordSection(record, 'Ace record', aceRecord
       ? [[
-        `${aceRecord.name || (aceData && aceData.name) || aceNode.aceId} · ${aceRecord.crew || (aceData && aceData.crew) || 'Unknown crew'} · ${aceRecord.gimmickTag || (aceData && aceData.gimmickTag) || 'ace'}`,
+        aceName,
         `encountered ${aceRecord.encounterCount | 0} · fled ${aceRecord.fleeCount | 0} · flung ${aceRecord.flungCount | 0} · return tier ${aceRecord.returnTier | 0}${aceRecord.returnsBigger ? ' · returns bigger' : ''}`,
         '',
       ]]

@@ -1,20 +1,25 @@
 import { createSaveStage } from '../views/saveFrame.js';
 // Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
-// BENCH register: saves as engraved rows on a plate; the focused save's hull on the stage; kit
-// keys for Load / Save here / Delete / Export / Import / Back. Every slot and confirm stays
-// reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
+// A LEDGER OF LIVES (design/frontend/ONE_PHOTOGRAPH.md §9.3): the saves are ledger lines down the
+// left; the focused save is a page of its record (where, how rich, how long, when, and the hull's
+// scars, titles, rap sheet and grudge) standing beside the produced picture of its ship. An empty
+// slot is a designed blank, never an empty frame. Keys for Load / Save here / Delete / Export /
+// Import / Back; every slot and confirm stays reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
 // is read defensively from the save system's public API if present, else from localStorage
 // (manifest: SaveLoadScreen reads sf.save.index).
 
 import { livingHullScars } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
-import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSystem.js';
+import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, dpMark } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -95,13 +100,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '8px 12px',
     ...extra,
@@ -137,12 +136,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -178,14 +172,8 @@ function paintSlotRow(row, selected) {
   row.classList.toggle('is-selected', !!selected);
   if (selected && !forcedColorsActive()) {
     return pin(row, {
-      'border-style': 'solid',
-      'border-width': '8px 16px',
-      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
-      'border-image-slice': '8 16 8 16 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '8px 16px',
+      ...rowPins('8px 16px'),
       'box-shadow': 'none',
-      background: 'transparent',
       color: 'var(--fh-text)',
     });
   }
@@ -301,6 +289,25 @@ export function fmtLastFlown(savedAt, now = Date.now()) {
   return new Date(t).toLocaleDateString();
 }
 
+/** "22 Sep 2026, 15:41": the ledger's stamp for when a save was filed. */
+export function fmtSavedStamp(savedAt) {
+  const t = Date.parse(savedAt || '');
+  if (!t) return '';
+  const d = new Date(t);
+  const date = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return date + ', ' + time;
+}
+
+/** The sector the live run is in, by name. */
+function liveSectorName(state) {
+  const world = state && state.world;
+  const id = world && world.currentSectorId;
+  if (!id) return '';
+  const sector = world.sectors && world.sectors[id];
+  return (sector && sector.name) || titleCaseWords(String(id).replace(/^sector_/, ''));
+}
+
 /** The title's sub: "Four saves · last flown yesterday", "One save · last flown today", "No saves yet". */
 export function saveCountLine(slots, now = Date.now()) {
   const occupied = Object.keys(slots || {}).filter((slot) => isOccupied(slots[slot]));
@@ -379,23 +386,8 @@ function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
 
-function slotMetaScore(meta) {
-  const savedAtScore = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
-  if (savedAtScore) return savedAtScore;
-  const playtimeS = Number(meta && meta.playtimeS);
-  return Number.isFinite(playtimeS) ? playtimeS : 0;
-}
-
 export function latestOccupiedSlot(slots) {
-  let best = null;
-  let bestT = -1;
-  Object.keys(slots || {}).forEach((slot) => {
-    const meta = slots[slot];
-    if (!isOccupied(meta)) return;
-    const t = slotMetaScore(meta);
-    if (t >= bestT) { bestT = t; best = slot; }
-  });
-  return best;
+  return selectLatestOccupiedSlot(slots);
 }
 
 function exportSlotChoice(ctx, slots) {
@@ -407,9 +399,10 @@ function exportSlotChoice(ctx, slots) {
   return latestOccupiedSlot(slots);
 }
 
-function canSave(ctx) {
+export function canSave(ctx) {
   const state = ctx && ctx.state;
-  return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+  return !!(state && state.playerId != null && state.entities
+    && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
 }
 
 export function shouldOfferNewGameShortcut(meta, saveAllowed) {
@@ -637,13 +630,25 @@ export function savePortraitFieldsPresent(portrait) {
   });
 }
 
+function paintEntityLine(node, ref, text) {
+  if (!node) return;
+  node.textContent = text;
+  // A plain text holder (a headless model, a test stub) takes the words and nothing else.
+  if (!node.classList || typeof node.removeAttribute !== 'function') return;
+  node.classList.remove('sf-entity-link');
+  node.removeAttribute('data-entity');
+  node.removeAttribute('role');
+  node.removeAttribute('tabindex');
+  if (ref) decorateEntityNode(node, ref);
+}
+
 export function paintSavePortrait(nodes, portrait) {
   if (!nodes || !portrait) return portrait;
-  if (nodes.hull) nodes.hull.textContent = portrait.hull.line;
+  paintEntityLine(nodes.hull, portrait.hull && portrait.hull.id ? 'hull:' + portrait.hull.id : null, portrait.hull.line);
   if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
   if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
-  if (nodes.grudge) nodes.grudge.textContent = portrait.grudge.line;
+  paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
   return portrait;
 }
 
@@ -695,7 +700,7 @@ export const saveLoadScreen = {
 
     injectDeckplate();
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen');
+    rootEl.classList.add('k-screen', 'of-saveload');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', 'Load');
     installShell(rootEl);
@@ -716,17 +721,37 @@ export const saveLoadScreen = {
     rootEl.appendChild(hang);
 
     const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    stage.classList.add('sf-save-stage');
     pin(stage, { background: 'transparent', 'border-width': '0' });
     paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
+    caption.classList.add('sf-save-ledger');
     // The slot card's name is a content header (the header voice, set by the sheet), not a title.
     shipName.classList.add('fh-title', 'sf-slot-card-title');
     if (portrait) pin(portrait, { 'border-left': '0' });
     if (objective) objective.classList.add('sf-slot-detail');
     if (fine) fine.classList.add('sf-slot-context');
-    if (credits && credits.querySelector) {
-      const heroN = credits.querySelector('.k-hero__n');
-      if (heroN) heroN.classList.add('fh-heronum');
+    // The page of the record, top to bottom: which slot and when (fine), the hull, where the run
+    // was headed, the run's facts as readings, then the hull's own record as labelled lines.
+    caption.insertBefore(fine, shipName);
+    caption.insertBefore(objective, portrait);
+    const facts = el('dl', 'sf-ledger-facts');
+    facts.setAttribute('aria-label', 'Save facts');
+    caption.insertBefore(facts, portrait);
+    portrait.prepend(el('p', 'sf-ledger-head', 'Hull record'));
+    for (const [node, label] of [[scars, 'Scars'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
+      if (!node) continue;
+      const line = el('div', 'sf-ledger-line');
+      portrait.insertBefore(line, node);
+      line.appendChild(el('span', 'sf-ledger-k', label));
+      line.appendChild(node);
     }
+    // Credits read in the facts; the hero numeral block stays built but off the page.
+    if (credits && credits.parentNode) credits.remove();
+    // An empty slot at the title has no ship to show: its page stands beside the unlit save mark.
+    const vacant = el('div', 'sf-save-vacant');
+    vacant.setAttribute('aria-hidden', 'true');
+    vacant.innerHTML = dpMark('mark-save', { size: 'hero' });
+    stage.appendChild(vacant);
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl });
     // Loading a save hands the stage to the loading shell for the whole load, and this screen stays
@@ -786,7 +811,7 @@ export const saveLoadScreen = {
     refs = {
       root: rootEl, title, sub, hang, stage, foot, list: null,
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
-      objective, credits, fine, actions,
+      objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
@@ -830,7 +855,7 @@ export const saveLoadScreen = {
         id,
         name: slotLabel(id),
         sub: occupied
-          ? [meta.sectorName, shipLabel(meta.shipName), fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
+          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
           : summary.context,
         num: occupied ? fmtCredits(meta.credits) : '',
         selected: refs.selected === id,
@@ -853,12 +878,14 @@ export const saveLoadScreen = {
       const name = row.querySelector('.k-row__name');
       if (name) { name.classList.add('sf-slot-name'); if (!item.occupied) name.classList.add('k-38'); }
       const subLine = row.querySelector('.k-row__sub');
-      if (subLine) {
-        subLine.classList.add('sf-slot-sub');
+      if (subLine) subLine.classList.add('sf-slot-sub');
+      // The badges ride the name line as etched words (CURRENT, LATEST, RECOVERY, the format).
+      if (name && item.badges.length) {
+        const tags = el('span', 'sf-slot-badges');
         for (const badge of item.badges) {
-          subLine.appendChild(document.createTextNode(' · '));
-          subLine.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
+          tags.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
         }
+        name.insertAdjacentElement('afterend', tags);
       }
     }
     // The stage follows focus, not only a click: arrowing down the rows turns the portraits.
@@ -902,39 +929,74 @@ export const saveLoadScreen = {
         shipName: shipDisplayName(ctx, slotShipId(meta, saveData && saveData.player)),
       })
       : null;
+    // The ship on the stage: the save's own; on an empty slot mid-run, the ship Save here would
+    // file; on an empty slot at the title, none (the page stands beside the unlit save mark).
+    const livePlayer = ctx && ctx.state && ctx.state.player;
     const defId = occupied
       ? (portrait && portrait.hull && portrait.hull.id) || slotShipId(meta, saveData && saveData.player)
-      : NEW_GAME.shipId;
+      : (saveAllowed ? slotShipId(null, livePlayer) : null);
+    const liveShip = !occupied && saveAllowed ? activeOwnedShip(livePlayer) : null;
     const fittings = occupied
       ? (portrait && portrait.hull && portrait.hull.fittings) || (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null)
-      : NEW_GAME.fittedModules;
+      : (liveShip && Array.isArray(liveShip.fittings) ? liveShip.fittings : null);
+    refs.stage.classList.toggle('is-vacant', !defId);
+    refs.stage.dataset.slotState = occupied ? 'filed' : (saveAllowed ? 'open' : 'empty');
 
-    refs.shipName.textContent = occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : slotLabel(id);
+    // Which slot, and when: the etched line at the top of the page.
+    const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
+    const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
+    refs.fine.textContent = [
+      slotLabel(id) + ' save',
+      ...badges.filter((badge) => !/^v\d/.test(badge)),
+      occupied ? (flown ? 'flown ' + flown : 'filed') : 'empty',
+    ].join(' · ');
+
+    paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
+      occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
     if (occupied && portrait) {
       paintSavePortrait({
         scars: refs.scars, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
       }, portrait);
-      if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.objective);
+      if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.actions);
     } else if (refs.portrait.parentNode) {
       refs.portrait.remove();
     }
     const objective = occupied ? slotObjectiveSummary(meta) : '';
-    refs.objective.textContent = occupied ? (objective || 'Saved game') : 'Empty slot';
-    const creditsText = occupied ? fmtCredits(meta.credits) : '';
-    // The hero block leaves the caption on an empty slot (the kit's display:flex outranks [hidden]).
-    if (creditsText) {
-      refs.credits.querySelector('.k-hero__n').textContent = creditsText.replace(/ CR$/, '');
-      if (!refs.credits.parentNode) refs.caption.insertBefore(refs.credits, refs.fine);
-    } else if (refs.credits.parentNode) {
-      refs.credits.remove();
+    refs.objective.textContent = occupied
+      ? (objective || 'Saved game')
+      : saveAllowed
+        ? 'Nothing is filed here. Save here to file the run you are flying now.'
+        : 'Nothing is filed here yet. A new game starts a life you can save to this slot.';
+
+    // The run's facts as readings. An empty slot mid-run reads the live run (what Save here files);
+    // an empty slot at the title keeps the same lines, blank, so the page is designed, not missing.
+    const liveState = ctx && ctx.state;
+    const factRows = occupied
+      ? [
+        ['Credits', fmtCredits(meta.credits) || '—', 'figure'],
+        ['Sector', meta.sectorName || '—'],
+        ['Played', fmtPlaytime(meta.playtimeS).replace(/ played$/, '') || '—'],
+        ['Saved', fmtSavedStamp(meta.savedAt || meta.lastSavedAt) || '—'],
+      ]
+      : saveAllowed
+        ? [
+          ['Credits', fmtCredits(livePlayer && livePlayer.credits) || '—', 'figure'],
+          ['Ship', shipDisplayName(ctx, defId) || '—'],
+          ['Sector', liveSectorName(liveState) || '—'],
+          ['Played', fmtPlaytime(liveState && liveState.meta && liveState.meta.playtimeS).replace(/ played$/, '') || '—'],
+        ]
+        : [['Credits', '—', 'figure'], ['Sector', '—'], ['Played', '—'], ['Saved', '—']];
+    refs.facts.innerHTML = '';
+    for (const [label, value, kind] of factRows) {
+      const cell = el('div', 'sf-ledger-fact' + (kind ? ' sf-ledger-fact--' + kind : ''));
+      cell.appendChild(el('dt', '', label));
+      cell.appendChild(el('dd', value === '—' ? 'is-blank' : '', value));
+      refs.facts.appendChild(cell);
     }
-    refs.fine.textContent = occupied
-      ? [meta.sectorName, fmtSavedAt(meta), fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ')
-      : 'No save data yet';
 
     // The hull as it is in that save (def id + fittings from the envelope when the index has them).
-    const showKey = defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '');
-    if (this.hull && this.hull.hasMount() && refs.shownShipId !== showKey) {
+    const showKey = defId ? defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '') : null;
+    if (defId && this.hull && this.hull.hasMount() && refs.shownShipId !== showKey) {
       refs.shownShipId = showKey;
       this.hull.show(defId, { fittings: Array.isArray(fittings) ? fittings : null });
     }
@@ -959,9 +1021,10 @@ export const saveLoadScreen = {
     list.classList.add('of-pause');
     for (const button of list.querySelectorAll('.k-word')) {
       const action = button.dataset.action;
+      // Save here beside Load is a secondary key (a ghost field with the cut), never a tab word.
       const kind = action === 'delete' ? 'hazard'
         : button.classList.contains('k-word--primary') ? 'primary'
-        : 'legend';
+        : 'small';
       paintKey(button, kind);
     }
     refs.actions.appendChild(list);

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b478f93bf4193f0e8824edb47c755ffddf78c62220e5dcb37eeffcc30579f43b",
+  "contentHash": "cbe6b2c11a2a3b400634860c28959ba5fc85b558dcde2c2bee6a1926e22f87a5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -599,14 +599,14 @@
       "uri": "place_works_massline_core.glb"
     },
     "sourceManifest": {
-      "bytes": 77945,
-      "sha256": "b00c56519732bc88b0ee0511320de5b260ec50848310291c28bbb025aeec2958",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 1297396,
-    "sha256": "623785d70473a11fddd491083513f87f55ecdb7c7f7276b74c5bf46ca15b8edc",
+    "sha256": "8dafdb5b5f18b9e240fe518112c654e3624489407b982b8ae6764d1b773f4761",
     "uri": "render.glb"
   },
   "runtime": {
@@ -912,7 +912,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_massline_core.glb"
   },
-  "runtimeHash": "56df777bcfea10be6a98321da41b501121bf316986ba60e80949424dc6a43d83",
+  "runtimeHash": "2a38491e4e5091d7666c52cffdc6e33f71f006c2e4c7d9549e9bd98850a6dd68",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

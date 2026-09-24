@@ -57,6 +57,7 @@ import {
   SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
 import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
 export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
@@ -121,11 +122,11 @@ const BEAM_COOL_RATE = 55;
 export const BEAM_VENT_BAND_LO = 0.62;
 // Fraction of the pulse's own ore paid as the vent bonus at the very top of the band.
 export const BEAM_VENT_BONUS_MAX = 0.75;
-// Pegging the gauge locks the beam until heat falls back to this fraction, and the radiators dump
-// slower once saturated — that multiplier is the whole cost of overheating, on top of forfeiting
-// the pulse's stored vent bonus.
-export const BEAM_OVERHEAT_RESET = 0.15;
-export const BEAM_OVERHEAT_COOL_MULT = 0.6;
+// The gauge is a rhythm instrument, not a circuit breaker (owner ruling 2026-09-21: the old
+// peg-lockout — beam dead until heat fell to a reset fraction, radiators dumping at a penalized
+// rate, the pulse's stored bonus forfeited — shut the tool off and punished the player for
+// mining, so it is gone). Heat only ever sizes the release bonus: a pegged gauge clamps at full
+// and the beam keeps extracting at full rate, and cooling always runs at the tier's coolRate.
 // Heat telemetry is a continuous signal on a 50 Hz bus; quantize it so HUD/audio consumers get a
 // readable stream instead of one event per tick.
 const BEAM_HEAT_EMIT_STEP = 0.02;
@@ -190,10 +191,10 @@ export const mining = {
     let beam = null;
     if (player) {
       beam = this._beamRuntime(player);
-      // An overheated beam is locked out until the radiators catch up. Routing through _stopBeam
-      // (rather than a silent skip) means the release edge fires: the beam visibly cuts out, the
-      // target lock drops, and the vent evaluation runs and reports the forfeited bonus.
-      if (firing && beam && !beam.overheated) this._runPlayerBeam(player, beam, dt, state);
+      // Heat never gates the beam: a pegged gauge keeps extracting at full rate for as long as the
+      // player holds the tool on the rock. The old peg-lockout read heat as a circuit breaker and
+      // cut the beam off mid-hold, punishing exactly the sustained mining the tool exists for.
+      if (firing && beam) this._runPlayerBeam(player, beam, dt, state);
       else this._stopBeam();
     }
     // Heat runs after the beam so the vent evaluated on a release edge reads the heat the player
@@ -225,13 +226,18 @@ export const mining = {
       if (!(beam.coolRate > 0)) beam.coolRate = tier.coolRate || BEAM_COOL_RATE;
     }
     if (!Number.isFinite(beam.heat)) beam.heat = 0;
-    if (typeof beam.overheated !== 'boolean') beam.overheated = false;
     return beam;
   },
 
   _runPlayerBeam(player, beam, dt, state) {
     const target = this._acquireTarget(player, beam.range, state);
     if (!target) { this._stopBeam(); return; }
+
+    // F12: the same beam, aimed at a jettisoned cargo pod, cracks it open — it never reaches the
+    // verb resolver (pods are not mined), never consumes ammo, and never gains a lockout.
+    if (isBeamSplittableCargoPod(target)) {
+      return this._runCargoPodBeam(player, target, beam, dt, state);
+    }
 
     const desc = describeEntity(state, target);
     if (target.data && target.data.worldSiteId && target.data.worldSiteComponentId) {
@@ -478,15 +484,14 @@ export const mining = {
   // ---- heat / vent rhythm ---------------------------------------------------
   // The pulse-timing half of mining (grammar §9.5.1/§9.5.2). Heat climbs while the beam works, the
   // amber band opens near the top, and letting go inside it cashes part of the pulse as bonus ore.
-  // Hold past the peg and the beam locks out, the radiators dump slowly, and the bonus is gone.
-  // Perfect pulsing beats the old hold-forever rate; pegging the gauge every cycle is well below it.
+  // The gauge never gates the tool: holding through the peg keeps extracting at full rate, and
+  // cooling always runs at the tier's coolRate once the beam is off — heat only sizes the bonus.
   _updateBeamHeat(beam, working, dt, state) {
     if (!beam) return;
     const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
     const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
-    const wasOverheated = !!beam.overheated;
     let heat;
-    if (working && !wasOverheated) {
+    if (working) {
       const target = this._lockTargetId != null && state.entities && state.entities.get
         ? state.entities.get(this._lockTargetId)
         : null;
@@ -497,15 +502,14 @@ export const mining = {
         prev + (beam.heatRate > 0 ? beam.heatRate : BEAM_HEAT_RATE) * heatMult * dt,
       );
     } else {
-      const cool = (beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE)
-        * (wasOverheated ? BEAM_OVERHEAT_COOL_MULT : 1);
+      const cool = beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE;
       heat = Math.max(0, prev - cool * dt);
     }
     beam.heat = heat;
     const pct = heatMax > 0 ? heat / heatMax : 0;
     const prevPct = heatMax > 0 ? prev / heatMax : 0;
 
-    if (!wasOverheated && prevPct < BEAM_VENT_BAND_LO && pct >= BEAM_VENT_BAND_LO) {
+    if (prevPct < BEAM_VENT_BAND_LO && pct >= BEAM_VENT_BAND_LO) {
       this.bus.emit('mining:ventReady', {
         minerId: state.playerId, heat, heatMax, pct, bandLo: BEAM_VENT_BAND_LO,
       });
@@ -522,21 +526,6 @@ export const mining = {
       }
     }
 
-    if (!wasOverheated && heat >= heatMax) {
-      beam.overheated = true;
-      const forfeited = this._pulseOre;
-      this._pulseOre = 0; // pegging the gauge forfeits the stored bonus — that IS the mistake
-      this.bus.emit('mining:overheated', { minerId: state.playerId, heatMax, forfeitedOreU: forfeited });
-      // Same as the vent chime above: the warning sample now arrives through the orchestrator's
-      // mining.heat.overheated subscription (-> presentation.mining.heat_warning ->
-      // sfx_mining_heat_warning). Lane 5's handoff only named the vent chime, but this emit is the
-      // identical defect and was measured doubling the same way once the cue was wired.
-      this.bus.emit('alert', { key: 'mining-heat', sev: 'warn', text: 'BEAM OVERHEATED — VENTING', ttl: 2.4 });
-    } else if (wasOverheated && pct <= BEAM_OVERHEAT_RESET) {
-      beam.overheated = false;
-      this.bus.emit('mining:beamCooled', { minerId: state.playerId, heat, heatMax, pct });
-    }
-
     const quantized = Math.round(pct / BEAM_HEAT_EMIT_STEP) * BEAM_HEAT_EMIT_STEP;
     if (quantized !== this._heatEmitPct) {
       this._heatEmitPct = quantized;
@@ -545,8 +534,7 @@ export const mining = {
         heat,
         heatMax,
         pct,
-        band: beam.overheated ? 'overheated' : pct >= BEAM_VENT_BAND_LO ? 'vent' : pct > 0 ? 'warm' : 'cold',
-        overheated: !!beam.overheated,
+        band: pct >= BEAM_VENT_BAND_LO ? 'vent' : pct > 0 ? 'warm' : 'cold',
       });
     }
   },
@@ -563,7 +551,7 @@ export const mining = {
     this._pulseCommodityId = null;
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? this._beamRuntime(player) : null;
-    if (!beam || beam.overheated) return null;
+    if (!beam) return null;
     const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
     const pct = heatMax > 0 ? (Number.isFinite(beam.heat) ? beam.heat : 0) / heatMax : 0;
     if (pct < BEAM_VENT_BAND_LO) return null;
@@ -599,16 +587,18 @@ export const mining = {
     this._heatEmitPct = -1;
     if (!beam) return;
     beam.heat = 0;
-    beam.overheated = false;
   },
 
   _isValidMineableTarget(entity, ship, range, state = this.state) {
     if (!entity || !entity.alive) return false;
     // PQ-015: beam type-membership from the shared catalog (identical to the former asteroid|wreck
     // literal). The mined-out and range layers below are UNCHANGED.
-    if (!verbAcceptsType('mine', entity.type)) return false;
+    // F12: a jettisoned cargo pod is not `mine` membership — it is split, not mined — but the same
+    // beam acquires it, so pod eligibility joins the gate here instead of the catalog table.
+    if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)) return false;
     if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
+    if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
     return dist <= range + (entity.radius || 0);
@@ -641,9 +631,10 @@ export const mining = {
     this._diag.targetCandidates = mineables.length;
     for (const e of mineables) {
       if (!e.alive) continue;
-      if (!verbAcceptsType('mine', e.type)) continue; // PQ-015: shared beam membership (asteroid|wreck)
+      if (!verbAcceptsType('mine', e.type) && !isBeamSplittableCargoPod(e)) continue; // PQ-015: shared beam membership (asteroid|wreck); F12: cargo pods split, not mine
       if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
+      if (e.type === 'asteroid' && e.data && e.data.opticMaterial) continue;
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > range + (e.radius || 0)) continue;
@@ -666,6 +657,7 @@ export const mining = {
     const state = this.state;
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
+    if (ast.data && ast.data.opticMaterial) return 0;
     const d = ast.data || (ast.data = {});
     // Core-anchored site rocks are beam-locked (ASTEROID_SITES_BRIEF §2): a developed asteroid
     // moves cargo through its physical port, never back out through the mining laser. Destroying
@@ -787,7 +779,7 @@ export const mining = {
       d._oreCarry = 0;
     }
 
-    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d);
+    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d, destroyed);
 
     if (destroyed) {
       if (!d.isChunk) {
@@ -805,7 +797,9 @@ export const mining = {
 
   // Release `units` of ore: roll each unit's commodity from the asteroid's weighted table
   // (tier-gated, renormalized), then either credit cargo directly or eject magnet pickups.
-  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null) {
+  // `depleted` marks the rock's final burst: the shatter drops its remaining ore in a tight
+  // cluster at the corpse instead of scattering it across the sector for the player to chase.
+  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null, depleted = false) {
     const beam = miner ? this._beamRuntime(miner) : null;
     const direct = !!(beam && beam.directToCargo) && miner && miner.id === this.state.playerId;
     const rareOreChance = validRareOreChance(beam && beam.rareOreChance) && beam.rareOreChance > 0
@@ -834,7 +828,7 @@ export const mining = {
         if (ordinaryQty > 0) {
           const acceptedOrdinary = this._giveCargo(commodityId, ordinaryQty, miner.id);
           const rejectedOrdinary = Math.max(0, ordinaryQty - acceptedOrdinary);
-          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary);
+          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary, null, { tight: depleted });
         }
         let materializedRich = 0;
         if (richQty > 0) {
@@ -847,6 +841,7 @@ export const mining = {
               commodityId,
               rejectedRich,
               { ...richLotSource, richQty: rejectedRich },
+              { tight: depleted },
             );
           }
         }
@@ -854,9 +849,9 @@ export const mining = {
           asteroidData._richBonusPending = Math.max(0, asteroidData._richBonusPending - materializedRich);
         }
       } else {
-        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty);
+        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty, null, { tight: depleted });
         if (richQty > 0) {
-          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty });
+          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted });
           if (asteroidData && spawnedRich > 0) asteroidData._richBonusPending -= spawnedRich;
         }
       }
@@ -886,12 +881,17 @@ export const mining = {
   },
 
   // ---- pickups: spawn + magnet pull + collection ----------------------------
-  _spawnPickup(srcEnt, commodityId, amount, lotSource = null) {
+  _spawnPickup(srcEnt, commodityId, amount, lotSource = null, opts = null) {
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function' || !(amount > 0)) return 0;
     const rng = this.state.rng;
+    const tight = !!(opts && opts.tight);
     const ang = rng() * Math.PI * 2;
-    const r = (srcEnt.radius || 6) + 2 + rng() * 4;
-    const speed = 8 + rng() * 10;
+    // A depletion burst lands in a tight cluster inside the rock's own footprint so scooping the
+    // corpse is one pass, not a chase; ordinary per-tick yields keep the wider scatter ring.
+    const r = tight
+      ? (srcEnt.radius || 6) * 0.45 + rng() * 2.5
+      : (srcEnt.radius || 6) + 2 + rng() * 4;
+    const speed = tight ? 2 + rng() * 3.5 : 8 + rng() * 10;
     this.helpers.spawnEntity({
       type: 'pickup',
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
@@ -929,7 +929,15 @@ export const mining = {
       if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
       if (pickupData.anchored) continue;
-      if (state.player && state.player.tether && state.player.tether.targetId === e.id) continue;
+      // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
+      // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
+      // 960 t spindle into the Kestrel at spawn and pinned it there, shoving the ship ~80 WU and
+      // flinching the hull for seconds on every New Game.
+      if (pickupData.tetherPayload) continue;
+      // A facility-owned heist capsule is custody freight, not scrap: the magnet's velocity write
+      // corrupts the fork's fresh-custody sample, and a collection would consume a mission load.
+      if (pickupData.heistFacilityRole === 'cargo_capsule') continue;
+      if (isMasslineLatchedPickup(state, player, e)) continue;
       const embargoUntil = Number(pickupData.pickupEmbargoUntil);
       if (Number.isFinite(embargoUntil) && state.simTime < embargoUntil) {
         // Jettison reaction mass must establish real separation before the generic magnet/direct
@@ -1154,6 +1162,72 @@ export const mining = {
     return pool;
   },
 
+  // F12: held on a jettisoned cargo pod, the same starter beam accumulates split progress against
+  // the pod's hull rating; reaching it spills the pod's commodity as loose pickup bodies and
+  // consumes the pod exactly once. No ammo, no heat lock — the gauge law is unchanged.
+  _runCargoPodBeam(player, pod, beam, dt, state) {
+    if (!this._beaming || this._lockTargetId !== pod.id || this._activeVerb !== 'split') {
+      this._setLockTargetId(pod.id);
+      this._activeVerb = 'split';
+      this.bus.emit('mining:start', {
+        minerId: player.id,
+        targetId: pod.id,
+        verb: 'split',
+        position: { x: pod.pos.x, z: pod.pos.z }
+      });
+    }
+    this._beaming = true;
+
+    this._activeBeamLine = beamLineFor(player, pod);
+    if (this._activeBeamLine) this._activeBeamLine.verb = 'split';
+
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    const data = pod.data || (pod.data = {});
+    const work = Math.max(1, pod.hullMax || pod.hull || 100);
+    const prev = Number.isFinite(data.beamSplitProgress) ? data.beamSplitProgress : 0;
+    data.beamSplitProgress = prev + dps * dt;
+    if (data.beamSplitProgress >= work) this._splitCargoPod(player, pod);
+  },
+
+  _splitCargoPod(player, pod) {
+    if (!pod || !pod.alive) return;
+    const data = pod.data || {};
+    const spills = [];
+    const pool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : null;
+    if (pool) {
+      for (const [commodityId, qty] of Object.entries(pool)) {
+        const whole = Math.floor(Number(qty));
+        if (commodityId && whole > 0) spills.push([commodityId, whole]);
+      }
+    }
+    if (!spills.length && typeof data.commodityId === 'string' && data.commodityId) {
+      const whole = Math.floor(Number(data.amount));
+      if (whole > 0) spills.push([data.commodityId, whole]);
+    }
+    // Consume the pod before spawning so no observer can see the split source alive twice.
+    pod.alive = false;
+    data.salvagePool = {};
+    data.amount = 0;
+    for (const [commodityId, qty] of spills) {
+      let remaining = qty;
+      const bodies = Math.min(3, remaining);
+      for (let i = 0; i < bodies; i++) {
+        const share = i === bodies - 1 ? remaining : Math.ceil(remaining / (bodies - i));
+        if (!(share > 0)) continue;
+        this._spawnPickup(pod, commodityId, share, null, { tight: true });
+        remaining -= share;
+      }
+      this.bus.emit('mining:podSplit', {
+        minerId: player ? player.id : null,
+        podId: pod.id,
+        commodityId,
+        qty,
+        position: { x: pod.pos.x, z: pod.pos.z },
+      });
+    }
+    this._stopBeam();
+  },
+
   _drainWreck(player, wreck, dps, dt) {
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
@@ -1227,6 +1301,10 @@ export const mining = {
         wreckId: wreck.id,
         markerId: d.markerId || d.provenance && d.provenance.markerId || null,
         loot: got,
+        // Presentation needs the last pose: the mesh is removed the same tick alive flips, so the
+        // collapse burst below masks the disappearance instead of a pop while the player watches.
+        pos: { x: wreck.pos.x, z: wreck.pos.z },
+        radius: Number.isFinite(wreck.radius) ? wreck.radius : 8,
       });
       // Mark recovered so the intervention loop reports recovered=true (it reads e.data._salvaged).
       // _drainWreck only runs while the player's salvage beam is on the wreck, so reaching completion
@@ -1867,7 +1945,16 @@ function mineablesNearShip(state, ship, radius, out) {
     COMBAT_TABLE_FLAGS.WRECK,
   );
   const fieldHits = queryAsteroidField(state, ship.pos, radius, miningFieldScratch);
-  if (!wreckHits.length && !fieldHits.length) return nearby;
+  // F12: jettisoned cargo pods live on the payloads index, not `mineables` — the beam acquires
+  // them to split them, so they ride the same spatial gather without joining that index.
+  const podHits = queryNearbyEntities(
+    state,
+    ship.pos,
+    radius,
+    miningPodScratch,
+    (state.entityIndex && state.entityIndex.payloads) || state.entityList || [],
+  );
+  if (!wreckHits.length && !fieldHits.length && !podHits.length) return nearby;
   const merged = nearby === out ? nearby : nearby.slice();
   const seen = miningMineableSeen;
   seen.clear();
@@ -1887,11 +1974,26 @@ function mineablesNearShip(state, ship, radius, out) {
     seen.add(e.id);
     merged.push(e);
   }
+  for (let i = 0; i < podHits.length; i++) {
+    const e = podHits[i];
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    merged.push(e);
+  }
   return merged;
 }
 
 const miningCombatScratch = [];
+const miningPodScratch = [];
 const miningMineableSeen = new Set();
+
+// F12: only jettisoned cargo pods split under the beam — cut panels, custody capsules, and other
+// payload types keep their own verbs. Kept out of `mine` catalog membership on purpose: a pod is
+// cracked open, never mined.
+function isBeamSplittableCargoPod(entity) {
+  return !!(entity && entity.type === 'payload' && entity.data
+    && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
 
 function activeMineableTetherTarget(state, ship, range) {
   if (!state || !ship) return undefined;
@@ -1909,7 +2011,10 @@ function activeMineableTetherTarget(state, ship, range) {
   for (const id of ids) {
     const tableDist = combatTableRowDistance(table, id, ship.pos.x, ship.pos.z);
     const target = state.entities && state.entities.get && state.entities.get(id);
-    if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck')) continue;
+    if (!target || !target.alive
+      || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target))) continue;
+    // Optic lattices are not ore — same guard as _isValidMineableTarget / _acquireTarget.
+    if (target.type === 'asteroid' && target.data && target.data.opticMaterial) continue;
     const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
     const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
     return dist <= allowed ? target : null;
@@ -2192,4 +2297,59 @@ function maxFittedMagnetRange(player) {
     if (Number.isFinite(value) && value > max) max = value;
   }
   return max;
+}
+
+/**
+ * Returns true if an entity is latched/tethered to the player via Massline rope,
+ * preventing _updatePickups from magnet-vacuuming or scooping it into the hold.
+ * Covers state.player.tether, player.tether, combat.attachments authority,
+ * player.masslineTelemetry, and entity-level latched/tethered flags.
+ */
+export function isMasslineLatchedPickup(state, player, entity) {
+  if (!entity) return false;
+  const id = entity.id;
+  if (id == null) return false;
+  const idStr = String(id);
+
+  // 1. Direct flags on entity or entity.data
+  const d = entity.data;
+  if (d && (d.masslineLatched || d.latched || d.tethered || d.tetherPayload)) return true;
+  if (entity.masslineLatched || entity.latched || entity.tethered) return true;
+
+  // 2. state.player.tether mirror or player.tether entity field
+  const tether = (state && state.player && state.player.tether) || (player && player.tether);
+  if (tether && tether.active !== false) {
+    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) return true;
+    if (tether.attachedId != null && (tether.attachedId === id || String(tether.attachedId) === idStr)) return true;
+    if (tether.targetEntityId != null && (tether.targetEntityId === id || String(tether.targetEntityId) === idStr)) return true;
+  }
+
+  // 3. state.player.masslineTelemetry
+  const telem = state && state.player && state.player.masslineTelemetry;
+  if (telem && telem.targetId != null && (telem.targetId === id || String(telem.targetId) === idStr)) {
+    return true;
+  }
+
+  // 4. Combat attachments authority (SG-02 / SG-03)
+  const playerId = (player && player.id != null) ? player.id : (state && state.playerId);
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (attachments && typeof attachments === 'object') {
+    const pStr = playerId != null ? String(playerId) : null;
+    for (const att of Object.values(attachments)) {
+      if (!att || att.state === 'broken' || att.state === 'detached' || att.state === 'pruned') continue;
+      const isPlayerAttachment = pStr != null && (
+        (att.ownerId != null && String(att.ownerId) === pStr) ||
+        (att.sourceId != null && String(att.sourceId) === pStr) ||
+        (att.bodyAId != null && String(att.bodyAId) === pStr)
+      );
+      if (isPlayerAttachment) {
+        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)) return true;
+        if (att.attachedId != null && (att.attachedId === id || String(att.attachedId) === idStr)) return true;
+        if (att.bodyBId != null && (att.bodyBId === id || String(att.bodyBId) === idStr)) return true;
+        if (att.targetEntityId != null && (att.targetEntityId === id || String(att.targetEntityId) === idStr)) return true;
+      }
+    }
+  }
+
+  return false;
 }

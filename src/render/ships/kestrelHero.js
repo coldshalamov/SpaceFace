@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { attachDamageStateDriver } from './kestrelDamage.js';
 import { attachLodState } from '../lod.js';
+import { presentationSimTime } from '../presentationSimClock.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 import { installIllustratedSurface } from '../illustratedSurface.js';
 
@@ -514,20 +515,17 @@ export function buildKestrelHero(entity) {
   addBorrowedTimeDecal(hull);
   addFadedSharkTeeth(hull);
 
-  // Projected-screen-size LOD (spec §12.4). The decals are the most expensive per-ship detail (canvas
-  // textures) and the first thing to drop at distance — they are storytelling flourishes, not readable
-  // from far away. Collect the decal planes now (post-creation, pre-merge) so the LOD reaction can hide
-  // them at LOD1+ while keeping the silhouette (spec §12.4: "Preserve nose, engine spacing ... across
-  // transitions"). The selector itself lives in render/lod.js and is driven by the renderer.
+  // Projected-screen-size LOD (spec §12.4). Decals stay through the readable LOD1 band
+  // (lod.js: "small but readable contacts", about 120px). They drop only at LOD2, the
+  // distant speck. Hiding them at the LOD1 cut took the marks off while they still read.
   const decals = [];
   hull.traverse((o) => { if (o.name && o.name.startsWith('Kestrel_Decal_')) decals.push(o); });
+  root.userData.detailDecals = decals;
   let lastLod = 'lod0';
   root.userData.updateLod = function updateLod(level) {
     if (level === lastLod) return;
     lastLod = level;
-    // LOD0: everything. LOD1/LOD2: drop decals (they're illegible <300px and cost a texture each).
-    // Silhouette, sockets, damage state, and drive are all preserved — only flourishes drop.
-    const showDecals = level === 'lod0';
+    const showDecals = level !== 'lod2';
     for (const d of decals) d.visible = showDecals;
   };
   attachLodState(root);
@@ -545,10 +543,13 @@ export function buildKestrelHero(entity) {
   // Micro-motion is restrained and state-linked. The drive responds to actual speed; no ornamental
   // animation runs merely to announce that the asset has animation.
   fan.frustumCulled = false;
-  fan.onBeforeRender = () => {
-    const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
-    const vx = entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
-    const vz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+  // The renderer calls this once per presented frame. The argument is the wall clock, which
+  // keeps spinning through pause, so the fan reads the sim stamp instead.
+  root.userData.updateDriveState = function updateDriveState(liveEntity) {
+    const now = presentationSimTime();
+    const src = liveEntity || entity;
+    const vx = src && src.vel && Number.isFinite(src.vel.x) ? src.vel.x : 0;
+    const vz = src && src.vel && Number.isFinite(src.vel.z) ? src.vel.z : 0;
     const speed = Math.hypot(vx, vz);
     const drive = Math.min(1, speed / 135);
     // The parked station preview has zero velocity. At rest the drive is machinery, not an idle

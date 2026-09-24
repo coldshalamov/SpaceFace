@@ -119,7 +119,11 @@ export const ENEMY_TYPES = [
     aiArchetype: 'pirate', levelRange: [4, 10],
     combatDoctrineId: 'interceptor_flyby',
     hull: 180, armor: 45, armorFlat: 2, shield: 80, shieldRegen: 12, shieldRegenCapable: true, cap: 200, capRegen: 26,
-    maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 64,
+    // INF-026: throwable interceptor. Was mass 64 — nearly 3x its ship_hornet hull (24), so the
+    // reference concussion shove never broke the helm-loss floor (u < 0.14, T = 0) and a throw-floor
+    // swing exceeded the production line's break budget: it could never be ammunition. Now hull 24
+    // + 8 for the permanent autocannon M — the lancer standard (wasp 16 + 8 railgun M = 24).
+    maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 32,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_plasma_cannon_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     behavior: 'mid-tier pirate elite, frontier ambush packs',
@@ -391,6 +395,8 @@ export const ENEMY_TYPES = [
   // Bastion body and weapon/kill owners. Support comes from the wave's six budgeted
   // swarmers, never an unbudgeted reinforcement hook. Directional reflective armor
   // and external rear machinery require the shared surface/subsystem owners.
+  // INF-025 implements the prow/stern split as authored directionalArmor on the shared
+  // damage router; stern hits additionally fall on the standard aft drive-subsystem volume.
   {
     id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
@@ -404,11 +410,16 @@ export const ENEMY_TYPES = [
       { id: 'wpn_pulse_laser_s', dmgOverride: 6, rofOverride: 2.4 },
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2400 },
+    // INF-025: the positioning problem. The mirror prow sheds head-on fire (frontMult) while the
+    // exposed stern machinery takes bonus damage (rearMult), so circling or baiting a pass and
+    // shooting the stern changes the outcome; face-tanking does not. Routed by the shared damage
+    // router off hit geometry; rear hits additionally strike the aft drive subsystem volume.
+    directionalArmor: { frontArcDeg: 150, frontMult: 0.25, rearArcDeg: 150, rearMult: 1.6 },
     telegraph: {
       bark: 'warn', cue: 'engine_flare',
-      line: 'Foreman committing. Cross its charge and work the slow turn.',
+      line: 'Foreman committing. Mirror prow sheds head-on fire — cross its charge and work the stern.',
     },
-    counterHint: 'Cross its committed pass; shoot through the slow turn or throw a swarmer into the hull.',
+    counterHint: 'Cross its committed pass and shoot the stern through the slow turn; head-on fire sheds off the prow. Or throw a swarmer into the hull.',
     behavior: 'heavy committed ram; slow recovery turn, concussion pressure and six wave-owned escorts',
     // Zero pay is load-bearing: the survival boundary test pins boss kills at zero campaign
     // economy, and combat.js pays d.bountyCr/d.loot without a run-ownership gate. Open-route

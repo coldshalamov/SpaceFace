@@ -13,6 +13,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { swarmDoctrineStamp } from '../data/swarmMode.js';
 
 /** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
 export const SURVIVAL_SPAWN_DISTANCE = 260;
@@ -165,6 +166,11 @@ export function materializeWaveBatch(ctx, request) {
           }
         }
       }
+      const doctrine = swarmDoctrineStamp(req.enemyId, {
+        swarm: req.swarm === true,
+        champion: req.champion === true,
+      });
+      if (doctrine) spec.data.ai.combatDoctrineId = doctrine;
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
       const spawned = helpers.spawnEntity(spec);

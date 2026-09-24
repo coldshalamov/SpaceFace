@@ -1,0 +1,1902 @@
+{
+  "schema": "spaceface.vmDrop.everydayKitStills.v1",
+  "job": "everyday-kit-stills",
+  "ok": true,
+  "generatedAt": "2026-09-22T03:59:07.252029+00:00",
+  "blender": "4.5.14 LTS",
+  "sourceRoot": "assets/incubator/everyday_space_kit/source",
+  "camera": "spaceface_chase_camera (tilt 60, FOV 50, heading 0/90)",
+  "distanceRule": "clamp(144.0 * sizeMax/16.0, 22.0, 420.0)",
+  "pieceCount": 46,
+  "okCount": 46,
+  "failCount": 0,
+  "failures": [],
+  "pieces": [
+    {
+      "id": "cargo_pod_standard",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/cargo_pod_standard.glb",
+      "glbSha256": "44089d5f2aed6141233bf124e7d145817f1e99effbf2a8cf7623a7da121744a2",
+      "family": "cargo",
+      "role": "Berth-standard 6x3x3 freight pod \u2014 the unit of this economy",
+      "catalogSizeM": [
+        6.12,
+        3.4,
+        3.23
+      ],
+      "catalogTriangles": 168,
+      "measuredSizeM": [
+        6.12,
+        3.4,
+        3.23
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        0.015
+      ],
+      "sizeMaxM": 6.12,
+      "distance": 55.08,
+      "triangles": 168,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard/play_chase.png",
+          "sha256": "dc1483c4d0f605829d6086b5cefc2aa3dde3ad01c23c361776e10362780bbd40",
+          "bytes": 1422210
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard/play_chase_abeam.png",
+          "sha256": "4338f5b835305db82217b5c38bfbf7c78b58fd6e14d73231b4a5dc8054ccbd4f",
+          "bytes": 1422834
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard"
+    },
+    {
+      "id": "cargo_pod_hazmat",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/cargo_pod_hazmat.glb",
+      "glbSha256": "ec236cd614cb04e1fe3d113bce18ba3c0668edce5a1ed6c887229004e5df2951",
+      "family": "cargo",
+      "role": "volatile-cargo pod: white shell, red banding, relief domes",
+      "catalogSizeM": [
+        6.12,
+        3.4,
+        3.55
+      ],
+      "catalogTriangles": 404,
+      "measuredSizeM": [
+        6.12,
+        3.4,
+        3.55
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        0.175
+      ],
+      "sizeMaxM": 6.12,
+      "distance": 55.08,
+      "triangles": 404,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_hazmat/play_chase.png",
+          "sha256": "b4d865cf9f7d72c5f0aa11a25eb1375c258de8de7a968216223faf90f1152ff8",
+          "bytes": 1423923
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_hazmat/play_chase_abeam.png",
+          "sha256": "778a3826bc60cebe58ecf7ebc10e5637cf81d643945f50a92abef113d91c54d5",
+          "bytes": 1425027
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_hazmat"
+    },
+    {
+      "id": "cargo_pod_standard_breached",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/cargo_pod_standard_breached.glb",
+      "glbSha256": "992af8fc56dba3d3900817312d655b72f5a366854f37fbfdd54444fe4d388c10",
+      "family": "cargo",
+      "role": "breached pod: torn flank, spilled crates, no lights",
+      "catalogSizeM": [
+        6.12,
+        6.436,
+        3.409
+      ],
+      "catalogTriangles": 264,
+      "measuredSizeM": [
+        6.12,
+        6.4357,
+        3.4087
+      ],
+      "measuredCenterM": [
+        0.0,
+        -1.5179,
+        -0.0744
+      ],
+      "sizeMaxM": 6.4357,
+      "distance": 57.92,
+      "triangles": 264,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard_breached/play_chase.png",
+          "sha256": "7b75034db84a66c8194393888d59f0c783f8243cf6fc15efcaab983205d41a09",
+          "bytes": 1423884
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard_breached/play_chase_abeam.png",
+          "sha256": "a85cd2e64ba05d32c71039f84d244f43771e4395c1beca175612414e1313aff3",
+          "bytes": 1425950
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/cargo_pod_standard_breached"
+    },
+    {
+      "id": "ore_bulk_container",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/ore_bulk_container.glb",
+      "glbSha256": "258c3d1139887c480b4008aa878b6a928d210c33452142c211f8752b0e8c0130",
+      "family": "cargo",
+      "role": "open-top bulk ore box, load proud of the rim (show your mass)",
+      "catalogSizeM": [
+        10.2,
+        5.275,
+        4.76
+      ],
+      "catalogTriangles": 720,
+      "measuredSizeM": [
+        10.2,
+        5.275,
+        4.76
+      ],
+      "measuredCenterM": [
+        0.0,
+        -0.0625,
+        0.355
+      ],
+      "sizeMaxM": 10.2,
+      "distance": 91.8,
+      "triangles": 720,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/ore_bulk_container/play_chase.png",
+          "sha256": "487b6670b2a3cf1fd069143c7c0db2aac8057f95b8a31a460ab9c8b244d1e4ed",
+          "bytes": 1424938
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/ore_bulk_container/play_chase_abeam.png",
+          "sha256": "e3cbe3a862c560ba10b08e9ac507c7a9848b8150352d0fdf889cf4e7099e20fe",
+          "bytes": 1426027
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/ore_bulk_container"
+    },
+    {
+      "id": "container_rack",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/container_rack.glb",
+      "glbSha256": "07433358ac38ffd77d424e6a1bfa9a68092483ffa21e1030e2c0616fe11e4339",
+      "family": "cargo",
+      "role": "six-bay pod rack; the lit green bay says \"space available\"",
+      "catalogSizeM": [
+        13.539,
+        8.36,
+        11.7
+      ],
+      "catalogTriangles": 6600,
+      "measuredSizeM": [
+        13.5386,
+        8.36,
+        11.7
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        1.78
+      ],
+      "sizeMaxM": 13.5386,
+      "distance": 121.85,
+      "triangles": 6600,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/container_rack/play_chase.png",
+          "sha256": "1739d6f23411f1d04263fe54b827caab3163c17201404241116228f635d3107f",
+          "bytes": 1433189
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/container_rack/play_chase_abeam.png",
+          "sha256": "d68f2666c14fe5de674755b9607ab1172006df84a5a402940f9a2c7cc3a9eebf",
+          "bytes": 1426848
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/container_rack"
+    },
+    {
+      "id": "container_rack_abandoned",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/container_rack_abandoned.glb",
+      "glbSha256": "3868d64ecf83f8bb5d77884b3788035d00130ebba420a19c1286300f66de5f73",
+      "family": "cargo",
+      "role": "stripped dead rack: cargo gone, lamps gone, one leg buckled",
+      "catalogSizeM": [
+        14.064,
+        9.576,
+        11.482
+      ],
+      "catalogTriangles": 5144,
+      "measuredSizeM": [
+        14.0642,
+        9.5755,
+        11.4824
+      ],
+      "measuredCenterM": [
+        -0.2628,
+        0.6078,
+        1.5288
+      ],
+      "sizeMaxM": 14.0642,
+      "distance": 126.58,
+      "triangles": 5144,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/container_rack_abandoned/play_chase.png",
+          "sha256": "7b5b74ee0a601de2a4600baa9d3a6931de8890d6cf5f7ae9c588da618ee59ebf",
+          "bytes": 1431017
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/container_rack_abandoned/play_chase_abeam.png",
+          "sha256": "18fa9e6d9629680503fd0235e8e634513fce28979d645b50293b8476c879804a",
+          "bytes": 1422490
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/container_rack_abandoned"
+    },
+    {
+      "id": "transfer_arm",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/transfer_arm.glb",
+      "glbSha256": "5d1e207f42ffa9890edcbd84b11d334f88fc3762dcdc84ea2ef51a8c15436442",
+      "family": "cargo",
+      "role": "slew-ring cargo crane, two-segment boom, four-finger grapple",
+      "catalogSizeM": [
+        20.3,
+        4.6,
+        10.45
+      ],
+      "catalogTriangles": 1128,
+      "measuredSizeM": [
+        20.3,
+        4.6,
+        10.45
+      ],
+      "measuredCenterM": [
+        6.25,
+        0.0,
+        5.175
+      ],
+      "sizeMaxM": 20.3,
+      "distance": 182.7,
+      "triangles": 1128,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/transfer_arm/play_chase.png",
+          "sha256": "6c821960437f54c0b311955120c22c8d860da3eec0adc14eff4f3726de7204f6",
+          "bytes": 1422348
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/transfer_arm/play_chase_abeam.png",
+          "sha256": "cb09fe9bbdc7b6f5209ecccfe9f15fdd45120e29d594227dc25881f4a83cbeda",
+          "bytes": 1421487
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/transfer_arm"
+    },
+    {
+      "id": "tanker_coupling",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/tanker_coupling.glb",
+      "glbSha256": "4a757f274d98748389aee75b2e9b27a3e4345a338674a17f1c239c41d31bc321",
+      "family": "cargo",
+      "role": "volatile transfer manifold: risers, insulated hose boom, drip shield",
+      "catalogSizeM": [
+        12.2,
+        6.2,
+        7.617
+      ],
+      "catalogTriangles": 712,
+      "measuredSizeM": [
+        12.2,
+        6.2,
+        7.6168
+      ],
+      "measuredCenterM": [
+        2.0,
+        0.1,
+        3.8084
+      ],
+      "sizeMaxM": 12.2,
+      "distance": 109.8,
+      "triangles": 712,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/tanker_coupling/play_chase.png",
+          "sha256": "8b56092addadac8b1346e08f58f317b4713d4d59d90b95746ac1c35af7964ad7",
+          "bytes": 1423838
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/tanker_coupling/play_chase_abeam.png",
+          "sha256": "073814046b3e4e2da67a70b06813ebc776dd867925769fea5c68793696a2cd46",
+          "bytes": 1424536
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/tanker_coupling"
+    },
+    {
+      "id": "freight_platform",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/freight_platform.glb",
+      "glbSha256": "044ee39801e304af5993a4efce1392da48cbe766019ad3dd9b16d5ee35291c28",
+      "family": "cargo",
+      "role": "open freight deck: rack rows, crew cab, flood masts, handed approach",
+      "catalogSizeM": [
+        26.4,
+        14.45,
+        9.985
+      ],
+      "catalogTriangles": 4152,
+      "measuredSizeM": [
+        26.4,
+        14.45,
+        9.9846
+      ],
+      "measuredCenterM": [
+        0.0,
+        -0.025,
+        4.1423
+      ],
+      "sizeMaxM": 26.4,
+      "distance": 237.6,
+      "triangles": 4152,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/freight_platform/play_chase.png",
+          "sha256": "f8e83b451c4943975ef2324bc278e43340d38391ce78bec948b1726dcdec27b0",
+          "bytes": 1424595
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/freight_platform/play_chase_abeam.png",
+          "sha256": "068049f241d3932cf449df4ae78e79637cd552c7306906c30222e48b18eaccb9",
+          "bytes": 1424926
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/freight_platform"
+    },
+    {
+      "id": "drill_platform",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/drill_platform.glb",
+      "glbSha256": "afdc5297fddd7fa283a70d5dfd6f9d99f00983441835b3d2a87559e995eb0c3e",
+      "family": "mining",
+      "role": "anchored seam drill: four outrigger anchors, ring deck, lit bit",
+      "catalogSizeM": [
+        14.7,
+        14.7,
+        11.74
+      ],
+      "catalogTriangles": 2008,
+      "measuredSizeM": [
+        14.7,
+        14.7,
+        11.74
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        -1.63
+      ],
+      "sizeMaxM": 14.7,
+      "distance": 132.3,
+      "triangles": 2008,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform/play_chase.png",
+          "sha256": "c8a2979b3731f52f0ab70ae7a65599b9525ac6d3ddc16b728b81558f13728f0e",
+          "bytes": 1429097
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform/play_chase_abeam.png",
+          "sha256": "b5749e38176446a5df79cd7303618bff5e8f969a430426cc3994b5082bebf60e",
+          "bytes": 1428756
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform"
+    },
+    {
+      "id": "drill_platform_cold",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/drill_platform_cold.glb",
+      "glbSha256": "0adbd335c5077b73c9daf1ea241b93491515bad3a6aa689770ef813d19288424",
+      "family": "mining",
+      "role": "cold drill: bit stowed and clamped on deck, hatch dogged, no light",
+      "catalogSizeM": [
+        14.6,
+        14.6,
+        10.145
+      ],
+      "catalogTriangles": 1688,
+      "measuredSizeM": [
+        14.6,
+        14.6,
+        10.145
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        -1.1275
+      ],
+      "sizeMaxM": 14.6,
+      "distance": 131.4,
+      "triangles": 1688,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform_cold/play_chase.png",
+          "sha256": "169c22e94ee395a7a8457f25cc6d0d9fd5613aa705e83a63f86a2becb001a1f3",
+          "bytes": 1427589
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform_cold/play_chase_abeam.png",
+          "sha256": "709690e2e81754c14ab412a3e1817f57610e9e1950eeb16756d535f13018c8e7",
+          "bytes": 1427776
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/drill_platform_cold"
+    },
+    {
+      "id": "crusher_module",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/crusher_module.glb",
+      "glbSha256": "6f2a31ac721155c675ee5cffd897ff2a3cf38de3b4fa8ca9388aa04d6d494544",
+      "family": "mining",
+      "role": "jaw crusher: funnel hopper, armored cheeks, scorched discharge chute",
+      "catalogSizeM": [
+        11.954,
+        10.889,
+        9.25
+      ],
+      "catalogTriangles": 628,
+      "measuredSizeM": [
+        11.9544,
+        10.8894,
+        9.2504
+      ],
+      "measuredCenterM": [
+        -0.5325,
+        0.0,
+        1.9301
+      ],
+      "sizeMaxM": 11.9544,
+      "distance": 107.59,
+      "triangles": 628,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/crusher_module/play_chase.png",
+          "sha256": "a8049b7441c57d8fcc3c8e238d62bdfead47be8fc8abafc0e90d91296343dba7",
+          "bytes": 1424179
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/crusher_module/play_chase_abeam.png",
+          "sha256": "a2a17b6bbf4b7a06e0843bf6c1ee232c27acd0b28d9652ba8fc4be7facf59b87",
+          "bytes": 1424028
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/crusher_module"
+    },
+    {
+      "id": "ore_sorter",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/ore_sorter.glb",
+      "glbSha256": "478a4a066d241f73180a2cb60d59dff6f005b12a14f2919b50188475d9332e17",
+      "family": "mining",
+      "role": "inclined grizzly screen over three grade hoppers with tell-tale lamps",
+      "catalogSizeM": [
+        9.698,
+        4.5,
+        7.397
+      ],
+      "catalogTriangles": 1460,
+      "measuredSizeM": [
+        9.6982,
+        4.5,
+        7.3973
+      ],
+      "measuredCenterM": [
+        0.0942,
+        0.0,
+        1.6986
+      ],
+      "sizeMaxM": 9.6982,
+      "distance": 87.28,
+      "triangles": 1460,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/ore_sorter/play_chase.png",
+          "sha256": "a625e5920bfc4bda2e536a41fe63f06e1981936d59fd64951dd17b96eced9965",
+          "bytes": 1427417
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/ore_sorter/play_chase_abeam.png",
+          "sha256": "03fc2b4aef2076b820f5f10671b6d85e0e4d90802ea31d275f6302692357ee21",
+          "bytes": 1422696
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/ore_sorter"
+    },
+    {
+      "id": "slurry_tank",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/slurry_tank.glb",
+      "glbSha256": "d4a11c9e473fba823f6dfb4e8bcd483d267b2b3809d5fb6bd87d2e39c6e7afd8",
+      "family": "mining",
+      "role": "three formed spheres in a hazard-ended cradle + insulated downpipe",
+      "catalogSizeM": [
+        11.19,
+        4.504,
+        5.76
+      ],
+      "catalogTriangles": 2368,
+      "measuredSizeM": [
+        11.19,
+        4.5039,
+        5.76
+      ],
+      "measuredCenterM": [
+        0.455,
+        0.0,
+        0.02
+      ],
+      "sizeMaxM": 11.19,
+      "distance": 100.71,
+      "triangles": 2368,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/slurry_tank/play_chase.png",
+          "sha256": "e65405ee3421b3b77ef543866fd598681a208d31702c8c709f13d9ea878a044d",
+          "bytes": 1425746
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/slurry_tank/play_chase_abeam.png",
+          "sha256": "fbe9a8e5f59c7d0a980d94eaf131a25938737f9911adf77ba43dd30fbf12ea49",
+          "bytes": 1425873
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/slurry_tank"
+    },
+    {
+      "id": "radiator_bank",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/radiator_bank.glb",
+      "glbSha256": "b98f6450a24a211d704ee928346d29502ef37953938a32e754cbe1d3da043106",
+      "family": "mining",
+      "role": "six-fin heat rejection bank, cores glowing furnace-amber",
+      "catalogSizeM": [
+        17.0,
+        1.6,
+        7.05
+      ],
+      "catalogTriangles": 880,
+      "measuredSizeM": [
+        17.0,
+        1.6,
+        7.05
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        2.475
+      ],
+      "sizeMaxM": 17.0,
+      "distance": 153.0,
+      "triangles": 880,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/radiator_bank/play_chase.png",
+          "sha256": "def9fa407ae4450126f83a65f9d2f09e9c94a7b1df89182627f1245028b3106a",
+          "bytes": 1421275
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/radiator_bank/play_chase_abeam.png",
+          "sha256": "fc9086a1ca0988be3a2346eb25d6b1f66289e31a2ac453a07443ad5497c2d844",
+          "bytes": 1420698
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/radiator_bank"
+    },
+    {
+      "id": "conveyor_truss",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/conveyor_truss.glb",
+      "glbSha256": "e02f6c1365ac300bb7a0edd90c558b25697345343c3b7e02d2410eee07916106",
+      "family": "mining",
+      "role": "24 m span-gauge bucket conveyor with drive house, part-loaded",
+      "catalogSizeM": [
+        27.0,
+        4.6,
+        6.83
+      ],
+      "catalogTriangles": 2824,
+      "measuredSizeM": [
+        27.0,
+        4.6,
+        6.8301
+      ],
+      "measuredCenterM": [
+        0.6,
+        -0.8,
+        -1.015
+      ],
+      "sizeMaxM": 27.0,
+      "distance": 243.0,
+      "triangles": 2824,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/conveyor_truss/play_chase.png",
+          "sha256": "5a1b76eb7630dbd45f22ea0307d609045aa3a30815472b0a0fc2216ab0f65b51",
+          "bytes": 1420840
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/conveyor_truss/play_chase_abeam.png",
+          "sha256": "7ac8d929b22e7cd08d38de394bfb37e657d2a90bc098fc27e797561b8523718a",
+          "bytes": 1422176
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/conveyor_truss"
+    },
+    {
+      "id": "extraction_mast",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/extraction_mast.glb",
+      "glbSha256": "42e3b1de45126dfffe4a2b99468de6016fd5e75de027b0743e52701668888852",
+      "family": "mining",
+      "role": "yard mast in extraction fit: three amber floods + claim strobe",
+      "catalogSizeM": [
+        5.94,
+        4.48,
+        13.091
+      ],
+      "catalogTriangles": 728,
+      "measuredSizeM": [
+        5.94,
+        4.4803,
+        13.0906
+      ],
+      "measuredCenterM": [
+        1.98,
+        1.1557,
+        6.5147
+      ],
+      "sizeMaxM": 13.0906,
+      "distance": 117.82,
+      "triangles": 728,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/extraction_mast/play_chase.png",
+          "sha256": "d50aba748b03f17538794191ddaf86dd18493957ba14a566006262eb1a235a93",
+          "bytes": 1421937
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/extraction_mast/play_chase_abeam.png",
+          "sha256": "d1e8dc05b080e3acc56f7e1663c1bbcab7d8da27ab3137112daad8addd473755",
+          "bytes": 1421093
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/extraction_mast"
+    },
+    {
+      "id": "maintenance_gantry",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/maintenance_gantry.glb",
+      "glbSha256": "f4c48993ba7119b6a5a08c9a7462aaba2ae9164a6a45834276ab05979eb7fdbb",
+      "family": "service",
+      "role": "portal gantry a small hull parks under: trolley hoist + tool booms",
+      "catalogSizeM": [
+        4.0,
+        20.1,
+        10.711
+      ],
+      "catalogTriangles": 1716,
+      "measuredSizeM": [
+        4.0,
+        20.1,
+        10.7112
+      ],
+      "measuredCenterM": [
+        0.45,
+        0.0,
+        5.3144
+      ],
+      "sizeMaxM": 20.1,
+      "distance": 180.9,
+      "triangles": 1716,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/maintenance_gantry/play_chase.png",
+          "sha256": "587965430321d0d1028a7da13cf370ab5b2d3c104e2e180c14b212ebb5db285f",
+          "bytes": 1422062
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/maintenance_gantry/play_chase_abeam.png",
+          "sha256": "cf5be1c7d3fdd8a9bf96d9b51b96386e55251f69d4b0610c3f9ac185a19c754e",
+          "bytes": 1422121
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/maintenance_gantry"
+    },
+    {
+      "id": "repair_scaffold",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/repair_scaffold.glb",
+      "glbSha256": "7e42f9e79e1f2aa0619aa141d28f0fe2c68efe3e8bbc1992d8fc355f159acaf1",
+      "family": "service",
+      "role": "clamp-on hull scaffold: two work decks, parts basket, rail lamps",
+      "catalogSizeM": [
+        7.521,
+        3.04,
+        9.152
+      ],
+      "catalogTriangles": 504,
+      "measuredSizeM": [
+        7.5211,
+        3.04,
+        9.1524
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.03,
+        3.0938
+      ],
+      "sizeMaxM": 9.1524,
+      "distance": 82.37,
+      "triangles": 504,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold/play_chase.png",
+          "sha256": "7b1df7d5b9ebc1fa5226012b0c35d675bdee9b1936792214be578d4ecf66f495",
+          "bytes": 1424596
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold/play_chase_abeam.png",
+          "sha256": "0c13dc09e80a4b5d96f743f3423820368d14c1d535b29fa813a6a57097da30de",
+          "bytes": 1424074
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold"
+    },
+    {
+      "id": "repair_scaffold_bent",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/repair_scaffold_bent.glb",
+      "glbSha256": "b96ee8dd4678cc5120efb192b72ea919c7178ff3ab47e5ff4a75185ac7ba3fca",
+      "family": "service",
+      "role": "impact-bent scaffold: kinked posts, sprung deck, one clamp gone",
+      "catalogSizeM": [
+        7.399,
+        3.801,
+        9.152
+      ],
+      "catalogTriangles": 308,
+      "measuredSizeM": [
+        7.399,
+        3.8009,
+        9.1524
+      ],
+      "measuredCenterM": [
+        0.1824,
+        -0.1174,
+        3.0938
+      ],
+      "sizeMaxM": 9.1524,
+      "distance": 82.37,
+      "triangles": 308,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold_bent/play_chase.png",
+          "sha256": "89c82869199081e73c530cb4dcdd1caa9bc1719daefd8216e742d1015a3ea7ff",
+          "bytes": 1424311
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold_bent/play_chase_abeam.png",
+          "sha256": "f3fec131f3611bbb511a50a468c673f866e0225e594e065845acb2e879cd2656",
+          "bytes": 1424010
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/repair_scaffold_bent"
+    },
+    {
+      "id": "construction_frame",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/construction_frame.glb",
+      "glbSha256": "fb5c5719f4776f43c61948412e17f494dc5db085939f5c15bf4972f747fe639a",
+      "family": "service",
+      "role": "26 m keel section mid-build: skinned aft, bare ribs forward, panels staged",
+      "catalogSizeM": [
+        27.218,
+        12.937,
+        8.127
+      ],
+      "catalogTriangles": 2024,
+      "measuredSizeM": [
+        27.2185,
+        12.9374,
+        8.1267
+      ],
+      "measuredCenterM": [
+        0.0,
+        1.9321,
+        0.5833
+      ],
+      "sizeMaxM": 27.2185,
+      "distance": 244.97,
+      "triangles": 2024,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/construction_frame/play_chase.png",
+          "sha256": "fa7dc14dc220c897bcba90ba1af12026c662d358556e00b0ecc17fa4cbb38183",
+          "bytes": 1421586
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/construction_frame/play_chase_abeam.png",
+          "sha256": "f35234d5bf9c13eeb9ce7ff28c813db11914b748a09ceec725b6bf702d0482e1",
+          "bytes": 1422292
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/construction_frame"
+    },
+    {
+      "id": "welding_drone",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/welding_drone.glb",
+      "glbSha256": "9003f3c5cfc050160ca2b2e2d5aa11aad486e7ee0512b1fb7064c502dc64fa25",
+      "family": "service",
+      "role": "1.9 m free-flying welder: twin manipulators, torch, quad thrusters",
+      "catalogSizeM": [
+        2.062,
+        1.086,
+        0.83
+      ],
+      "catalogTriangles": 352,
+      "measuredSizeM": [
+        2.0616,
+        1.0857,
+        0.83
+      ],
+      "measuredCenterM": [
+        0.4142,
+        0.0,
+        0.015
+      ],
+      "sizeMaxM": 2.0616,
+      "distance": 22.0,
+      "triangles": 352,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/welding_drone/play_chase.png",
+          "sha256": "d8297cc10ad8be47d145a3a26738a8b597a1f8c072b0a80110fcd3d67d8f99ae",
+          "bytes": 1423090
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/welding_drone/play_chase_abeam.png",
+          "sha256": "a3c84b8b66e9afb4f9f0ee0db8d6307aa618a2d4bddf3393c12170c91c7419d1",
+          "bytes": 1422947
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/welding_drone"
+    },
+    {
+      "id": "parts_rack",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/parts_rack.glb",
+      "glbSha256": "bf0d678b375b6cf4cbcfef3207c03b9e46e519ce505c69d2d0030bc01bd43a51",
+      "family": "service",
+      "role": "A-frame stock rack: leaning mixed hull plates + spar tubes in cradles",
+      "catalogSizeM": [
+        8.62,
+        4.0,
+        5.029
+      ],
+      "catalogTriangles": 412,
+      "measuredSizeM": [
+        8.62,
+        4.0,
+        5.0287
+      ],
+      "measuredCenterM": [
+        0.21,
+        0.0,
+        2.4144
+      ],
+      "sizeMaxM": 8.62,
+      "distance": 77.58,
+      "triangles": 412,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/parts_rack/play_chase.png",
+          "sha256": "453338d4568f8c490e9bdd32cbe78c56ecbd91fa722e8405a029836fe3684487",
+          "bytes": 1423304
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/parts_rack/play_chase_abeam.png",
+          "sha256": "23a4058e5d68ee6b1a9ea38b2b44ba19709309d2d9008c26fcc5ddb2012b6b7c",
+          "bytes": 1426641
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/parts_rack"
+    },
+    {
+      "id": "power_skid",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/power_skid.glb",
+      "glbSha256": "0663c07313a147caf1a80f69ff5949f94abaea834e26ce5844ccdf44170f59d0",
+      "family": "service",
+      "role": "portable reactor skid: formed core, hot fin, cabinet, visible cable run",
+      "catalogSizeM": [
+        8.249,
+        3.484,
+        5.0
+      ],
+      "catalogTriangles": 644,
+      "measuredSizeM": [
+        8.2487,
+        3.4838,
+        5.0
+      ],
+      "measuredCenterM": [
+        1.0256,
+        -0.2419,
+        2.35
+      ],
+      "sizeMaxM": 8.2487,
+      "distance": 74.24,
+      "triangles": 644,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/power_skid/play_chase.png",
+          "sha256": "381ef3a315f7ce4a0c2477d32a3ca355ae35e0a466d2cd96541fdeeb532a66fb",
+          "bytes": 1423272
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/power_skid/play_chase_abeam.png",
+          "sha256": "e5bfc9f7e6ec2e531f3187522dde302ae133265c2b931138d6568de216b76b78",
+          "bytes": 1423765
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/power_skid"
+    },
+    {
+      "id": "worklight_tower",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/worklight_tower.glb",
+      "glbSha256": "d2d39dcadf1b7572fb98be41783bc758a2f1264cb48b3004ae16c3080dce1195",
+      "family": "service",
+      "role": "yard mast in flood fit: three big white-warm heads (work happens here)",
+      "catalogSizeM": [
+        3.0,
+        3.0,
+        15.82
+      ],
+      "catalogTriangles": 768,
+      "measuredSizeM": [
+        3.0,
+        3.0,
+        15.82
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        7.91
+      ],
+      "sizeMaxM": 15.82,
+      "distance": 142.38,
+      "triangles": 768,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/worklight_tower/play_chase.png",
+          "sha256": "fd60c0ee4cfa34bd1f80566c9052c5ae0d4d3dbad1ec2d2a422a27a55dcd30cd",
+          "bytes": 1421102
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/worklight_tower/play_chase_abeam.png",
+          "sha256": "d01f490526f5b48b84ba37127d0b3c6d2e8d504d9b678fd292b70a17ed6b1f8e",
+          "bytes": 1420549
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/worklight_tower"
+    },
+    {
+      "id": "customs_pylon",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/customs_pylon.glb",
+      "glbSha256": "cfa6c47ed5839d283f206d0d8ad41e4e2be3c548aa16bd600eb6b33554d99c6a",
+      "family": "law",
+      "role": "customs scan pylon: navy monolith, lit aperture slot, white crest",
+      "catalogSizeM": [
+        3.4,
+        3.4,
+        14.16
+      ],
+      "catalogTriangles": 208,
+      "measuredSizeM": [
+        3.4,
+        3.4,
+        14.16
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        7.08
+      ],
+      "sizeMaxM": 14.16,
+      "distance": 127.44,
+      "triangles": 208,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/customs_pylon/play_chase.png",
+          "sha256": "113600aa2114c5cbc96b2ed1c4ff99e80bb10cd6b9bb2e8848649ec888f72566",
+          "bytes": 1420788
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/customs_pylon/play_chase_abeam.png",
+          "sha256": "ebb69ef68f27a01b2a0058e1ec42410da45a331c8bde03bb8aea4284e748042e",
+          "bytes": 1421379
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/customs_pylon"
+    },
+    {
+      "id": "inspection_platform",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/inspection_platform.glb",
+      "glbSha256": "ef84164bca205637ddebb3d1f1899d9b4c21515fe8ece2c5e20a5e8d228d2d21",
+      "family": "law",
+      "role": "floodlit holding dock: clamp cradle, perimeter arc-blue, watch cab",
+      "catalogSizeM": [
+        20.4,
+        10.4,
+        5.687
+      ],
+      "catalogTriangles": 388,
+      "measuredSizeM": [
+        20.4,
+        10.4,
+        5.6871
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        1.9936
+      ],
+      "sizeMaxM": 20.4,
+      "distance": 183.6,
+      "triangles": 388,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/inspection_platform/play_chase.png",
+          "sha256": "1a5068c1a33296502818628b72e95968f5a80f9cad31d1f4c6bc0ba5ced2560d",
+          "bytes": 1422751
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/inspection_platform/play_chase_abeam.png",
+          "sha256": "4d985f73c96a66de02261628932728e9553e6361951a8c1ad0492ef0fd7b888f",
+          "bytes": 1423904
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/inspection_platform"
+    },
+    {
+      "id": "interdiction_buoy",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/interdiction_buoy.glb",
+      "glbSha256": "49951374dfe9b7186c7347eec69440da2cc8d00be201c97918c88dd5ecbabd87",
+      "family": "law",
+      "role": "interdiction buoy: spiked bicone that reads THREAT, not guidance",
+      "catalogSizeM": [
+        7.4,
+        6.618,
+        4.94
+      ],
+      "catalogTriangles": 656,
+      "measuredSizeM": [
+        7.4,
+        6.6178,
+        4.94
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        0.27
+      ],
+      "sizeMaxM": 7.4,
+      "distance": 66.6,
+      "triangles": 656,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/interdiction_buoy/play_chase.png",
+          "sha256": "967f45b1a4f6254c380add3bbc60762b2fbcf55489cc9fee52bd72d0f17f8d0d",
+          "bytes": 1425165
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/interdiction_buoy/play_chase_abeam.png",
+          "sha256": "0b1def234f13d527356e30305ad7044f805210724e81b019f251a38723859a98",
+          "bytes": 1422687
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/interdiction_buoy"
+    },
+    {
+      "id": "transponder_gate",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/transponder_gate.glb",
+      "glbSha256": "f24187ffd8b7f83cf4760d27ee1ee14c6f141729302e1d2db1b82f41176937ab",
+      "family": "law",
+      "role": "lane gate: green pass pods on the crossbeam, red hold edges, white crest",
+      "catalogSizeM": [
+        2.4,
+        22.4,
+        13.242
+      ],
+      "catalogTriangles": 1916,
+      "measuredSizeM": [
+        2.4,
+        22.4,
+        13.2421
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        6.579
+      ],
+      "sizeMaxM": 22.4,
+      "distance": 201.6,
+      "triangles": 1916,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/transponder_gate/play_chase.png",
+          "sha256": "1d54130d088c340d060fbc60b8172bd2a91222f8d09f3e9edab64b103e237781",
+          "bytes": 1421439
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/transponder_gate/play_chase_abeam.png",
+          "sha256": "3cd1b2b14f53eb811ed85b6df1903cd092bfa4af38588a3a67a86997a051b273",
+          "bytes": 1422552
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/transponder_gate"
+    },
+    {
+      "id": "sensor_mast",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/sensor_mast.glb",
+      "glbSha256": "01be0cd5ffd65ea00858b1a39c1944a0e4b219c746118080ff5a26bc85a227aa",
+      "family": "law",
+      "role": "listening mast: one big + two small dishes and a signals drum",
+      "catalogSizeM": [
+        5.29,
+        4.084,
+        13.331
+      ],
+      "catalogTriangles": 1248,
+      "measuredSizeM": [
+        5.29,
+        4.0842,
+        13.3306
+      ],
+      "measuredCenterM": [
+        1.655,
+        0.2421,
+        6.6347
+      ],
+      "sizeMaxM": 13.3306,
+      "distance": 119.98,
+      "triangles": 1248,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/sensor_mast/play_chase.png",
+          "sha256": "3563f462455b58f2da3b57eac52b9468241df1bc0ade23bab6b6092d3835a8d0",
+          "bytes": 1421949
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/sensor_mast/play_chase_abeam.png",
+          "sha256": "8ef3831825c3f77eeb1b104dd5aee741cfd7f7a2a59584741cdc0aeac81aa5da",
+          "bytes": 1421881
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/sensor_mast"
+    },
+    {
+      "id": "traffic_signal",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/traffic_signal.glb",
+      "glbSha256": "920341746ef8e7da7cd70ef20ba257af6390e9731b6f67443e417619513bf629",
+      "family": "law",
+      "role": "counterweighted lane signal: stacked go/hold/stop faces one approach",
+      "catalogSizeM": [
+        4.75,
+        2.4,
+        8.16
+      ],
+      "catalogTriangles": 256,
+      "measuredSizeM": [
+        4.75,
+        2.4,
+        8.16
+      ],
+      "measuredCenterM": [
+        0.575,
+        0.0,
+        4.08
+      ],
+      "sizeMaxM": 8.16,
+      "distance": 73.44,
+      "triangles": 256,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/traffic_signal/play_chase.png",
+          "sha256": "833fe94fe2a111bb344502568057920b5c5e24a353867684d073e25d00220b35",
+          "bytes": 1422715
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/traffic_signal/play_chase_abeam.png",
+          "sha256": "cf891271e43a89869d382236b248451054aa933dd7b3ef35d14075a2746afaf6",
+          "bytes": 1421185
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/traffic_signal"
+    },
+    {
+      "id": "habitat_pod",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/habitat_pod.glb",
+      "glbSha256": "5244997837de7a23c2f8471d13f316a249f9704269723a2674ca80e934b851b8",
+      "family": "civic",
+      "role": "crew habitat capsule: lit window row, airlock collar, solar cross",
+      "catalogSizeM": [
+        11.777,
+        7.6,
+        7.19
+      ],
+      "catalogTriangles": 840,
+      "measuredSizeM": [
+        11.7771,
+        7.6,
+        7.19
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        0.095
+      ],
+      "sizeMaxM": 11.7771,
+      "distance": 105.99,
+      "triangles": 840,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod/play_chase.png",
+          "sha256": "f837f019e8e886be0d741ac3a1d2a0821650b5c392e395dc9bf0d18417bc3895",
+          "bytes": 1422203
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod/play_chase_abeam.png",
+          "sha256": "d071e6a9fb9ec66790d4c70bf20e60af2f49bb85a593dc6776418a26b36afd04",
+          "bytes": 1423628
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod"
+    },
+    {
+      "id": "habitat_pod_derelict",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/habitat_pod_derelict.glb",
+      "glbSha256": "317df505df4a8a2b44c2bfc396652a4fab7c353d210e87ff01e6c8cd78ca4f1c",
+      "family": "civic",
+      "role": "dead habitat: dark windows, snapped wing, hatch swung open",
+      "catalogSizeM": [
+        11.777,
+        7.414,
+        6.38
+      ],
+      "catalogTriangles": 720,
+      "measuredSizeM": [
+        11.7771,
+        7.4143,
+        6.3799
+      ],
+      "measuredCenterM": [
+        0.0,
+        -0.0929,
+        0.7279
+      ],
+      "sizeMaxM": 11.7771,
+      "distance": 105.99,
+      "triangles": 720,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod_derelict/play_chase.png",
+          "sha256": "399aa991906415d6553883886602d15d67c4fad71430acb7898e2a0e9fa1bdba",
+          "bytes": 1423369
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod_derelict/play_chase_abeam.png",
+          "sha256": "c2bf2006bb89f4f93e515b4a27a0a813a970925acfd6a56e0426903aaea9bb31",
+          "bytes": 1423844
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/habitat_pod_derelict"
+    },
+    {
+      "id": "shuttle_dock",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/shuttle_dock.glb",
+      "glbSha256": "07ebbb0d957d07d1e6c01bdfedbb62f5686e88434fb995b10e6303c48ca0cbd3",
+      "family": "civic",
+      "role": "shuttle cradle dock: twin hoops, handed approach light lane, glazed walkway",
+      "catalogSizeM": [
+        27.394,
+        10.4,
+        8.659
+      ],
+      "catalogTriangles": 1800,
+      "measuredSizeM": [
+        27.3936,
+        10.4,
+        8.6587
+      ],
+      "measuredCenterM": [
+        5.4268,
+        0.0,
+        3.4793
+      ],
+      "sizeMaxM": 27.3936,
+      "distance": 246.54,
+      "triangles": 1800,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/shuttle_dock/play_chase.png",
+          "sha256": "60c08ce3eebb9635365684476c1fa199a383a96f26bd6a083ec814e3ad89cee4",
+          "bytes": 1421775
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/shuttle_dock/play_chase_abeam.png",
+          "sha256": "790208544f085dd4d4b4d1cb85c0f6da0fcd222d2a63f875e9f1d7c649d4222b",
+          "bytes": 1422004
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/shuttle_dock"
+    },
+    {
+      "id": "observation_blister",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/observation_blister.glb",
+      "glbSha256": "39e05c1c85e969359bffba3e79a7f12e608719040d3b5df340ad9d5a23616a17",
+      "family": "civic",
+      "role": "glazed observation dome on a stalk, warm-lit floor, ring balcony",
+      "catalogSizeM": [
+        6.287,
+        6.3,
+        7.74
+      ],
+      "catalogTriangles": 1200,
+      "measuredSizeM": [
+        6.2866,
+        6.3,
+        7.74
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        3.87
+      ],
+      "sizeMaxM": 7.74,
+      "distance": 69.66,
+      "triangles": 1200,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/observation_blister/play_chase.png",
+          "sha256": "7583e9da2e4f294ee9895d32ed846920c9b2aad84e0df48b5e4377748f62ccf8",
+          "bytes": 1426426
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/observation_blister/play_chase_abeam.png",
+          "sha256": "ce5793c65aba9ffd7647fe79a80b83fc0d38f838f19cd08691d3e905a232347f",
+          "bytes": 1427146
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/observation_blister"
+    },
+    {
+      "id": "comms_array",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/comms_array.glb",
+      "glbSha256": "0534838b1de57facf97312dbf6d07a8623d2a2a58fa4516d1ded2a7523dbd3f3",
+      "family": "civic",
+      "role": "relay farm: one big steerable dish, two subs, manned kiosk",
+      "catalogSizeM": [
+        7.386,
+        6.6,
+        7.771
+      ],
+      "catalogTriangles": 908,
+      "measuredSizeM": [
+        7.3863,
+        6.6,
+        7.7706
+      ],
+      "measuredCenterM": [
+        0.7919,
+        -0.3,
+        3.8853
+      ],
+      "sizeMaxM": 7.7706,
+      "distance": 69.94,
+      "triangles": 908,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/comms_array/play_chase.png",
+          "sha256": "f323e514c727ae7bb96253b1a79b3e973377d3d6c0ca6707328f4d1ebd73229e",
+          "bytes": 1425682
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/comms_array/play_chase_abeam.png",
+          "sha256": "6dc3211a32445da060265ff00b9d0e3292ef6645d4afaf5b29772818eaf6149c",
+          "bytes": 1425761
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/comms_array"
+    },
+    {
+      "id": "solar_array",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/solar_array.glb",
+      "glbSha256": "d84adbcea79f0a307e0b77c593c34ec94d33fbde858e8c48895b3d6bcabade71",
+      "family": "civic",
+      "role": "sun-tracking twin-wing array on span-gauge spines, handed tip lights",
+      "catalogSizeM": [
+        4.6,
+        21.46,
+        3.7
+      ],
+      "catalogTriangles": 1148,
+      "measuredSizeM": [
+        4.6,
+        21.46,
+        3.7
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        1.85
+      ],
+      "sizeMaxM": 21.46,
+      "distance": 193.14,
+      "triangles": 1148,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/solar_array/play_chase.png",
+          "sha256": "1ab0eab66130289b3ba15f65e0aa86bb76f66fc3dda5739c115ec83a804460b7",
+          "bytes": 1421418
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/solar_array/play_chase_abeam.png",
+          "sha256": "4023aad53242cb29a82e6de7f1827773fa6ce30d8aa31ccf914ec39e79836db1",
+          "bytes": 1420692
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/solar_array"
+    },
+    {
+      "id": "utility_module",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/utility_module.glb",
+      "glbSha256": "59fcb21378283b0f608937196f5226651b9b4c926cd70df422e86d83e9fb3ccd",
+      "family": "civic",
+      "role": "life-support box: external pipe runs, vent, hatches, lift lugs",
+      "catalogSizeM": [
+        6.12,
+        4.32,
+        4.85
+      ],
+      "catalogTriangles": 276,
+      "measuredSizeM": [
+        6.12,
+        4.32,
+        4.85
+      ],
+      "measuredCenterM": [
+        0.03,
+        -0.06,
+        0.575
+      ],
+      "sizeMaxM": 6.12,
+      "distance": 55.08,
+      "triangles": 276,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/utility_module/play_chase.png",
+          "sha256": "58d2a7c83a9bf310c91b504d34a6d676b49026833a4b4234ee8187e1d685a9b6",
+          "bytes": 1426049
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/utility_module/play_chase_abeam.png",
+          "sha256": "ad0ab92a67416e36b52cc9b113fb780f9e489ebe94d03367f57fff80a64a18ba",
+          "bytes": 1426424
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/utility_module"
+    },
+    {
+      "id": "passenger_platform",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/passenger_platform.glb",
+      "glbSha256": "9ddb5f911b3f7d13a032bd2d1b271c6481ff3c3a64a6c2d7676ceec5bafe5628",
+      "family": "civic",
+      "role": "covered boarding walkway: glow canopy, guide lights, green gate arch",
+      "catalogSizeM": [
+        16.504,
+        4.0,
+        5.77
+      ],
+      "catalogTriangles": 568,
+      "measuredSizeM": [
+        16.5039,
+        4.0,
+        5.77
+      ],
+      "measuredCenterM": [
+        0.252,
+        0.0,
+        2.885
+      ],
+      "sizeMaxM": 16.5039,
+      "distance": 148.54,
+      "triangles": 568,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/passenger_platform/play_chase.png",
+          "sha256": "3be26e03a5c281213498440ba2a8f20a53f9f307583373e7278f0b46c9672c46",
+          "bytes": 1421543
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/passenger_platform/play_chase_abeam.png",
+          "sha256": "f765254a45f15eebd02cfe920b46f2d80caedd84219fd774bcfd69b5cb64703a",
+          "bytes": 1421737
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/passenger_platform"
+    },
+    {
+      "id": "salvage_clamp",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/salvage_clamp.glb",
+      "glbSha256": "d5293628a48badbeccdc58aa2bbb4dc42c9453d1e49e691b4e8ecdc432154c10",
+      "family": "salvage",
+      "role": "free-standing grab: winch, A-frame, scorched jaws, hooded red lamp",
+      "catalogSizeM": [
+        5.6,
+        3.6,
+        7.475
+      ],
+      "catalogTriangles": 328,
+      "measuredSizeM": [
+        5.6,
+        3.6,
+        7.475
+      ],
+      "measuredCenterM": [
+        0.0,
+        0.0,
+        3.7375
+      ],
+      "sizeMaxM": 7.475,
+      "distance": 67.28,
+      "triangles": 328,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/salvage_clamp/play_chase.png",
+          "sha256": "a23478e263ffbd5dbb5ca80f5fe8f62153842152cd2713b955da1c39fa2f53a0",
+          "bytes": 1426373
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/salvage_clamp/play_chase_abeam.png",
+          "sha256": "3f2e3a64dace907c85388e912008152c086dce387d948d3fc33eb8e8a9b7e6d5",
+          "bytes": 1426450
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/salvage_clamp"
+    },
+    {
+      "id": "scrap_cage",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/scrap_cage.glb",
+      "glbSha256": "28483b8c2ff2e6e1b581836a3f8820089ebf76061113139d79639a4832bf59b5",
+      "family": "salvage",
+      "role": "scrap holding cage, crushed hull chunks inside, gate swung open",
+      "catalogSizeM": [
+        11.112,
+        6.23,
+        5.704
+      ],
+      "catalogTriangles": 588,
+      "measuredSizeM": [
+        11.1122,
+        6.23,
+        5.7038
+      ],
+      "measuredCenterM": [
+        -0.8561,
+        0.085,
+        0.0981
+      ],
+      "sizeMaxM": 11.1122,
+      "distance": 100.01,
+      "triangles": 588,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/scrap_cage/play_chase.png",
+          "sha256": "6897b1739e8755806c3951539c5623fadeab5906ce7ea7117f731f5eda1cb432",
+          "bytes": 1427174
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/scrap_cage/play_chase_abeam.png",
+          "sha256": "c585146014d15e4d2dfa333c7d55218b44a36629c053d860acec2d34dc15c75b",
+          "bytes": 1426696
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/scrap_cage"
+    },
+    {
+      "id": "hull_rack",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/hull_rack.glb",
+      "glbSha256": "26bdf32c925d5ba978a8ea9a89b96027f63b58f3142a3721ef76c6435ba34b75",
+      "family": "salvage",
+      "role": "shipbreaking rack: three stripped rib sections, torch scars, part skins",
+      "catalogSizeM": [
+        17.121,
+        7.14,
+        7.485
+      ],
+      "catalogTriangles": 3604,
+      "measuredSizeM": [
+        17.1212,
+        7.14,
+        7.485
+      ],
+      "measuredCenterM": [
+        0.0,
+        -0.0,
+        3.1725
+      ],
+      "sizeMaxM": 17.1212,
+      "distance": 154.09,
+      "triangles": 3604,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/hull_rack/play_chase.png",
+          "sha256": "c72c3c6d29e5288d2193b80ab95a10bb791e3dd6db5a2af700fbc7f7f0056d67",
+          "bytes": 1425648
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/hull_rack/play_chase_abeam.png",
+          "sha256": "5c3197726c0fb52f69ef069c0c5802f06048a131a2c8935d3cb2724d47c0658b",
+          "bytes": 1426509
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/hull_rack"
+    },
+    {
+      "id": "illicit_transfer_frame",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/illicit_transfer_frame.glb",
+      "glbSha256": "26e9eb4fc77d6022e9fd8dbb4e1062482f0ea00164df264505810a5f57e0942e",
+      "family": "salvage",
+      "role": "smuggler transfer frame: two stolen-parts berths, hooded light only",
+      "catalogSizeM": [
+        9.386,
+        12.1,
+        4.475
+      ],
+      "catalogTriangles": 544,
+      "measuredSizeM": [
+        9.3861,
+        12.1,
+        4.475
+      ],
+      "measuredCenterM": [
+        3.493,
+        0.05,
+        1.4625
+      ],
+      "sizeMaxM": 12.1,
+      "distance": 108.9,
+      "triangles": 544,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/illicit_transfer_frame/play_chase.png",
+          "sha256": "efbb80ba25ae847bf0bcf81c87f3197efedd8350d9311b2e7b86ce477f230bad",
+          "bytes": 1425006
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/illicit_transfer_frame/play_chase_abeam.png",
+          "sha256": "c27a3ae67250c2401d486e5c4372cf14a0c5e2e4cde4f93b83e96dac60795598",
+          "bytes": 1425762
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/illicit_transfer_frame"
+    },
+    {
+      "id": "improvised_dock",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/improvised_dock.glb",
+      "glbSha256": "f39694ce75d7d9483eac1c3ea2912d35238fadd823c1142e89df10ce293e3973",
+      "family": "salvage",
+      "role": "cobbled dock: pod-turned-shack, two-gauge scavenged arm, dim red window",
+      "catalogSizeM": [
+        9.16,
+        12.47,
+        4.458
+      ],
+      "catalogTriangles": 876,
+      "measuredSizeM": [
+        9.16,
+        12.4701,
+        4.458
+      ],
+      "measuredCenterM": [
+        1.52,
+        4.5351,
+        0.629
+      ],
+      "sizeMaxM": 12.4701,
+      "distance": 112.23,
+      "triangles": 876,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/improvised_dock/play_chase.png",
+          "sha256": "818d454856c35fe566aa16fac809d4cd809310a571480bb864c1d354c3cd63be",
+          "bytes": 1424534
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/improvised_dock/play_chase_abeam.png",
+          "sha256": "33997105bbc4a91571298430255e39da4cff9be47fda6604cf0b07317a952c54",
+          "bytes": 1423847
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/improvised_dock"
+    },
+    {
+      "id": "pirate_sensor_mast",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/pirate_sensor_mast.glb",
+      "glbSha256": "cab5dfb6fc1fb2d71ccd909c5d975197bcdf983d9437b6d490d902bfc32ea9b6",
+      "family": "salvage",
+      "role": "pirate ear: leaning spliced mast, stolen navy dish aimed at the lane",
+      "catalogSizeM": [
+        5.969,
+        7.9,
+        11.61
+      ],
+      "catalogTriangles": 1120,
+      "measuredSizeM": [
+        5.9689,
+        7.9,
+        11.61
+      ],
+      "measuredCenterM": [
+        0.0344,
+        -0.2,
+        5.7194
+      ],
+      "sizeMaxM": 11.61,
+      "distance": 104.49,
+      "triangles": 1120,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/pirate_sensor_mast/play_chase.png",
+          "sha256": "bf423ef6ca9c9690d356502c19251b606e871e0d6b242e22dcc48fcd53924fce",
+          "bytes": 1423597
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/pirate_sensor_mast/play_chase_abeam.png",
+          "sha256": "39f88f29b0fdc94734adc365dd7b857dc9c9491cb27e0f9731ec3977dd87eaae",
+          "bytes": 1422808
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/pirate_sensor_mast"
+    },
+    {
+      "id": "power_skid_patched",
+      "ok": true,
+      "error": null,
+      "glb": "assets/incubator/everyday_space_kit/source/power_skid_patched.glb",
+      "glbSha256": "aeed5ec6fca4262582d28f3298e8cb9a0bd689f378c9e0a129a82e2425e3f9b2",
+      "family": "salvage",
+      "role": "stolen reactor skid: patched core, wrong fin, hooded status lamp",
+      "catalogSizeM": [
+        8.249,
+        3.484,
+        5.65
+      ],
+      "catalogTriangles": 656,
+      "measuredSizeM": [
+        8.2487,
+        3.4838,
+        5.65
+      ],
+      "measuredCenterM": [
+        1.0256,
+        -0.2419,
+        2.675
+      ],
+      "sizeMaxM": 8.2487,
+      "distance": 74.24,
+      "triangles": 656,
+      "stills": {
+        "play_chase.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/power_skid_patched/play_chase.png",
+          "sha256": "b570aaf5b5296644519511b393a5fdac1a5728febc22e0916e46de20b918f051",
+          "bytes": 1424315
+        },
+        "play_chase_abeam.png": {
+          "path": "design/program/vm-drop/everyday-kit-stills/stills/power_skid_patched/play_chase_abeam.png",
+          "sha256": "11236a605a13af046c374586d2b23f9d5913a3a49d3b7539b463a876efa735f7",
+          "bytes": 1423980
+        }
+      },
+      "outDir": "design/program/vm-drop/everyday-kit-stills/stills/power_skid_patched"
+    }
+  ]
+}

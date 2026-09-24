@@ -58,6 +58,7 @@ import { masslineSnares } from '../systems/masslineSnares.js';
 import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
+import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
@@ -119,6 +120,7 @@ import { encounterDirector } from '../systems/encounterDirector.js';
 import { nemesis } from '../systems/nemesis.js';
 import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
+import { capitalBossEncounters } from '../systems/capitalBossRuntime.js';
 import { createChronicler } from '../systems/chronicler.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
@@ -223,11 +225,15 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
+    // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
+    // registry) so Node runs the identical observe/spawnWing ports.
+    ['capitalBossEncounters', capitalBossEncounters],
     ['uniqueWrecks', uniqueWrecks],
     ['titles', titlesSystem],
     ['wingMorale', wingMorale],

@@ -206,9 +206,13 @@ function checkFullscreenCompositorShellsSleep() {
   const lockDiamond = blockFor(hudStyles, '.sf-lockdiamond');
   const lockDiamondVisible = blockFor(hudStyles, '.sf-lockdiamond.visible');
 
-  assert.match(modalBackdrop, /display:\s*none/, 'closed modal backdrop must not stay in the compositor tree');
+  // The backdrop fades (opacity + a delayed visibility flip, 484894552), so its base rule may stay
+  // display:block as long as it is invisible there; the [hidden] rule asserted next is what takes the
+  // closed backdrop out of the compositor tree (screenManager sets hidden whenever no screen is open).
+  assert.ok(/display:\s*none/.test(modalBackdrop) || (/visibility:\s*hidden/.test(modalBackdrop) && /pointer-events:\s*none/.test(modalBackdrop)),
+    'closed modal backdrop must not stay in the compositor tree');
   assert.match(css, /#modal-backdrop\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden modal backdrop should be display:none');
-  assert.match(css, /body\.ui-modal-open\s+#modal-backdrop\s*\{[^}]*display:\s*block/i, 'modal backdrop should still be wired for open screens');
+  assert.match(css, /body\.ui-modal-open\s+#modal-backdrop\s*\{[^}]*(display:\s*block|visibility:\s*visible)/i, 'modal backdrop should still be wired for open screens');
   assert.match(loadingPresenter, /overlay\.style\.display\s*=\s*'none'/, 'boot overlay should be removed from display after its fade');
   assert.match(screenManager, /backdrop\.hidden\s*=\s*!\s*open/, 'screen manager should unmount the shared backdrop when no screen is open');
   assert.match(dockOverlay, /pointer-events:\s*none/, 'docking overlay should not intercept input while inactive');

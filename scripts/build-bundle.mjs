@@ -26,6 +26,9 @@ import {
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
+// ZERO_TO_HERO Phase 5.1: `node scripts/build-bundle.mjs --demo` (or SPACEFACE_DEMO=1) bakes the
+// demo flag into the bundle; everything demo-only folds away in an ordinary build.
+const DEMO = process.argv.includes('--demo') || process.env.SPACEFACE_DEMO === '1';
 // Build outside the final tree, validate it completely, then swap it into build/web. Electron
 // Builder globs only build/web, so an interrupted build cannot package a partial candidate.
 const FINAL_OUT = join(ROOT, 'build', 'web');
@@ -101,6 +104,7 @@ async function build() {
       // Define the browser-facing process object too: guards test `typeof process` first.
       process: JSON.stringify({ env: { NODE_ENV: 'production' }, versions: {}, argv: [] }),
       __SPACEFACE_PRODUCTION__: 'true',
+      __SPACEFACE_DEMO__: DEMO ? 'true' : 'false',
     },
   });
 

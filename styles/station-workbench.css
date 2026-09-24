@@ -1,0 +1,64 @@
+/* Station workbench — the flight HUD structural kit.
+   One accent (the lamp). Printed fields, not machined bezels (owner, 2026-09-22: CSS pretending
+   to be a physical material looks awful). The primary control is a key, not a browser button. */
+
+#screens .sx-berth,
+.sx-observatory.sx-berth {
+  --sf-station-accent: var(--dp-lamp);
+  --sf-accent: var(--sf-station-accent);
+  --sf-accent-rgb: 242 185 80;
+  --so-accent: var(--sf-station-accent);
+  --so-accent-rgb: 242 185 80;
+  --k-signal: var(--sf-station-accent);
+}
+
+#screens .sx-berth :is(.sx-pop, .sx-comms__history, .so-command-palette) {
+  border: 14px solid transparent;
+  border-image: none;
+  border-radius: 0;
+  background: var(--dp-field);
+  box-shadow: none;
+}
+
+/* The vitals plate used to be parked absolutely at the top-right of the screen, with the header
+   and the workspace given a right margin so nothing ran under it (the dossier title died at
+   "First trade: 8" and the getting-started row at "Dis"). As of 2026-09-22 the purse and the
+   gauges are a column of the HEAD BAND itself (styles/station.css, "THE HEAD BAND"), so there is
+   nothing to run under and no margin to reserve: the workspace below takes the whole width. */
+#screens .sx-berth .sxb-handoff {
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+}
+#screens .sx-berth .sx-ct-row__title,
+#screens .sx-berth .sx-job__title,
+#screens .sx-berth .sx-job__meta {
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+}
+#screens .sx-berth .sx-dossier__title {
+  max-width: none;
+}
+
+#screens .sx-berth button[data-sf-role="primary"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 10px 10px 12px;
+  border-image: none;
+  border-radius: 0;
+  /* border-box + no-repeat: the key keeps the retired nine-slice's 10px transparent border as its
+     footprint, and a padding-box gradient TILES into that border -- the cut reappeared as a black
+     notch in all four corners of ACCEPT. One fill, painted once, across the whole key. */
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--dp-lamp) 0) border-box no-repeat;
+  color: var(--dp-metal-0);
+}
+#screens .sx-berth button[data-sf-role="primary"]:is(:disabled, [aria-disabled="true"]) {
+  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0) border-box no-repeat;
+  color: var(--dp-ink-mute);
+}

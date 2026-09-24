@@ -120,6 +120,7 @@ class Root extends El {
     const canvas = mk('canvas', 'canvas');
     canvas.width = 1200; canvas.height = 820;
     mk('.gm-inspector-details', 'div');
+    mk('#gm-navfoot', 'div');
     mk('#gm-set-course-btn', 'button');
     mk('#gm-engage-route-btn', 'button');
     mk('#gm-engage-reason', 'div');
@@ -302,11 +303,19 @@ const textOf = (rec) => rec.texts.map((t) => t.text).join(' | ');
 {
   const state = makeState({ sectorId: TETHYS, playerPos: { x: TETHYS_ORIGIN.x + 200, z: TETHYS_ORIGIN.z } });
   mountWith(state);
+  // The answers are the foot band (#gm-navfoot), a DOM row of the layout: the plate they used to be
+  // was painted on the canvas under the DOM foot, and the foot's field printed over half of it.
+  const foot = galaxyMapScreen._navFootEl;
+  assert.ok(foot, 'the chart must wire the navigation foot band');
   for (const level of ['galaxy', 'system', 'local']) {
-    const text = textOf(drawAt(level, state));
+    galaxyMapScreen._lastNavFootKey = null;
+    foot.innerHTML = '';
+    drawAt(level, state);
+    const html = String(foot.innerHTML || '');
     for (const label of ['POSITION', 'TRACKING', 'DESTINATION', 'NEXT LEG']) {
-      assert.ok(text.includes(label), `${level}: cartouche must answer ${label}; got ${text.slice(0, 400)}`);
+      assert.ok(html.includes(`>${label}<`), `${level}: the foot band must answer ${label}; got ${html.slice(0, 400)}`);
     }
+    assert.equal((html.match(/class="gm-nav-row"/g) || []).length, 4, `${level}: exactly four answer rows`);
     ok(`all four navigation answers are on the glass at ${level.toUpperCase()} scale`);
   }
 }
@@ -317,7 +326,9 @@ const textOf = (rec) => rec.texts.map((t) => t.text).join(' | ');
   const mid = { x: TETHYS_ORIGIN.x / 2, z: TETHYS_ORIGIN.z / 2 };
   const state = makeState({ sectorId: HELIOS, playerPos: mid });
   mountWith(state);
-  const text = textOf(drawAt('system', state));
+  drawAt('system', state);
+  // The address rides the POSITION answer in the foot band (DOM), not a canvas plate.
+  const text = String(galaxyMapScreen._navFootEl && galaxyMapScreen._navFootEl.innerHTML || '');
   assert.ok(/TRANSIT/.test(text), `deep space must render a transit address; got ${text.slice(0, 400)}`);
   assert.ok(/%/.test(text), 'the transit readout must carry progress along the chord');
   ok('deep space renders a transit address with progress, not a blank chart');
@@ -500,7 +511,7 @@ const textOf = (rec) => rec.texts.map((t) => t.text).join(' | ');
 }
 
 // ---------------------------------------------------------------------------------------------
-// 5. LABEL DECLUTTERING COVERS THE NEW FURNITURE
+// 5. NO NAVIGATION PLATE ON THE CANVAS (the answers are the DOM foot band)
 // ---------------------------------------------------------------------------------------------
 
 {
@@ -508,19 +519,16 @@ const textOf = (rec) => rec.texts.map((t) => t.text).join(' | ');
   mountWith(state);
   drawAt('galaxy', state);
   const layout = galaxyMapScreen._lastLabelLayout || [];
-  const rows = galaxyMapScreen._lastNavContext.rows.length;
-  // Reproduce the cartouche rectangle from the same geometry the drawer uses.
-  const boxW = Math.min(300, Math.max(212, 1200 * 0.26));
-  const boxH = 10 * 2 + rows * 26;
-  const box = { x: 14 - 4, y: 820 - boxH - 14 - 4, width: boxW + 8, height: boxH + 8 };
-  for (const p of layout) {
-    if (!p.visible) continue;
-    const overlaps = p.x < box.x + box.width && p.x + (p.width || 0) > box.x
-      && p.y < box.y + box.height && p.y + (p.height || 0) > box.y;
-    assert.equal(overlaps, false,
-      `label "${p.id}" was placed under the navigation cartouche at (${p.x},${p.y})`);
+  // The canvas no longer paints a navigation plate, so there is nothing on the shared path for a
+  // label to be placed under: the four answers are DOM in the foot row. Guard the other half of
+  // that contract — the canvas must not grow the plate back under the DOM chrome.
+  const canvasText = (galaxyMapScreen._g._rec.texts || []).map((t) => t.text).join(' | ');
+  for (const label of ['POSITION', 'TRACKING', 'DESTINATION', 'NEXT LEG']) {
+    assert.ok(!canvasText.includes(label),
+      `the canvas must not paint the ${label} answer again: it lands under the DOM foot`);
   }
-  ok('the existing label declutterer reserves the cartouche — no label is placed underneath it');
+  assert.ok(layout.length > 0, 'sanity: the galaxy laid out labels');
+  ok('the canvas paints no navigation plate — the answers live in the DOM foot band, not under it');
 }
 
 console.log(`\ncheck:map-never-lost — ${passed} assertions passed`);

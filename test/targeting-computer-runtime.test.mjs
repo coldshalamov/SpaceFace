@@ -11,6 +11,7 @@ import {
   fittingsFromDefaultModules,
   getDerivedStats,
   makeShipEntitySpec,
+  resetDerivedStatsCache,
   ships,
 } from '../src/systems/ships.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -85,6 +86,8 @@ test('Targeting Computer fails closed for malformed or negative catalog modifier
     ]) {
       targeting.mods.weaponRangePct = modifiers.weaponRangePct;
       targeting.mods.weaponDmgPct = modifiers.weaponDmgPct;
+      // getDerivedStats memoizes on composition, not catalog contents (INF-097).
+      resetDerivedStatsCache();
       const derived = getDerivedStats('ship_bastion', fit);
       assert.equal(derived.weaponRangePct, 0);
       assert.equal(derived.weaponDmgPct, 0);
@@ -93,6 +96,7 @@ test('Targeting Computer fails closed for malformed or negative catalog modifier
     }
   } finally {
     Object.assign(targeting.mods, original);
+    resetDerivedStatsCache();
   }
 });
 

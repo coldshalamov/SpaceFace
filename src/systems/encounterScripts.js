@@ -26,6 +26,7 @@ import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   uniqueWreckCassandraHardliners,
+  uniqueWreckChoirTenderInvestigator,
   uniqueWreckHeldMass,
   uniqueWreckNestbreakerAdmirers,
   uniqueWreckPingElite,
@@ -51,7 +52,11 @@ const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the co
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
 const PREDATION_MIN_RESPONSE_S = 1;
 const FREIGHT_POD_LIMIT = 3;
-const FREIGHT_POD_TTL_S = 90;
+// VERB-11 — spilled freight must outlive the fight that made it: pods go over the side
+// mid-battle, and 90 s can elapse before the player is free to fly the two screen-depths
+// to latch range. Four minutes covers the engagement plus the fetch; announced pods are
+// still claimed by the salvor machinery, so the window stays bounded.
+const FREIGHT_POD_TTL_S = 240;
 const FREIGHT_CUSTODY_WINDOW_S = 80;
 const FREIGHT_RAIDER_CONTACT_PAD = 1;
 const FREIGHT_RAIDER_ESCAPE_R = 600;
@@ -835,6 +840,11 @@ function initializeConvoyPredation(d, live, state) {
       manifestId: data.cargoManifest && data.cargoManifest.manifestId || null,
     };
   }
+  // A hot start is for encounters whose fight is already committed when custody opens (the
+  // opening hauler raid fires already happening). Nobody stands down: the squad keeps its
+  // attack doctrine and the designated thief goes straight to the active approach instead of
+  // the hold-fire telegraph. The custody identity stamps are unchanged either way.
+  const hotStart = config.hotStart === true;
   for (let i = 0; i < raiders.length; i++) {
     const raider = raiders[i];
     const data = raider.data || (raider.data = {});
@@ -842,8 +852,10 @@ function initializeConvoyPredation(d, live, state) {
     data.predationEncounterId = live.id;
     data.predationRole = 'raider';
     data.predationIdentityKey = `${live.id}:raider:${i}`;
-    ai.predationStatus = 'standby';
-    ai.passive = true;
+    if (!hotStart) {
+      ai.predationStatus = 'standby';
+      ai.passive = true;
+    }
     delete ai.predationTargetId;
     delete ai.predationTargetIdentityKey;
   }
@@ -882,7 +894,7 @@ function initializeConvoyPredation(d, live, state) {
   }
   ai.approachTelegraph = String(config.approachTelegraph || 'pirate_approach');
   ai.noFireResponseWindowS = responseWindowS;
-  ai.predationStatus = 'telegraph';
+  ai.predationStatus = hotStart ? 'active' : 'telegraph';
   ai.predationTargetId = target.id;
   ai.predationTargetIdentityKey = target.data.predationIdentityKey;
   ai.predationLeashRadius = leashRadius;
@@ -898,7 +910,20 @@ function initializeConvoyPredation(d, live, state) {
     deadlineTick,
     leashRadius,
   };
-  setEntityDoctrine(raider, {
+  setEntityDoctrine(raider, hotStart ? {
+    activity: {
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `${live.shapeId}:manifest_predation`,
+      anchor: live.anchor,
+      leashRadius,
+      startedTick,
+      deadlineTick,
+      targetId: target.id,
+      routeId: live.zoneId,
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  } : {
     activity: {
       kind: ActivityKind.HAIL_HOLD,
       reason: `${live.shapeId}:predation_telegraph`,
@@ -913,7 +938,7 @@ function initializeConvoyPredation(d, live, state) {
     roe: RulesOfEngagement.HOLD_FIRE,
   });
 
-  live.data.predationStatus = 'telegraph';
+  live.data.predationStatus = hotStart ? 'active' : 'telegraph';
   live.data.predationRaiderId = raider.id;
   live.data.predationRaiderIdentityKey = raider.data.predationIdentityKey;
   live.data.predationTargetId = target.id;
@@ -947,6 +972,17 @@ function initializeConvoyPredation(d, live, state) {
     durationTicks: Math.max(30, Math.ceil(responseWindowS * 60)),
     tick: startedTick,
   });
+  if (hotStart) {
+    // Same engagement event the telegraph branch emits after the window — a hot start is the
+    // transition with zero wait, not a skipped contract.
+    d.emit('encounter:predationEngaged', {
+      encounterId: live.id,
+      raiderId: raider.id,
+      targetId: target.id,
+      manifestId: target.data.cargoManifest.manifestId,
+      t: d.now(),
+    });
+  }
   return true;
 }
 
@@ -1817,7 +1853,17 @@ function tickFreightCargoCustody(d, live, state, now) {
       const entity = podEntityForRecord(state, record, pod);
       pod.status = 'lost';
       record.lostQty += pod.qty;
-      if (entity) d.retireFreightPickup(entity, 'custody_timeout');
+      // VERB-11 — the custody ledger writes the freight off at the deadline, and the pod
+      // leaves the encounter roster: free salvage on its own despawnAt
+      // (FREIGHT_POD_TTL_S), rope-collectible after the fight ends. Keeping it rostered
+      // lets the encounter's closing despawnAll sweep it with the scene (~80 s),
+      // re-imposing the bound the pod TTL already replaced.
+      const rosterIndex = live.ids.indexOf(pod.entityId);
+      if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
+      if (live.roles) delete live.roles[pod.entityId];
+      if (entity && entity.data && entity.data.freightCustodyPod) {
+        entity.data.freightCustodyPod.status = 'custody_timeout';
+      }
     }
     const carrier = selectedFreightCarrier(live, state, true);
     const carrierCannotContinue = record.carrierDead || record.carrierAbandoned
@@ -2128,9 +2174,11 @@ function convoyTick(d, live, state, now, isConvoy) {
     }
   }
   const lead = haulers[0];
+  // Arrival is endpoint geometry only. A transit deadline does not book the freight: a
+  // drive-capable carrier keeps running, and a carrier that cannot continue is written off
+  // by the custody window as conserved loss, never as arrival pressure.
   const arrivedByPosition = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R;
-  const arrivedByDeadline = Number.isFinite(live.deadlineAt) && now >= live.deadlineAt;
-  if (!arrivedByPosition && !arrivedByDeadline) {
+  if (!arrivedByPosition) {
     // Demand mode: silence at the offer deadline keeps clear — the convoy just runs.
     // Physical arrival above still wins ties: freight truth beats indecision.
     if (live.phase === 'offer' && convoyHasDemand(live)
@@ -2216,6 +2264,14 @@ const convoy = {
   fire(d, live, state) { convoyFire(d, live, state, true); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, true); },
   choose(d, live, state, choiceId) { convoyChoose(d, live, state, choiceId); },
+  // Predation is plan-level (plan.predation), not script-owned: a self-registered runtime whose
+  // live.script label still reads 'convoy' gets the manifest-theft surface through these entries
+  // rather than duplicating the custody stack inside its own runtime.
+  initPredation(d, live, state) { return initializeConvoyPredation(d, live, state); },
+  tickPredation(d, live, state, now) {
+    tickConvoyPredation(d, live, state, now);
+    tickFreightCargoCustody(d, live, state, now);
+  },
   event(d, live, state, name, p) {
     if (name === 'subsystemDisabled') {
       if (!p || p.subsystemId !== 'subsystem_drive') return;
@@ -3006,4 +3062,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckSilverDraftCleaner: withShapeMeter(uniqueWreckSilverDraftCleaner),
   uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
+  uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
 });

@@ -2,6 +2,7 @@
 // Field rocks, dressing rows, and far-actor rows keep reserved ids and may draw, but they are not
 // GameState.entityList members until promote (mine / ram / tether / decode-runway traffic).
 
+import { clearEntityRuntime } from '../core/entity.js';
 import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
@@ -9,13 +10,17 @@ import {
   authoredPrefetchRadius,
   glassCornerWu,
   residencyPrefetchRadius,
+  tableLookAtOrigin,
+  tablePrefetchZoomFromState,
   tableTravelSpeed,
   timeToEnterRadiusSeconds,
   TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_DECODE_RUNWAY_SECONDS,
   TABLE_INBOUND_APPROACH_WU,
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
 const _rockQueryScratch = [];
@@ -81,13 +86,7 @@ function presentationCollectRadius(state) {
   const speed = tableTravelSpeed(state);
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
-  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
-  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
-  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
-  const prefetchZoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || zoom;
+  const prefetchZoom = tablePrefetchZoomFromState(state);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -99,12 +98,7 @@ function presentationCollectRadius(state) {
 function presentationGlassCorner(state) {
   const camera = (state && state.camera) || {};
   const video = (state && state.settings && state.settings.video) || {};
-  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
-  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
-  const prefetchZoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || (Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144));
+  const prefetchZoom = tablePrefetchZoomFromState(state);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -161,22 +155,29 @@ function rememberMeshSpatialKey(state, origin, radius) {
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
 }
 
+const _ledgerCollectOrigin = { x: 0, z: 0 };
+
 function appendNearbyLedgerRows(state, out) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;
-  const origin = player && player.pos;
-  if (!origin) return;
+  if (!player || !player.pos) return;
+  // Collect and keep must share one origin. The keep radius (entityWithinPlayerRadius →
+  // tableLookAtDelta) measures from the live look-at, which velocity-lead pushes ahead of
+  // the hull; a player-centered collect disc then feeds rows the keep radius already
+  // dropped and skips rows it still holds — the leading-edge pop the on-glass-disposals
+  // counter exists to prove is gone.
+  const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
   const travel = tableTravelSpeed(state);
   // The scan disc must hold every row that can still reach the glass inside the
-  // longest admit window — hulls ride the promote horizon, which exceeds the
-  // collect horizon, so sizing to collect would strand a fast inbound ship
-  // between "scannable" and "admissible". The per-row time-to-glass test below
+  // longest admit window — hulls ride the decode runway, which exceeds both the
+  // collect and promote horizons, so sizing to either would strand a fast inbound
+  // ship between "scannable" and "admissible". The per-row time-to-glass test below
   // decides admission, so the disc leaning wide does not wake receding traffic.
   const scanRadius = radius
-    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_PROMOTE_HORIZON_SECONDS;
+    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS;
   if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
     queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
     queryFarActors(state, origin, scanRadius, _meshFarScratch);
@@ -218,13 +219,16 @@ function appendNearbyLedgerRows(state, out) {
     }
     const relVx = finite(rec.vel && rec.vel.x) - pvx;
     const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    // Ship-like rows ride the promote horizon: their authored decode is the long pole.
+    // Ship-like rows ride the decode runway: their authored GLB decode is the long
+    // pole, so the collect must surface them early enough for the prefetch kick to
+    // finish before contact. Boundary builds still gate on the tighter promote
+    // horizon inside isEntityRenderRelevant.
     const tEnter = timeToEnterRadiusSeconds(
       relX, relZ, relVx, relVz,
       glassR + finite(rec.radius, 8),
-      TABLE_PROMOTE_HORIZON_SECONDS,
+      TABLE_DECODE_RUNWAY_SECONDS,
     );
-    if (tEnter <= TABLE_PROMOTE_HORIZON_SECONDS) out.push(rec);
+    if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
   }
 }
 
@@ -292,8 +296,106 @@ export function requestDecodeRunwayPromote(state, helpers) {
   return result;
 }
 
+
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+/**
+ * Lane C — wave-planned hull decode keys. Real next-contact keys from the wave
+ * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
+ * wasp_swarmer decodes ashline_dart, not wasp_production.
+ */
+export function collectWaveHullDecodeKeys(plan) {
+  const keys = new Map();
+  const takeEnemy = (enemyId) => {
+    if (typeof enemyId !== 'string' || enemyId.length === 0) return;
+    const def = ENEMY_BY_ID.get(enemyId);
+    if (!def || typeof def.shipId !== 'string' || !def.shipId) return;
+    const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
+    const token = `${def.shipId}|${silhouette}`;
+    if (keys.has(token)) return;
+    keys.set(token, Object.freeze({
+      defId: def.shipId,
+      silhouette,
+      enemyId,
+      key: token,
+    }));
+  };
+  if (!plan || plan.ok === false) return [];
+  const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];
+  for (const entry of schedule) takeEnemy(entry && entry.enemyId);
+  const packages = Array.isArray(plan.packages) ? plan.packages : [];
+  for (const pkg of packages) takeEnemy(pkg && pkg.enemyId);
+  const swarmRoster = plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
+  for (const entry of swarmRoster) takeEnemy(entry && entry.enemyId);
+  return [...keys.values()];
+}
+
+/** Stub entity whose authoredPreloadPlan matches a live wave hull of this key. */
+export function makeWaveHullDecodeStub(hullKey) {
+  if (!hullKey || typeof hullKey.defId !== 'string' || !hullKey.defId) return null;
+  const silhouette = typeof hullKey.silhouette === 'string' ? hullKey.silhouette : '';
+  const data = { defId: hullKey.defId };
+  if (silhouette) data.silhouette = silhouette;
+  return {
+    id: `wave-hull-decode:${hullKey.key || hullKey.defId}`,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    data,
+  };
+}
+
+/**
+ * Remember planned wave hull keys on state.render so residency consumers can
+ * prioritize decode/admission without inventing a parallel prewarm path.
+ */
+export function noteWaveHullRunwayKeys(state, hullKeys) {
+  if (!state) return [];
+  const render = state.render || (state.render = {});
+  const next = new Set();
+  const list = Array.isArray(hullKeys) ? hullKeys : [];
+  for (const key of list) {
+    if (!key || typeof key.defId !== 'string' || !key.defId) continue;
+    const silhouette = typeof key.silhouette === 'string' ? key.silhouette : '';
+    next.add(`${key.defId}|${silhouette}`);
+  }
+  render.waveHullRunwayKeys = next;
+  return [...next];
+}
+
+export function clearWaveHullRunwayKeys(state) {
+  if (!state || !state.render) return;
+  state.render.waveHullRunwayKeys = null;
+}
+
+export function entityMatchesWaveHullRunway(entity, state) {
+  const keys = state && state.render && state.render.waveHullRunwayKeys;
+  if (!keys || typeof keys.has !== 'function' || !entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const defId = typeof data.defId === 'string' ? data.defId : '';
+  if (!defId) return false;
+  const silhouette = typeof data.silhouette === 'string' ? data.silhouette : '';
+  return keys.has(`${defId}|${silhouette}`);
+}
+
 export function resetWorldPresentationTables(state) {
   if (!state || !state.world) return;
+  // Rows are presentation entities: dropping the table without clearing their render
+  // attachments leaves every mesh tree reachable through any stale row retainer.
+  const dressing = state.world.dressing;
+  if (dressing && Array.isArray(dressing.rows)) {
+    for (let i = 0; i < dressing.rows.length; i++) clearEntityRuntime(dressing.rows[i]);
+  }
+  const field = state.world.asteroidField;
+  if (field && Array.isArray(field.rocks)) {
+    for (let i = 0; i < field.rocks.length; i++) clearEntityRuntime(field.rocks[i]);
+  }
+  const far = state.world.farActors;
+  if (far && Array.isArray(far.rows)) {
+    for (let i = 0; i < far.rows.length; i++) clearEntityRuntime(far.rows[i]);
+  }
   state.world.asteroidField = null;
   state.world.dressing = null;
+  clearWaveHullRunwayKeys(state);
 }

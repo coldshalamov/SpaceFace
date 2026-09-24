@@ -63,17 +63,17 @@ export function createRenderPackageLoader(options = {}) {
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
     const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
     try {
-      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash);
+      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
     } catch (error) {
       // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
       // entry for this same URL can still win once; bypass it and load the on-disk package.
       if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
       const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
-      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash);
+      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions);
     }
   }
 
-  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash) {
+  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     assertValidRenderPackage(metadataValue);
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
@@ -116,6 +116,19 @@ export function createRenderPackageLoader(options = {}) {
 
     const signature = runtimePackageSignature(metadata);
     const contentHash = metadata.contentHash;
+    // The consumer's presentation owner lands on the entry synchronously — at commit for fresh
+    // decodes, before resolve on cache hits. Without it a just-decoded package sits strictly
+    // cache-owned until the caller's async retain continuation runs, and a byte-pressure eviction
+    // inside that gap sends the loader into a decode→evict→retry livelock (the PQ-033.02
+    // save/load station-shell hang: the gate-required package was always the eviction victim).
+    const consumerOwner = loadOptions.residencyOwner || null;
+    const retainConsumer = (key) => {
+      if (!consumerOwner) return;
+      residency.retain(key, consumerOwner, {
+        role: loadOptions.residencyRole || 'live-boundary',
+        sectorId: loadOptions.residencySectorId || null,
+      });
+    };
     const existing = cache.get(contentHash);
     if (existing) {
       if (existing.signature !== signature) {
@@ -124,8 +137,9 @@ export function createRenderPackageLoader(options = {}) {
       const loaded = await existing.promise;
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
-        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions);
       }
+      retainConsumer(existing.key);
       if (!existing.packageOwner && !retainPackageOwner(existing)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
       }
@@ -201,6 +215,7 @@ export function createRenderPackageLoader(options = {}) {
           disposeUnregisteredResources(loaded.resources);
           throw error;
         }
+        retainConsumer(entry.key);
         const retained = entry.request.commit();
         entry.request = null;
         if (!retained) {

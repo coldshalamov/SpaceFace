@@ -14,6 +14,7 @@ import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el } from '../kit/index.js';
+import { disabledServiceWhy, disabledVitalActHtml } from './serviceQuotes.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { createStationCommands } from './stationCommands.js';
@@ -29,6 +30,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
+import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { confirm } from '../confirm.js';
 import {
   holdUnitSellPrice,
@@ -41,8 +43,14 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
+import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
+import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
+import { createStationRow } from '../orrery/stopDial.js';
+import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -69,13 +77,15 @@ function resolveTarget(tab) {
   return action ? { action } : {};
 }
 
-// Field Hardware tokens + component layer first, then the station layout sheet.
-// tokens/fh live under assets/ui/kit so nine-slice urls resolve; station.css beats orbital.css.
+// Field Hardware tokens + component layer first. Interior layout lives in station-orbital.css;
+// station.css loads last so the berth chrome (kit plates, keys, stencil name) beats the leftover
+// Orbital Command website walls.
 const STATION_STYLES = [
   { id: 'sx-fh-tokens', href: '/assets/ui/kit/tokens/tokens.css' },
   { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
-  { id: 'sx-station-css', href: '/styles/station.css' },
   { id: 'sx-station-orbital-css', href: '/styles/station-orbital.css' },
+  { id: 'sx-station-css', href: '/styles/station.css' },
+  { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
 ];
 // Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
 // stage wears .sx-sw* classes styled only by this sheet, so opening F2 before the first dock must
@@ -139,14 +149,14 @@ function createBerth(canvas, ctx) {
 }
 
 const DESTINATIONS = [
-  { id: 'market', label: 'Market', icon: 'market', create: createMarketScreen },
-  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', create: createShipworksScreen },
-  { id: 'industry', label: 'Industry', icon: 'industry', create: createIndustryScreen },
+  { id: 'market', label: stationControlLabel('market'), icon: 'market', create: createMarketScreen },
+  { id: 'shipworks', label: stationControlLabel('shipworks'), icon: 'shipworks', create: createShipworksScreen },
+  { id: 'industry', label: stationControlLabel('industry'), icon: 'industry', create: createIndustryScreen },
   // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
-  { id: 'contracts', label: 'Missions', icon: 'contracts', create: createContractsScreen },
-  { id: 'factions', label: 'Factions', icon: 'factions', create: createFactionsScreen },
-  { id: 'bar', label: 'Bar', icon: 'bar', create: createBarScreen },
-  { id: 'ledger', label: 'Ledger', icon: 'ledger', create: createLedgerScreen },
+  { id: 'contracts', label: stationControlLabel('contracts'), icon: 'contracts', create: createContractsScreen },
+  { id: 'factions', label: stationControlLabel('factions'), icon: 'factions', create: createFactionsScreen },
+  { id: 'bar', label: stationControlLabel('bar'), icon: 'bar', create: createBarScreen },
+  { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
 
 // The service verbs used to be dock tiles declared here. They now live on the vital they change
@@ -181,6 +191,7 @@ function resolveStation(ctx) {
   return {
     name: s.name || String(id),
     typeLabel: titleCaseWords(s.type || 'berth') + (s.size ? ' · Class ' + s.size : ''),
+    factionId: s.factionId || null,
     factionName: fac ? fac.name : '',
     services: Array.isArray(s.services) ? s.services.slice() : [],
   };
@@ -216,10 +227,21 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // The host `.screen` is the kit screen; `.sx-app` is a plain wrapper (display: contents) so the
   // regions below sit directly on the kit grid. `app.className` is seeded exactly once (the hub-
   // classes check reads that) and never wiped.
-  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen', 'sx-berth', 'sx-observatory');
+  if (rootEl && rootEl.classList) {
+    // No `k-screen`: dropping it takes `#screens .sx-berth.k-screen` out of the cascade in one
+    // move, and with it the `padding: 22px 400px 14px 32px` that reserved a hole for a floating
+    // vitals panel. The frame owns the regions now (design/frontend/THE_BAR.md).
+    rootEl.classList.add('screen', 'sx-berth', 'sx-observatory', 'dp-frame', 'dp-frame--screen', 'orr-station');
+    // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
+    injectOrreryStation(rootEl.ownerDocument || globalThis.document);
+    injectOrreryStationTabs(rootEl.ownerDocument || globalThis.document);
+    rootEl.dataset.dp = '1';
+    rootEl.setAttribute('data-fh-temp', 'docked');
+    rootEl.setAttribute('data-fh-register', 'bench');
+  }
   const app = document.createElement('div');
   app.className = 'sx-app';
-  app.innerHTML = stationFrameHtml();
+  app.innerHTML = bindStationMarkup(stationFrameHtml());
   rootEl.appendChild(app);
 
   const berthCanvas = app.querySelector('.sxb-berth__world');
@@ -259,6 +281,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     tile.classList.add('fh-key', 'fh-key--legend');
   });
   app.querySelector('.sxb-ops__dock').appendChild(dock.el);
+  // ORRERY: the destinations stand on a ruled line; the Hand rides it to the open one.
+  const dockRail = createStationRow({ row: dock.el.querySelector('.sx-dock__group--nav') });
   let shown = true;
   const effects = createStationEffects({ root: rootEl, app, body: bodyEl, dock: dock.el, credits: creditsEl, getState: state });
   const commands = createStationCommands({
@@ -421,14 +445,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const attr = c.targetScreen ? ` data-pop-screen="${escapeHtml(c.targetScreen)}"`
         : (dest ? ` data-pop-nav="${escapeHtml(dest)}"` : '');
       const aria = escapeHtml((c.actionLabel || (c.label + ' ' + c.text)));
-      return `<li><button type="button" class="k-row sx-depchip ${cls}"${attr} aria-label="${aria}">` +
+      return `<li><button type="button" ${stationControlAttrs('departure-chip')} class="k-row sx-depchip ${cls}"${attr} aria-label="${aria}">` +
         `<b class="k-row__name">${escapeHtml(c.label)}</b><span class="k-row__num">${escapeHtml(c.text)}</span></button></li>`;
     }).join('');
     const stateCls = dep.state === 'ready' ? 'k-good' : (dep.state === 'check' ? 'k-signal' : 'k-bad');
     openPop(
       `<div class="sx-pop__head k-t-emph">Departure check · <em class="is-${dep.state} ${stateCls}">${escapeHtml(dep.status)}</em></div>` +
       `<ul class="k-rows sx-pop__chips">${rows}</ul>` +
-      `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>${dep.state === 'ready' ? 'Undock' : 'Launch anyway'}</button>`,
+      `<button type="button" ${stationControlAttrs(dep.state === 'ready' ? 'undock' : 'launch-anyway')} class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>${dep.state === 'ready' ? stationControlLabel('undock') : stationControlLabel('launch-anyway')}</button>`,
       anchor, 'sx-pop--dep');
   }
 
@@ -448,7 +472,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       try { unit = holdUnitSellPrice(s, sid, id); } catch (_) { unit = null; }
       const legality = titleCaseWords(def.legality || 'legal');
       // One row per commodity: name · category, quantity, the station's quote, and Sell as a word.
-      return `<li><button type="button" class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
+      return `<li><button type="button" ${stationControlAttrs('hold-row')} class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
         `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} u · ${fmtCr(mass)} t</span></span>` +
         `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> u</span></span>` +
         `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / u' : ' no local quote'}</span></span>` +
@@ -514,26 +538,54 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       handoffSignature = '';
       return;
     }
-    // The three steps as fine words in a row under the news line; a done step reads at 38 %.
-    const html =
-      `<span class="k-caps sxb-handoff__k">Getting started</span>` +
-      steps.map((st, i) => {
-        // A step whose target is a verb (`services` → undock) carries the verb. It previously fell
-        // through `TARGET_MAP[tab] || 'market'`, so "Launch · safe to undock" opened the Market.
-        const target = resolveTarget(st.targetTab);
-        const cls = st.done ? 'is-done k-38' : (st.kind === 'bad' ? 'is-bad k-bad' : (st.kind === 'warn' ? 'is-warn' : 'is-ok'));
-        const mode = st.tradeMode === 'sell' || st.tradeMode === 'buy' ? st.tradeMode : '';
-        const attr = target.destination
-          ? ` data-handoff="${escapeHtml(target.destination)}"`
-          : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : '');
-        if (!attr) return '';
-        return `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-hstep ${cls}"${attr}` +
-          (mode ? ` data-handoff-mode="${mode}"` : '') +
-          ` data-why="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
-          `<span class="sxb-hstep__n">${i + 1}</span> ` +
-          `<span class="sxb-hstep__t">${escapeHtml(st.title)}</span></button>`;
-      }).join('') +
-      `<button type="button" class="k-word k-word--fine k-38 sxb-handoff__x" data-handoff-dismiss aria-label="Dismiss getting started guidance">Dismiss</button>`;
+    // ONBOARDING IS A LAMP ON THE NEXT THING TO DO.
+    //
+    // This was a row of three bevelled chips under a "Getting started" caps label plus a Dismiss —
+    // four controls carrying the same visual weight as UNDOCK, for guidance the player reads once.
+    // design/frontend/ONE_PHOTOGRAPH.md §4.7 kills the strip and names the replacement: light the
+    // destination that holds the next step, and say the one thing, once, in the reading voice.
+    //
+    // So: find the first step that is not done, put a travelling lamp on its tile in the dock, and
+    // print its sentence as a line of phosphor with a lamp bead. Two objects, not five, and the
+    // player's eye goes to the tab they actually have to press.
+    const next = steps.find((st) => !st.done) || null;
+    const doneCount = steps.filter((st) => st.done).length;
+    const target = next ? resolveTarget(next.targetTab) : null;
+    const attr = target
+      ? (target.destination
+        ? ` data-handoff="${escapeHtml(target.destination)}"`
+        : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : ''))
+      : '';
+
+    // The lamp on the rail. Cleared every pass so a completed step does not leave a lit tab behind.
+    const dockEl = app.querySelector('.sxb-ops__dock');
+    if (dockEl) {
+      for (const lit of dockEl.querySelectorAll('[data-dp-next]')) lit.removeAttribute('data-dp-next');
+      if (target && target.destination) {
+        // a destination id, matched by value (no CSS.escape: node-run tests have no CSS global)
+        const tile = [...dockEl.querySelectorAll('[data-nav]')].find((t) => t.getAttribute('data-nav') === String(target.destination));
+        if (tile) tile.setAttribute('data-dp-next', '');
+      }
+    }
+
+    const html = !next || !attr
+      ? ''
+      : `<button type="button" ${stationControlAttrs('handoff-step')} class="sxb-next"${attr}` +
+          (next.tradeMode === 'sell' || next.tradeMode === 'buy' ? ` data-handoff-mode="${next.tradeMode}"` : '') +
+          ` data-why="${escapeHtml(next.text)}" aria-label="${escapeHtml(next.title + '. ' + next.text)}">` +
+          `<span class="sxb-next__bead" aria-hidden="true"></span>` +
+          `<span class="sxb-next__t">${escapeHtml(next.title)}</span>` +
+          `<span class="sxb-next__w">${escapeHtml(next.text)}</span>` +
+          (steps.length > 1 ? `<span class="sxb-next__n" aria-hidden="true">${doneCount}/${steps.length}</span>` : '') +
+        `</button>` +
+        `<button type="button" ${stationControlAttrs('dismiss-handoff')} class="sxb-next__x" data-handoff-dismiss` +
+          ` aria-label="${stationControlLabel('dismiss-handoff')} getting started guidance">${stationControlLabel('dismiss-handoff')}</button>`;
+    if (!html) {
+      if (!handoffEl.hidden) handoffEl.hidden = true;
+      if (handoffSignature) handoffEl.replaceChildren();
+      handoffSignature = '';
+      return;
+    }
     if (handoffEl.hidden) handoffEl.hidden = false;
     if (html !== handoffSignature) {
       handoffEl.innerHTML = html;
@@ -607,6 +659,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let arrivedOnce = false;
   function applyDestinationRegister(id) {
     if (rootEl && rootEl.classList) rootEl.classList.toggle('k-screen--dense', DENSE.has(id));
+    if (rootEl && rootEl.setAttribute) {
+      rootEl.setAttribute('data-fh-register', arriving && !arrivedOnce ? 'poster' : 'bench');
+    }
     const hero = !TITLE_SIZED.has(id) || (arriving && !arrivedOnce);
     crestName.classList.toggle('k-t-hero', hero);
     crestName.classList.toggle('k-t-title', !hero);
@@ -674,6 +729,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   commsToggle.addEventListener('click', () => setCommsOpen(!commsOpen));
 
   function showReceipt(kind, title, delta = '') {
+    // INF-095: receipts are a shown-tree concern. Skipping while hidden also stops stale
+    // flight-time receipts greeting the next dock.
+    if (!shown) return;
     if (receiptTimer) clearTimeout(receiptTimer);
     receiptHistory.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
     if (receiptHistory.length > 12) receiptHistory.shift();
@@ -708,6 +766,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   subscribe('station:navigate', (request = {}) => {
+    // INF-095: a hidden app takes no navigation — it would corrupt the active tab for the
+    // next dock. onShow re-renders the current destination from live state.
+    if (!shown) return;
     const destination = DESTINATIONS.some((d) => d.id === request.destination)
       ? request.destination : null;
     if (!destination) return;
@@ -737,6 +798,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
     // A newly posted B5 choice may claim this dock session's one existing auto-open. If an earlier
     // mission handoff already used it, the Missions badge updates without yanking the player back.
+    // INF-095: hidden in flight, this is pure waste (plus hidden auto-opens) — onShow recomputes.
+    if (!shown) return;
     applyDockAttention({ allowAutoOpen: payload.onboardingChoice === true });
   });
   subscribe('credits:changed', (p = {}) => {
@@ -766,7 +829,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!r) return { text: '—' };
         const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
           .filter(Boolean).join(' · ');
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title };
+        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why: disabledServiceWhy(r) };
         const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };
@@ -822,7 +885,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (typeof opts.serviceQuote === 'function') {
         try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }
       }
-      if (quote && quote.disabled) return false;
+      // A stale click on a dead-end verb explains itself instead of dying silently; the
+      // quote is recomputed live so the reason always matches current credits/hold.
+      if (quote && quote.disabled) {
+        const why = disabledServiceWhy(quote) || quote.detail || 'That service is unavailable right now.';
+        if (bus) bus.emit('toast', { text: `${quote.buttonLabel || 'Service'} unavailable: ${why}`, kind: 'warn', ttl: 3 });
+        return false;
+      }
       if (type === 'insurance') {
         if (quote) void runInsuranceService(quote);
         return false;
@@ -886,13 +955,27 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!cost) return '';
     const text = String(cost.text == null ? '' : cost.text);
     if (cost.disabled) {
+      // A dead-end verb with a speakable reason keeps its tab stop (aria-disabled + data-why)
+      // instead of collapsing to a span that never explains itself. Ghost verbs keep their
+      // hide-when-unaffordable contract, and done-state facts stay quiet spans.
+      if (!ghost && cost.why) return disabledVitalActHtml(id, label, text, cost.why);
       return ghost ? '' : `<span class="sxb-vital__ok k-t-fine k-38">${escapeHtml(text)}</span>`;
     }
     const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
-    const copy = ghost ? label : `${label} · ${text}`;
-    return `<button type="button" class="${cls}" data-vital-act="${id}"${why}` +
-      ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
+    // the verb over its price (the words read "Repair · 22 cr" to anything that reads text)
+    // one line per service: the verb, then its price. A leading detail ("66 mun · ") stays in the
+    // text for anything that reads it, visually quiet; a ghost verb shows its price too when it has one.
+    const parts = String(text).split(' · ');
+    const price = parts.pop() || '';
+    const detail = parts.length ? parts.join(' · ') + ' · ' : '';
+    const priced = /\d/.test(price);
+    const copy = ghost && !priced ? `<span class="orr-act__verb">${escapeHtml(label)}</span>`
+      : `<span class="orr-act__verb">${escapeHtml(label)}</span><span class="orr-act__sep"> · </span>` +
+        (detail ? `<span class="orr-act__detail">${escapeHtml(detail)}</span>` : '') +
+        `<span class="orr-act__cost">${escapeHtml(price)}</span>`;
+    return `<button type="button" ${stationControlAttrs(id)} class="${cls}" data-vital-act="${id}"${why}` +
+      ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${copy}</button>`;
   }
 
   // A vital is one static kit row: the label at body 62 %, the value at emphasis (data-tone kept:
@@ -903,16 +986,58 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const toneCls = v.tone === 'bad' ? ' k-bad' : (v.tone === 'warn' ? ' k-signal' : '');
     const track = v.track === false ? ''
       : `<span class="k-bar sxb-vital__track" role="img" aria-label="${escapeHtml(v.aria)}">` +
+        vitalDialSvg({ frac: v.frac }) +
         `<span class="k-bar__fill sxb-vital__fill" style="width:${pct}%"></span></span>`;
+    // a track-less unit (Munitions, Rights) still stands on its dial, drawn open (no fill)
+    const bareDial = v.track === false
+      ? `<span class="orr-vdial-bare" aria-hidden="true">${vitalDialSvg(v.frac > 0 || v.k === 'muni' ? { frac: v.frac } : { bare: true })}</span>` : '';
     const label = `${stationIcon(v.k)}<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
     const headEl = v.openHold
-      ? `<button type="button" class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
+      ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
           ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${label}</button>`
       : `<span class="sxb-vital__head">${label}</span>`;
-    const value = `<span class="sxb-vital__value k-t-emph${toneCls}">${escapeHtml(v.value)}</span>`;
+    const value = `<span class="sxb-vital__value k-t-emph${toneCls}"${v.detail ? ` tabindex="0" data-why="${escapeHtml(v.detail)}"` : ''}>${vitalValueHtml(v.value, escapeHtml)}</span>`;
     const acts = v.acts.filter(Boolean);
     const actsEl = `<span class="sxb-vital__acts">${acts.join('')}</span>`;
-    return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${headEl}${value}${actsEl}</li>`;
+    return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${bareDial}${headEl}${value}${actsEl}</li>`;
+  }
+
+  function patchVitals(vitals) {
+    const lis = [...vitalsEl.children];
+    if (lis.length !== vitals.length || typeof document === 'undefined') return false;
+    if (lis.some((li, i) => !li.classList.contains('sxb-vital--' + vitals[i].k))) return false;
+    const tpl = document.createElement('template');
+    // a DOM without <template> content (the node test shim) rebuilds the row instead
+    if (!tpl || !tpl.content || typeof lis[0]?.querySelector !== 'function') return false;
+    vitals.forEach((v, i) => {
+      const li = lis[i];
+      tpl.innerHTML = vitalHtml(v);
+      const next = tpl.content.firstElementChild;
+      if (!next) return;
+      if (li.getAttribute('data-tone') !== v.tone) li.setAttribute('data-tone', v.tone);
+      // the dial moves; its words are swapped only where they changed
+      const dial = li.querySelector('.orr-vdial');
+      if (!dial || !setVitalDial(dial, v.frac)) {
+        const oldDial = li.querySelector('.sxb-vital__track, .orr-vdial-bare');
+        const newDial = next.querySelector('.sxb-vital__track, .orr-vdial-bare');
+        if (oldDial && newDial) oldDial.replaceWith(newDial);
+      }
+      const fillEl = li.querySelector('.sxb-vital__fill');
+      const nextFill = next.querySelector('.sxb-vital__fill');
+      if (fillEl && nextFill && fillEl.style.width !== nextFill.style.width) fillEl.style.width = nextFill.style.width;
+      const track = li.querySelector('.sxb-vital__track');
+      const nextTrack = next.querySelector('.sxb-vital__track');
+      if (track && nextTrack && track.getAttribute('aria-label') !== nextTrack.getAttribute('aria-label')) track.setAttribute('aria-label', nextTrack.getAttribute('aria-label'));
+      for (const sel of ['.sxb-vital__label', '.sxb-vital__value', '.sxb-vital__acts']) {
+        const a = li.querySelector(sel);
+        const b = next.querySelector(sel);
+        if (a && b && a.outerHTML !== b.outerHTML) a.replaceWith(b);
+      }
+      const head = li.querySelector('button.sxb-vital__head');
+      const nextHead = next.querySelector('button.sxb-vital__head');
+      if (head && nextHead && head.getAttribute('aria-label') !== nextHead.getAttribute('aria-label')) head.setAttribute('aria-label', nextHead.getAttribute('aria-label'));
+    });
+    return true;
   }
 
   function renderStatus() {
@@ -935,7 +1060,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         aria: `Hull ${(hullF * 100).toFixed(0)} percent`,
         acts: [vitalActHtml('repair', costs.repair, 'Repair'),
                vitalActHtml('wash', costs.wash, 'Wash', true),
-               vitalActHtml('insurance', costs.insurance, s.player?.insurance?.insuredModules ? 'Insurance · Active' : 'Insurance', true)],
+               vitalActHtml('insurance', costs.insurance, s.player?.insurance?.insuredModules ? 'Insured' : 'Insure', true)],
       },
       {
         k: 'fuel', label: 'Fuel', frac: fuelF, tone: vitalTone(fuelF, 'fuel'),
@@ -948,17 +1073,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
         aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
-          ? `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
+          ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
           : ''],
       },
     ];
     // Munitions has no meter in state, so it appears only when there is something to load — an
     // action-only unit rather than a permanently-present tile reading "Rearm".
+    const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
     if (costs.resupply && !costs.resupply.disabled) {
       vitals.push({
-        k: 'muni', label: 'Munitions', frac: 0, tone: 'warn', track: false,
-        value: 'Low', aria: 'Munitions low',
+        k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
+        value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
         acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
       });
     }
@@ -972,10 +1098,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         acts: [vitalActHtml('rights', costs.rights, 'Redeem')],
       });
     }
+    // A paid yard job is work the player is owed visibility on: the meter is the job itself.
+    // The periodic re-render keeps progress, queue and holding live while the row exists.
+    const yard = yardJobReadout(s);
+    if (yard) {
+      vitals.push({
+        k: 'industry', label: yard.label, frac: yard.frac, tone: yard.tone, track: true,
+        value: `${yard.status} · ${yard.value}`,
+        aria: yard.aria,
+        detail: yard.detail,
+        acts: [],
+      });
+    }
 
     const vitalsHtml = vitals.map(vitalHtml).join('');
     if (vitalsHtml !== readoutsSignature) {
-      vitalsEl.innerHTML = vitalsHtml;
+      // The same vitals in the same order are patched in place, so a repair glides the dial up
+      // instead of redrawing it; a vital arriving or leaving rebuilds the row.
+      if (!patchVitals(vitals)) vitalsEl.innerHTML = vitalsHtml;
       readoutsSignature = vitalsHtml;
     }
 
@@ -993,7 +1133,28 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
-    setTextIfChanged(identEl, [st.typeLabel, st.factionName].filter(Boolean).join(' · '));
+    // The berth you are docked at is itself a door: the crest name opens the station dossier.
+    const dockedRef = stationId() ? 'station:' + stationId() : null;
+    if (crestName && crestName.getAttribute('data-entity') !== dockedRef) {
+      crestName.classList.remove('sf-entity-link');
+      crestName.removeAttribute('data-entity');
+      crestName.removeAttribute('role');
+      crestName.removeAttribute('tabindex');
+      if (dockedRef) decorateEntityNode(crestName, dockedRef);
+    }
+    // The ident line carries the holding faction's name — a faction door, not just a caption.
+    const identSig = `${st.typeLabel}|${st.factionName}`;
+    if (identEl && identEl.dataset.identSig !== identSig) {
+      identEl.dataset.identSig = identSig;
+      const parts = [];
+      if (st.typeLabel) parts.push(escapeHtml(st.typeLabel));
+      if (st.factionName) {
+        parts.push(st.factionId
+          ? entitySpanHtml('faction:' + st.factionId, escapeHtml(st.factionName))
+          : escapeHtml(st.factionName));
+      }
+      identEl.innerHTML = parts.join(' · ');
+    }
     // Ticker line stays under the name. Leftover event card (badge/title/body/eventId) paints
     // beside it when this berth has a stored leftover card or a live leftover event. Leftover
     // story ledger paints on .sxb-berth__ledger through the same leftover writer.
@@ -1078,6 +1239,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   function refresh(_nextCtx, options = {}) {
+    // INF-095: the cached app survives undock; event-driven refreshes while hidden are DOM
+    // churn nobody sees. onShow renders everything from live state, so resume needs no catch-up.
+    if (!shown) return;
     renderStatus();
     effects.syncPolicy();
     applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
@@ -1176,7 +1340,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
       receiptEl.hidden = true;
       setCommsOpen(false);
-      app.querySelector('.so-bulletin').open = false;
+      const bulletin = app.querySelector('.so-bulletin');
+      if (bulletin) bulletin.open = false;
       closePop();
       dock.setAttention(null);
       lastMissionAttention = null;
@@ -1188,6 +1353,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     dispose() {
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');
+      rootEl.removeAttribute('data-fh-temp');
+      rootEl.removeAttribute('data-fh-register');
       berth.dispose();
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);
@@ -1196,6 +1363,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());
       try { dock.dispose && dock.dispose(); } catch (_) {}
+      try { dockRail.dispose(); } catch (_) {}
       try { setStationExitOwner(null); } catch (_) {}
       screenCache.forEach((s) => { try { s.dispose && s.dispose(); } catch (_) {} });
       screenCache.clear();

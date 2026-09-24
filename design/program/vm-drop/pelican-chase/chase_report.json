@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/pelican-chase/pelican_c1_lod0.glb",
+  "ship": "pelican",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 1.8914089099135656,
+  "authoredX": 14.550000190734863,
+  "targetWU": 27.52,
+  "size": [
+    27.52,
+    10.4406,
+    5.7982
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/pelican-chase/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/pelican-chase/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/pelican-chase/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/design/program/vm-drop/pelican-chase/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/design/program/vm-drop/pelican-chase/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/design/program/vm-drop/pelican-chase/clay_play_chase_close.png"
+}

@@ -119,7 +119,7 @@ test('ship on-demand plans request only the exact body or one modular family', (
 
 test('world-place upgrades share the same bounded authored admission queue', () => {
   const source = readFileSync(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(source, /enqueueBoundaryUpgrade\(scene,\s*{\s*boundary,\s*entity,\s*run:/s);
+  assert.match(source, /enqueueBoundaryUpgrade\(scene,\s*{\s*boundary,\s*entity(?::\s*liveEntity)?,\s*run:/s);
   assert.match(source, /typeof job\.run === 'function'/);
 });
 

@@ -126,6 +126,31 @@ function ensureAppliedIncidentIds(player) {
 
 const EMPTY_LEDGER = Object.freeze({});
 
+// Compact label coercion for the convicting-incident record: short trimmed strings only,
+// null when absent. Presentation renders what is here verbatim, so nothing may invent a
+// witness claim — absence stays absence.
+function shortText(value, max) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, max);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+// Defensive copy of the convicting-incident record for the public packet. Unknown shapes
+// (old saves, foreign writers) degrade to null rather than a half-invented explanation.
+function incidentSnapshot(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+  if (typeof record.incidentReceiptId !== 'string' || !record.incidentReceiptId) return null;
+  return {
+    kind: shortText(record.kind, 32),
+    incidentReceiptId: record.incidentReceiptId,
+    affected: shortText(record.affected, 48),
+    witnessCount: Number.isFinite(Number(record.witnessCount))
+      ? Math.max(0, Number(record.witnessCount) | 0) : 0,
+    jurisdiction: shortText(record.jurisdiction, 48),
+    at: Number.isFinite(Number(record.at)) ? Number(record.at) : 0,
+  };
+}
+
 function defaultHeatZone() {
   return {
     active: false,
@@ -301,6 +326,20 @@ export const heat = {
     const ledger = ensureAppliedIncidentIds(player);
     ledger[incidentReceiptId] = true;
 
+    // INF-077: remember the convicting incident in compact form so presentation can trace a
+    // heat increase to the actual accepted receipt. Only accepted, witnessed receipts reach
+    // this line — denials and unwitnessed acts return above and never set this field.
+    player.heatLastIncident = {
+      kind: shortText(receipt.kind, 32),
+      incidentReceiptId,
+      affected: shortText(
+        receipt.victimStableId || receipt.victimClass || receipt.payloadStableId || null, 48),
+      witnessCount: Number.isFinite(Number(receipt.witnessCount))
+        ? Math.max(0, Number(receipt.witnessCount) | 0) : 0,
+      jurisdiction: shortText(receipt.stationId || null, 48),
+      at: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+
     this._raise(delta, `law incident (${receipt.kind})`);
     return { applied: true, reason: null, incidentReceiptId, delta };
   },
@@ -468,6 +507,9 @@ export const heat = {
     if (isRunSealed(this.state)) return;
     const before = player.heat || 0;
     player.heat = clamp01(value);
+    // A fully cleared record convicts nobody: dropping the incident here keeps a later
+    // suspicion phase from wearing a stale conviction's explanation.
+    if (player.heat <= 0) player.heatLastIncident = null;
     publishWantedTier(player);
     if (player.heat > 0) this._refreshZone(false);
     else this._clearZone();
@@ -510,6 +552,9 @@ export const heat = {
       reason,
       wanted,
       wantedCrossed: wanted !== wasWanted,
+      // The convicting incident, when a validated receipt caused the current heat. A plain
+      // snapshot (never a live reference) so presentation cannot mutate owned state.
+      incident: incidentSnapshot(player.heatLastIncident),
       // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
       suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
       threshold: WANTED_THRESHOLD,

@@ -62,12 +62,13 @@ try {
     state.fuel.max = 100;
     window.SF.bus.emit('dock:docked', { stationId: 'station_helios' });
   });
-  await page.waitForSelector('[data-screen="station"] .sx-app', { state: 'visible', timeout: 15_000 });
+  // .sx-app is a display:contents wrapper (no box of its own); the dock is the shell's first visible region
+  await waitVisible(page, '[data-screen="station"] .sx-dock', 15_000);
 
   const report = { tabs: {}, global: {} };
   for (const [tab, rootSelector, hoverSelector] of TABS.filter(([tab]) => !TAB_FILTER || tab === TAB_FILTER)) {
     await page.click(`[data-nav="${tab}"]`);
-    await page.waitForSelector(rootSelector, { state: 'visible', timeout: tab === 'shipworks' ? 30_000 : 10_000 });
+    await waitVisible(page, rootSelector, tab === 'shipworks' ? 30_000 : 10_000);
     if (tab === 'shipworks') {
       // previewReady flips before the authored asset is admitted and the pipelines compile; the
       // projection drifts sub-pixels while those settle (measured: 1.3px during compile). Sample
@@ -106,11 +107,11 @@ try {
     checkStable(report.global.hold, 'Hold readout stationary hover');
   }
 
-  const handoff = page.locator('.sxb-handoff:not([hidden]) .sxb-hstep').first();
+  const handoff = page.locator('.sxb-handoff:not([hidden]) .sxb-next').first();
   if (await handoff.count()) {
     await handoff.hover();
     await page.waitForTimeout(240);
-    report.global.handoff = await sampleFrames(page, '.sxb-handoff:not([hidden]) .sxb-hstep', FRAMES);
+    report.global.handoff = await sampleFrames(page, '.sxb-handoff:not([hidden]) .sxb-next', FRAMES);
     checkStable(report.global.handoff, 'First Dock Handoff stationary hover');
   }
 
@@ -125,7 +126,7 @@ try {
       if (f && f.max) f.current = Math.max(1, Math.round(f.max * 0.2));
     });
     await page.click('[data-act="undock"]');
-    await page.waitForSelector('.sx-pop--dep:not([hidden])', { state: 'visible', timeout: 3_000 });
+    await waitVisible(page, '.sx-pop--dep:not([hidden])', 3_000);
   };
   await openDeparture();
   const hullBefore = await page.evaluate(() => window.SF.state.entities.get(window.SF.state.playerId)?.hull || 0);
@@ -145,7 +146,7 @@ try {
   // hold/cargo to the hold surface); the mission chip only exists when a mission is actually
   // tracked, which this probe does not set up.
   await page.locator('.sx-pop--dep .sx-depchip').filter({ hasText: /hold|cargo/i }).first().click();
-  await page.waitForSelector('.sx-pop--hold:not([hidden])', { state: 'visible', timeout: 3_000 });
+  await waitVisible(page, '.sx-pop--hold:not([hidden])', 3_000);
   report.global.departureActions.hold = 'manifest';
 
   report.global.runningAnimations = await page.evaluate(() => [...document.querySelectorAll('.sx-app *')]
@@ -267,4 +268,16 @@ function freePort() {
       probe.close(() => resolve(port));
     });
   });
+}
+
+// page.waitForSelector polls on animation frames, and an idle event-rendered page makes none; this
+// visibility wait polls on the timer shim like every other wait here (installCspSafePlaywrightPolling).
+async function waitVisible(page, selector, timeout) {
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+  }, selector, { timeout });
 }

@@ -51,6 +51,16 @@ export const TABLE_INBOUND_APPROACH_WU = 600;
  */
 export const TABLE_PROMOTE_HORIZON_SECONDS = TABLE_AUTHORED_DECODE_SECONDS + 1.5;
 
+/**
+ * Longer runway reserved for the entity-level authored GLB prefetch. The plan decode is
+ * the long pole on first contact (serial per part root) while the canonical library
+ * dedupes by file, so it may start a full decode window ahead of the boundary-build
+ * horizon: a hull closing inside this window decodes its authored plan while it is
+ * still comfortably off the glass instead of reaching contact as a resolving marker.
+ */
+export const TABLE_DECODE_RUNWAY_SECONDS = TABLE_PROMOTE_HORIZON_SECONDS
+  + TABLE_AUTHORED_DECODE_SECONDS;
+
 /** Collect horizon for ledger rows that build procedurally once admitted. */
 export const TABLE_COLLECT_HORIZON_SECONDS = TABLE_RESIDENCY_PREFETCH_SECONDS + 1.0;
 
@@ -149,6 +159,28 @@ export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
  */
 export const TABLE_SIM_ASPECT = 48 / 9;
 
+/**
+ * Extra world units kept around the readable glass. The mathematical frustum
+ * and the chase focus can disagree by a hull radius at the edge of the
+ * picture; this skirt is what stops a body from being evicted while a pixel
+ * of it is still on screen.
+ */
+export const TABLE_FRAME_SKIRT_WU = 48;
+
+/**
+ * Zoom the mesh runway must cover. The picture uses the live zoom. The runway
+ * also covers the zoom the camera is opening toward (`composedZoom`) and the
+ * zoom the player asked for, so a zoom-out does not spend a quarter-second
+ * with an empty rim.
+ */
+export function tablePrefetchZoomFromState(state) {
+  const camera = state && state.camera || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : 0;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : 0;
+  const composed = Number.isFinite(camera.composedZoom) ? camera.composedZoom : 0;
+  return Math.max(live, requested, composed) || 144;
+}
+
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
 export function tableCameraEnvelope(state) {
   const camera = state && state.camera || {};
@@ -239,26 +271,39 @@ export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, 
 }
 
 /**
+ * World-space origin the keep/evict radii measure from: the live look-at
+ * (frame-local focus rebased into global) while it exists, else the fallback
+ * (usually the player). The ledger collect disc must use this same origin —
+ * when the look-at leads the hull, a player-centered disc collects rows the
+ * keep radius then evicts, and misses rows the keep radius holds resident.
+ */
+export function tableLookAtOrigin(state, fallbackPos, out) {
+  const target = out || { x: 0, z: 0 };
+  const focus = state && state.camera && state.camera.focus;
+  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
+  if (hasFocus) {
+    const frame = state && state.world && state.world.frameOrigin;
+    target.x = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
+    target.z = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
+  } else {
+    target.x = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
+    target.z = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
+  }
+  return target;
+}
+
+const _lookAtOriginScratch = { x: 0, z: 0 };
+
+/**
  * Focus is frame-local. World positions stay galactic-global. Convert focus
  * to global with world.frameOrigin before subtracting, or a rebase culls
  * every on-glass light when the camera is shoved.
  */
 export function tableLookAtDelta(state, fallbackPos, entityPos, out) {
   const target = out || { x: 0, z: 0 };
-  const focus = state && state.camera && state.camera.focus;
-  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
-  let originX;
-  let originZ;
-  if (hasFocus) {
-    const frame = state && state.world && state.world.frameOrigin;
-    originX = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
-    originZ = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
-  } else {
-    originX = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
-    originZ = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
-  }
-  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - originX;
-  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - originZ;
+  const origin = tableLookAtOrigin(state, fallbackPos, _lookAtOriginScratch);
+  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - origin.x;
+  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - origin.z;
   return target;
 }
 

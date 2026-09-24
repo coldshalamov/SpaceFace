@@ -61,3 +61,13 @@ test('first-flight hold enqueues the rescue set and on-glass rows instead of sta
   assert.ok(owner._meshBuildQueuedIds.has(3), 'on-glass ship queued under the hold');
   assert.equal(owner._meshBuildQueuedIds.has(4), false, 'distant ship keeps the hold');
 });
+
+test('protected first-flight drain caps to the ordinary runtime mesh budget', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(
+    renderer,
+    /_drainMeshBuildQueue\(Math\.min\(moved, RUNTIME_MESH_BUILD_BUDGET\)\)/,
+    'hold-exempt drain must not build an unbounded exempt cohort in one frame',
+  );
+});

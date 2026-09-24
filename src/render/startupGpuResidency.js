@@ -26,16 +26,39 @@ function residencyScratchTargetFor(renderer) {
   return target;
 }
 
+// One residency material per renderer for the context's lifetime. The material is stateless
+// (no uniforms, no per-render mutation), but a fresh RawShaderMaterial per call mints new
+// shader IDs — so every in-flight admission paid a novel program link and an immediate
+// release, the +21 s link/upload churn cluster in the crucible probe. Sharing it means the
+// first cook links the program once and every later census reuses the cached program.
+const residencyMaterials = new WeakMap();
+
+function residencyMaterialFor(renderer) {
+  let material = residencyMaterials.get(renderer);
+  if (!material) {
+    material = createResidencyMaterial();
+    residencyMaterials.set(renderer, material);
+  }
+  return material;
+}
+
 // The scratch pass binds shared render-target state, so admissions cannot interleave: a second
 // caller that captured the scratch target as its "previous" target would restore the renderer to a
 // 1x1 buffer instead of the canvas. Serializing the batch loops per renderer keeps every capture/
 // restore honest while each admission's texture uploads still overlap freely.
 const residencyBatchChains = new WeakMap();
 
-function enqueueGeometryResidencyBatches(renderer, work) {
-  const prior = residencyBatchChains.get(renderer) || Promise.resolve();
+// The deadline lane keeps its own chain: an on-glass pending root cannot queue
+// behind ambient residency passes (a sector cook may hold seconds of uploads).
+// Each batch self-contains capture/render/restore inside one synchronous turn,
+// so the two chains interleave safely at batch boundaries.
+const residencyUrgentBatchChains = new WeakMap();
+
+function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
+  const chains = options.urgent === true ? residencyUrgentBatchChains : residencyBatchChains;
+  const prior = chains.get(renderer) || Promise.resolve();
   const run = prior.then(work, work);
-  residencyBatchChains.set(renderer, run.catch(() => null));
+  chains.set(renderer, run.catch(() => null));
   return run;
 }
 
@@ -78,6 +101,10 @@ export function collectStartupTextures(subjects) {
 function drawableHasWork(object, options = {}) {
   if (!object || !object.geometry) return false;
   if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
+  // Authored-fallback layers stay hidden for the object's whole live life once flagged —
+  // uploading their buffers in a residency pass pays for a draw no presented frame can issue
+  // (compilePresentSlice skips them for the same reason).
+  if (object.userData && object.userData.authoredReadableFallbackLayer === true) return false;
   // includeEmpty admits count-0 pools and not-yet-ranged buffers: the upload is what matters,
   // and an empty submission still uploads the backing buffers so a later 0->N growth does not
   // first-land inside a presented frame.
@@ -393,7 +420,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     : null;
   const now = typeof options.now === 'function' ? options.now : clockNow;
   const batches = partitionGeometryWork(work, options);
-  const material = createResidencyMaterial();
+  const material = residencyMaterialFor(renderer);
   const target = residencyScratchTargetFor(renderer);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 10);
   camera.layers.enableAll();
@@ -402,6 +429,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   const geometriesBefore = rendererMemoryGeometries(renderer);
 
   try {
+    const counters = options.counters || null;
     await enqueueGeometryResidencyBatches(renderer, async () => {
       for (let index = 0; index < batches.length; index++) {
       const batch = batches[index];
@@ -413,11 +441,21 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
       const state = captureRendererState(renderer);
       const started = now();
       let success = false;
+      // Upload events inherit the caller's admission label; swap in the batch's source names so
+      // the probe can say WHICH meshes still reach first-bind inside a live round.
+      const priorSubject = counters ? counters.admissionSubject : null;
+      if (counters) {
+        counters.admissionSubject = `res:${batch.work
+          .map((item) => item.object && (item.object.name || item.object.type) || 'mesh')
+          .slice(0, 10)
+          .join(',')}`;
+      }
       try {
         applyResidencyRendererState(renderer, target);
         renderer.render(scene, camera);
         success = true;
       } finally {
+        if (counters) counters.admissionSubject = priorSubject;
         const durationMs = now() - started;
         try { restoreRendererState(renderer, state); } finally {
           for (const entry of proxyEntries) {
@@ -448,9 +486,10 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         reportBlockingSlice(onBlockingSlice, receipt);
       }
       }
-    });
+    }, { urgent: options.urgent === true });
   } finally {
-    material.dispose();
+    // The material is renderer-scoped and shared — disposing it here would release the linked
+    // program and force every later admission to relink it. It dies with the GL context.
   }
 
   const geometriesAfter = rendererMemoryGeometries(renderer);

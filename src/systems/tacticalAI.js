@@ -1,6 +1,13 @@
 import { createEnemyMindPort } from '../ai/enemyMind/port.js';
 import { enemyMindAllowsFire } from '../ai/enemyMind/adapter.js';
 import { shapeNemesisManeuverRequest, nemesisFireAllowed } from '../ai/nemesisTactics.js';
+import {
+  guardCapitalBossActionPort,
+  shapeCapitalBossManeuverRequest,
+  applyCapitalBossFireGate,
+  capitalScoreControls,
+  capitalBossOrder,
+} from '../ai/capitalBossOrders.js';
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
@@ -27,6 +34,7 @@ import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
+import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
   MISSION_TAG_BOSS_DOCTRINE,
@@ -192,7 +200,7 @@ export function createTacticalAISystem({
       roster: roster || helpers.aiRoster,
       maneuver: heavyAwareManeuverPort(baseManeuver, () => ctxRef && ctxRef.state),
       encounter: encounter || helpers.aiEncounter || null,
-      actions: actionPortFactory(ctxRef),
+      actions: guardCapitalBossActionPort(actionPortFactory(ctxRef), () => ctxRef.state),
     };
     // Injected-port fixtures keep their legacy behavior unless explicitly enabled. Production
     // opts in; config.enemyMind.enabled=false is an exact no-RNG-draw rollback switch.
@@ -225,9 +233,9 @@ export function createTacticalAISystem({
         const sensorPort = sensors || (ctxRef && ctxRef.helpers && ctxRef.helpers.aiSensors);
         const frame = actorIsNemesis && sensorPort && typeof sensorPort.frameFor === 'function'
           ? sensorPort.frameFor(request.entityId, state.tick) : null;
-        return basePort.request(shapeHeavyManeuverRequest(
+        return basePort.request(shapeCapitalBossManeuverRequest(shapeHeavyManeuverRequest(
           actorIsNemesis ? shapeNemesisManeuverRequest(request, state, frame) : request, state,
-        ));
+        ), state));
       },
     };
   }
@@ -375,6 +383,7 @@ export function createTacticalAISystem({
         driveCohortMembers(liveStack, state, tick, shipLikeList);
         revalidateCachedAIFiringIntents(liveStack, state, lastDecisionEntityRefs);
         applySquadTokenFireGate(liveStack, state, shipLikeList);
+        applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -398,7 +407,8 @@ export function createTacticalAISystem({
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
         const doctrine = decision && decision.combatDoctrine;
-        if (doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+        // Authored capital scores own their presentation; stock boss telegraphs would double-report.
+        if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:telegraph', {
             entityId: decision.entityId,
             targetId: doctrine.targetId,
@@ -410,7 +420,7 @@ export function createTacticalAISystem({
             tick,
           });
         }
-        if (doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+        if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:doctrinePhase', {
             entityId: decision.entityId,
             targetId: doctrine.targetId,
@@ -431,7 +441,7 @@ export function createTacticalAISystem({
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
           ? ctxRef.registry.get('fields')
           : null;
-        if (entity && nemesisFireAllowed(entity, state) && specialistPlanByEnemyId(enemyId) && ctxRef) {
+        if (entity && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state) && specialistPlanByEnemyId(enemyId) && ctxRef) {
           const kernel = getCombatKernel(ctxRef);
           applySpecialistCounterplay({
             state,
@@ -445,7 +455,9 @@ export function createTacticalAISystem({
         }
         // The mine-layer's area-denial verb: the doctrine telegraphed `wake_mines` and is flying
         // its drop line; this port releases real mines behind the hull through the mines system.
-        if (entity && nemesisFireAllowed(entity, state) && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+        // PQ-205.02: the same telegraphed pass also calls bombs.drop / commandDetonate so the
+        // pirate in front of the player lays a shootable drift bomb.
+        if (entity && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state) && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
           applyMineLayerVerb({
             state,
             entity,
@@ -453,12 +465,24 @@ export function createTacticalAISystem({
             tick,
             placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
           });
+          const bombsSys = ctxRef.registry && typeof ctxRef.registry.get === 'function'
+            ? ctxRef.registry.get('bombs')
+            : null;
+          applyNpcBombMirror({
+            state,
+            entity,
+            doctrinePhase: doctrine.phase,
+            bombs: bombsSys,
+          });
         }
-        if (entity && fieldsSys && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
+        if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList);
       driveCohortMembers(liveStack, state, tick, shipLikeList);
       applySquadTokenFireGate(liveStack, state, shipLikeList);
+      // Runs after the mind veto and the Nemesis denial gate: those vetoes still close fire, and a
+      // score-owned capital/wing must not double-fire its authored attacks through stock intent.
+      applyCapitalBossFireGate(state, shipLikeList, clearAIFiringIntent);
     },
 
     inspect(query = {}) {
@@ -555,6 +579,13 @@ export function applyEngagementPosture(entity, doctrine, state) {
   }
   // Survival orders (morale flee / fsm flee) and already-postured activity outrank the break.
   if (!current || current.kind === 'flee' || current.kind === 'disengage') return;
+  // A CONTROL-dispatched enforcement run does not break off on doctrine cadence: the incident's
+  // own stand-down ends the response, so the egress/lull rewrite must not park a pursuer in a
+  // stand-off orbit while the offender is still the live assignment (measured on the witness
+  // route: reserves held 645-724 WU under reform/reposition for the whole capture window instead
+  // of closing to hail range).
+  if (current.kind === 'attack_run' && current.targetId != null
+    && String(current.reason || '').startsWith('security_response:')) return;
   if (String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) return;
   // A break is already in flight but another writer replaced the activity with a non-posture
   // reason: do not stash the interloper — re-commit must hand back the ORIGINAL authored

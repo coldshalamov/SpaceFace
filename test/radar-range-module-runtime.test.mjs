@@ -9,6 +9,7 @@ import {
   fittingsFromDefaultModules,
   getDerivedStats,
   makeShipEntitySpec,
+  resetDerivedStatsCache,
   ships,
 } from '../src/systems/ships.js';
 import { weapons as weaponSystem } from '../src/systems/weapons.js';
@@ -124,9 +125,12 @@ test('radar modifiers fail closed and preserve a prior usable maximum on overflo
   const catalogBefore = JSON.stringify(MODULES.filter((module) => (
     module.id === SURVEY || module.id === DEEPSURVEY || module.id === SENSOR
   )));
+  // getDerivedStats memoizes on composition, not catalog contents (INF-097): every in-place
+  // catalog patch and the restore must drop the memo, or the derive reads a stale entry.
   try {
     for (const value of [Infinity, -0.60, 0, '0.60', NaN]) {
       sensor.mods.radarRangePct = value;
+      resetDerivedStatsCache();
       assert.deepEqual(
         radarShape(getDerivedStats(RANGER, rangerFittings([SENSOR]))),
         { radarRangePct: 0, radarRangeMult: 1, radarRange: BASE_RADAR_RANGE },
@@ -134,6 +138,7 @@ test('radar modifiers fail closed and preserve a prior usable maximum on overflo
     }
 
     sensor.mods.radarRangePct = Number.MAX_VALUE;
+    resetDerivedStatsCache();
     assert.deepEqual(
       radarShape(getDerivedStats(RANGER, rangerFittings([SURVEY, SENSOR]))),
       { radarRangePct: 0.35, radarRangeMult: 1.35, radarRange: 5400 },
@@ -141,6 +146,7 @@ test('radar modifiers fail closed and preserve a prior usable maximum on overflo
     );
   } finally {
     Object.assign(sensor.mods, originalMods);
+    resetDerivedStatsCache();
   }
   assert.equal(
     JSON.stringify(MODULES.filter((module) => (

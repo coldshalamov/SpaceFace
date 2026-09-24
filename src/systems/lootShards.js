@@ -44,6 +44,8 @@
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { CRYO_LOCK_STATUS_ID, CRYO_LOCK_DURATION_TICKS } from '../combat/cryoLock.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { cargoIdentityOf, identityFromManifest } from '../data/cargoIdentity.js';
@@ -687,6 +689,11 @@ export const lootShards = {
     }
     if (klass.slam === 'hull_tick') {
       this._tickCorrosiveContact(pod, other, payload, klass);
+      return;
+    }
+    if (klass.slam === 'cryo_flash') {
+      this._detonateCryoFlash(pod, other, payload, klass);
+      return;
     }
   },
 
@@ -742,6 +749,43 @@ export const lootShards = {
         podId: pod.id,
         targetId: other.id,
         hullTick: pod.data.volatileCorrosiveTick,
+      });
+    }
+  },
+
+  _detonateCryoFlash(pod, other, payload, klass) {
+    if (pod.data.volatileDetonated) return;
+    const closing = impactClosingSpeed(payload);
+    const dp = Math.max(0, Number(payload.dp) || Number(payload.impulse) || 0);
+    if (closing < EXPLOSIVE_SLAM_CLOSING_SPEED && dp < 80) return;
+    pod.data.volatileDetonated = true;
+
+    if (other && other.alive !== false && VOLATILE_HULL_TYPES.has(other.type)) {
+      other.flags = other.flags || {};
+      other.flags.cryoChilled = true;
+      const kernel = combatKernelOf(this);
+      if (kernel && kernel.statuses) {
+        const runtime = ensureCombatant(this.state, other, kernel.catalog);
+        if (runtime) {
+          kernel.statuses.schedule(other, runtime, {
+            id: CRYO_LOCK_STATUS_ID,
+            stacks: 1,
+            durationTicks: CRYO_LOCK_DURATION_TICKS,
+          }, {
+            attackerId: pod.id,
+            actionId: 'volatile_cryo_flash',
+          });
+        }
+      }
+    }
+
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileCryo', {
+        class: klass.id,
+        podId: pod.id,
+        targetId: other ? other.id : null,
+        closingSpeed: closing,
+        durationTicks: CRYO_LOCK_DURATION_TICKS,
       });
     }
   },

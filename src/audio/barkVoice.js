@@ -88,6 +88,22 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
   formants: [580, 1150, 2400],
 });
 
+// The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
+// stranger can tell apart blind from all eight factions and the mechanic (least noise and drive in
+// the set; the bandpass sits high enough to stay soft over the comms bed).
+export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
+  sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
+  filterHz: 1500, q: 0.9, noise: 0.03, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,
+  formants: [520, 1180, 2450],
+});
+
+// Representative instructor lines. The register WAV body is rendered from the first; every tutorial
+// line rides it through rate/pitch shaping, exactly like the faction registers.
+export const INSTRUCTOR_LINES = Object.freeze([
+  'Contract 47-A: the manifest says one mass — your instruments say another.',
+  'The Kestrel is armed: fire the Pulse Laser S, then let the heat clear.',
+]);
+
 export const MECHANIC_LINES = Object.freeze([
   'Graze on the hull. Soft enough the paint still argues.',
   'Hard scar on the hull. That is a real hit.',
@@ -162,6 +178,50 @@ export function resolveBarkVoice(input = {}) {
     }),
     gain: mechanic ? 0.72 : 0.8,
     assertive: situation === 'attack' || situation === 'warn' || situation === 'demand-cargo',
+    hash: h,
+  });
+}
+
+/**
+ * Directed speech params for the first-hour instructor. Deterministic, hashed jitter like the
+ * faction voices; no faction theme sting, no situation ladder — the instructor has one job.
+ */
+export function resolveInstructorVoice(line) {
+  const text = typeof line === 'string' && line.trim() ? line.trim() : INSTRUCTOR_LINES[0];
+  const register = INSTRUCTOR_VOICE_REGISTER;
+  const h = hash32(`instructor|briefing|${text}`);
+  const jitter = ((h % 17) - 8) / 400; // ±0.02, hashed, not Math.random
+  const pitch = Math.round((register.pitch + jitter) * 1000) / 1000;
+  const rate = Math.round((register.rate + ((h >>> 8) % 9 - 4) / 500) * 1000) / 1000;
+  return Object.freeze({
+    schema: 'spaceface.barkVoice.v1',
+    seed: BARK_VOICE_SEED,
+    factionId: null,
+    situation: 'briefing',
+    mechanic: false,
+    registerId: register.id,
+    registerLabel: register.label,
+    sampleId: register.sampleId,
+    recipeId: BARK_RECIPE_ID,
+    caption: text,
+    line: text,
+    speech: Object.freeze({
+      f0: register.f0,
+      pitch,
+      rate,
+      filterHz: register.filterHz,
+      q: register.q,
+      formants: register.formants,
+      durationS: durationS(text, rate),
+    }),
+    radio: Object.freeze({
+      bandpassLo: register.bandpassLo,
+      bandpassHi: register.bandpassHi,
+      noise: register.noise,
+      drive: register.drive,
+    }),
+    gain: 0.66,
+    assertive: false,
     hash: h,
   });
 }

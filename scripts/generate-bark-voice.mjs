@@ -21,11 +21,14 @@ import {
   MECHANIC_LINES,
   MECHANIC_VOICE_REGISTER,
   FACTION_VOICE_REGISTERS,
+  INSTRUCTOR_LINES,
+  INSTRUCTOR_VOICE_REGISTER,
   BLIND_REGISTER_CLIPS,
   countBarkCorpus,
   enumerateBarkPipeline,
   enumerateMechanicPipeline,
   resolveBarkVoice,
+  resolveInstructorVoice,
   renderBarkUtterancePcm,
   renderRegisterCallsignPcm,
 } from '../src/audio/barkVoice.js';
@@ -68,6 +71,13 @@ function representativeJobs() {
     file: path.join(OUT_DIR, `${mechanic.sampleId}.wav`),
     rel: `assets/audio/voice/${mechanic.sampleId}.wav`,
     resolved: mechanic,
+    seconds: BARK_UTTERANCE_SECONDS,
+  });
+  const instructor = resolveInstructorVoice(INSTRUCTOR_LINES[0]);
+  jobs.push({
+    file: path.join(OUT_DIR, `${instructor.sampleId}.wav`),
+    rel: `assets/audio/voice/${instructor.sampleId}.wav`,
+    resolved: instructor,
     seconds: BARK_UTTERANCE_SECONDS,
   });
   return jobs;

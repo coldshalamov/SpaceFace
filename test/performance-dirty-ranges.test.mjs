@@ -181,8 +181,10 @@ test('Electron Tier-1 reload owns expected navigation and releases it on failure
     reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 }),
     /injected reload failure/,
   );
-  // Two init scripts install before the reload: the Tier-1 counter flag and the GL program-query trap.
+  // Three init scripts install before the reload: the Tier-1 counter flag, the GL program-query
+  // trap, and the GL delete trap (PQ-033.02 delete-storm instrument).
   assert.deepEqual(events, [
+    'init',
     'init',
     'init',
     ['begin', 'tier1-counter-install'],
@@ -250,6 +252,7 @@ test('Electron Tier-1 reload waits for the initial canonical load to settle in m
     ['main-turn', rootUrl],
     'window-handle-disposed',
     'ownership-ready',
+    'init',
     'init',
     'init',
     ['begin', 'tier1-counter-install'],
@@ -549,4 +552,93 @@ test('the acceptance route keeps whole-ship LOD demotion on a scoped library pla
   assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requested, options\)/);
   assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
     'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
+});
+
+test('every committed src import resolves to a committed file', async () => {
+  // The 2026-09-22 browser acceptance run died at the boot gate: HEAD's
+  // shipMicroMotion.js imported presentation/flightOverheadMath.js, which was
+  // intent-to-add staged but never committed — a clean candidate 404'd the module
+  // and the route starved inside waitForFunction. Pin the closure: a relative
+  // specifier in a tracked source must resolve to a tracked file.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').filter(Boolean),
+  );
+  const sources = [...tracked].filter((f) => /^src\/.*\.(js|mjs)$/.test(f));
+  const missing = [];
+  for (const file of sources) {
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/(?:from|import)\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1]));
+      if (!tracked.has(resolved)) missing.push(`${file} -> ${m[1]}`);
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import untracked modules (clean checkout would 404):\n${missing.join('\n')}`);
+});
+
+test('every committed src named import resolves to a committed export', async () => {
+  // Same failure class, one layer deeper: a51aa1241's title screen imported
+  // selectLatestOccupiedSlot while the helper sat uncommitted — the module
+  // rejected at eval, mainMenu/pause screens never registered, and the
+  // 2026-09-22 acceptance died waiting for a menu that could not mount.
+  // export * chains are skipped rather than resolved transitively.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').filter(Boolean),
+  );
+  const exportRe = /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
+  const starRe = /export\s*\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*['"](\.[^'"]+)['"]/g;
+  const ownExports = new Map();
+  const starTargets = new Map();
+  for (const file of tracked) {
+    if (!/\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    const names = new Set();
+    for (const m of text.matchAll(exportRe)) {
+      if (m[1]) names.add(m[1]);
+      if (m[2]) for (const part of m[2].split(',')) {
+        const name = part.trim().split(/\s+as\s+/).pop().trim();
+        if (name) names.add(name);
+      }
+    }
+    ownExports.set(file, names);
+    const stars = [];
+    for (const m of text.matchAll(starRe)) {
+      stars.push(path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1])));
+    }
+    starTargets.set(file, stars);
+  }
+  // `export * from` chains re-export the target's names transitively — resolve them so a missing
+  // name cannot hide behind a barrel module (the isModeAvailable skew surfaced through one).
+  const exportsOf = new Map();
+  const resolveExports = (file, seen = new Set()) => {
+    if (exportsOf.has(file)) return exportsOf.get(file);
+    if (seen.has(file)) return new Set();
+    seen.add(file);
+    const names = new Set(ownExports.get(file));
+    for (const target of starTargets.get(file) || []) {
+      for (const n of resolveExports(target, seen)) names.add(n);
+    }
+    exportsOf.set(file, names);
+    return names;
+  };
+  const missing = [];
+  for (const file of tracked) {
+    if (!/^src\/.*\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
+      if (!tracked.has(resolved)) continue;
+      const names = resolveExports(resolved);
+      for (const part of m[1].split(',')) {
+        const name = part.trim().split(/\s+as\s+/)[0].trim();
+        if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import names that tracked modules do not export (module eval rejects):\n${missing.join('\n')}`);
 });

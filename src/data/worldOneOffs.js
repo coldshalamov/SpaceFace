@@ -94,6 +94,20 @@ export const WORLD_ONE_OFFS = Object.freeze([
     radius: 60,
     why: 'The bow alone out-masses everything the yard has launched since; she makes everything feel small.',
   }),
+  Object.freeze({
+    // WORLD-13 — one always-there dressing piece at the Tethys customs gate, from a place that
+    // already exists. No new GLB and no mission.
+    id: 'oneoff_tethys_customs_lamp',
+    name: 'The Customs Lamp',
+    placeId: 'place_memorial_array',
+    sectorId: 'sector_tethys_junction',
+    anchor: { type: 'station', id: 'station_customs' },
+    offsetLocal: Object.freeze({ x: 90, z: -40 }),
+    rot: 0.6,
+    spin: 0,
+    radius: 16,
+    why: 'A memorial array parked off the customs gate, lit so the lane can find the toll.',
+  }),
 ]);
 
 // The courier one-off ("a courier far too fast") is not a prop: it is a named lane contact

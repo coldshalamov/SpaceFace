@@ -251,26 +251,9 @@ export const MISSION_CONDITIONS = Object.freeze({
   }),
 
   // ── 7. VENT DISCIPLINE ──────────────────────────────────────────────────────────────────────
-  // Lane 5 restored the mining beam's heat/vent rhythm and emits mining:overheated
-  // { minerId, heatMax, forfeitedOreU } (src/systems/mining.js:455). Pegging the gauge is now a
-  // real mistake, so a contract can price it.
-  vent_discipline: Object.freeze({
-    id: 'vent_discipline',
-    kind: 'forbid',
-    event: 'mining:overheated',
-    count: 1,
-    onBreach: 'forfeit',
-    rewardMult: 1.30,
-    label: 'Beam discipline',
-    prose: 'Fill this quota without pegging the beam once. Pulse it.',
-    brief: 'Do not overheat the beam.',
-    breachText: 'Beam-discipline premium lost: you pegged the gauge.',
-    appliesTo: ['mining_quota'],
-    minRisk: 0,
-    match(payload, ctx) {
-      return isPlayerOf(payload && payload.minerId, ctx);
-    },
-  }),
+  // Removed 2026-09-22: the owner ruling in f524ade41 dropped the beam overheat state machine
+  // entirely — mining:overheated is no longer emitted, so a forbid term priced on it could never
+  // breach and was dead content. vent_rhythm below still prices the live vent rhythm.
 
   // ── 8. THREE CLEAN VENTS ────────────────────────────────────────────────────────────────────
   // The positive half of the same rhythm. mining:ventBonus { minerId, qty, depth, ... }

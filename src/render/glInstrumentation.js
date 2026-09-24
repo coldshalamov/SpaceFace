@@ -96,8 +96,8 @@ export function installGlInstrumentation(gl, counters) {
   // --- A: shader programs ---------------------------------------------------------------------
   // linkProgram is the definitive signal. Polling `renderer.info.programs` across frames misses any
   // program created and released between two samples, and can never say who caused it.
-  wrap('linkProgram', (original) => function linkProgram() {
-    counters.countShaderLink();
+  wrap('linkProgram', (original) => function linkProgram(program) {
+    counters.countShaderLink('', '', program);
     return original.apply(this, arguments);
   });
   wrap('compileShader', (original) => function compileShader() {
@@ -143,7 +143,11 @@ export function installGlInstrumentation(gl, counters) {
   // The full-vs-partial split is the signal that matters: dynamicBufferRanges.js exists to turn full
   // reallocations into narrow sub-updates, and this is the independent check that it is working.
   wrap('bufferData', (original) => function bufferData(target, data) {
-    counters.countBufferUpload(true, payloadBytes(data));
+    // Pass the source array through: full uploads are rare, and holding the reference on the
+    // event lets a probe resolve buffer → geometry attribute by object identity in-page
+    // (Three's WebGLAttributes registry is closure-private, so the CPU-side array is the
+    // only reliable handle). Diagnostic consumers must strip it before serializing.
+    counters.countBufferUpload(true, payloadBytes(data), data);
     return original.apply(this, arguments);
   });
   wrap('bufferSubData', (original) => function bufferSubData(target, offset, data, srcOffset, length) {

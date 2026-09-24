@@ -36,7 +36,7 @@ assert.equal(isAuthoredTextureSizeValid({ width: 0, height: 256 }), false,
 assert.equal(player.isPlayer, true, 'new/load player construction must preserve the explicit player marker');
 assert.equal(courier.isPlayer, false, 'same-team NPC construction must not inherit player identity');
 assert.equal(isPlayerKestrel(player), true, 'the player Kestrel should activate the production whole ship');
-assert.equal(isPlayerKestrel(courier), false, 'an NPC Kestrel must remain on the modular authored path');
+assert.equal(isPlayerKestrel(courier), false, 'the NPC must not inherit player-only identity');
 const liveVisual = wholeShipVisualForEntity(player, { requiredWholeShip: true });
 assert.equal(liveVisual.assetId, 'SF_K0_KESTREL_BORROWED_TIME_V4', 'the live player seam must require V4');
 assert.deepEqual(liveVisual.lodFamily, {
@@ -53,8 +53,8 @@ assert.equal(
 );
 assert.equal(
   resolveRequiredWholeShipRecord(courier, [validRecord], { releaseMode: true, requiredWholeShip: false }),
-  null,
-  'an NPC must not request the whole ship even when the record is loaded for the player',
+  validRecord,
+  'an NPC Kestrel must resolve the packaged complete Kestrel body',
 );
 assert.throws(
   () => resolveRequiredWholeShipRecord(player, [], { releaseMode: true, requiredWholeShip: true }),

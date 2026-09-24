@@ -17,11 +17,18 @@ import {
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { MANEUVER_SPEED_CAPS } from '../ai/maneuver.js';
+import { deriveEnemyMotionScale, hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import {
   is47aScavengerCounterplayAuthorized,
   protectedStationAt,
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
+import {
+  customsWeirForSector,
+  customsWeirSegments,
+  pointInsideCustomsWeir,
+} from '../world/customsWeir.js';
 import {
   impoundBillFor,
   isImpoundWorkComplete,
@@ -226,6 +233,7 @@ export const lawSecurity = {
     this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
     this._updateCustomsScanCones(_dt, state);
+    this._updateCustomsWeir(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
       const actors = collectLivingWorldActors(state, this._ambientActorScratch || (this._ambientActorScratch = []));
@@ -1160,6 +1168,15 @@ export const lawSecurity = {
     ai.lawful = true;
     ai.passive = false;
     ai.securityTargetId = attacker.id;
+    // INF-029: the reported track starts from last-seen information, not a live feed. Snapshot
+    // the offender's position at dispatch; the perception seam keeps reporting this scene while
+    // live sightings refresh it, so breaking observation changes pursuit and reacquisition
+    // restores accuracy. Save-safe plain data next to the target id it describes.
+    if (attacker.pos) {
+      ai.securityTargetPos = { x: Number(attacker.pos.x) || 0, z: Number(attacker.pos.z) || 0 };
+    } else {
+      delete ai.securityTargetPos;
+    }
     // A dispatched enforcement action does not withdraw on attrition: the incident's own
     // stand-down decides when the response ends, not squad morale. Without this, responders
     // catching stray fire from a suspect's sustained assault rout before the exchange resolves.
@@ -1272,6 +1289,7 @@ export const lawSecurity = {
       if (matchesWitnessIncident || ai.securityTargetId === targetId) {
         const isHolder = matchesWitnessIncident && ai.witnessRole === 'hold';
         ai.securityTargetId = null;
+        ai.securityTargetPos = null;
         releaseResponseMoraleClaim(ai);
         ai.witnessRole = null;
         ai.witnessIncidentId = null;
@@ -1502,6 +1520,12 @@ export const lawSecurity = {
       }
     }
 
+    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
+    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
+    const holdTargetSpeed = holdTarget && holdTarget.vel
+      ? Math.hypot(Number(holdTarget.vel.x) || 0, Number(holdTarget.vel.z) || 0)
+      : 0;
+
     const lastChoice = incident._lastWitnessChoice;
     const prevHolderId = lastChoice?.decision === 'split' ? lastChoice.holderId : null;
     const prevChaserIds = lastChoice?.decision === 'split' ? lastChoice.chaserIds : null;
@@ -1530,7 +1554,18 @@ export const lawSecurity = {
         return a.id - b.id;
       });
       holder = sorted[0];
-      chasers = sorted.slice(1);
+      // The hold has to go to a unit that can still reach the body: a hulk keeps the victim's
+      // cruise momentum forever (boundedDriftVel is a cap, not drag), and a heavy patrol's
+      // intercept envelope can sit below that drift — nearest-first would pin the job on a unit
+      // that can never arrive (measured on the live route: a Bastion holder capped at ~41 WU/s
+      // falling 330 → 1180 WU behind a 42 WU/s wreck). When nobody can catch it, the nearest
+      // still peels off — the visible split is the point.
+      const canReachBody = (r) => responderReachSpeed(r) >= holdTargetSpeed + 4;
+      if (holdTarget && holdTarget.alive !== false && !canReachBody(holder)) {
+        const capable = sorted.find(canReachBody);
+        if (capable) holder = capable;
+      }
+      chasers = sorted.filter((r) => r !== holder);
     }
 
     const holderId = holder.id;
@@ -1551,11 +1586,20 @@ export const lawSecurity = {
     // 450 WU away 22 s later). Until it is within the standoff it TRANSITs to the wreck itself (a
     // concrete target, so the formation seek closes on the drifting body); once there it loiters.
     const WITNESS_HOLD_STANDOFF_WU = 90;
-    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
-    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
     const holderDistance = Math.hypot(holder.pos.x - anchorPos.x, holder.pos.z - anchorPos.z);
-    const holderApproaches = holderDistance > WITNESS_HOLD_STANDOFF_WU
-      && !!holdTarget && holdTarget.alive !== false;
+    // HOLD tracks its anchor at ~12 WU/s, so a body still carrying the victim's cruise momentum
+    // outruns a parked loiter (measured on the live route: wreck receding 683 → 986 WU over 20 s
+    // while the holder circled a stale point). Keep intercepting until the body is both inside the
+    // standoff AND slow enough to actually hold station on.
+    const WITNESS_HOLD_TRACK_SPEED_WU_S = 14;
+    // The hold orbits the body at ~70 WU; an ordinary orbit's radial swing can carry it a little
+    // past the standoff without ever leaving the scene. Re-approach only when it is genuinely
+    // flung off (measured: orbit at 70 ranged 52-98 WU around an 8 WU/s wreck, so a single 90-WU
+    // edge flapped approach<->hold every few seconds).
+    const holderInHold = holderAi.activity && holderAi.activity.kind === ActivityKind.LOITER;
+    const reapproachDistance = holderInHold ? WITNESS_HOLD_STANDOFF_WU * 1.5 : WITNESS_HOLD_STANDOFF_WU;
+    const holderApproaches = !!holdTarget && holdTarget.alive !== false
+      && (holderDistance > reapproachDistance || holdTargetSpeed > WITNESS_HOLD_TRACK_SPEED_WU_S);
     // SCAN_APPROACH is the lawful approach maneuver (an INTERCEPT that closes to preferredRange at
     // speed); TRANSIT would be a formation crawl that a wreck still carrying its victim's momentum
     // outruns (measured: holder at 7–47 WU/s while the wreck receded 683 → 986 WU over 20 s).
@@ -1577,7 +1621,15 @@ export const lawSecurity = {
         anchor: { x: anchorPos.x, z: anchorPos.z },
         leashRadius: 400,
         startedTick,
-        targetId: null,
+        // The hold target is also the loiter target: LOITER-with-targetId maps to an ORBIT on
+        // the body (or its live-tracked anchor when the body is not a perception contact, e.g.
+        // a pod). HOLD alone cannot do this — it tracks the squad's formationSlot and drags the
+        // holder home (measured on the live route: loitering holder vetoed by
+        // formation_bound_exceeded, receding 519 -> 2085 WU from the scene).
+        targetId: holdTargetId,
+        // Circle inside the approach standoff so normal orbit error never flips the activity
+        // back to SCAN_APPROACH.
+        preferredRange: WITNESS_HOLD_STANDOFF_WU - 20,
         encounterId: incident.id,
       });
 
@@ -1593,6 +1645,7 @@ export const lawSecurity = {
       holderAi.lawful = true;
       holderAi.passive = false;
       holderAi.securityTargetId = null;
+      holderAi.securityTargetPos = null;
       releaseResponseMoraleClaim(holderAi);
       holderAi.witnessRole = 'hold';
       holderAi.witnessIncidentId = incident.id;
@@ -1631,6 +1684,7 @@ export const lawSecurity = {
     } else {
       if (holderAi.securityTargetId != null) {
         holderAi.securityTargetId = null;
+        holderAi.securityTargetPos = null;
         releaseResponseMoraleClaim(holderAi);
       }
       if (holderData.combat && (holderData.combat.targetId === incident.attackerId || holderData.combat.lockTarget === incident.attackerId)) {
@@ -2132,6 +2186,68 @@ export const lawSecurity = {
     });
   },
 
+  // Helios is a corridor. Tethys is a cone. Standing in the old zone disc is not enough.
+  _updateCustomsWeir(dt, state) {
+    const step = Number(dt);
+    const own = ensureState(state);
+    const sectorId = state.world && state.world.currentSectorId;
+    const weir = customsWeirForSector(sectorId);
+    if (!weir) {
+      if (own.customsWeir && own.customsWeir.seen === true) {
+        this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+      }
+      own.customsWeir = null;
+      if (this._weirPodDwell) this._weirPodDwell.clear();
+      return;
+    }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(player && player.pos && pointInsideCustomsWeir(weir, player.pos));
+    const wasSeen = !!(own.customsWeir && own.customsWeir.seen === true && own.customsWeir.id === weir.id);
+    own.customsWeir = {
+      active: true,
+      id: weir.id,
+      sectorId,
+      shape: weir.shape,
+      segments: customsWeirSegments(weir),
+      seen: inside,
+    };
+    if (inside && !wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: true });
+    if (!inside && wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
+    if (!(step > 0)) return;
+    this._dwellWeirPods(step, state, weir);
+  },
+
+  _dwellWeirPods(step, state, weir) {
+    const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
+    const list = state.entityList || [];
+    const seen = new Set();
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.pos || !pod.data) continue;
+      const key = `${weir.id}:${pod.id}`;
+      seen.add(key);
+      if (!pointInsideCustomsWeir(weir, pod.pos)) {
+        dwell.delete(key);
+        continue;
+      }
+      if (pod.data.customsScanned) continue;
+      const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+      if (legality !== 'contraband') {
+        dwell.delete(key);
+        continue;
+      }
+      const next = (Number(dwell.get(key)) || 0) + step;
+      dwell.set(key, next);
+      if (next < weir.dwellS) continue;
+      this._emitPodCustomsScan({ id: weir.id, factionId: 'faction_scn' }, pod, 'customs_weir');
+    }
+    for (const key of dwell.keys()) {
+      if (!seen.has(key) || !String(key).startsWith(`${weir.id}:`)) dwell.delete(key);
+    }
+  },
+
   // ── PQ-148.02: physical customs cone over a field pod ─────────────────────────────────────
 
   _updateCustomsScanCones(dt, state) {
@@ -2190,7 +2306,7 @@ export const lawSecurity = {
     }
   },
 
-  _emitPodCustomsScan(scanner, pod) {
+  _emitPodCustomsScan(scanner, pod, source = 'customs_scan_cone') {
     if (!pod || !pod.data || pod.data.customsScanned) return;
     const commodityId = pod.data.commodityId;
     const units = Math.max(0, Number(pod.data.amount) || 0);
@@ -2198,7 +2314,7 @@ export const lawSecurity = {
     pod.data.customsScannedAt = inspectionNow(this.state);
     this._emit('contraband:scanned', {
       found: true,
-      source: 'customs_scan_cone',
+      source,
       podId: pod.id,
       commodityId,
       units,
@@ -3066,6 +3182,10 @@ export function scanLineOccluded(origin, target, occluder) {
   return (dx * dx + dz * dz) <= r * r;
 }
 
+// Per-entity cone scratch via WeakMap (no enumerable _sf* on entities). Scanner identity is
+// recomputed every call so patrol nets that clear role/flag correctly return null after break.
+const CUSTOMS_CONE_SCRATCH = new WeakMap();
+
 export function customsScanConeOf(entity) {
   if (!entity || entity.alive === false || !entity.pos) return null;
   const data = entity.data || {};
@@ -3078,19 +3198,33 @@ export function customsScanConeOf(entity) {
     || data.enemyId === 'customs_cutter'
     || data.role === 'customs';
   if (!isScanner) return null;
-  const heading = Number.isFinite(explicit && explicit.heading)
+  let cone = CUSTOMS_CONE_SCRATCH.get(entity);
+  if (!cone) {
+    cone = {
+      origin: null,
+      heading: 0,
+      halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
+      range: CUSTOMS_SCAN_RANGE,
+      dwellS: CUSTOMS_SCAN_DWELL_S,
+      scanner: null,
+    };
+    CUSTOMS_CONE_SCRATCH.set(entity, cone);
+  }
+  cone.origin = entity.pos;
+  cone.heading = Number.isFinite(explicit && explicit.heading)
     ? explicit.heading
     : (Number.isFinite(entity.rot) ? entity.rot : 0);
-  const halfAngle = Number.isFinite(explicit && explicit.halfAngle)
+  cone.halfAngle = Number.isFinite(explicit && explicit.halfAngle)
     ? explicit.halfAngle
     : CUSTOMS_SCAN_HALF_ANGLE;
-  const range = Number.isFinite(explicit && explicit.range)
+  cone.range = Number.isFinite(explicit && explicit.range)
     ? explicit.range
     : CUSTOMS_SCAN_RANGE;
-  const dwellS = Number.isFinite(explicit && explicit.dwellS)
+  cone.dwellS = Number.isFinite(explicit && explicit.dwellS)
     ? explicit.dwellS
     : CUSTOMS_SCAN_DWELL_S;
-  return { origin: entity.pos, heading, halfAngle, range, dwellS, scanner: entity };
+  cone.scanner = entity;
+  return cone;
 }
 
 export function aggressionCauseFor(state, attacker, target) {
@@ -3466,6 +3600,13 @@ function isProtectedCivilian(entity) {
     || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
 }
 
+// The adjudication's own protected-body definition, shared read-only with advisory
+// presentation (INF-078): a lawful hull or a protected civilian. Advisory callers never
+// adjudicate — they only name what the law would recognize.
+export function isLawProtectedBody(entity) {
+  return isLawful(entity) || isProtectedCivilian(entity);
+}
+
 function isCivilianHauler(entity) {
   if (!entity || entity.type !== 'ship') return false;
   const data = entity.data || {};
@@ -3724,6 +3865,13 @@ function overlapsWantedNet(entity, net) {
   if (!entity || !entity.pos || !net || !net.pos) return false;
   const reach = (Number(entity.radius) || 8) + (Number(net.radius) || WANTED_NET_RADIUS);
   return distance2(entity.pos, net.pos) <= reach * reach;
+}
+
+// The fastest intercept the responder's authored hull-motion envelope allows — the same scale the
+// maneuver planner applies, so "can it reach the body" is answered with the planner's own numbers.
+function responderReachSpeed(responder) {
+  const scale = deriveEnemyMotionScale(hullIdFromEntity(responder));
+  return MANEUVER_SPEED_CAPS.interceptSpeed * (scale && Number.isFinite(scale.speed) && scale.speed > 0 ? scale.speed : 1);
 }
 
 function entitySpeed(entity) {

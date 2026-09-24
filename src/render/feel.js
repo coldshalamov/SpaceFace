@@ -30,7 +30,7 @@ import {
 } from './velocityLanguage.js';
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
 import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
-import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
+import { fillSpeedLineStreak, speedLineStreakGradient } from './speedLineStrokeCache.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
@@ -184,6 +184,13 @@ export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve 
 export const HS_IMPACT_MIN = 0.016;           // s — ~one rendered frame at the deltaV floor
 export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under HS_CAPITAL_KILL
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
+// F9 — the rope's joke is three bodies agreeing. A player-caused release whose contact chain
+// reaches a THIRD distinct body earns exactly one extra dip, long enough to see the chain land.
+// It is not a resource: one beat per causal root, inside a short window; a two-body contact and
+// an NPC-only chain stay silent.
+export const CHAIN_BEAT_WINDOW_TICKS = 90; // sim ticks after the causal root — a throw resolves fast
+export const CHAIN_BEAT_DIP_S = 0.14;      // s — the extra beat's dip
+export const CHAIN_BEAT_FOV = 2.0;         // deg — modest punch so the second beat reads
 // While cooling, only a MEANINGFULLY harder hit interrupts the armed beat. A bare `>` let a grind
 // whose deltaV crept up frame over frame (10 -> 12 -> 15 ...) re-arm every single frame and
 // machine-gun the effect; the ratio makes the escalation have to be real, not incidental.
@@ -423,6 +430,20 @@ const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _
 // Extreme-speed grain field. A small repeating tile is orders of magnitude cheaper than per-pixel
 // noise and, being baked once from a fixed hash, is byte-identical on every boot.
 const SL_NO_STREAKS = Object.freeze([]);   // iterated when the streak pass is skipped entirely
+// Unit-space streak gradient stops: [offset, r, g, b, alphaMul]. Painted under a per-streak
+// rotate+uniform-scale that maps (0,0)->tail, (1,0)->lead, so the whole field shares a handful
+// of cached CanvasGradient objects instead of allocating one per streak per frame.
+const SL_STREAK_STOPS_PLAIN = Object.freeze([
+  Object.freeze([0,    160, 205, 255, 0]),
+  Object.freeze([0.55, 195, 230, 255, 0.45]),
+  Object.freeze([1,    232, 248, 255, 1]),
+]);
+const SL_STREAK_STOPS_BANDED = Object.freeze([
+  Object.freeze([0,    VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0]),
+  Object.freeze([0.42, VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0.42]),
+  Object.freeze([0.78, VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0.82]),
+  Object.freeze([1,    VL_COLOR.head.r, VL_COLOR.head.g, VL_COLOR.head.b, 1]),
+]);
 const GRAIN_TILE = 96;             // px — tile edge; also the modulo that bounds the scroll offset
 const GRAIN_SCROLL_PX_S = 340;     // px/s — the field shears past at a fixed rate; only its OPACITY
                                    //     tracks speed, because a field that also accelerates reads
@@ -607,6 +628,8 @@ export const feel = {
     this._armedCollisionTick = null;
     this._armedCollisionAId = null;
     this._armedCollisionBId = null;
+    this._chainBeats = new Map();   // causal rootId -> { bodies:Set, fired, lastTick } — F9 once-per-chain
+    this._chainBeatQueued = 0;      // extra dip seconds owed to a chain's third-body contact
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -894,23 +917,22 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const a = clampTo(this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias) * centerClear, SL_ALPHA_MAX);
       if (a <= 0.012) continue;
 
-      const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
-      if (banded) {
-        // Saturated ion sheath into a white-hot filament head. Screen compositing preserves the
-        // colored body while allowing overlaps to read as emitted light.
-        const B = VL_COLOR.body, H = VL_COLOR.head;
-        grad.addColorStop(0, speedLineRgba(B.r, B.g, B.b, 0));
-        grad.addColorStop(0.42, speedLineRgba(B.r, B.g, B.b, a * 0.42));
-        grad.addColorStop(0.78, speedLineRgba(B.r, B.g, B.b, a * 0.82));
-        grad.addColorStop(1, speedLineRgba(H.r, H.g, H.b, a));
-      } else {
-        grad.addColorStop(0, speedLineRgba(160, 205, 255, 0));
-        grad.addColorStop(0.55, speedLineRgba(195, 230, 255, a * 0.45));
-        grad.addColorStop(1, speedLineRgba(232, 248, 255, a));
-      }
+      if (!(tailLen > 0.001)) continue;
+      // Saturated ion sheath into a white-hot filament head (banded) / pale blue wake (plain).
+      // Screen compositing preserves the colored body while allowing overlaps to read as
+      // emitted light. One cached unit gradient per (palette, alpha bucket); the transform maps
+      // it onto this streak's tail->lead segment — columns are the orthonormal basis scaled by
+      // tailLen, so the stroke stays round-capped and only lineWidth needs descaling.
+      const ddx = leadX - tailX;
+      const ddy = leadY - tailY;
+      const grad = speedLineStreakGradient(
+        ctx, banded ? 1 : 0, banded ? SL_STREAK_STOPS_BANDED : SL_STREAK_STOPS_PLAIN, a);
+      ctx.save();
+      ctx.transform(ddx, ddy, -ddy, ddx, tailX, tailY);
       ctx.strokeStyle = grad;
-      ctx.lineWidth = s.w * widthMul;
-      ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(leadX, leadY); ctx.stroke();
+      ctx.lineWidth = (s.w * widthMul) / tailLen;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1, 0); ctx.stroke();
+      ctx.restore();
     }
     ctx.globalCompositeOperation = 'source-over';
 
@@ -1229,6 +1251,23 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Consequences can arrive inside physics:impact dispatch or at the deferred contact flush.
     // Both feed one frame-level beat; neither listener writes timeScale or routes damage.
     bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
+    bus.on('emergent:contact', (p) => {
+      if (!p || !(p.impulse > 0)) return;
+      const deltaV = Number.isFinite(p.deltaV) && p.deltaV > 0
+        ? p.deltaV
+        : p.impulse / Math.max(1, p.mass || 1);
+      this._queueCollisionFeel(
+        p,
+        deltaV,
+        !!p.playerInvolved,
+        p.aId,
+        p.bId,
+        p.impulse,
+        p.knockId != null ? p.knockId : p.bId,
+        p.otherId != null ? p.otherId : p.aId,
+        deltaV,
+      );
+    });
     bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
 
     // Rated holy-shit moments (PQ-146.03). bulletTime rates `stunt:trickDetected` receipts and
@@ -1333,10 +1372,43 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const knockId = playerIsContact ? playerId : p.targetId;
     const otherId = knockId === p.targetId ? p.otherId : p.targetId;
     this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId,
-      p.exchangedMomentum, knockId, otherId, p.feelDeltaV);
+      p.exchangedMomentum, knockId, otherId, p.feelDeltaV, this._chainBeatFor(p, playerId));
   },
 
-  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null) {
+  // F9 — the rope's joke is three bodies agreeing: a player-caused release whose contact chain
+  // reaches a THIRD distinct body earns exactly one extra beat. The causal root id keys the chain;
+  // a two-body contact, an NPC-only chain, or a contact past the window earns nothing.
+  _chainBeatFor(p, playerId) {
+    if (playerId == null || !Number.isFinite(p.tick)) return false;
+    const provenance = p.provenance || {};
+    const evidenceRoot = p.stuntEvidence && p.stuntEvidence.root;
+    const playerCaused = provenance.actorId === playerId
+      || (evidenceRoot && evidenceRoot.actorId === playerId);
+    if (!playerCaused) return false;
+    const rootId = provenance.rootId ?? (evidenceRoot && evidenceRoot.id);
+    if (rootId == null) return false;
+    const rootTick = Number.isFinite(provenance.tick) ? provenance.tick
+      : (evidenceRoot && Number.isFinite(evidenceRoot.tick) ? evidenceRoot.tick : null);
+    if (!Number.isFinite(rootTick) || p.tick - rootTick > CHAIN_BEAT_WINDOW_TICKS) return false;
+    let chain = this._chainBeats.get(rootId);
+    if (!chain) {
+      chain = { bodies: new Set(), fired: false, lastTick: p.tick };
+      this._chainBeats.set(rootId, chain);
+    }
+    chain.lastTick = p.tick;
+    if (p.targetId != null) chain.bodies.add(p.targetId);
+    if (p.otherId != null) chain.bodies.add(p.otherId);
+    if (this._chainBeats.size > 16) {
+      for (const [id, entry] of this._chainBeats) {
+        if (p.tick - entry.lastTick > CHAIN_BEAT_WINDOW_TICKS) this._chainBeats.delete(id);
+      }
+    }
+    if (chain.fired || chain.bodies.size < 3) return false;
+    chain.fired = true;
+    return true;
+  },
+
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null, chainBeat = false) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !this._modalClear()) return;
     const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -1411,6 +1483,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     result.tick = tick;
     result.aId = aId;
     result.bId = bId;
+    result.chainBeat = chainBeat === true;
     this._pendingCollisionFeel = result;
   },
 
@@ -1421,7 +1494,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
     const cooling = this._collisionHitstopCooldown > 0;
     const armed = this._armedCollisionDeltaV || 0;
-    if (cooling && !(pending.deltaV > armed * COLLISION_UPGRADE_RATIO)) return;
+    // A chain's third-body contact always arms — it is a discrete event, not a grind repeat.
+    if (cooling && !pending.chainBeat && !(pending.deltaV > armed * COLLISION_UPGRADE_RATIO)) return;
 
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
@@ -1440,6 +1514,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._armedCollisionTick = pending.tick;
     this._armedCollisionAId = pending.aId;
     this._armedCollisionBId = pending.bId;
+    if (pending.chainBeat) this._chainBeatQueued = CHAIN_BEAT_DIP_S;
   },
 
   _onMoment(p) {
@@ -1570,6 +1645,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._armedCollisionTick = null;
     this._armedCollisionAId = null;
     this._armedCollisionBId = null;
+    this._chainBeats.clear();
+    this._chainBeatQueued = 0;
   },
 
   frame(frameDt, state) {
@@ -1609,6 +1686,13 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
     }
     this._flushPendingCollision();
+
+    // F9 — the chain's extra beat lands once the contact's own dip has cleared: dip, resume, dip.
+    if (this._chainBeatQueued > 0 && this._hsTimer <= 0) {
+      const dipS = this._chainBeatQueued;
+      this._chainBeatQueued = 0;
+      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null);
+    }
 
     const photoFeel = photoModeFeelPresentation(this.state);
     if (photoFeel.silencePunch) {

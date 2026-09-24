@@ -1,5 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
+// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (11),
 // STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
 // PQ-152.03 twist clauses live in missionConditions.js and stamp onto these types; they do not
 // add an 11th authored row or a second capital type.
@@ -1353,6 +1353,34 @@ const AUTHORED_SET_PIECE_ROWS = [
       cut_the_belt: { on: ['whip', 'kill'], role: 'crusher_belt' },
     },
   },
+  {
+    // INF-082 — the Frame Coupler proving job. A 200-mass core is the coupler's own
+    // number ("a 200-mass tow turns with you"): without a winched hitch it pendulums
+    // all the way in, with one it is ordinary tow work. No mission-side buff anywhere —
+    // the heaviness is a real spawned mass and the capability is the fitted head.
+    id: 'heavy_tow',
+    title: 'Tow the dead-weight core',
+    // Brief must stay short enough that the stamped clause suffix survives CONDITION_BRIEF_MAX.
+    brief: 'A 200-mass core. Fit a frame coupler (shipworks, Tractor Systems) or fight the pendulum in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_beltout',
+    destStationId: 'station_ceres',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2400,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_heavy_tow',
+    methods: ['tow_in', 'sling_in'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_in: { on: ['latch_dock'], role: 'slag_core' },
+      sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
 ];
 
 export const AUTHORED_SET_PIECES = AUTHORED_SET_PIECE_ROWS.map((row) => Object.freeze({
@@ -1420,7 +1448,7 @@ export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
   const errors = [];
   const rows = Array.isArray(catalog) ? catalog : [];
   const ids = new Set();
-  if (rows.length !== 10) errors.push(`Expected 10 authored set pieces; found ${rows.length}.`);
+  if (rows.length !== 11) errors.push(`Expected 11 authored set pieces; found ${rows.length}.`);
   for (const row of rows) {
     const root = row && row.id || '<missing>';
     if (!row || typeof row !== 'object') {

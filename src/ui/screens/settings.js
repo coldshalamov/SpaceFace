@@ -390,7 +390,9 @@ export const settingsScreen = {
         (value) => this._applyPreset(ctx, value));
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
-      // Empty space does not receive them. Off skips that extra pass. Live-applied.
+      // Empty space does not receive them. Off skips that extra pass — now the shipped default
+      // (the pooled contact shadow carries grounding); on is an opt-in at a denser map.
+      // Live-applied.
       rowToggle('Sun shadows (ships/rocks/stations)', () => vd.shadows !== false, (v) => this._set(ctx, 'video', 'shadows', v));
       rowSlider('Bloom strength', () => {
         let v = vd.bloomStrength != null ? vd.bloomStrength : DEFAULT_BLOOM_STRENGTH;
@@ -727,10 +729,12 @@ export const settingsScreen = {
         done(true);
         return;
       }
-      // Conflict check: don't let the same code be the PRIMARY (index 0) of two rebindable actions.
+      // Conflict check: the same code must not appear ANYWHERE in another action's binding —
+      // checking only index 0 let a rebind collide with a secondary (e.g. binding an action to
+      // ArrowUp while movement still keeps ArrowUp as its secondary), so one key fired two verbs.
       for (const other of REBINDABLE) {
         if (other === action) continue;
-        if ((live[other] || [])[0] === ev.code) {
+        if ((live[other] || []).includes(ev.code)) {
           btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
           cue('deny');
           setTimeout(() => done(false), 900);

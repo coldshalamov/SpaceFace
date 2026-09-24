@@ -19,12 +19,14 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1** — `node scripts/program-dispatch.mjs --next` |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
+| Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
 | Implement a feature/fix | `docs/MODULE_MAP.md` → nearest nested `AGENTS.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Player-facing graphics / Blender/GLB | `docs/visual-assets/README.md` → `assets/AGENTS.md` |
-| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`** → then **see it**: `node scripts/ui-bench.mjs` (any 2D screen over a still, seconds, `--shot=` for a PNG) and `node scripts/ui-look.mjs --only=<id>` (live: clicks every control and reports what each did) → `src/ui/AGENTS.md` §Seeing the UI, `styles/AGENTS.md`. **OWNER RULING 2026-09-18:** the owner never approved any frame; nothing under `design/frontend/direction/approved/` carries owner authority — treat it as one candidate direction among none. The owner's standing frontend bar: *consistent, high-detail, creative, interactive, non-generic — and the live game currently reads cheap.* Prove quality on live screenshots via `ui-bench --shot=`, not on mockups or check floors. |
+| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`docs/UI_VISUAL_ITERATION.md`** — the frontend iteration system. Shoot the real screen over a still (`node scripts/ui-bench.mjs --shot=<id>`), open that PNG yourself, fix what you see, and `--walk` every control on the screens you changed before you call them done. Do not leave stills for a later pass. **Direction: [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md) (owner, 2026-09-22 late) — the one plan for the whole interface: an instrument of light, the Hand, the ORRERY library in `src/ui/orrery/`; screens compose library elements and never hand-roll boxes.** It supersedes FIELD_HARDWARE_PROGRAM, ONE_PHOTOGRAPH and "printed and lit" as direction (their no-material-imitation law stays). Then `src/ui/AGENTS.md` and `styles/AGENTS.md`. **OWNER RULING 2026-09-18:** nothing under `design/frontend/direction/approved/` carries owner authority. The bar: *consistent, high-detail, creative, interactive, non-generic — and the live game currently reads cheap.* The picture you opened is the evidence. |
 | Recurring bug | `docs/COMMON_BUGS.md` |
-| INFERENCE / make N missions / throw an agent at the game | copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). Bare `INFERENCE`: look, infer, rotate. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md) |
+| Saw a defect that is not your task | **§7 total-fix mode** — small: fix it now; medium: call a subagent; otherwise one row in the demo defect ledger |
+| INFERENCE / make N missions / throw an agent at the game | copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). An OPEN line in [`design/program/INFERENCE_IDEAS.md`](design/program/INFERENCE_IDEAS.md) is the assignment. Look, infer, rotate only when that catalog is empty. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md). Open feelings for a strong pass: `build_map.md` §23 |
 | Finish the game / it still looks unfinished / run the fleet | **`design/program/FINISH_THE_GAME.md`** — goal prompt `design/program/FINISH_THE_GAME_GOAL.txt` |
 | Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 
@@ -139,8 +141,30 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
   contrast. Accessibility does not require a universal visual style.
-- **Dependencies/media:** allowed when they materially improve quality and their bundle/performance,
-  determinism/save, and maintenance effects are understood.
+- **Dependencies/media:** the outside resources that would make this game better are named in
+  [`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0. Use that list. Record license,
+  bundle, performance, determinism/save, and maintenance. Do not copy Unreal Engine code. A
+  catalog line does not add a package.
+
+## 7. Total-fix mode (owner, 2026-09-22)
+
+A demo beta is due. Until it ships, the game must be a working thing with no obvious bugs, and
+every agent is in total-fix mode. A defect seen and brushed past because "not my task" is a defect
+the next session may pay hours to isolate — or never see again. The sitting that sees a bug owns
+getting it handled; the task does not have to own fixing it.
+
+- **Small** (one cause, minutes): fix it now, in this session, alongside your named task.
+- **Medium** (multi-file, or fixing it inline would convolute the unit): call a subagent to fix it
+  while you continue. Do not stop your named outcome for it.
+- **Big or cause unknown:** add ONE row to the demo defect ledger —
+  [`design/program/DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md)
+  §6 — then move on. Never open a second bug list elsewhere; a defect that is neither fixed nor
+  logged is the one unacceptable outcome.
+- **Ledger hygiene is the law:** a row leaves the ledger only by being fixed — delete it in the
+  fixing commit; never strike it through, mark it done, or archive it. Any sitting may claim any
+  row, and a sitting dispatched into files that carry an open row handles that row as part of its
+  unit. The ledger must stay readable in one minute: if it grows past a screen, clearing rows
+  outranks taking new queue units.
 
 ## 8. System update order
 

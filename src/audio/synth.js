@@ -176,6 +176,9 @@ function mergeLayerRecipe(parent, layer) {
 }
 
 function pickRate(recipe, opts) {
+  // Doppler and other authored rates lock the voice. A random pitchRange on top of that
+  // wobbles the sample away from the closing-speed shift.
+  if (opts.lockRate) return opts.rate == null ? 1 : opts.rate;
   // An explicit non-unity rate overrides the recipe's pitchRange.
   if (opts.rate != null && opts.rate !== 1) return opts.rate;
   if (recipe.pitchRange) return randomInRange(recipe.pitchRange);

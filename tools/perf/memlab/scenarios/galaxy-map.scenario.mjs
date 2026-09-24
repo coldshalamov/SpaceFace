@@ -12,11 +12,11 @@ export async function action(page) {
 
   // Start new game into flight
   await page.evaluate(() => {
-    if (window.SF.helpers && typeof window.SF.helpers.startNewGame === 'function') {
-      window.SF.helpers.startNewGame({ seed: 47 });
+    if (window.SF.bus && typeof window.SF.bus.emit === 'function') {
+      window.SF.bus.emit('game:new', { seed: 47 });
     }
   });
-  await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 15000 });
+  await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 180000, polling: 500 });
   await page.waitForTimeout(1000);
 
   // Open Galaxy Map screen

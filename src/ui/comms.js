@@ -25,6 +25,7 @@ import { createContactHailPrompt } from './contactHailPrompt.js';
 import { createCommsRadial } from './commsRadial.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
 import { createCommsTrace } from './effects/commsTrace.js';
+import { openingInstructionSolo } from './hudAttention.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -148,7 +149,11 @@ export function createComms(ctx) {
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
     traceFactionId = resolveCommsFactionId(p, state, traceFactionId);
     const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);
-    const bypassAttentionGate = !!(delivery && delivery.bypassAttentionGate);
+    // Opening one-instruction rule (hudAttention): authored lines may bypass the ordinary
+    // attention gate so cold-open comms survive load stalls — but inside the first two minutes
+    // the objective is the only instruction on screen, so the bypass itself retires and the
+    // line is held like any other until the player has done the thing.
+    const bypassAttentionGate = !!(delivery && delivery.bypassAttentionGate) && !openingInstructionSolo(state);
     // One-voice (spec2/06): a player-addressed line already surfaced by the arbiter as the top-center
     // floor pill is logged to the BACKLOG only — re-stacking it on the live left-edge feed would show
     // the same voice twice. Ambient chatter (unmarked) still fills the feed as the channel texture.

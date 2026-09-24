@@ -332,6 +332,13 @@ export async function runReleaseSoakProbe({
         // that killed it, not a bare waitForFunction timeout.
         const diag = await captureCycleStateDiag(page).catch(() => null);
         warmupError.message = `${warmupError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        const warmupConsoleHead = (pageIssueTracker?.issues || [])
+          .filter((issue) => issue.type === 'error' || issue.type === 'pageerror')
+          .slice(0, 6)
+          .map((issue) => `${issue.type}: ${String(issue.text || '').slice(0, 300)}`);
+        if (warmupConsoleHead.length > 0) {
+          warmupError.message += ` | console-errors: ${JSON.stringify(warmupConsoleHead)}`;
+        }
         throw warmupError;
       }
       // No ensureMarketOpen here: the warmup cycle ends in the same post-roundtrip
@@ -386,19 +393,49 @@ export async function runReleaseSoakProbe({
     const memoryCheckpoints = [];
     let index = 0;
     while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
-      try {
-        const cycle = await withTimeout(
-          runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
-          cycleTimeoutMs,
-          `release-soak cycle ${index}`,
-        );
-        cycleResults.push(cycle);
-      } catch (cycleError) {
+      let cycle = null;
+      let cycleError = null;
+      // One retry per cycle. A cycle that fails mid-market dies docked at the
+      // station screen — exactly the state every cycle opens in — so a transient
+      // interaction stall (a busy page starving protocol calls for tens of
+      // seconds) must not void the whole soak window. The retry is logged; a
+      // real defect fails twice and still kills the run with diagnostics.
+      for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
+        try {
+          cycle = await withTimeout(
+            runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+            cycleTimeoutMs,
+            `release-soak cycle ${index}`,
+          );
+        } catch (attemptError) {
+          if (attempt === 0) {
+            doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
+            await setSoakTransition(page, null).catch(() => {});
+            continue;
+          }
+          cycleError = attemptError;
+        } finally {
+          // A cycle that throws mid-transition must not leave the tag armed — later
+          // gameplay hitches would be misfiled as transition spans and pass leniently.
+          await setSoakTransition(page, null);
+        }
+      }
+      if (cycleError) {
         // A dead cycle must carry the live state that killed it — a waitForFunction
         // timeout alone says nothing about whether the world restored, the ship is
         // wedged, or the page froze.
         const diag = await captureCycleStateDiag(page).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        // The runner quarantines itself on the first registry.step throw, so every later frame
+        // reports only "SimulationRunner is closed". The original error survives only in the
+        // console issue tracker — surface its head so the fail line names the real thrower.
+        const consoleErrorHead = (pageIssueTracker?.issues || [])
+          .filter((issue) => issue.type === 'error' || issue.type === 'pageerror')
+          .slice(0, 6)
+          .map((issue) => `${issue.type}: ${String(issue.text || '').slice(0, 300)}`);
+        if (consoleErrorHead.length > 0) {
+          cycleError.message += ` | console-errors: ${JSON.stringify(consoleErrorHead)}`;
+        }
         // The position trail is the only witness that names the tick a far-field excursion
         // began; the cycle-state tail alone reads end state. Persist the whole ring plus
         // the writer-trap events, whose stacks name the exact write that moved the ship.
@@ -412,11 +449,8 @@ export async function runReleaseSoakProbe({
           }
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
-      } finally {
-        // A cycle that throws mid-transition must not leave the tag armed — later
-        // gameplay hitches would be misfiled as transition spans and pass leniently.
-        await setSoakTransition(page, null);
       }
+      cycleResults.push(cycle);
       memoryCheckpoints.push(await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
         30_000,
@@ -482,6 +516,23 @@ export async function runReleaseSoakProbe({
         programQueryTrap.slice(0, 4).map((entry) => `${entry.count}x ${String(entry.stack || '').split('\n')[2] || '?'}${entry.lost === true ? ' [context-lost]' : ''}`).join(' | ')
       }`);
     }
+    // Same read for the delete trap: `delete: object does not belong to this context`
+    // storms name no caller either, and the fix depends on which dispose path issues them.
+    // Entries whose handle passed its own isX() check (alive: true) are recorded too — beside
+    // 'does not belong' warnings they are still the storm's caller (binding-layer blind spot).
+    // Eviction/drop counts surface a saturated cap: the storm fires at the end of a soak, so
+    // saturation must be seen, never silent.
+    const glDeleteTrap = await readGlDeleteTrap(page);
+    const glDeleteTrapEntries = glDeleteTrap.entries;
+    const glTrapSaturated = glDeleteTrap.evicted > 0 || glDeleteTrap.dropped > 0;
+    if (glDeleteTrapEntries.length > 0 || glTrapSaturated) {
+      const dead = glDeleteTrapEntries.filter((entry) => entry.alive === false);
+      doLog(`gl-delete trap captured ${glDeleteTrapEntries.length} delete caller(s), ${dead.length} failed their own isX check${
+        glTrapSaturated ? `; SATURATED: ${glDeleteTrap.evicted} routine entries evicted, ${glDeleteTrap.dropped} unique keys dropped` : ''
+      }: ${
+        (dead.length > 0 ? dead : glDeleteTrapEntries).slice(0, 4).map((entry) => `${entry.count}x ${entry.api}${entry.alive === false ? ' [dead]' : ''} ${String(entry.stack || '').split('\n')[2] || '?'}`).join(' | ')
+      }`);
+    }
 
     const endFingerprint = await strictWorktreeFingerprint(root);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
@@ -531,6 +582,7 @@ export async function runReleaseSoakProbe({
     const cleanupValidation = validateCleanupEvidence(cleanup, { runtimeKind: runtime });
     const errors = buildErrorEvidence(runtime, pageIssueTracker);
     errors.programQueryTrap = programQueryTrap;
+    errors.glDeleteTrap = glDeleteTrap;
     pageIssueTracker?.stop?.();
 
     const checks = [
@@ -692,6 +744,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     // New Game failure was a product-side counter-owner swap, not Playwright injection ordering.
     if (enableTier1Counters) await installTier1CountersInitScript(context);
     await installGlProgramQueryTrap(context);
+    await installGlDeleteTrap(context);
     const page = await context.newPage();
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
@@ -766,6 +819,11 @@ async function launchElectron(
     rootUrl,
   });
   await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+  // Arm the read-only GL traps on the live page: without this the Electron route ran every soak
+  // with both traps disarmed — they only rode the opt-in tier1-counter reload — which is why the
+  // v6 acceptance pair captured 256 dead-handle warnings with zero trapped stacks. launchBrowser
+  // keeps its context-level install: every page there inherits the init scripts.
+  await installGlTrapsOnLivePage(page);
   if (enableTier1Counters) {
     // Electron creates its first page as part of app startup, before Playwright can install an init
     // script. Reload the same canonical route once inside the same owned runtime after arming the
@@ -851,60 +909,67 @@ export async function installTier1CountersInitScript(target) {
 // post-restore wrappers still belong to the context object and can pass it). The trap is read-only:
 // it never filters, throws, or alters the return value, so product behaviour is untouched and the
 // captured stacks travel with the evidence when warnings fail validation.
+// The in-page bodies are exported so the same source arms the trap two ways: addInitScript
+// (browser contexts, and any Electron page created after installation) and a live-page evaluate
+// (Electron's first window, which exists before Playwright can install an init script at all).
+// Each body is idempotent per document — a second arm must be a no-op, not a defineProperty throw.
+export function armGlProgramQueryTrapInPage() {
+  if (globalThis.__SF_PROGRAM_QUERY_TRAP__) return;
+  const queries = [];
+  const seen = new Map();
+  const wrap = (proto, ctxKind) => {
+    if (!proto || typeof proto.getProgramParameter !== 'function') return;
+    const original = proto.getProgramParameter;
+    if (original.__sfProgramQueryTrap === true) return;
+    const wrapped = function (program, pname) {
+      const result = original.call(this, program, pname);
+      // The driver-level verdict is the only version-proof predicate: the JS binding accepts
+      // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
+      // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
+      // and returns null. isProgram() is unreliable here — it can still answer true for those
+      // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
+      // zero bad queries. A live same-context program never returns null for a valid pname.
+      if (result === null) {
+        try {
+          const stack = (new Error('sf-program-query-trap')).stack || '';
+          const key = stack.split('\n').slice(2, 8).join('|');
+          const existing = seen.get(key);
+          if (existing != null) {
+            queries[existing].count += 1;
+          } else if (queries.length < 64) {
+            seen.set(key, queries.length);
+            queries.push({
+              count: 1,
+              ctx: ctxKind,
+              pname: Number(pname),
+              isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
+              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+              at: Math.round(performance.now()),
+              stack: stack.slice(0, 3000),
+            });
+          }
+        } catch (_) { /* trap bookkeeping must never break the queried path */ }
+      }
+      return result;
+    };
+    wrapped.__sfProgramQueryTrap = true;
+    proto.getProgramParameter = wrapped;
+  };
+  try {
+    wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype, 'webgl2');
+    wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype, 'webgl1');
+  } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
+  Object.defineProperty(globalThis, '__SF_PROGRAM_QUERY_TRAP__', {
+    value: queries,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+}
+
 export async function installGlProgramQueryTrap(target) {
   assert(target && typeof target.addInitScript === 'function', 'program-query trap requires an init-script seam');
-  await target.addInitScript(() => {
-    const queries = [];
-    const seen = new Map();
-    const wrap = (proto, ctxKind) => {
-      if (!proto || typeof proto.getProgramParameter !== 'function') return;
-      const original = proto.getProgramParameter;
-      if (original.__sfProgramQueryTrap === true) return;
-      const wrapped = function (program, pname) {
-        const result = original.call(this, program, pname);
-        // The driver-level verdict is the only version-proof predicate: the JS binding accepts
-        // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
-        // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
-        // and returns null. isProgram() is unreliable here — it can still answer true for those
-        // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
-        // zero bad queries. A live same-context program never returns null for a valid pname.
-        if (result === null) {
-          try {
-            const stack = (new Error('sf-program-query-trap')).stack || '';
-            const key = stack.split('\n').slice(2, 8).join('|');
-            const existing = seen.get(key);
-            if (existing != null) {
-              queries[existing].count += 1;
-            } else if (queries.length < 64) {
-              seen.set(key, queries.length);
-              queries.push({
-                count: 1,
-                ctx: ctxKind,
-                pname: Number(pname),
-                isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
-                lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
-                at: Math.round(performance.now()),
-                stack: stack.slice(0, 3000),
-              });
-            }
-          } catch (_) { /* trap bookkeeping must never break the queried path */ }
-        }
-        return result;
-      };
-      wrapped.__sfProgramQueryTrap = true;
-      proto.getProgramParameter = wrapped;
-    };
-    try {
-      wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype, 'webgl2');
-      wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype, 'webgl1');
-    } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
-    Object.defineProperty(globalThis, '__SF_PROGRAM_QUERY_TRAP__', {
-      value: queries,
-      configurable: false,
-      enumerable: false,
-      writable: false,
-    });
-  });
+  await target.addInitScript(armGlProgramQueryTrapInPage);
 }
 
 export async function readGlProgramQueryTrap(page) {
@@ -916,6 +981,151 @@ export async function readGlProgramQueryTrap(page) {
     ));
   } catch (_) {
     return [];
+  }
+}
+
+// Dead-handle delete trap: `delete: object does not belong to this context` names the API
+// but never the JS frame. Read-only like the query trap: it never filters, throws, or alters
+// the delete itself.
+//
+// v6 acceptance-pair lesson (2026-09-23): record EVERY delete, not only isX() failures. The
+// binding layer lets stale/foreign wrappers through isX() — the exact failure the query trap's
+// comment above documents for isProgram() — so the Electron storm (248x 'delete:' + 8x
+// 'deleteVertexArray' warnings inside one ~10 ms recovery burst) would read as zero bad deletes
+// even with the trap armed. `alive` keeps the two classes separable in evidence: an
+// alive:false entry is a handle that failed its own isX() check; an alive:true entry beside
+// Chromium 'does not belong' warnings at the same timestamp is still the storm's caller.
+export function armGlDeleteTrapInPage() {
+  if (globalThis.__SF_GL_DELETE_TRAP__) return;
+  const deletes = [];
+  const seen = new Map();
+  const order = [];
+  const meta = { evicted: 0, dropped: 0 };
+  const CAP = 128;
+  const pairs = [
+    ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
+    ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
+    ['deleteFramebuffer', 'isFramebuffer'], ['deleteRenderbuffer', 'isRenderbuffer'],
+    ['deleteVertexArray', 'isVertexArray'],
+  ];
+  const wrap = (proto) => {
+    if (!proto) return;
+    for (const [del, is] of pairs) {
+      if (typeof proto[del] !== 'function') continue;
+      const original = proto[del];
+      if (original.__sfGlDeleteTrap === true) continue;
+      const wrapped = function (handle) {
+        try {
+          let alive = null;
+          if (handle != null && typeof this[is] === 'function') {
+            try { alive = this[is](handle) === true; } catch (_) { alive = false; }
+          }
+          const stack = (new Error('sf-gl-delete-trap')).stack || '';
+          const key = `${del}|${alive}|${stack.split('\n').slice(2, 8).join('|')}`;
+          const existing = seen.get(key);
+          if (existing != null) {
+            deletes[existing].count += 1;
+          } else {
+            const entry = {
+              count: 1,
+              api: del,
+              alive,
+              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+              at: Math.round(performance.now()),
+              stack: stack.slice(0, 3000),
+            };
+            if (deletes.length < CAP) {
+              seen.set(key, deletes.length);
+              order.push(key);
+              deletes.push(entry);
+            } else {
+              // Saturated: the storm fires at the END of a multi-hour soak, so a fixed
+              // drop-on-full cap would silently crowd it out with routine dispose stacks —
+              // the exact 'storm arrives with zero trapped stacks' failure this trap exists
+              // to fix. Evict the OLDEST common-class entry instead (FIFO); a precise
+              // alive:false entry is never the victim. If every slot is alive:false, the
+              // new key is dropped but counted. Either way saturation is visible in
+              // evidence via the meta read — never silent.
+              let victimIdx = -1;
+              for (let i = 0; i < order.length; i++) {
+                const victimKey = order[i];
+                if (deletes[seen.get(victimKey)].alive !== false) {
+                  victimIdx = seen.get(victimKey);
+                  order.splice(i, 1);
+                  seen.delete(victimKey);
+                  break;
+                }
+              }
+              if (victimIdx >= 0) {
+                meta.evicted += 1;
+                deletes[victimIdx] = entry;
+                seen.set(key, victimIdx);
+                order.push(key);
+              } else {
+                meta.dropped += 1;
+              }
+            }
+          }
+        } catch (_) { /* trap bookkeeping must never break the delete path */ }
+        return original.call(this, handle);
+      };
+      wrapped.__sfGlDeleteTrap = true;
+      proto[del] = wrapped;
+    }
+  };
+  try {
+    wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype);
+    wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype);
+  } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
+  Object.defineProperty(globalThis, '__SF_GL_DELETE_TRAP__', {
+    value: deletes,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  Object.defineProperty(deletes, '__sfSaturation', {
+    value: meta,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+}
+
+export async function installGlDeleteTrap(target) {
+  assert(target && typeof target.addInitScript === 'function', 'gl-delete trap requires an init-script seam');
+  await target.addInitScript(armGlDeleteTrapInPage);
+}
+
+// Electron's first window exists before Playwright can install an init script, so the
+// init-script form above only arms after a reload — and the acceptance run does not spend a
+// reload on diagnostics (the reload path is opt-in tier1-counter instrumentation). That is how
+// the v6 Electron soak captured 256 dead-handle warnings with zero trapped stacks: both traps
+// were disarmed for the whole run, including the controlled context-loss exercise where the
+// storm fires. Arm the same read-only wraps on the live page instead: the storm class happens
+// late (context-loss recovery), so a post-boot arm covers it without touching boot-to-menu
+// evidence. Idempotent per document; a tier1 reload after this re-arms via the init scripts.
+export async function installGlTrapsOnLivePage(page) {
+  assert(page && typeof page.evaluate === 'function', 'live-page gl traps require an evaluate seam');
+  await page.evaluate(armGlProgramQueryTrapInPage);
+  await page.evaluate(armGlDeleteTrapInPage);
+}
+
+// Returns { entries, evicted, dropped }: the saturation meta travels with the evidence so a
+// soak that outran the cap is visible in the report — a crowd-out can never be silent.
+export async function readGlDeleteTrap(page) {
+  try {
+    return await page.evaluate(() => {
+      const armed = globalThis.__SF_GL_DELETE_TRAP__;
+      if (!Array.isArray(armed)) return { entries: [], evicted: 0, dropped: 0 };
+      const meta = armed.__sfSaturation || {};
+      return {
+        entries: armed.slice(),
+        evicted: Number(meta.evicted) || 0,
+        dropped: Number(meta.dropped) || 0,
+      };
+    });
+  } catch (_) {
+    return { entries: [], evicted: 0, dropped: 0 };
   }
 }
 
@@ -958,6 +1168,7 @@ export async function reloadElectronWithTier1Counters(page, pageIssueTracker, { 
   // exact reload so unrelated in-flight requests cannot inherit the waiver if installation fails.
   await installTier1CountersInitScript(page);
   await installGlProgramQueryTrap(page);
+  await installGlDeleteTrap(page);
   const navigationToken = pageIssueTracker.beginExpectedNavigation('tier1-counter-install');
   try {
     return await page.reload({ waitUntil: 'domcontentloaded', timeout: timeoutMs });
@@ -1029,6 +1240,43 @@ async function captureCycleStateDiag(page) {
       frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
       dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
       visibility: typeof document !== 'undefined' ? document.visibilityState : null,
+      // Freeze forensics: a dead tick is either a held timeEffects request (timeScale 0)
+      // or a suspended/destroyed presentation runner. Capture both so the failure dump
+      // names the mechanism instead of just the symptom.
+      timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+      accumulator: Number.isFinite(state?.accumulator) ? state.accumulator : null,
+      tick: Number.isFinite(state?.tick) ? state.tick : null,
+      // ui:pausing-screen is the most common sim-freeze owner: a leftover stack entry or a
+      // docked flag that never cleared holds timeScale at 0 while mode reads 'flight'.
+      screenStack: Array.isArray(state?.ui?.screenStack) ? [...state.ui.screenStack] : null,
+      // Which timeEffects source still holds a request — names the freeze owner directly
+      // (ui:pausing-screen, save:restore:<seq>, feel:hit-stop, runtime:loading, ...).
+      timeRequests: typeof window.SF?.timeEffects?.describeRequests === 'function'
+        ? window.SF.timeEffects.describeRequests() : null,
+      runner: (() => {
+        const w = window.__SF_WITNESS__;
+        const recent = typeof w?.recent === 'function' ? w.recent() : [];
+        const s = recent[recent.length - 1] || null;
+        const v = typeof w?.verdict === 'function' ? w.verdict() : null;
+        // Once the sim quarantines, lastFrameError only repeats "SimulationRunner is closed" —
+        // closeCauseMessage retains the registry.step throw that actually tripped it.
+        const simDiag = (() => {
+          try { return window.SF?.loop?.getDiagnostics?.()?.simulation || null; } catch (_) { return null; }
+        })();
+        return {
+          verdict: v ? { kind: v.kind, headline: v.headline } : null,
+          lifecycle: s?.lifecycle ?? null,
+          suspended: s?.suspended ?? null,
+          documentHidden: s?.documentHidden ?? null,
+          executedFrames: s?.executedFrames ?? null,
+          renderUpdates: s?.renderUpdates ?? null,
+          lastFrameError: s?.lastFrameError ?? null,
+          frameErrorCount: s?.frameErrorCount ?? null,
+          simClosed: simDiag?.closed ?? null,
+          closeCause: simDiag?.closeCauseMessage ?? null,
+          closeCauseSite: simDiag?.closeCauseSite ?? null,
+        };
+      })(),
       saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
       trailTail: trail.slice(-60),
       posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),
@@ -1131,7 +1379,32 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
   await transition('load-restore');
   await page.keyboard.press('F9');
-  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
+  // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
+  // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
+  // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
+  // failGameStart, which this predicate never satisfies either way.
+  const waitForLoadFlight = () => page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
+  try {
+    await waitForLoadFlight();
+  } catch (loadWaitError) {
+    // D31: a transient staging stall inside finalizeLoadedGame dumps the run to a frozen menu
+    // (runtime:start-failed) with the save intact. A player would just load again — retry the
+    // same public key once so one host hiccup cannot kill a multi-hour soak. The signature is
+    // recorded either way; a persistent defect still fails the second wait.
+    const deadEnded = await page.evaluate(() => {
+      const s = window.SF?.state;
+      const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
+        ? window.SF.timeEffects.describeRequests() : {};
+      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? {
+        mode: s.mode,
+        timeRequests: reqs,
+      } : null;
+    }).catch(() => null);
+    if (!deadEnded) throw loadWaitError;
+    mark('load-retry-start-failed', deadEnded);
+    await page.keyboard.press('F9');
+    await waitForLoadFlight();
+  }
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
@@ -1319,13 +1592,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
         if (Number.isFinite(distToBerth) && distToBerth <= 60) {
           // Already inside the dock envelope: re-plotting a waypoint to the station the ship is
           // parked next to resolves RETURN TO SHIP, not a course — the Set Waypoint click has no
-          // emit to witness (same hazard the insideDockEnvelope guard above avoids). The player
-          // action here is a throttle nudge toward the berth; once residual speed drops under
-          // the dock gate the capture assist owns the pull-in.
-          mark('redock-nudge', idleDiag);
+          // emit to witness (same hazard the insideDockEnvelope guard above avoids). A ship
+          // carrying residual speed into the envelope can wedge on the proxy wall short of the
+          // dock radius: the capture assist only re-engages once speed is under the gate, and a
+          // W nudge just drives the hull deeper into the wedge. The player recovery is to brake
+          // first so the assist's proportional pull can slide the ship to the berth, then nudge.
+          const wedged = idleDiag?.speed > 4;
+          mark(wedged ? 'redock-brake' : 'redock-nudge', idleDiag);
+          if (wedged) {
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+          }
           try {
             await page.keyboard.down('KeyW');
-            await page.waitForTimeout(900);
+            await page.waitForTimeout(wedged ? 400 : 900);
           } finally {
             await page.keyboard.up('KeyW').catch(() => {});
           }
@@ -1902,29 +2186,85 @@ async function clickWaypointWithPointer(page, locator, timeoutMs = 10_000) {
   throw new Error(`Set Waypoint pointer click did not arm autopilot; last box=${JSON.stringify(lastBox)}`);
 }
 
+async function reopenMarketTabWhenShellLost(page) {
+  // A stray keypress can back the station screen out of the market tab — the trade shell
+  // is then absent entirely and every commit dies blind with an all-null diag. Re-open
+  // the market tab through the public control; bounded, and the walk's own asserts still
+  // report a market that truly will not open.
+  for (let attempts = 0; attempts < 3; attempts++) {
+    if (await pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) > 0) return true;
+    const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
+    if (!(await pBound(marketTab.isVisible(), 4_000, false))) return false;
+    await pBound(marketTab.click({ timeout: 4_000 }), 5_000, null);
+    await page.waitForTimeout(400);
+  }
+  return pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) > 0;
+}
+
 async function exerciseMarketRoundtrip(page) {
+  await reopenMarketTabWhenShellLost(page);
   // The live market is the orbital-command trade console (.sx-trade + data-mode segment buttons).
   // The legacy .st-buy-btn/[data-trade-mode] shell no longer exists — one current-UI path only.
   // Each roundtrip ends in Sell mode, which narrows the register to held cargo ("IN HOLD").
   // After the load+redock the hold can be empty, which collapses the console into the
   // HOLD_EMPTY data state — its public "Switch to Buy" verb is the designed way out.
   const holdEmptyVerb = page.locator('.sf-state[data-sf-state="empty"] .sf-state__verb', { hasText: /switch to buy/i }).first();
-  if (await holdEmptyVerb.isVisible().catch(() => false)) await holdEmptyVerb.click();
+  if (await pBound(holdEmptyVerb.isVisible(), 4_000, false)) await pBound(holdEmptyVerb.click({ timeout: 4_000 }), 5_000, null);
   const activeTradeShell = page.locator('.sx-trade:visible').first();
+  // Live station chrome refreshes under the pointer; when a pointer-path click loses the
+  // hit test, dispatch the click on the node itself — the same event the delegated
+  // handler consumes. Nothing is committed without a state verify downstream.
+  const clickWithFallback = async (locator, timeout = 5_000) => {
+    const ok = await locator.click({ timeout }).then(() => true, () => false);
+    if (ok) return true;
+    return pBound(locator.dispatchEvent('click').then(() => true), 4_000, false);
+  };
+  const modeIsOn = (locator) => pBound(locator.getAttribute('class'), 4_000, null)
+    .then((value) => String(value || '').includes('is-on'));
+  // A mode click that never lands would trade in the wrong direction — retry the public
+  // control until the console itself reports the mode active.
+  const ensureMode = async (locator) => {
+    for (let attempt = 0; attempt < 3 && !(await modeIsOn(locator)); attempt++) {
+      await clickWithFallback(locator);
+    }
+    return modeIsOn(locator);
+  };
   // Reset the public trade-mode control explicitly so cycle 2+ cannot time out looking for
-  // a hidden Buy action.
+  // a hidden Buy action. When the hold empties mid-leg the console collapses into its
+  // HOLD_EMPTY state (no register, no mode row) — the public "Switch to Buy" verb is the
+  // only way back, so every buy-mode ensure offers it alongside the segment click.
   const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
   await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
   const ensureBuyMode = async () => {
-    if (await buyMode.getAttribute('class').then((value) => !String(value || '').includes('is-on')).catch(() => true)) {
-      await buyMode.click();
+    for (let attempt = 0; attempt < 3 && !(await modeIsOn(buyMode)); attempt++) {
+      if (await pBound(holdEmptyVerb.isVisible(), 1_500, false)) {
+        await pBound(holdEmptyVerb.click({ timeout: 2_000 }), 3_000, null);
+      }
+      await clickWithFallback(buyMode);
     }
+    return modeIsOn(buyMode);
   };
   await ensureBuyMode();
   const sellMode = activeTradeShell.locator('button[data-mode="sell"]').first();
   const tradeGo = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
   const qtyInput = activeTradeShell.locator('input.sx-qty__in').first();
   const rows = page.locator('[data-cmdty][role="tab"]');
+  // Observer tap: a row that refuses to commit is only diagnosable if the bus says why.
+  // tradeFailed carries the rejection reason (price_changed, cargo_full, no_stock, …) and
+  // tradeCompleted distinguishes "rejected" from "landed where the verify could not see it".
+  await pBound(page.evaluate(() => {
+    const w = window;
+    if (w.__SOAK_TRADE_TAP__ || !w.SF?.bus?.on) return;
+    w.__SOAK_TRADE_TAP__ = true;
+    w.__SOAK_TRADE_EVENTS__ = [];
+    const push = (kind) => (p) => {
+      const log = w.__SOAK_TRADE_EVENTS__;
+      log.push({ kind, at: Date.now(), ...(p && typeof p === 'object' ? p : { p }) });
+      if (log.length > 40) log.splice(0, log.length - 40);
+    };
+    w.SF.bus.on('economy:tradeFailed', push('failed'));
+    w.SF.bus.on('economy:tradeCompleted', push('completed'));
+  }), 8_000, null);
   const tradeConsoleDiag = () => page.evaluate(() => {
     const shell = document.querySelector('.sx-trade');
     const liveMode = shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-mode') || null;
@@ -1936,6 +2276,7 @@ async function exerciseMarketRoundtrip(page) {
       goDisabled: shell?.querySelector('[data-go]')?.disabled ?? null,
       selectedCommodity: document.querySelector('.sx-mkt-row.is-active')?.getAttribute('data-cmdty')
         || document.querySelector('[data-cmdty][aria-selected="true"]')?.getAttribute('data-cmdty') || null,
+      tradeEvents: (window.__SOAK_TRADE_EVENTS__ || []).slice(-6),
     };
   }).catch(() => null);
   // market.js execute() emits ui:buy/ui:sell directly — there is no .sf-confirm
@@ -1946,35 +2287,133 @@ async function exerciseMarketRoundtrip(page) {
   // actually landed in state — a GO that flickers enabled on a stale quote settles
   // disabled once the console re-prices it (full hold, thin credits, no stock), so
   // "the button enabled once during the walk" is not proof the row is actionable.
-  const attemptRowCommit = async (row, id, verifyFn) => {
-    if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
-      await row.click().catch(() => {});
+  // commitQty null skips the fill and takes the console default (the whole held
+  // stack in Sell mode) — the hold-drain path only. walkDeadline bounds the whole
+  // market leg; a row attempt never outlives it.
+  const attemptRowCommit = async (row, id, verifyFn, { commitQty = '1', walkDeadline = Infinity } = {}) => {
+    let clickErr = null;
+    if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
+      // The register rebuilds its row nodes on every price tick and the list lives in a
+      // short scroll rail: Playwright's pointer-path click can lose the hit test to
+      // sibling chrome while a real pilot's click reaches the row's delegated handler.
+      // Dispatch the click on the row first — the same event the screen's
+      // delegated listener consumes, with no actionability wait — and fall
+      // back to the pointer path. Selection is still verified below before
+      // any commit is attempted — never trade blind.
+      clickErr = await pBound(row.dispatchEvent('click'), 4_000, null)
+        .then((ok) => ok === null ? 'dispatch:bounded-timeout' : null,
+          (e) => `dispatch:${String(e && e.message || e).split('\n')[0]}`);
+      if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
+        clickErr = await row.click({ timeout: 1_500 })
+          .then(() => clickErr, (e) => `${clickErr} | ${String(e && e.message || e).split('\n').slice(0, 4).join(' | ')}`);
+      }
+      if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
+        const box = await pBound(row.boundingBox(), 4_000, null);
+        const hitStack = box ? await pBound(page.evaluate(({ x, y }) => {
+          return (document.elementsFromPoint(x, y) || []).slice(0, 4)
+            .map((el) => `${el.tagName}.${String(el.className || '').split(' ').slice(0, 2).join('.')}`);
+        }, { x: box.x + box.width / 2, y: box.y + box.height / 2 }), 4_000, null) : null;
+        console.log(`[trade-walk] row ${id} never selected clickErr=${clickErr} box=${JSON.stringify(box)} hit=${JSON.stringify(hitStack)}`);
+        return null;
+      }
     }
     // Bound every trade to exactly one unit: the hold can carry freight of the same
     // commodity, and Sell mode defaults qty to the whole held stack — selling the
     // stack is not a roundtrip of the traded unit.
-    await qtyInput.fill('1').catch(() => {});
-    const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
-    if (!enabled) return null;
-    const before = await readTradeSnapshot(page, id);
-    await tradeGo.click();
-    const landed = await page.waitForFunction(verifyFn, before, { timeout: 8_000 }).then(() => true, () => false);
+    // Every action in the walk carries its own timeout: with a full hold (a fresh
+    // approach scoops ~250 ore before warmup-0) no buy row is actionable, and one
+    // unbounded fill/click per row burns the whole cycle budget instead of failing
+    // fast into the sell-first fallback (PQ-033.02, 2026-09-22: three runs died at
+    // market-opened with the cycle timeout and no diag). Landing is still proven by
+    // the state verify below, never by the click.
+    // A console quoting a disabled GO is saying "not actionable" — a pilot reads
+    // the note and moves to the next row. But the register re-renders on every
+    // price tick and GO flickers disabled inside each rebuild: poll for a live
+    // window (~2.4s covers the tick cadence) before calling the row dead. Dead
+    // rows still skip in ~2.5s instead of ~8s of retry budget, so a full-hold
+    // walk cannot eat the whole 300s cycle (PQ-033.02 cycle-42 death).
+    // Enable-poll before the fill: on a dead row the fill is wasted latency
+    // (each protocol call costs ~1.5s on a contended page). Polls self-pace on
+    // the call's own latency — no extra sleep — and five samples cover the
+    // price-tick flicker window even when calls land slowly.
+    const enableDeadline = Math.min(Date.now() + 2_400, walkDeadline);
+    let enabled = false;
+    for (let polls = 0; polls < 5 && Date.now() < enableDeadline; polls++) {
+      if (await pBound(tradeGo.isEnabled(), 4_000, false)) { enabled = true; break; }
+      await page.waitForTimeout(250);
+    }
+    if (!enabled && !(await pBound(tradeGo.isEnabled(), 4_000, false))) return null;
+    // Never commit on a swallowed fill: in Sell mode the console defaults qty to the
+    // whole held stack, so a fill that missed (input detached by a tick re-render)
+    // turns "sell 1" into "sell all" and collapses the console into HOLD_EMPTY —
+    // which killed Electron cycle 28 (356u dump, then no register to buy through).
+    const armQty = async () => {
+      for (let fillTry = 0; fillTry < 2; fillTry++) {
+        await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+        const val = await pBound(qtyInput.inputValue(), 1_500, null);
+        if (Number(val) === Number(commitQty)) return true;
+      }
+      return false;
+    };
+    if (commitQty != null && !(await armQty())) return null;
+    const before = await pBound(readTradeSnapshot(page, id), 5_000, null);
+    if (!before) return null;
+    // The console re-renders on every price tick: a GO node resolved before the click can be
+    // detached by the time the event dispatches, and a transient disabled/tradeBusy instant eats
+    // the handler silently (no trade event either way). A pilot just clicks again — so does the
+    // probe: bounded click→verify attempts inside the same ~8s budget, re-arming qty each time.
+    const deadline = Math.min(Date.now() + 8_000, walkDeadline);
+    let landed = false;
+    let attempts = 0;
+    while (!landed && Date.now() < deadline && attempts < 3) {
+      attempts += 1;
+      if (commitQty != null && !(await armQty())) continue;
+      const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
+      if (!enabled) continue;
+      // Same live-refresh hazard as the register rows: try the pointer click first,
+      // then dispatch the click on the node — the same event its handler consumes.
+      let clicked = await tradeGo.click({ timeout: 2_000 }).then(() => true, () => false);
+      if (!clicked) clicked = await pBound(tradeGo.dispatchEvent('click').then(() => true), 4_000, false);
+      if (!clicked) continue;
+      const remainMs = Math.max(500, deadline - Date.now());
+      landed = await page.waitForFunction(verifyFn, before, { timeout: Math.min(3_000, remainMs) }).then(() => true, () => false);
+    }
     return landed ? { commodityId: id, before } : null;
   };
   // Walk register rows the way a pilot does: select each and try the commit until one
   // lands. A row can list while its quote fails (no market entry at this berth, locked
   // cargo, empty stock), so "listed" is not "actionable".
-  const walkRowsForCommit = async (verifyFn, limit = 14) => {
-    const count = await rows.count().catch(() => 0);
+  const walkRowsForCommit = async (verifyFn, limit = 14, options = {}) => {
+    const walkDeadline = Number.isFinite(options.walkDeadline) ? options.walkDeadline : Infinity;
+    let count = await pBound(rows.count(), 4_000, 0);
+    if (count === 0 && await reopenMarketTabWhenShellLost(page)) {
+      count = await pBound(rows.count(), 4_000, 0);
+    }
     for (let i = 0; i < Math.min(count, limit); i++) {
+      if (Date.now() >= walkDeadline) return null;
       const row = rows.nth(i);
-      const id = await row.getAttribute('data-cmdty').catch(() => null);
+      const id = await pBound(row.getAttribute('data-cmdty'), 4_000, null);
       if (!id) continue;
-      const committed = await attemptRowCommit(row, id, verifyFn);
+      const t0 = Date.now();
+      const committed = await attemptRowCommit(row, id, verifyFn, options);
+      // Success is one line per walk (the roundtrip mark); only dead rows narrate,
+      // with the console state that explains them.
+      if (!committed) console.log(`[trade-walk] row ${i} ${id} ms=${Date.now() - t0} diag=${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
       if (committed) return committed;
+      // A dead row is quotable-detail; the shell itself vanishing is a stray-key
+      // back-out — re-open the tab once and restart the walk on the live rows.
+      if (!options.__reopened && await pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) === 0
+          && await reopenMarketTabWhenShellLost(page)) {
+        return walkRowsForCommit(verifyFn, limit, { ...options, __reopened: true });
+      }
     }
     return null;
   };
+  const readHoldFreeVolume = () => pBound(page.evaluate(() => {
+    const c = window.SF?.state?.player?.cargo;
+    if (!c || !(c.capVolume > 0)) return null;
+    return c.capVolume - (c.usedVolume || 0);
+  }), 4_000, null);
   const BUY_VERIFY = ({ commodityId, credits, owned }) => {
     const s = window.SF?.state;
     return Number(s?.player?.credits) < credits
@@ -1983,32 +2422,85 @@ async function exerciseMarketRoundtrip(page) {
   const SELL_VERIFY = ({ commodityId, owned }) =>
     Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned;
   // Long soaks bleed the bid-ask spread on every roundtrip and in-flight pickups can
-  // overfill the hold past cap — credits and free space are not guaranteed. Try the
-  // buy leg first; when no buyable row exists, sell one held unit (which restores
-  // both) and then buy through whichever register row is stocked. The roundtrip
-  // contract is one landed buy + one landed sell, not same-unit bookkeeping.
+  // overfill the hold far past cap (a fresh approach scoops 300+ ore) — credits and
+  // free space are not guaranteed. Try the buy leg first; when no buyable row
+  // exists, sell down until one unit of volume is free and then buy through
+  // whichever register row is stocked. The roundtrip contract is one landed buy +
+  // one landed sell, not same-unit bookkeeping.
+  // The market leg is one leg of a ~300s cycle. Every walk below shares this hard
+  // deadline — past it the legs return empty and the asserts narrate a real market
+  // failure instead of the route dying quietly at the cycle budget (PQ-033.02:
+  // cycle 42 burned all 300s inside the walk on a full-hold register).
+  const marketDeadline = Date.now() + 160_000;
+  const walkBudget = () => ({ walkDeadline: marketDeadline });
+  // A pilot reads the hold gauge first: with zero free volume every buy row is
+  // dead by definition ("no hold space"), so the initial buy walk can only burn
+  // ~2min of per-row timeouts. One state read replaces the doomed scan — the
+  // sell-first path below drains room and the buy walk still proves the leg.
+  const initialFree = await readHoldFreeVolume();
   let direction = 'buy-first';
-  let buy = await walkRowsForCommit(BUY_VERIFY);
+  let buy = (initialFree != null && initialFree < 1) ? null
+    : await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
   let sell = null;
   if (buy) {
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
-    await sellMode.click();
+    await ensureMode(sellMode);
     // Prefer selling back exactly the bought unit so cargo stays neutral; when the
     // register won't buy that commodity here, any held unit still lands the leg.
     const sameRow = page.locator(`[data-cmdty="${buy.commodityId}"]`).first();
-    const sameRowPresent = await sameRow.count().catch(() => 0) > 0;
-    sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY) : null)
-      || await walkRowsForCommit(SELL_VERIFY);
-    assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await tradeConsoleDiag())}`);
+    const sameRowPresent = await pBound(sameRow.count(), 4_000, 0) > 0;
+    sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY, walkBudget()) : null)
+      || await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
+    assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
   } else {
     direction = 'sell-first';
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
-    await sellMode.click();
-    sell = await walkRowsForCommit(SELL_VERIFY);
-    assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await tradeConsoleDiag())}`);
+    await ensureMode(sellMode);
+    sell = await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
+    assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
+    // One sold unit does not free a 60-deep overfill. Drain whole sellable stacks —
+    // the console defaults Sell qty to the held stack — until the buy leg below has
+    // room. Bounded: each commit clears a stack, and the loop stops when no row
+    // commits or every held row has been drained twice over.
+    let drainedStacks = 0;
+    const drainedIds = [];
+    for (let drained = 0; drained < 24; drained++) {
+      const free = await readHoldFreeVolume();
+      if (free == null || free >= 1) break;
+      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null, ...walkBudget() });
+      if (!extra) break;
+      if (!drainedIds.includes(extra.commodityId)) drainedIds.push(extra.commodityId);
+      drainedStacks += 1;
+    }
     await ensureBuyMode();
-    buy = await walkRowsForCommit(BUY_VERIFY);
-    assert(buy, `a freed hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
+    // A pilot who just emptied their hold onto the counter re-buys from the stacks the
+    // register just took: a landed sale lands in station stock, so those rows are
+    // provably buyable — while the rest of a thin book can sit at the 1-unit floor.
+    // Try them before the generic walk, whose row window can end above the only
+    // stocked row (PQ-033.02 Electron cycle-28: hullplate sat below the first 14).
+    for (const id of [...drainedIds, sell.commodityId]) {
+      const row = page.locator(`[data-cmdty="${id}"]`).first();
+      if (await pBound(row.count(), 4_000, 0) < 1) continue;
+      buy = await attemptRowCommit(row, id, BUY_VERIFY, walkBudget());
+      if (buy) break;
+    }
+    if (!buy) buy = await walkRowsForCommit(BUY_VERIFY, 40, walkBudget());
+    // A freed hold is not yet a funded one: the roundtrip bleeds bid-ask spread
+    // every cycle while in-flight pickups pile high-value ore into the hold, so
+    // late-soak saves can sit on 200+ u of cargo with single-digit credits. A
+    // pilot just sells what they hauled — keep liquidating held stacks (each
+    // whole-stack sale funds the next attempt) until a buy commits or the
+    // register stops buying. Same bound as the space drain.
+    for (let attempts = 0; !buy && attempts < 24; attempts++) {
+      await ensureMode(sellMode);
+      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null, ...walkBudget() });
+      if (!extra) break;
+      drainedStacks += 1;
+      await ensureBuyMode();
+      buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
+    }
+    assert(buy, `a drained hold must offer a buyable row: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
+    if (drainedStacks > 0) sell.drainedStacks = drainedStacks;
   }
   return { shell: 'orbital-command', direction, buy, sell };
 }
@@ -2016,7 +2508,18 @@ async function exerciseMarketRoundtrip(page) {
 async function ensureMarketOpen(page) {
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });
-  if (await marketTab.getAttribute('aria-selected') !== 'true') await marketTab.click();
+  // The pointer-path click can lose the hit test to adjacent chrome on a live-refreshing
+  // station shell; verify the tab actually selected and fall back to dispatching the
+  // click on the tab node — the same event its handler consumes.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
+    await marketTab.click({ timeout: 4_000 }).catch(() => {});
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
+    await pBound(marketTab.dispatchEvent('click'), 4_000, null);
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
+  }
+  // The trade console is hidden while the register is empty (HOLD_EMPTY/EXCHANGE_DARK);
+  // give the live market-open tick room to populate before calling it absent.
   await page.locator('.sx-trade:visible .sx-trade__go').first().waitFor({ state: 'visible', timeout: 20_000 });
 }
 
@@ -4233,6 +4736,20 @@ function errorCount(errors) { return ['pageErrors', 'requestFailures', 'glErrors
 function relativeTo(root, filePath) { return path.relative(root, filePath).replace(/\\/g, '/'); }
 function distance(a, b) { return Math.hypot(Number(a?.x || 0) - Number(b?.x || 0), Number(a?.z || 0) - Number(b?.z || 0)); }
 async function isDocked(page) { return page.evaluate(() => window.SF?.state?.ui?.docked === true).catch(() => false); }
+// Playwright is*/getAttribute/count/evaluate/dispatchEvent calls carry no timeout:
+// they queue behind the page's main thread, and a page stalled in shader-link, GC,
+// or register-rebuild work holds each one for tens of seconds (PQ-033.02: a
+// ~cycle-110 walk burned 60–90s per row on a saturated page). Race every such call
+// in the market path against a bound so one stalled call reads as a dead row —
+// the walk keeps stepping and the cycle-level retry absorbs genuine storms.
+function pBound(promise, timeoutMs, fallback) {
+  let timer;
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(fallback), timeoutMs); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 function withTimeout(promise, timeoutMs, label) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));

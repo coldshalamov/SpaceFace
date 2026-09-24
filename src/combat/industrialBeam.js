@@ -2,7 +2,7 @@
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
 import { removeCargo, addCargo } from '../systems/cargo.js';
-import { allocateEntityId, makeEntity } from '../core/entity.js';
+import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 
 export function resolveBeamVerb(descriptor, toolState = {}) {
   const mode = toolState.mode || 'auto';
@@ -249,6 +249,7 @@ export function handlePayloadSectorTransition(state, helpers = null) {
       // Minimal compatibility harnesses without a runtime context retain the historical
       // map/list-only cleanup; the live path above always uses core's canonical removal helper.
       entity.alive = false;
+      clearEntityRuntime(entity);
       if (typeof state.entities.delete === 'function') state.entities.delete(entity.id);
       if (Array.isArray(state.entityList)) {
         const idx = state.entityList.findIndex((row) => row && row.id === entity.id);

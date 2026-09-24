@@ -49,6 +49,14 @@ const DEFAULTS = Object.freeze({
   emergencyTorqueSlewPerTick: 0.14,
   yawSoftAngle: 1.15,
   yawDeadband: 0.035,
+
+  // Turns command a yaw RATE, not raw angle-proportional torque. A P-on-angle torque loop
+  // whirlpools across the ±π wrap: once the hull overshoots the target heading past π the
+  // short-way sign flips and every cycle re-pumps the spin (measured: the custody raider held
+  // ±5 rad/s for 10+ s, burned only strafe, and never crossed its own escape leash). The rate
+  // target bounds the slew; the rate error makes the torque channel pure damping near the goal.
+  yawRateTarget: 2.4,
+  yawRateGain: 0.4,
   turnBeforeBurnAngle: 0.82,
   speedBrakeSlack: 8,
   closingBrakeSlack: 10,
@@ -137,6 +145,8 @@ export class ManeuverPlanner {
     // re-engages cleanly. Deterministic: status plus tick only, never wall time.
     if (self.tumbling === true) {
       runtime.stationaryTicks = 0;
+      runtime.lastRot = self.rot;
+      runtime.lastRotTick = tick;
       const held = makeThrusterRequest(entityId, tick, {
         kind: ManeuverKind.HOLD,
         forceLocal: { forward: 0, right: 0 },
@@ -176,6 +186,15 @@ export class ManeuverPlanner {
         ? contactIndex.byId.get(intent.targetId) || null
         : findContactById(contacts, intent.targetId, this.workCounters);
     const contactSource = contactIndex || { ships: contacts, tethers: contacts, obstacles: contacts };
+    // The sensor frame carries no angular-velocity channel, so differentiate the wrapped
+    // heading between plan calls; the yaw request below closes on this measured rate
+    // (see yawRateTorqueFor).
+    const rotGapTicks = Number.isInteger(runtime.lastRotTick) ? Math.max(1, tick - runtime.lastRotTick) : 1;
+    const measuredWy = Number.isFinite(runtime.lastRot)
+      ? wrapAngle(selfPose.rot - runtime.lastRot) / (rotGapTicks / 60)
+      : 0;
+    runtime.lastRot = selfPose.rot;
+    runtime.lastRotTick = tick;
     const formationDistance = distance2(selfPose.pos, intent.formationSlot || selfPose.pos);
     const formationBound = Math.max(1, intent.formationBound || 0);
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
@@ -197,10 +216,10 @@ export class ManeuverPlanner {
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
       if (!choreo) {
-        desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+        desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy', target);
       }
     }
-    desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
     const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -284,8 +303,10 @@ export class ManeuverPlanner {
       rawRight = 0;
     }
 
-    const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance ? 0 : yawRequestFor(angleError, kind, this.config, hullScale);
     const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+    const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
+      ? 0
+      : yawRateTorqueFor(angleError, measuredWy, kind, this.config, hullScale);
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
@@ -300,7 +321,7 @@ export class ManeuverPlanner {
       : 0;
     const brake = desired.obstacleBrake || (choreo && choreo.coast
       ? false
-      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
         arrival < slowRadius && speed > Math.max(4, arrival / 2)));
     const trajectory = this.includeTrajectory
       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
@@ -454,7 +475,13 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
         : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
-      return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
+      if (target) return orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign);
+      // An orbit that names a world point (the witness holder's live-tracked body anchor, when
+      // the body itself is not a perception contact) holds that point instead of the squad slot.
+      const orbitCenter = intent.orbitCenter && Number.isFinite(intent.orbitCenter.x) && Number.isFinite(intent.orbitCenter.z)
+        ? intent.orbitCenter
+        : intent.formationSlot;
+      return trackPoint(self, orbitCenter, intent.formationVelocity, 0.7);
     }
     case ManeuverKind.SCREEN:
       return screen(self, target, intent.formationSlot, intent.formationVelocity, intent.formationBound);
@@ -465,8 +492,32 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
       return escapeTether(self, target || nearestTether(contactIndex.tethers, self, counters, contactIndex.tethers === contactIndex.ships ? 'legacy' : 'indexed'), seed, entityId);
     case ManeuverKind.RETREAT:
       return retreat(self, contactIndex.ships, intent.formationSlot, counters, contactIndex.ships === contactIndex.tethers ? 'legacy' : 'indexed');
-    case ManeuverKind.FORMATION:
+    case ManeuverKind.FORMATION: {
+      // A broken-off formation seek (transit to a named body: freight pod recovery, rendezvous)
+      // exists to TOUCH the drifting contact, not to hold its frame. A pure velocity match paces
+      // the pickup at standoff (~45 s of orbiting measured on the custody raider), while a raw
+      // commit overshoots into buzzing loops. Feed the tracker the contact velocity plus a
+      // distance-scaled closing term: fast closure far out, zero relative velocity at contact.
+      if (intent.breakFormation === true && target) {
+        const slot = intent.formationSlot || target.pos;
+        const dx = slot.x - self.pos.x, dz = slot.z - self.pos.z;
+        const dist = Math.hypot(dx, dz);
+        const inv = dist > 1e-6 ? 1 / dist : 0;
+        const closing = Math.min(config.approachSpeed, Math.max(8, dist * 0.8)) * (hullScale && hullScale.speed > 0 ? hullScale.speed : 1);
+        const tvx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
+        const tvz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
+        return {
+          x: dx * 0.8,
+          z: dz * 0.8,
+          arrivalDistance: dist,
+          desiredPos: { x: slot.x, z: slot.z },
+          desiredVel: { x: tvx + dx * inv * closing, z: tvz + dz * inv * closing },
+          control: 'track',
+          contactSeek: true,
+        };
+      }
       return trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.8);
+    }
     case ManeuverKind.HOLD:
     default:
       return trackPoint(self, intent.formationSlot || self.pos, intent.formationVelocity, 0.4);
@@ -660,12 +711,18 @@ function applyFriendlySeparation(desired, self, contacts, config, counters, coun
   return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
-function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy') {
+function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy', target = null) {
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   let x = dir.x, z = dir.z;
   const rightX = -dir.z;
   const rightZ = dir.x;
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
+  // A broken-off contact seek cannot honor a blocker's halo when the destination itself sits
+  // inside it (the freight pod spilled 33 WU off the dead carrier, inside its ~72 WU keep-out —
+  // the raider slalomed the shoulder for 40 s and never touched the cargo). The seek wins;
+  // the solver resolves the scrape physically.
+  const seekDest = target && intent && intent.breakFormation === true && maneuverSeeksContact(intent.kind)
+    ? target.pos : null;
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
@@ -677,6 +734,8 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     const lateral = dx * rightX + dz * rightZ;
     const clearance = config.shipCollisionClearance + self.radius + contact.radius
       + massClearanceFor(contact, intent, self, config);
+    if (seekDest && contact.id !== target.id
+      && distance2(contact.pos, seekDest) < clearance) continue;
     let pass = passes.get(contact.id) || null;
     const passed = pass && ((self.pos.x - contact.pos.x) * pass.forwardX +
       (self.pos.z - contact.pos.z) * pass.forwardZ > clearance * 1.5);
@@ -736,7 +795,13 @@ function tetherApproach(kind) {
   return kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER;
 }
 
-function applyObstacleAvoidance(desired, self, contacts, config, counters, counterMode = 'legacy') {
+// Kinds whose named targetId is a destination to reach or touch (pod recovery transit, tether
+// work, an intercept run's commit point) rather than a body to orbit or hold range against.
+function maneuverSeeksContact(kind) {
+  return kind === ManeuverKind.FORMATION || kind === ManeuverKind.INTERCEPT || tetherApproach(kind);
+}
+
+function applyObstacleAvoidance(desired, self, contacts, intent, config, counters, counterMode = 'legacy') {
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   const speed = Math.hypot(self.vel.x, self.vel.z);
   const lookahead = Math.max(config.obstacleLookahead, speed * 1.25);
@@ -744,6 +809,11 @@ function applyObstacleAvoidance(desired, self, contacts, config, counters, count
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.HAZARD && !contact.tags.includes('solid')) continue;
+    // The maneuver's own objective is never its obstacle: a contact-seeking intent (transit to a
+    // pod, tether approach) exists to reach that body, so steering to its shoulder would hold the
+    // ship ~1.25 clearances off the target forever (measured: the custody raider parked 49 WU out
+    // and never touched the drifting freight pod).
+    if (contact.id === intent.targetId && maneuverSeeksContact(intent.kind)) continue;
     const dx = contact.pos.x - self.pos.x, dz = contact.pos.z - self.pos.z;
     const ahead = dx * dir.x + dz * dir.z;
     const across = -dx * dir.z + dz * dir.x;
@@ -847,11 +917,12 @@ function strafeAuthorityForKind(kind) {
   }
 }
 
-function yawRequestFor(angleError, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
-  if (Math.abs(angleError) < config.yawDeadband) return 0;
+function yawRateTorqueFor(angleError, measuredWy, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
+  if (Math.abs(angleError) < config.yawDeadband && Math.abs(measuredWy) < 0.08) return 0;
   const yaw = hullScale && hullScale.yaw > 0 ? hullScale.yaw : 1;
   const limit = yawLimitForKind(kind) * yaw;
-  return clamp(angleError / config.yawSoftAngle, -limit, limit);
+  const desiredWy = clamp(angleError / config.yawSoftAngle, -1, 1) * config.yawRateTarget;
+  return clamp((desiredWy - measuredWy) * config.yawRateGain, -limit, limit);
 }
 
 function yawLimitForKind(kind) {
@@ -973,6 +1044,7 @@ function stampDesired(source, next) {
   next.control = 'track';
   next.desiredPos = source.desiredPos;
   next.desiredVel = source.desiredVel;
+  next.contactSeek = source.contactSeek;
   return next;
 }
 

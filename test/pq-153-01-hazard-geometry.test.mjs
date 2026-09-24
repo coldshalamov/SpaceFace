@@ -16,6 +16,7 @@ import {
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   KILL_MACHINES,
+  STARTER_FIELD_MACHINE,
   PALLAS_REEF_FIELD,
   PALLAS_REEF_MINES,
   PALLAS_REEF_SECTOR_ID,
@@ -255,7 +256,9 @@ test('PQ-153.01 seed 15310 a blind reviewer names each sector from motion', LONG
 
     hold(HELIOS);
     host.step(2, { before({ state }) { state.world.currentSectorId = HELIOS; state.simTime = SURGE_S; } });
-    assert.equal(envCount(host.state), 0, 'Helios registers no fight field');
+    assert.equal(envCount(host.state), 1, 'Helios registers only the starter cracker');
+    assert.equal(fsys.hasExternal(STARTER_FIELD_MACHINE.fields[0].id), true,
+      'the starter mouth is the one Helios field');
 
     hold(CERES);
     host.step(2, { before({ state }) { state.world.currentSectorId = CERES; state.simTime = SURGE_S; } });
@@ -290,7 +293,7 @@ test('PQ-153.01 seed 15310 a blind reviewer names each sector from motion', LONG
     assert.equal(envCount(host.state), 0, 'Sker has no current/well; the situation is rock and wrecks');
 
     const proof = host.proof();
-    console.log(`PQ-153.01 seed=${SEED} backend=${proof.backend} live=helios0/ceresSluice/pallasReef+${mines.length}mines/vestaStormBelt/tethysAnvil/skerRock`);
+    console.log(`PQ-153.01 seed=${SEED} backend=${proof.backend} live=heliosCracker/ceresSluice/pallasReef+${mines.length}mines/vestaStormBelt/tethysAnvil/skerRock`);
     assert.equal(proof.backend, 'rapier-dynamic');
   } finally {
     host.dispose();

@@ -5,8 +5,9 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
 // the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
 // the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
-// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
-// Actions are produced fh-key sprites down the left (EDGE), not a leftover word column.
+// Built on Deckplate (src/ui/deckplate/); this file owns no CSS. styles/pause.css is gone with the
+// 2026-09-22 migration: it existed to claw back the seam spacing that kept the EXIT keys 22px under
+// the pane's lower edge, and dp-frame's scrolling column is why that cannot happen any more.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
 // only pause-mode presentation and navigation intents.
 
@@ -16,11 +17,15 @@ import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
-import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
+import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { createArcRail } from '../orrery/arcRail.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import {
@@ -299,7 +304,12 @@ function fmtSavedAt(value) {
   if (!value) return '';
   const d = new Date(value);
   if (!Number.isFinite(d.getTime())) return '';
-  return d.toLocaleString();
+  // a reading, not a machine timestamp: "just now", "12 min ago", "3 h ago", else "Sep 15"
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins >= 0 && mins < 1) return 'just now';
+  if (mins >= 1 && mins < 60) return mins + ' min ago';
+  if (mins >= 60 && mins < 24 * 60) return Math.round(mins / 60) + ' h ago';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function saveLine(state) {
@@ -330,6 +340,9 @@ export function pauseStatusLines(state) {
   if (tracked) {
     return {
       objective: 'TRACKED · ' + missionTitle(tracked) + ' · ' + missionProgress(tracked) + deadlineText(state, tracked),
+      objectiveMention: missionId(tracked)
+        ? { ref: 'contract:' + missionId(tracked), label: missionTitle(tracked), pre: 'TRACKED · ', post: ' · ' + missionProgress(tracked) + deadlineText(state, tracked) }
+        : null,
       next: missionNextStep(tracked),
       save: saveLine(state),
     };
@@ -338,6 +351,9 @@ export function pauseStatusLines(state) {
     const candidate = active[0];
     return {
       objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objectiveMention: missionId(candidate)
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        : null,
       next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
       save: saveLine(state),
     };
@@ -371,6 +387,9 @@ export function pauseExitConfirmBody(state, target = 'menu') {
 }
 
 let els = null;
+/** ORRERY: pause is the title's dial held mid-flight (design/frontend/ORRERY.md §6 Pause). */
+let pauseRail = null;
+
 // Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
 // when a value actually changed.
 const briefLast = { objective: undefined, next: undefined, save: undefined };
@@ -380,7 +399,21 @@ function renderFlightBrief(ctx) {
   const lines = pauseStatusLines(ctx && ctx.state);
   if (lines.objective !== briefLast.objective) {
     briefLast.objective = lines.objective;
-    els.briefObjective.textContent = lines.objective;
+    const mention = lines.objectiveMention;
+    if (mention && mention.ref) {
+      // ORRERY reading: the kind in engraved caps, the contract's name on its own line, and the
+      // progress on a small ring of ice with the time beside it. Same words, instrument form.
+      const kind = String(mention.pre || '').replace(/[\s·-]+$/, '');
+      const pct = /(\d+)% complete/.exec(String(mention.post || ''));
+      const rest = String(mention.post || '').replace(/^[\s·-]+/, '').replace(/\d+% complete\s*·?\s*/, '').trim();
+      const frac = pct ? Math.max(0, Math.min(1, Number(pct[1]) / 100)) : null;
+      const ring = frac == null ? '' : `<svg class="orr-brief__ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="orr-brief__track"/><circle cx="12" cy="12" r="9" class="orr-brief__fill" pathLength="1" stroke-dasharray="${frac.toFixed(3)} 1" transform="rotate(-90 12 12)"/></svg>`;
+      els.briefObjective.innerHTML = `<span class="orr-brief__kind">${escapeHtml(kind)}</span>`
+        + `<span class="orr-brief__name">${entitySpanHtml(mention.ref, escapeHtml(mention.label))}</span>`
+        + `<span class="orr-brief__read">${ring}${pct ? `<b>${pct[1]}%</b>` : ''}${rest ? `<span>${escapeHtml(rest)}</span>` : ''}</span>`;
+    } else {
+      els.briefObjective.textContent = lines.objective;
+    }
   }
   if (lines.next !== briefLast.next) {
     briefLast.next = lines.next;
@@ -388,7 +421,8 @@ function renderFlightBrief(ctx) {
   }
   if (lines.save !== briefLast.save) {
     briefLast.save = lines.save;
-    els.briefSave.textContent = lines.save;
+    // the quick keys are printed in the foot already; the brief keeps the save fact only
+    els.briefSave.textContent = String(lines.save).replace(/\s*F5 quick-saves; F9 loads quick\.?$/, '');
   }
 }
 
@@ -632,17 +666,17 @@ export const pauseScreen = {
     injectDeckplate();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.classList.add('screen');
+    rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
 
-    const { title, briefKicker, briefObjective, briefNext, briefSave } = createPauseFrame(rootEl, {
+    const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
     });
     // The brief's kicker is this screen's copy and comes from the same localized core copy as the
     // title and every verb (check:pause-brief asserts this call).
     briefKicker.textContent = coreText('flightBrief');
-    const titleWord = title && title.querySelector('h1');
-    if (titleWord) titleWord.classList.add('fh-title');
+
 
     // .k-stage — the verbs as ONE column of words down the left edge over the held world, which is
     // what the sheet's pause line specifies ("the actions as a column of words down the left edge")
@@ -651,20 +685,24 @@ export const pauseScreen = {
     // verb lives in this single list: an earlier build split four "core" choices from a disclosure
     // labelled Operations, which hid Main Menu and Quit behind a second identically-labelled
     // Operations row. The list keeps the kit's native roving keyboard model either way.
-    const stage = el('section', 'k-stage');
+    const stage = el('nav', 'dp-frame__col--tight');
+    stage.setAttribute('aria-label', coreText('paused'));
     const items = [];
     const handlers = new Map();
     // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
     // glyph; the order and every label are unchanged, so one roving list still reaches them all.
-    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false } = {}) => {
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false, hint = null, keys = null, bank = false } = {}) => {
       const action = 'pause-' + items.length;
-      items.push({ label, action, primary, danger, current, group, icon, keycap });
+      items.push({ label, action, primary, danger, current, group, icon, keycap, hint, keys, bank });
       handlers.set(action, fn);
       return action;
     };
-    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right' });
-    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', icon: 'settings' });
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', icon: 'install' });
+    // `hint` draws a keycap at the row's right edge; only keys that are live over this modal get
+    // one — Esc resumes (this screen's own onKey), F5/F9 quick save/load through the modal input
+    // branch, and the flight bindings the label already names (J, M) come through `keycap`.
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right', hint: 'Esc', keys: 'Escape' });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', bank: true, icon: 'settings' });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk(coreText('load'), async () => {
       const ok = await confirm({
@@ -673,34 +711,34 @@ export const pauseScreen = {
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
-    }, { group: 'Game', icon: 'remove' });
-    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions', keycap: true });
+    }, { group: 'Game', bank: true, icon: 'remove', hint: 'F9', keys: 'F9' });
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
-    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', icon: 'shipworks' });
+    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', icon: 'industry' });
+    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', icon: 'route', keycap: true });
-    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', icon: 'help' });
-    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', icon: 'info' });
+    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
+    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', bank: true, icon: 'help' });
+    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
-    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', icon: 'ready' });
+    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', icon: 'scan' });
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', icon: 'clock' });
+    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', bank: true, icon: 'clock' });
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', icon: 'record' });
+    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', bank: true, icon: 'record' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', icon: 'utility' });
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
@@ -709,7 +747,7 @@ export const pauseScreen = {
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
-    }, { danger: true, group: 'Exit', icon: 'undock' });
+    }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
     mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
@@ -719,31 +757,73 @@ export const pauseScreen = {
         confirmLabel: coreText('quitGame'), danger: true,
       });
       if (ok) requestQuit(ctx);
-    }, { danger: true, group: 'Exit', icon: 'abandon' });
+    }, { danger: true, group: 'Exit', bank: true, icon: 'abandon' });
 
     // One list, in the sheet's order. `current` lights Resume's row while focus is outside the
     // list; the kit's roving focus then moves the same light down the column.
     const list = words(items, {
       ariaLabel: 'Pause',
+      // LIGHT, like the title and motion-ask. Pause was seventeen bevelled chips in six groups --
+      // the grid ONE_PHOTOGRAPH.md section 4.2 kills, and on the screen a player opens most often
+      // after flight. Nothing here changes the world; every verb opens something. So every verb is
+      // a word that lights, the groups keep their etched heads, and the runs that were chips bank
+      // into wrapping lines. RESUME stays the one primary because it is the only lit lamp.
+      system: 'light',
+      size: 'emph',
       onPick: (action) => {
         const run = handlers.get(action);
         if (typeof run === 'function') run();
       },
     });
-    list.classList.add('sf-pause-words');
+    list.classList.add('sf-pause-words', 'dp-menu--banked');
+    // ORRERY tiers: Resume is the lamp key; the interruption choices (Game) and the way out (Exit)
+    // are mid; the Ship, Reference, Media and Dev verbs are the quiet tier.
+    const LOW_TIER = new Set(['Ship', 'Reference', 'Media', 'Dev']);
     for (const item of items) {
       const button = list.querySelector(`[data-action="${item.action}"]`);
-      if (button && item.dev) button.classList.add('k-38');
+      if (!button) continue;
+      if (item.dev) button.classList.add('k-38');
+      if (item.keys) button.setAttribute('aria-keyshortcuts', item.keys);
+      // parentElement, not closest(): the headless shims the pause tests mount on have no closest()
+      const li = button.parentElement;
+      if (li && li.dataset) li.dataset.tier = item.primary ? 'high' : (LOW_TIER.has(item.group) ? 'low' : 'mid');
     }
 
     stage.appendChild(list);
-    rootEl.appendChild(stage);
+    column.appendChild(stage);
 
-    const version = el('p', 'k-fine');
+    // ORRERY: the verbs ride the emblem's dial like the title's, one tick per group (the group's
+    // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
+    // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
+    injectOrreryScreens();
+    rootEl.classList.add('orr-pause');
+    const brief = briefKicker.parentElement;
+    if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
+    if (pauseRail) pauseRail.dispose();
+    // Every verb on its own tick so the Hand always points at the actual choice; a group is a
+    // cluster with its name engraved on the rim beside it.
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 112, pivotY: 0.52 });
+
+    // The column ends in a legend strip, not an air gap: the keys that are live while this modal
+    // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot
+    // area is sized for.
+    const foot = el('footer', 'sf-pause-foot dp-frame__foot');
+    const keysLine = el('p', 'dp-bar sf-pause-foot__keys');
+    const keyHint = (cap, verb) => {
+      keysLine.appendChild(el('span', 'dp-kbd sf-pause-key', cap));
+      keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
+    };
+    keyHint('Esc', 'Resume');
+    keyHint('F5', 'Quick Save');
+    keyHint('F9', 'Quick Load');
+    foot.appendChild(keysLine);
+    const version = el('p', 'dp-etch dp-bar--end');
     version.dataset.role = 'version';
-    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
-    rootEl.appendChild(version);
+    foot.appendChild(version);
+    rootEl.appendChild(foot);
     rootEl.setAttribute('aria-keyshortcuts', 'Escape');
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);

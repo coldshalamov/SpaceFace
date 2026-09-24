@@ -13,6 +13,7 @@ import { droneBayCapacityForState, normalizeAutomationRecordId } from '../../sys
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
+import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
@@ -620,9 +621,11 @@ export const automationScreen = {
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
       parts.push(hireUnlocked ? 1 : 0);
+      parts.push(Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0));
       for (const t of a.traders || []) {
         const route = t.route ? `${t.route.from || ''}>${t.route.to || ''}` : '';
-        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0));
+        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0),
+          t.lastReceipt ? `${t.lastReceipt.n}:${Math.round(t.lastReceipt.credited || 0)}` : '');
       }
     } else if (this._tab === 'outposts') {
       const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
@@ -822,6 +825,15 @@ export const automationScreen = {
         card.className = 'au-card';
         const route = t.route ? `${escapeHtml(t.route.from || '?')} → ${escapeHtml(t.route.to || '?')}` : 'idle (assign route)';
         const hot = Math.round((t.hotness || 0) * 100);
+        const distressed = t.status === 'distressed';
+        const arrears = Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0);
+        const stallNote = distressed
+          ? `Frozen: upkeep underpaid${arrears >= 1 ? ` (${arrears} cr arrears)` : ''}. Resume settles it now; otherwise the trader recovers on its own once credits cover upkeep.`
+          : (t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.');
+        const resumeBtn = distressed
+          ? `<button class="au-refuel" data-act="resumeTrader" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Resume</button>`
+          : '';
+        const receiptLine = formatTraderReceipt(t);
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
@@ -832,8 +844,10 @@ export const automationScreen = {
               <span>route heat ${hot}%</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
             </div>
-            <div class="au-note">${t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.'}</div>
+            <div class="au-note">${stallNote}</div>
+            ${receiptLine ? `<div class="au-note">${receiptLine}</div>` : ''}
           </div>
+          ${resumeBtn}
           <button class="au-order" data-act="assignRoute" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Route</button>
           <button class="au-recall" data-act="dismiss" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Dismiss</button>`;
         frag.appendChild(card);
@@ -882,7 +896,7 @@ export const automationScreen = {
         const operation = describeOutpostOperation(o, def);
         const inputHtml = operation.inputs.length
           ? operation.inputs.map((input) => `
-              <strong>${escapeHtml(input.label)}</strong>
+              <strong>${entitySpanHtml('commodity:' + input.goodId, escapeHtml(input.label))}</strong>
               <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''}</span>`).join('')
           : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
         const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
@@ -892,7 +906,7 @@ export const automationScreen = {
         card.innerHTML = `
           <div class="grow">
             <div class="au-outpost-head">
-              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? prettyId(o.sectorId) : 'unsited'}</span></div>
+              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? entitySpanHtml('sector:' + o.sectorId, escapeHtml(prettyId(o.sectorId))) : 'unsited'}</span></div>
             </div>
             <div class="au-outpost-flow" data-state="${escapeHtml(operation.state)}" role="img" aria-label="${escapeHtml(operation.accessibleSummary)}">
               <div class="au-flow-node">
@@ -908,7 +922,7 @@ export const automationScreen = {
               <span class="au-flow-link" aria-hidden="true"></span>
               <div class="au-flow-node">
                 <span class="au-flow-k">Output</span>
-                <strong>${escapeHtml(operation.output.label)}</strong>
+                <strong>${operation.output.goodId && operation.output.goodId !== 'credits' ? entitySpanHtml('commodity:' + operation.output.goodId, escapeHtml(operation.output.label)) : escapeHtml(operation.output.label)}</strong>
                 <span class="au-flow-v">${escapeHtml(outputRate)}</span>
                 <span class="au-flow-v">${escapeHtml(storageText)} ${storageBar(operation.storage.fill)}</span>
               </div>
@@ -972,7 +986,7 @@ export const automationScreen = {
         const deployment = describeWingmanDeployment(fs);
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${escapeHtml(fs.name) || prettyId(fs.defId || 'wingman')} ${statusPill(fs.status)}</div>
+            <div class="nm">${fs.defId ? entitySpanHtml('hull:' + fs.defId, escapeHtml(fs.name) || prettyId(fs.defId)) : (escapeHtml(fs.name) || prettyId('wingman'))} ${statusPill(fs.status)}</div>
             <div class="meta">
               <span>order ${escapeHtml(order)}</span>
               <span>deploy ${deploymentPill(deployment)}</span>
@@ -1003,8 +1017,8 @@ export const automationScreen = {
         card.className = 'au-card';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${escapeHtml(s.customName) || prettyId(s.defId)}</div>
-            <div class="meta"><span>${prettyId(s.defId)}</span><span>starts on escort</span></div>
+            <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
+            <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
@@ -1052,6 +1066,7 @@ export const automationScreen = {
       hireTrader: 'Hiring NPC trader…',
       assignRoute: 'Assigning trade route…',
       dismiss: 'Dismissing trader…',
+      resumeTrader: 'Resuming trader…',
       buildOutpost: 'Constructing outpost…',
       decommission: 'Decommissioning outpost…',
       orderEscort: 'Order: escort.',
@@ -1480,6 +1495,16 @@ function recipeText(r) {
   const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   return `${ins} → ${out}`;
+}
+
+// INF-088: one-line financial telling of the trader's last completed delivery, rendered
+// from the job record's own receipt (no second ledger). Pure for testability.
+export function formatTraderReceipt(t) {
+  const r = t && t.lastReceipt;
+  if (!r) return '';
+  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(String(r.from))}→${escapeHtml(String(r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
+  if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr`;
+  return `Last delivery #${r.n}: ${legs} · no payout — spread covered no costs`;
 }
 
 function statusPill(status) {

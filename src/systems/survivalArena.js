@@ -62,6 +62,12 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { makeEnemySpawnSpec } from './combat.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
+import {
+  SWARM_BOSS_ROTATION,
+  SWARM_ROSTER,
+} from '../data/swarmMode.js';
 import {
   ARENA_TOY_DT,
   ARENA_TOY_HAZARDS,
@@ -239,6 +245,7 @@ export function planArenaInstall({
   seed = 1,
   anchor = null,
   laneGate = 'front',
+  bossRoom = null,
 } = {}) {
   const at = {
     x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
@@ -260,24 +267,24 @@ export function planArenaInstall({
   const out = { phase, note: '', fields: [], mines: [], cover: false };
 
   if (arenaId === LAGRANGE_ARENA_ID) {
-    return finalizeInstall(planLagrangeInstall({
+    return decorateBossRoom(finalizeInstall(planLagrangeInstall({
       arenaPhase: phase, at, lane, across, lean, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === CINDER_ARENA_ID) {
-    return finalizeInstall(planCinderInstall({
+    return decorateBossRoom(finalizeInstall(planCinderInstall({
       arenaPhase: phase, at, lane, across, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === CRYO_ARENA_ID) {
-    return finalizeInstall(planCryoInstall({
+    return decorateBossRoom(finalizeInstall(planCryoInstall({
       arenaPhase: phase, at, lane, across, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === STORM_ARENA_ID) {
-    return finalizeInstall(planStormInstall({
+    return decorateBossRoom(finalizeInstall(planStormInstall({
       arenaPhase: phase, at, lane, across, spin, simTime: 0,
-    }));
+    })), bossRoom);
   }
 
   switch (phase) {
@@ -382,6 +389,42 @@ export function planArenaInstall({
     // flank, a mined ring at knife range and cover to break line of sight. The loudest room, still
     // inside the two-slot budget.
     case 'boss': {
+      if (bossRoom === 'wing_bank') {
+        out.note = 'bank stone on the wing\'s bearing — one bank catches them';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, 180),
+          radius: 280,
+          strength: 70,
+          falloff: 1.2,
+        });
+        break;
+      }
+      if (bossRoom === 'screen_wall') {
+        out.note = 'a screen wall between you and the brawlers — shove it';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 150),
+          radius: 220,
+          strength: 160,
+          falloff: 1.3,
+        });
+        break;
+      }
+      if (bossRoom === 'hold_close') {
+        out.note = 'the room holds you; close on the ghosts';
+        out.fields.push({
+          kind: 'well',
+          center: { x: at.x, z: at.z },
+          radius: 340,
+          strength: 90,
+          damping: 1.8,
+          falloff: 1.15,
+        });
+        break;
+      }
       out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
       out.cover = true;
       out.fields.push({
@@ -412,7 +455,13 @@ export function planArenaInstall({
       return empty;
   }
 
-  return finalizeInstall(out);
+  return decorateBossRoom(finalizeInstall(out), bossRoom);
+}
+
+function decorateBossRoom(install, bossRoom) {
+  if (!install || !bossRoom) return install;
+  if (bossRoom === 'wing_bank') install.cover = true;
+  return install;
 }
 
 /** Copied verbatim from survivalWave.js:25-33 — the same "is this a live Survival run" question. */
@@ -545,6 +594,53 @@ function liveProjectiles(state) {
   return list;
 }
 
+/**
+ * PQ-210.00 roster prewarm. A wave that introduces a hull the GPU has never drawn pays the
+ * authored composition's program link + first-upload cost inside the fight — the measured ~180 ms
+ * freeze at second 22 of the Crucible probe. The render side can only warm what the sim side
+ * names, so every `run:wavePlanned` receipt also publishes one REAL `makeEnemySpawnSpec` exemplar
+ * per hull the ruleset can field. For swarm that is the WHOLE roster plus every boss package (the
+ * wave that unlocks an archetype is exactly the wave that would freeze on it); for timed runs it
+ * is the hulls this plan's schedule and packages name. Exemplars are tagged
+ * `data.rosterPrewarm` and are NEVER registered in state.entities — they are admission subjects,
+ * not combatants, and they do not touch the spawn budget, the plan, or the RNG stream.
+ */
+export const SURVIVAL_ROSTER_PREWARM_ID_PREFIX = 'survival-roster-prewarm:';
+
+export function collectSurvivalRosterPrewarmEnemyIds(run, plan) {
+  const ids = new Set();
+  const take = (value) => {
+    if (typeof value === 'string' && value.length > 0) ids.add(value);
+  };
+  const schedule = plan && Array.isArray(plan.schedule) ? plan.schedule : [];
+  for (const entry of schedule) take(entry && entry.enemyId);
+  const packages = plan && Array.isArray(plan.packages) ? plan.packages : [];
+  for (const pkg of packages) take(pkg && pkg.enemyId);
+  const swarmRoster = plan && plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
+  for (const entry of swarmRoster) take(entry && entry.enemyId);
+  if (run && isSwarmRuleset(run.ruleset)) {
+    for (const entry of SWARM_ROSTER) take(entry.enemyId);
+    for (const boss of SWARM_BOSS_ROTATION) {
+      for (const pkg of boss && boss.packages || []) take(pkg && pkg.enemyId);
+    }
+  }
+  return [...ids].sort();
+}
+
+function makeRosterPrewarmSpec(enemyId) {
+  // Level 1: swarm materialization always passes swarmLevel() === 1 (swarmMode.js:455-465), and the
+  // exemplar is an admission subject, not a combatant — combat scaling is irrelevant to the
+  // authored visual it forces. What matters is that the spec carries the SAME fields a real
+  // materialization produces (shipId, silhouette, fittings, weapons) so the authored mount path
+  // builds the identical composition.
+  const spec = makeEnemySpawnSpec(enemyId, 1, { x: 0, z: 0 });
+  spec.id = `${SURVIVAL_ROSTER_PREWARM_ID_PREFIX}${enemyId}`;
+  spec.data = spec.data && typeof spec.data === 'object' ? spec.data : {};
+  spec.data.rosterPrewarm = true;
+  spec.data.enemyId = enemyId;
+  return spec;
+}
+
 export const survivalArena = {
   name: 'survivalArena',
 
@@ -558,8 +654,45 @@ export const survivalArena = {
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    // ---------------------------------------------------------------------------------------
+    // PQ-210.00 roster prewarm: BUILT, TESTED, AND DELIBERATELY NOT SUBSCRIBED (2026-09-21).
+    //
+    // The renderer has listened for 'survivalArena:rosterPrewarm' since 99769c8f9 and admits a
+    // real exemplar of every hull, wreck, pickup, mine and rock the ruleset can field. Nothing
+    // has ever emitted the event, so that whole path is inert on the live route. The three lines
+    // that wire it are:
+    //
+    //     this._unsubs.push(this.bus.on('run:started', (payload) => {
+    //       if (payload && payload.kind !== 'survival') return;
+    //       this._rosterPrewarmEmitted = new Set();
+    //       const run = liveSurvivalRun(this.state);
+    //       if (run) this._emitRosterPrewarm(run, null, null);
+    //     }));
+    //     this._unsubs.push(this.bus.on('run:loadoutReady', () => {
+    //       const run = liveSurvivalRun(this.state);
+    //       if (run) this._emitRosterPrewarm(run, null, null);
+    //     }));
+    //     ... and clear this._rosterPrewarmEmitted on 'run:ended' beside the teardown.
+    //
+    // They are out because both wired configurations were MEASURED as regressions on the owner's
+    // iGPU, Crucible seed 4242, five matched runs (receipt: PQ-210.00-REPORT.md):
+    //
+    //   * wired with the part catalog — launch-to-flight 63 s -> 205 s. The catalog promotes
+    //     ~4000 instanced-pool roots and cook.rockPools costs ~0.1 s per root.
+    //   * wired without it — 94 s, and MORE program links in the round (15) than the unwired
+    //     game (2), because the exemplar cohort drains its own compiles into flight.
+    //
+    // The unwired game is the best measured configuration on every number that survives host
+    // contention. Wire this only after cook.rockPools stops being O(roots) at 100 ms each — the
+    // functions below and their six tests are ready and stay covered meanwhile.
+    // ---------------------------------------------------------------------------------------
     this._unsubs.push(this.bus.on('run:waveCleared', () => this._teardown('wave_cleared')));
-    this._unsubs.push(this.bus.on('run:ended', () => this._teardown('run_ended')));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      // Mirrors the renderer's _releaseSurvivalRosterPrewarm('run_ended'): the roots are gone,
+      // so the ledger that says "already warm" has to go with them.
+      this._rosterPrewarmEmitted = new Set();
+      this._teardown('run_ended');
+    }));
     // Mines report themselves as they land; this is the only way to know WHICH entities are ours.
     // `mines.releaseAll` would also take the player's own mines, so it is never called from here.
     this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
@@ -634,6 +767,7 @@ export const survivalArena = {
     if (!run) return;
     const plan = payload && payload.plan;
     if (!plan || plan.ok === false) return;
+    // PQ-210.00: `this._emitRosterPrewarm(run, plan, payload);` belongs here. See init().
     const phase = plan.arenaPhase;
     if (typeof phase !== 'string' || phase.length === 0) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
@@ -646,6 +780,7 @@ export const survivalArena = {
       seed,
       anchor: playerAnchor(state),
       laneGate: dominantGate(plan),
+      bossRoom: plan.swarm && plan.swarm.bossRoom ? plan.swarm.bossRoom : null,
     });
 
     this._wave = wave;
@@ -679,6 +814,34 @@ export const survivalArena = {
       cover: install.cover,
       toys: this._toys.length,
       toyIds: this._toys.map((toy) => toy.id),
+    });
+  },
+
+  /**
+   * Publish the roster's real spawn specs for the renderer to admit behind the loading shell
+   * (wave 1 lands there via survivalRun._prepareOpening) and between rounds for later unlocks.
+   * Re-emitted every wavePlanned so a mutator-extended roster still reaches the admission path.
+   *
+   * `enemyIds` is always the full union — it is the receipt of what the ruleset can field, and
+   * consumers read it to answer "is this hull covered?". `specs` carries only the hulls this run
+   * has not published yet. The renderer discards a repeat exemplar by id anyway, so building the
+   * whole roster again was pure waste — and it was spent on `run:wavePlanned`, which is the exact
+   * frame PQ-210.00 exists to keep cheap (measured 1.28 ms for the 12-hull swarm union on the
+   * owner's box). After wave 1 the swarm re-emit is now an empty spec list.
+   */
+  _emitRosterPrewarm(run, plan, payload) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const enemyIds = collectSurvivalRosterPrewarmEnemyIds(run, plan);
+    if (enemyIds.length === 0) return;
+    if (!this._rosterPrewarmEmitted) this._rosterPrewarmEmitted = new Set();
+    const fresh = enemyIds.filter((enemyId) => !this._rosterPrewarmEmitted.has(enemyId));
+    const specs = fresh.map(makeRosterPrewarmSpec);
+    for (const enemyId of fresh) this._rosterPrewarmEmitted.add(enemyId);
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this.bus.emit('survivalArena:rosterPrewarm', {
+      wave,
+      enemyIds,
+      specs,
     });
   },
 

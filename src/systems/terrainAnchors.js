@@ -15,6 +15,7 @@
 // A long TTL remains only as orphan/fizzle insurance. Deterministic: own seeded stream.
 // Flag-gated; not in the sim harness; encounterDirector itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
+import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { Masks } from '../core/entity.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -113,6 +114,10 @@ export const terrainAnchors = {
     const arcade = payload.arcadeLayout === true && state.run?.ruleset === 'swarm';
     const required = arcade ? 6 : ANCHOR_MIN;
     const bubbleRadius = arcade ? 390 : ANCHOR_RADIUS;
+    // VERB-07 — rocks dropped for the opening hauler raid are neighbourhood furniture, not
+    // encounter props: the 45-second aftermath sweep must not take them while the player is
+    // still standing in the fight's wreck field. Sector teardown owns them on departure.
+    const openingFight = payload.kind === 'opening_hauler_raid';
 
     // Count existing large solids in the bubble — stations and big rocks both count as anchors.
     let present = 0;
@@ -128,6 +133,9 @@ export const terrainAnchors = {
             ? e.data.terrainAnchorEncounterIds
             : (e.data.terrainAnchorEncounterIds = []);
           if (!owners.includes(payload.encounterId)) owners.push(payload.encounterId);
+          // VERB-07 — a rock the raid adopts gets the same neighbourhood mark as the ones it
+          // drops: it must still be standing after a later, unrelated owner resolves.
+          if (openingFight) e.data.neighbourhoodAnchor = true;
         }
       }
     });
@@ -139,8 +147,20 @@ export const terrainAnchors = {
     // whole layout rotates with the run seed; it stays readable from the opening camera.
     const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
+    const survivalCover = payload.kind === 'survival_arena';
     const spawnAnchor = (dx, dz, size) => {
       const oreHP = Math.round(360 + size * 14);
+      const data = {
+        typeId: ANCHOR_TYPE_ID,
+        tier: 0, tierCap: 0,
+        oreHP, oreHPMax: oreHP,
+        yieldU: Math.round(6 + size * 0.4),
+        size,
+        terrainAnchor: true,
+        terrainAnchorEncounterIds: payload.encounterId ? [payload.encounterId] : [],
+        neighbourhoodAnchor: openingFight === true ? true : undefined,
+        despawnAt: now + ANCHOR_TTL_S,
+      };
       this.helpers.spawnEntity({
         type: 'asteroid',
         pos: { x: pos.x + dx, z: pos.z + dz },
@@ -152,16 +172,7 @@ export const terrainAnchors = {
         angVel: (this._rng() - 0.5) * 0.12,
         hull: oreHP, hullMax: oreHP,
         collides: true,
-        data: {
-          typeId: ANCHOR_TYPE_ID,
-          tier: 0, tierCap: 0,
-          oreHP, oreHPMax: oreHP,
-          yieldU: Math.round(6 + size * 0.4),
-          size,
-          terrainAnchor: true,
-          terrainAnchorEncounterIds: payload.encounterId ? [payload.encounterId] : [],
-          despawnAt: now + ANCHOR_TTL_S,
-        },
+        data: survivalCover ? withBankStone(data) : data,
       });
     };
     // INF-017: the opening wave of a swarm run leads with one substantial anchor on a clear
@@ -214,6 +225,14 @@ export const terrainAnchors = {
       if (index < 0) continue;
       data.terrainAnchorEncounterIds.splice(index, 1);
       if (!data.terrainAnchorEncounterIds.length) {
+        // VERB-07 — the opening fight's rocks survive until the player leaves the
+        // neighbourhood: no aftermath clamp, and any earlier clamp lifts. Ordinary
+        // encounter anchors still take the 45-second sweep.
+        if (data.neighbourhoodAnchor === true || payload.shape === 'opening_hauler_raid') {
+          data.neighbourhoodAnchor = true;
+          delete data.despawnAt;
+          continue;
+        }
         data.despawnAt = Math.min(Number.isFinite(data.despawnAt) ? data.despawnAt : Infinity,
           now + ANCHOR_AFTERMATH_S);
       }

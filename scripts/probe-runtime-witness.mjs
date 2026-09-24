@@ -69,6 +69,14 @@ const ALLOC_PROBE = process.argv.includes('--alloc-probe');
 // therefore never attributed - it is the largest single allocation event in the session and it sets
 // the heap floor that makes every later major GC expensive.
 const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
+// Name the main-thread time behind the frame gaps. The no-submit A/B showed the stalls survive
+// with scene submission replaced by a constant clear, so they are CPU work outside the frame
+// callback (timers, message handlers, decode, GC). A sampled CPU profile over the flight window
+// attributes that time per function and per file; the raw profile opens in DevTools.
+const CPU_PROFILE = process.argv.includes('--cpu-profile');
+// The CPU profile charges browser-native work (style, layout, paint, GPU command flush) to one
+// opaque "(program)" bucket. A devtools.timeline trace over the same window names it.
+const TIMELINE_TRACE = process.argv.includes('--timeline-trace');
 const PRODUCTION_ROUTE_ID = process.argv.find((arg) => arg.startsWith('--production-route='))?.split('=')[1] || null;
 const PRODUCTION_ROUTE = PRODUCTION_ROUTE_ID ? productionRouteById(PRODUCTION_ROUTE_ID) : null;
 const PRODUCTION_CRUCIBLE_ROUTE = new Set(['warm-dense-combat', 'sustained-swarm']).has(PRODUCTION_ROUTE?.id);
@@ -112,6 +120,82 @@ let loadingProgressEvents = [];
 let probeInstrumentation = null;
 let gcProbe = null;
 let allocProfile = null;
+let cpuProfile = null;
+let timelineTrace = null;
+let evalResult = null;
+
+// Self time per trace-event name on the renderer main thread (the thread that ran most
+// FunctionCall time). Complete events ('X') and B/E pairs nest; a child's time is removed from
+// its parent so the buckets sum to the busy time instead of double counting.
+function summarizeTimelineTrace(events) {
+  const callMs = new Map();
+  for (const ev of events) {
+    if (ev.name === 'FunctionCall' && ev.ph === 'X') {
+      const key = `${ev.pid}:${ev.tid}`;
+      callMs.set(key, (callMs.get(key) || 0) + (ev.dur || 0));
+    }
+  }
+  const mainKey = [...callMs.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  const [pid, tid] = mainKey.split(':').map(Number);
+  const spans = [];
+  const open = [];
+  for (const ev of events) {
+    if (ev.pid !== pid || ev.tid !== tid) continue;
+    if (ev.ph === 'X' && Number(ev.dur) > 0) spans.push({ name: ev.name, ts: ev.ts, end: ev.ts + ev.dur });
+    else if (ev.ph === 'B') open.push(ev);
+    else if (ev.ph === 'E') {
+      for (let i = open.length - 1; i >= 0; i -= 1) {
+        if (open[i].name === ev.name) { spans.push({ name: ev.name, ts: open[i].ts, end: ev.ts }); open.splice(i, 1); break; }
+      }
+    }
+  }
+  spans.sort((a, b) => a.ts - b.ts || b.end - a.end);
+  const self = new Map();
+  const stack = [];
+  const close = (span) => {
+    const e = self.get(span.name) || { us: 0, count: 0 };
+    e.us += Math.max(0, span.end - span.ts - span.childUs);
+    e.count += 1;
+    self.set(span.name, e);
+  };
+  for (const span of spans) {
+    span.childUs = 0;
+    while (stack.length && stack[stack.length - 1].end <= span.ts) close(stack.pop());
+    if (stack.length) stack[stack.length - 1].childUs += Math.min(span.end, stack[stack.length - 1].end) - span.ts;
+    stack.push(span);
+  }
+  while (stack.length) close(stack.pop());
+  const topSelf = [...self.entries()].sort((a, b) => b[1].us - a[1].us).slice(0, 40)
+    .map(([name, e]) => ({ name, ms: Math.round(e.us / 1000), count: e.count }));
+  return { pid, tid, events: events.length, topSelf };
+}
+
+// Self time per sampled function and per source file. Sample i lasted timeDeltas[i + 1] µs
+// (the next delta), the V8 convention DevTools uses; the final sample is charged 0.
+function summarizeCpuProfile(profile) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const selfUs = new Map();
+  const samples = profile.samples || [];
+  const deltas = profile.timeDeltas || [];
+  for (let i = 0; i < samples.length; i += 1) {
+    const us = Number(deltas[i + 1]) || 0;
+    selfUs.set(samples[i], (selfUs.get(samples[i]) || 0) + us);
+  }
+  const bySite = new Map();
+  const byFile = new Map();
+  let totalUs = 0;
+  for (const [id, us] of selfUs) {
+    const f = byId.get(id)?.callFrame || {};
+    const file = String(f.url || '').split('?')[0].split('/').slice(-2).join('/') || '(native)';
+    const site = `${f.functionName || '(anonymous)'} @ ${file}:${(f.lineNumber ?? -1) + 1}`;
+    bySite.set(site, (bySite.get(site) || 0) + us);
+    byFile.set(file, (byFile.get(file) || 0) + us);
+    totalUs += us;
+  }
+  const top = (map, key) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)
+    .map(([name, us]) => ({ [key]: name, ms: Math.round(us / 1000) }));
+  return { totalMs: Math.round(totalUs / 1000), topSelf: top(bySite, 'site'), topFiles: top(byFile, 'file') };
+}
 let allocCdp = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
@@ -2532,11 +2616,14 @@ async function launchProductionCrucible(targetPage, route) {
   await swarm.click();
   await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
   await targetPage.locator('#screens .sf-crd-foot button.k-word--primary:visible').click();
+  // The launch gate must outlive the roster cook: since the PQ-033.00-family prewarm moved the
+  // roster's GLB/GPU cost into the launch shell, launch-to-flight reads ~156–176 s on the owner's
+  // host — a 120 s cap timed out every warm-dense-combat attempt before the scene existed.
   await targetPage.waitForFunction(() => {
     const state = window.SF?.state;
     return state?.mode === 'flight' && state?.run?.kind === 'survival' && state?.run?.ruleset === 'swarm'
       && state?.run?.phase === 'active' && (state.entityList || []).some((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival');
-  }, null, { timeout: 120_000 });
+  }, null, { timeout: 300_000 });
   if (route?.id === 'warm-dense-combat') await targetPage.waitForTimeout(2_500);
   return targetPage.evaluate(readWitnessInPage);
 }
@@ -3425,6 +3512,40 @@ try {
       log(`alloc-probe: startSampling unavailable (${error && error.message})`);
     }
   }
+  let cpuCdp = null;
+  if (CPU_PROFILE) {
+    try {
+      cpuCdp = await page.context().newCDPSession(page);
+      await cpuCdp.send('Profiler.enable');
+      await cpuCdp.send('Profiler.setSamplingInterval', { interval: 250 });
+      await cpuCdp.send('Profiler.start');
+      log('cpu-profile: sampling started');
+    } catch (error) {
+      cpuCdp = null;
+      log(`cpu-profile: start unavailable (${error && error.message})`);
+    }
+  }
+  let traceCdp = null;
+  const traceEvents = [];
+  if (TIMELINE_TRACE) {
+    try {
+      traceCdp = await page.context().newCDPSession(page);
+      traceCdp.on('Tracing.dataCollected', (msg) => { for (const ev of msg.value || []) traceEvents.push(ev); });
+      await traceCdp.send('Tracing.start', {
+        transferMode: 'ReportEvents',
+        traceConfig: {
+          includedCategories: [
+            'devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8', 'gpu',
+            'disabled-by-default-devtools.timeline.invalidationTracking',
+          ],
+        },
+      });
+      log('timeline-trace: started');
+    } catch (error) {
+      traceCdp = null;
+      log(`timeline-trace: start unavailable (${error && error.message})`);
+    }
+  }
   hostLoadStart = snapshotHostLoadStart();
   const started = Date.now();
   let shotIndex = 0;
@@ -3442,6 +3563,40 @@ try {
       shotIndex += 1;
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
+  }
+  // A one-off in-page question on the live flight scene ("what is that object?"), asked after the
+  // sample so it cannot perturb the measured window. Printed and kept in the report.
+  if (process.env.SPACEFACE_WITNESS_EVAL) {
+    // A string expression goes through CDP Runtime.evaluate, which the page CSP does not gate.
+    const source = `(async () => { try { return JSON.stringify(await (${process.env.SPACEFACE_WITNESS_EVAL}), null, 1); }`
+      + ' catch (error) { return "EVAL_ERROR: " + (error && error.stack || error); } })()';
+    evalResult = await page.evaluate(source).catch((error) => `EVAL_FAILED: ${error && error.message}`);
+    log(`eval: ${evalResult}`);
+  }
+  if (traceCdp) {
+    try {
+      const done = new Promise((resolve) => traceCdp.once('Tracing.tracingComplete', resolve));
+      await traceCdp.send('Tracing.end');
+      await Promise.race([done, new Promise((resolve) => setTimeout(resolve, 30_000))]);
+      await writeFile(path.join(OUT, 'flight.trace.json'), JSON.stringify({ traceEvents }));
+      timelineTrace = summarizeTimelineTrace(traceEvents);
+      log(`timeline-trace: ${traceEvents.length} events; main thread pid ${timelineTrace.pid} tid ${timelineTrace.tid}`);
+      for (const row of timelineTrace.topSelf.slice(0, 25)) log(`  trace ${row.ms} ms  x${row.count}  ${row.name}`);
+    } catch (error) {
+      log(`timeline-trace: end failed (${error && error.message})`);
+    }
+  }
+  if (cpuCdp) {
+    try {
+      const { profile } = await cpuCdp.send('Profiler.stop');
+      await writeFile(path.join(OUT, 'flight.cpuprofile'), JSON.stringify(profile));
+      cpuProfile = summarizeCpuProfile(profile);
+      log(`cpu-profile: ${cpuProfile.totalMs} ms sampled; wrote flight.cpuprofile`);
+      for (const row of cpuProfile.topSelf.slice(0, 25)) log(`  self ${row.ms} ms  ${row.site}`);
+      for (const row of cpuProfile.topFiles.slice(0, 15)) log(`  file ${row.ms} ms  ${row.file}`);
+    } catch (error) {
+      log(`cpu-profile: stop failed (${error && error.message})`);
+    }
   }
   if (GC_PROBE) {
     const before = await page.evaluate(() => {
@@ -3754,6 +3909,9 @@ const report = {
   longTaskWitness,
   gcProbe,
   allocProfile,
+  cpuProfile,
+  timelineTrace,
+  evalResult,
   verdict,
   sampleCount: snapshots.length,
   first: snapshots[0] || null,

@@ -49,6 +49,7 @@ function buildKbmPrompts(state) {
   const fire = promptKey(state, 'fire') || MOUSE_ACTION_LABELS.fire;
   const mine = MOUSE_ACTION_LABELS.mine;
   const tether = promptKey(state, 'tether');
+  const shove = promptKey(state, 'chargeThrow');
   const boost = promptKey(state, 'boost');
   const autoFire = promptKey(state, 'autoFire');
   const counter = promptKey(state, 'countermeasure');
@@ -60,16 +61,16 @@ function buildKbmPrompts(state) {
   const mapChart = `${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`;
 
   const classic = {
-    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${seed} anchor seed  •  ${mine} mine  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
+    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} mine  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
     mining: `${mine} hold to mine  •  ${beam} beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
-    combat: `${fire} fire  •  ${tether} Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
+    combat: `${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
     station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
     gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
     tutorialFlight: `Follow the yellow nav arrow to the bad reading. ${forwardSecond ? `${forwardFirst} / ${forwardSecond}` : forwardFirst} thrusts, ${yaw} steer, and the mouse aims.`,
     tutorialMine: `The Hitch is armed: ${fire} fires the Pulse Laser S. Hold ${mine} on the marked rock to mine the mass reading, then collect the drift.`,
     tutorialDock: `Follow the cyan station arrow. Press ${BINDINGS.dock.label} at the dock prompt. Bring the discrepancy back before someone edits it out.`,
     firstFlight: `${forwardFirst} thrusts. ${yaw} steer. Mouse aims.`,
-    firstCombat: `Fire with ${fire}. ${tether} controls the Massline. ${autoFire} toggles auto-target.`,
+    firstCombat: `Fire with ${fire}. ${tether} controls the Massline. ${shove} shove. ${autoFire} toggles auto-target.`,
     firstStation: `Review Departure Check before ${BINDINGS.dock.label} or Escape undocks.`,
     firstGate: `Open the Star Map (${BINDINGS.starmap.label}). Plot a gate route.`,
   };
@@ -77,21 +78,21 @@ function buildKbmPrompts(state) {
   if (scheme === 'helm-assist') {
     return {
       ...classic,
-      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} mine  •  ${boost} boost  •  ${tether} Massline  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
+      flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} mine  •  ${boost} boost  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. Nose follows the mouse — ${forwardFirst} thrusts, ${brake} or ${reverse} brakes, ${tether} controls the Massline.`,
       firstFlight: `Nose follows the mouse. ${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop.`,
-      firstCombat: `${autoFire} toggles auto-target. Guns track lock.`,
+      firstCombat: `${autoFire} toggles auto-target. ${tether} controls the Massline. ${shove} shove. Guns track lock.`,
     };
   }
   if (scheme === 'pilot') {
     return {
       ...classic,
-      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
+      flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${shove} shove  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. ${forwardFirst} thrusts; ${brake} or ${reverse} brakes; ${yaw.replace(' ', '/')} turns; mouse aims; ${tether} controls the Massline.`,
       firstFlight: `${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop. ${yaw} turn. Mouse aims.`,
-      firstCombat: `${autoFire} toggles auto-target. Guns track lock.`,
+      firstCombat: `${autoFire} toggles auto-target. ${tether} controls the Massline. ${shove} shove. Guns track lock.`,
     };
   }
   return classic;

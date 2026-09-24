@@ -67,6 +67,9 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['mine_gas', { file: 'assets/audio/mining/mine_gas.wav', tier: 1, loop: false, seconds: 1.8 }],
   ['mine_gravel', { file: 'assets/audio/mining/mine_gravel.wav', tier: 1, loop: false, seconds: 0.6 }],
   ['ui_click', { file: 'assets/audio/ui/ui_click.wav', tier: 0, loop: false, seconds: 0.14 }],
+  // Promoted reference recordings (Kenney tick_002 / select_002, CC0), not generator output.
+  ['ui_hover', { file: 'assets/audio/ui/ui_hover.wav', tier: 0, loop: false, seconds: 0.02 }],
+  ['ui_tab', { file: 'assets/audio/ui/ui_tab.wav', tier: 0, loop: false, seconds: 0.04 }],
   ['ui_confirm', { file: 'assets/audio/ui/ui_confirm.wav', tier: 0, loop: false, seconds: 0.5 }],
   ['ui_deny', { file: 'assets/audio/ui/ui_deny.wav', tier: 1, loop: false, seconds: 0.45 }],
   ['ui_open', { file: 'assets/audio/ui/ui_open.wav', tier: 1, loop: false, seconds: 0.4 }],
@@ -103,6 +106,8 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['massline_reel', { file: 'assets/audio/massline/massline_reel.wav', tier: 1, loop: false, seconds: 0.55 }],
   ['massline_release', { file: 'assets/audio/massline/massline_release.wav', tier: 1, loop: false, seconds: 0.35 }],
   ['massline_bridle', { file: 'assets/audio/massline/massline_bridle.wav', tier: 1, loop: false, seconds: 0.55 }],
+  // Promoted reference recording (Kenney tick_001, CC0), not generator output.
+  ['massline_deny', { file: 'assets/audio/massline/massline_deny.wav', tier: 1, loop: false, seconds: 0.045 }],
   ['bark_scn', { file: 'assets/audio/voice/bark_scn.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_mts', { file: 'assets/audio/voice/bark_mts.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_dmc', { file: 'assets/audio/voice/bark_dmc.wav', tier: 2, loop: false, seconds: 1.05 }],
@@ -112,6 +117,7 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['bark_free', { file: 'assets/audio/voice/bark_free.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_vael', { file: 'assets/audio/voice/bark_vael.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_mechanic', { file: 'assets/audio/voice/bark_mechanic.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_instructor', { file: 'assets/audio/voice/bark_instructor.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['kill_confirm_chime', { file: 'assets/audio/combat/kill_confirm_chime.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['subsystem_pop', { file: 'assets/audio/combat/subsystem_pop.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['cm_chaff', { file: 'assets/audio/combat/cm_chaff.wav', tier: 1, loop: false, seconds: 0.5 }],
@@ -213,6 +219,13 @@ export function createSampleRuntime(options = {}) {
   let inFlight = 0;
   let disposed = false;
   const queue = [];
+  const queued = new Set();   // queue membership — prefetchTier/acquire must not double-enqueue
+
+  function enqueue(id) {
+    if (resident.has(id) || pending.has(id) || queued.has(id)) return;
+    queued.add(id);
+    queue.push(id);
+  }
   const stats = {
     requests: 0, hits: 0, misses: 0, fetches: 0, decodes: 0,
     decodeFailures: 0, evictions: 0, workOps: 0,
@@ -247,6 +260,7 @@ export function createSampleRuntime(options = {}) {
     if (disposed) return;
     while (inFlight < maxInFlight && queue.length) {
       const id = queue.shift();
+      queued.delete(id);
       if (resident.has(id) || pending.has(id)) continue;
       const entry = SAMPLE_MANIFEST.get(id);
       if (!entry || !fetchImpl || !ctxRef.ctx) continue;
@@ -288,7 +302,7 @@ export function createSampleRuntime(options = {}) {
     prefetchTier(tier) {
       if (disposed || !ctxRef.ctx) return;
       for (const [id, entry] of SAMPLE_MANIFEST) {
-        if (entry.tier === tier && !resident.has(id)) queue.push(id);
+        if (entry.tier === tier) enqueue(id);
       }
       pump();
     },
@@ -305,8 +319,8 @@ export function createSampleRuntime(options = {}) {
         return buf;
       }
       stats.misses++;
-      if (SAMPLE_MANIFEST.has(id) && !pending.has(id)) {
-        queue.push(id);
+      if (SAMPLE_MANIFEST.has(id)) {
+        enqueue(id);
         pump();
       }
       return null;
@@ -315,6 +329,7 @@ export function createSampleRuntime(options = {}) {
       if (disposed) return;
       disposed = true;
       queue.length = 0;
+      queued.clear();
       pending.clear();
       resident.clear();
       pinned.clear();

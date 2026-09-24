@@ -195,8 +195,10 @@ function testDirectorIsVisibleOnlyAndSilent() {
     const seams = near.busLog.filter((entry) => entry.evt === 'station:sideEvent');
     assert.ok(seams.length >= 1, 'visible stations emit at least one ambient side-event');
     assert.equal(near.voiceCalls.length, 0, 'visible side-events are visual seams, not chatter');
-    assert.ok(seams.every((entry) => entry.payload.kind === 'repair_drone'),
-      'research station side-event mood stays on the universal quiet repair-drone event');
+    assert.ok(seams.every((entry) => {
+      const affinity = SIDE_EVENTS[entry.payload.kind].affinity;
+      return affinity == null || affinity.includes('research');
+    }), 'research station side-event mood stays on research-affine quiet events');
 
     const repeat = makeDirectorCtx({ stationTypeId: 'research', stationDist: 240 });
     const repeatSys = freshDirector();

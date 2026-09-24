@@ -290,7 +290,11 @@ export const sandboxScreen = {
     if (!IS_DEV) return; // production guard — should never be reached (registration is gated too)
     injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-menu-wide', 'sf-sandbox');
+    // A dev harness is still a screen. It was a bare `.panel` taller than the viewport with nothing
+    // to scroll it, so the top and bottom of the form -- including four of its six setup tiles --
+    // were simply off the frame. The frame gives it the same margin as everything else and a body
+    // that scrolls.
+    rootEl.classList.add('screen', 'sf-sandbox', 'dp-frame', 'dp-frame--screen', 'dp-frame__scroll');
     rootEl.dataset.stamp = 'SANDBOX / TEST HARNESS';
 
     const crest = el('div', 'sf-crest');
@@ -522,7 +526,7 @@ export const sandboxScreen = {
 
     const shipLabel = el('label', null, 'Starting ship');
     shipLabel.htmlFor = 'sf-sandbox-ship';
-    const shipSel = document.createElement('select');
+    let shipSel = document.createElement('select');
     shipSel.id = 'sf-sandbox-ship';
     for (const ship of SHIPS) {
       const o = document.createElement('option');
@@ -535,7 +539,7 @@ export const sandboxScreen = {
 
     const sectorLabel = el('label', null, 'Start sector');
     sectorLabel.htmlFor = 'sf-sandbox-sector';
-    const sectorSel = document.createElement('select');
+    let sectorSel = document.createElement('select');
     sectorSel.id = 'sf-sandbox-sector';
     for (const sec of SECTORS) {
       const o = document.createElement('option');
@@ -548,7 +552,7 @@ export const sandboxScreen = {
 
     const cameraLabel = el('label', null, 'Camera candidate');
     cameraLabel.htmlFor = 'sf-sandbox-camera';
-    const cameraSel = document.createElement('select');
+    let cameraSel = document.createElement('select');
     cameraSel.id = 'sf-sandbox-camera';
     const cameraDefault = document.createElement('option');
     cameraDefault.value = '';
@@ -564,7 +568,7 @@ export const sandboxScreen = {
 
     const loadoutLabel = el('label', null, 'Physics loadout');
     loadoutLabel.htmlFor = 'sf-sandbox-physics-loadout';
-    const loadoutSel = document.createElement('select');
+    let loadoutSel = document.createElement('select');
     loadoutSel.id = 'sf-sandbox-physics-loadout';
     const loadoutDefault = document.createElement('option');
     loadoutDefault.value = '';
@@ -624,6 +628,10 @@ export const sandboxScreen = {
     creditsInput.className = 'sf-fig';
     fine.appendChild(creditsLabel); fine.appendChild(creditsInput);
 
+    // Swap the native <select>s for the Deckplate widget — the lab form above is enhanced but
+    // these were not, so the same screen rendered two different dropdown styles. The widgets
+    // expose .value, so the launch readers below keep working unchanged.
+    [shipSel, sectorSel, cameraSel, loadoutSel] = enhanceSelects(fine);
     stage.appendChild(fine);
 
     // Toggles row
@@ -688,7 +696,7 @@ export const sandboxScreen = {
     const live = el('div', 'sf-sandbox-live');
 
     // Weapon picker + Give & Equip
-    const weaponSel = document.createElement('select');
+    let weaponSel = document.createElement('select');
     for (const w of WEAPONS) {
       const o = document.createElement('option');
       o.value = w.id;
@@ -702,7 +710,7 @@ export const sandboxScreen = {
     });
 
     // Module picker + Give & Equip
-    const moduleSel = document.createElement('select');
+    let moduleSel = document.createElement('select');
     for (const m of MODULES) {
       const o = document.createElement('option');
       o.value = m.id;
@@ -716,7 +724,7 @@ export const sandboxScreen = {
     });
 
     // Enemy picker + Spawn
-    const enemySel = document.createElement('select');
+    let enemySel = document.createElement('select');
     for (const e of ENEMY_TYPES) {
       const o = document.createElement('option');
       o.value = e.id;
@@ -741,6 +749,9 @@ export const sandboxScreen = {
     live.appendChild(pickerRow('Module', moduleSel, giveModuleBtn));
     live.appendChild(pickerRow('Enemy', enemySel, spawnEnemyBtn));
     live.appendChild(pickerRow('Targets', null, spawnTargetsBtn));
+    // Same Deckplate swap as the fine-tune panel; the widgets carry .value/.disabled so the
+    // button closures and the in-flight disable toggle below keep working unchanged.
+    [weaponSel, moduleSel, enemySel] = enhanceSelects(live);
     apron.appendChild(live);
 
     // Stash refs for onShow to enable/disable based on flight mode.

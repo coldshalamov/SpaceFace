@@ -27,32 +27,35 @@ export const TURRET_RING_OUTPUT = 0.75;
 import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
+import { EMERGENT_WEAPON_DEFS } from './emergentPrimitives.js';
 
 const SHIPPED_WEAPONS = [
   {
     id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
     mass: 4, price: 38000, requiresTech: 'tech_fire_control',
     dmg: 3, rof: 0.8, dps: 2.4, damageType: 'ion', energyCost: 10,
-    projSpeed: 390, range: 580, tracking: 'fixed', spreadDeg: 0.5,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.5,
     heatPerShot: 12, heatMax: 100, heatDissip: 18,
     impulsePerHit: 6, tumbleTorque: 0.2, impulseProvenance: 'snarl_catch',
   },
   // --- SMALL (S slot) ---
   {
     id: 'wpn_pulse_laser_s', name: 'Pulse Laser S', slotType: 'weapon', size: 'S', tier: 1, mass: 2, price: 4500,
+    sentence: 'A reliable starter bolt: steady damage, and enough push to slide a light hull off its line.',
     // Starter reliability: a long, readable engagement burst rather than five-shot lockout or
     // infinite fire. Heat is the kit-balance lever against the physics kit — Pulse still dumps
     // a real burst (dmg 8 at 5.5 rps), then a short forced vent, instead of grinding the room
     // forever. Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
-    projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 8, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
   },
   {
     id: 'wpn_autocannon_s', name: 'Autocannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 4, price: 5200,
+    sentence: 'Armor-chewing slugs that knock light hulls around while they bite.',
     dmg: 14, rof: 2.2, dps: 31, damageType: 'kinetic', energyCost: 1.5,
-    projSpeed: 420, range: 520, tracking: 'fixed', spreadDeg: 2.2,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 2.2,
     heatPerShot: 9, heatMax: 100, heatDissip: 28, armorPierce: 0.5,
     impulsePerHit: 28, tumbleTorque: 4, impulseProvenance: 'small_autocannon_slug',
   },
@@ -60,29 +63,57 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_flak_turret_s', name: 'Flak/PD Turret S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 11000,
     mount: 'turret',
     dmg: 4, rof: 8.0, dps: 32, damageType: 'kinetic', energyCost: 1,
-    projSpeed: 600, range: 300, tracking: 'auto_turret', turretArcDeg: 180,
+    projSpeed: 320, range: 240, tracking: 'auto_turret', turretArcDeg: 180,
     intercepts: true,
     impulsePerHit: 5, tumbleTorque: 0.6, impulseProvenance: 'flak_fragment',
+  },
+  {
+    // SMALL CONCUSSION CANNON — the light-hardpoint momentum weapon for scouts, interceptors,
+    // and starter hulls (Hitch, Kestrel, Wasp) that cannot mount medium hardware. A hit punches
+    // a light target with 520 momentum (520 ÷ 16 = 32.5 wu/s on a Wasp, ~31 % of governed cruise),
+    // enough to shove it off an attack vector, tumble its firing arc, or slide it into an asteroid.
+    // Heavy hulls (mass 120+) shrug it (4.3 wu/s). Trades away almost all damage (dmg 6 at 1.2 rps = 7.2 dps)
+    // for directional authority and environmental kills.
+    id: 'wpn_concussion_cannon_s', name: 'Concussion Cannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 3, price: 9500,
+    sentence: 'A light kicker slug that trades raw damage for pure momentum: one punch sends a light fighter tumbling into a rock.',
+    dmg: 6, rof: 1.2, dps: 7.2, damageType: 'kinetic', energyCost: 3,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
+    heatPerShot: 10, heatMax: 100, heatDissip: 24,
+    impulsePerHit: 520, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
   },
 
   // --- MEDIUM (M slot) ---
   {
     id: 'wpn_pulse_laser_m', name: 'Pulse Laser M', slotType: 'weapon', size: 'M', tier: 2, mass: 5, price: 14000, requiresTech: 'tech_beam_focusing',
+    sentence: 'The starter bolt, one size heavier: every hit shoves a light hull visibly.',
     dmg: 12, rof: 6.0, dps: 72, damageType: 'energy', energyCost: 4,
-    projSpeed: 340, range: 680, tracking: 'fixed', spreadDeg: 0.6,
-    impulsePerHit: 1.2, tumbleTorque: 0.12, impulseProvenance: 'medium_pulse_bolt',
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 0.6,
+    // Impulse is 7.5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 126 momentum —
+    // the starter plink scaled up with the damage (S: 84). Every direct upgrade in the kit
+    // raises the shove with the DPS; the energy family is no exception.
+    impulsePerHit: 126, tumbleTorque: 0.12, impulseProvenance: 'medium_pulse_bolt',
+  },
+  {
+    id: 'wpn_bank_stream_m', name: 'Bank Stream M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 16000, requiresTech: 'tech_kinetic_drivers',
+    sentence: 'A bright fixed stream. Banks off stone. Each shot is light; the ribbon is the gun.',
+    dmg: 5.14, rof: 14, dps: 71.96, damageType: 'kinetic', energyCost: 0.6,
+    projSpeed: 520, range: 280, tracking: 'fixed', spreadDeg: 0.8,
+    heatPerShot: 4, heatMax: 100, heatDissip: 36, armorPierce: 0.35,
+    impulsePerHit: 12, tumbleTorque: 1.2, impulseProvenance: 'bank_stream',
   },
   {
     id: 'wpn_autocannon_m', name: 'Heavy Autocannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 19000, requiresTech: 'tech_kinetic_drivers',
+    sentence: 'A heavier slug: rock-and-shove on lights, honest damage on plates.',
     dmg: 18, rof: 4.0, dps: 72, damageType: 'kinetic', energyCost: 2,
-    projSpeed: 400, range: 560, tracking: 'fixed', spreadDeg: 1.6,
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.6,
     heatPerShot: 14, heatMax: 100, heatDissip: 28, armorPierce: 0.5,
     impulsePerHit: 48, tumbleTorque: 7, impulseProvenance: 'heavy_autocannon_slug',
   },
   {
     id: 'unique_ironsong_ac', baseId: 'wpn_autocannon_m', name: 'Ironsong AC', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 0,
+    sentence: 'The heavy slug tuned faster and tighter: same rock-and-shove, more of it per second.',
     dmg: 16.2, rof: 4.8, dps: 77.76, damageType: 'kinetic', energyCost: 2,
-    projSpeed: 400, range: 560, tracking: 'fixed', spreadDeg: 1.0,
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 14, heatMax: 100, heatDissip: 28, armorPierce: 0.5,
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { rateOfFirePct: 0.20, damagePct: -0.10, spreadDeg: 1.0 },
@@ -90,15 +121,17 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_beam_laser_m', name: 'Beam Laser M', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 22000, requiresTech: 'tech_beam_focusing',
+    sentence: 'A continuous cut that leans on whatever it holds.',
     dmg: 60, rof: 0, dps: 60, damageType: 'energy', energyCost: 14,
-    projSpeed: Infinity, range: 520, tracking: 'hitscan',
+    projSpeed: Infinity, range: 240, tracking: 'hitscan',
     continuous: true, heatPerSec: 55, heatMax: 100, heatDissip: 22,
     impulsePerHit: 10, tumbleTorque: 0.8, impulseProvenance: 'light_beam_pressure',
   },
   {
     id: 'unique_veil_cutter', baseId: 'wpn_beam_laser_m', name: 'Veil-Cutter', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 0,
+    sentence: 'The beam tuned longer and cleaner: the same patient cut, leaning harder.',
     dmg: 60, rof: 0, dps: 60, damageType: 'energy', energyCost: 14,
-    projSpeed: Infinity, range: 598, tracking: 'hitscan', spreadDeg: 0.3,
+    projSpeed: Infinity, range: 276, tracking: 'hitscan', spreadDeg: 0.3,
     continuous: true, heatPerSec: 66, heatMax: 100, heatDissip: 22,
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { rangePct: 0.15, spreadDeg: 0.3, heatPerSecPct: 0.20 },
@@ -106,6 +139,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
+    sentence: 'A long, honest spear: punches plates at range and staggers whatever survives.',
     mount: 'spinal',
     dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
@@ -113,22 +147,25 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_plasma_cannon_m', name: 'Plasma Cannon M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 42000, requiresTech: 'tech_plasma_dynamics',
+    sentence: 'Heavy luminous slugs that lean on a hull while they melt it.',
     dmg: 34, rof: 3.0, dps: 102, damageType: 'thermal', energyCost: 9,
-    projSpeed: 360, range: 600, tracking: 'fixed', splashRadius: 30,
+    projSpeed: 340, range: 260, tracking: 'fixed', splashRadius: 30,
     impulsePerHit: 36, tumbleTorque: 5, impulseProvenance: 'plasma_pressure',
   },
   {
     id: 'wpn_missile_rack_m', name: 'Missile Rack M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 24000, requiresTech: 'tech_guided_ordnance',
+    sentence: 'Fire-and-forget hunters: each hit carries a real shoulder, and they keep coming.',
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
-    projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
+    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
     impulsePerHit: 150, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
   },
   {
     id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
+    sentence: 'The missile rack tuned for volume: more hunters in the air and more shoulder per second, each hit a little lighter.',
     mount: 'launcher',
     dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
-    projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
+    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
     splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { submunitionCount: 2, perMissileDamagePct: -0.30 },
@@ -173,8 +210,9 @@ const SHIPPED_WEAPONS = [
     // heavily resisted by armor but ignores shields (it couples through them), making it the
     // counter to shield-turtling and the enabler of capture/disable play.
     id: 'wpn_emp_disruptor_m', name: 'EMP Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 36000, requiresTech: 'tech_plasma_dynamics',
+    sentence: 'A rude, crackling blow: shields buckle and the shot leans on the hull behind them.',
     dmg: 45, rof: 1.5, dps: 68, damageType: 'emp', energyCost: 11,
-    projSpeed: 380, range: 560, tracking: 'fixed', spreadDeg: 1.0,
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.0,
     subsystemShare: 1.0, shieldBypass: 1.0,
     impulsePerHit: 14, tumbleTorque: 10, impulseProvenance: 'emp_attitude_spike',
   },
@@ -184,8 +222,9 @@ const SHIPPED_WEAPONS = [
     // a target does nothing. The cyan disruption projectile and persistent contracting world marker
     // make the state readable without adding an asset or changing the default fit.
     id: 'wpn_gravity_marker_s', name: 'Gravity Marker S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 18000, requiresTech: 'tech_graviton_drives',
+    sentence: 'Marks a hull so wells and sinks grip it three times as hard.',
     dmg: 3, rof: 0.25, dps: 0.75, damageType: 'emp', energyCost: 7,
-    projSpeed: 520, range: 680, tracking: 'fixed', spreadDeg: 0.5,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.5,
     impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'gravity_marker_ping',
     statuses: [{ id: 'status_gravity_marked', stacks: 1 }],
   },
@@ -196,8 +235,9 @@ const SHIPPED_WEAPONS = [
     // the four-second window) and slingshot back at ≥ 2× that speed. The setup round stays a ping;
     // the weapon never writes speed caps, brakes, facing, or controls.
     id: 'wpn_momentum_sink_s', name: 'Momentum Sink S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 21000, requiresTech: 'tech_graviton_drives',
+    sentence: 'Latches a target to your frame — or slingshots you off a rock.',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'emp', energyCost: 9,
-    projSpeed: 500, range: 640, tracking: 'fixed', spreadDeg: 0.45,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.45,
     impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'momentum_sink_latch',
     statuses: [{ id: 'status_momentum_sink', stacks: 1 }],
   },
@@ -206,8 +246,9 @@ const SHIPPED_WEAPONS = [
     // speed into them, mass-bounded: a wasp flies a screen, you stop; a gunship shrugs. The
     // ping is only a catalog hit-confirm; the payoff is the contact, never a DPS grind.
     id: 'wpn_inertial_shunt_s', name: 'Inertial Shunt S', slotType: 'weapon', size: 'S', tier: 2, mass: 4, price: 24000, requiresTech: 'tech_graviton_drives',
+    sentence: 'The ram plate: your closing speed becomes their problem.',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'kinetic', energyCost: 8,
-    projSpeed: 480, range: 520, tracking: 'fixed', spreadDeg: 0.6,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'inertial_shunt_ping',
   },
 
@@ -226,8 +267,9 @@ const SHIPPED_WEAPONS = [
     // ≈ 6.13 wu/s on a gunship stays below tumbleDeltaV (18). The kill comes from the environment,
     // not the gun (STEP 9 forbidden shortcut #1). Helm-loss duration is the universal hitstun law.
     id: 'wpn_concussion_cannon_m', name: 'Concussion Cannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 26000, requiresTech: 'tech_kinetic_drivers',
+    sentence: 'The payload is momentum: one hit throws a light hull a screen.',
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
-    projSpeed: 340, range: 560, tracking: 'fixed', spreadDeg: 1.2,
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
     impulsePerHit: 920, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
   },
@@ -242,6 +284,7 @@ const SHIPPED_WEAPONS = [
     // physics authority (756 at centre = 45 % of Wasp cruise). dmg 0 is honest: the mine throws,
     // it does not damage.
     id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
+    sentence: 'A dropped scatter charge: shoves every hull nearby, damages none.',
     mount: 'launcher',
     dmg: 0, rof: 0.5, dps: 0, damageType: 'kinetic', energyCost: 22,
     projSpeed: 90, range: 260, tracking: 'deploy',
@@ -257,6 +300,7 @@ const SHIPPED_WEAPONS = [
     // well does not know friend from mass. dmg 0 is honest: nothing here damages; the fight is
     // repositioned, then finished with whatever else you carry. Fired on the same key as the mine.
     id: 'wpn_gravity_well_m', name: 'Gravity Wellhead M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 38000, requiresTech: 'tech_graviton_drives',
+    sentence: 'A sustained pull that drags the whole fight toward one point.',
     mount: 'launcher',
     dmg: 0, rof: 0.25, dps: 0, damageType: 'kinetic', energyCost: 26,
     projSpeed: 90, range: 260, tracking: 'deploy',
@@ -274,8 +318,9 @@ const SHIPPED_WEAPONS = [
     // the concussion cannon: it does NOT throw the ship, it removes its steering. Low hull damage —
     // this is a disable verb, not a killer.
     id: 'wpn_rcs_disruptor_m', name: 'RCS Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 34000, requiresTech: 'tech_plasma_dynamics',
+    sentence: 'Steals the target’s steering for seconds: a hull that cannot aim is almost ammunition.',
     dmg: 16, rof: 1.4, dps: 22.4, damageType: 'emp', energyCost: 10,
-    projSpeed: 400, range: 520, tracking: 'fixed', spreadDeg: 1.0,
+    projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.0,
     subsystemShare: 0.85, shieldBypass: 1.0, rcsDisruptS: 1.6,
     impulsePerHit: 10, tumbleTorque: 4, impulseProvenance: 'rcs_disruptor_spike',
   },
@@ -283,13 +328,15 @@ const SHIPPED_WEAPONS = [
     // PQ-133.11 — Foundry salvage pulse. Bank Shot + Bank Relay are baked so Hitch (one utility)
     // can still fly volley+bank+chain when Twin Mount occupies the utility slot.
     id: 'unique_mirrorjaw_pulse', baseId: 'wpn_pulse_laser_s', name: 'Mirrorjaw Pulse', slotType: 'weapon', size: 'S', tier: 2, mass: 2, price: 0,
+    sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
-    projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
     purchasable: false, salvageOnly: true,
     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
   },
+  ...EMERGENT_WEAPON_DEFS,
 ];
 
 // ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
@@ -310,7 +357,18 @@ const USER_WEAPON_KEYS = new Set([
   'ammo', 'intercepts', 'statuses', 'attackTraits',
   'deployKind', 'mineArmS', 'mineTriggerRadius', 'mineBlastRadius', 'mineLifeS', 'mineMaxActive', 'mineWellPull',
   'purchasable', 'unique', 'salvageOnly', 'variantBonuses',
+  'sentence',
 ]);
+export { USER_WEAPON_KEYS };
+
+// The point-of-sale shove metric: impulsePerHit earns a row on the outfitting screen only when
+// it is a real part of the weapon's answer (>= 10 momentum). Setup-tool pings (1) and flak
+// fragments (5) read honest without it — their verbs are the status, the contact, or the burst.
+export const SHOVE_METRIC_MIN = 10;
+export function shoveMetricValue(def) {
+  const n = Number(def && def.impulsePerHit);
+  return Number.isFinite(n) && n >= SHOVE_METRIC_MIN ? n : null;
+}
 const USER_WEAPON_DAMAGE_TYPES = new Set(['energy', 'kinetic', 'explosive', 'thermal', 'ion', 'emp']);
 const USER_WEAPON_TRACKING = new Set(['fixed', 'auto_turret', 'homing', 'hitscan', 'deploy']);
 const USER_WEAPON_SIZES = new Set(['S', 'M', 'L']);

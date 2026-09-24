@@ -372,7 +372,7 @@ export function createCommandBar(ctx) {
 
   function reconcileCredits() {
     const cr = Math.round((state.player && state.player.credits) || 0);
-    setText(el.credits, cr.toLocaleString());
+    setText(el.credits, cr.toLocaleString('en-US'));
     // delta arrow: compare to last seen. flat until we have a prior.
     if (lastCredits != null) {
       const d = cr - lastCredits;

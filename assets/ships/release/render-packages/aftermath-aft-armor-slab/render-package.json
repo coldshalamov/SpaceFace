@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a9c8134651a1dd1645c97d79fd94482c7c7ca521e3fe06beb1896ccb521cb5ac",
+  "contentHash": "cfd252f2c98b33239eeb31c3a5d09db4e2a62acfa70818011888ccc10c54a324",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1287,14 +1287,14 @@
       "uri": "place_aftermath_aft_armor_slab.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 44932,
-    "sha256": "b58b64ee8adc2c1e94c023e2f7eb838973a1b8685f30284aea7d5a3342b9bfdc",
+    "sha256": "a6e80f3734529095cfda99b4d192868c45b3118ea8202ff85dea775089b2d108",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1324,13 +1324,14 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 16
+      "hull": 15,
+      "rubber": 1
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -1847,7 +1848,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb"
   },
-  "runtimeHash": "f362cf5c46630492d1018076464a6493948cc176d0540f28f9609866f70ddff9",
+  "runtimeHash": "29a5867b1f0f5cb8373756d7d757bd6c046ec2e3841ef5829e7defdcab9b8458",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

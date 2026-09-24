@@ -28,6 +28,7 @@ import {
   buildSteps,
   crucibleResultsScreen,
   damageBreakdown,
+  featDiagram,
   killChainRows,
   lastSecondsLead,
   resultRows,
@@ -106,6 +107,19 @@ test('the death sentence names who, from where, with what, and through which lay
   assert.match(line, /Heavy Autocannon M/);
   assert.match(line, /through the hull/);
   assert.equal(deathSentence(null), 'The run ended.');
+});
+
+test('the death sentence speaks bearings the way a pilot does, never in enum capitals', () => {
+  // Owner, 2026-09-22 demo pass: the results headline read "killed you on wave 6 from AFT".
+  const at = (direction) => deathSentence({ ...DEFEAT_RECEIPT, direction }, { wave: 6 });
+  assert.match(at('AFT'), /killed you on wave 6 from astern with its/);
+  assert.match(at('FRONT'), /killed you on wave 6 head-on with its/);
+  assert.match(at('STARBOARD'), /from starboard/);
+  assert.match(at('CONTACT'), /at point-blank range/);
+  assert.equal(at('UNKNOWN'), 'Reaver Corsair killed you on wave 6 with its Heavy Autocannon M, through the hull.');
+  for (const dir of ['AFT', 'FRONT', 'PORT', 'STARBOARD', 'CONTACT', 'UNKNOWN']) {
+    assert.doesNotMatch(at(dir), /\b(AFT|FRONT|PORT|STARBOARD|CONTACT|UNKNOWN)\b/);
+  }
 });
 
 test('a run that was not a death still explains itself', () => {
@@ -711,3 +725,118 @@ test('the fresh Crucible route starts with a shove and preserves deliberate kit 
   const energy = crucibleSetupFor({ seed: 4242, starterId: 'energy_baseline' });
   assert.equal(energy.value.loadout[0].defId, 'wpn_pulse_laser_s');
 });
+
+test('when the player kills with a shove, throw, slam, or field in swarm, results show the stunt name in words', () => {
+  const stunts = [
+    { type: 'shove', trickId: 'rock_discovery', name: 'Rock Discovery', family: 'impact' },
+    { type: 'slam', trickId: 'wrecking_ball', name: 'Wrecking Ball', family: 'tether' },
+    { type: 'throw', trickId: 'bolas', name: 'Bolas', family: 'tether' },
+    { type: 'field', trickId: 'well_golf', name: 'Well Golf', family: 'field' },
+  ];
+
+  for (const stunt of stunts) {
+    const harness = boot();
+    harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: CRUCIBLE_ARENA_ID });
+    for (const next of ['loadout', 'arena_intro', 'wave_intro', 'active']) {
+      harness.bus.emit('run:transitionRequested', { expectedPhase: next, nextPhase: next, reason: 't', tick: 0 });
+    }
+    harness.state.run.wave = 1;
+
+    // Simulate stunt kill via stunt:trickDetected
+    harness.bus.emit('stunt:trickDetected', {
+      actorId: 1,
+      trickId: stunt.trickId,
+      name: stunt.name,
+      family: stunt.family,
+      baseScore: 90,
+      consequence: { killed: true },
+      victimLives: [{ lifeId: 'v1', dead: true }],
+    });
+
+    // End run
+    harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+
+    const ready = named(harness.emitted, 'run:resultsReady');
+    assert.equal(ready.length, 1);
+    const result = ready[0].payload;
+
+    // Stunt name must appear in stuntKills
+    assert.ok(result.stuntKills.length > 0, `recorded stunt kill for ${stunt.type}`);
+    assert.equal(result.stuntKills[0].name, stunt.name);
+
+    // featDiagram returns the stunt name in words
+    const feat = featDiagram(result);
+    assert.equal(feat.kind, 'stunt');
+    assert.ok(feat.text.includes(stunt.name), `featDiagram contains "${stunt.name}" in words`);
+
+    // storyMomentsFor carries the stunt kill in moments
+    assert.ok(result.moments.some((m) => m.text.includes(stunt.name)), `moments contains "${stunt.name}"`);
+
+    // Results screen mounted DOM includes the stunt name in words
+    const { lines } = mountResults(result);
+    const fullText = lines.join('\n');
+    assert.ok(fullText.includes(stunt.name), `results screen text includes "${stunt.name}" in words`);
+  }
+});
+
+test('stunt kill via entity:killed cause shows the stunt name in words', () => {
+  const causes = [
+    { cause: 'shove', expected: 'Rock Discovery' },
+    { cause: 'slam', expected: 'Wrecking Ball' },
+    { cause: 'throw', expected: 'Bolas' },
+    { cause: 'field', expected: 'Well Golf' },
+  ];
+
+  for (const { cause, expected } of causes) {
+    const harness = boot();
+    harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: CRUCIBLE_ARENA_ID });
+    harness.state.run.wave = 1;
+
+    const id = harness.state.nextEntityId++;
+    const entity = { id, alive: true, type: 'ship', team: 1, pos: { x: 5, z: 5 }, data: { level: 1, runCohort: 'survival' } };
+    harness.state.entities.set(id, entity);
+    entity.alive = false;
+
+    harness.bus.emit('entity:killed', { id, killerId: 1, type: 'ship', pos: { x: 5, z: 5 }, cause });
+    harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+
+    const result = named(harness.emitted, 'run:resultsReady')[0].payload;
+    assert.ok(result.stuntKills.some((s) => s.name === expected), `recorded ${expected} for cause ${cause}`);
+
+    const feat = featDiagram(result);
+    assert.equal(feat.kind, 'stunt');
+    assert.ok(feat.text.includes(expected), `featDiagram mentions ${expected}`);
+  }
+});
+
+test('if stunt name already appears in bestLine, it is preserved and no combo timer or decay is added', () => {
+  const result = {
+    outcome: 'defeat',
+    seed: 7,
+    wave: 3,
+    kills: 2,
+    bestChain: 2,
+    bestLine: {
+      points: 180,
+      seed: 7,
+      acts: [
+        { episodeId: 1, trickId: 'rock_discovery', name: 'Rock Discovery', evidence: [{ kind: 'impulse' }], tick: 60 },
+        { episodeId: 2, trickId: 'wrecking_ball', name: 'Wrecking Ball', evidence: [{ kind: 'impulse' }], tick: 120 },
+      ],
+    },
+    stuntKills: [
+      { name: 'Rock Discovery', trickId: 'rock_discovery', points: 50 },
+    ],
+  };
+
+  const feat = featDiagram(result);
+  assert.equal(feat.kind, 'stunt');
+  assert.ok(feat.text.includes('Rock Discovery'));
+  assert.ok(feat.text.includes('Wrecking Ball'));
+  assert.ok(feat.text.includes('180 banked'));
+
+  // No timer, decay, or vanishing score properties added
+  assert.equal(result.comboTimer, undefined);
+  assert.equal(result.decay, undefined);
+});
+

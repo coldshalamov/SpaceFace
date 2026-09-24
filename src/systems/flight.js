@@ -20,6 +20,7 @@ import {
 } from '../core/flightDynamics.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { wrapAngle } from '../core/rng.js';
+import { entityNeedsFlightStep } from '../world/activityRuntime.js';
 
 const ANG_VEL_DRAG = 2.2;     // per-second decay of yaw rate for drifting (intent-less) ships
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
@@ -112,6 +113,8 @@ export const flight = {
     }
     for (const e of flightCraftCandidates(state)) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
+      // Shelved actors (S2/S3/S4) skip continuous drag; wake-edge intent still steps.
+      if (!entityNeedsFlightStep(e)) continue;
       const intent = e.data && e.data.intent;
       if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
       else this.applyDrag(e, dt, { physicsAuthority: dynamicAuthority });

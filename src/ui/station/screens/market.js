@@ -1,4 +1,4 @@
-import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV } from '../../views/marketPresentation.js';
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
 // Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
@@ -7,7 +7,8 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // words with a quantity beside them. Emits ui:buy / ui:sell {commodityId, qty}; the trade math, the
 // quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
 // is pinned from this module; buy/sell stay the same verbs.
-import { COMMODITIES } from '../../../data/commodities.js';
+import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
+import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
@@ -20,7 +21,8 @@ import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresen
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
-import { computeBestTrades, applyTradeNavigation } from '../../market/tradeLogic.js';
+import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
+import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -32,10 +34,10 @@ import {
   paintPlate,
   paintRow,
   paintSelectedTableRow,
-  paintWindow,
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -50,7 +52,7 @@ for (const sec of SECTORS) {
 
 // Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
-export function chartTrendColor(up) { return up ? 'var(--sf-you)' : 'var(--sf-foe)'; }
+export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
 export function maxAffordableQuantity({ limit, credits, quote }) {
   const ceiling = Number(limit);
   const budget = Number(credits);
@@ -66,6 +68,17 @@ export function maxAffordableQuantity({ limit, credits, quote }) {
   }
   return low;
 }
+/**
+ * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
+ * total when the stashed render quote covers exactly the confirmed quantity, else
+ * undefined (no binding — the authority settles at the live price, as before).
+ */
+export function expectedTotalForTerms(lastQuotedTerms, qty) {
+  if (!lastQuotedTerms || lastQuotedTerms.qty !== qty) return undefined;
+  const total = Math.round(Number(lastQuotedTerms.total));
+  return Number.isFinite(total) && total >= 0 ? total : undefined;
+}
+
 export function legalityRole(legal) {
   if (legal === 'contraband') return 'foe';
   if (legal === 'restricted') return 'goal';
@@ -249,9 +262,28 @@ export function quoteAgeWord(_state, _sid, _commodityId) {
   return '';
 }
 
+function marketDecisionHtml(state, stationId) {
+  if (!stationId) return '';
+  const shown = presentSurfaceDecisions(state, stationId, 'market');
+  if (!shown.length) return '';
+  return shown.map((decision) => (
+    `<section class="sx-decision">` +
+      `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+      decision.options.map((option) => (
+        `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
+          `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+        `</button>`
+      )).join('') +
+    `</section>`
+  )).join('');
+}
+
 export function createMarketScreen(ctx) {
   const el = document.createElement('div');
-  el.className = 'k-panel k-panel--split sx-mkt';
+  el.className = 'k-panel k-panel--split sx-mkt orr-market';
+  // ORRERY: the Ladder, the trace as light, the quantity dial (src/ui/orrery/marketLayouts.js)
+  injectOrreryMarket(document);
   el.innerHTML = marketFrameHtml();
   const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
@@ -260,11 +292,17 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
+  const decisionEl = el.querySelector('.sx-mkt__decision');
   let tradeBusy = false;
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
   let qty = 1;
+  // INF-084: the stated accepted terms — the live quote behind the receipt the pilot is
+  // looking at when they press Buy/Sell. The go handler binds the trade to these, so a
+  // market move between render and confirm aborts with an explanation instead of a
+  // surprise settlement. Refreshed on every console render; never read blind.
+  let lastQuotedTerms = null;
   let cargoOnly = false;
   let marketFilter = 'all';
   let marketQuery = '';
@@ -300,7 +338,11 @@ export function createMarketScreen(ctx) {
     paintHero(quoteEl.querySelector('.k-hero__n'));
     paintLegend(quoteEl.querySelector('.k-hero__w'));
     const chart = quoteEl.querySelector('.sx-mkt-chart');
-    if (chart) paintWindow(chart);
+    // The chart wears NO window. ONE_PHOTOGRAPH.md section 4.5: an instrument shows real data
+    // as light, or it is not on the screen. A bezel around a price line is a picture of an
+    // instrument; the line itself is the instrument, and the darkening it used to sit on is
+    // the berth veil's job now. This is also where the smudge came from: the glass render's
+    // centre specular, stretched by border-image-slice:fill across a 440px-wide chart.
     for (const row of quoteEl.querySelectorAll('.k-row')) paintRow(row, false);
   }
 
@@ -324,8 +366,13 @@ export function createMarketScreen(ctx) {
     for (const btn of tradeEl.querySelectorAll('[data-q]')) paintKey(btn, 'small');
     const buy = tradeEl.querySelector('.sx-trade__go--buy, [data-mode="buy"]');
     const sell = tradeEl.querySelector('.sx-trade__go--sell, [data-mode="sell"]');
-    if (buy) paintKey(buy, buy.hasAttribute('data-go') ? 'primary' : 'legend');
-    if (sell) paintKey(sell, sell.hasAttribute('data-go') ? 'primary' : 'legend');
+    // A DISABLED VERB IS NOT THE HEAVIEST THING ON THE SCREEN. ONE_PHOTOGRAPH.md section 4.4 asks
+    // whether the most consequential control is the heaviest object; with no credits, BUY wore the
+    // full amber cap while SELL -- the only trade the player could actually make -- was a bare
+    // word beside it. The live side earns mass only while it can be pressed.
+    const heavy = (btn) => btn.hasAttribute('data-go') && !btn.disabled ? 'primary' : 'legend';
+    if (buy) paintKey(buy, heavy(buy));
+    if (sell) paintKey(sell, heavy(sell));
     for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
     dressState(tradeEl);
     syncKeys(tradeEl);
@@ -428,6 +475,18 @@ export function createMarketScreen(ctx) {
     try { return economy.quote(sid, row.id, mode, quantity); } catch (_) { return null; }
   }
 
+  // INF-083: the contemplated-sale line quotes the FULL batch through the economy
+  // owner (stock-sensitive average, partial-aware), never unit×qty. Quoting writes
+  // nothing — stock moves only in execute() on confirm.
+  function contemplatedSaleQuote(sid, cmdtyId, quantity) {
+    const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    if (!economy || typeof economy.quote !== 'function' || !stationId) return null;
+    try {
+      const q = economy.quote(stationId, cmdtyId, 'sell', Math.max(1, Math.floor(Number(quantity) || 1)));
+      return q && q.ok ? q : null;
+    } catch (_) { return null; }
+  }
+
   function tradeQuantityLimit(state, row) {
     if (mode === 'sell') return heldQty(state, row.id);
     const free = holdFree(state);
@@ -456,6 +515,28 @@ export function createMarketScreen(ctx) {
     }
   }
 
+  // Feature 16 — direct profit badge. Cost basis is the FIFO trade-lot average the economy ledger
+  // keeps on the player; cargo without a purchase record (mined, salvaged) falls back to the
+  // catalog base price, so a smart route reads the same whether goods were bought or dug out.
+  function heldProfitPct(state, cmdtyId, sellUnit, def) {
+    if (!Number.isFinite(sellUnit) || sellUnit <= 0) return null;
+    let basis = 0;
+    const lots = state && state.player && state.player.tradeLots
+      && state.player.tradeLots[cmdtyId];
+    if (Array.isArray(lots) && lots.length) {
+      let qty = 0, cost = 0;
+      for (const lot of lots) {
+        const q = Math.max(0, Math.floor(Number(lot && lot.qty) || 0));
+        const u = Number(lot && lot.unit) || 0;
+        if (q > 0 && u > 0) { qty += q; cost += q * u; }
+      }
+      if (qty > 0) basis = cost / qty;
+    }
+    if (!(basis > 0)) basis = Number(def && def.basePrice) || 0;
+    if (!(basis > 0)) return null;
+    return ((sellUnit - basis) / basis) * 100;
+  }
+
   // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
   function commodityRowHtml(r, state, tracked_, selected) {
     const hist = priceHistory(r.entry, r.def, state && state.simTime);
@@ -467,7 +548,9 @@ export function createMarketScreen(ctx) {
     const held = heldQty(state, r.id);
     return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
-      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_ });
+      profitPct: heldProfitPct(state, r.id, sell, r.def),
+      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
+      presentation: commodityPresentationFor(r.def) });
   }
 
   function emptyFilterLabel() {
@@ -477,7 +560,7 @@ export function createMarketScreen(ctx) {
   // The register chrome (exchange line, family filters, search, table) is built once and then
   // updated in place, so typing in the search and arrowing through the rows survive price ticks.
   function buildBrowserChrome() {
-    listEl.innerHTML = marketBrowserHtml();
+    listEl.innerHTML = bindStationMarkup(marketBrowserHtml());
     modeEl = listEl.querySelector('.sx-mkt-browser__mode');
     searchEl = listEl.querySelector('[data-market-search]');
     tbodyEl = listEl.querySelector('tbody');
@@ -512,6 +595,45 @@ export function createMarketScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
+  // The register's rows are keyed by commodity: a price tick rewrites only the cells that moved and
+  // keeps every row node, so the row under the pointer, its focus and the rail's Hand survive the
+  // tick (the rows used to be rebuilt wholesale on any price, stock or demand change). A DOM
+  // without <template> content (the node test shim) takes the rebuild.
+  const rowTpl = typeof document !== 'undefined' && document.createElement ? document.createElement('template') : null;
+  function syncRows(keyed) {
+    const canPatch = !!(rowTpl && rowTpl.content && typeof tbodyEl.insertBefore === 'function');
+    if (!canPatch) { tbodyEl.innerHTML = keyed.map(([, html]) => html).join(''); return; }
+    const existing = new Map(rowEls().map((row) => [row.getAttribute('data-cmdty'), row]));
+    let prev = null;
+    for (const [id, html] of keyed) {
+      rowTpl.innerHTML = `<table><tbody>${html}</tbody></table>`;
+      const next = rowTpl.content.querySelector('tr');
+      if (!next) continue;
+      let row = existing.get(id);
+      if (row && row.children.length === next.children.length) {
+        for (const name of ['aria-selected', 'tabindex', 'aria-label', 'data-family']) {
+          const v = next.getAttribute(name);
+          if (v == null) row.removeAttribute(name);
+          else if (row.getAttribute(name) !== v) row.setAttribute(name, v);
+        }
+        row.classList.toggle('is-active', next.classList.contains('is-active'));
+        row.classList.toggle('is-tracked', next.classList.contains('is-tracked'));
+        [...next.children].forEach((cell, i) => {
+          const old = row.children[i];
+          if (old.innerHTML !== cell.innerHTML) old.innerHTML = cell.innerHTML;
+        });
+        existing.delete(id);
+      } else {
+        if (row) { row.remove(); existing.delete(id); }
+        row = next;
+      }
+      const at = prev ? prev.nextElementSibling : tbodyEl.firstElementChild;
+      if (row !== at) tbodyEl.insertBefore(row, at);
+      prev = row;
+    }
+    for (const row of existing.values()) row.remove();
+  }
+
   function renderList(state) {
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
@@ -534,7 +656,10 @@ export function createMarketScreen(ctx) {
     const signature = JSON.stringify({
       marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), unitSell(r.entry, r.def), r.entry && r.entry.stock,
-        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1)]),
+        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1),
+        // The badge moves with the cost basis, not only the price — include it so a fresh buy
+        // reprices the row even when quantity is unchanged.
+        Math.round(heldProfitPct(state, r.id, unitSell(r.entry, r.def), r.def) || 0)]),
     });
     if (signature !== listRenderSignature) {
       listRenderSignature = signature;
@@ -549,7 +674,7 @@ export function createMarketScreen(ctx) {
       if (searchEl.value !== marketQuery) searchEl.value = marketQuery;
 
       const focused = typeof document !== 'undefined' && tbodyEl.contains(document.activeElement);
-      tbodyEl.innerHTML = visible.map((r) => commodityRowHtml(r, state, tracked_, r.id === selectedId)).join('');
+      syncRows(visible.map((r) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId)]));
       const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
       emptyEl.hidden = visible.length > 0;
       emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
@@ -578,6 +703,7 @@ export function createMarketScreen(ctx) {
       stageEl.removeAttribute('aria-label');
       stageEl.removeAttribute('aria-describedby');
       consoleEl.hidden = true;
+      if (decisionEl) decisionEl.innerHTML = '';
       mountDataState(quoteEl, 'empty', {
         code: mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK',
         headline: mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.',
@@ -618,10 +744,15 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
-      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance,
+      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
-      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty });
+      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
+    if (decisionEl) {
+      const decisionHtml = marketDecisionHtml(state, sid);
+      if (decisionEl.innerHTML !== decisionHtml) decisionEl.innerHTML = decisionHtml;
+    }
     dressStage();
     renderLaunderLedger(state);
   }
@@ -633,8 +764,8 @@ export function createMarketScreen(ctx) {
       tradeEl.innerHTML =
         `<div class="sx-trade sx-trade--empty">` +
           `<ul class="k-words k-words--row sx-seg" role="tablist">` +
-            `<li><button type="button" class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">Buy</button></li>` +
-            `<li><button type="button" class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">Sell</button></li>` +
+            `<li><button type="button" ${stationControlAttrs('buy')} class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">${stationControlLabel('buy')}</button></li>` +
+            `<li><button type="button" ${stationControlAttrs('sell')} class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">${stationControlLabel('sell')}</button></li>` +
           `</ul>` +
           `<p class="k-empty sx-trade-empty">Nothing in the hold. Switch to Buy to load cargo.</p>` +
         `</div>`;
@@ -656,6 +787,7 @@ export function createMarketScreen(ctx) {
     // execute() reuses the same economy integral, including the bulk price impact, on confirm.
     const quote = selectedTradeQuote(state, r);
     const quoteReady = !!(quote && quote.ok);
+    lastQuotedTerms = quoteReady ? { qty, total: quote.total } : null;
     const total = quoteReady ? quote.total : unit * qty;
     const quoteUnit = quoteReady ? quote.unitAvg : unit;
     const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
@@ -680,6 +812,7 @@ export function createMarketScreen(ctx) {
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      setQtyDial(tradeEl, qty, maxQty);
       tradeEl.querySelector('[data-trade-total]').textContent = quoteReady ? fmt(total) + ' cr' : 'Unavailable';
       tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Total gain';
       const go = tradeEl.querySelector('[data-go]');
@@ -694,27 +827,25 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note });
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
     dressConsole();
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
+  // INF-085: the card is a forecast with distinct spread/cost/limit/age (formatRouteCard);
+  // the Set course action below is untouched.
   function renderRoutes(state) {
     let trades = [];
     try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
     const rows = trades.slice(0, 3).map((t) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
-      const profit = Number(t.loadProfit) || 0;
-      const units = Number(t.loadUnits) || 0;
-      const demandReason = t.destinationDemand && t.destinationDemand.drivers && t.destinationDemand.drivers.length
-        ? ` · ${t.destinationDemand.label}`
-        : '';
+      const card = formatRouteCard(t);
       return (
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
-            `<span class="k-row__sub">${units > 0 ? fmt(units) + ' u run' : ''}${escapeHtml(demandReason)}</span></span>` +
-          `<span class="k-row__num sx-route-row__s${profit > 0 ? ' k-good' : ''}">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}</span>` +
-          `<button type="button" class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set course</button>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+          `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
+          `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
       );
     }).join('');
@@ -766,6 +897,22 @@ export function createMarketScreen(ctx) {
     const row = ev.target.closest('.sx-mkt-row[data-cmdty]');
     if (row) selectCommodity(row.getAttribute('data-cmdty'));
   });
+  // The register rebuilds its rows on every price/stock tick, so a press that lands on a row
+  // node replaced between pointerdown and pointerup never dispatches click — the player sees
+  // "click did nothing". Track the press by commodity id and select on release over the same
+  // id: survives node replacement while keeping same-row click semantics (drag-off cancels).
+  let pressCmdtyId = null;
+  listEl.addEventListener('pointerdown', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    pressCmdtyId = row ? row.getAttribute('data-cmdty') : null;
+  });
+  listEl.addEventListener('pointerup', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    const upId = row ? row.getAttribute('data-cmdty') : null;
+    if (pressCmdtyId && upId && upId === pressCmdtyId) selectCommodity(upId);
+    pressCmdtyId = null;
+  });
+  listEl.addEventListener('pointercancel', () => { pressCmdtyId = null; });
   listEl.addEventListener('input', (ev) => {
     if (!ev.target.matches('[data-market-search]')) return;
     marketQuery = ev.target.value || '';
@@ -803,6 +950,19 @@ export function createMarketScreen(ctx) {
   // Delegation rides the screen root, not consoleEl: the route table and trade leads live in
   // .sx-mkt__stage outside the console, and their Set Course buttons must reach this handler.
   el.addEventListener('click', (ev) => {
+    const adventure = ev.target.closest('[data-adventure-option]');
+    if (adventure) {
+      const decisionId = adventure.getAttribute('data-adventure-id');
+      const optionId = adventure.getAttribute('data-adventure-option');
+      const chosen = chooseAdventureDecision(ctx.state || {}, decisionId, optionId, {
+        bus: ctx.bus,
+        economy: null,
+      });
+      renderStage(ctx.state || {});
+      renderConsole(ctx.state || {});
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      return;
+    }
     const course = ev.target.closest('[data-course]');
     if (course) {
       const cmdtyId = course.getAttribute('data-course');
@@ -821,7 +981,14 @@ export function createMarketScreen(ctx) {
       tradeBusy = true;
       go.disabled = true;
       if (ctx.bus) {
-        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty: tradeQty });
+        // INF-084: bind the trade to the stated terms so a stale quote cannot settle
+        // silently at a worse price. tradeBusy already stops a repeated confirmation
+        // from emitting twice in-screen.
+        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', {
+          commodityId: selectedId,
+          qty: tradeQty,
+          expectedTotal: expectedTotalForTerms(lastQuotedTerms, tradeQty),
+        });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
       deferRefresh(80, true);
@@ -847,6 +1014,206 @@ export function createMarketScreen(ctx) {
       renderStage(state);
       renderConsole(state);
     }
+  });
+
+  // THE CROSSHAIR. The quote's trace carries every sample in data-points ("x%:y%:price:secondsFromNow:h|f");
+  // hovering the plot parks a hairline on the nearest one and reads its price and age beside it.
+  // Nothing re-renders: the cursor is one element inside the plot, moved by transform.
+  function relAge(sec, kind) {
+    const n = Number(sec);
+    if (!Number.isFinite(n)) return kind === 'f' ? 'forecast' : '';
+    if (kind === 'f') return n <= 0 ? 'now' : `in ${Math.max(1, Math.round(n / 60))} min`;
+    const ago = -n;
+    if (ago < 20) return 'now';
+    return ago < 90 ? `${Math.round(ago)} s ago` : `${Math.round(ago / 60)} min ago`;
+  }
+  function chartSamples(host) {
+    if (host._samples && host._samplesSrc === host.dataset.points) return host._samples;
+    host._samplesSrc = host.dataset.points || '';
+    host._samples = host._samplesSrc.split(';').filter(Boolean).map((row) => {
+      const [x, y, price, sec, kind] = row.split(':');
+      return { x: Number(x), y: Number(y), price: Number(price), sec: sec === '' ? NaN : Number(sec), kind };
+    }).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    return host._samples;
+  }
+  function showSample(plot, index, { announce = false } = {}) {
+    const host = plot.closest('[data-chart-host]');
+    const cursor = plot.querySelector('[data-chart-cursor]');
+    const samples = host ? chartSamples(host) : [];
+    if (!cursor || !samples.length) return;
+    const i = Math.max(0, Math.min(samples.length - 1, index));
+    const best = samples[i];
+    plot._index = i;
+    cursor.hidden = false;
+    cursor.style.setProperty('--cx', `${best.x}%`);
+    cursor.style.setProperty('--cy', `${best.y}%`);
+    cursor.dataset.kind = best.kind;
+    cursor.classList.toggle('is-left', best.x > 70);
+    const age = relAge(best.sec, best.kind);
+    const text = `${fmt(best.price)} cr${age ? ' · ' + age : ''}`;
+    const label = cursor.querySelector('b');
+    if (label) label.textContent = text;
+    if (announce) {
+      const live = plot.querySelector('[data-chart-live]');
+      if (live) live.textContent = `${best.kind === 'f' ? 'Forecast' : 'Sample'} ${i + 1} of ${samples.length}: ${fmt(best.price)} credits${age ? ', ' + age : ''}.`;
+    }
+  }
+  quoteEl.addEventListener('pointermove', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot) return;
+    const host = plot.closest('[data-chart-host]');
+    const samples = host ? chartSamples(host) : [];
+    if (!samples.length) return;
+    const rect = plot.getBoundingClientRect();
+    if (!rect.width) return;
+    const fx = ((ev.clientX - rect.left) / rect.width) * 100;
+    let best = 0;
+    for (let i = 1; i < samples.length; i++) if (Math.abs(samples[i].x - fx) < Math.abs(samples[best].x - fx)) best = i;
+    showSample(plot, best);
+  });
+  quoteEl.addEventListener('pointerleave', () => {
+    const cursor = quoteEl.querySelector('[data-chart-cursor]');
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (cursor && (!plot || plot !== document.activeElement)) cursor.hidden = true;
+  });
+  // Keyboard: the plot takes focus; Left/Right step through the samples (Home/End jump), and each
+  // step is read aloud -- the same inspection the older probe offered, on the new instrument.
+  quoteEl.addEventListener('keydown', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot || plot !== ev.target) return;
+    const host = plot.closest('[data-chart-host]');
+    const n = host ? chartSamples(host).length : 0;
+    if (!n) return;
+    const at = Number.isInteger(plot._index) ? plot._index : n - 1;
+    const next = ev.key === 'ArrowLeft' ? at - 1 : ev.key === 'ArrowRight' ? at + 1
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : null;
+    if (next === null) return;
+    ev.preventDefault();
+    showSample(plot, next, { announce: true });
+  });
+  quoteEl.addEventListener('focusin', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (plot && plot === ev.target) {
+      const host = plot.closest('[data-chart-host]');
+      const n = host ? chartSamples(host).length : 0;
+      if (n) showSample(plot, Number.isInteger(plot._index) ? plot._index : n - 1, { announce: true });
+    }
+  });
+  quoteEl.addEventListener('focusout', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    const cursor = plot && plot.querySelector('[data-chart-cursor]');
+    if (cursor) cursor.hidden = true;
+  });
+
+  // THE SCRUB. Press on the quantity numeral and drag sideways: the amount runs from 0 to what you
+  // can move, the total rolling live. One unit per 6px, faster the further you pull, clamped to
+  // the trade limit -- the same limit Max uses. Typing still works; so do Fewer/More/Max and the
+  // arrow keys, which are the keyboard channel for the same control.
+  let scrub = null;
+  function scrubLimit() {
+    const state = ctx.state || {};
+    const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
+    return r ? tradeQuantityLimit(state, { id: selectedId, entry: r.entry, def: r.def }) : 0;
+  }
+  // THE DIAL. Press on the ring and turn: the amount is where the pointer points, from 0 at the
+  // foot's left end to all you can move at its right, the total rolling live (one quote a frame).
+  let turn = null;
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const dial = ev.target.closest && ev.target.closest('.orr-qdial');
+    if (!dial || ev.button !== 0) return;
+    const limit = scrubLimit();
+    if (limit < 1) return;
+    ev.preventDefault();
+    turn = { id: ev.pointerId, dial, limit, host: dial.closest('.sx-qty') };
+    try { dial.setPointerCapture(ev.pointerId); } catch (_) {}
+    if (turn.host) turn.host.classList.add('is-turning');
+    turnTo(ev);
+  });
+  function turnTo(ev) {
+    const next = qtyFromDialPoint(turn.dial, ev.clientX, ev.clientY, turn.limit);
+    if (next == null || next === qty) return;
+    qty = next;
+    const input = tradeEl.querySelector('.sx-qty__in');
+    if (input) input.value = String(qty);
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  }
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!turn || ev.pointerId !== turn.id) return;
+    ev.preventDefault();
+    turnTo(ev);
+  });
+  function endTurn(ev) {
+    if (!turn || (ev && ev.pointerId !== turn.id)) return;
+    if (turn.host) turn.host.classList.remove('is-turning');
+    turn = null;
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    renderStage(ctx.state || {}); renderConsole(ctx.state || {});
+  }
+  consoleEl.addEventListener('pointerup', endTurn);
+  consoleEl.addEventListener('pointercancel', endTurn);
+
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const input = ev.target.closest && ev.target.closest('.sx-qty__in');
+    if (!input || ev.button !== 0) return;
+    scrub = { x: ev.clientX, base: qty, limit: scrubLimit(), moved: false, id: ev.pointerId, input };
+  });
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!scrub || ev.pointerId !== scrub.id) return;
+    const dx = ev.clientX - scrub.x;
+    if (!scrub.moved && Math.abs(dx) < 4) return;
+    if (!scrub.moved) {
+      scrub.moved = true;
+      try { scrub.input.setPointerCapture(ev.pointerId); } catch (_) {}
+      consoleEl.classList.add('is-scrubbing');
+    }
+    ev.preventDefault();
+    const steps = Math.sign(dx) * Math.floor(Math.pow(Math.abs(dx) / 6, 1.25));
+    const next = Math.max(0, Math.min(scrub.limit, scrub.base + steps));
+    if (next === qty) return;
+    qty = next;
+    scrub.input.value = String(qty);
+    // no selection may grow under the drag: park the caret at the end of the number
+    try { scrub.input.setSelectionRange(scrub.input.value.length, scrub.input.value.length); } catch (_) {}
+    // One quote per frame, and only the console's: the pointer can fire far faster than a frame,
+    // and the quote above (its trace, its readings) does not depend on the quantity until release.
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  });
+  let scrubFrame = 0;
+  function refreshSaleLine() {
+    const line = quoteEl.querySelector('[data-sale-line]');
+    if (!line) return;
+    const state = ctx.state || {};
+    const r = tradedList(state).find((x) => x.id === selectedId);
+    if (!r) return;
+    const html = saleLineHtml({ sell: unitSell(r.entry, r.def), saleQty: qty, saleQuote: contemplatedSaleQuote(stationId(state), r.id, qty) });
+    if (line.outerHTML !== html) line.outerHTML = html;
+  }
+  function flushScrub() {
+    scrubFrame = 0;
+    renderConsole(ctx.state || {}, { receiptOnly: true });
+    refreshSaleLine();
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+  }
+  consoleEl.addEventListener('selectstart', (ev) => { if (scrub && scrub.moved) ev.preventDefault(); });
+  function endScrub(ev) {
+    if (!scrub || (ev && ev.pointerId !== scrub.id)) return;
+    const moved = scrub.moved;
+    scrub = null;
+    consoleEl.classList.remove('is-scrubbing');
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    if (moved) { renderStage(ctx.state || {}); renderConsole(ctx.state || {}); }
+  }
+  consoleEl.addEventListener('pointerup', endScrub);
+  consoleEl.addEventListener('pointercancel', endScrub);
+  consoleEl.addEventListener('keydown', (ev) => {
+    if (!ev.target.classList || !ev.target.classList.contains('sx-qty__in')) return;
+    if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+    ev.preventDefault();
+    const step = ev.shiftKey ? 10 : 1;
+    qty = Math.max(0, Math.min(scrubLimit(), qty + (ev.key === 'ArrowUp' ? step : -step)));
+    ev.target.value = String(qty);
+    renderStage(ctx.state || {});
+    renderConsole(ctx.state || {}, { receiptOnly: true });
   });
 
   consoleEl.addEventListener('input', (ev) => {

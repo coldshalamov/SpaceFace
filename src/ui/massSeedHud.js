@@ -9,32 +9,54 @@
 //
 // Reads only: state.massSeed, state.player.massSeed, entities, helpers.worldToScreen.
 // Writes only: its own DOM subtree. No sim state. Fully guarded headless.
+//
+// INST-01: the seed tell is an instrument on the deck, not a cyan web pill. The injected sheet
+// paints only with the tokens that already live on #hud / :root (deckplate register,
+// src/ui/deckplate/): the flight glass face, the etched legend voice, and the warm lamp as the
+// one accent (danger is the lamp driven red). The lock marker is the same lamp — state keeps
+// living in SHAPE (dashed when offscreen/reduced-motion), never in a second hue.
 
-const MASS_SEED_HUD_CSS = `
+export const MASS_SEED_HUD_CSS = `
 .sf-mseed-root { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
 .sf-mseed-pill {
   position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%);
-  display: none; align-items: center; gap: 8px; padding: 4px 12px;
-  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em;
-  color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
-  border-radius: 3px; pointer-events: none; white-space: nowrap;
+  display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
+  font-family: var(--dp-face-etch, var(--hud-data, system-ui));
+  font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
+  font-variation-settings: "wght" 720, "wdth" 68; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--hud-paper, var(--dp-ink, #e8e2d4));
+  background: var(--dp-glass-flight, rgb(18 23 29 / .82));
+  border: 1px solid var(--hud-line, var(--dp-metal-4, #2f3542));
+  border-left: 2px solid var(--dp-lamp, #f2b950);
+  border-radius: var(--dp-r-instrument, 3px);
+  box-shadow: none;
+  text-shadow: var(--dp-emit, none);
+  pointer-events: none; white-space: nowrap;
 }
-.sf-mseed-pill .mseed-tag { font-weight: 700; }
-.sf-mseed-pill.mseed-warning { color: #ffd9a0; border-color: rgba(240, 170, 70, 0.65); }
-.sf-mseed-pill.mseed-cooldown { color: #9fb4c8; border-color: rgba(120, 140, 160, 0.35); }
+.sf-mseed-pill.mseed-warning { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-mseed-pill.mseed-cooldown { color: var(--dp-ink-mute, #96948e); border-left-color: var(--dp-lamp-dim, #8a6b3a); text-shadow: var(--dp-etch-shadow, none); }
 .sf-mseed-mark { position: absolute; display: none; pointer-events: none; will-change: transform; }
-.sf-mseed-mark.mseed-offscreen { filter: drop-shadow(0 0 7px rgba(2, 6, 11, 0.92)); }
+.sf-mseed-mark.mseed-offscreen { filter: drop-shadow(0 0 7px var(--dp-shade-edge, rgb(2 3 5 / .9))); }
 .sf-mseed-mark.mseed-offscreen .mseed-diamond { border-style: dashed; }
 .sf-mseed-mark .mseed-diamond {
   width: 12px; height: 12px; margin: -6px 0 0 -6px;
-  border: 2px solid rgba(140, 215, 250, 0.9); transform: rotate(45deg);
-  background: rgba(20, 40, 60, 0.35);
+  border: 2px solid var(--dp-lamp, #f2b950); transform: rotate(45deg);
+  background: var(--dp-shade, rgb(2 3 5 / .55));
 }
 .sf-mseed-mark .mseed-mark-label {
-  position: absolute; left: 10px; top: -8px; font: 600 12px/1.35 "Segoe UI", system-ui, sans-serif;
-  letter-spacing: .06em; color: #bfe6ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
+  position: absolute; left: 10px; top: -8px;
+  font-family: var(--dp-face-etch, var(--hud-data, system-ui));
+  font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.35;
+  font-variation-settings: "wght" 720, "wdth" 68; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--hud-paper, var(--dp-ink, #e8e2d4));
+  text-shadow: var(--dp-etch-shadow, 0 1px 2px rgb(0 0 0 / .8)); white-space: nowrap;
 }
 .sf-mseed-root.mseed-reduced-motion .sf-mseed-mark .mseed-diamond { border-style: dashed; }
+@media (forced-colors: active) {
+  .sf-mseed-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; text-shadow: none; forced-color-adjust: none; }
+  .sf-mseed-mark .mseed-diamond { border-color: CanvasText; background: Canvas; forced-color-adjust: none; }
+  .sf-mseed-mark .mseed-mark-label { color: CanvasText; text-shadow: none; }
+}
 `;
 
 function viewportExtent(primary, fallback, dflt) {

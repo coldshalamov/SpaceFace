@@ -23,7 +23,6 @@ export function createBus() {
   const listeners = new Map(); // event -> Set<fn>
   const listenerSnapshots = new Map(); // event -> { dirty, fns }
   let deferred = [];
-  const dispatchPool = [];
   const deferredPool = [];
   const sliceBudgets = new Map();
   let emitSlice = null;
@@ -59,33 +58,33 @@ export function createBus() {
     if (!set || set.size === 0) return null;
     let snap = listenerSnapshots.get(event);
     if (!snap) {
-      snap = { dirty: true, fns: [] };
+      snap = { dirty: true, fns: null };
       listenerSnapshots.set(event, snap);
     }
     if (snap.dirty) {
-      snap.fns.length = 0;
-      set.forEach((fn) => snap.fns.push(fn));
+      // Publish a NEW array instead of mutating snap.fns in place: an emit already iterating the
+      // old array (re-entrant emit of the same event, or a listener that on/off's mid-dispatch)
+      // keeps its captured set, exactly like a per-emit copy — without the per-emit copy.
+      const fns = new Array(set.size);
+      let i = 0;
+      set.forEach((fn) => { fns[i++] = fn; });
+      snap.fns = fns;
       snap.dirty = false;
     }
     return snap.fns;
   }
 
   function emitAll(event, payload) {
-    const snapshot = snapshotListeners(event);
-    if (!snapshot) return;
-    const pooled = dispatchPool.pop() || [];
-    pooled.length = 0;
-    for (let i = 0; i < snapshot.length; i++) pooled.push(snapshot[i]);
-    dispatchRange(pooled, payload, event, 0, pooled.length);
-    pooled.length = 0;
-    dispatchPool.push(pooled);
+    const fns = snapshotListeners(event);
+    if (!fns) return;
+    dispatchRange(fns, payload, event, 0, fns.length);
   }
 
   function startEmitSlice(event, payload, budget) {
     emitSlice = null;
     const fns = snapshotListeners(event);
     if (!fns) return;
-    emitSlice = { event, payload, fns: fns.slice(), index: 0 };
+    emitSlice = { event, payload, fns, index: 0 };
     drainEmitSlice(budget);
   }
 
@@ -151,7 +150,6 @@ export function createBus() {
     listeners.clear();
     listenerSnapshots.clear();
     deferred = [];
-    dispatchPool.length = 0;
     deferredPool.length = 0;
     sliceBudgets.clear();
     emitSlice = null;

@@ -415,7 +415,7 @@ test('plasma stream reuses one fallback identity without sockets or owner', () =
   stream.dispose();
 });
 
-test('the drive spools over roughly half to three-quarters second and cools slower', () => {
+test('full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second', () => {
   const env = createDriveEnvelope();
   const input = { throttle: 1, speedNorm: 0, boosting: false, dashFired: false, alive: true };
   const dt = 1 / 120;
@@ -428,14 +428,25 @@ test('the drive spools over roughly half to three-quarters second and cools slow
       break;
     }
   }
-  assert.ok(tTo90 > 0.35 && tTo90 < 0.8, `reached 90% at ${tTo90.toFixed(3)}s`);
+  assert.ok(tTo90 > 0 && tTo90 <= 0.12, `reached 90% at ${tTo90.toFixed(3)}s`);
+  input.throttle = 0;
+  let tDark = 0;
+  for (let i = 0; i < 600; i++) {
+    integrateDriveEnvelope(env, input, dt);
+    if (env.spool <= 0.02) {
+      tDark = (i + 1) * dt;
+      break;
+    }
+  }
+  assert.ok(tDark > 0 && tDark <= 0.25, `went dark at ${tDark.toFixed(3)}s`);
   assert.ok(RATES.spoolFallTau > RATES.spoolRiseTau);
   assert.ok(RATES.boostFallTau > RATES.boostRiseTau);
   assert.ok(RATES.boostRiseTau < RATES.spoolRiseTau * 0.5);
 });
 
-test('idle glows and speed contributes a bounded share throttle cannot swallow', () => {
-  assert.equal(resolveDriveTarget(0, 0), IDLE_FLOOR);
+test('zero throttle is dark and speed contributes only while the throttle is open', () => {
+  assert.equal(resolveDriveTarget(0, 0), 0);
+  assert.equal(resolveDriveTarget(0, 1), 0, 'coasting does not keep the plume lit');
 
   const parked = resolveDriveTarget(1, 0);
   const hauling = resolveDriveTarget(1, 1);
@@ -443,7 +454,6 @@ test('idle glows and speed contributes a bounded share throttle cannot swallow',
   const share = (hauling - parked) / (1 - IDLE_FLOOR);
   assert.ok(Math.abs(share - SPEED_SHARE) < 0.02);
   assert.ok(hauling <= 1.0001);
-  assert.ok(resolveDriveTarget(0, 1) < 0.5, 'coasting is residual heat, not full burn');
 });
 
 test('ordinary helm yaw keeps the live jet and its history on the yawing nozzle', () => {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "048c751545c8914bfe6b2505267ca9e867dfbefb969254d3790526738721f4d7",
+  "contentHash": "7b325527b89963dfb648e0564674d0199ad63ec685576a452538ec06461af910",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2845,14 +2845,14 @@
       "uri": "place_shuttle_dock.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 98292,
-    "sha256": "1cfe7574c6ba3961fa7fbddd565971abd1177048f9be9721c72681701a117643",
+    "sha256": "db751eae722929436661e2179b13debf25d5fa4062b7cda9da920cfb96697c42",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4089,7 +4089,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "ce323efc216ca441194a720332eb7b31aa1aabc7282d5955e21a4e2b63900c6e",
+  "runtimeHash": "4ba18b3107c7b65ffcc721e60d8a7956bf721271cf300b1b47fa64de25715734",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

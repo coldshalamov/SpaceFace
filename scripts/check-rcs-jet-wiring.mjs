@@ -60,6 +60,7 @@ function shipAt(overrides = {}) {
 function harness(actuators, entity = shipAt()) {
   const fires = [];
   const updates = [];
+  const retroUpdates = [];
   let particleSpawns = 0;
   const rcsSystem = {
     pool: { activeImpulseCount: 0 },
@@ -67,6 +68,19 @@ function harness(actuators, entity = shipAt()) {
       fires.push({ origin: [...origin], axis: [...axis], strength });
     },
     update(dt, a11y) { updates.push({ dt, a11y: { ...a11y } }); },
+  };
+  const retroVolume = {
+    spool: 0,
+    bite: 0,
+    update(dt, sockets, params) {
+      retroUpdates.push({
+        dt,
+        sockets: sockets.map((s) => ({ x: s.x, y: s.y, z: s.z, ax: s.ax, ay: s.ay, az: s.az })),
+        params: { ...params },
+      });
+      return { live: sockets.length };
+    },
+    reset() {},
   };
   const ctx = Object.create(vfx);
   const defaultScale = resolveActuatorScale(null);
@@ -86,7 +100,7 @@ function harness(actuators, entity = shipAt()) {
       settings: { video: { engineTrails: true } },
       flightRuntime: { telemetry: { actuators } },
     },
-    _energy: { rcsSystem, rcsCooldown: 0, plumeDrive: 0, boostBlend: 0 },
+    _energy: { rcsSystem, retroVolume, rcsCooldown: 0, plumeDrive: 0, boostBlend: 0 },
     _driveScratch: { drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0 },
     _mainDriveDemandScratch: { main: 0, reverse: 0, retroOnly: false },
     _rcsPoseScratch: { x: 0, z: 0, rot: 0, radius: 6 },
@@ -101,11 +115,22 @@ function harness(actuators, entity = shipAt()) {
     _entityLocalXZ: { x: 0, z: 0 },
     _frameMembrane: null,
     _spawnLocalXZ: { x: 0, z: 0 },
+    _retroSockets: [
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+    ],
+    _retroSocketView: [],
+    _retroHeldSockets: [
+      { lx: 0, lz: 0, lax: 1, laz: 0 },
+      { lx: 0, lz: 0, lax: 1, laz: 0 },
+    ],
+    _retroHeldCount: 0,
+    _retroParams: {},
     _productionRcsFirings: productionRcsFirings,
     _toLocalXZ(x, z, out) { out.x = x; out.z = z; return out; },
     _spawnParticle() { particleSpawns++; },
   });
-  return { ctx, fires, updates, particleSpawns: () => particleSpawns };
+  return { ctx, fires, updates, retroUpdates, particleSpawns: () => particleSpawns };
 }
 
 function expectedFirings(actuators, entity) {
@@ -127,15 +152,36 @@ function assertProductionBinding(input, bodyOverrides = {}) {
     lowQuality: false,
     qualityTier: 'high',
   });
-  assert.equal(h.fires.length, expected.length, 'production pool must receive every resolved nozzle');
-  for (let i = 0; i < expected.length; i++) {
+  // Impulse pool carries the discrete lateral/yaw pops; sustained reverse rides the continuous
+  // retro volume instead, so a held brake does not render as a line of discrete pops.
+  const impulseExpected = expected.filter((f) => f.role !== 'reverse-left' && f.role !== 'reverse-right');
+  const retroExpected = expected.filter((f) => f.role === 'reverse-left' || f.role === 'reverse-right');
+  assert.equal(h.fires.length, impulseExpected.length,
+    'production impulse pool must receive every resolved lateral/yaw nozzle');
+  for (let i = 0; i < impulseExpected.length; i++) {
     const actual = h.fires[i];
-    const want = expected[i];
+    const want = impulseExpected[i];
     assert.ok(Math.abs(actual.origin[0] - want.x) < 1e-9);
     assert.ok(Math.abs(actual.origin[2] - want.z) < 1e-9);
     assert.ok(Math.abs(actual.axis[0] - want.dirX) < 1e-9);
     assert.ok(Math.abs(actual.axis[2] - want.dirZ) < 1e-9);
     assert.ok(Math.abs(actual.strength - want.intensity) < 1e-9);
+  }
+  assert.equal(h.retroUpdates.length, retroExpected.length ? 1 : 0,
+    'sustained reverse demand must reach the retro volume exactly once per frame');
+  if (retroExpected.length) {
+    const sock = h.retroUpdates[0].sockets;
+    assert.equal(sock.length, retroExpected.length,
+      'retro volume must receive every resolved reverse nozzle');
+    for (let i = 0; i < retroExpected.length; i++) {
+      const want = retroExpected[i];
+      assert.ok(Math.abs(sock[i].x - want.x) < 1e-9);
+      assert.ok(Math.abs(sock[i].z - want.z) < 1e-9);
+      // Socket convention: ax/az points opposite the exhaust, so it equals the push direction.
+      assert.ok(Math.abs(sock[i].ax - (-want.dirX)) < 1e-9);
+      assert.ok(Math.abs(sock[i].az - (-want.dirZ)) < 1e-9);
+      assert.ok(h.retroUpdates[0].params.drive > 0, 'reverse demand must light the retro envelope');
+    }
   }
   assert.equal(h.particleSpawns(), 0, 'production RCS must not fall back to particle puffs');
   assert.equal(h.updates.length, 1, 'the production pool lifecycle must advance');
@@ -342,9 +388,21 @@ pass('assist and counter-torque RCS remain visible without corresponding input k
     lowQuality: false,
     qualityTier: 'high',
   });
-  assert.equal(h.fires.length, 2, 'reverse remains a balanced geometric retro pair');
-  assert.ok(h.fires.every((entry) => entry.axis[0] > 0.999 && Math.abs(entry.axis[2]) < 1e-9),
-    'lateral authored sockets must not redirect longitudinal retro exhaust');
+  assert.equal(h.fires.length, 0,
+    'sustained reverse demand stays off the discrete impulse pool');
+  assert.equal(h.retroUpdates.length, 1, 'the retro volume receives the held brake demand');
+  const sock = h.retroUpdates[0].sockets;
+  const retroExpected = resolveRcsFirings(
+    braking,
+    { x: entity.pos.x, z: entity.pos.z, rot: entity.rot, radius: entity.radius },
+    resolveActuatorScale(PROPULSION_PROFILES.drive_reaction_m),
+  ).filter((f) => f.role === 'reverse-left' || f.role === 'reverse-right');
+  assert.equal(sock.length, retroExpected.length, 'reverse remains a balanced geometric retro pair');
+  for (let i = 0; i < retroExpected.length; i++) {
+    assert.ok(Math.abs(sock[i].ax - (-retroExpected[i].dirX)) < 1e-9
+      && Math.abs(sock[i].az - (-retroExpected[i].dirZ)) < 1e-9,
+      'lateral authored sockets must not redirect longitudinal retro exhaust');
+  }
   pass('authored lateral sockets preserve the distinct geometric reverse-jet fallback');
 }
 

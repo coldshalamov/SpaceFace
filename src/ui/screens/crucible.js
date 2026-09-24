@@ -12,6 +12,7 @@
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { IS_DEMO } from '../../core/demoMode.js';
 import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
@@ -25,6 +26,9 @@ import {
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import { createStationRow } from '../orrery/stopDial.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { createDeathDial } from '../orrery/deathDial.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -36,6 +40,8 @@ import {
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
+import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
+import { dpIcon } from '../deckplate/icons.js';
 import {
   dailySeedForNow,
   ghostRaceOffer,
@@ -45,22 +51,38 @@ import {
   weeklyMutatorForNow,
   bestLineRows,
   normalizeBestLine,
+  OVERCONFIDENCE_STREAK_AT,
   roundProgress,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
+  doorRunShareCode,
   ghostShareForRun,
   importGhostShareText,
   runShareCodeForRun,
   shareTextHref,
 } from './shareCode.js';
+import {
+  buildSandboxLaunchConfig,
+  requestSandboxGame,
+  SCENARIO_PRESETS,
+} from '../sandbox/sandboxSetup.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
-import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
+import {
+  availableOptions,
+  isModeAvailable,
+  isStarterAvailable,
+  meetsUnlockCondition,
+  starterUnlockEntry,
+} from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
+import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunRules.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins }
+  from '../kit/computedMaterial.js';
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -90,8 +112,15 @@ function pin(node, props) {
   }
   return node;
 }
+// ORRERY (design/frontend/ORRERY.md §6 Crucible): the Field Hardware helpers pinned plates, key
+// sprites and tile panes inline with !important. Under ORRERY they only mark nodes for the composition
+// sheet (src/ui/orrery/screenLayouts.js, .orr-crucible) and pin nothing; ids, hooks, aria and
+// handlers are untouched.
+const ORRERY = true;
+const mark = (node, ...cls) => { if (node && node.classList && typeof node.classList.add === 'function') node.classList.add(...cls); return node; };
 function paintMarking(node) {
   if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-title', 'orr-mark');
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-title');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -109,6 +138,10 @@ function paintMarking(node) {
 }
 function paintLegend(node, lit = false) {
   if (!node) return node;
+  if (ORRERY) {
+    if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+    return mark(node, 'fh-legend', 'orr-legend');
+  }
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-legend');
   if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) {
     node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
@@ -125,24 +158,20 @@ function paintLegend(node, lit = false) {
 }
 function paintWindow(node) {
   if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-window', 'orr-window');
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-window', 'fh-window--deep');
   if (forcedColorsActive()) {
     return pin(node, { 'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid', background: 'transparent' });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + fhUrl('windows/window.glass.deep.png') + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins('deep', '20px'),
     'box-sizing': 'border-box',
     padding: '12px 16px',
-    background: 'transparent',
   });
 }
 function paintInput(input) {
   if (!input) return input;
+  if (ORRERY) return mark(input, 'fh-input', 'orr-input');
   if (input.classList && typeof input.classList.add === 'function') input.classList.add('fh-input');
   const apply = (state) => {
     if (forcedColorsActive()) {
@@ -150,13 +179,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -177,6 +200,7 @@ function paintInput(input) {
 }
 function paintKey(button, kind = 'legend') {
   if (!button) return button;
+  if (ORRERY) { mark(button, 'k-word', 'orr-key', 'orr-key--' + kind); button._fhSync = () => {}; return button; }
   const spec = FH_KEY[kind] || FH_KEY.legend;
   if (button.classList && typeof button.classList.add === 'function') {
     button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
@@ -202,12 +226,7 @@ function paintKey(button, kind = 'legend') {
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -235,8 +254,8 @@ function paintKey(button, kind = 'legend') {
 }
 function paintTile(button, selected) {
   if (!button) return button;
+  if (ORRERY) return mark(button, 'fh-tile', 'orr-tile');
   if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
-  const src = selected ? fhUrl('windows/window.viewport.png') : fhUrl('windows/window.glass.png');
   if (forcedColorsActive()) {
     return pin(button, {
       'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
@@ -247,35 +266,44 @@ function paintTile(button, selected) {
   // Fixed 132x116 tiles made the three tile rows of the door (approved/frames/frame-crucible-door.png)
   // taller than the stage at every default viewport below 1080p, so the hull row scrolled out of
   // sight: the player saw the mode row and never learned there was a hull to pick.
+  // Hull tiles set data-tile-fit="fill" so eight kits stay one row. A second row pushed Bolt
+  // and Hinge under the window edge, where they read as cut-off squares.
+  const fill = button.dataset && button.dataset.tileFit === 'fill';
   return pin(button, {
     display: 'grid',
     'grid-template-rows': '1fr auto',
-    width: 'calc(132px * var(--k-s, 1))',
-    'min-width': 'calc(132px * var(--k-s, 1))',
-    'min-height': 'calc(116px * var(--k-s, 1))',
+    width: fill ? '100%' : 'calc(132px * var(--k-s, 1))',
+    'min-width': fill ? '0' : 'calc(132px * var(--k-s, 1))',
+    'max-width': fill ? '100%' : 'none',
+    'min-height': fill ? 'calc(96px * var(--k-s, 1))' : 'calc(116px * var(--k-s, 1))',
     padding: '0',
     cursor: 'pointer',
     'box-sizing': 'border-box',
-    background: 'transparent',
     color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + src + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins(selected ? 'viewport' : 'glass', '20px'),
   });
 }
-function choiceTile(label, className, artSrc) {
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function choiceTile(label, className, artSrc, iconName) {
   const button = el('button', 'fh-tile ' + className);
   button.type = 'button';
   const art = el('span', 'fh-tile-art');
-  const img = el('img');
-  img.src = artSrc;
-  img.alt = '';
-  if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
-  pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
-  art.appendChild(img);
+  if (iconName) {
+    // Inline, not <img>: kit SVGs are currentColor, and an external image paints black
+    // on the glass — a blank square. Forced colours keeps inline SVG.
+    const markup = dpIcon(iconName, 48, { className: 'sf-crd-glyph' });
+    if (markup && typeof art.insertAdjacentHTML === 'function') art.insertAdjacentHTML('beforeend', markup);
+  } else if (artSrc) {
+    const img = el('img');
+    img.src = artSrc;
+    img.alt = '';
+    if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
+    pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
+    art.appendChild(img);
+  }
   button.appendChild(art);
   button.appendChild(el('span', 'fh-tile-legend', label));
   paintTile(button, false);
@@ -294,12 +322,14 @@ const MODE_TILE = Object.freeze({
   scored: 'assets/tiles/tile.mode.gauntlet.png',
 });
 const HULL_ICON = Object.freeze({
-  web_weaver: 'icons/48/icon-line.svg',
-  ricochet_runner: 'icons/48/icon-boost.svg',
-  energy_baseline: 'icons/48/icon-energy.svg',
-  kinetic_baseline: 'icons/48/icon-weapon.svg',
-  physics_toolkit: 'icons/48/icon-well.svg',
-  massline_rig: 'icons/48/icon-tow.svg',
+  web_weaver: 'line',
+  ricochet_runner: 'boost',
+  energy_baseline: 'energy',
+  kinetic_baseline: 'weapon',
+  physics_toolkit: 'well',
+  massline_rig: 'tow',
+  hornet_fast_clumsy: 'drive',
+  hornet_nimble_slow: 'brake',
 });
 const ARENA_TILE = Object.freeze({
   helios_core: 'assets/tiles/tile.arena.ricochet-foundry.png',
@@ -599,6 +629,7 @@ export const crucibleScreen = {
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
     pin(rootEl, { background: 'transparent' });
+    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
 
     const previous = lastCrucibleSetup();
     let starterId = crucibleStarterIdForSetup(previous);
@@ -610,6 +641,11 @@ export const crucibleScreen = {
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
     let doorProfile = null;
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
+    if (!isStarterAvailable(doorProfile, starterId)) starterId = 'ricochet_runner';
+    if (ruleset === 'boss_circuit' && !isModeAvailable(doorProfile, 'boss_circuit')) {
+      ruleset = CRUCIBLE_DEFAULT_RULESET;
+    }
+    const selectedModifiers = new Set();
     let raceGhost = !!(previous && previous.ghostHash);
     // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
     let pendingShare = null;
@@ -627,6 +663,37 @@ export const crucibleScreen = {
     paintLegend(sub, true);
     title.appendChild(sub);
     rootEl.appendChild(title);
+
+    // ORRERY §6 door: the arena you are about to fight in stands at the right as its own produced
+    // render, large, with its name engraved under it; choosing another arena cross-fades it. The
+    // form keeps the left. For the eye only: the arena tiles carry the words and the choice.
+    let paintHero = () => {};
+    if (ORRERY && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+      const hero = el('div', 'orr-door-hero');
+      hero.setAttribute('aria-hidden', 'true');
+      const layers = [el('img', 'orr-door-hero__art'), el('img', 'orr-door-hero__art')];
+      for (const img of layers) { img.alt = ''; img.decoding = 'async'; hero.appendChild(img); }
+      const heroName = el('p', 'orr-door-hero__name', '');
+      const heroLine = el('p', 'orr-door-hero__line', '');
+      const heroWords = el('div', 'orr-door-hero__words');
+      heroWords.append(heroName, heroLine);
+      hero.appendChild(heroWords);
+      rootEl.appendChild(hero);
+      let front = 0;
+      let shown = null;
+      paintHero = (id, name, line) => {
+        const src = kitUrl((ARENA_TILE[id] || ARENA_TILE.helios_core).replace(/\.png$/, '@2x.png'));
+        heroName.textContent = name || '';
+        heroLine.textContent = line || '';
+        if (shown === src) return;
+        shown = src;
+        const next = layers[1 - front];
+        next.src = src;
+        next.classList.add('is-on');
+        layers[front].classList.remove('is-on');
+        front = 1 - front;
+      };
+    }
 
     // .k-stage — Mode, Hull and Seed as imaged tiles inside a smoked window.
     const stage = el('section', 'k-stage fh-window fh-window--deep');
@@ -686,6 +753,25 @@ export const crucibleScreen = {
       modeButtons.push(card);
       addWord(modes, card);
     }
+    if (isModeAvailable(doorProfile, 'boss_circuit')) {
+      const card = choiceTile('Boss Circuit', 'sf-crd-mode', kitUrl(MODE_TILE.scored));
+      card.dataset.ruleset = 'boss_circuit';
+      syncChoice(card, ruleset === 'boss_circuit');
+      card.addEventListener('click', () => {
+        if (daily) {
+          daily = false;
+          if (freeSeed) seedInput.value = freeSeed;
+        }
+        practiceQueued = false;
+        ruleset = 'boss_circuit';
+        for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+        if (dailyButton) syncChoice(dailyButton, false);
+        cue('confirm');
+        syncMode();
+      });
+      modeButtons.push(card);
+      addWord(modes, card);
+    }
     dailyButton = choiceTile(DAILY_CARD.label, 'sf-crd-daily', kitUrl('assets/tiles/tile.mode.daily.png'));
     syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
@@ -732,14 +818,49 @@ export const crucibleScreen = {
     const ghostBlurb = el('p', 'k-t-fine k-38 sf-crd-ghost-sub', GHOST_CARD.blurbOff);
     modeBody.appendChild(ghostBlurb);
 
+    // The challenge terms, computed once for the launch and the ghost offer alike, so the
+    // compatibility check races the same configuration the Enter key will stamp. INF-037.
+    function doorChallengeTerms() {
+      const shareMutators = pendingShare ? pendingShare.mutators : [];
+      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
+      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
+      const challengeMutators = shareMutators.concat(
+        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
+      );
+      for (const id of selectedModifiers) {
+        if (id && !challengeMutators.includes(id)) challengeMutators.push(id);
+      }
+      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
+      return { shareMutators, shareWeeklyId, weeklyMutatorId, challengeMutators, shareDailyKey };
+    }
+
+    // The pending run's launch config in record-rules shape — the same fields a settled run
+    // stamps, minus difficulty, which varies wave by wave and the door never selects. INF-037.
+    function currentGhostRules() {
+      const terms = doorChallengeTerms();
+      return {
+        mode: practiceQueued ? 'practice' : (ruleset === SWARM_RULESET ? 'swarm' : (ruleset ?? 'arc')),
+        arenaId: arenaId || null,
+        ...STUNT_RULE_REVISIONS,
+        loadoutRules: JSON.stringify({ ruleset, mutators: terms.challengeMutators, starter: starterId ?? null }),
+        simulationAssistProfile: stuntAssistProfile(ctx.state),
+      };
+    }
+
     function currentGhostOffer() {
-      return ghostRaceOffer(doorProfile, normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)));
+      return ghostRaceOffer(
+        doorProfile,
+        normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)),
+        currentGhostRules(),
+      );
     }
 
     function syncGhost() {
       const offer = currentGhostOffer();
       if (!offer.available) raceGhost = false;
-      ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
+      // The offer's own blurb names the compatibility — same rules, unknown stamp, or the
+      // exact fields that differ — beside the ghost record. INF-037.
+      ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
       syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
     }
@@ -769,9 +890,12 @@ export const crucibleScreen = {
       const week = weeklyDoorCard();
       if (daily) {
         sub.textContent = DAILY_CARD.blurb;
+        // INF-038: the current daily challenge names itself — UTC date key and seed — so the
+        // door shows WHICH shared run today is, not just that a daily exists.
+        const challenge = `Today's challenge ${utcDateKeyNow()} · seed ${dailySeedForNow()}.`;
         modeSentence.textContent = weekly
-          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb}`
-          : DAILY_CARD.sub;
+          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb} ${challenge}`
+          : `${DAILY_CARD.sub} ${challenge}`;
         if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
         seedInput.readOnly = true;
         seedInput.setAttribute('aria-readonly', 'true');
@@ -784,7 +908,13 @@ export const crucibleScreen = {
         syncGhost();
         return;
       }
-      const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
+      const entry = ruleset === 'boss_circuit'
+        ? {
+          blurb: 'Five champions. Refit between them. No drafts.',
+          sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
+          verb: 'Enter the circuit',
+        }
+        : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]);
       sub.textContent = entry.blurb;
       modeSentence.textContent = weekly ? week.sub : entry.sub;
       if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
@@ -807,14 +937,53 @@ export const crucibleScreen = {
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     function syncHull() {
       const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
-      hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      if (starter && starter.hullId) {
+        const name = entityLabel('hull:' + starter.hullId) || starter.hullId.replace(/^ship_/, '');
+        const blurb = hullBlurb(starter);
+        hullSentence.innerHTML = blurb.startsWith(name)
+          ? `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))}${escapeHtml(blurb.slice(name.length))}`
+          : `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))} — ${escapeHtml(blurb)}`;
+      } else {
+        hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      }
       for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
-      const card = choiceTile(starter.label, 'sf-crd-hull', kitUrl(HULL_ICON[starter.id] || 'icons/48/icon-hull.svg'));
+      const open = isStarterAvailable(doorProfile, starter.id);
+      const face = starter.id === 'hornet_fast_clumsy' ? 'Bolt'
+        : starter.id === 'hornet_nimble_slow' ? 'Hinge'
+          : starter.label;
+      const card = choiceTile(face, 'sf-crd-hull', '', HULL_ICON[starter.id] || 'hull');
+      card.dataset.tileFit = 'fill';
       card.dataset.starterId = starter.id;
+      if (!open) {
+        const row = starterUnlockEntry(starter.id);
+        const earn = row ? unlockConditionText(row) : 'Closed.';
+        card.dataset.locked = '1';
+        card.dataset.earn = earn;
+        card.title = earn;
+        card.setAttribute('aria-label', `${starter.label}. ${earn}`);
+        const badge = el('span', 'sf-crd-lock');
+        const mark = dpIcon('lock', 18, { className: 'sf-crd-lock-glyph' });
+        if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+        badge.setAttribute('aria-hidden', 'true');
+        card.appendChild(badge);
+      }
       syncChoice(card, starter.id === starterId);
       card.addEventListener('click', () => {
+        if (!isStarterAvailable(doorProfile, starter.id)) {
+          // A whole sentence: which kit, that it is locked, and what opens it. The bare condition
+          // ("clear wave 10") read as a stray fragment where the build's description had been.
+          const row = starterUnlockEntry(starter.id);
+          const earn = row ? unlockConditionText(row) : '';
+          hullSentence.dataset.kind = 'earn';
+          hullSentence.textContent = earn
+            ? `${face} is locked — ${earn} to open it.`
+            : `${face} is locked.`;
+          cue('deny');
+          return;
+        }
+        delete hullSentence.dataset.kind;
         starterId = starter.id;
         cue('confirm');
         syncHull();
@@ -824,6 +993,36 @@ export const crucibleScreen = {
     }
     hullBody.appendChild(hulls);
     hullBody.appendChild(hullSentence);
+
+    const earnedDoor = availableOptions(doorProfile);
+    const modifierChoices = [];
+    for (const id of earnedDoor.mutators) {
+      const def = SURVIVAL_MUTATOR_BY_ID[id];
+      modifierChoices.push({ id, label: def && def.label ? def.label : id });
+    }
+    if (earnedDoor.trials.includes('trial_one_hull')) modifierChoices.push({ id: 'one_hull', label: 'One hull' });
+    if (earnedDoor.trials.includes('trial_one_weapon')) modifierChoices.push({ id: 'one_weapon', label: 'One weapon' });
+    if (modifierChoices.length) {
+      const modBody = settingRow('Modifiers', 'sf-crd-row--modifiers');
+      const modList = el('ul', 'k-words k-words--row sf-crd-modifiers');
+      modList.setAttribute('aria-label', 'Earned modifiers');
+      for (const choice of modifierChoices) {
+        const button = word(choice.label, 'k-word--fine sf-crd-modifier');
+        button.dataset.modifierId = choice.id;
+        button.addEventListener('click', () => {
+          if (selectedModifiers.has(choice.id)) selectedModifiers.delete(choice.id);
+          else selectedModifiers.add(choice.id);
+          const on = selectedModifiers.has(choice.id);
+          button.setAttribute('aria-pressed', String(on));
+          if (button.classList && typeof button.classList.toggle === 'function') {
+            button.classList.toggle('is-on', on);
+          }
+          cue('confirm');
+        });
+        addWord(modList, button);
+      }
+      modBody.appendChild(modList);
+    }
 
     const arenaBody = settingRow('Arena', 'sf-crd-row--arena');
     const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
@@ -839,6 +1038,8 @@ export const crucibleScreen = {
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
       arenaSentence.textContent = (arenaDescriptions[arenaId] || arenaDescriptions.helios_core)[1];
+      const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
+      paintHero(arenaId, described[0], described[1]);
       for (const button of arenas.querySelectorAll('button')) {
         syncChoice(button, button.dataset.arenaId === arenaId);
       }
@@ -856,19 +1057,10 @@ export const crucibleScreen = {
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
     const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
+    // The well only holds the input: the input's own rail is the one rule under the number. A
+    // well rail beneath it drew a second line, and its 14px frame pushed the number off the caption.
     const seedWell = el('div', 'fh-stepper-well');
-    pin(seedWell, {
-      'border-style': 'solid',
-      'border-width': '14px',
-      'border-image-source': 'url("' + fhUrl('controls/stepper.well.png') + '")',
-      'border-image-slice': '14 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '14px',
-      'min-height': '56px',
-      padding: '0 16px',
-      display: 'inline-flex',
-      'align-items': 'center',
-    });
+    pin(seedWell, { display: 'inline-flex', 'align-items': 'center' });
     const seedInput = el('input', 'k-input k-input--num');
     seedInput.type = 'text';
     seedInput.inputMode = 'numeric';
@@ -898,6 +1090,23 @@ export const crucibleScreen = {
     // never a service. Both fields are plain paste targets; a bad code fails closed with the
     // reason on the note line.
     const shareBody = settingRow('Share', 'sf-crd-row--share');
+    // ORRERY: the share fields live in a drawer under their caption; the word opens it.
+    if (ORRERY && shareBody.parentNode && typeof shareBody.parentNode.querySelector === 'function') {
+      const shareRow = shareBody.parentNode;
+      const cap = shareRow.querySelector('.k-row__name');
+      const toggle = el('button', 'orr-door-drawer', 'Share codes');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('click', () => {
+        const open = !shareRow.classList.contains('is-open');
+        shareRow.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      // the drawer's word sits on the seed row, where the codes belong; the row itself shows only open
+      if (cap) cap.remove();
+      if (seedRow && typeof seedRow.appendChild === 'function') seedRow.appendChild(toggle);
+      else shareRow.insertBefore(toggle, shareBody);
+    }
     const shareNote = el('p', 'k-t-fine k-38 sf-crd-share-sub',
       'A run code sets the seed, the build and the rules. A ghost code adds a hull to race.');
     const codeRow = el('div', 'k-words k-words--row sf-crd-share');
@@ -953,6 +1162,46 @@ export const crucibleScreen = {
     });
     codeRow.appendChild(codeInput);
     codeRow.appendChild(useCode);
+    // INF-038: the share-code action goes both ways. Copy encodes THIS door — starter, seed,
+    // arena, ruleset, mutators, challenge keys — with the same envelope pasting decodes, so a
+    // copied code reproduces the intended configuration. The code lands selected in the field
+    // (manual copy always works); the clipboard write is a best-effort local convenience,
+    // never a service.
+    const copyCode = word('Copy code', 'k-word--fine');
+    paintKey(copyCode, 'small');
+    copyCode.addEventListener('click', () => {
+      const terms = doorChallengeTerms();
+      const dateKey = daily ? utcDateKeyNow() : terms.shareDailyKey;
+      const res = doorRunShareCode({
+        starterId,
+        seed: normalizeSeed(seedInput.value),
+        arenaId,
+        ruleset,
+        mutators: terms.challengeMutators,
+        dailyDateKey: dateKey,
+        weeklyMutatorId: terms.weeklyMutatorId,
+      });
+      if (!res.ok) {
+        shareNote.textContent = res.error || 'Code could not be written for this setup.';
+        cue('deny');
+        return;
+      }
+      codeInput.value = res.code;
+      try { codeInput.focus(); codeInput.select(); } catch { /* manual copy stays available */ }
+      let copied = false;
+      try {
+        const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : null;
+        if (clipboard && typeof clipboard.writeText === 'function') {
+          copied = true;
+          clipboard.writeText(res.code).catch(() => { /* the selected field is the fallback */ });
+        }
+      } catch { /* the selected field is the fallback */ }
+      shareNote.textContent = copied
+        ? 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.'
+        : 'Code ready in the field — copy it from there.';
+      cue('confirm');
+    });
+    codeRow.appendChild(copyCode);
     const ghostRow = el('div', 'k-words k-words--row sf-crd-share');
     const ghostInput = el('input', 'k-input sf-crd-ghost-code');
     ghostInput.type = 'text';
@@ -988,6 +1237,27 @@ export const crucibleScreen = {
     shareBody.appendChild(ghostRow);
     shareBody.appendChild(shareNote);
 
+    // INF-039: the practice room — a fixed sling arrangement on the door, not a setup. One
+    // heavy anchor, two inert targets, the physics kit, one fixed seed. It launches into
+    // live flight through the ordinary sandbox route, but the preset grants nothing, inert
+    // targets pay nothing, and no survival run means no results settle and no records file.
+    // Relaunching rebuilds the identical room, which is the reset.
+    {
+      const practicePreset = SCENARIO_PRESETS.find((preset) => preset && preset.id === 'sling_practice');
+      if (practicePreset) {
+        const practiceRow = el('div', 'k-row sf-crd-practice');
+        const practiceWord = word('Practice room', 'k-word--emph');
+        practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Relaunch to reset.');
+        practiceWord.addEventListener('click', () => {
+          cue('confirm');
+          requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(practicePreset.config));
+        });
+        practiceRow.appendChild(practiceWord);
+        practiceRow.appendChild(el('p', 'k-t-fine k-38', practicePreset.description));
+        settings.appendChild(practiceRow);
+      }
+    }
+
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the
     // profile must never be able to stop the door opening, so a broken or absent profile just
@@ -1014,10 +1284,12 @@ export const crucibleScreen = {
     const foot = el('footer', 'k-foot sf-crd-foot');
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Crucible');
-    const enter = word('Hold the line', 'k-word--emph k-word--primary');
-    enterButton = enter;
-    paintKey(enter, 'hazard');
-    enter.addEventListener('click', () => {
+    // The one launch path, shared by Enter and Quick play. INF-038.
+    function launchCurrent() {
+      if (!isStarterAvailable(doorProfile, starterId)) {
+        cue('deny');
+        return;
+      }
       const setup = crucibleSetupFor({
         starterId,
         seed: normalizeSeed(seedInput.value),
@@ -1039,14 +1311,10 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      const shareMutators = pendingShare ? pendingShare.mutators : [];
-      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
-      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
+      const {
+        shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
+      } = doorChallengeTerms();
       if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
-      const challengeMutators = shareMutators.concat(
-        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
-      );
-      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
       if (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey) {
         const dateKey = daily ? utcDateKeyNow() : shareDailyKey;
         if (dateKey) payload.dailyDateKey = dateKey;
@@ -1064,6 +1332,34 @@ export const crucibleScreen = {
         if (practiceQueued) queuePracticeRun();
       }
       requestCrucibleRun(ctx.bus, payload, ruleset);
+    }
+    const quick = word('Quick play', 'k-word--emph');
+    quick.setAttribute('aria-label', 'Quick play: Swarm now on a fresh seed');
+    quick.title = 'Swarm now on a fresh seed, with this build and arena.';
+    // A key like Back beside it, not loose words in front of the launch key.
+    paintKey(quick, 'small');
+    quick.addEventListener('click', () => {
+      // Quick play is the fast game with nothing to decide: Swarm, a fresh seed, no
+      // challenge keys, no ghost. Hull and arena stay as chosen — those are loadout.
+      ruleset = SWARM_RULESET;
+      daily = false;
+      weekly = false;
+      practiceQueued = false;
+      pendingShare = null;
+      raceGhost = false;
+      seedInput.value = String(freshSeed());
+      freeSeed = seedInput.value;
+      syncMode();
+      syncHull();
+      syncGhost();
+      launchCurrent();
+    });
+    addWord(footWords, quick);
+    const enter = word('Hold the line', 'k-word--emph k-word--primary');
+    enterButton = enter;
+    paintKey(enter, 'hazard');
+    enter.addEventListener('click', () => {
+      launchCurrent();
     });
     addWord(footWords, enter);
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
@@ -1075,6 +1371,9 @@ export const crucibleScreen = {
 
     syncMode();
     syncHull();
+    // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
+    // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
+    if (ORRERY) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
     this._regions = { title, stage, foot, enter };
     // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
     // ready to photograph when its words are built, it is ready when the arena behind them is lit.
@@ -1397,27 +1696,61 @@ export function resultHero(result) {
 export function storySentences(result) {
   if (!result) return [];
   const lines = [];
+  const seen = new Set();
+  // Every line ends as a sentence (survivalResults' moments arrive bare), and none repeats one the
+  // plate already printed -- the headline above the band included.
+  const say = (text) => {
+    const line = sentence(text);
+    const key = line.toLowerCase();
+    if (!line || seen.has(key)) return;
+    seen.add(key);
+    lines.push(line);
+  };
+  if (typeof result.headline === 'string' && result.headline) seen.add(sentence(result.headline).toLowerCase());
   const death = result.death;
+  const attacker = result.defeat && typeof result.defeat.attacker === 'string' && result.defeat.attacker
+    ? result.defeat.attacker : null;
   if (death && typeof death === 'object') {
-    if (typeof death.causeText === 'string' && death.causeText) lines.push(death.causeText);
+    // With a defeat receipt, the headline has already said who killed you, with what and from
+    // where, and "How it ended" lists it row by row. causeText is that same receipt again in its
+    // enum words ("Reaver Corsair · Heavy Autocannon M · AFT · hull breach"), so the story starts
+    // at what the headline cannot say: the tell. causeText earns a line only without a receipt --
+    // the trail-only "... fire took you apart" sentence, which the headline does not carry.
+    if (!attacker && typeof death.causeText === 'string' && death.causeText) say(death.causeText);
     if (typeof death.telegraphName === 'string' && death.telegraphName) {
       const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? Number(death.telegraphLeadMs) : 0;
-      lines.push(`The tell was ${death.telegraphName} — ${lead} ms of warning.`);
+      const tell = lowerFirstWord(death.telegraphName);
+      say(attacker
+        ? `${attacker}'s tell was ${tell} — ${lead} ms of warning.`
+        : `The tell was ${tell} — ${lead} ms of warning.`);
     }
-    if (typeof death.counterplay === 'string' && death.counterplay) lines.push(death.counterplay);
+    if (typeof death.counterplay === 'string' && death.counterplay) say(death.counterplay);
   }
   const moments = Array.isArray(result.moments) ? result.moments : [];
   for (const moment of moments) {
     const text = typeof moment === 'string' ? moment : (moment && moment.text);
-    if (typeof text === 'string' && text) lines.push(text);
+    if (typeof text === 'string' && text) say(text);
   }
   if (typeof result.buildName === 'string' && result.buildName) {
-    lines.push(`You converged on ${result.buildName}.`);
+    say(`You converged on ${result.buildName}.`);
   }
   if (typeof result.buildCode === 'string' && result.buildCode) {
     lines.push(`Build code ${result.buildCode}`);
   }
   return lines;
+}
+
+/** A line as a sentence: trimmed, with its full stop when it has no closing mark. */
+function sentence(text) {
+  const line = String(text == null ? '' : text).trim();
+  if (!line) return '';
+  return /[.!?…:]$/.test(line) ? line : `${line}.`;
+}
+
+/** "Weapon charge" reads mid-sentence as "weapon charge"; "EMP burst" keeps its capitals. */
+function lowerFirstWord(text) {
+  const words = String(text || '').trim();
+  return /^[A-Z][a-z]/.test(words) ? words[0].toLowerCase() + words.slice(1) : words;
 }
 
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
@@ -1435,7 +1768,7 @@ export function storySentences(result) {
  */
 export function stuntComboFor(ctx) {
   const state = ctx && ctx.state;
-  const combo = state && state.stunts && state.stunts.combo;
+  const combo = (state && state.stunts && state.stunts.combo) || (ctx && ctx.result && ctx.result.combo);
   if (!combo || typeof combo !== 'object') return null;
   try {
     return comboSummary(combo);
@@ -1477,6 +1810,25 @@ export function comboRows(summary) {
   return rows;
 }
 
+/**
+ * The run's confidence, read back as advice (INF-040). DOM-free: the story band renders
+ * `text`. The estimate itself is settled facts (cleared waves); the streak answers repeated
+ * destructive overconfidence by naming a real assist — assisted flight — never a wager,
+ * never a staked reward. Null when the result carries no estimate, so older plates read
+ * exactly as before.
+ */
+export function confidenceLine(result) {
+  const confidence = result && typeof result.confidence === 'number' ? result.confidence : null;
+  if (confidence == null) return null;
+  const wave = Number.isInteger(result.wave) && result.wave > 0 ? result.wave : 0;
+  const text = `Confidence ${confidence.toFixed(2)} — held to wave ${wave}.`;
+  const streak = Number.isInteger(result.overconfidenceStreak) ? result.overconfidenceStreak : 0;
+  if (streak >= OVERCONFIDENCE_STREAK_AT) {
+    return `${text} Confident runs keep ending early — consider assisted flight (Settings → Flight mode) before the next one.`;
+  }
+  return text;
+}
+
 /** The recent chained tricks, newest last, as name/detail pairs for the chain list. */
 export function comboTrickLines(summary) {
   const entries = summary && Array.isArray(summary.lastTricks) ? summary.lastTricks : [];
@@ -1489,6 +1841,52 @@ export function comboTrickLines(summary) {
     lines.push({ name, detail: `${rarity} · ${points}` });
   }
   return lines;
+}
+
+/**
+ * The run's one real achievement beside the score (INF-035). DOM-free: the ledger band
+ * renders `text`, nothing else. The stunt branch names ONLY what the strongest bank's
+ * normalized acts name — normalizeBestLine refuses acts without evidence, so a named
+ * launch, collision, or victim is always traced to receipts, never timed into existence.
+ * A run with no bank gets an honest alternative from its own figures, never a fake stunt;
+ * a run with nothing at all gets null and the ledger reads exactly as before.
+ */
+export function featDiagram(result) {
+  const line = normalizeBestLine({
+    ...(result && result.bestLine),
+    seed: result && result.seed,
+    recordRules: result && result.recordRules,
+  });
+  if (line && line.acts.length) {
+    return {
+      kind: 'stunt',
+      text: `Best stunt: ${line.acts.map((a) => a.name).join(' → ')} · ${line.points} banked`,
+    };
+  }
+  const stuntKills = Array.isArray(result && result.stuntKills)
+    ? result.stuntKills
+    : (Array.isArray(result && result.stunts) ? result.stunts : []);
+  if (stuntKills.length > 0) {
+    const names = stuntKills.map((s) => (typeof s === 'string' ? s : s?.name || s?.trickId)).filter(Boolean);
+    if (names.length > 0) {
+      const distinct = [...new Set(names)];
+      const pts = stuntKills.reduce((sum, s) => sum + (Number(s?.points) || 0), 0);
+      return {
+        kind: 'stunt',
+        text: pts > 0
+          ? `Best stunt: ${distinct.join(' → ')} · ${pts} banked`
+          : `Best stunt: ${distinct.join(' → ')}`,
+      };
+    }
+  }
+  const n = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
+  const bestChain = n(result && result.bestChain);
+  if (bestChain > 0) return { kind: 'chain', text: `No stunts banked — best chain ${bestChain}.` };
+  const kills = n(result && result.kills);
+  if (kills > 0) {
+    return { kind: 'kills', text: kills === 1 ? 'No stunts banked — 1 kill.' : `No stunts banked — ${kills} kills.` };
+  }
+  return null;
 }
 
 /* --- band renderers. DOM assembly only; every word above them is already decided. --- */
@@ -1511,6 +1909,10 @@ function renderStory(band, result) {
   for (const line of lines) {
     band.appendChild(el('p', 'k-sentence sf-crres__story-line', line));
   }
+  // INF-040: the estimate, read back as advice on the existing review surface — one line,
+  // never a trait, never a wager.
+  const confidence = confidenceLine(result);
+  if (confidence) band.appendChild(el('p', 'k-sentence sf-crres__confidence', confidence));
 }
 
 function renderCombo(band, summary) {
@@ -1609,6 +2011,10 @@ function renderLastSeconds(band, trail) {
 
 function renderLedger(band, result) {
   band.appendChild(pairRows(resultRows(result), 'sf-crd-grid'));
+  // INF-035: the one real achievement, small and beside the score — the strongest banked
+  // stunt as a cause-to-consequence line, or an honest alternative when there is none.
+  const feat = featDiagram(result);
+  if (feat) band.appendChild(el('p', 'k-sentence sf-crres__feat', feat.text));
 }
 
 /**
@@ -1788,6 +2194,7 @@ export const crucibleResultsScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
+    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
@@ -1825,6 +2232,7 @@ export const crucibleResultsScreen = {
 
     for (const id of resultSectionOrder(result)) {
       const band = el('div', 'sf-crres__band');
+      band.dataset.band = id;
       // A heading role rather than an <h2>, so the sections read as one column of sentences.
       const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
       bandTitle.setAttribute('role', 'heading');
@@ -1868,6 +2276,24 @@ export const crucibleResultsScreen = {
       // A share-surface failure must never take down the results plate.
     }
     rootEl.appendChild(stage);
+
+    // ORRERY §6: a death is read off an instrument -- the ship, what was left of it, the blow from
+    // its bearing, the last hits -- beside the story and the ledger. The kill-chain and last-seconds
+    // rows stay in the plate for the ear (the dial is aria-hidden); the eye reads the dial.
+    this._dial = null;
+    if (ORRERY && result && result.defeat) {
+      const dialHost = el('div', 'sf-crres__dial');
+      dialHost.setAttribute('aria-hidden', 'true');
+      // built detached; it joins the plate only where it can draw (a real layout, SVG). It stands in
+      // the right of the whole plate, beside the title as well as the columns, so it has the height.
+      this._dial = createDeathDial({ host: dialHost, ...deathDialSpec(result, ctx) });
+      if (this._dial.active()) {
+        rootEl.appendChild(dialHost);
+        rootEl.classList.add('has-deathdial');
+        // the run in four figures at the head of the left column; the full ledger stays for the ear
+        ledger.insertBefore(resultFigures(result), ledger.firstChild);
+      }
+    }
 
     // .k-corner — the hero number: the best chain (swarm) or the score (gauntlet).
     const heroSpec = resultHero(result);
@@ -1919,6 +2345,20 @@ export const crucibleResultsScreen = {
     const newSeed = addWord(word('New run', 'k-word--emph'));
     newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
 
+    // ZERO_TO_HERO Phase 5.1/5.5: in the demo the results plate bridges to the belt — same
+    // teardown Main menu runs, then a fresh adventure through the ordinary game:new route.
+    if (IS_DEMO) {
+      const belt = addWord(word('Take it to the belt', 'k-word--emph'));
+      belt.addEventListener('click', () => {
+        ctx.bus.emit('game:over:dismissed', {});
+        ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+        ctx.bus.emit('ui:closeAll', {});
+        const difficulty = ctx.state && ctx.state.settings && ctx.state.settings.gameplay
+          && ctx.state.settings.gameplay.difficulty || 'standard';
+        ctx.bus.emit('game:new', { name: null, difficulty });
+      });
+    }
+
     const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
     menu.addEventListener('click', () => {
       // Same teardown pause uses: main.js consumes game:exitToMenu and returns state.mode to
@@ -1931,6 +2371,9 @@ export const crucibleResultsScreen = {
 
     foot.appendChild(footWords);
     rootEl.appendChild(foot);
+    if (this._dial && this._dial.active() && result && result.seed != null && again.parentElement) {
+      again.parentElement.appendChild(el('p', 'k-t-fine sf-crres__seed', `Seed ${result.seed}`));
+    }
     this._regions = { title: h, story, ledger, foot, again };
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
@@ -1958,4 +2401,73 @@ export const crucibleResultsScreen = {
   onHide() {
     if (canAnimate()) cue('close');
   },
+
+  dispose() {
+    if (this._dial) this._dial.dispose();
+    this._dial = null;
+  },
 };
+
+/** The run in four figures, for the head of the plate beside the death dial. */
+function resultFigures(result) {
+  const swarm = result.ruleset === SWARM_RULESET;
+  const reached = Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0);
+  const figures = [
+    ['Wave', String(reached || 0)],
+    ['Kills', String(result.kills || 0)],
+    swarm ? ['Best chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
+    ['Salvage', `${result.credits || 0}`],
+  ];
+  const box = el('div', 'orr-crres-figures');
+  for (const [word, value] of figures) {
+    const fig = el('p', 'orr-crres-figure');
+    fig.appendChild(el('span', 'orr-crres-figure__n', value));
+    fig.appendChild(el('span', 'orr-crres-figure__w', word));
+    box.appendChild(fig);
+  }
+  const rest = [swarm ? `Score ${result.score || 0}` : null, `Level ${result.level || 1}`, `${result.xp || 0} xp`]
+    .filter(Boolean).join(' · ');
+  box.appendChild(el('p', 'k-t-fine orr-crres-figures__rest', rest));
+  return box;
+}
+
+/**
+ * What the death dial draws, in the plate's own words: the kill chain, what was left, the last hits.
+ * DOM-free; the dial only lays it out.
+ */
+export function deathDialSpec(result, ctx) {
+  const defeat = result && result.defeat;
+  if (!defeat) return {};
+  const vitals = defeat.vitalsPct && typeof defeat.vitalsPct === 'object' ? defeat.vitalsPct : {};
+  const trail = Array.isArray(result.damageTrail) ? result.damageTrail : [];
+  const breakdown = damageBreakdown(trail);
+  const rows = new Map(killChainRows(defeat));
+  const death = result.death && typeof result.death === 'object' ? result.death : null;
+  let warn = rows.get('It warned you') || '';
+  if (!warn && death && typeof death.telegraphName === 'string' && death.telegraphName) {
+    const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? ` — ${Math.round(Number(death.telegraphLeadMs))} ms before impact` : '';
+    warn = `${death.telegraphName}${lead}`;
+  }
+  const player = ctx && ctx.state && ctx.state.player;
+  const ships = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  return {
+    hullId: result.hullId || (ships[index] && ships[index].defId) || null,
+    direction: defeat.direction || null,
+    vitals: [['Shield', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+      .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+      .map(([word, value]) => ({ word, value })),
+    hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
+    hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
+      .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
+    hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
+    hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
+    caption: {
+      label: 'Killed by',
+      name: rows.get('Killed by') || 'Unidentified attacker',
+      detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
+      warn: warn ? `It warned you: ${warn}` : '',
+    },
+  };
+}

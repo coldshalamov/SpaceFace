@@ -133,6 +133,74 @@ export function invalidateAsteroidInstancePool(pool) {
   if (pool && !pool.disposed) pool.dirty = true;
 }
 
+/**
+ * Pre-size variant buckets so later registrations never trigger a capacity rebuild — a rebuild
+ * allocates a fresh instanceMatrix buffer (a bufferData a fight would otherwise pay mid-round).
+ * Buckets with no registered leaf keep no mesh and are untouched: a variant with zero live rocks
+ * still lazily creates its chunk on the first registration, which is the only legal path to one.
+ * @param {object} pool
+ * @param {Array<number>} requiredByVariant - total records each variant may ever hold
+ */
+export function reserveAsteroidInstanceCapacity(pool, requiredByVariant) {
+  if (!pool || pool.disposed || !Array.isArray(requiredByVariant)) return false;
+  let reserved = false;
+  for (let variant = 0; variant < pool.variants.length; variant++) {
+    const required = Math.max(0, Math.trunc(Number(requiredByVariant[variant]) || 0));
+    if (required <= 0) continue;
+    const bucket = pool.variants[variant];
+    if (!bucket || !bucket.mesh) continue;
+    if (bucket.capacity < required) {
+      ensureCapacity(pool, bucket, required);
+      reserved = true;
+    }
+  }
+  return reserved;
+}
+
+/**
+ * Create (or rebind while empty) each variant's InstancedMesh chunk before flight. A chunk can
+ * otherwise only appear on the first live registration of that variant — inside a presented
+ * frame — where its fresh instanced program links and its buffers upload mid-round. Warming
+ * behind the loading shell publishes the chunk so the first real rock of each variant is only a
+ * matrix write.
+ * @param {object} pool
+ * @param {Array<{variant:number, geometry:object, material:object}>} resources - shared leaf
+ *   geometry/material per variant (the exact objects registerAsteroidBaseLeaf binds)
+ */
+export function warmAsteroidInstanceVariants(pool, resources) {
+  if (!pool || pool.disposed || !Array.isArray(resources)) return 0;
+  let warmed = 0;
+  for (const res of resources) {
+    const variant = res && (res.variant | 0);
+    const bucket = variant >= 0 && variant < pool.variants.length ? pool.variants[variant] : null;
+    if (!bucket || !res.geometry || !res.material) continue;
+    // A live bucket's bound resources are authoritative — records already draw through the
+    // chunk built from them. Only an empty bucket may rebind (e.g. a warm landed before the
+    // rock surface library decoded and the leaf material was re-skinned in place). Exception:
+    // a bucket that bound a BARE rock material before the library decoded must follow the
+    // reskin even with records — upgradeBareRockMaterials already rebound every registered
+    // leaf's material object to this exact resource, so the bucket reference is the stale one.
+    // Without it the chunk keeps drawing the mapless variant and its depth program links cold
+    // the first time the shadow camera covers a pooled rock in flight (Asteroid_368 NOVEL).
+    const boundBare = bucket.material && bucket.material.userData
+      && bucket.material.userData.spacefaceBareRock;
+    if (bucket.records.length > 0 && !(boundBare && bucket.geometry === res.geometry)) continue;
+    if (bucket.mesh && bucket.geometry === res.geometry && bucket.material === res.material) continue;
+    bucket.geometry = res.geometry;
+    bucket.material = res.material;
+    if (bucket.records.length > 0) {
+      // Live chunk: swap the material in place — the instanceMatrix buffer and committed
+      // record slots are untouched, so no rebuild or fresh bufferData is needed.
+      if (bucket.mesh) bucket.mesh.material = res.material;
+      warmed += 1;
+      continue;
+    }
+    ensureCapacity(pool, bucket, 1, bucket.mesh != null);
+    if (bucket.mesh) warmed += 1;
+  }
+  return warmed;
+}
+
 export function syncAsteroidInstancePool(pool, options = {}) {
   if (!pool || pool.disposed) return null;
   if (!pool.cameraState) return null;
@@ -463,10 +531,14 @@ function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
   if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function' && dynamicBufferOwner) {
     mesh.instanceMatrix.dispose();
   }
+  // InstancedMesh.dispose() only dispatches the dispose event — borrowed source
+  // geometry/material stay source-owned — but three's onInstancedMeshDispose reads
+  // mesh.instanceMatrix unconditionally (WebGLAttributes.remove dereferences the
+  // attribute before checking its cache entry). Dispose while attached, then clear.
+  if (typeof mesh.dispose === 'function') mesh.dispose();
   mesh.instanceMatrix = null;
   mesh.geometry = null;
   mesh.material = null;
-  if (typeof mesh.dispose === 'function') mesh.dispose();
   if (mesh.userData) mesh.userData = {};
 }
 

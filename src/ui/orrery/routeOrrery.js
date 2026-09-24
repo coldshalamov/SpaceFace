@@ -1,0 +1,483 @@
+// src/ui/orrery/routeOrrery.js — the Route Orrery (design/frontend/ORRERY.md §4 #6 Beam, §6 Contracts).
+//
+// The belt drawn as an orrery round the berth you are docked at: a ring for every jump of depth,
+// the sectors you can reach standing on those rings at their real bearings, the lanes between them
+// as faint light. A contract's route is a beam from here to its berth with a pulse travelling the
+// way you will fly, a tick where each jump lands, and the Hand's bead on the destination. Where a
+// sector on the way is dangerous, a red arc stands round it: that is the one threat on the screen.
+// Every sector drawn is named; a name takes the first place round its node that touches nothing
+// else, and a sector whose name finds no place is not drawn at all.
+//
+// A screen hands in the host and calls `set()` with the origin and destination; the instrument
+// reads the world's sector graph itself. Without a layout (node tests) or a graph it stands down.
+
+import { SECTORS, dangerIndex } from '../../data/sectors.js';
+import { svg, polar, arcD, ticksD } from './svg.js';
+import { injectOrrery } from './tokens.js';
+import { reducedMotion } from './motion.js';
+
+const STYLE_ID = 'orr-route-orrery-style';
+const BONE = '236 230 216';
+
+const CSS = `
+.orr-route { position:relative; width:100%; height:100%; min-height:200px; isolation:isolate; }
+/* a pool of shade under the instrument, no edge: its rest light survives a lit set behind it */
+.orr-route::before { content:""; position:absolute; z-index:-1; left:50%; top:50%; width:118%; height:118%; transform:translate(-50%, -50%); pointer-events:none;
+  background:radial-gradient(closest-side, rgb(6 8 11 / .82), rgb(6 8 11 / .6) 55%, rgb(6 8 11 / 0)); }
+.orr-route > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.orr-route__caption { position:absolute; left:0; right:0; bottom:0; display:flex; align-items:baseline; justify-content:center; gap:12px; pointer-events:none;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:rgb(${BONE} / .66); white-space:nowrap; }
+.orr-route__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:400; font-size:24px; letter-spacing:0;
+  color:rgb(248 244 234); font-variant-numeric:tabular-nums; line-height:1; }
+.orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
+.orr-svg .orr-route__ring { stroke:rgb(${BONE} / .18); }
+.orr-svg .orr-route__ring--near { stroke:rgb(${BONE} / .26); }
+.orr-svg .orr-route__lane { stroke:rgb(${BONE} / .16); }
+.orr-svg .orr-route__beam { stroke:rgb(${BONE} / .72); }
+.orr-svg .orr-route__beam-bloom { stroke:rgb(${BONE} / .9); opacity:.16; }
+.orr-svg .orr-route__pulse { fill:var(--dp-ice, #8fcbff); }
+.orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
+.orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
+.orr-svg .orr-route__node { fill:rgb(6 8 11 / .9); stroke:rgb(${BONE} / .8); stroke-width:1.2; }
+.orr-svg .orr-route__node--here { stroke:rgb(248 244 234); }
+.orr-svg .orr-route__here-core { fill:rgb(248 244 234); }
+.orr-svg .orr-route__hop { stroke:rgb(${BONE} / .88); }
+.orr-svg .orr-route__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.1; }
+.orr-svg .orr-route__hand-bead { fill:var(--dp-hand, #f2b950); opacity:.85; }
+.orr-svg .orr-route__hand-ring { stroke:var(--dp-hand, #f2b950); }
+.orr-svg .orr-route__threat { stroke:var(--dp-danger, #ff5038); opacity:.85; }
+.orr-svg .orr-route__threat-bloom { stroke:var(--dp-danger, #ff5038); opacity:.22; }
+.orr-svg text.orr-route__name { font-size:10px; font-weight:650; letter-spacing:.1em; fill:rgb(${BONE} / .78); text-transform:uppercase;
+  paint-order:stroke; stroke:rgb(4 6 9 / .85); stroke-width:3px; stroke-linejoin:round; }
+.orr-svg text.orr-route__name--faint { fill:rgb(${BONE} / .58); font-size:9.5px; }
+.orr-svg text.orr-route__name--live { fill:rgb(248 244 234); }
+.orr-svg text.orr-route__name--berth { fill:rgb(${BONE} / .7); font-size:8.5px; letter-spacing:.1em; }
+.orr-svg text.orr-route__tag { font-size:8px; font-weight:650; letter-spacing:.28em; fill:rgb(${BONE} / .5); }
+.orr-svg .orr-route__crosshair { stroke:rgb(248 244 234); opacity:.7; }
+.orr-route__fade { opacity:0; animation:orr-route-fade .46s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
+@keyframes orr-route-fade { to { opacity:1; } }
+html.sf-reduce-motion .orr-route__fade { animation:none; opacity:1; }
+`;
+
+function injectStyle(doc) {
+  if (!doc || !doc.head || doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}
+
+const SECTOR = new Map(SECTORS.map((s) => [s.id, s]));
+const SECTOR_OF_STATION = new Map(SECTORS.flatMap((s) => (s.stations || []).map((st) => [st.id, s.id])));
+
+/** The sector a station stands in (null when unknown). */
+export function sectorOfStation(stationId) {
+  return (stationId && SECTOR_OF_STATION.get(stationId)) || null;
+}
+
+/** Breadth-first over the jump lanes: depth and parent of every sector reachable from `from`. */
+export function jumpDepths(from) {
+  const depth = new Map();
+  const parent = new Map();
+  if (!SECTOR.has(from)) return { depth, parent };
+  depth.set(from, 0);
+  const queue = [from];
+  while (queue.length) {
+    const id = queue.shift();
+    const d = depth.get(id);
+    for (const n of (SECTOR.get(id).neighbors || [])) {
+      if (!SECTOR.has(n) || depth.has(n)) continue;
+      depth.set(n, d + 1);
+      parent.set(n, id);
+      queue.push(n);
+    }
+  }
+  return { depth, parent };
+}
+
+/** The sectors flown through from `from` to `to`, inclusive; [] when unreachable. */
+export function jumpRoute(from, to) {
+  if (!from || !to) return [];
+  if (from === to) return [from];
+  const { depth, parent } = jumpDepths(from);
+  if (!depth.has(to)) return [];
+  const path = [to];
+  let at = to;
+  while (parent.has(at)) { at = parent.get(at); path.push(at); }
+  return path.reverse();
+}
+
+const f = (n) => Math.round(n * 100) / 100;
+const bearingOf = (from, to) => {
+  const dx = (to.position?.x || 0) - (from.position?.x || 0);
+  const dy = (to.position?.y || 0) - (from.position?.y || 0);
+  if (!dx && !dy) return 0;
+  return ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+};
+
+/** Push apart bearings on one ring until none are closer than `minGap` degrees. */
+function separateBearings(list, minGap = 16) {
+  if (list.length < 2) return;
+  for (let pass = 0; pass < 24; pass += 1) {
+    list.sort((a, b) => a.deg - b.deg);
+    let moved = false;
+    for (let i = 0; i < list.length; i += 1) {
+      const a = list[i];
+      const b = list[(i + 1) % list.length];
+      let gap = b.deg - a.deg;
+      if (i === list.length - 1) gap += 360;
+      if (gap < minGap) {
+        const push = (minGap - gap) / 2;
+        a.deg = (a.deg - push + 360) % 360;
+        b.deg = (b.deg + push) % 360;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+const boxesTouch = (a, b, pad = 0) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
+/** Does the segment (ax,ay)-(bx,by) pass through the box (sampled)? */
+function segmentTouches(ax, ay, bx, by, box, pad = 2) {
+  const n = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) / 6));
+  for (let i = 0; i <= n; i += 1) {
+    const t = i / n;
+    const x = ax + (bx - ax) * t; const y = ay + (by - ay) * t;
+    if (x > box.l - pad && x < box.r + pad && y > box.t - pad && y < box.b + pad) return true;
+  }
+  return false;
+}
+
+let pathSeq = 0;
+
+/**
+ * @param {HTMLElement} host a block the instrument fills
+ * @param {{ maxRings?: number }} [opts]
+ */
+export function createRouteOrrery(host, { maxRings = 3 } = {}) {
+  const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
+  const inert = { el: host, set() {}, relayout() {}, active: () => false, dispose() {} };
+  if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
+  injectOrrery(doc);
+  injectStyle(doc);
+  host.classList.add('orr-route', 'is-off');
+
+  const layer = svg('svg', { class: 'orr-svg orr-route__svg', 'aria-hidden': 'true', focusable: 'false' });
+  host.appendChild(layer);
+  const caption = doc.createElement('p');
+  caption.className = 'orr-route__caption';
+  caption.setAttribute('aria-hidden', 'true');
+  host.appendChild(caption);
+
+  let data = null;
+  let frame = 0;
+  let ro = null;
+  let on = false;
+  let drawnKey = '';
+
+  const schedule = () => {
+    if (frame) return;
+    const raf = globalThis.requestAnimationFrame;
+    if (typeof raf === 'function') frame = raf(() => { frame = 0; layout(); });
+    else layout();
+  };
+
+  if (typeof ResizeObserver === 'function') {
+    ro = new ResizeObserver(() => schedule());
+    ro.observe(host);
+  }
+
+  function standDown() {
+    on = false;
+    host.classList.add('is-off');
+    layer.textContent = '';
+    caption.textContent = '';
+  }
+
+  function layout() {
+    const W = host.clientWidth || 0;
+    const H = host.clientHeight || 0;
+    if (!data || !data.origin || W < 200 || H < 150) { standDown(); return; }
+    const origin = SECTOR.get(data.origin);
+    if (!origin) { standDown(); return; }
+    const dest = data.dest && SECTOR.get(data.dest) ? data.dest : null;
+    const route = dest ? jumpRoute(data.origin, dest) : [];
+    if (dest && !route.length) { standDown(); return; }
+    const key = `${W}x${H}|${data.origin}>${dest}|${data.destName}`;
+    if (key === drawnKey) return;
+    drawnKey = key;
+    on = true;
+    host.classList.remove('is-off');
+    const arriveNow = !reducedMotion();
+    const fade = (node, delay) => {
+      if (!arriveNow) return node;
+      node.classList.add('orr-route__fade');
+      node.style.setProperty('--orr-delay', `${delay}ms`);
+      return node;
+    };
+
+    const { depth } = jumpDepths(data.origin);
+    const local = !!dest && dest === data.origin;
+    const routeDepth = dest ? (depth.get(dest) || 0) : 0;
+    const rings = Math.max(1, Math.min(maxRings, Math.max(routeDepth, 1) + (routeDepth >= maxRings ? 0 : 1)));
+    const pad = 34;
+    const capH = 26;
+    const cx = W / 2;
+    const cy = (H - capH) / 2;
+    const R = Math.max(60, Math.min(W / 2 - pad, (H - capH) / 2 - pad + 14));
+    // the near ring stands well out from the berth (its names need the room); the rest share the remainder
+    const ringR = (k) => (rings === 1 ? R : R * (0.6 + (0.4 * (k - 1)) / (rings - 1)));
+
+    // the sectors on each ring, at their real bearings, pushed apart where they would touch
+    const byRing = new Map();
+    for (const [id, d] of depth) {
+      if (d < 1 || d > rings) continue;
+      if (!byRing.has(d)) byRing.set(d, []);
+      byRing.get(d).push({ id, deg: bearingOf(origin, SECTOR.get(id)), onRoute: route.includes(id) });
+    }
+    const place = new Map([[data.origin, { x: cx, y: cy, deg: 0, onRoute: true, d: 0 }]]);
+    for (const [d, list] of byRing) {
+      separateBearings(list, Math.min(24, 360 / Math.max(1, list.length)));
+      for (const s of list) {
+        const [x, y] = polar(cx, cy, ringR(d), s.deg);
+        place.set(s.id, { x, y, deg: s.deg, onRoute: s.onRoute, d });
+      }
+    }
+
+    layer.textContent = '';
+    layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    // the rings of depth; the outermost carries a fine tick scale that drifts
+    const ringsG = svg('g', { class: 'orr-route__rings' });
+    for (let k = 1; k <= rings; k += 1) {
+      ringsG.appendChild(svg('path', { d: arcD(cx, cy, ringR(k), 0, 360), class: `orr-core orr-route__ring${k === 1 ? ' orr-route__ring--near' : ''}`, 'stroke-width': 1 }));
+    }
+    const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:640s` });
+    drift.appendChild(svg('path', { d: ticksD(cx, cy, R + 6, 72, { len: 3, major: 9, majorLen: 7, inward: false }), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    ringsG.appendChild(drift);
+    layer.appendChild(fade(ringsG, 0));
+
+    // the route: a beam of light the way you will fly, a pulse travelling it
+    const routePts = route.map((id) => place.get(id)).filter(Boolean);
+    let beamD = '';
+    let endPoint = null;
+    if (dest && !local) {
+      beamD = routePts.map((p, i) => `${i ? 'L' : 'M'} ${f(p.x)} ${f(p.y)}`).join(' ');
+      endPoint = routePts[routePts.length - 1];
+    } else if (dest && local) {
+      // the berth is in this sector: a short beam to a bead just off the centre
+      const [bx, by] = polar(cx, cy, ringR(1) * 0.42, 52);
+      beamD = `M ${f(cx)} ${f(cy)} L ${f(bx)} ${f(by)}`;
+      endPoint = { x: bx, y: by, deg: 52 };
+    }
+    const beamSegs = [];
+    if (dest && !local) for (let i = 1; i < routePts.length; i += 1) beamSegs.push([routePts[i - 1], routePts[i]]);
+    else if (endPoint) beamSegs.push([{ x: cx, y: cy }, endPoint]);
+
+    // the names: every drawn sector is named, or it is not drawn. A name takes the first of the
+    // places round its node that touches no other name, no node and not the beam.
+    const nameBoxes = [];
+    const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
+    const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
+    const labelSize = (text, small) => ({ w: text.length * (small ? 6.6 : 7.2), h: small ? 11 : 12 });
+    function placeName(p, lines, { isDest = false, reserve = false } = {}) {
+      const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
+      const w = Math.max(...sizes.map((s) => s.w));
+      const h = sizes.reduce((s, x) => s + x.h + 1, -1);
+      const gapR = isDest ? 14 : 10;
+      const turns = [0, 45, -45, 90, -90, 135, -135, 180];
+      for (const turn of turns) {
+        const deg = ((p.deg + turn) % 360 + 360) % 360;
+        const rad = ((deg - 90) * Math.PI) / 180;
+        const ux = Math.cos(rad); const uy = Math.sin(rad);
+        // the box sits just off the node along the bearing, its near edge nearest the node
+        let ax; let anchor;
+        if (Math.abs(ux) < 0.3) { anchor = 'middle'; ax = p.x + ux * gapR; }
+        else if (ux > 0) { anchor = 'start'; ax = p.x + ux * gapR; }
+        else { anchor = 'end'; ax = p.x + ux * gapR; }
+        const cyText = p.y + uy * (gapR + h / 2);
+        const l = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
+        const box = { l, r: l + w, t: cyText - h / 2, b: cyText + h / 2 };
+        if (box.l < 2 || box.r > W - 2 || box.t < 2 || box.b > H - capH - 2) continue;
+        if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
+        if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 1))) continue;
+        if (beamSegs.some(([a, b]) => segmentTouches(a.x, a.y, b.x, b.y, box, 2))) continue;
+        if (reserve) nameBoxes.push(box);
+        return { box, anchor, ax, top: box.t, w, h };
+      }
+      return null;
+    }
+    const textLines = (spot, lines) => {
+      const g = svg('g', {});
+      let y = spot.top;
+      lines.forEach((ln) => {
+        const size = labelSize(ln.text, !!ln.small);
+        const t = svg('text', { x: f(spot.ax), y: f(y + size.h - 1.5), 'text-anchor': spot.anchor, class: `orr-route__name ${ln.cls || ''}`.trim() });
+        t.textContent = ln.text;
+        g.appendChild(t);
+        y += size.h + 1;
+      });
+      return g;
+    };
+
+    // here first: its words stand on the side the route does not leave from
+    const firstHop = routePts.length > 1 ? routePts[1] : null;
+    const below = !firstHop || firstHop.deg < 80 || firstHop.deg > 280 || (local && endPoint && endPoint.deg < 90);
+    const hereName = String(data.originName || origin.name || '').toUpperCase();
+    const hereLines = [{ text: hereName, cls: 'orr-route__name--live' }];
+    const hereSpot = placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 180 : 0 }, hereLines, { reserve: true })
+      || placeName({ ...place.get(data.origin), id: data.origin, deg: below ? 0 : 180 }, hereLines, { reserve: true });
+    // then the destination: the sector it lies in, and the berth under it
+    const destLines = dest && !local
+      ? [{ text: String(SECTOR.get(dest).name || dest).toUpperCase(), cls: 'orr-route__name--live' }]
+        .concat(data.destName && String(data.destName).toUpperCase() !== String(SECTOR.get(dest).name || '').toUpperCase()
+          ? [{ text: String(data.destName).toUpperCase(), cls: 'orr-route__name--berth', small: true }] : [])
+      : null;
+    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
+    // then the rest, the route first, nearest ring first
+    const others = [...place].filter(([id]) => id !== data.origin && id !== dest)
+      .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
+    const drawn = new Map();
+    for (const [id, p] of others) {
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true });
+      if (spot) drawn.set(id, spot);
+    }
+
+    // the lanes between the sectors that are drawn, as faint dashed light
+    const isDrawn = (id) => id === data.origin || id === dest || drawn.has(id);
+    const laneParts = [];
+    const seen = new Set();
+    for (const [id, p] of place) {
+      if (!isDrawn(id)) continue;
+      for (const n of (SECTOR.get(id).neighbors || [])) {
+        const q = place.get(n);
+        if (!q || !isDrawn(n)) continue;
+        const k = id < n ? `${id}|${n}` : `${n}|${id}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        laneParts.push(`M ${f(p.x)} ${f(p.y)} L ${f(q.x)} ${f(q.y)}`);
+      }
+    }
+    if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4' }), 60));
+
+    if (beamD) {
+      const id = `orr-route-path-${++pathSeq}`;
+      layer.appendChild(svg('path', { d: beamD, class: 'orr-bloom orr-route__beam-bloom', 'stroke-width': 7, pathLength: 1, 'stroke-linejoin': 'round' }));
+      const core = svg('path', { id, d: beamD, class: `orr-core orr-route__beam${arriveNow ? ' orr-draw' : ''}`, 'stroke-width': 1.6, pathLength: 1, 'stroke-linejoin': 'round' });
+      core.style.setProperty('--orr-delay', '120ms');
+      layer.appendChild(core);
+      if (arriveNow) {
+        const pulse = svg('g', { class: 'orr-route__pulse-g' });
+        const bloom = svg('circle', { r: 6, class: 'orr-route__pulse-bloom' });
+        const dot = svg('circle', { r: 2.4, class: 'orr-route__pulse' });
+        pulse.append(bloom, dot);
+        // it waits at the berth while the beam draws, flies the route, rests a beat, and goes again
+        const motion = svg('animateMotion', { dur: '3.4s', begin: '0s', repeatCount: 'indefinite', calcMode: 'linear',
+          keyPoints: '0;0;1;1', keyTimes: '0;0.2;0.88;1' });
+        motion.appendChild(svg('mpath', { href: `#${id}` }));
+        pulse.appendChild(motion);
+        layer.appendChild(pulse);
+      }
+      // a tick across the beam where each jump lands, the destination included
+      for (let i = 1; i < routePts.length; i += 1) {
+        const p = routePts[i];
+        const prev = routePts[i - 1];
+        const ang = Math.atan2(p.y - prev.y, p.x - prev.x) + Math.PI / 2;
+        const t = i === routePts.length - 1 ? 10 : 7;
+        layer.appendChild(fade(svg('path', {
+          d: `M ${f(p.x + Math.cos(ang) * t)} ${f(p.y + Math.sin(ang) * t)} L ${f(p.x - Math.cos(ang) * t)} ${f(p.y - Math.sin(ang) * t)}`,
+          class: 'orr-core orr-route__hop', 'stroke-width': 1.4,
+        }), 300 + i * 60));
+      }
+    }
+
+    // threat: a red arc round the sectors on the way where the lane is dangerous
+    for (const id of route) {
+      if (id === data.origin) continue;
+      const s = SECTOR.get(id);
+      const p = place.get(id);
+      if (!s || !p) continue;
+      const danger = dangerIndex(s);
+      if (danger < 0.5) continue;
+      const span = 60 + 200 * Math.min(1, (danger - 0.5) / 0.5);
+      const a0 = p.deg + 180 - span / 2;
+      layer.appendChild(fade(svg('path', { d: arcD(p.x, p.y, 13, a0, a0 + span), class: 'orr-bloom orr-route__threat-bloom', 'stroke-width': 5 }), 420));
+      layer.appendChild(fade(svg('path', { d: arcD(p.x, p.y, 13, a0, a0 + span), class: 'orr-core orr-route__threat', 'stroke-width': 1.2 }), 420));
+    }
+
+    // the sectors and their names
+    let li = 0;
+    for (const [id, p] of others) {
+      const spot = drawn.get(id);
+      if (!spot) continue;
+      if (p.onRoute) layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 5, class: 'orr-route__node' }), 200 + li * 40));
+      else layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 2.2, class: 'orr-route__dot' }), 200 + li * 40));
+      layer.appendChild(fade(textLines(spot, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }]), 260 + li * 40));
+      li += 1;
+    }
+    // here: a crosshair node at the centre, the berth's name beside it
+    const here = svg('g', { class: 'orr-route__here' });
+    here.append(
+      svg('circle', { cx: f(cx), cy: f(cy), r: 8, class: 'orr-route__node orr-route__node--here' }),
+      svg('circle', { cx: f(cx), cy: f(cy), r: 2.2, class: 'orr-route__here-core' }),
+      svg('path', { d: ticksD(cx, cy, 13, 4, { len: 4, inward: true }), class: 'orr-core orr-route__crosshair', 'stroke-width': 1 }),
+    );
+    if (hereSpot) here.appendChild(textLines(hereSpot, hereLines));
+    layer.appendChild(fade(here, 80));
+    // the Hand's bead on the destination, the sector's name and the berth's beside it
+    if (endPoint) {
+      const hg = svg('g', { class: 'orr-route__hand' });
+      hg.append(
+        svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 12, class: 'orr-route__hand-glow' }),
+        svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: local ? 6 : 7, class: 'orr-core orr-route__hand-ring', 'stroke-width': 1.4, fill: 'none' }),
+        svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 3.2, class: 'orr-route__hand-bead' }),
+      );
+      layer.appendChild(fade(hg, 520));
+      if (destSpot && destLines) layer.appendChild(fade(textLines(destSpot, destLines), 560));
+      if (local) {
+        const t = svg('text', { x: f(endPoint.x + 12), y: f(endPoint.y + 3), 'text-anchor': 'start', class: 'orr-route__name orr-route__name--live' });
+        t.textContent = String(data.destName || 'THIS SECTOR').toUpperCase();
+        layer.appendChild(fade(t, 560));
+      }
+    }
+
+    // the caption: how many jumps, and where the beam ends or passes
+    caption.textContent = '';
+    const jumps = doc.createElement('span');
+    jumps.className = 'orr-route__jumps';
+    const via = doc.createElement('span');
+    via.className = 'orr-route__via';
+    if (!dest) { via.textContent = 'ROUTE PENDING'; }
+    else if (local) { jumps.textContent = '0'; via.textContent = 'JUMPS · THIS SECTOR'; }
+    else {
+      const n = route.length - 1;
+      const mids = route.slice(1, -1).map((id) => (SECTOR.get(id).name || id).toUpperCase());
+      const destSector = (SECTOR.get(dest).name || dest).toUpperCase();
+      jumps.textContent = String(n);
+      via.textContent = `${n === 1 ? 'JUMP' : 'JUMPS'} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
+    }
+    caption.append(jumps, via);
+  }
+
+  return {
+    el: host,
+    /** @param {{ origin: string, dest?: string|null, originName?: string, destName?: string }} next */
+    set(next) {
+      data = next ? { ...next } : null;
+      drawnKey = '';
+      schedule();
+    },
+    relayout: schedule,
+    active: () => on,
+    dispose() {
+      if (ro) ro.disconnect();
+      if (frame && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(frame);
+      frame = 0;
+      standDown();
+      for (const n of [layer, caption]) if (n.parentNode) n.parentNode.removeChild(n);
+      host.classList.remove('orr-route', 'is-off');
+    },
+  };
+}

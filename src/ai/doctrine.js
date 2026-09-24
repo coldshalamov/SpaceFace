@@ -224,7 +224,18 @@ export function perceptionForWingOrderCombatDoctrine(perception, directive, free
       // 0.55 selection floor at long range (~45%+ of sensor reach), which would leave a lawfully
       // dispatched responder orbiting its anchor forever while the offender sits in plain sight.
       if (contact.kind !== 'ship' || contact.id !== exactTargetId) return contact;
-      return { ...contact, confidence: Math.max(finite(contact.confidence, 0), 0.55) };
+      return {
+        ...contact,
+        confidence: Math.max(finite(contact.confidence, 0), 0.55),
+        // The dispatch itself is the track: a responder ordered onto an offender beyond its own
+        // sensor reach holds a reported (unseen) contact. Tagging it lets doctrine MANEUVER on
+        // the assignment — an untagged reported contact reads as a stale memory and the doctrine
+        // settles into targetless ingress, tracking the squad slot home while the offender fires
+        // untouched (measured on the PQ-138 live route: a chaser receded 504 -> 1328 WU in
+        // interceptor_flyby:ingress with maneuverTargetId null). Fire authorization is a
+        // separate gate and still requires its own sighting.
+        dispatchedTarget: true,
+      };
     });
   return freeze({ ...perception, contacts: freeze(filtered) });
 }
@@ -281,7 +292,25 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
 
   switch (activity.kind) {
     case ActivityKind.HAIL_HOLD:
+      return freeze({ ...base, kind: ManeuverKind.HOLD, targetId: null, breakFormation: false });
     case ActivityKind.LOITER:
+      // A loiter that names a concrete body (the witness holder's wreck or pod) is station-
+      // keeping on that body, not on the squad slot: HOLD tracks formationSlot, so a squad-bound
+      // holder would fly home mid-hold. Orbit the live contact and break the squad bound; when
+      // the body never resolves as a contact (a pod is payload, not a perceived object) the
+      // planner falls back to the activity's live-tracked anchor via orbitCenter.
+      if (activity.targetId != null) {
+        return freeze({
+          ...base,
+          kind: ManeuverKind.ORBIT,
+          targetId: activity.targetId,
+          orbitCenter: activity.anchor && Number.isFinite(activity.anchor.x)
+            ? { x: activity.anchor.x, z: activity.anchor.z }
+            : null,
+          preferredRange: Math.max(40, activity.preferredRange || finite(base.preferredRange, 90)),
+          breakFormation: true,
+        });
+      }
       return freeze({ ...base, kind: ManeuverKind.HOLD, targetId: null, breakFormation: false });
     case ActivityKind.PATROL_ROUTE:
     case ActivityKind.TRANSIT:
@@ -309,7 +338,18 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
       return freeze({ ...base, kind: ManeuverKind.FORMATION, targetId: null, breakFormation: false });
     }
     case ActivityKind.SCAN_APPROACH:
-      return freeze({ ...base, kind: ManeuverKind.INTERCEPT, preferredRange: activity.preferredRange || 620 });
+      // An approach order is a deliberate leave-formation whose destination is the activity's
+      // own contact — without the targetId pass-through the intercept solves toward whatever
+      // combat target the selector last named (measured: the witness holder intercepted the
+      // offender instead of the drifting body), and without breakFormation the squad bound veto
+      // parks it mid-approach at formation crawl.
+      return freeze({
+        ...base,
+        kind: ManeuverKind.INTERCEPT,
+        targetId: activity.targetId == null ? base.targetId : activity.targetId,
+        preferredRange: activity.preferredRange || 620,
+        breakFormation: true,
+      });
     case ActivityKind.REPOSITION:
       return freeze({ ...base, kind: ManeuverKind.ORBIT, preferredRange: Math.max(260, activity.preferredRange || finite(base.preferredRange, 360)) });
     case ActivityKind.SCREEN:

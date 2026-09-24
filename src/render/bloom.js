@@ -10,6 +10,9 @@
 //   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 5-tap 2D downsample
 //   pass 2  downsample  down[0]   -> down[1] (¼)   5-tap 2D downsample  [if levels>=2]
 //   pass 3  composite   rtScene + multi-scale bloom (down[0]+w*down[1]) -> default framebuffer
+//   pass 4  [below-res only] composite -> rtPost, then FidelityFX CAS sharpen -> default
+//           framebuffer. The canvas backing store is the low-res frame; the browser does the
+//           display upscale, so CasFilter runs sharpen-only on the presented bytes.
 //
 // Structural note: the old additive upsample chain allocated a separate half-res RT and an extra
 // fullscreen pass per frame. Multi-scale composite sampling (same idea as SpaceRenderGraph) keeps
@@ -33,6 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
@@ -64,27 +68,57 @@ export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
 // be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
 // black until the one explicit, calibrated toe operation.
 export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
-  // Wet-ink finish, fused into the existing composite. Four close taps let a dark seam
-  // pool into the painted side of an edge; a bright star/energy core remains unfiltered.
-  // This is a small asymmetric pigment deposit, not a blur of the whole frame.
+  // Edge resolve + wet-ink finish, fused into the existing composite. The scene target is
+  // single-sampled by design, so this is where post-AA lives: a Lottes-style tap resolve that
+  // blends only along detected contrast edges, leaving flat fields, authored texture interior,
+  // and pinprick stars single-sampled. The same diagonal taps then feed the pigment deposit —
+  // a dark seam pools into the painted side of an edge. The deposit reads the resolved luma and
+  // the fixed neighbourhood range, where the old fwidth(y) term re-derived gradient energy per
+  // pixel per frame and pooled/unpooled under any subpixel drift (the "congealing clumps" the
+  // owner reported 2026-09-21). Bright cores stay unfiltered.
   vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    vec2 texel = 1.0 / vec2(textureSize(sceneTexture, 0));
     vec3 c = texture2D(sceneTexture, uv).rgb;
-    float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    float ink = smoothstep(0.28, 0.85, fwidth(y) / (0.08 + y));
+    vec3 rgbNW = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
+    vec3 rgbNE = texture2D(sceneTexture, uv + texel).rgb;
+    vec3 rgbSW = texture2D(sceneTexture, uv - texel).rgb;
+    vec3 rgbSE = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
+    float lumaNW = dot(rgbNW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaNE = dot(rgbNE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSW = dot(rgbSW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSE = dot(rgbSE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaM = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    float contrast = lumaMax - lumaMin;
+    vec3 resolved = c;
+    // Only a real local contrast earns the extra taps; the scale-relative gate keeps dim hull
+    // edges eligible while HDR brights skip (bloom already softens them).
+    if (contrast > max(0.012, lumaMax * 0.10)) {
+      vec2 dir = vec2(
+        -((lumaNW + lumaNE) - (lumaSW + lumaSE)),
+        ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
+      float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
+      float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+      dir = clamp(dir * rcpDirMin, -8.0, 8.0) * texel;
+      vec3 rgbA = 0.5 * (
+        texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
+        texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 rgbB = rgbA * 0.5 + 0.25 * (
+        texture2D(sceneTexture, uv + dir * -0.5).rgb +
+        texture2D(sceneTexture, uv + dir * 0.5).rgb);
+      float lumaB = dot(rgbB, vec3(0.2126, 0.7152, 0.0722));
+      resolved = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
+    }
+    float y = dot(resolved, vec3(0.2126, 0.7152, 0.0722));
     float solid = smoothstep(0.008, 0.045, y) * (1.0 - smoothstep(0.8, 1.8, y));
-    if (solid < 0.002) return c;
-    vec2 texel = 1.35 / vec2(textureSize(sceneTexture, 0));
-    vec3 nw = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
-    vec3 se = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
-    vec3 ne = texture2D(sceneTexture, uv + texel).rgb;
-    vec3 sw = texture2D(sceneTexture, uv - texel).rgb;
-    vec4 neighbours = vec4(dot(nw, vec3(0.2126, 0.7152, 0.0722)),
-      dot(se, vec3(0.2126, 0.7152, 0.0722)), dot(ne, vec3(0.2126, 0.7152, 0.0722)),
-      dot(sw, vec3(0.2126, 0.7152, 0.0722)));
+    if (solid < 0.002) return resolved;
+    float ink = smoothstep(0.28, 0.85, contrast / (0.08 + y));
+    vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
     vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
     float pool = dot(shadows, vec4(0.25));
     float deposit = solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
-    return c * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
+    return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
   }
 
   vec3 spaceAcesFilmic(vec3 x) {
@@ -280,7 +314,7 @@ const BLOOM_PYRAMID_NORM = 1.5;
  * their first real HDR frame still has to synchronously compile on the driver.
  */
 export async function compileScenePipelinesForRenderTarget(
-  renderer, renderTarget, subject, camera, lightingScene = subject,
+  renderer, renderTarget, subject, camera, lightingScene = subject, options = {},
 ) {
   if (!renderer || typeof renderer.compileAsync !== 'function') {
     return { skipped: true, reason: 'compileAsync unavailable' };
@@ -291,7 +325,7 @@ export async function compileScenePipelinesForRenderTarget(
   try {
     renderer.setRenderTarget(renderTarget || null);
     const admission = await compilePipelinesContextSafe(
-      renderer, subject, camera, lightingScene || subject,
+      renderer, subject, camera, lightingScene || subject, options,
     );
     if (admission && admission.contextLost) {
       return {
@@ -345,8 +379,12 @@ let pipelineReadinessBatch = null;
 // COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, so the hot loop keeps it.
 // Handle validity comes from the context-loss event, three's destroy(), and one native recheck budget
 // that every waiter on a context shares: at most one isProgram() per gap, never one per program per poll.
+// The gap is 2 s, not 250 ms: each isProgram() waits for the GPU process to drain its queue, and on the
+// owner's iGPU that measured 10-28 ms per call — four calls a second, 37 ms/s of main-thread stall in
+// flight whenever any compile was pending (2026-09-22 profile). The two real invalidation paths are
+// already caught without it; this recheck only bounds a pathological silent handle loss.
 const PROGRAM_HANDLE_RECHECK_DELAY_MS = 1000;
-const PROGRAM_HANDLE_RECHECK_GAP_MS = 250;
+const PROGRAM_HANDLE_RECHECK_GAP_MS = 2000;
 const programHandleContexts = new WeakMap();
 
 function programHandleContext(gl) {
@@ -502,7 +540,15 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   return batch.handle;
 }
 
-function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
+/** Diagnostics: whether a pooled readiness batch is currently open to joiners. */
+export function scenePipelineReadinessBatchOpen() {
+  return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
+}
+
+function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
+  // Callers forward a nullable compileOptions slot: an explicit null slips past the `= {}`
+  // default and would throw on the skipSharedBatch read below, rejecting every admission.
+  if (options == null) options = {};
   const canvas = renderer && renderer.domElement;
   const canOwnReadiness = typeof renderer.compile === 'function'
     && renderer.properties && typeof renderer.properties.get === 'function'
@@ -570,12 +616,23 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
       return;
     }
 
-    if (pipelineReadinessBatch && pipelineReadinessBatch.accepting
+    // Deadline compiles (e.g. a mesh already on the live glass) cannot pool their wait into
+    // whoever's batch happens to be open — that owner's drain schedule is not this caller's.
+    // skipSharedBatch keeps this wait on its own poll so it settles on link completion alone.
+    if (options.skipSharedBatch !== true
+      && pipelineReadinessBatch && pipelineReadinessBatch.accepting
       && pipelineReadinessBatch.handle.join(gl, programs, finish)) {
       return;
     }
 
     const generation = contextLossGeneration(gl);
+    // The standalone poll must not wait forever: a link that never reports ready
+    // would hold the compile tail (and every admission serialized behind it)
+    // indefinitely. Past the bound the wait resolves — the driver still finishes
+    // the link on first use, so the worst case is one slow draw, not a dead lane.
+    const readinessDeadline = (typeof performance !== 'undefined' && performance
+        && typeof performance.now === 'function' ? performance.now() : Date.now())
+      + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
     const checkProgramsReady = () => {
       if (settled) return;
       try {
@@ -597,6 +654,12 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
         }
         if (programs.size === 0) {
           finish({ contextLost: false });
+          return;
+        }
+        if ((typeof performance !== 'undefined' && performance
+            && typeof performance.now === 'function' ? performance.now() : Date.now())
+            >= readinessDeadline) {
+          finish({ contextLost: false, readinessTimedOut: true });
           return;
         }
         timer = setTimeout(checkProgramsReady, 10);
@@ -801,6 +864,173 @@ const COMPOSITE_FRAG = /* glsl */`
   }
 `;
 
+// Programs already counted in renderer.info can still be linking. Three's draw path
+// never polls isReady() — gl.useProgram waits out the driver, which is the leftover
+// ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
+// drawables until the link finishes; admission still owns first-time compile.
+//
+// This guard is deliberately renderer-scoped rather than bloom-scoped: the native and
+// render-graph post routes face the same synchronous-link hazard on their scene passes,
+// so all three bracket their presented draws with the same hide→render→restore pair.
+const UNREADY_SCENE_CAP = 512;
+
+export function createUnreadyDrawableGuard(renderer) {
+  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  let unreadySceneCount = 0;
+  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
+  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
+  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
+  // once every program reports ready and the set stops growing, steady-state frames skip both
+  // the poll and the scene walk entirely.
+  let unreadyProgramsPending = true;
+  let unreadyProgramCount = -1;
+  let unreadyProgramTail = null;
+  let admissionScene = null;
+  let admissionPendingSubjects = null;
+  let admissionGl = null;
+
+  function hideUnreadySceneDrawables(scene) {
+    unreadySceneCount = 0;
+    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
+    // drivers, so the program-readiness scan below can never see them — drawing one would link
+    // its variants synchronously inside this presented frame. Hide the root (subtree included)
+    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    const pendingSubjects = renderer && renderer.userData
+      ? renderer.userData.spacefacePendingPipelineSubjects
+      : null;
+    if (pendingSubjects && pendingSubjects.size > 0) {
+      for (const subject of pendingSubjects) {
+        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
+        if (subject && subject.visible === true) {
+          unreadySceneScratch[unreadySceneCount] = subject;
+          unreadySceneCount += 1;
+          subject.visible = false;
+        }
+      }
+    }
+    const props = renderer && renderer.properties;
+    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
+      return;
+    }
+    admissionGl = renderer && typeof renderer.getContext === 'function'
+      ? renderer.getContext() : null;
+    const programs = renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs)) {
+      admissionScene = scene;
+      admissionPendingSubjects = pendingSubjects;
+      scene.traverse(hideOneUnreadySceneDrawable);
+      admissionScene = null;
+      admissionPendingSubjects = null;
+      admissionGl = null;
+      return;
+    }
+    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
+    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+      && programs[programs.length - 1] === unreadyProgramTail) return;
+    unreadyProgramsPending = false;
+    unreadyProgramCount = programs.length;
+    unreadyProgramTail = programs[programs.length - 1] || null;
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || typeof program.isReady !== 'function') continue;
+      if (programWrapperDead(admissionGl, program)) continue;
+      let ready = true;
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+      if (!ready) { unreadyProgramsPending = true; break; }
+    }
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    admissionScene = scene;
+    admissionPendingSubjects = pendingSubjects;
+    scene.traverse(hideOneUnreadySceneDrawable);
+    admissionScene = null;
+    admissionPendingSubjects = null;
+    admissionGl = null;
+  }
+
+  function hideOneUnreadySceneDrawable(object) {
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
+    if (!object || object.visible !== true) return;
+    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) {
+      return;
+    }
+    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+    const props = renderer.properties;
+    const list = object.material;
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        if (hideIfProgramUnready(object, list[i], props)) return;
+      }
+      return;
+    }
+    hideIfProgramUnready(object, list, props);
+  }
+
+  function hideIfProgramUnready(object, material, props) {
+    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
+    let program = null;
+    try {
+      const rec = props.get(material);
+      program = rec && rec.currentProgram || null;
+    } catch (_) {
+      return false;
+    }
+    if (!program) {
+      // Never compiled: drawing would link the driver program inside this
+      // presented pass. Hide the drawable and route its scene root through the
+      // pipeline admission lane; the pending latch keeps it hidden until
+      // compile + residency settle. The material stamp dedupes re-queues across
+      // sibling meshes and successive scans while one admission is in flight.
+      const materialData = material.userData || (material.userData = {});
+      const queueAdmission = renderer && renderer.userData
+        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
+      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+        materialData.__sfPipelineAdmission = true;
+        let root = object;
+        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
+        // A root already latched pending has an admission in flight that will
+        // compile this subtree — queueing another would only duplicate it.
+        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
+          materialData.__sfPipelineAdmission = false;
+        } else {
+          Promise.resolve(queueAdmission(root))
+            .catch(() => null)
+            .finally(() => { materialData.__sfPipelineAdmission = false; });
+        }
+      }
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return true;
+    }
+    if (typeof program.isReady !== 'function') return false;
+    if (programWrapperDead(admissionGl, program)) return false;
+    let ready = true;
+    try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    if (ready) return false;
+    unreadySceneScratch[unreadySceneCount] = object;
+    unreadySceneCount += 1;
+    object.visible = false;
+    return true;
+  }
+
+  function restoreUnreadySceneDrawables() {
+    for (let i = 0; i < unreadySceneCount; i++) {
+      const object = unreadySceneScratch[i];
+      if (object) object.visible = true;
+      unreadySceneScratch[i] = null;
+    }
+    unreadySceneCount = 0;
+  }
+
+  return {
+    renderer,
+    hide: hideUnreadySceneDrawables,
+    restore: restoreUnreadySceneDrawables,
+  };
+}
+
 /**
  * Create a bloom post-processor.
  * @param {THREE.WebGLRenderer} renderer - the live renderer (we drive its render targets).
@@ -853,6 +1083,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     stencilBuffer: false,
     samples: 0,
   };
+  // rtPost carries the presented sRGB bytes for the CAS pass — exactly what would reach the
+  // canvas, so byte storage is honest (no depth, no filtering; CasFilter texelFetches).
+  const postRtOpts = {
+    type: THREE.UnsignedByteType,
+    magFilter: THREE.NearestFilter,
+    minFilter: THREE.NearestFilter,
+    depthBuffer: false,
+    stencilBuffer: false,
+  };
+  let rtPost = null;
+  // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  let casActive = false;
 
   // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
   // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
@@ -943,6 +1185,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uToe:       { value: toe },       // lifted black floor (0 = true blacks)
     uGrainFrame: { value: 0 },
   });
+  // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
+  const casMat = new THREE.ShaderMaterial({
+    uniforms: createCasUniforms(),
+    vertexShader: QUAD_VERT,
+    fragmentShader: CAS_FRAG,
+    glslVersion: THREE.GLSL3,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
 
   function postStyleScale() {
     return Math.max(grain, vignette, grade, toe);
@@ -968,6 +1220,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
     compositeMat.uniforms.tBloom1.value = null;
+    casMat.uniforms.tSrc.value = null;
     const glState = renderer && renderer.state;
     if (!glState || typeof glState.unbindTexture !== 'function') return;
     const gl = renderer.getContext && renderer.getContext();
@@ -988,160 +1241,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     glState.unbindTexture();
   }
 
-  // Programs already counted in renderer.info can still be linking. Three's draw path
-  // never polls isReady() — gl.useProgram waits out the driver, which is the leftover
-  // ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
-  // drawables until the link finishes; admission still owns first-time compile.
-  const UNREADY_SCENE_CAP = 512;
-  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
-  let unreadySceneCount = 0;
-  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
-  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
-  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
-  // once every program reports ready and the set stops growing, steady-state frames skip both
-  // the poll and the scene walk entirely.
-  let unreadyProgramsPending = true;
-  let unreadyProgramCount = -1;
-  let unreadyProgramTail = null;
-
-  function hideUnreadySceneDrawables(scene) {
-    unreadySceneCount = 0;
-    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
-    // drivers, so the program-readiness scan below can never see them — drawing one would link
-    // its variants synchronously inside this presented frame. Hide the root (subtree included)
-    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
-    const pendingSubjects = renderer && renderer.userData
-      ? renderer.userData.spacefacePendingPipelineSubjects
-      : null;
-    if (pendingSubjects && pendingSubjects.size > 0) {
-      for (const subject of pendingSubjects) {
-        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
-          unreadySceneScratch[unreadySceneCount] = subject;
-          unreadySceneCount += 1;
-          subject.visible = false;
-        }
-      }
-    }
-    const props = renderer && renderer.properties;
-    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
-      return;
-    }
-    admissionGl = renderer && typeof renderer.getContext === 'function'
-      ? renderer.getContext() : null;
-    const programs = renderer.info && renderer.info.programs;
-    if (!Array.isArray(programs)) {
-      admissionScene = scene;
-      admissionPendingSubjects = pendingSubjects;
-      scene.traverse(hideOneUnreadySceneDrawable);
-      admissionScene = null;
-      admissionPendingSubjects = null;
-      admissionGl = null;
-      return;
-    }
-    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
-    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
-    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
-      && programs[programs.length - 1] === unreadyProgramTail) return;
-    unreadyProgramsPending = false;
-    unreadyProgramCount = programs.length;
-    unreadyProgramTail = programs[programs.length - 1] || null;
-    for (let i = 0; i < programs.length; i++) {
-      const program = programs[i];
-      if (!program || typeof program.isReady !== 'function') continue;
-      if (programWrapperDead(admissionGl, program)) continue;
-      let ready = true;
-      try { ready = program.isReady() === true; } catch (_) { ready = false; }
-      if (!ready) { unreadyProgramsPending = true; break; }
-    }
-    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
-    admissionScene = scene;
-    admissionPendingSubjects = pendingSubjects;
-    scene.traverse(hideOneUnreadySceneDrawable);
-    admissionScene = null;
-    admissionPendingSubjects = null;
-    admissionGl = null;
-  }
-
-  function hideOneUnreadySceneDrawable(object) {
-    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
-    if (!object || object.visible !== true) return;
-    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
-        || object.isLine || object.isSprite || object.isInstancedMesh)) {
-      return;
-    }
-    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
-    const props = renderer.properties;
-    const list = object.material;
-    if (Array.isArray(list)) {
-      for (let i = 0; i < list.length; i++) {
-        if (hideIfProgramUnready(object, list[i], props)) return;
-      }
-      return;
-    }
-    hideIfProgramUnready(object, list, props);
-  }
-
-  let admissionScene = null;
-  let admissionPendingSubjects = null;
-  let admissionGl = null;
-
-  function hideIfProgramUnready(object, material, props) {
-    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
-    let program = null;
-    try {
-      const rec = props.get(material);
-      program = rec && rec.currentProgram || null;
-    } catch (_) {
-      return false;
-    }
-    if (!program) {
-      // Never compiled: drawing would link the driver program inside this
-      // presented pass. Hide the drawable and route its scene root through the
-      // pipeline admission lane; the pending latch keeps it hidden until
-      // compile + residency settle. The material stamp dedupes re-queues across
-      // sibling meshes and successive scans while one admission is in flight.
-      const materialData = material.userData || (material.userData = {});
-      const queueAdmission = renderer && renderer.userData
-        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
-      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
-        materialData.__sfPipelineAdmission = true;
-        let root = object;
-        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
-        // A root already latched pending has an admission in flight that will
-        // compile this subtree — queueing another would only duplicate it.
-        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
-          materialData.__sfPipelineAdmission = false;
-        } else {
-          Promise.resolve(queueAdmission(root))
-            .catch(() => null)
-            .finally(() => { materialData.__sfPipelineAdmission = false; });
-        }
-      }
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
-      return true;
-    }
-    if (typeof program.isReady !== 'function') return false;
-    if (programWrapperDead(admissionGl, program)) return false;
-    let ready = true;
-    try { ready = program.isReady() === true; } catch (_) { ready = false; }
-    if (ready) return false;
-    unreadySceneScratch[unreadySceneCount] = object;
-    unreadySceneCount += 1;
-    object.visible = false;
-    return true;
-  }
-
-  function restoreUnreadySceneDrawables() {
-    for (let i = 0; i < unreadySceneCount; i++) {
-      const object = unreadySceneScratch[i];
-      if (object) object.visible = true;
-      unreadySceneScratch[i] = null;
-    }
-    unreadySceneCount = 0;
-  }
+  const unreadyDrawables = createUnreadyDrawableGuard(renderer);
+  const hideUnreadySceneDrawables = unreadyDrawables.hide;
+  const restoreUnreadySceneDrawables = unreadyDrawables.restore;
 
   // Measurement-only: CPU pass times require perfRuntime.renderWorkEnabled (default OFF).
   // GPU begin/end only runs when the timer set is enabled (default OFF).
@@ -1256,8 +1358,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return rows;
   }
 
+  // Bounded dedup stamp: at the cap the whole set is dropped and the live scene re-registers.
+  // "New geometry" reporting is diagnostic-only, so a false-positive row after a cap reset is
+  // harmless; an unbounded uuid set across sectors and generations is not.
+  const SEEN_BLOOM_GEOMETRY_CAP = 2000;
+
   function rememberBloomGeometries(scene) {
     if (!scene || typeof scene.traverse !== 'function') return;
+    if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
     scene.traverse((object) => {
       const geometry = object && object.geometry;
       if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
@@ -1303,7 +1411,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             if (variants && typeof variants.values === 'function') {
               for (const variant of variants.values()) {
                 const skey = String(variant && (variant.cacheKey || variant.name) || '');
-                if (skey && skey !== key) siblings.push(skey.slice(0, 160));
+                if (skey && skey !== key) siblings.push(skey.slice(0, 512));
                 if (siblings.length >= 6) break;
               }
             }
@@ -1311,7 +1419,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
               object: String(object.name || object.type || 'unnamed').slice(0, 48),
               material: String(material.name || material.type || 'unnamed').slice(0, 32),
               root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
-              key: key.slice(0, 160),
+              key: key.slice(0, 512),
               siblingKeys: siblings,
               visible: object.visible === true,
             });
@@ -1383,7 +1491,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 160)),
+            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
           })}`);
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
@@ -1450,8 +1558,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.uAces.value = aces;
     const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
     compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
-    blit(compositeMat, null);
+    // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
+    // Full-res: composite writes the canvas directly — no extra target, no extra pass.
+    const sharpen = casActive && rtPost;
+    blit(compositeMat, sharpen ? rtPost : null);
     if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
+    if (sharpen) {
+      casMat.uniforms.tSrc.value = rtPost.texture;
+      blit(casMat, null);
+      casMat.uniforms.tSrc.value = null;
+      if (tier1) tier1.countRenderPassPixels(W * H, 'cas-sharpen');
+    }
   }
 
   function setInstrumentation(next) {
@@ -1490,9 +1607,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     releaseBloomSceneSamplers();
   }
 
-  function compileScenePipelines(subject, camera, lightingScene = subject) {
+  function compileScenePipelines(subject, camera, lightingScene = subject, options = {}) {
     return compileScenePipelinesForRenderTarget(
-      renderer, rtScene, subject, camera, lightingScene,
+      renderer, rtScene, subject, camera, lightingScene, options,
     );
   }
 
@@ -1510,7 +1627,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof renderer.initRenderTarget !== 'function') {
       return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
     }
-    const targets = [rtScene, ...down];
+    const targets = [rtScene, rtPost, ...down].filter(Boolean);
     const allocations = [];
     for (const target of targets) {
       await yieldToMain();
@@ -1541,6 +1658,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      // Every openingProgramMaterials() entry must be linked here: the opening submission gate
+      // refuses the first picture until each one holds a program. casMat was listed but never
+      // compiled, so every New Game sat on the gate's 15 s failsafe
+      // ('post:2:unprepared-material'). Linked regardless of casActive, so dynamic resolution
+      // dropping below display res mid-flight never links the GLSL3 program inside a frame.
+      quadMesh.material = casMat;
+      if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
     } finally {
       quadMesh.material = previousMat;
       if (typeof renderer.setRenderTarget === 'function') {
@@ -1556,42 +1680,54 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     rtScene.dispose();
     for (const rt of down) rt.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
     const next = createRenderTargets('contextRestore');
     rtScene = next.rtScene;
     halfW = next.halfW;
     halfH = next.halfH;
     levels = next.levels;
     down = next.down;
+    if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
   }
 
   function contextLossResources() {
-    return [rtScene, ...down].filter(Boolean);
+    return [rtScene, rtPost, ...down].filter(Boolean);
   }
 
   function openingProgramMaterials() {
-    return [downsampleMat, compositeMat];
+    return [downsampleMat, compositeMat, casMat];
   }
 
-  function setSize(w, h) {
+  function setSize(w, h, displayW, displayH) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
-    // Hot path: _applySize() may re-enter with an unchanged drawing buffer — never touch GPU RTs.
-    if (nextW === W && nextH === H) return;
-    W = nextW;
-    H = nextH;
-    halfW = Math.max(1, W >> 1);
-    halfH = Math.max(1, H >> 1);
-    const newLevels = levelCountForSize(W, H);
-    resizeRenderTarget(rtScene, W, H, 'resize');
-    // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
-    while (down.length < newLevels) {
-      const i = down.length;
-      down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
+    // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
+    // res without the buffer size changing class, and a stale flag is a silent miss.
+    casActive = resolveCasSharpenActive(nextW, nextH, displayW, displayH);
+    if (nextW !== W || nextH !== H) {
+      W = nextW;
+      H = nextH;
+      halfW = Math.max(1, W >> 1);
+      halfH = Math.max(1, H >> 1);
+      const newLevels = levelCountForSize(W, H);
+      resizeRenderTarget(rtScene, W, H, 'resize');
+      // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
+      while (down.length < newLevels) {
+        const i = down.length;
+        down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
+      }
+      while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
+      levels = newLevels;
+      for (let i = 0; i < levels; i++) {
+        resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+      }
+      if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
     }
-    while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
-    levels = newLevels;
-    for (let i = 0; i < levels; i++) {
-      resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+    // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
+    // lazily on the first below-res sizing, never inside render().
+    if (casActive) {
+      if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
+      applyCasSetup(casMat.uniforms, CAS_SHARPNESS, W, H, W, H);
     }
   }
 
@@ -1661,14 +1797,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       upsampleTargets: 0,
       sharedQuadGeometry: true,
-      targets: 1 + down.length,
-      renderTargetCount: 1 + down.length,
+      targets: 1 + down.length + (rtPost ? 1 : 0),
+      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0),
       drawingBufferWidth: W,
       drawingBufferHeight: H,
       sceneTargetWidth: rtScene.width,
       sceneTargetHeight: rtScene.height,
       effectiveSceneScale: 1,
-      fullFramePasses: 2,
+      casSharpenActive: casActive,
+      casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
+      fullFramePasses: casActive && rtPost ? 3 : 2,
       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
       bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
       passFamilies: {
@@ -1677,15 +1815,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         ao: 0,
         bloom: enabled && strength > 0.0001 ? down.length : 0,
         composite: 1,
+        cas: casActive && rtPost ? 1 : 0,
       },
     };
   }
 
   function dispose() {
     rtScene.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
     for (const rt of down) rt.dispose();
     downsampleMat.dispose();
     compositeMat.dispose();
+    casMat.dispose();
     releaseSharedQuadGeometry();
   }
 

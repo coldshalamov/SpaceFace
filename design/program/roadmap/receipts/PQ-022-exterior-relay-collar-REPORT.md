@@ -1,12 +1,49 @@
 <!-- PROGRAM_EVIDENCE_RECEIPT
 packetId: PQ-022
 leafId: PQ-022.exterior-relay-collar
-acceptance: focused_green
+acceptance: route_accepted
 disposition: PASS
-candidateCommit: 4057047b01c0051655e5da29447393a46bd8722c
+candidateCommit: 780b77b3608fd075b81fa607154129edea6575a7
 -->
 
 # PQ-022 leaf — exterior claim relay/collar admission
+
+## Milestone upgrade — 2026-09-23
+
+```yaml
+packet: PQ-022
+leafId: PQ-022.exterior-relay-collar
+promotionUnit: PQ-022.promote-relay
+candidateCommit: 780b77b3608fd075b81fa607154129edea6575a7
+lifecycleClaim: integrated
+acceptanceClaim: route_accepted
+disposition: PASS
+browserElectronFunctionalRoute: PASS
+integratorCausalVisualReview: PASS (KEEP — G1 manufactured form, G2 material response, G4 role coherence)
+matchedPerformanceCleanup: PASS
+finalReleaseSha256: 85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8
+newHeadedEvidenceSpent: false
+```
+
+**PROMOTE this exact leaf to `route_accepted`.** The original structural evidence below is
+unchanged. Its formerly deferred visual verdict is now closed by the committed re-author chain:
+the review binds exact final release `85b8d74e…67a8` to route visual acceptance with KEEP on all
+three visual gates. This is evidence reconciliation only; it reruns no accepted cell and changes
+no runtime, visual, asset, default-quality, or pool-capacity path.
+
+| Accepted layer | Exact evidence | Git blob |
+|---|---|---|
+| Structural admission (this leaf, original scope) | `PQ-022-exterior-relay-collar-REPORT.md` (pre-upgrade) | `f459cbccd1ea88f6bafa6cc3b350852bd611f0d6` |
+| Relay re-author (manufactured identity) | `PQ-022-relay-reauthor-REPORT.md` | `fa65e740d70762068798eee1037271b6e95c7138` |
+| Revised relay Browser/source-Electron H1 | `PQ-022-relay-reauthor-h1-REPORT.md` | `9c067e8a3f38e116ab0be37d6f2e7865770adcc7` |
+| Causal KEEP review (G1/G2/G4, exact-final binding) | `PQ-022-relay-reauthor-review-REPORT.md` | `18c00aad118413027481802fda11b6024384cc9f` |
+| Independent accept-vs-reauthor verdict | `PQ-022-relay-h2-verdict-REPORT.md` | `08847ea0f1a7b4de2ec10b350355c28e93f39cb6` |
+
+The blob of this upgraded receipt is bound into `PQ-024.evidenceDependencies` at
+`requiredAcceptance: route_accepted` in `program-queue.json` — the binding
+`PQ-024.promote` consumes.
+
+---
 
 ```yaml
 parent: PQ-022

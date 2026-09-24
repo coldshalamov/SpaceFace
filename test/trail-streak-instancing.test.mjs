@@ -375,14 +375,13 @@ assert.equal(repackSystem._trailStreakPool.colorAttribute.getZ(1), 1,
 const materialSet = new Set([system._trailStreakPool.mesh.material]);
 assert.equal(materialSet.size, 1, 'all streaks must share one material');
 
-// Energy-card culling contract (PQ-139-era tabletop envelope): a bolt that drifts outside the
-// live draw envelope is culled unless it belongs to the player or the current target — those
-// stay full even off-table. Pins both legs so the envelope and the exemption can only change
-// deliberately.
+// Energy-card culling contract: a bolt outside the padded live frame is not drawn.
+// Player-owned rounds follow the same rule. The body keeps simulating; only the
+// picture is limited to the frame. An on-frame round, whoever fired it, is drawn.
 const { tableVfxDrawWuFromState } = await import('../src/render/tabletopPolicy.js');
 const cullScene = new THREE.Scene();
 const cullPlayer = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12 };
-const offTableX = tableVfxDrawWuFromState({}) + 48;
+const offTableX = tableVfxDrawWuFromState({}) + 220;
 const ownBolt = {
   id: 30, type: 'projectile', alive: true,
   pos: { x: offTableX, z: 0 }, vel: { x: 280, z: 40 }, rot: 0, radius: 1.2, ownerId: 1,
@@ -393,10 +392,15 @@ const strayBolt = {
   pos: { x: offTableX, z: 6 }, vel: { x: 280, z: 40 }, rot: 0, radius: 1.2,
   data: { weaponId: 'wpn_railgun_m', kind: 'bullet', damageType: 'kinetic' },
 };
+const onFrameBolt = {
+  id: 32, type: 'projectile', alive: true,
+  pos: { x: 24, z: 6 }, vel: { x: 280, z: 0 }, rot: 0, radius: 1.2, ownerId: 9,
+  data: { weaponId: 'wpn_railgun_m', kind: 'bullet', damageType: 'kinetic' },
+};
 const cullState = {
   playerId: 1,
-  entities: new Map([[1, cullPlayer], [30, ownBolt], [31, strayBolt]]),
-  entityList: [cullPlayer, ownBolt, strayBolt],
+  entities: new Map([[1, cullPlayer], [30, ownBolt], [31, strayBolt], [32, onFrameBolt]]),
+  entityList: [cullPlayer, ownBolt, strayBolt, onFrameBolt],
   settings: { video: { particleQuality: 'high', motionReduce: false, engineTrails: false, bloom: true } },
   render: { scene: cullScene },
   content: {},
@@ -406,9 +410,11 @@ cullSystem.init({ state: cullState, bus: { on() { return () => {}; } }, helpers:
 cullSystem._markProjectileCacheDirty();
 for (let f = 0; f < 4; f++) cullSystem.update(1 / 60);
 const cullBolts = cullSystem._weaponPresenter && cullSystem._weaponPresenter.bolts;
-assert(cullBolts && cullBolts.byEntity.has(30),
-  'player-owned bolt must still draw outside the tabletop envelope (priority exemption)');
-assert(!cullBolts || !cullBolts.byEntity.has(31),
+assert(cullBolts && cullBolts.byEntity.has(32),
+  'a round on the frame must be drawn');
+assert(!cullBolts.byEntity.has(30),
+  'a player-owned round past the frame is not drawn');
+assert(!cullBolts.byEntity.has(31),
   'a stray off-table bolt must be culled by the live tabletop envelope');
 
 console.log('trail-streak-instancing: spawn, recycle, cap, packing, attributes, and retirement PASS');

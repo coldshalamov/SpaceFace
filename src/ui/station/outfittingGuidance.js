@@ -6,6 +6,7 @@ import {
   fits,
   outfitBudgetBlocker,
   outfitBudgetForFittings,
+  stationShopOffer,
 } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
@@ -72,7 +73,7 @@ function fitBlockerForSlot(shipDef, fittings, slotIndex, def) {
   return outfitBudgetBlocker(shipDef, prospective);
 }
 
-export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = [], shipDef = null) {
+export function describeOutfittingPurchase(def, player = {}, slots = [], fittings = [], shipDef = null, opts = {}) {
   if (!def) {
     return {
       state: 'missing',
@@ -83,12 +84,14 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       disabled: true,
       label: 'Unavailable',
       title: 'Select a module to inspect purchase options.',
+      price: 0,
     };
   }
   const researched = new Set(player.researchedNodes || player.researched || []);
   const credits = Math.max(0, Number(player.credits) || 0);
-  const price = Math.max(0, Number(def.price) || 0);
-  const unlocked = !def.requiresTech || researched.has(def.requiresTech);
+  const offer = stationShopOffer(def, opts.stationId);
+  const price = offer ? offer.price : Math.max(0, Number(def.price) || 0);
+  const unlocked = !def.requiresTech || researched.has(def.requiresTech) || !!offer;
   const afford = credits >= price;
   const safeSlots = Array.isArray(slots) ? slots : [];
   const safeFittings = Array.isArray(fittings) ? fittings : [];
@@ -114,6 +117,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       disabled: true,
       label: 'Research ' + req,
       title: def.name + ' requires ' + req + ' before purchase.',
+      price,
     };
   }
   if (!afford) {
@@ -127,6 +131,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       disabled: true,
       label: 'Need ' + fmtCr(missing) + ' cr',
       title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+      price,
     };
   }
   if (fitSlotIndex >= 0) {
@@ -140,6 +145,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       disabled: false,
       label: 'Buy & Fit',
       title: 'Buy ' + def.name + ' and fit it to the ' + (slot.type || def.slotType) + ' ' + (slot.size || def.size) + ' slot.',
+      price,
     };
   }
   if (hasSlot) {
@@ -155,6 +161,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
         ? def.name + ' cannot fit now: ' + fitBlocker.text + '. Buy it into inventory or lighten the build first.'
         : def.name + ' fits this hull, but every compatible slot is full. Buy it into inventory or unfit a module first.',
       fitBlocker,
+      price,
     };
   }
   return {
@@ -166,6 +173,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
     disabled: false,
     label: 'Buy to Inventory',
     title: 'No compatible ' + def.slotType + ' ' + def.size + ' slot on this hull. Buy it into inventory for another ship.',
+    price,
   };
 }
 
@@ -202,7 +210,7 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
     .filter((def) => def && tierAllows(def, opts.tier))
     .map((def) => ({
       def,
-      purchase: describeOutfittingPurchase(def, player, slots, fittings, opts.shipDef || null),
+      purchase: describeOutfittingPurchase(def, player, slots, fittings, opts.shipDef || null, opts),
     }));
   const missionPool = wantedSlots.size
     ? candidates.filter((entry) => wantedSlots.has(entry.def.slotType))
@@ -303,6 +311,7 @@ export function statSnippet(def) {
     if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) parts.push(Math.round(m.magnetRange) + ' wu ore magnet');
     const masslineOutcome = masslineHeadOutcome(def);
     if (masslineOutcome) parts.push(masslineOutcome.replace(/^Massline\s+/i, ''));
+    if (m.swingDrive) parts.push('dash swings around a taut line');
     if (m.cloakBaseRadius) parts.push(m.cloakBaseRadius + ' detection ring');
     if (m.cloakDrainPerS) parts.push(Math.round(m.cloakDrainPerS * 100) + '% cloak drain/s');
     if (m.cloakRechargePerS) parts.push(Math.round(m.cloakRechargePerS * 100) + '% cloak recharge/s');
@@ -440,9 +449,13 @@ export function outfittingEngineeringFeelHtml(packet) {
       escapeHtml(packet.detail || 'No compatible hardpoint on this hull.') + '</div>';
   } else if (packet.mode === 'preview' && packet.delta && packet.delta.ok) {
     const changed = packet.delta.metrics.filter(meaningfulEngineeringDelta);
-    const chips = changed.map((metric) =>
-      '<span class="st-outfit-feel-delta" title="' + escapeHtml(metric.verb) + '">' +
-        escapeHtml(metric.label) + ' <b>' + escapeHtml(engineeringDelta(metric)) + '</b></span>').join('');
+    const chips = changed.map((metric) => {
+      // INF-081: situational predictions state their assumption where fit stats do not —
+      // a stop distance is a forecast under stated conditions, not a bolted-on number.
+      const note = metric.basis === 'situational' && metric.assumption ? ' · ' + metric.assumption : '';
+      return '<span class="st-outfit-feel-delta" title="' + escapeHtml(metric.verb + note) + '">' +
+        escapeHtml(metric.label) + ' <b>' + escapeHtml(engineeringDelta(metric)) + '</b></span>';
+    }).join('');
     changeHtml = '<div class="st-outfit-feel-preview"><b>' +
       escapeHtml(packet.previewName || 'Fitting') + ' preview</b>' +
       (chips || '<span class="st-outfit-feel-note">No handling change in the live flight model.</span>') +

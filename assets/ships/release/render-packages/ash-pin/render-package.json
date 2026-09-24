@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "31e415f6539b1b84764ce60babd625e13d55cfcf2b5085e6453b80ebfc96911e",
+  "contentHash": "48d2d44bba5de4363a7682650b20682fdfaa7a271861fe0d1c9cde6e1522b57d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -899,13 +899,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4941e6812cfa0ca332ee4134a95d0084d227dfe56d295b8e382107fcc6c762f8",
-      "id": "sf.render.ash-pin.node.ash-spar-mesh.primitive.0",
+      "id": "sf.render.ash-pin.node.ash-spar-joined.primitive.0",
       "indexCount": 84,
       "indexed": true,
       "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
-      "nodeId": "sf.render.ash-pin.node.ash-spar-mesh",
+      "nodeId": "sf.render.ash-pin.node.ash-spar-joined",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -2979,7 +2979,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.node.ash-spar-mesh",
+      "id": "sf.render.ash-pin.node.ash-spar-joined",
       "localTransform": [
         1,
         0,
@@ -2999,8 +2999,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "ash_spar__mesh",
-      "nodeName": "ash_spar__mesh",
+      "mergeBoundary": "ash_spar_joined",
+      "nodeName": "ash_spar_joined",
       "nodePath": [
         0,
         22,
@@ -3322,22 +3322,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "394aa4ec61462ea023a8026d77890927203045279a347d25d742e7195685f833"
+      "sha256": "02340467daeea0b6a4ca443cca28546d3f943fe64c6201dd81b8ad1b8e24e779"
     },
     "sourceGlb": {
-      "bytes": 142344,
-      "sha256": "621d2ff3b1b33beb7a97df7d280080c5564a4ddacb3926ea55ab5d98477a8809",
+      "bytes": 142368,
+      "sha256": "377ccec0b636d436daba5778425a1d9fc5b00d676b98787489bb7414b60cc490",
       "uri": "place_ash_pin.glb"
     },
     "sourceManifest": {
-      "bytes": 169401,
-      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 198972,
-    "sha256": "05f100d9c90e8f52e57980bdfcf77ea1010e74d38199446e4b2c5b98b19e680c",
+    "bytes": 198976,
+    "sha256": "15ee8f9849b3d1038f5d77e90058bd3d5fc2f5cf9fda32b914f2455f561d1390",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4510,7 +4510,7 @@
           0,
           1
         ],
-        "name": "ash_spar__mesh",
+        "name": "ash_spar_joined",
         "planIndex": 38,
         "tags": {
           "canopy": false
@@ -4655,7 +4655,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ash_pin.glb"
   },
-  "runtimeHash": "a384b6acaa36ed1f4b7f2f736b9b4fbb4e71b3a498a9cea16f5bb35798ddd45c",
+  "runtimeHash": "2e561e24c383631aa59977fccc0c23d4b28d42c9aa4b380af73d2a0649385455",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4709,7 +4709,7 @@
         "sf.render.ash-pin.node.ash-plate-ear-1",
         "sf.render.ash-pin.node.ash-shim",
         "sf.render.ash-pin.node.ash-spar",
-        "sf.render.ash-pin.node.ash-spar-mesh",
+        "sf.render.ash-pin.node.ash-spar-joined",
         "sf.render.ash-pin.node.ash-token-0",
         "sf.render.ash-pin.node.ash-token-1",
         "sf.render.ash-pin.node.ash-token-2",

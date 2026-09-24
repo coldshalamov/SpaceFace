@@ -71,7 +71,9 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.5,
     renderScale: 0.75,
     bloom: true,
-    shadows: true,
+    // Sun shadow-maps stay out of Performance/Balanced: at the neighbourhood ortho's texel
+    // density they read as crawling clumps, not depth. The Quality tier opts back in.
+    shadows: false,
     energyMaterials: true,
     renderGraph: false,
     engineTrails: true,
@@ -83,7 +85,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     adaptiveFloor: 0.6,
     renderScale: 1,
     bloom: true,
-    shadows: true,
+    shadows: false,
     energyMaterials: true,
     renderGraph: false,
     engineTrails: true,

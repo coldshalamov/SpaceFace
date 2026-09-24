@@ -13,6 +13,7 @@ import {
 } from '../../systems/sectorSim.js';
 import { BINDINGS } from '../bindings.js';
 import { enhanceSelects } from '../uiPrimitives.js';
+import { entitySpanHtml } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
 
@@ -787,15 +788,61 @@ export const starmapScreen = {
       if (button) this._onAction(button.dataset.act);
     });
 
-    if (typeof ResizeObserver !== 'undefined') {
-      this._ro = new ResizeObserver(() => this._resize());
-      this._ro.observe(rootEl.querySelector('.sm-canvas-wrap'));
+    this._ensureResizeObserver();
+    this._ensureFieldLive(ctx);
+  },
+
+  // INF-094: the map's live observers are owned here, not orphaned. The resize observer and
+  // the two field subscriptions are created once per mount and released by dispose(), so a
+  // remount (releaseScreen rebuilds from scratch) returns to baseline instead of stacking
+  // observers on detached roots.
+  _ensureResizeObserver() {
+    if (this._ro || typeof ResizeObserver === 'undefined') return !!this._ro;
+    const wrap = this._root && this._root.querySelector
+      ? this._root.querySelector('.sm-canvas-wrap') : null;
+    if (!wrap) return false;
+    this._ro = new ResizeObserver(() => this._resize());
+    this._ro.observe(wrap);
+    return true;
+  },
+
+  _releaseResizeObserver() {
+    if (this._ro) {
+      try { this._ro.disconnect(); } catch (_) { /* observer already gone */ }
+      this._ro = null;
     }
-    if (!this._fieldListener && ctx.bus && ctx.bus.on) {
+  },
+
+  _ensureFieldLive(ctx) {
+    if (this._fieldLiveUnsubs || !ctx || !ctx.bus || typeof ctx.bus.on !== 'function') {
+      return !!(this._fieldLiveUnsubs && this._fieldLiveUnsubs.length);
+    }
+    if (!this._fieldListener) {
       this._fieldListener = () => { if (this._visible) this.refresh(this._ctx); };
-      ctx.bus.on('sectorsim:fieldAdvanced', this._fieldListener);
-      ctx.bus.on('sectorsim:transitOutcome', this._fieldListener);
     }
+    const offA = ctx.bus.on('sectorsim:fieldAdvanced', this._fieldListener);
+    const offB = ctx.bus.on('sectorsim:transitOutcome', this._fieldListener);
+    this._fieldLiveUnsubs = [offA, offB].filter((off) => typeof off === 'function');
+    return true;
+  },
+
+  _releaseFieldLive() {
+    if (this._fieldLiveUnsubs) {
+      for (const off of this._fieldLiveUnsubs) { try { off(); } catch (_) {} }
+      this._fieldLiveUnsubs = null;
+    }
+  },
+
+  dispose() {
+    this._visible = false;
+    this._stopAnimLoop();
+    this._releaseResizeObserver();
+    this._releaseFieldLive();
+    this._root = null;
+    this._canvas = null;
+    this._g = null;
+    this._els = null;
+    this._nodes = [];
   },
 
   onShow(ctx) {
@@ -1296,7 +1343,7 @@ export const starmapScreen = {
     const discovery = this._discovery(s.id);
     const topInfluence = Object.entries(signal.influence || {}).sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0])).slice(0, 3);
     const influenceHtml = topInfluence.map(([id, value]) => `
-      <div class="sm-influence-row"><span>${escapeHtml(factionName(id))}</span><b class="sf-fig">${pct(value)}</b></div>
+      <div class="sm-influence-row"><span>${entitySpanHtml('faction:' + id, escapeHtml(factionName(id)))}</span><b class="sf-fig">${pct(value)}</b></div>
       <div class="sm-bar"><i style="width:${pct(value)}"></i></div>`).join('');
     const fromSectorId = isCurrent ? undefined : currentId;
     const gate = forecastTransitFor(this._ctx.state, s.id, { fromSectorId, via: 'gate' });
@@ -1312,11 +1359,11 @@ export const starmapScreen = {
     selected.innerHTML = `
       <div class="sm-sel-head${isCurrent ? ' is-here' : ''}">
       <div class="sm-sel-name">
-        <span>${escapeHtml(s.name)}</span>
+        <span>${entitySpanHtml('sector:' + s.id, escapeHtml(s.name))}</span>
         <div>${securityPips(eff.security)}</div>
       </div>
       <div class="sm-sel-fac">
-        ${escapeHtml(factionName(signal.dominantFactionId))} field · <i class="sm-dot" style="background:${factionColor(signal.ownerId)}"></i> owner ${escapeHtml(factionName(signal.ownerId))}
+        ${entitySpanHtml('faction:' + signal.dominantFactionId, escapeHtml(factionName(signal.dominantFactionId)))} field · <i class="sm-dot" style="background:${factionColor(signal.ownerId)}"></i> owner ${entitySpanHtml('faction:' + signal.ownerId, escapeHtml(factionName(signal.ownerId)))}
       </div>
       </div>
 
@@ -1337,7 +1384,7 @@ export const starmapScreen = {
       </div>
 
       <div class="sm-section">
-        <div class="sm-section-title">${escapeHtml(commodityName(this._commodityId))} memory</div>
+        <div class="sm-section-title">${entitySpanHtml('commodity:' + this._commodityId, escapeHtml(commodityName(this._commodityId)))} memory</div>
         ${memoryHtml}
       </div>
 
@@ -1384,7 +1431,7 @@ export const starmapScreen = {
     }
     const guidance = describeStarmapObjectiveRoute(this._ctx.state, objective, (id) => this._nameOf(id));
     const meta = [];
-    if (objective.sectorId) meta.push({ text: objective.sectorName || this._nameOf(objective.sectorId), hot: guidance && guidance.state !== 'local' });
+    if (objective.sectorId) meta.push({ text: objective.sectorName || this._nameOf(objective.sectorId), hot: guidance && guidance.state !== 'local', ref: 'sector:' + objective.sectorId });
     if (guidance && guidance.summary) meta.push({ text: guidance.summary, hot: guidance.state !== 'local' });
     if (objective.hasLocalFix && (!guidance || guidance.summary !== 'local fix acquired')) meta.push({ text: 'local fix acquired', hot: false });
     if (objective.commodityId) meta.push({ text: 'cargo route', hot: true });
@@ -1400,7 +1447,7 @@ export const starmapScreen = {
       <div class="sm-objective-k">${escapeHtml(objective.kicker)}</div>
       <div class="sm-objective-title">${escapeHtml(objective.title)}</div>
       <div class="sm-objective-body">${escapeHtml(body)}</div>
-      ${meta.length ? `<div class="sm-objective-meta">${meta.map((m) => `<span${m.hot ? ' class="hot"' : ''}>${escapeHtml(m.text)}</span>`).join('')}</div>` : ''}
+      ${meta.length ? `<div class="sm-objective-meta">${meta.map((m) => `<span${m.hot ? ' class="hot"' : ''}>${m.ref ? entitySpanHtml(m.ref, escapeHtml(m.text)) : escapeHtml(m.text)}</span>`).join('')}</div>` : ''}
       ${action}`;
     const readable = [objective.kicker, objective.title, body, ...meta.map((m) => m.text)].filter(Boolean).join(' ');
     if (panel.innerHTML !== html) panel.innerHTML = html;
@@ -1424,7 +1471,7 @@ export const starmapScreen = {
     if (!route || !route.legs || !route.legs.length) return '';
     let html = `<div class="sm-section"><div class="sm-route">▸ Active Route (${route.totalHops || route.legs.length} hops)</div>`;
     for (const leg of route.legs) {
-      html += `<div class="sm-route-leg"><b>${escapeHtml(this._nameOf(leg.from))}</b> → <b>${escapeHtml(this._nameOf(leg.to))}</b> · <span class="sf-fig">${Math.round(leg.fuel)}F</span>${leg.interdict ? ' <span class="sm-interdict">[!]</span>' : ''}</div>`;
+      html += `<div class="sm-route-leg"><b>${entitySpanHtml('sector:' + leg.from, escapeHtml(this._nameOf(leg.from)))}</b> → <b>${entitySpanHtml('sector:' + leg.to, escapeHtml(this._nameOf(leg.to)))}</b> · <span class="sf-fig">${Math.round(leg.fuel)}F</span>${leg.interdict ? ' <span class="sm-interdict">[!]</span>' : ''}</div>`;
     }
     html += `<div class="sm-route-total">Σ ${Math.round(route.totalFuel || 0)} fuel</div></div>`;
     return html;
@@ -1436,7 +1483,7 @@ export const starmapScreen = {
     if (!overlays.length) return '<div class="sm-hint">No visited station price for this commodity.</div>';
     return '<div class="sm-market-memory">' + overlays.map((entry) =>
       '<div class="sm-market-row ' + escapeHtml(entry.tint) + '">' +
-        '<span>' + escapeHtml(entry.stationName) + '</span>' +
+        '<span>' + entitySpanHtml('station:' + entry.stationId, escapeHtml(entry.stationName)) + '</span>' +
         '<b>' + Math.round(entry.sell).toLocaleString('en-US') + ' cr · ' + escapeHtml(entry.ageLabel) + '</b>' +
       '</div>').join('') + '</div>';
   },

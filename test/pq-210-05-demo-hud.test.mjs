@@ -24,12 +24,20 @@ test('the instrument cluster is a machined bezel, not a smoke overlay', () => {
     'glass-solid must stay an opaque window in metal, not a translucent overlay');
 });
 
-test('the threat lamp stays a visible channel', () => {
-  assert.match(hudJs, /sf-threat-lamp/, 'hud.js still mounts the lamp');
-  assert.match(hudStyles, /#hud \.sf-threat-lamp \{ display:flex/,
-    'the last paint pass must show the lamp');
-  assert.doesNotMatch(hudStyles, /#hud \.sf-threat-lamp \{ display:none/,
+// 2026-09-22 demo defect pass: the lamp used to be a second lens with a "THREAT" legend pinned
+// above the cluster, floating off the fire-control THREAT row that carries the same state. The
+// lamp is now that row's own LED, lit from the row's state. Still a visible channel, never hidden.
+test('the threat lamp stays a visible channel, seated in the THREAT row', () => {
+  assert.match(hudJs, /data-k="fcthreat"[^>]*><i class="sf-fc-led sf-threat-lamp"/,
+    'hud.js mounts the lamp as the THREAT row LED');
+  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-fc-led \{\s*background:linear-gradient\(var\(--dp-danger\)/,
+    'a near hostile drives the row lamp red');
+  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-threat-lamp \{ animation:sf-threat-beat/,
+    'and it beats');
+  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*display:none/,
     'PASS 6 hid the lamp; that overlay is the web-HUD read');
+  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*position:absolute/,
+    'the lamp does not float detached from its row again');
 });
 
 test('swarm does not restyle the flight HUD into CSS cards', () => {
@@ -50,9 +58,12 @@ test('the Crucible readout is an instrument, not a translucent rectangle', () =>
     'the parent comms bezel is the chassis; the readout is the glass');
 });
 
-test('the results plate assembles deckplate bezels and keycaps', () => {
+// Owner ruling 2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md section 0): CSS may not imitate a
+// physical material. This assertion used to REQUIRE a fastened SVG bezel / keycap; it now requires
+// the printed replacement and forbids the bezel coming back.
+test('the results plate assembles printed fields and keys', () => {
   assert.match(screensCss, /sf-crucible-results/, 'results has a deckplate skin');
-  assert.match(screensCss, /CRRES[\s\S]*bezel\.svg/, 'story and ledger sit in bezels');
-  assert.match(screensCss, /\$\{dpKey\(`\$\{CRRES\} \.k-foot \.k-word`\)\}/,
-    'the three ways out are keycaps');
+  assert.doesNotMatch(screensCss, /(?:bezel|keycap)[a-z-]*\.svg/, 'story and ledger sit on printed fields, not bezels');
+  assert.match(screensCss, /\$\{printedKey\(`\$\{CRRES\} \.k-foot \.k-word`\)\}/,
+    'the three ways out are printed keys');
 });

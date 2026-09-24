@@ -80,6 +80,7 @@ import { lossLedger } from '../src/systems/lossLedger.js';
 import { pirateDisengage } from '../src/systems/pirateDisengage.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { bandRadio } from '../src/systems/bandRadio.js';
 import { onboarding } from '../src/systems/onboarding.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { COMBAT_FLAGS, MASSLINE2_FLAGS, TRAVEL_FLAGS } from '../src/data/featureFlags.js';
@@ -151,6 +152,9 @@ const sim = createSimulation({
     provenanceLedger, chronicler, lossLedger, pirateDisengage,
     heat, lawSecurity, dockingCorridor, fieldDepletion,
     presentationOrchestrator, presentationAdapters,
+    // Band radio sits where registry.js puts it (late, before onboarding): without it the harness
+    // could never observe the tuner seam the bark census measures (PQ-207.02).
+    bandRadio,
     // Onboarding runs LAST (registry parity): it only reads state and drives the tutorial UI,
     // but its beat FSM must be live for the stranger archetype — the pilot follows the rail.
     onboarding,

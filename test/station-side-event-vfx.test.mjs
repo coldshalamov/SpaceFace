@@ -12,7 +12,7 @@ import {
 import { vfx } from '../src/render/vfx.js';
 import { stationSideEventDirector } from '../src/systems/stationSideEventDirector.js';
 
-const KINDS = ['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor'];
+const KINDS = ['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep'];
 
 function makeHarness({ motionReduce = false, flashReduce = false, patrol = false } = {}) {
   const scene = new THREE.Scene();
@@ -166,7 +166,7 @@ test('pure path writer reuses scratch and preserves static silhouettes in reduce
     'docking orbit remains anchored to the station bubble radius');
 });
 
-test('station:sideEvent drives four bounded pooled compositions and lifecycle cleanup', () => {
+test('station:sideEvent drives five bounded pooled compositions and lifecycle cleanup', () => {
   const captures = Object.fromEntries(KINDS.map((kind) => [kind, captureKind(kind)]));
 
   const hauler = captures.hauler_dock;
@@ -193,6 +193,14 @@ test('station:sideEvent drives four bounded pooled compositions and lifecycle cl
     'cargo tractor is a tractor, paired pod rails, and a load-bearing tether');
   assert.ok(tractor.streaks.some((item) => item.width === 0.055));
   assert.equal(tractor.sprites.length, 0);
+
+  const sweep = captures.sensor_sweep;
+  assert.equal(sweep.streaks.length, 2, 'sensor sweep is a calibration beam plus one telemetry return');
+  assert.equal(sweep.sprites.length, 1, 'sensor sweep gets one accessibility-routed return blip');
+  assert.ok(sweep.streaks.some((item) => item.width === 0.055 && item.length === 4.6),
+    'the calibration beam is a slim, long radial read');
+  assert.ok(sweep.streaks.every((item) => item.vx === 0 && item.vz === 0),
+    'sensor sweep is a listening instrument: no ejecta, no launched ship');
 
   const signatures = Object.values(captures).map(({ streaks, sprites }) => JSON.stringify({
     streaks: streaks.map((item) => [item.width, item.length, item.life]),

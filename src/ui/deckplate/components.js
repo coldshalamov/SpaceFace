@@ -25,8 +25,8 @@ export const DECKPLATE_COMPONENTS_CSS = `
 }
 .dp-gauge .dp-gauge__fill {
   position:absolute; inset:0; transform-origin:left center; transform:scaleX(0);
-  background:linear-gradient(180deg, var(--dp-lamp-hot) 0%, var(--dp-lamp) 46%, var(--dp-lamp-dim) 100%);
-  box-shadow:0 0 8px var(--dp-lamp-bloom), inset 0 1px 0 rgb(255 255 255 / .28);
+  background:var(--dp-lamp);
+  box-shadow:0 0 8px var(--dp-lamp-bloom);
 }
 .dp-gauge .dp-gauge__cursor { position:absolute; inset:0; pointer-events:none; }
 .dp-gauge .dp-gauge__runout { color:var(--dp-lamp); }
@@ -85,19 +85,14 @@ export const DECKPLATE_COMPONENTS_CSS = `
 .dp-annunc--danger .dp-annunc__lens { animation:dp-lamp-raise var(--dp-d-escalate) steps(1, end) 1, dp-lamp-danger 1.15s steps(1, end) var(--dp-d-escalate) infinite; }
 .dp-annunc--status .dp-annunc__lens { animation:none; }
 
-/* ══ 5. dp-socket — the equipment recess: a bay cut into the rail plate; recess shadow, verb
-   mark seated in it, etched key numeral, lamp strip on the bay floor carrying state. */
+/* == 5. dp-socket -- an equipment slot: a printed field, the verb mark on it, its key numeral, and
+   a lamp strip along its floor carrying state. It used to be a recess with an inset shadow cut into
+   a plate; the owner ruled out CSS imitating a material on 2026-09-22. */
 .dp-socket {
   position:relative; display:grid; place-items:center;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgb(255 232 190 / .05), transparent 55%),
-    linear-gradient(180deg, rgb(0 0 0 / .62), rgb(0 0 0 / .22) 58%, rgb(255 255 255 / .028));
-  box-shadow:
-    inset 0 2px 5px rgb(0 0 0 / .78),
-    inset 0 -1px 0 rgb(255 232 190 / .10),
-    inset 1px 0 0 rgb(0 0 0 / .4),
-    inset -1px 0 0 rgb(0 0 0 / .4);
-  border-radius:var(--dp-r-instrument);
+  background:var(--dp-field-ink);
+  box-shadow:none;
+  border-radius:0;
 }
 .dp-socket .dp-socket__lamp {
   position:absolute; left:12%; right:12%; bottom:7%; height:2px; border-radius:1px;
@@ -111,23 +106,31 @@ export const DECKPLATE_COMPONENTS_CSS = `
 }
 .dp-socket[data-state="cooling"] .dp-socket__lamp { background:var(--dp-lamp-dim); box-shadow:none; }
 
-/* ══ 6. dp-vital — the segmented channel: a channel cut in the plate; segments are lamp wells.
-   Lit wells glow from inside the cut; unlit wells are bare metal. */
+/* == 6. dp-vital -- the segmented meter: each segment a flat cell, lit cells glowing, dark cells a
+   quiet rule. */
 .dp-vital { position:relative; display:flex; gap:2px; padding:3px; }
 .dp-vital .dp-vital__seg {
   flex:1 1 0; min-width:0; height:9px; border-radius:1px;
-  background:linear-gradient(180deg, var(--dp-metal-0), var(--dp-metal-1));
-  box-shadow:inset 0 1px 1px rgb(0 0 0 / .6);
+  background:var(--dp-rule);
+  box-shadow:none;
 }
-.dp-vital .dp-vital__seg.is-on {
-  background:linear-gradient(180deg, var(--dp-lamp-hot) 0%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
-  box-shadow:0 0 6px var(--dp-lamp-bloom), inset 0 1px 0 rgb(255 255 255 / .3);
+.dp-vital .dp-vital__seg.is-on { background:var(--dp-lamp); box-shadow:0 0 6px var(--dp-lamp-bloom); }
+.dp-vital .dp-vital__seg.is-hot { background:var(--dp-danger); box-shadow:0 0 6px var(--dp-danger-bloom); }
+.dp-vital .dp-vital__seg.is-cold { background:var(--dp-ink-dim); box-shadow:none; }
+
+/* ══ 7. dp-holdring — the hold-to-fire tell on a verb: a ring that fills with the lamp while
+   the control is held (D30). Lamp grammar: a quiet rule circle at rest — "this word is
+   holdable" — an arming lamp arc driven by --sf-hold-p (0..1), and the hot core when it lands. */
+.dp-holdring {
+  display:none; width:12px; height:12px; margin-left:7px; vertical-align:-1px; flex:0 0 auto;
+  border-radius:50%;
+  background:conic-gradient(var(--dp-lamp) calc(var(--sf-hold-p, 0) * 360deg), var(--dp-rule) 0);
+  -webkit-mask:radial-gradient(circle, transparent 4.1px, #000 4.3px);
+  mask:radial-gradient(circle, transparent 4.1px, #000 4.3px);
 }
-.dp-vital .dp-vital__seg.is-hot {
-  background:linear-gradient(180deg, var(--dp-danger-hot) 0%, var(--dp-danger) 55%, #a8241a 100%);
-  box-shadow:0 0 6px var(--dp-danger-bloom), inset 0 1px 0 rgb(255 255 255 / .26);
-}
-.dp-vital .dp-vital__seg.is-cold { background:linear-gradient(180deg, #efe6d2, #b9ae97); box-shadow:none; }
+/* the word carries the ring only while it is the hold target — a quiet circle on a plain tap
+   verb would promise a hold that does nothing */
+[data-hold] .dp-holdring { display:inline-block; }
 
 /* ══ Reduced motion: the machine holds still; every state survives as lamp + word ════════════ */
 @media (prefers-reduced-motion:reduce) {
@@ -151,7 +154,7 @@ export const DECKPLATE_COMPONENTS_FORCED_CSS = `
   .dp-annunc--danger .dp-annunc__lens { background:Mark; }
   .dp-socket { border:1px solid CanvasText; }
   .dp-socket .dp-socket__lamp { background:CanvasText; }
-  .dp-vital .dp-vital__seg { background:Canvas; box-shadow:inset 0 0 0 1px GrayText; }
+  .dp-vital .dp-vital__seg { background:Canvas; outline:1px solid GrayText; outline-offset:-1px; }
   .dp-vital .dp-vital__seg.is-on { background:Highlight; }
   .dp-gauge .dp-gauge__fill { background:Highlight; box-shadow:none; }
   .dp-gauge .dp-gauge__ticks { display:none; }

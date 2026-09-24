@@ -319,7 +319,22 @@ export function generateContacts(stationId, state = {}) {
       ],
     }]
     : [];
-  return [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  const listed = [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  stampUnheardBarRumor(listed, stationId, state);
+  return listed;
+}
+
+/** WORLD-05 — a new game can hear a station's wreck rumor before the wreck is scanned. */
+function stampUnheardBarRumor(contacts, stationId, state) {
+  const rumor = uniqueWreckBarRumor(state, stationId, 'rumors');
+  if (!rumor || !rumor.sourceRef) return;
+  const host = contacts.find((contact) => contact && contact.role === 'barkeep') || contacts[0];
+  if (!host || host.rumorSourceRef) return;
+  host.rumorSourceRef = rumor.sourceRef;
+  const sentence = String(rumor.text || '').split(/(?<=\.)\s/)[0];
+  if (sentence && /silver-draft/i.test(sentence) && host.line === ROLE_LINES.barkeep) {
+    host.line = sentence;
+  }
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
@@ -627,6 +642,14 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const memory = stationContactMemoryFor(state, contact.id);
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
   else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
+
+  // INF-074: the one remembered rescue. Barkeeps only, unacknowledged only — it sits beside
+  // the barkeep's standing Survey/service tags, pairing the recognition with the existing
+  // work on offer instead of dangling alone.
+  if (role === 'barkeep' && memory && memory.rescueMemory && !memory.rescueMemory.acknowledged) {
+    const heard = SECTOR_BY_ID.get(memory.rescueMemory.sectorId);
+    add('Rescue', `Word is you pulled crew out of a wreck${heard && heard.name ? ' in ' + heard.name : ''}. The bar remembers.`, 'story');
+  }
 
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);

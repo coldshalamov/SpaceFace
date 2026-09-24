@@ -31,16 +31,50 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B4, B5]
 register_rule: |
-  Leftover salvage leftover math. Leftover weigh-slip. Leftover mass on the leftover board.
+  Salvage math. Counting, weigh-slips, tonnage on the board. Predation as
+  bookkeeping: the weigh-slip, not the threat, is the voice. Never naval,
+  never liturgical, never invoice-polite. No generic tough-guy lines.
 register_tell: |
   Weigh-slip
+  weighed
+  reweigh
+  this weigh
+  Reach
+  salvage
+  pack
+  Vane
+  tonnes
+  curtain
+  crossing
+  prey
+  whole nest
+  counting
+  tonnage
+  salted
+  panels
+  the math
+  throne
+  payment
+  on the board
+  tagged
 register_forbidden: |
-  Leftover navy refs, leftover Pattern liturgy, leftover invoice politeness, leftover Clause, leftover ain't.
+  Ref 44-C
+  clause
+  pattern
+  variance
+  liturgy
+  accord
+  invoice
+  syndicate
+  ascension
+  chorus
 register_example: |
   Weigh-slip open. Your mass is already on the board.
 register_example_cite: src/data/barks.js#faction_reach.scan[3]
 voice_direction: |
-  Directed leftover synthetic pack. Thin leftover grit. Leftover counting cadence. No leftover recorded actor.
+  Directed synthetic pack (PQ-158.04 bark_reach: f0 155 Hz, rate 1.08x,
+  bandpass 500-3400 Hz). Thin and hungry, fastest cadence in the set;
+  counts, does not threaten. No recorded actor.
 ```
 
 **Signature faction graffiti:** *The hole had no locks on the inside.*

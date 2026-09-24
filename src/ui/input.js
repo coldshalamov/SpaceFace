@@ -1,7 +1,7 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
 // UI owns: ESC (back/pause), map bindings, T (tech), mission log, K (codex), F1/H (help),
-//          Tab (cycle target), P (pause), E (dock in range / undock station hub; Enter secondary dock),
+//          Tab (cycle target), Backspace (free aim), P (pause), E (dock in range / undock station hub; Enter secondary dock),
 //          F5/F9 (quick save/load), cargo/comms overlays, mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
 //
@@ -113,6 +113,12 @@ export function createUiInput(ctx, screenManager) {
     initialDelay: 0.36,
     repeatDelay: 0.12,
   };
+  // Modal pad-verb tracker (D30): raw X/Y edges + held-for duration for screens that declare
+  // `onPadButton` — screen UI like the raw d-pad read, independent of the flight action map.
+  const _padVerb = {
+    x: { held: false, heldFor: 0 },
+    y: { held: false, heldFor: 0 },
+  };
 
   // PQ-164.01: last-used device drives prompt glyphs (bindings.js owns the presentation state).
   // Device order is a local observation counter fed by pad/touch activity *edges* (the shared
@@ -187,7 +193,13 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function isTextEntryTarget(t) {
-    return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable));
+    // Same contract as the sim-side gate in systems/input.js: a <select> or a [data-text-input]
+    // widget is still text entry, and a keydown bubbling out of a labelled wrapper (a <span>
+    // inside contenteditable, a node inside a [data-text-input] container) must count too.
+    // Without closest() the bubbled target is the child, not the field, so global hotkeys fire
+    // while the player is picking from a dropdown or typing in a composite widget.
+    if (!t || typeof t.closest !== 'function') return false;
+    return !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
   }
 
   function closeActiveModal(def) {
@@ -299,6 +311,13 @@ export function createUiInput(ctx, screenManager) {
       return;
     }
 
+    if (matchesBinding(ev, BINDINGS.recallObjective)) {
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('hud:recallObjective');
+      return;
+    }
+
     switch (key) {
       case 'Escape':
         if (state.ui && state.ui.commsBacklogOpen) {
@@ -343,6 +362,10 @@ export function createUiInput(ctx, screenManager) {
       case 'Tab':
         ev.preventDefault();
         bus.emit('ui:cycleTarget', { dir: ev.shiftKey ? -1 : 1 });
+        return;
+      case 'Backspace':
+        ev.preventDefault();
+        bus.emit('ui:clearTarget');
         return;
       // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
       // registry so the prompt and handler can never drift. Enter remains a secondary trigger.
@@ -644,6 +667,17 @@ export function createUiInput(ctx, screenManager) {
 
   // mouse-wheel / trackpad zoom passthrough (only in flight, not over a modal).
   // Note: ingestTrackpadWheel and onTrackpadPointer are retired so trackpads operate as standard pointers.
+  // The wheel over a scrollable flight overlay (comms backlog, cargo list) scrolls that pane —
+  // it must not also drive the camera zoom beneath it.
+  function wheelTargetScrolls(target) {
+    for (let node = target; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+      if (!(node.scrollHeight > node.clientHeight + 1)) continue;
+      const oy = typeof getComputedStyle === 'function' ? getComputedStyle(node).overflowY : node.style && node.style.overflowY;
+      if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return true;
+    }
+    return false;
+  }
+
   function onWheel(ev) {
     // Chrome/Electron reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's
     // page-zoom default before the mode gates so the DOM HUD stays at its fixed viewport scale.
@@ -651,6 +685,7 @@ export function createUiInput(ctx, screenManager) {
     const isPinch = !!(ev.ctrlKey || ev.metaKey);
     if (isPinch && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
+    if (!isPinch && wheelTargetScrolls(ev.target)) return;
 
     let delta = 0;
     if (isPinch) {
@@ -951,6 +986,23 @@ export function createUiInput(ctx, screenManager) {
         else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
         bus.emit('ui:cancel', {});
         bus.emit('audio:cue', { id: 'ui_back' });
+      }
+
+      // Named pad verbs for screens that declare `onPadButton` (D30 refit footer): raw X/Y —
+      // UI-layer buttons like the d-pad read above, so a screen can offer a tap verb and a
+      // hold-to-fire verb without touching the flight action map or owning a timer.
+      if (def && typeof def.onPadButton === 'function' && rawPad) {
+        for (const [name, idx] of [['x', 2], ['y', 3]]) {
+          const down = !!(rawPad.buttons[idx] && rawPad.buttons[idx].pressed);
+          const prev = _padVerb[name];
+          const heldFor = down ? prev.heldFor + dt : 0;
+          const st = { held: down, pressed: down && !prev.held, released: !down && prev.held, heldFor };
+          if (st.held || st.released) {
+            try { def.onPadButton(name, st, ctx); } catch (e) { console.error('[uiInput] onPadButton error:', e); }
+          }
+          prev.held = down;
+          prev.heldFor = heldFor;
+        }
       }
 
       // Direction repeat handling.

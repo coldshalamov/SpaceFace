@@ -31,6 +31,10 @@ import {
   isCorridorSector,
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
+import { SpatialHash } from './spatialHash.js';
+import { projectileTravelLimit } from '../combat/projectileFlight.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -71,6 +75,24 @@ export const physics = {
     this._nearMissEmitted = new WeakSet();
     this._pairMaterialScratch = createPairMaterialRecord();
     this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0 };
+    // Dedicated scratch for the SG-02 receipt emit path. emitPhysicsImpact copies every field into
+    // a fresh payload synchronously, so a reused record is safe as long as every option field is
+    // rewritten per receipt — including writing undefined over a prior receipt's measured fields.
+    // Kept separate from _impactOptionsScratch so the custom-backend path never inherits stale
+    // player-receipt fields if the backend flips on load.
+    this._sg02ImpactOptionsScratch = {
+      backend: 'rapier-dynamic',
+      tick: 0,
+      normal: { x: 0, z: 0 },
+      causalActorId: null,
+      preSolveClosingSpeed: 0,
+      appliedPlayerDeltaV: undefined,
+      solverPlayerHeadingRad: undefined,
+      solverPlayerYawRateKick: undefined,
+      solverPlayerCourseRad: undefined,
+      appliedPlayerHeadingRad: undefined,
+      appliedPlayerCourseRad: undefined,
+    };
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
     this._dockStationId = null;
@@ -410,29 +432,31 @@ export const physics = {
     const receipts = this._sg02.drainContactImpacts();
     if (!Array.isArray(receipts) || !receipts.length) return 0;
     let emitted = 0;
+    const options = this._sg02ImpactOptionsScratch;
     for (const receipt of receipts) {
       const a = state.entities && state.entities.get ? state.entities.get(receipt.aId) : null;
       const b = state.entities && state.entities.get ? state.entities.get(receipt.bId) : null;
       if (!a || !b || a.alive === false || b.alive === false) continue;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
-      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, {
-        backend: 'rapier-dynamic',
-        // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
-        // provenance/status expiry belongs to the canonical simulation tick.
-        tick: state.tick,
-        normal: receipt.normal,
-        causalActorId: receipt.causalActorId,
-        preSolveClosingSpeed: receipt.preSolveClosingSpeed,
-        appliedPlayerDeltaV: receipt.appliedPlayerDeltaV,
-        // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
-        // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
-        // whole tick's value, so a reader sums per unique tick, never across receipts.
-        solverPlayerHeadingRad: receipt.solverPlayerHeadingRad,
-        solverPlayerYawRateKick: receipt.solverPlayerYawRateKick,
-        solverPlayerCourseRad: receipt.solverPlayerCourseRad,
-        appliedPlayerHeadingRad: receipt.appliedPlayerHeadingRad,
-        appliedPlayerCourseRad: receipt.appliedPlayerCourseRad,
-      });
+      // Every option field is rewritten per receipt; receipt fields absent on non-player
+      // receipts come through as undefined, matching the old literal's Number.isFinite checks.
+      options.backend = 'rapier-dynamic';
+      // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
+      // provenance/status expiry belongs to the canonical simulation tick.
+      options.tick = state.tick;
+      options.normal = receipt.normal;
+      options.causalActorId = receipt.causalActorId;
+      options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
+      options.appliedPlayerDeltaV = receipt.appliedPlayerDeltaV;
+      // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
+      // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
+      // whole tick's value, so a reader sums per unique tick, never across receipts.
+      options.solverPlayerHeadingRad = receipt.solverPlayerHeadingRad;
+      options.solverPlayerYawRateKick = receipt.solverPlayerYawRateKick;
+      options.solverPlayerCourseRad = receipt.solverPlayerCourseRad;
+      options.appliedPlayerHeadingRad = receipt.appliedPlayerHeadingRad;
+      options.appliedPlayerCourseRad = receipt.appliedPlayerCourseRad;
+      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
       if (dp > 0) emitted++;
     }
     return emitted;
@@ -646,8 +670,13 @@ export const physics = {
 
   sweepProjectiles(dt, state) {
     const out = this._scratch;
-    const useHash = hasActiveSpatialHash(state.spatialHash);
+    const wake = this._projectileWake || (this._projectileWake = []);
+    wake.length = 0;
+    this._syncProjectileBroadphase(state);
+    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
+    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
@@ -658,11 +687,17 @@ export const physics = {
       }
       const end = limit;
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
-      if (useHash) {
-        const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
+      const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
+      const mx = (start.x + end.x) * 0.5;
+      const mz = (start.z + end.z) * 0.5;
+      if (useBroadphase) {
+        // Every live collider, not only the glass-pinned physics set. A round that
+        // has left the frame still has to hit the hull it was aimed at.
         out.length = 0;
-        const mx = (start.x + end.x) * 0.5;
-        const mz = (start.z + end.z) * 0.5;
+        this._projectileBroadphase.queryRadius(mx, mz, sweepRadius, out);
+        candidates = out;
+      } else if (useHash) {
+        out.length = 0;
         if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
           state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius, out);
         } else {
@@ -670,19 +705,10 @@ export const physics = {
         }
         candidates = out;
       }
-      let bestTarget = null;
-      const hit = this._segmentHitScratch;
-      const bestHit = this._bestSegmentHitScratch;
-      for (const tgt of candidates) {
-        if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
-        if (proj.ownerId === tgt.id) continue;
-        if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
-        if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
-        if (!bestTarget || hit.t < bestHit.t) {
-          bestTarget = tgt;
-          copySegmentHit(bestHit, hit);
-        }
-      }
+      extra.length = 0;
+      this._admitProjectileSweepBodies(state, proj, start, end, extra);
+      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null);
+      bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget);
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
@@ -692,11 +718,110 @@ export const physics = {
         }
         continue;
       }
+      const bestHit = this._bestSegmentHitScratch;
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
+    }
+  },
+
+  _syncProjectileBroadphase(state) {
+    const index = state && state.entityIndex;
+    const ready = !!(index && index.__spacefaceEntityIndexV1
+      && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
+    this._projectileBroadphaseReady = ready;
+    if (!ready) return;
+    if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
+    this._projectileBroadphase.rebuildLayers(
+      index.spatialStatics,
+      index.spatialDynamics,
+      index.spatialStaticVersion || 0,
+    );
+  },
+
+  _bestProjectileTarget(proj, start, end, list, bestTarget) {
+    if (!list || list.length === 0) return bestTarget;
+    const hit = this._segmentHitScratch;
+    const bestHit = this._bestSegmentHitScratch;
+    for (let i = 0; i < list.length; i++) {
+      const tgt = list[i];
+      if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
+      if (proj.ownerId === tgt.id) continue;
+      // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
+      // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
+      if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
+      if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
+      if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
+      if (!bestTarget || hit.t < bestHit.t) {
+        bestTarget = tgt;
+        copySegmentHit(bestHit, hit);
+      }
+    }
+    return bestTarget;
+  },
+
+  /**
+   * Field rocks and shelved far actors are not combat bodies until something
+   * touches them. A projectile segment is that touch: promote the body this
+   * tick so the same sweep can hit it, on the glass or past it.
+   */
+  _admitProjectileSweepBodies(state, proj, start, end, into) {
+    const wake = this._projectileWake || (this._projectileWake = []);
+    const radius = proj.radius || 0;
+    for (let i = 0; i < wake.length; i++) {
+      const entity = wake[i];
+      if (!entity || entity.alive === false) continue;
+      into.push(entity);
+    }
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const reach = Math.hypot(dx, dz) * 0.5 + radius + 120;
+    if (!(reach > 0)) return;
+    const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
+    center.x = (start.x + end.x) * 0.5;
+    center.z = (start.z + end.z) * 0.5;
+    const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
+    const hit = this._segmentHitScratch;
+    const rocks = queryAsteroidField(
+      state,
+      center,
+      reach,
+      this._fieldQueryScratch || (this._fieldQueryScratch = []),
+    );
+    ids.length = 0;
+    for (let i = 0; i < rocks.length; i++) {
+      const rec = rocks[i];
+      if (!rec || rec.alive === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    const helpers = this.helpers;
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteAsteroidFieldRock(state, ids[i], helpers, 'projectile');
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
+    }
+    const actors = queryFarActors(
+      state,
+      center,
+      reach,
+      this._farQueryScratch || (this._farQueryScratch = []),
+    );
+    ids.length = 0;
+    for (let i = 0; i < actors.length; i++) {
+      const rec = actors[i];
+      if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteFarActor(state, ids[i], helpers);
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
     }
   },
 
@@ -710,6 +835,12 @@ export const physics = {
     if (closest.distance <= hitRadius || closest.distance > hitRadius + PLAYER_PROJECTILE_NEAR_MISS_MARGIN) return;
     this._nearMissEmitted.add(proj);
     const pd = proj.data || {};
+    // INF-049 — relative speed at the crossing: a railgun and a lobbed shell at the same
+    // distance must not crack alike. Player-relative, so a chase-tail round reads slower.
+    const pvx = Number(proj.vel && proj.vel.x) || 0;
+    const pvz = Number(proj.vel && proj.vel.z) || 0;
+    const plvx = Number(player.vel && player.vel.x) || 0;
+    const plvz = Number(player.vel && player.vel.z) || 0;
     this.bus.emit('projectile:nearMiss', {
       projectileId: proj.id,
       ownerId: proj.ownerId == null ? null : proj.ownerId,
@@ -717,8 +848,19 @@ export const physics = {
       weaponId: pd.weaponId || null,
       damageType: pd.damageType || 'kinetic',
       distance: closest.distance,
+      speed: Math.hypot(pvx - plvx, pvz - plvz),
       pos: { x: closest.x, z: closest.z },
-      direction: segmentDirection(start, end),
+      // A freshly spawned or stationary round sweeps a zero-length segment; its velocity is the
+      // truthful cue direction, and a dead stop reports none rather than a zero vector the schema
+      // rejects.
+      direction: (() => {
+        const seg = segmentDirection(start, end);
+        if (seg.x !== 0 || seg.z !== 0) return seg;
+        const vx = Number(proj.vel && proj.vel.x) || 0;
+        const vz = Number(proj.vel && proj.vel.z) || 0;
+        const vl = Math.hypot(vx, vz);
+        return vl > 1e-9 ? { x: vx / vl, z: vz / vl } : null;
+      })(),
       tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
     });
     this._diag.nearMissReceipts++;
@@ -1435,7 +1577,7 @@ function segmentDirection(start, end) {
 function projectileSweepLimitInto(out, projectile, start, end) {
   const data = projectile && projectile.data || {};
   const origin = data.spawnPos || data.origin || null;
-  const maxDistance = Number(data.maxDistance);
+  const maxDistance = projectileTravelLimit(data);
   if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
     out.x = end.x;
     out.z = end.z;

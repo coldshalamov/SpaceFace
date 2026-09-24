@@ -14,13 +14,18 @@ import {
   ONBOARDING_CHOICE_SOURCE,
   missions as missionsProto,
 } from '../src/systems/missions.js';
-import { onboarding as onboardingProto } from '../src/systems/onboarding.js';
+import { BEATS, onboarding as onboardingProto } from '../src/systems/onboarding.js';
 import {
   firstHourBoardOfferPresentation,
   missionBoardDispatchLabel,
 } from '../src/ui/station/screens/contracts.js';
 
-function freshOnboarding(currentBeat = 8) {
+// Drive the beat FSM by key: the authored rail grew (thesis-first attach/raid/claimed beats lead
+// it), so a literal index silently points at a different lesson.
+const DOCK_BEAT = BEATS.findIndex((beat) => beat.key === 'dock');
+const CHOICE_BEAT = BEATS.findIndex((beat) => beat.key === 'choice');
+
+function freshOnboarding(currentBeat = DOCK_BEAT) {
   return {
     active: true,
     finished: false,
@@ -111,7 +116,7 @@ test('B4 waits for the authored recommended delivery to finish', () => {
 
 test('B5 posts three normal starter-risk offers and accepts exactly one choice', () => {
   const h = makeHarness();
-  h.state.onboarding.currentBeat = 9;
+  h.state.onboarding.currentBeat = CHOICE_BEAT;
   h.onboarding._openChoice();
 
   const choices = h.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
@@ -156,7 +161,7 @@ test('first-hour mission rail labels the recommendation and all three choices', 
     label: 'RECOMMENDED', rank: -1, kind: 'recommended',
   });
 
-  h.state.onboarding.currentBeat = 9;
+  h.state.onboarding.currentBeat = CHOICE_BEAT;
   const choices = h.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
   assert.deepEqual(
     choices.map((offer) => firstHourBoardOfferPresentation(h.state, offer).label),
@@ -171,8 +176,8 @@ test('first-hour mission rail labels the recommendation and all three choices', 
 test('B5 offer identities and terms reproduce from the run seed', () => {
   const a = makeHarness(2026);
   const b = makeHarness(2026);
-  a.state.onboarding.currentBeat = 9;
-  b.state.onboarding.currentBeat = 9;
+  a.state.onboarding.currentBeat = CHOICE_BEAT;
+  b.state.onboarding.currentBeat = CHOICE_BEAT;
   const left = a.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
   const right = b.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
   assert.deepEqual(left, right);

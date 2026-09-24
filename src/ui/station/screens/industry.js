@@ -14,6 +14,12 @@ import { WEAPONS } from '../../../data/weapons.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { createChainBeam } from '../../orrery/chainBeam.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -30,6 +36,13 @@ const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
 function matName(id) { return CMDTY_NAME.get(id) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' '); }
+// A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
+// name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
+const OUTPUT_ENTITY_TYPE = { commodity: 'commodity', module: 'module', ship: 'hull' };
+function outputLink(id, kind, escapedLabel) {
+  const type = OUTPUT_ENTITY_TYPE[kind || 'commodity'];
+  return type ? entitySpanHtml(type + ':' + id, escapedLabel) : escapedLabel;
+}
 function researched(state) { const r = state && state.player && (state.player.researchedNodes || state.player.researched); return new Set(Array.isArray(r) ? r : []); }
 function items(state) { return (state && state.player && state.player.cargo && state.player.cargo.items) || {}; }
 function stationType(ctx) {
@@ -79,6 +92,10 @@ export function createIndustryScreen(ctx) {
   const stageEl = el.querySelector('.sx-ind__stage');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
   let picked = false; // land on a recipe buildable at THIS station on first open
+  // ORRERY (design/frontend/ORRERY.md §6 Industry): the blueprint as a production chain -- inputs
+  // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
+  let chain = null;
+  const stopDecrypt = [];
 
   function renderList(state) {
     const stn = stationType(ctx);
@@ -93,7 +110,7 @@ export function createIndustryScreen(ctx) {
               const r = industryReadiness(bp, state, stn);
               const selected = bp.id === selectedId;
               const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
-              return `<li><button type="button" class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+              return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(output)}</span>` +
@@ -123,8 +140,8 @@ export function createIndustryScreen(ctx) {
       const ok = have >= need;
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
-          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${escapeHtml(matName(id))}</span>` +
-          (ok ? '' : `<button type="button" class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">Source in market</button>`) +
+          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
+          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">${stationControlLabel('source-market')}</button>`) +
           `<span class="k-row__num sx-fab-in__q${ok ? '' : ' k-bad'}">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
       );
@@ -148,7 +165,7 @@ export function createIndustryScreen(ctx) {
     stageEl.innerHTML =
       `<div class="sx-fab">` +
         `<p class="k-caps sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</p>` +
-        `<h2 class="k-display k-t-title sx-fab-head__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</h2>` +
+        `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
@@ -159,11 +176,41 @@ export function createIndustryScreen(ctx) {
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
         `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
             `${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : escapeHtml(shortBlockLabel(bp, r)))}` +
           `</button>` +
         `</li></ul>` +
       `</div>`;
+    composeStage(bp, it, r, canBuild);
+  }
+
+  /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
+  function composeStage(bp, it, r, canBuild) {
+    if (chain) { chain.dispose(); chain = null; }
+    const fab = stageEl.querySelector('.sx-fab');
+    if (!fab) return;
+    const host = document.createElement('div');
+    host.className = 'orr-ind-chain';
+    host.setAttribute('aria-hidden', 'true');
+    const heroes = fab.querySelector('.sx-fab-heroes');
+    if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
+    chain = createChainBeam(host);
+    chain.set({
+      inputs: Object.keys(bp.inputs || {}).map((id) => ({ nameHtml: escapeHtml(matName(id)), have: Math.floor(it[id] || 0), need: bp.inputs[id] })),
+      process: CAT_LABEL[bp.category] || bp.category,
+      timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
+      output: { qty: bp.outputs.qty || 1, unit: `${bp.outputs.kind || 'unit'} per run` },
+      live: !!canBuild,
+    });
+    const build = fab.querySelector('.sx-fab-build[data-build]');
+    if (build) dressLampKey(build);
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (reducedMotion()) return;
+    const targets = [
+      fab.querySelector('.sx-fab-head__name .sf-entity-link') || fab.querySelector('.sx-fab-head__name'),
+      ...fab.querySelectorAll('.k-caps'),
+    ].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
   }
 
   function renderAll(state) { renderList(state); renderStage(state); }
@@ -237,6 +284,8 @@ export function createIndustryScreen(ctx) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
       }
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (chain) { chain.dispose(); chain = null; }
     },
   };
 }

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8a6adcefa28cc00ca0dd0ef2e2319782dd7591f07d2c89952c2f45e44a809ef8",
+  "contentHash": "15ddd0908f63d1559bd082151810f4e378ecc4f8c4d82a99fbb09086a5f2730b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1664,14 +1664,14 @@
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 50952,
-    "sha256": "e02f380bd7c8acdbca248bf718e8977226fc6a6aad36a8c77b0e0002b3774845",
+    "sha256": "6245df283332f70a5beb59f8591c9b143b28df1e79050bf5ac24a87aea6d0f90",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1701,7 +1701,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "geology": 21
+      "geology": 18,
+      "hull": 1,
+      "rubber": 2
     },
     "materialProfiles": [
       {
@@ -1712,7 +1714,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1732,12 +1734,12 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -2384,7 +2386,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb"
   },
-  "runtimeHash": "971f0df7694831909723790f10125d34254e29f1417d9ecf4560f4557b1877fe",
+  "runtimeHash": "5dc6e978dc2f762b63e7fb2598c4cbea7a7e6bbf59188a814563c8207bf50db7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

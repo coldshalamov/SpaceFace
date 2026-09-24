@@ -22,7 +22,13 @@ import {
   factionContractLadderRows,
 } from '../../factionStanding.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
+import { dpMark, factionCrestName } from '../../deckplate/index.js';
+import { stationControlAttrs } from '../stationBindingMap.js';
+import { createCrestOrbit, standingScaleSvg } from '../../orrery/crestOrbit.js';
+import { decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 
 const STATION_FACTION = new Map();
 for (const sector of SECTORS) {
@@ -32,8 +38,17 @@ for (const sector of SECTORS) {
 const REP_MIN = -1000;
 const REP_MAX = 1000;
 
-/** The power's own heraldry as a kit crest (a generic mark for an id the icon set does not know). */
+/** The power's own heraldry.
+ *
+ *  Fourteen crests were drawn for the fourteen factions -- 240px hex shields, two-tone, one per
+ *  power -- and this screen was rendering a generic line glyph from the icon set instead, at 24px,
+ *  greyed, tucked behind the title. ONE_PHOTOGRAPH.md section 4.12: a glyph where a mark exists is
+ *  a defect. dpMark casts the real thing as relief under the shared key; the icon-set fallback
+ *  stays for a power with no crest on disk, which today is none of them.
+ */
 function crest(id, variant) {
+  const name = factionCrestName(id);
+  if (name) return dpMark(name, { size: variant === 'hero' ? 'hero' : 'badge', lit: variant === 'hero' });
   const px = variant === 'hero' ? 240 : 24;
   const svg = factionIcon(id, px) || icon('factions', px);
   return svg.replace(/class="sx-ico[^"]*"/, `class="k-crest k-crest--${variant} sx-ico"`);
@@ -112,6 +127,16 @@ export function createFactionsScreen(ctx) {
   const railEl = el.querySelector('.sx-fac__rail');
   const stageEl = el.querySelector('.sx-fac__stage');
   railEl.setAttribute('role', 'tablist');
+  // ORRERY (design/frontend/ORRERY.md §6 Factions): the fourteen crests on an Orbit Ring with the
+  // Hand at the chosen one and a standing arc round each, the reading beside it. The orbit lives
+  // once in the stage and swings between renders; the reading is rebuilt as words.
+  const orbitHost = document.createElement('div');
+  orbitHost.className = 'orr-fac-orbit';
+  const readingEl = document.createElement('div');
+  readingEl.className = 'sx-fac-reading';
+  stageEl.append(orbitHost, readingEl);
+  let orbit = null;
+  const stopDecrypt = [];
 
   function renderRail(state) {
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
@@ -125,9 +150,12 @@ export function createFactionsScreen(ctx) {
         const selected = f.id === selectedId;
         const authority = f.id === authorityId;
         return (
-          `<li><button type="button" class="sx-fac-row k-row${selected ? ' is-active' : ''}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+          `<li><button type="button" ${stationControlAttrs('faction')} class="sx-fac-row k-row${selected ? ' is-active' : ''}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(f.name)}, ${escapeHtml(tier.name)} ${signed(rep)}${authority ? ', current station authority' : ''}">` +
             `<span class="sx-fac-row__body">` +
+              // The crest rides the row. Fifteen names at identical weight was a spreadsheet;
+              // a power is recognisable by its mark before its name is read.
+              `<span class="sx-fac-row__crest" aria-hidden="true">${crest(f.id, 'badge')}</span>` +
               `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority · </span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +
@@ -160,13 +188,16 @@ export function createFactionsScreen(ctx) {
 
     const standingLadder = FACTION_TIERS.map((t, i) => (
       `<li class="k-row k-row--static sx-ladder__step${i <= curIdx ? ' is-reached' : ''}${i === curIdx ? ' is-current' : ''}"${i === curIdx ? ' aria-current="true"' : ''}>` +
-        `<span class="${i === curIdx ? 'k-row__name' : 'k-62'} sx-ladder__name">${escapeHtml(t.name)}${i === curIdx ? ' <span class="k-t-fine k-signal">now</span>' : ''}</span>` +
+        `<span class="k-row__name${i === curIdx ? '' : ' k-62'} sx-ladder__name">${escapeHtml(t.name)}${i === curIdx ? ' <span class="k-t-fine k-signal">now</span>' : ''}</span>` +
         `<span class="k-row__num sx-ladder__min">${t.min > 0 ? '+' : ''}${t.min}</span>` +
       `</li>`
     )).join('');
     const contractLadder = factionContractLadderRows(rep).map((row) => (
       `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}">` +
-        `<span class="${row.unlocked ? 'k-row__name' : 'k-62'} sx-ladder__name">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
+        // A contract rung is a sentence -- "Recovery Work · R0-R1 local hauling · unlocked" -- so it
+        // WRAPS. Truncating it with an ellipsis hides the part that says what the rung buys you.
+        // The standing ladder above is one short tier name per row and keeps `k-row__name`.
+        `<span class="sx-ladder__name sx-ladder__name--wrap${row.unlocked ? '' : ' k-62'}">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
           `<span class="k-row__sub"> · ${row.aspirational ? 'future work' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
         `<span class="k-row__num sx-ladder__min">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
       `</li>`
@@ -176,7 +207,7 @@ export function createFactionsScreen(ctx) {
       const name = related ? related.name : relation.id;
       const kind = relation.weight > 0 ? 'Align' : 'Rival';
       return (
-        `<li><button type="button" class="sx-fac-node k-row" data-fac="${escapeHtml(relation.id)}"` +
+        `<li><button type="button" ${stationControlAttrs('faction-relation')} class="sx-fac-node k-row" data-fac="${escapeHtml(relation.id)}"` +
           ` aria-label="Inspect ${escapeHtml(name)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
           `<span class="k-row__name">${escapeHtml(name)}</span>` +
           `<span class="${relation.weight > 0 ? 'k-good' : 'k-bad'} sx-fac-node__kind">${kind}</span>` +
@@ -185,11 +216,11 @@ export function createFactionsScreen(ctx) {
       );
     }).join('');
 
-    stageEl.innerHTML =
+    readingEl.innerHTML =
       `<div class="sx-fac-overview">` +
         `<span class="sx-fac-crest" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
-        `<h2 class="k-display k-t-title sx-fac-ident__name">${escapeHtml(f.name)}</h2>` +
+        `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
           `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}">` +
@@ -200,6 +231,8 @@ export function createFactionsScreen(ctx) {
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
             `<p class="k-caps">Standing ladder</p>` +
+            // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
+            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: 560 }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
@@ -218,6 +251,26 @@ export function createFactionsScreen(ctx) {
           `</div>` +
         `</div>` +
       `</div>`;
+    composeStage(state, f);
+  }
+
+  /** The orbit swings to the chosen power; the reading's labels resolve. */
+  function composeStage(state, f) {
+    if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 150 });
+    const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
+    orbit.set({
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name }; }),
+      selectedId: f.id,
+      authorityId,
+      swing: picked,
+    });
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (reducedMotion()) return;
+    const targets = [
+      readingEl.querySelector('.sx-fac-ident__name .sf-entity-link') || readingEl.querySelector('.sx-fac-ident__name'),
+      ...readingEl.querySelectorAll('.sx-fac-overview > .k-caps, .sx-fac__detail .k-caps'),
+    ].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 30 + i * 40 })); });
   }
 
   function refresh(c) {
@@ -282,6 +335,8 @@ export function createFactionsScreen(ctx) {
     refresh,
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('faction:repChanged', onRepChanged);
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (orbit) { orbit.dispose(); orbit = null; }
     },
   };
 }

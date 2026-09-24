@@ -57,7 +57,7 @@
   padding: 0;
   cursor: pointer;
 }
-.ast-screen button:focus-visible { outline: 2px solid var(--aw-gold); outline-offset: 2px; border-radius: 8px; }
+.ast-screen button:focus-visible { outline: 2px solid var(--k-bone, #eae6df); outline-offset: 2px; border-radius: 8px; }
 .ast-screen button:disabled { cursor: default; opacity: 0.45; }
 
 /* ============================================================================
@@ -93,7 +93,7 @@
   background-color: rgba(23, 19, 16, 0.92); /* --aw-bg at 92%: the darkest chrome ever gets */
   /* the machined seam where the crest meets the board — the kit's etched hairline,
      not a 1px border the browser invented */
-  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
   background-repeat: repeat-x;
   background-position: bottom left;
 }
@@ -112,28 +112,30 @@
   padding: 0;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 8px 14px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
-  border-image-slice: 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 8px 14px;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
   color: var(--aw-ink-2);
   white-space: nowrap;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 14px;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 .aw-chip.ok {
   color: var(--aw-mint);
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  box-shadow: none;
 }
 .aw-chip.bad {
   color: var(--aw-coral);
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+  background: linear-gradient(176deg, #2a1614, #1d0f0e) border-box;
+  box-shadow: none;
 }
 .aw-chip.warn {
   color: var(--aw-gold);
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  box-shadow: none;
 }
 
 /* one alert slot — empty and invisible by default */
@@ -182,20 +184,19 @@
   height: 28px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 8px 10px;
-  border-image-source: url("../assets/ui/kit/assets/gauges/bar.seg.bezel.png");
-  border-image-slice: 8 10 fill;
-  border-image-repeat: stretch;
-  border-image-width: 8px 10px;
   overflow: hidden;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 10px;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 .aw-hold-track { width: 112px; }
 .aw-hold-track .ticks,
 .aw-gauge-track .ticks {
   position: absolute;
   inset: 0;
-  background-image: url("../assets/ui/kit/assets/gauges/bar.seg.off.png");
+  background-image: linear-gradient(90deg, rgb(232 226 212 / .16) 9px, transparent 0);
   background-repeat: repeat-x;
   background-size: 12px 100%;
 }
@@ -229,26 +230,24 @@
   padding: 0 12px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 10px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 10px;
   font: 600 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
   color: var(--aw-ink-2);
   transition: color 120ms var(--k-ease);
+  border: 10px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-leave:hover {
   color: var(--aw-ink);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+  background: var(--dp-cap-hover) border-box;
 }
 .ast-screen .aw-leave:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-leave:active {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+  background: var(--dp-cap-press) border-box;
+  box-shadow: var(--dp-cap-sink);
 }
 /* The keycap is ENGRAVED into the key, not a second box inside it: a plate on a
    plate is the soft-rectangle habit this pass is removing. */
@@ -260,8 +259,10 @@
      2.9:1 on these plates — under the 4.5:1 floor, and this screen's labels are text, not
      decoration. The Field Hardware voice here is the TRACKING and the size step; the ink stays
      the law's own §3.2 ramp, which measures 8.9:1 (ink-2) and 4.6:1 (ink-3) on the sunk plate.
-     Amber is reserved for LIT state, where it arrives as the key's own authored `.lit` face. */
-  color: var(--aw-ink-3);
+     Amber is reserved for LIT state, where it arrives as the key's own authored `.lit` face.
+     Raised to ink-2 on 2026-09-22: the plate under it is now a printed field, and ink-3 measured
+     3.72:1 against the composited frame (scripts/ui-contrast.mjs). */
+  color: var(--aw-ink-2);
   background: none;
   padding: 0;
 }
@@ -282,7 +283,7 @@
   display: block;
   outline: none;
 }
-.ast-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--aw-gold); border-radius: 4px; }
+.ast-canvas:focus-visible { box-shadow: none; border-radius: 4px; }
 
 /* ---------------------------------------------------------------- §6.2 rig cluster */
 /* The rig is a SUNK BENCH PLATE — the kit's recessed well, the surface the whole
@@ -304,12 +305,9 @@
   padding: 4px 6px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 16px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 16px;
+  border: 16px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 .aw-gauge { display: flex; align-items: center; gap: 10px; }
 /* Quiet type: the kit's fine step, legend tracking, resting legend amber. The
@@ -379,7 +377,7 @@
   justify-content: center;
   border-radius: 8px;
   background-color: var(--fh-plate);
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.rest@2x.png");
+  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .08) 0);
   background-size: 46px 46px;
   background-repeat: no-repeat;
   background-position: center;
@@ -392,7 +390,7 @@
     box-shadow 120ms var(--k-ease);
 }
 .ast-screen .aw-build-key:focus-visible {
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.focus@2x.png");
+  background-image: var(--dp-bracket), linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .14) 0);
 }
 /* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
 .aw-build-glyph {
@@ -414,19 +412,18 @@
 .ast-screen .aw-build-key:hover {
   transform: translateY(-1px);
   background-color: var(--fh-plate-raised);
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.hover@2x.png");
+  background-image: var(--dp-cut-lit), linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .14) 0);
   color: var(--aw-ink);
 }
 .ast-screen .aw-build-key:active {
   transform: translateY(1px);
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.pressed@2x.png");
+  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .05) 0);
 }
 
 /* armed — gold ring + gold glyph. Outside build mode nothing is being aimed, so the ring
    reads as a quiet inner hint instead of shouting a selection the player is not making. */
 .ast-screen .aw-build-key.armed {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--sf-goal) 45%, transparent),
     0 2px 8px rgba(8, 5, 2, 0.5);
 }
 /* live + armed is the kit's LIT socket — the cap itself is energised, so the ring
@@ -434,7 +431,7 @@
 .ast-screen .aw-palette.live .aw-build-key.armed {
   color: var(--aw-gold);
   background-color: var(--fh-plate-raised);
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.lit@2x.png");
+  background-image: var(--dp-cut-lit), linear-gradient(225deg, transparent 7px, rgb(242 185 80 / .20) 0);
   box-shadow: 0 0 0 2px var(--aw-gold), 0 3px 10px rgba(8, 5, 2, 0.55);
 }
 
@@ -445,7 +442,7 @@
 .ast-screen .aw-build-key.poor:hover {
   transform: none;
   background-color: var(--fh-plate-sunk);
-  background-image: url("../assets/ui/kit/assets/keys/key.socket.disabled@2x.png");
+  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .04) 0);
   box-shadow: none;
   color: var(--aw-ink-3);
 }
@@ -470,16 +467,13 @@
   /* the kit's HUD-scale edge plate — thinner edge, lighter grain, authored for
      exactly this: a small card floating over a live board */
   background: transparent;
-  border-style: solid;
-  border-width: 10px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.edge.small.png");
-  border-image-slice: 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 10px;
   white-space: nowrap;
   pointer-events: none;
   visibility: hidden;
   opacity: 0;
+  border: 10px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 .ast-screen .aw-build-key:hover .aw-build-tip,
 .ast-screen .aw-build-key:focus-visible .aw-build-tip {
@@ -525,16 +519,13 @@
   padding: 0 1px 1px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 10px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.edge.small.png");
-  border-image-slice: 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 10px;
   color: var(--aw-ink-2);
   pointer-events: none;
   overflow: hidden;
   contain: layout style;
+  border: 10px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 .aw-lens[hidden] { display: none !important; }
 
@@ -632,22 +623,23 @@
   padding: 0 2px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 5px 8px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
-  border-image-slice: 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 5px 8px;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   color: var(--aw-ink-2);
   white-space: nowrap;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 5px 8px;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 .aw-lens-chip.gold,
 .aw-lens-chip.mint {
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  box-shadow: none;
 }
 .aw-lens-chip.coral {
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+  background: linear-gradient(176deg, #2a1614, #1d0f0e) border-box;
+  box-shadow: none;
 }
 .aw-lens-chip svg { flex: 0 0 auto; display: block; }
 .aw-lens-chip.gold { color: var(--aw-gold); }
@@ -676,7 +668,7 @@
 .aw-lens-ring-cell.hollow { background: rgba(8, 5, 2, 0.5); }
 .aw-lens-ring-cell.center {
   background: transparent;
-  box-shadow: inset 0 0 0 2px var(--aw-gold);
+  box-shadow: none;
 }
 
 /* ---------------------------------------------------------------- extraction report
@@ -698,12 +690,6 @@
 .ast-summary-box {
   background: transparent;
   box-sizing: border-box;
-  border-style: solid;
-  border-width: 24px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.raised.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 24px;
   padding: 0;
   width: min(420px, calc(100vw - 32px));
   display: flex;
@@ -712,6 +698,9 @@
   color: var(--aw-ink-2, #bfae94);
   font-family: var(--aw-font, system-ui, sans-serif);
   text-transform: none;
+  border: 24px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-summary-box .title {
   font: 600 20px/1.2 var(--aw-name-font, var(--aw-font, sans-serif));
@@ -719,7 +708,7 @@
   color: var(--aw-ink, #f2e8d5);
   padding-bottom: 10px;
   border: 0;
-  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
   background-repeat: repeat-x;
   background-position: bottom left;
 }
@@ -745,36 +734,35 @@
   padding: 0 12px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 14px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.rest.png");
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 14px;
   font: 600 var(--fh-size-fine)/1.1 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
   color: var(--fh-ground);
   transition: transform 120ms var(--k-ease), color 120ms var(--k-ease);
+  border: 14px solid transparent;
+  background: var(--dp-cap-live) border-box;
+  box-shadow: var(--dp-cap-live-lift);
 }
 .ast-screen .sf-btn:hover,
 .ast-summary-box .sf-btn:hover {
   transform: translateY(-1px);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.hover.png");
+  background: var(--dp-cap-live-hover) border-box;
 }
 .ast-screen .sf-btn:focus-visible,
 .ast-summary-box .sf-btn:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.focus.png");
+  box-shadow: var(--dp-cap-live-lift);
 }
 .ast-screen .sf-btn:active,
 .ast-summary-box .sf-btn:active {
   transform: translateY(1px);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.pressed.png");
+  background: var(--dp-cap-press) border-box;
+  box-shadow: var(--dp-cap-sink);
 }
 .ast-screen .sf-btn:disabled,
 .ast-summary-box .sf-btn:disabled {
   color: var(--aw-ink-3);
   transform: none;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.disabled.png");
+  background: var(--dp-cap-off) border-box;
+  box-shadow: var(--dp-cap-off-edge);
 }
 
 /* ---------------------------------------------------------------- a11y + modes */
@@ -904,17 +892,16 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   /* the plate's `fill` middle covers this, so law §3.2's token stays the honest
      fallback if the sprite never arrives */
   background: var(--aw-surface);
-  border-style: solid;
-  border-width: 14px 14px 16px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.raised.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 14px 14px 16px;
   color: var(--aw-ink-2);
   transform: translateY(102%);
   opacity: 0;
   transition: transform 200ms var(--k-ease), opacity 200ms var(--k-ease);
   overflow: hidden;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 14px 14px 16px;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .aw-drawer[hidden] { display: none !important; }
 .aw-drawer.open { transform: translateY(0); opacity: 1; }
@@ -941,27 +928,27 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0 10px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 11px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
-  border-image-slice: 14 fill;
-  border-image-repeat: stretch;
-  border-image-width: 11px;
   color: var(--aw-ink-2);
   font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
   transition: color 120ms var(--k-ease);
+  border: 11px solid transparent;
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-tab:hover {
   color: var(--aw-ink);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-tab:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-tab.on {
   color: var(--fh-ground);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
+  background: none;
+  box-shadow: none;
 }
 
 .aw-drawer-body {
@@ -986,26 +973,24 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 9px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 9px;
   color: var(--aw-ink-2);
   transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
+  border: 9px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-drawer-key:hover {
   color: var(--aw-ink);
   transform: translateY(-1px);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+  background: var(--dp-cap-hover) border-box;
 }
 .ast-screen .aw-drawer-key:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-drawer-key[aria-expanded="true"] {
   color: var(--aw-gold);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+  background: var(--dp-cap-press) border-box;
+  box-shadow: var(--dp-cap-sink);
 }
 .aw-drawer-key svg { display: block; }
 
@@ -1017,15 +1002,15 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   width: 12px;
   height: 12px;
   background: none;
-  background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.off.png");
+  background-image: radial-gradient(closest-side, rgb(232 226 212 / .22) 98%, transparent);
   background-size: 12px 12px;
   background-repeat: no-repeat;
 }
-.aw-dot.mint { background-image: url("../assets/ui/kit/assets/lights/light.dot.good.on.png"); }
-.aw-dot.gold { background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png"); }
-.aw-dot.coral { background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png"); }
-.aw-dot.sky { background-image: url("../assets/ui/kit/assets/lights/light.dot.cold.on.png"); }
-.aw-dot.ink { background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.dim.png"); }
+.aw-dot.mint { background-image: radial-gradient(closest-side, var(--dp-ink, #e8e2d4) 98%, transparent); }
+.aw-dot.gold { background-image: radial-gradient(closest-side, var(--dp-lamp, #f2b950) 98%, transparent); }
+.aw-dot.coral { background-image: radial-gradient(closest-side, var(--dp-danger, #ff5038) 98%, transparent); }
+.aw-dot.sky { background-image: radial-gradient(closest-side, var(--dp-ink-dim, #c9c4b6) 98%, transparent); }
+.aw-dot.ink { background-image: radial-gradient(closest-side, var(--dp-lamp-dim, #8a6b3a) 98%, transparent); }
 
 /* ---- Ledger tab: newest first, mono clock, one line per event ---- */
 .aw-ledger { margin: 0; padding: 0; list-style: none; }
@@ -1039,7 +1024,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 }
 /* rows are separated by the kit's etched hairline, not an invented inset shadow */
 .aw-ledger-row + .aw-ledger-row {
-  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
   background-repeat: repeat-x;
   background-position: top left;
 }
@@ -1075,16 +1060,13 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0 4px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 9px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 9px;
   font: 500 var(--fh-size-fine)/1.1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
   white-space: nowrap;
+  border: 9px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .aw-help-label {
   margin: 0;
@@ -1108,12 +1090,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0 2px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 12px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px;
+  border: 12px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 /* Quiet type: the block heading is a legend, tracked and in resting amber, so the
    numbers under it are what the eye lands on. */
@@ -1151,15 +1130,14 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0 2px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 7px 12px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
-  border-image-slice: 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 7px 12px;
   font: 500 var(--fh-size-fine)/1.3 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-mint);
+  border-style: solid;
+  border-color: transparent;
+  border-width: 7px 12px;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 .aw-site-flights { margin: 4px 0 0; padding: 0; list-style: none; }
 .aw-site-flight {
@@ -1190,11 +1168,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 .ast-screen .aw-verb-chip,
 .ast-screen .aw-verb-btn {
   padding: 0 8px;
-  border-width: 11px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
-  border-image-slice: 14 fill;
-  border-image-repeat: stretch;
-  border-image-width: 11px;
+  border: 11px solid transparent;
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-step {
   display: inline-flex;
@@ -1204,47 +1180,51 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0;
   font-family: var(--aw-mono);
   letter-spacing: normal;
-  border-width: 9px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 9px;
+  border: 9px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-verb-chip:hover:not(:disabled),
 .ast-screen .aw-verb-btn:hover:not(:disabled) {
   color: var(--aw-ink);
   transform: translateY(-1px);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-step:hover:not(:disabled) {
   color: var(--aw-ink);
   transform: translateY(-1px);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+  background: var(--dp-cap-hover) border-box;
 }
 .ast-screen .aw-verb-chip:focus-visible,
 .ast-screen .aw-verb-btn:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-step:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+  box-shadow: var(--dp-cap-lift);
 }
 .ast-screen .aw-verb-step:active:not(:disabled) {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+  background: var(--dp-cap-press) border-box;
+  box-shadow: var(--dp-cap-sink);
 }
 .ast-screen .aw-verb-chip.on {
   color: var(--fh-ground);
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-chip:disabled,
 .ast-screen .aw-verb-btn:disabled {
   color: var(--aw-ink-3);
   transform: none;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.disabled.png");
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-step:disabled {
   color: var(--aw-ink-3);
   transform: none;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.disabled.png");
+  background: var(--dp-cap-off) border-box;
+  box-shadow: var(--dp-cap-off-edge);
 }
 .aw-verb-num {
   min-width: 42px;
@@ -1261,22 +1241,21 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   padding: 0 4px;
   box-sizing: border-box;
   background: transparent;
-  border-style: solid;
-  border-width: 10px;
-  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 10px;
   color: var(--aw-ink);
   font: 500 var(--fh-size-fine)/1.2 var(--aw-font);
   text-transform: none;
+  border: 10px solid transparent;
+  background: var(--dp-chan-rest) border-box;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-select:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.focus.png");
+  background: var(--dp-chan-live) border-box;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-select:disabled {
   color: var(--aw-ink-3);
-  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.disabled.png");
+  background: linear-gradient(180deg, var(--dp-rule) 1px, transparent 0) border-box;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-select option { background: var(--aw-surface); color: var(--aw-ink); }
 .aw-site-reason {

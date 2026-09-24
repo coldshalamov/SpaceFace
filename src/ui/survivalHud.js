@@ -21,6 +21,7 @@ import {
 } from '../systems/survivalResults.js';
 import { runXpForLevel } from '../core/runState.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -70,6 +71,31 @@ export function objectiveWord(objectiveKind) {
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
   return String(arenaId).replace(/_/g, ' ').toUpperCase();
+}
+
+/**
+ * The variety badge beside the chain figure (INF-031). Pure: the HUD never re-derives the
+ * bonus — swarmChain's own cause/step result arrives on the `swarm:chain` event and this only
+ * words it. A varied kill reads `COLLISION +2`; a repeated one reads `GUN`. Null when there is
+ * no cause to show, so the row stays a bare number.
+ */
+export function chainCauseBadge(cause, step) {
+  if (typeof cause !== 'string' || cause.length === 0) return null;
+  const word = cause.replace(/_/g, ' ').toUpperCase();
+  if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
+  return word;
+}
+
+/**
+ * Seconds left in the chain window from the kill's sim-time anchor (INF-032). Pure: the same
+ * subtraction swarmChain's lapse check runs — `expiresIn` restated from the event's `at` — so
+ * the mark agrees with the four-second window by construction. Slow time advances simTime
+ * slowly and pause freezes it, so the mark slows and freezes with the window itself. A
+ * missing anchor reads as a full window: a chain that just started owes no depletion.
+ */
+export function chainWindowRemaining(chainAt, simNow) {
+  if (!Number.isFinite(chainAt) || !Number.isFinite(simNow)) return SWARM_CHAIN_WINDOW_S;
+  return Math.max(0, chainAt + SWARM_CHAIN_WINDOW_S - simNow);
 }
 
 /** Live census for the wave: how many bodies are still out there, and how many are owed. */
@@ -159,6 +185,9 @@ export const survivalHud = {
     this._objective = null;
     this._chain = 0;
     this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
     this._waveProgress = null;
     this._death = null;
     this._lastTells = [];
@@ -171,6 +200,11 @@ export const survivalHud = {
       this._waveProgress = null;
       this._death = null;
       this._lastTells = [];
+      this._chain = 0;
+      this._chainBest = 0;
+      this._chainCause = null;
+      this._chainStep = 0;
+      this._chainAt = null;
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
@@ -184,6 +218,7 @@ export const survivalHud = {
 
   destroy() {
     if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
+    this._swarmFlightClass = null;
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -206,7 +241,11 @@ export const survivalHud = {
     if (!st) return;
     const run = st.run;
     const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
-    document.body?.classList?.toggle('sf-swarm-flight', live && run.ruleset === 'swarm' && st.mode === 'flight');
+    const swarmFlight = live && run.ruleset === 'swarm' && st.mode === 'flight';
+    if (this._swarmFlightClass !== swarmFlight) {
+      this._swarmFlightClass = swarmFlight;
+      document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
+    }
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
       return;
@@ -240,7 +279,7 @@ export const survivalHud = {
       // so they sit as a figure with no slash and no fill.
       const progress = this._waveProgress;
       const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
-      dom.threat.hidden = !ready;
+      this._setHidden(dom.threat, !ready);
       if (ready) {
         const remainingTicks = Number.isInteger(progress.remainingTicks) ? Math.max(0, progress.remainingTicks) : 0;
         const durationTicks = progress.durationTicks;
@@ -250,32 +289,32 @@ export const survivalHud = {
         this._setText(dom.threatWord, 'NEXT WAVE');
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        dom.threat.setAttribute('aria-label', `Next wave in ${clock}`);
-        dom.threat.setAttribute('aria-valuemin', '0');
-        dom.threat.setAttribute('aria-valuenow', String(remainingSeconds));
-        dom.threat.setAttribute('aria-valuemax', String(durationSeconds));
+        this._setAttr(dom.threat, 'aria-label', `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-valuemin', '0');
+        this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
+        this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
       }
       if (dom.killWord && dom.killFig) {
-        dom.killWord.hidden = false;
-        dom.killFig.hidden = false;
+        this._setHidden(dom.killWord, false);
+        this._setHidden(dom.killFig, false);
         this._setText(dom.killWord, 'KILLS');
         this._setText(dom.killFig, num(census.resolved));
       }
     } else if (showThreat) {
-      dom.threat.hidden = false;
-      if (dom.killWord) dom.killWord.hidden = true;
-      if (dom.killFig) dom.killFig.hidden = true;
+      this._setHidden(dom.threat, false);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
       this._setText(dom.threatWord, swarm ? 'HOSTILES' : 'THREAT');
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
       this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
-      dom.threat.setAttribute('aria-label', 'Hostiles remaining');
-      dom.threat.setAttribute('aria-valuenow', String(census.remaining));
-      dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
+      this._setAttr(dom.threat, 'aria-label', 'Hostiles remaining');
+      this._setAttr(dom.threat, 'aria-valuenow', String(census.remaining));
+      this._setAttr(dom.threat, 'aria-valuemax', String(Math.max(census.total, census.remaining)));
     } else {
-      dom.threat.hidden = true;
-      if (dom.killWord) dom.killWord.hidden = true;
-      if (dom.killFig) dom.killFig.hidden = true;
+      this._setHidden(dom.threat, true);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
     }
 
     // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
@@ -283,13 +322,32 @@ export const survivalHud = {
     // that says so in a number the player is already watching.
     const chain = swarm ? this._chain : 0;
     const showChain = swarm && chain > 0;
-    dom.chainRow.hidden = !showChain;
+    this._setHidden(dom.chainRow, !showChain);
     if (showChain) {
       this._setText(dom.chainFig, `${chain}`);
       this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
+      // The cause glyph: what the last kill arrived as, and +2 when it varied the chain.
+      const badge = chainCauseBadge(this._chainCause, this._chainStep);
+      this._setText(dom.chainCause, badge || '');
+      if (dom.chainCause) dom.chainCause.hidden = !badge;
       const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
       if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
-      dom.chainRow.setAttribute('aria-label', `Kill chain ${chain}`);
+      // The depletion mark: what share of the four-second window is left, from the kill's own
+      // sim-time anchor. A 2px underline, never a second panel, and the number is untouched.
+      const simNow = Number.isFinite(st.simTime) ? st.simTime : 0;
+      const remaining = chainWindowRemaining(this._chainAt, simNow);
+      const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
+      this._setStyle(dom.chainDeplete, 'width', `${Math.round(deplete * 100)}%`);
+      // The last second reads as colour plus a word — never flashing, never motion. INF-032.
+      const final = remaining <= SWARM_CHAIN_WARN_S;
+      if (final) {
+        if (dom.chainRow.dataset.urgency !== 'final') dom.chainRow.dataset.urgency = 'final';
+      } else if (dom.chainRow.dataset.urgency) {
+        delete dom.chainRow.dataset.urgency;
+      }
+      this._setAttr(dom.chainRow, 'aria-label', badge
+        ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
+        : `Kill chain ${chain}${final ? ', ending' : ''}`);
     }
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
@@ -297,10 +355,10 @@ export const survivalHud = {
     const combo=st.stunts?.combo;
     const styleMult=combo?styleMultiplier(combo):1;
     const showStyle=!!combo?.activeCount;
-    dom.styleWord.hidden = !showStyle;
-    dom.styleFig.hidden = !showStyle;
+    this._setHidden(dom.styleWord, !showStyle);
+    this._setHidden(dom.styleFig, !showStyle);
     if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
-    dom.line.hidden=!showStyle;
+    this._setHidden(dom.line, !showStyle);
     if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
 
     this._setText(dom.score, num(run.score));
@@ -310,21 +368,21 @@ export const survivalHud = {
 
     const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
     if (this._earn && simTime <= this._earnUntil) {
-      dom.earn.hidden = false;
+      this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
     } else {
       if (this._earn) this._clearEarn();
-      dom.earn.hidden = true;
+      this._setHidden(dom.earn, true);
     }
 
     // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
     // glass, beside the LOST word — a death the player cannot read is a bug report.
     if (this._death && dom.death) {
-      dom.death.hidden = false;
+      this._setHidden(dom.death, false);
       this._setText(dom.death, deathLineFor(this._death.receipt, this._killerTell(), this._death.simTime));
-      dom.death.setAttribute('aria-label', 'Cause of death');
+      this._setAttr(dom.death, 'aria-label', 'Cause of death');
     } else if (dom.death) {
-      dom.death.hidden = true;
+      this._setHidden(dom.death, true);
     }
   },
 
@@ -371,10 +429,18 @@ export const survivalHud = {
     if (payload && Number.isFinite(payload.best) && payload.best > this._chainBest) {
       this._chainBest = payload.best;
     }
+    // The variety result, exactly as swarmChain scored it — never re-derived here. INF-031.
+    this._chainCause = payload && typeof payload.cause === 'string' ? payload.cause : null;
+    this._chainStep = payload && Number.isFinite(payload.step) ? payload.step : 0;
+    // The window anchor for the depletion mark — the same sim clock the lapse runs on. INF-032.
+    this._chainAt = payload && Number.isFinite(payload.at) ? payload.at : null;
   },
 
   _onChainBroken() {
     this._chain = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
   },
 
   _onWavePlanned(payload) {
@@ -427,16 +493,19 @@ export const survivalHud = {
     this._objective = null;
     this._chain = 0;
     this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
   },
 
   // ---- DOM ------------------------------------------------------------------
 
   _hide() {
-    if (this._dom && this._dom.root) this._dom.root.hidden = true;
+    if (this._dom && this._dom.root) this._setHidden(this._dom.root, true);
   },
 
   _show(dom) {
-    if (dom.root.hidden) dom.root.hidden = false;
+    this._setHidden(dom.root, false);
   },
 
   _setText(node, text) {
@@ -460,6 +529,28 @@ export const survivalHud = {
     if (this._last[key] === value) return;
     this._last[key] = value;
     node.style[prop] = value;
+  },
+
+  // INF-003: the same last-written discipline for attributes and visibility. Raw
+  // setAttribute/hidden writes every frame are the readout's largest remaining repeated DOM
+  // mutation on a steady tick — the aria strings change at most once a second while the update
+  // runs at frame rate. Values are string/boolean-coerced so 0 and '0' share one slot.
+  _setAttr(node, name, value) {
+    if (!node) return;
+    const text = String(value);
+    const key = `${node.__crunKey}:attr:${name}`;
+    if (this._last[key] === text) return;
+    this._last[key] = text;
+    node.setAttribute(name, text);
+  },
+
+  _setHidden(node, value) {
+    if (!node) return;
+    const next = !!value;
+    const key = `${node.__crunKey}:hidden`;
+    if (this._last[key] === next) return;
+    this._last[key] = next;
+    node.hidden = next;
   },
 
   _ensureDom() {
@@ -510,7 +601,12 @@ export const survivalHud = {
     const chainWord = make('span', 'sf-crun__word', chainRow);
     chainWord.textContent = 'CHAIN';
     const chainFig = make('span', 'sf-crun__chainfig', chainRow);
+    const chainCause = make('span', 'sf-crun__chaincause', chainRow);
     const chainBest = make('span', 'sf-crun__chainbest', chainRow);
+    // The window depletion mark: a 2px underline on its own flex line, reusing the threat
+    // track/fill grammar. The number above it is never touched. INF-032.
+    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
+    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
     chainRow.hidden = true;
 
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
@@ -556,9 +652,12 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
-      chainRow, chainFig, chainBest,
+      chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
+    // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
+    // update repaints fresh nodes instead of trusting slots another mount wrote.
+    this._last = Object.create(null);
     return this._dom;
   },
 
@@ -589,14 +688,17 @@ export const survivalHud = {
   .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
     font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); }
+  /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
+     a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
+     that glows -- no top-lit ramp pretending to be a rounded rod. */
   .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
-    border-radius:1px; background:var(--dp-channel-img, rgb(0 0 0 / .45));
-    box-shadow:var(--dp-channel-bevel, inset 0 1px 2px rgb(0 0 0 / .7)); }
+    border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
+    box-shadow:none; }
   .sf-crun__track--xp { height:5px; }
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
-  .sf-crun__fill--foe { background:linear-gradient(180deg, var(--dp-danger-hot, #ff8a70), var(--dp-danger, #ff5038) 55%, #a8241a);
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038);
     box-shadow:0 0 6px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
-  .sf-crun__fill--you { background:linear-gradient(180deg, var(--dp-lamp-hot, #ffd98c), var(--dp-lamp, #f2b950) 55%, var(--dp-lamp-dim, #8a6b3a));
+  .sf-crun__fill--you { background:var(--dp-lamp, #f2b950);
     box-shadow:0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
   .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
@@ -604,7 +706,9 @@ export const survivalHud = {
   .sf-crun__fig--goal { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); text-shadow:var(--dp-emit-lamp, none); }
   /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
      or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
-  .sf-crun__chain { display:flex; align-items:baseline; gap:8px; }
+  .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
+  .sf-crun__track--chain { flex:1 1 100%; min-width:0; height:2px; }
+  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
   .sf-crun__chainfig { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 84;
     font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
     color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
@@ -613,6 +717,9 @@ export const survivalHud = {
     text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
   .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
+  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
+    letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
@@ -621,8 +728,9 @@ export const survivalHud = {
   @media (forced-colors: active) {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
-    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
-    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
+    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
+    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+    .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {
     .sf-crun { min-width:0; }

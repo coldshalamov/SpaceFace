@@ -33,16 +33,38 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Helix Directorate
 appears_in_chapters: [B4, B5]
 register_rule: |
-  Leftover invoice and leftover fine in the leftover same hand. File leftover variance. Require leftover no action.
+  Paper voice, not radio voice. ALL CAPS filing, vessel first, file number
+  over name. The invoice and the fine in the same hand. No action required:
+  the filing is the action. No slang, no bravado, no liturgy. Basis: one
+  once-flagged filing; Helix has no bark table.
 register_tell: |
   VARIANCE FILE OPEN
+  VARIANCE FILE
+  variance
+  NO ACTION REQUIRED
+  no action
+  DO NOT RESOLVE
+  Helix
 register_forbidden: |
-  Leftover pirate bravado, leftover Pattern liturgy, leftover claim-jumping, leftover Ref 44-C hail, leftover weigh-slip.
+  ain't
+  weigh-slip
+  reweigh
+  clause
+  pattern
+  liturgy
+  chorus
+  tithe
+  salvage
+  accord
+  syndicate
 register_example: |
   VESSEL VHL-4471-T — VARIANCE FILE OPEN. COORDINATES ON ATTACHED MANIFEST DO NOT RESOLVE. NO ACTION REQUIRED.
 register_example_cite: src/data/narrative.js#COMMS.story.story_b8_helix_audit
 voice_direction: |
-  Directed leftover synthetic filing. ALL CAPS leftover paper. No leftover recorded actor.
+  Unvoiced paper filing. Helix has no bark table and no PQ-158.04 voice
+  register; the filing renders as text only. resolveVoiceRegister falls back
+  to faction_free for unknown houses — that fallback is not Helix's voice
+  and must never voice a Helix filing.
 ```
 
 **Signature faction graffiti:** *The invoice and the fine are written in the same hand. Read the invoice first.*

@@ -1,0 +1,9 @@
+[boot-times] server http://127.0.0.1:40453/; 3 cold runs
+[boot-times] run 1/3 starting…
+{"run":1,"totalS":22.64,"longest":"loading:entering-flight → first-playable","longestMs":8050}
+[boot-times] run 2/3 starting…
+{"run":2,"totalS":21.69,"longest":"loading:entering-flight → first-playable","longestMs":7623}
+[boot-times] run 3/3 starting…
+{"run":3,"totalS":20.97,"longest":"loading:entering-flight → first-playable","longestMs":8219}
+[boot-times] wrote /workspace/spaceface/design/program/vm-drop/boot-times/raw-runs.json
+[boot-times] totals (s): 22.64, 21.69, 20.97

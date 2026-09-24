@@ -36,6 +36,18 @@ export function formatDestinationLine({
   return bits.join(' · ');
 }
 
+const FIGHT_CAPTION = /^(taking fire|hull hit|shield hit|shoved\b|you shoved|you docked|docked at)\b/i;
+
+/** Wave G3 — a shield hit, a hull hit, a shove, and a dock are not sentences. */
+export function isFightCaptionSentence(text) {
+  return FIGHT_CAPTION.test(String(text || '').trim());
+}
+
+export function toastTextForFightEvent(eventName) {
+  if (eventName === 'combat:damage' || eventName === 'combat:shove' || eventName === 'dock:docked') return null;
+  return undefined;
+}
+
 export function admitReceipt({
   text = '',
   kind = 'info',
@@ -45,6 +57,7 @@ export function admitReceipt({
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
+  if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {
     return { admit: false, reason: 'chatter' };
@@ -58,12 +71,66 @@ export function admitReceipt({
     return { admit: false, reason: 'radio-chatter' };
   }
   const k = String(kind || 'info');
+  if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
   if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
-  if (combat && k !== 'error' && !COMBAT_KEEP.test(line)) {
+  if (combat && k !== 'error' && channel !== 'stunt' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
   return { admit: true, reason: 'receipt' };
+}
+
+/** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */
+export function stuntTrickReceiptLine(trick) {
+  if (!trick || trick.amendment) return '';
+  const name = trick.name || trick.trickId || '';
+  return String(name).trim();
+}
+
+/** Admit each episode once. `seen` is a Set of episode keys owned by the receipt binder. */
+export function stuntDetectionReceipt(seen, trick) {
+  const text = stuntTrickReceiptLine(trick);
+  if (!text || !seen || typeof seen.add !== 'function') return null;
+  const key = trick.episodeId != null ? `e:${trick.episodeId}` : `n:${text}`;
+  if (seen.has(key)) return null;
+  seen.add(key);
+  if (seen.size > 64) seen.delete(seen.values().next().value);
+  return { text, kind: 'stunt', channel: 'stunt' };
+}
+
+// ── Opening one-instruction rule ─────────────────────────────────────────────
+// The first two minutes of a new game allow exactly one instruction on screen at a time — the
+// current objective. Physical events are not sentences: while an objective is pending, the
+// event caption, the comms log line, and the sector-law paragraph retire until the player has
+// done the thing. Presenters consult openingInstructionSolo; the objective itself never asks,
+// and danger keeps its own floor (an alarm is not an instruction).
+export const OPENING_INSTRUCTION_WINDOW_S = 120;
+
+// True while the sim clock sits inside the first OPENING_INSTRUCTION_WINDOW_S seconds of a new
+// game. onboarding.startedAt anchors the clock when present (a Continue mid-window keeps the
+// remainder); a fresh boot without it counts from simTime 0. A clock behind the anchor — a
+// rewound save — never opens the window.
+export function openingWindowActive(state) {
+  const now = Number(state && state.simTime);
+  if (!Number.isFinite(now)) return false;
+  const startedAt = Number(state && state.onboarding && state.onboarding.startedAt);
+  const elapsed = now - (Number.isFinite(startedAt) ? startedAt : 0);
+  return elapsed >= 0 && elapsed < OPENING_INSTRUCTION_WINDOW_S;
+}
+
+// An instruction is pending while the staged rail is running or while a nav waypoint carries
+// the current objective (story hook, tracked delivery, player-set course).
+export function openingObjectivePending(state) {
+  const ob = state && state.onboarding;
+  if (ob && ob.active && !ob.finished) return true;
+  const wp = state && state.nav && state.nav.waypoint;
+  return !!(wp && String(wp.reason || wp.label || '').trim());
+}
+
+// True while the opening permits exactly one on-screen instruction: inside the window AND an
+// objective pending. Secondary text surfaces retire for as long as this holds.
+export function openingInstructionSolo(state) {
+  return openingWindowActive(state) && openingObjectivePending(state);
 }
 
 export function hudJobFromState(state = {}, tether = null) {
@@ -271,4 +338,67 @@ export function receiptOverlapsReserved(layout) {
   if (!lane) return false;
   const reserved = [layout.objective, layout.vitals, layout.rightDock].filter(Boolean);
   return reserved.some((anchor) => rectsOverlap(lane, anchor));
+}
+
+/**
+ * Wave G12 — dock prompt, speed readout, and weapon name each own a box.
+ * The three boxes are disjoint at the 1280×720 floor and at 1920×1080.
+ */
+export function flightInstrumentRects(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const speedW = Math.min(220, Math.floor(w * 0.18));
+  const weaponW = Math.min(180, Math.floor(w * 0.16));
+  const gap = 24;
+  const pair = speedW + gap + weaponW;
+  const left = Math.round((w - pair) / 2);
+  const bandY = h - 96;
+  return {
+    speedReadout: { x: left, y: bandY, width: speedW, height: 52 },
+    weaponName: { x: left + speedW + gap, y: bandY + 10, width: weaponW, height: 28 },
+    dockPrompt: { x: Math.round(w / 2 - 140), y: 18, width: 280, height: 32 },
+  };
+}
+
+export function flightReadoutsDisjoint(width, height) {
+  const boxes = flightInstrumentRects(width, height);
+  return !rectsOverlap(boxes.speedReadout, boxes.weaponName)
+    && !rectsOverlap(boxes.speedReadout, boxes.dockPrompt)
+    && !rectsOverlap(boxes.weaponName, boxes.dockPrompt);
+}
+
+/**
+ * Wave G13 — a HUD string is not a caption on the player's hull.
+ * The Massline bracket is the one exempt mark. A string parented to the player
+ * billboard, or sitting inside one hull-length of the player screen point, is pushed clear.
+ */
+export function placeHudString(point, playerPoint, hullLengthPx, { exempt = false } = {}) {
+  const x = Number(point && point.x) || 0;
+  const y = Number(point && point.y) || 0;
+  if (exempt) return { x, y };
+  const px = Number(playerPoint && playerPoint.x) || 0;
+  const py = Number(playerPoint && playerPoint.y) || 0;
+  const min = Math.max(8, Number(hullLengthPx) || 0);
+  const dx = x - px;
+  const dy = y - py;
+  const dist = Math.hypot(dx, dy);
+  if (dist >= min) return { x, y };
+  if (dist < 0.001) return { x: px, y: py - min };
+  const scale = min / dist;
+  return { x: px + dx * scale, y: py + dy * scale };
+}
+
+export function hudStringCoversHull({
+  parentBillboard = '',
+  x = 0,
+  y = 0,
+  playerX = 0,
+  playerY = 0,
+  hullLengthPx = 0,
+  exempt = false,
+} = {}) {
+  if (exempt) return false;
+  if (parentBillboard === 'player') return true;
+  const min = Math.max(8, Number(hullLengthPx) || 0);
+  return Math.hypot(x - playerX, y - playerY) < min;
 }

@@ -159,7 +159,8 @@ test('fresh account remains viable: same build, identical power, smaller option 
 
   const freshOpts = availableOptions(fresh);
   const fullOpts = availableOptions(full);
-  assert.deepEqual(freshOpts.starters, ['starter_hitch_pulse']);
+  assert.deepEqual(freshOpts.starters, ['energy_baseline', 'kinetic_baseline', 'ricochet_runner']);
+  assert.equal(freshOpts.modes.includes('boss_circuit'), false);
   assert.equal(freshOpts.mutators.length, 0);
   assert.equal(freshOpts.trials.length, 0);
   assert.ok(fullOpts.starters.length > freshOpts.starters.length);
@@ -194,7 +195,8 @@ test('loading a profile grants nothing; earning requires the stated condition', 
   const clearedTen = evaluateUnlocks(fresh, resultFixture({
     outcome: 'defeat', wavesCleared: 10, picks: [{ verb: 'Tag', defId: 'wpn_gravity_marker_s', wave: 4 }],
   }));
-  assert.ok(clearedTen.newly.includes('unlock_starter_tag'));
+  assert.ok(clearedTen.newly.includes('unlock_kit_physics'));
+  assert.ok(clearedTen.newly.includes('unlock_boss_circuit'));
   assert.ok(clearedTen.newly.includes('unlock_trial_one_hull'));
   assert.ok(clearedTen.newly.includes('unlock_trial_one_weapon'));
   assert.equal(clearedTen.newly.includes('unlock_mutator_draftless'), false);
@@ -326,7 +328,7 @@ test('settlement writes local history and records without touching campaign cred
     run,
     storage,
   });
-  assert.ok(first.unlocksEarned.includes('unlock_starter_tag'));
+  assert.ok(first.unlocksEarned.includes('unlock_kit_physics'));
   assert.equal(first.profile.history.length, 1);
   const key = recordKey(first.result);
   assert.equal(first.profile.records.byKey[key].attempts, 1);

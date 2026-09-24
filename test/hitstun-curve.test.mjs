@@ -8,7 +8,9 @@ import { WEAPONS } from '../src/data/weapons.js';
 import {
   HITSTUN_IMPULSE_EVENT,
   HITSTUN_LAW,
+  SHOVE_BEAT_LAW,
   hitstunAttackerMassForCollision,
+  isShoveClassHitstunSource,
   resolveHitstunLaw,
   signedHitSide,
 } from '../src/combat/impulseKernel.js';
@@ -17,6 +19,7 @@ import {
   HEAVY_GUN_SCALE_K,
   HITSTUN_HULLS,
   HITSTUN_SOURCES,
+  LIGHT_HELM_K,
   MATCHED_K_BAND,
   MATCHED_U_BAND,
   MEASURABLE_SPIN_RAD_PER_S,
@@ -92,6 +95,73 @@ test('the hitstun law is the Wasp/Kestrel reference and zeros the heavy gun-scal
   assert.ok(MATCHED_U_BAND.target > MATCHED_U_BAND.lo);
 });
 
+test('the shove beat extends a shove-class stun to the coast that clears one screen', () => {
+  // The reference shove (k=0.30, equal masses, Wasp governed cruise) is beat-class: the helm
+  // stays lost for the 126 WU / 31.5 WU-per-second coast — four seconds, not the base law's
+  // one — and entry spin is untouched by the clock change.
+  const shove = resolveHitstunLaw({
+    deltaV: 0.30 * 105,
+    victimCruise: 105,
+    attackerMass: 16,
+    victimMass: 16,
+    shove: true,
+  });
+  const base = resolveHitstunLaw({
+    deltaV: 0.30 * 105,
+    victimCruise: 105,
+    attackerMass: 16,
+    victimMass: 16,
+  });
+  assert.equal(base.durationS, 1, 'fixture sanity: the base law stuns this hit exactly 1 s');
+  assert.equal(base.shoveBeatS, 0, 'the base law never reports a beat');
+  assert.equal(shove.shoveBeatS, 4, `beat must be screenWu/deltaV, got ${shove.shoveBeatS}`);
+  assert.equal(shove.durationS, 4, `beat must set the duration, got ${shove.durationS}`);
+  assert.equal(shove.entrySpin, base.entrySpin, 'the beat moves the clock, never the spin');
+
+  // A full-power concussion shove (920/16 = 57.5 WU/s on cruise 105) already clears a screen
+  // inside the base law's duration: the beat must neither stretch nor shorten it.
+  const full = resolveHitstunLaw({
+    deltaV: 57.5, victimCruise: 105, attackerMass: 18, victimMass: 16, shove: true,
+  });
+  const fullBase = resolveHitstunLaw({ deltaV: 57.5, victimCruise: 105, attackerMass: 18, victimMass: 16 });
+  assert.equal(full.shoveBeatS, 0, 'a base law already past the screen reports no beat');
+  assert.equal(full.durationS, fullBase.durationS);
+
+  // Below the shove band (u < minU) the flag does nothing…
+  const stagger = resolveHitstunLaw({
+    deltaV: 0.20 * 105, victimCruise: 105, attackerMass: 16, victimMass: 16, shove: true,
+  });
+  const staggerBase = resolveHitstunLaw({ deltaV: 0.20 * 105, victimCruise: 105, attackerMass: 16, victimMass: 16 });
+  assert.equal(stagger.shoveBeatS, 0);
+  assert.equal(stagger.durationS, staggerBase.durationS);
+
+  // …and a mass-weighted sub-shove hull never enters the beat: heavies keep the helm exactly
+  // where the base law puts it (mF floors the gunner's momentum weighting at 0.5, so u = 0.15).
+  const heavyHull = resolveHitstunLaw({
+    deltaV: 0.30 * 85, victimCruise: 85, attackerMass: 16, victimMass: 200, shove: true,
+  });
+  const heavyHullBase = resolveHitstunLaw({ deltaV: 0.30 * 85, victimCruise: 85, attackerMass: 16, victimMass: 200 });
+  assert.ok(heavyHull.u < SHOVE_BEAT_LAW.minU, `heavy u must sit under the beat gate, got ${heavyHull.u}`);
+  assert.equal(heavyHull.shoveBeatS, 0);
+  assert.equal(heavyHull.durationS, heavyHullBase.durationS);
+
+  // The beat is bounded: a slow cruiser at the shove floor caps instead of coasting forever.
+  const capped = resolveHitstunLaw({
+    deltaV: 0.30 * 40, victimCruise: 40, attackerMass: 16, victimMass: 16, shove: true,
+  });
+  assert.equal(capped.shoveBeatS, SHOVE_BEAT_LAW.maxS);
+  assert.equal(capped.durationS, SHOVE_BEAT_LAW.maxS);
+});
+
+test('shove-class sources are the delivered-impulse weapon family; throws and terrain keep the base law', () => {
+  for (const source of ['gun', 'weapon', 'bomb', 'impulse_charge']) {
+    assert.equal(isShoveClassHitstunSource(source), true, `${source} delivers a shove payload`);
+  }
+  for (const source of ['rope_throw', 'rope_whip', 'collision', 'well', 'tether_share', 'transverse_snare', 'monofilament_sweep', undefined, null]) {
+    assert.equal(isShoveClassHitstunSource(source), false, `${source} has its own helm economy`);
+  }
+});
+
 test('the instrument measures the real path and is deterministic on a fixed seed', LONG, async () => {
   const a = await runHitstunCells(GRID);
   const b = await runHitstunCells(GRID);
@@ -107,13 +177,27 @@ test('the instrument measures the real path and is deterministic on a fixed seed
     assert.ok(Number.isFinite(cell.entrySpinRadPerS), `entrySpinRadPerS must be finite (${cell.hullId})`);
   }
 
+  // The shove beat owns the light grid's shape: in the shove band the helm stays lost for the
+  // coast that carries the hull about one screen (126 WU) off the line it was flying — measured
+  // helm loss times the delivered delta-V must clear the screen — while sub-shove hits keep the
+  // base law's >= 1 s floor and heavies keep theirs at zero.
   const light = cells.filter((c) => c.hullId === 'ship_wasp').sort((x, y) => x.k - y.k);
   assert.ok(light.length >= 2, 'need two light-hull gun cells');
-  for (let i = 1; i < light.length; i++) {
+  for (const c of light) {
     assert.ok(
-      light[i].helmLossDurationS + 1e-9 >= light[i - 1].helmLossDurationS,
-      `helm-loss must be non-decreasing in k (${light[i - 1].k} -> ${light[i].k}: ${light[i - 1].helmLossDurationS} -> ${light[i].helmLossDurationS})`,
+      c.helmLossDurationS >= 1,
+      `light helm must last >= 1 s at k=${c.k}, got ${c.helmLossDurationS}`,
     );
+    const mF = Math.min(2.2, Math.max(0.5, Math.sqrt(Math.max(0.1, c.massRatio))));
+    const u = c.k * mF;
+    if (u >= SHOVE_BEAT_LAW.minU - 1e-6 && c.deltaV >= SHOVE_BEAT_LAW.screenWu / SHOVE_BEAT_LAW.maxS - 1e-9) {
+      const displacementWu = c.helmLossDurationS * c.deltaV;
+      assert.ok(
+        displacementWu >= SHOVE_BEAT_LAW.screenWu - 0.5,
+        `shove beat: helm loss must carry the hull about a screen off its line `
+          + `(k=${c.k}: ${c.helmLossDurationS} s x ${c.deltaV} WU/s = ${displacementWu.toFixed(1)} WU)`,
+      );
+    }
   }
 
   const proof = a.realPathProof;

@@ -65,14 +65,14 @@ test('live-sector cook drains meshes in yielded slices, not an Infinity block', 
   assert.match(renderer, /drainMeshBuildsBehindShell/);
   assert.match(renderer, /await drainMeshBuildsBehindShell\(\)/);
   assert.match(renderer, /_drainMeshBuildQueue\(1\)/);
-  assert.match(renderer, /PREPARE_BUDGET_MS = 20000/);
-  assert.match(renderer, /deadlineMs: Math.min\(20000, remainingMs\(\)\)/);
+  assert.match(renderer, /PREPARE_BUDGET_MS = survivalRunHoldsArena\(state\) \? 60000 : 20000/);
+  assert.match(renderer, /deadlineMs: Math.min\(6000, remainingMs\(\)\)/);
   assert.match(renderer, /holdLeftoverFx: true/);
   assert.match(renderer, /if \(cookOverBudget\(\)\) break;/);
   assert.match(renderer, /\.\.\.openingRoots,/);
   assert.match(renderer, /deadlineMs: 8000/);
   assert.match(renderer, /reason: 'loading-budget'/);
-  assert.match(renderer, /console\.warn\(\s*`\[render\] opening submission post-submit validation failed/);
+  assert.match(renderer, /console\.info\(\s*`\[render\] opening submission post-submit validation failed/);
   const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /shouldAwaitOpeningGpuCook/);
   assert.match(main, /waitForOpeningGpuResources\(state, 20000\)/);

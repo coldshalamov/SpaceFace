@@ -1,11 +1,16 @@
 // src/ui/screens/techTree.js — Tech-tree progression screen (ARCHITECTURE §5, spec 09).
-// Field Hardware BENCH: lanes etched on the held world, nodes as kit legend-strip tiles with
-// status lights, the selected dossier on a sunk plate, Unlock as one key, quiet type.
+// PRINTED AND LIT (design/frontend/ONE_PHOTOGRAPH.md §9.3, "traces of light"): the tree is drawn on
+// one canvas as printed fields joined by traces. A node's state is its form and its light, never a
+// grey: researched = a lit field whose cut corner glows; available = a field outlined in the lamp;
+// locked = a dim hairline. The traces run between them as circuit lines, and the selected node's
+// path back to its roots lights 2px lamp with bloom, so the arrival frame already shows what the
+// default choice needs. The detail pane opens on the first node you can research now.
 // Click a node -> the side column -> Unlock emits ui:unlockTech{nodeId} (ships handles it).
 // READ-ONLY on state; emits intents only. A labelled node selector is the keyboard and
-// screen-reader equivalent of canvas picking. This file owns no CSS; hardware is the produced
-// kit sprites pinned on the elements. Canvas 2D cannot read CSS custom properties, so ink and
-// faces are spelled below from the kit tokens.
+// screen-reader equivalent of canvas picking. This file owns no CSS (the screen's look is the
+// RESEARCH section of src/ui/deckplate/screens.js). ctx.font cannot resolve var(), so the canvas
+// faces are spelled below; colours are read from the Deckplate tokens once per show, with the
+// token values spelled as the fallback.
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
@@ -15,15 +20,16 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeMarkup as escapeHtml } from '../views/identity.js';
-import { el, hero, settle, cue } from '../kit/index.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { el, hero, settle, cue, reducedMotion } from '../kit/index.js';
 import {
   wrapCanvasLines,
   techTreeNameLineBudget,
-  techTreeNodeHeight,
 } from '../../localization/layout.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, channelPins } from '../kit/computedMaterial.js';
 
-// Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
+// Branch -> lane. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
   { id: 'combat',    label: 'Combat' },
   { id: 'industry',  label: 'Industry' },
@@ -36,40 +42,40 @@ const UNLOCK_NAME_BY_ID = new Map(
   [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
 );
 
-// Columns are prerequisite depth (a chain reads left→right), lanes are branches (a band reads
-// top→bottom), so every edge points right and stays inside its lane — the one cross-branch
-// prerequisite (drives → flagship command) is the only diagonal. The previous layout put depth on
-// the vertical axis inside each band and siblings across, which drew the combat branch's fan-out
-// as a tangle of curves crossing the whole canvas and left two thirds of the frame empty.
-// NODE_W is the word box width. Height follows techTreeNodeHeight() so a growth locale can take a
-// third name line instead of an ellipsis. The register border follows the same hit-test rectangle.
-const NODE_W = 168, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
-const LANE_GAP = 34;          // vertical space between branch lanes (holds the lane label)
-const LANE_LABEL_H = 22;      // label sits inside the lane's top inset
-const NAME_LINE_H = 20;       // canvas line height for the node's name at body size (16 px × 1.25)
-const PLATE_PAD_X = 8;
+// Columns are prerequisite depth (a chain reads left→right); each branch is a lane. Lanes pack onto
+// SHELVES: a lane joins the shelf above when the shelf still has the width (combat alone is six
+// columns; industry and drives share the next shelf; logistics takes the third), so the whole tree
+// fits the frame instead of four stacked bands running off the bottom. Each lane carries its name
+// and count in a gutter on its left. Geometry is in canvas px at 100% zoom.
+// NODE_W is the name's measure (localization/layout.js TECH_TREE_NODE_W wraps to the same width).
+const NODE_W = 168;
+const PLATE_PAD_X = 12;
 const PLATE_PAD_Y = 6;
-const STRIP_SLICE = Object.freeze({ t: 12, r: 16, b: 12, l: 16 });
-const SELECTED_SLICE = Object.freeze({ t: 8, r: 16, b: 8, l: 16 });
+const PLATE_W = NODE_W + PLATE_PAD_X * 2;
+const COL_GAP = 40;           // between plates in a lane: the trace bus runs down its middle
+const ROW_GAP = 6;            // between plates in a column
+const NAME_LINE_H = 20;       // the name at 16 px
+const COST_LINE_H = 16;       // the cost at 12 px
+const LABEL_W = 116;          // each lane's gutter: its name and its count
+const LANE_GAP_X = 24;        // between two lanes sharing a shelf
+const SHELF_GAP = 30;         // between shelves: the corridor a cross-lane trace runs along
+const PAD = 14;
+const CUT = 10;               // the 45° cut on a node's top-right corner (--dp-cut)
+const TRACE_R = 6;            // a trace turns a rounded corner
+const MIN_ZOOM = 0.75;        // below this the 12 px floor makes the words outgrow their fields
+const MAX_ZOOM = 2;
 
 const FH_KEY = {
-  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
-  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
-};
-const FH_PLATE = {
-  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
-  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+  primary: { minW: '132px', minH: '44px', pad: '0 16px', font: '16px', width: '18px' },
+  legend: { minW: '72px', minH: '32px', pad: '0 10px', font: '12px', width: '14px' },
 };
 
-function fhUrl(rel) {
-  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
-}
 function forcedColorsActive() {
   return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
 }
-// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
-// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
-// and colour only. Forced colours keeps every pin: there the system palette is the material.
+// The printed controls are drawn by the Deckplate bridge (src/ui/deckplate/screens.js, FH_BRIDGE),
+// so pins keep geometry, type and colour only. Forced colours keeps every pin: there the system
+// palette is the material.
 const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
 function pin(node, props) {
   if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
@@ -122,7 +128,6 @@ function paintBody(node) {
 }
 function paintPlate(node, variant = 'sunk', extra = {}) {
   if (!node) return node;
-  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
   node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
   if (forcedColorsActive()) {
     return pin(node, {
@@ -131,13 +136,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, variant === 'edge' ? '16px' : '24px'),
     'box-sizing': 'border-box',
     padding: '10px 14px',
     ...extra,
@@ -152,13 +151,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -191,7 +184,6 @@ function paintKey(button, kind = 'legend') {
       'max-width': '100%',
       'min-width': spec.minW,
       'min-height': spec.minH,
-      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
       ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.font,
       'font-family': 'var(--fh-face-display)',
@@ -203,12 +195,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -237,243 +224,72 @@ function paintKey(button, kind = 'legend') {
   sync();
   return button;
 }
-function paintRow(row) {
-  if (!row) return row;
-  row.classList.add('fh-row');
-  return pin(row, {
-    border: '0',
-    'box-shadow': 'none',
-    'background-image': 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '")',
-    'background-repeat': 'repeat-x',
-    'background-position': 'top left',
-    'background-color': 'transparent',
-    color: 'var(--fh-text-resting)',
-  });
-}
-function paintHairline(node) {
-  if (!node) return node;
-  node.classList.add('fh-hairline');
-  return pin(node, {
-    border: '0',
-    height: '4px',
-    background: 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '") repeat-x left center',
-    'background-color': 'transparent',
-    margin: '12px 0',
-  });
-}
 
-const KIT_IMG = Object.create(null);
-function kitImage(rel) {
-  if (Object.prototype.hasOwnProperty.call(KIT_IMG, rel)) return KIT_IMG[rel];
-  if (typeof Image === 'undefined') {
-    KIT_IMG[rel] = null;
-    return null;
-  }
-  const img = new Image();
-  KIT_IMG[rel] = img;
-  try { img.src = fhUrl(rel); }
-  catch {
-    KIT_IMG[rel] = null;
-    return null;
-  }
-  img.addEventListener('load', () => {
-    if (techTreeScreen._g) techTreeScreen._draw();
-  });
-  return img;
-}
-function imgReady(img) {
-  return !!(img && img.complete && img.naturalWidth > 1);
-}
-function drawNineSlice(g, img, dx, dy, dw, dh, slice) {
-  if (!imgReady(img) || dw < 4 || dh < 4) return false;
-  const iw = img.naturalWidth;
-  const ih = img.naturalHeight;
-  const l = slice.l;
-  const r = slice.r;
-  const t = slice.t;
-  const b = slice.b;
-  if (iw < l + r + 1 || ih < t + b + 1) return false;
-  const cl = Math.min(l, Math.max(1, Math.floor(dw / 2) - 1));
-  const cr = Math.min(r, Math.max(1, Math.floor(dw / 2) - 1));
-  const ct = Math.min(t, Math.max(1, Math.floor(dh / 2) - 1));
-  const cb = Math.min(b, Math.max(1, Math.floor(dh / 2) - 1));
-  const srcCW = iw - l - r;
-  const srcCH = ih - t - b;
-  const dstCW = dw - cl - cr;
-  const dstCH = dh - ct - cb;
-  const parts = [
-    [0, 0, l, t, dx, dy, cl, ct],
-    [l, 0, srcCW, t, dx + cl, dy, dstCW, ct],
-    [iw - r, 0, r, t, dx + cl + dstCW, dy, cr, ct],
-    [0, t, l, srcCH, dx, dy + ct, cl, dstCH],
-    [l, t, srcCW, srcCH, dx + cl, dy + ct, dstCW, dstCH],
-    [iw - r, t, r, srcCH, dx + cl + dstCW, dy + ct, cr, dstCH],
-    [0, ih - b, l, b, dx, dy + ct + dstCH, cl, cb],
-    [l, ih - b, srcCW, b, dx + cl, dy + ct + dstCH, dstCW, cb],
-    [iw - r, ih - b, r, b, dx + cl + dstCW, dy + ct + dstCH, cr, cb],
-  ];
-  for (const p of parts) {
-    if (p[2] < 1 || p[3] < 1 || p[6] < 1 || p[7] < 1) continue;
-    g.drawImage(img, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-  }
-  return true;
-}
-function drawGlassTile(g, x, y, w, h, state, sel, hov, zoom) {
-  const lw = 1 / zoom;
-  const body = g.createLinearGradient(x, y, x, y + h);
-  body.addColorStop(0, state === 'locked' ? '#12161c' : '#1b212a');
-  body.addColorStop(1, state === 'locked' ? '#090b0f' : '#0b0e13');
-  g.fillStyle = body;
-  g.fillRect(x, y, w, h);
-  const spec = g.createLinearGradient(x, y, x + w * 0.2, y + h);
-  spec.addColorStop(0, 'rgba(255,250,240,0.075)');
-  spec.addColorStop(0.3, 'rgba(255,250,240,0.028)');
-  spec.addColorStop(0.315, 'rgba(255,250,240,0)');
-  g.fillStyle = spec;
-  g.fillRect(x, y, w, h);
-  if (hov && !sel) { g.fillStyle = 'rgba(255,255,255,0.04)'; g.fillRect(x, y, w, h); }
-  g.lineWidth = lw;
-  g.strokeStyle = 'rgba(2,3,5,0.92)';
-  g.strokeRect(x + lw / 2, y + lw / 2, w - lw, h - lw);
-  g.strokeStyle = 'rgba(255,244,222,0.12)';
-  g.beginPath();
-  g.moveTo(x + lw * 1.5, y + h - lw);
-  g.lineTo(x + lw * 1.5, y + lw * 1.5);
-  g.lineTo(x + w - lw, y + lw * 1.5);
-  g.stroke();
-  g.strokeStyle = 'rgba(0,0,0,0.45)';
-  g.beginPath();
-  g.moveTo(x + lw * 1.5, y + h - lw * 1.5);
-  g.lineTo(x + w - lw * 1.5, y + h - lw * 1.5);
-  g.lineTo(x + w - lw * 1.5, y + lw * 1.5);
-  g.stroke();
-  if (state === 'locked' && !sel) {
-    // A locked card is recessed, not outlined: a shadow falls from its upper lip into the face.
-    const sunk = g.createLinearGradient(x, y, x, y + h * 0.55);
-    sunk.addColorStop(0, 'rgba(0,0,0,0.42)');
-    sunk.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = sunk;
-    g.fillRect(x, y, w, h * 0.55);
-  }
-  if (sel) {
-    // the one selection language: the amber edge and a warm lift, never a box around the card
-    const lift = g.createLinearGradient(x, y, x + w * 0.75, y);
-    lift.addColorStop(0, 'rgba(255,238,210,0.09)');
-    lift.addColorStop(1, 'rgba(255,238,210,0)');
-    g.fillStyle = lift;
-    g.fillRect(x, y, w, h);
-    g.fillStyle = KIT_INK.signal;
-    g.fillRect(x, y, 3 / zoom, h);
-  }
-}
-function drawEtchLine(g, x1, y, x2) {
-  const yy = Math.round(y);
-  // Deckplate: an etched groove is a dark cut with a lit lip under it, drawn, not a sprite.
-  if (!forcedColorsActive()) {
-    g.lineWidth = 1;
-    g.strokeStyle = 'rgba(0,0,0,0.6)';
-    g.beginPath(); g.moveTo(x1, yy + 0.5); g.lineTo(x2, yy + 0.5); g.stroke();
-    g.strokeStyle = 'rgba(255,236,204,0.07)';
-    g.beginPath(); g.moveTo(x1, yy + 1.5); g.lineTo(x2, yy + 1.5); g.stroke();
-    return;
-  }
-  const img = kitImage('tiles/tile.etch.hairline.png');
-  if (imgReady(img)) {
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-    for (let x = x1; x < x2; x += w) {
-      const dw = Math.min(w, x2 - x);
-      g.drawImage(img, 0, 0, dw, h, x, yy - h / 2, dw, h);
-    }
-    return;
-  }
-  g.strokeStyle = KIT_INK.hair;
-  g.lineWidth = 1;
-  g.beginPath();
-  g.moveTo(x1, yy + 0.5);
-  g.lineTo(x2, yy + 0.5);
-  g.stroke();
-}
-function drawLight(g, kind, x, y) {
-  if (!forcedColorsActive()) {
-    const cx = x + 6, cy = y + 6;
-    const lens = g.createRadialGradient(cx - 1, cy - 1.2, 0, cx, cy, 4.5);
-    if (kind === 'off') {
-      lens.addColorStop(0, '#3b352c'); lens.addColorStop(1, '#17140f');
-    } else if (kind === 'good') {
-      lens.addColorStop(0, '#fffaf0'); lens.addColorStop(0.45, '#d8d2c4'); lens.addColorStop(1, '#6b675d');
-    } else if (kind === 'dim') {
-      lens.addColorStop(0, '#c9a25a'); lens.addColorStop(0.55, '#8a6b3a'); lens.addColorStop(1, '#3d2f19');
-    } else {
-      lens.addColorStop(0, '#fff6df'); lens.addColorStop(0.22, '#ffd98c'); lens.addColorStop(0.55, '#f2b950'); lens.addColorStop(1, '#8a6b3a');
-    }
-    if (kind === 'on') { g.save(); g.shadowColor = 'rgba(242,185,80,0.5)'; g.shadowBlur = 6; }
-    g.fillStyle = lens;
-    g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.fill();
-    if (kind === 'on') g.restore();
-    g.strokeStyle = 'rgba(6,8,10,0.9)'; g.lineWidth = 1;
-    g.beginPath(); g.arc(cx, cy, 4.5, 0, Math.PI * 2); g.stroke();
-    return;
-  }
-  const file = kind === 'good'
-    ? 'lights/light.dot.good.on.png'
-    : kind === 'on'
-      ? 'lights/light.dot.legend.on.png'
-      : kind === 'dim'
-        ? 'lights/light.dot.legend.dim.png'
-        : 'lights/light.dot.legend.off.png';
-  const img = kitImage(file);
-  if (imgReady(img)) {
-    g.drawImage(img, x, y, 12, 12);
-    return;
-  }
-  g.fillStyle = kind === 'good' ? KIT_INK.good : kind === 'off' ? KIT_INK.bone38 : KIT_INK.signal;
-  g.beginPath();
-  g.arc(x + 6, y + 6, 3, 0, Math.PI * 2);
-  g.fill();
-}
-
-// Canvas 2D cannot read a CSS custom property, so the kit tokens are spelled here — the only
-// colour literals allowed in this file. Values match assets/ui/kit/tokens/tokens.css.
-const KIT_INK = Object.freeze({
-  bone: '#eae6df',
-  bone62: 'rgba(234,230,223,0.62)',
-  bone38: 'rgba(234,230,223,0.38)',
-  // A locked node still names itself and its price at reading contrast (>= 4.5:1 on its tile).
-  boneLocked: 'rgba(234,230,223,0.64)',
-  boneCost: 'rgba(234,230,223,0.58)',
-  hair: 'rgba(234,230,223,0.14)',
-  signal: '#f2b950',
-  legend: '#e8e2d4',
-  red: '#ff4d3d',
-  good: '#d8d2c4',
-  ink: '#0c0a08',
-  available: '#151a21',
-  researched: '#11151b',
-  locked: '#0c0f13',
+// Canvas 2D cannot read a CSS custom property through ctx.fillStyle, so the Deckplate tokens are read
+// once per show (readInks) and these values — the tokens as spelled in deckplate/tokens.js — are the
+// fallback. The only colour literals in this file.
+const INK_FALLBACK = Object.freeze({
+  ink: '#e8e2d4',
+  inkDim: '#b7b4a6',
+  // the quiet tier that still clears 4.5:1 on its field: a locked node names itself at this
+  inkMute: '#b0aea6',
+  lamp: '#f2b950',
+  lampHot: '#ffd98c',
+  lampDim: '#8a6b3a',
+  lampBloom: 'rgba(242,185,80,0.45)',
+  phos: '#dfeeff',
+  phosDim: '#9fb4c8',
+  field: 'rgba(10,12,16,0.86)',
+  fieldLocked: 'rgba(10,12,16,0.62)',
+  fieldInk: 'rgba(232,226,212,0.08)',
+  fieldLit: 'rgba(232,226,212,0.13)',
+  rule: 'rgba(232,226,212,0.16)',
+  ruleHi: 'rgba(232,226,212,0.24)',
 });
-// The kit's text face (styles/kit.css --k-text / --fh-face-text), spelled out because ctx.font
-// cannot resolve var(). Lane legends use the display face.
+const INK_TOKENS = Object.freeze({
+  ink: '--dp-ink', inkDim: '--dp-ink-dim', inkMute: '--dp-ink-mute',
+  lamp: '--dp-lamp', lampHot: '--dp-lamp-hot', lampDim: '--dp-lamp-dim',
+  phos: '--dp-phos', phosDim: '--dp-phos-dim',
+});
+function readInks(root) {
+  const inks = { ...INK_FALLBACK };
+  if (!root || typeof getComputedStyle !== 'function') return inks;
+  try {
+    const cs = getComputedStyle(root);
+    for (const [key, prop] of Object.entries(INK_TOKENS)) {
+      const value = cs.getPropertyValue(prop).trim();
+      if (/^#[0-9a-f]{3,8}$/i.test(value) || /^rgba?\(/i.test(value)) inks[key] = value;
+    }
+  } catch (_) { /* the fallback palette is the token palette */ }
+  return inks;
+}
+const FORCED_INKS = Object.freeze({
+  ink: 'CanvasText', inkDim: 'CanvasText', inkMute: 'GrayText', lamp: 'Highlight', lampHot: 'Highlight',
+  lampDim: 'CanvasText', lampBloom: 'transparent', phos: 'CanvasText', phosDim: 'CanvasText',
+  field: 'Canvas', fieldLocked: 'Canvas', fieldInk: 'Canvas', fieldLit: 'Canvas', rule: 'GrayText', ruleHi: 'CanvasText',
+});
+
+// The kit's text face (styles/kit.css --k-text / --dp-face-read), spelled out because ctx.font
+// cannot resolve var(). Lane names use the etched display face.
 const KIT_TEXT_FACE = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 const KIT_DISPLAY_FACE = 'Archivo, system-ui, sans-serif';
 
 /**
- * A canvas font shorthand in the kit face for a canvas whose element is scaled by `zoom`.
- * The 12 px floor applies to the size the player sees, then divides (a scaled element draws
- * `size/zoom` at `size` screen pixels), the same rule canvasFonts.js documents.
+ * A canvas font for a canvas drawn at `zoom`. The word is designed at `designPx` at 100% and scales
+ * with the tree, but never below the 12 px floor on screen: the size the player sees is
+ * max(12, designPx * zoom), and the canvas is drawn in 100% units, so that is divided back out.
+ * Between 100% and MIN_ZOOM a 16 px name keeps its proportion to its field exactly.
  */
-function kitFont(weight, screenPx, zoom) {
+function kitFont(weight, designPx, zoom, face = KIT_TEXT_FACE) {
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  const size = Math.max(12, Number.isFinite(screenPx) ? screenPx : 12) / z;
-  return weight + ' ' + size + 'px ' + KIT_TEXT_FACE;
+  const screenPx = Math.max(12, (Number.isFinite(designPx) ? designPx : 12) * z);
+  return weight + ' ' + (screenPx / z) + 'px ' + face;
 }
-function kitLegendFont(screenPx, zoom) {
-  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  const size = Math.max(12, Number.isFinite(screenPx) ? screenPx : 12) / z;
-  return '600 ' + size + 'px ' + KIT_DISPLAY_FACE;
+function setSpacing(g, px) {
+  if (g && 'letterSpacing' in g) g.letterSpacing = px + 'px';
 }
 
-function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+function setText(node, text) { if (node && node.textContent !== text) node.textContent = text; }
 
 function nodeName(id, nodes = TECH_NODES) {
   const node = (nodes || []).find((n) => n && n.id === id);
@@ -545,8 +361,20 @@ export function describeTechNodeReadiness(node, state, nodes = TECH_NODES) {
   };
 }
 
-// Build once: id -> node, plus per-node layout depth (longest prereq chain) and row index.
-function buildLayout(nodes) {
+/** The longest name, wrapped to the node measure at 16 px, in lines (the canvas measures it). */
+function measuredNameLines(nodes, measure, budget) {
+  if (typeof measure !== 'function') return budget;
+  let lines = 1;
+  for (const n of nodes) lines = Math.max(lines, wrapCanvasLines(measure, n.name, NODE_W).length);
+  return Math.max(1, Math.min(budget, lines));
+}
+
+/**
+ * Build once per locale: id -> node, lane and shelf placement, plate rectangles.
+ * `nameLines` is how many name lines every node reserves (the longest name decides; the locale's
+ * budget is the ceiling), so an English tree is one line per node and a growth locale takes more.
+ */
+function buildLayout(nodes, { nameLines = 2 } = {}) {
   const byId = {};
   for (const n of nodes) byId[n.id] = n;
   const depthMemo = {};
@@ -562,62 +390,128 @@ function buildLayout(nodes) {
     s.delete(id);
     return (depthMemo[id] = d);
   }
-  // One lane per branch (a branch the data does not use takes no room). Inside a lane, nodes bucket
-  // by depth into columns; each column is ordered by the mean row of its in-lane prerequisites so
-  // a chain reads straight across and siblings fan out beside each other instead of crossing.
+  // Inside a lane, nodes bucket by depth into columns; each column is ordered by the mean row of its
+  // in-lane prerequisites so a chain reads straight across and siblings fan out beside each other.
   const laneOf = (n) => (BRANCH_INDEX[n.branch] != null ? n.branch : BRANCHES[BRANCHES.length - 1].id);
   const lanes = {};
-  for (const b of BRANCHES) lanes[b.id] = { cols: {}, rows: 0 };
+  for (const b of BRANCHES) lanes[b.id] = { id: b.id, label: b.label, cols: {}, rows: 0, maxDepth: 0, ids: [] };
   for (const n of nodes) {
     const d = depth(n.id);
     const lane = lanes[laneOf(n)];
     (lane.cols[d] || (lane.cols[d] = [])).push(n);
+    lane.maxDepth = Math.max(lane.maxDepth, d);
+    lane.ids.push(n.id);
   }
-  const layout = {}; // id -> { depth, slot, lane }
+  const slotOf = {}; // id -> { depth, slot, lane }
   for (const b of BRANCHES) {
     const lane = lanes[b.id];
     const depths = Object.keys(lane.cols).map(Number).sort((p, q) => p - q);
     for (const d of depths) {
       const col = lane.cols[d];
       const keyed = col.map((n, i) => {
-        const parents = (n.prereqs || []).map((p) => layout[p]).filter((l) => l && l.lane === b.id);
+        const parents = (n.prereqs || []).map((p) => slotOf[p]).filter((l) => l && l.lane === b.id);
         // Roots and cross-lane children keep declaration order, after the barycentred children.
         const k = parents.length ? parents.reduce((s, l) => s + l.slot, 0) / parents.length : 1e6 + i;
         return { n, i, k };
       });
       keyed.sort((p, q) => (p.k - q.k) || (p.i - q.i));
-      keyed.forEach(({ n }, slot) => { layout[n.id] = { depth: d, slot, lane: b.id }; });
+      keyed.forEach(({ n }, slot) => { slotOf[n.id] = { depth: d, slot, lane: b.id }; });
       lane.rows = Math.max(lane.rows, col.length);
     }
   }
-  const boxH = techTreeNodeHeight();
-  const branchTop = {};   // lane label y (the lane's top inset)
-  const laneBottom = {};  // last word box's bottom edge in the lane
-  const positions = {};
-  let y = PAD_Y;
-  let maxX = 0;
-  for (const b of BRANCHES) {
-    const lane = lanes[b.id];
-    if (!lane.rows) continue;
-    branchTop[b.id] = y;
-    const cardsTop = y + LANE_LABEL_H;
-    for (const d of Object.keys(lane.cols)) {
-      for (const n of lane.cols[d]) {
-        const l = layout[n.id];
-        positions[n.id] = {
-          x: PAD_X + l.depth * (NODE_W + COL_GAP),
-          y: cardsTop + l.slot * (boxH + ROW_GAP),
-        };
-        maxX = Math.max(maxX, positions[n.id].x + NODE_W);
-      }
+
+  const boxH = COST_LINE_H + nameLines * NAME_LINE_H;
+  const plateH = boxH + PLATE_PAD_Y * 2;
+  const laneW = (lane) => LABEL_W + (lane.maxDepth + 1) * PLATE_W + lane.maxDepth * COL_GAP;
+  const laneH = (lane) => lane.rows * (plateH + ROW_GAP) - ROW_GAP;
+  const used = BRANCHES.map((b) => lanes[b.id]).filter((lane) => lane.rows > 0);
+  const shelfMax = used.reduce((m, lane) => Math.max(m, laneW(lane)), 0);
+  const shelves = [];
+  for (const lane of used) {
+    const shelf = shelves[shelves.length - 1];
+    const w = laneW(lane);
+    if (shelf && shelf.w + LANE_GAP_X + w <= shelfMax) {
+      shelf.lanes.push(lane);
+      shelf.w += LANE_GAP_X + w;
+    } else {
+      shelves.push({ lanes: [lane], w });
     }
-    laneBottom[b.id] = cardsTop + lane.rows * (boxH + ROW_GAP) - ROW_GAP;
-    y = laneBottom[b.id] + LANE_GAP;
   }
-  return { byId, positions, width: maxX + PAD_X, height: y - LANE_GAP + PAD_Y, branchTop, laneBottom };
+  const depthOf = {};     // id -> prerequisite depth (tier - 1)
+  for (const id of Object.keys(slotOf)) depthOf[id] = slotOf[id].depth;
+  const positions = {};   // id -> plate { x, y }
+  const shelfOf = {};     // id -> shelf index
+  const laneRects = {};   // lane id -> { x, y, w, h }
+  let y = PAD;
+  shelves.forEach((shelf, si) => {
+    shelf.y = y;
+    shelf.h = shelf.lanes.reduce((m, lane) => Math.max(m, laneH(lane)), 0);
+    let x = PAD;
+    for (const lane of shelf.lanes) {
+      laneRects[lane.id] = { x, y, w: laneW(lane), h: laneH(lane), label: lane.label, ids: lane.ids };
+      const colsX = x + LABEL_W;
+      for (const id of lane.ids) {
+        const at = slotOf[id];
+        positions[id] = {
+          x: colsX + at.depth * (PLATE_W + COL_GAP),
+          y: y + at.slot * (plateH + ROW_GAP),
+        };
+        shelfOf[id] = si;
+      }
+      x += laneW(lane) + LANE_GAP_X;
+    }
+    y += shelf.h + SHELF_GAP;
+  });
+  const height = y - SHELF_GAP + PAD;
+  return {
+    byId, positions, shelfOf, laneRects, depthOf,
+    shelves: shelves.map((s) => ({ y: s.y, h: s.h })),
+    width: PAD * 2 + shelfMax, height, boxH, plateH, nameLines,
+  };
 }
 
-/** A hero block in the corner whose number carries a data hook (`data-cr`, `data-rp`, `data-count`). */
+/** Every prerequisite a node stands on, transitively (the path back to its roots). */
+function ancestorsOf(id, byId) {
+  const out = new Set();
+  const stack = [id];
+  while (stack.length) {
+    const n = byId[stack.pop()];
+    for (const p of (n && n.prereqs) || []) {
+      if (out.has(p)) continue;
+      out.add(p);
+      stack.push(p);
+    }
+  }
+  return out;
+}
+
+/** A node's printed field: a rectangle with its top-right corner cut at 45°. */
+function platePath(g, x, y, w, h, cut) {
+  g.beginPath();
+  g.moveTo(x, y);
+  g.lineTo(x + w - cut, y);
+  g.lineTo(x + w, y + cut);
+  g.lineTo(x + w, y + h);
+  g.lineTo(x, y + h);
+  g.closePath();
+}
+
+/** A Manhattan polyline with rounded corners (a circuit trace). */
+function tracePath(g, pts, r) {
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length - 1; i += 1) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const room = Math.min(Math.hypot(x1 - x0, y1 - y0), Math.hypot(x2 - x1, y2 - y1)) / 2;
+    g.arcTo(x1, y1, x2, y2, Math.max(0, Math.min(r, room)));
+  }
+  const last = pts[pts.length - 1];
+  g.lineTo(last[0], last[1]);
+}
+
+/** A corner hero block whose number carries a data hook (`data-cr`, `data-rp`, `data-count`). */
 function cornerHero(parent, word, hook) {
   const block = hero('0', word);
   const n = block.querySelector('.k-hero__n');
@@ -652,6 +546,9 @@ export const techTreeScreen = {
   _zoom: 1.0,
   _zoomBadge: null,
   _regions: null,
+  _inks: INK_FALLBACK,
+  _drag: null,
+  _dragMoved: false,
 
   mount(rootEl, ctx) {
 
@@ -662,7 +559,7 @@ export const techTreeScreen = {
     rootEl.id = 'sf-techtree';
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree');
-    rootEl.classList.add('k-screen');
+    rootEl.classList.add('k-screen', 'of-research');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Research');
@@ -678,13 +575,14 @@ export const techTreeScreen = {
     head.appendChild(branchLine);
     rootEl.appendChild(head);
 
-    // .k-corner — credits, research points, unlocked n/N as three hero numbers on an edge plate.
+    // .k-corner — credits, research points, unlocked n/N as three readings.
     const corner = el('div', 'k-corner');
     corner.setAttribute('aria-label', 'Research resources');
     paintPlate(corner, 'edge', {
       display: 'flex',
-      'flex-direction': 'column',
-      gap: '8px',
+      'flex-direction': 'row',
+      'align-items': 'flex-end',
+      gap: '28px',
       'text-align': 'right',
     });
     const crEl = cornerHero(corner, 'credits', 'data-cr');
@@ -693,13 +591,13 @@ export const techTreeScreen = {
     setText(countEl, '0/' + TECH_NODES.length);
     rootEl.appendChild(corner);
 
-    // .k-stage — canvas on the held world (leftover orbital fill killed), selected node on a plate.
+    // .k-stage — the tree on the held world; the selected node on the right.
     const stage = el('div', 'k-stage k-span k-panel k-panel--split');
     pin(stage, {
       background: 'transparent',
       'border-width': '0',
       'box-shadow': 'none',
-      'grid-template-columns': 'minmax(0, 1fr) minmax(220px, 310px)',
+      'grid-template-columns': 'minmax(0, 1fr) minmax(220px, 330px)',
     });
     const scrollEl = el('div', 'tt-scroll k-stage--scroll');
     // The kit's scroll rule scrolls one axis (overflow: hidden auto). Panning a zoomed tree needs
@@ -715,20 +613,18 @@ export const techTreeScreen = {
     canvas.setAttribute('aria-label', 'Tech tree');
     canvas.style.display = 'block';
     scrollEl.appendChild(canvas);
-    // The zoom badge pins to the stage's bottom-left (the kit's stage caption slot) and does not scroll.
-    const zoomBadge = el('div', 'tt-zoom-badge k-stage__foot k-t-fine k-38 fh-legend', '100% zoom');
+    stage.appendChild(scrollEl);
+    // The zoom reading pins to the stage's bottom-left, outside the scroller, so it never scrolls
+    // away and never covers a node: it says whether the whole tree is in view.
+    const zoomBadge = el('div', 'tt-zoom-badge k-stage__foot k-t-fine fh-legend', '100%');
     zoomBadge.setAttribute('aria-live', 'off');
     paintLegend(zoomBadge);
     pin(zoomBadge, { background: 'transparent', border: '0', padding: '0' });
-    scrollEl.appendChild(zoomBadge);
-    stage.appendChild(scrollEl);
+    stage.appendChild(zoomBadge);
 
     const side = el('div', 'tt-side k-stage--scroll');
     side.setAttribute('aria-label', 'Selected node');
-    paintPlate(side, 'sunk', {
-      'padding-top': 'calc(80px * var(--k-s))',
-      background: 'transparent',
-    });
+    paintPlate(side, 'sunk', { background: 'transparent', padding: '0 2px' });
     const selected = el('div');
     selected.setAttribute('data-sel', '');
     const actions = el('div', 'of-pause');
@@ -738,18 +634,16 @@ export const techTreeScreen = {
     stage.appendChild(side);
     rootEl.appendChild(stage);
 
-    // .k-foot — the legend as three quiet words; node picker stays the keyboard equivalent.
+    // .k-foot — Back, the legend (each word wears the form its nodes wear), the node picker.
     const foot = el('footer', 'k-foot');
-    foot.setAttribute('aria-label', 'Legend');
     pin(foot, { 'border-top': '0' });
-    const availableWord = el('span', 'k-word--fine k-62 fh-legend', 'available');
+    const availableWord = el('span', 'k-word--fine fh-legend', 'available');
     paintLegend(availableWord, true);
     const researchedWord = el('span', 'k-word--fine fh-legend', 'researched');
     paintLegend(researchedWord, true);
     researchedWord.setAttribute('data-fh-lit', 'on');
-    const lockedWord = el('span', 'k-word--fine k-38 fh-legend', 'locked');
+    const lockedWord = el('span', 'k-word--fine fh-legend', 'locked');
     paintLegend(lockedWord, false);
-    // Each legend word carries the lens its nodes wear (deckplate: drawn by the sheet).
     availableWord.dataset.swatch = 'available';
     researchedWord.dataset.swatch = 'researched';
     lockedWord.dataset.swatch = 'locked';
@@ -763,11 +657,15 @@ export const techTreeScreen = {
     });
     foot.setAttribute('aria-label', 'Legend and actions');
     foot.appendChild(back);
-    foot.appendChild(availableWord);
-    foot.appendChild(researchedWord);
-    foot.appendChild(lockedWord);
+    const legend = el('div', 'tt-legend');
+    legend.setAttribute('aria-label', 'Legend');
+    legend.appendChild(availableWord);
+    legend.appendChild(researchedWord);
+    legend.appendChild(lockedWord);
+    foot.appendChild(legend);
     // Canvas labels have a native keyboard/screen-reader equivalent. Selecting a locked node is
     // allowed: it reveals the exact prerequisite reason without pretending it can be researched.
+    const picker = el('div', 'tt-picker');
     const nodeLabel = el('label', 'k-t-fine fh-legend', 'Research node');
     paintLegend(nodeLabel);
     const nodeSelect = el('select', 'k-select tt-node-select');
@@ -778,40 +676,58 @@ export const techTreeScreen = {
     }
     nodeSelect.addEventListener('change', () => this._selectNode(nodeSelect.value));
     paintInput(nodeSelect);
-    foot.appendChild(nodeLabel); foot.appendChild(nodeSelect);
+    picker.appendChild(nodeLabel); picker.appendChild(nodeSelect);
+    foot.appendChild(picker);
     this._nodeSelect = nodeSelect;
     rootEl.appendChild(foot);
 
     this._regions = { head, corner, stage, foot };
     this._canvas = canvas;
+    this._scrollEl = scrollEl;
     this._g = canvas.getContext('2d');
-    this._layout = buildLayout(this._nodes());
-    this._layoutLocale = (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale) || 'en-US';
+    this._layoutLocale = null;
+    this._relayout();
     this._els = { cr: crEl, rp: rpEl, count: countEl, branch: branchLine, selected, actions };
     this._zoomBadge = zoomBadge;
     this._zoom = 1.0;
 
     canvas.addEventListener('click', (e) => this._onCanvasClick(e));
     canvas.addEventListener('mousemove', (e) => this._onCanvasMove(e));
-    canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
+    canvas.addEventListener('mouseleave', () => { if (this._hoverId) { this._hoverId = null; this._draw(); } });
+    // Drag pans the tree when it is larger than its window (the zoom reading says so).
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      this._drag = { x: e.clientX, y: e.clientY, left: scrollEl.scrollLeft, top: scrollEl.scrollTop, id: e.pointerId };
+      this._dragMoved = false;
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      const d = this._drag;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!this._dragMoved && Math.abs(dx) + Math.abs(dy) < 5) return;
+      if (!this._dragMoved) {
+        this._dragMoved = true;
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) { /* capture is a nicety */ }
+      }
+      scrollEl.scrollLeft = d.left - dx;
+      scrollEl.scrollTop = d.top - dy;
+    });
+    const endDrag = () => { this._drag = null; };
+    canvas.addEventListener('pointerup', endDrag);
+    canvas.addEventListener('pointercancel', endDrag);
 
-    // Mouse-wheel zoom
+    // Mouse-wheel zoom, toward the cursor.
     scrollEl.addEventListener('wheel', (ev) => {
       ev.preventDefault();
       const delta = ev.deltaY > 0 ? -0.1 : 0.1;
       const prevZoom = this._zoom;
-      this._zoom = Math.round(Math.min(2.0, Math.max(0.5, this._zoom + delta)) * 10) / 10;
+      this._zoom = Math.round(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this._zoom + delta)) * 100) / 100;
       if (this._zoom === prevZoom) return;
-
-      // Zoom toward cursor: adjust scroll position so the point under the cursor stays fixed
       const rect = scrollEl.getBoundingClientRect();
       const mx = ev.clientX - rect.left + scrollEl.scrollLeft;
       const my = ev.clientY - rect.top + scrollEl.scrollTop;
       const ratio = this._zoom / prevZoom;
-
       this._applyZoom();
-
-      // After scaling, adjust scroll to keep cursor-point stable
       scrollEl.scrollLeft = mx * ratio - (ev.clientX - rect.left);
       scrollEl.scrollTop = my * ratio - (ev.clientY - rect.top);
     }, { passive: false });
@@ -821,17 +737,30 @@ export const techTreeScreen = {
       if (btn) this._onAction(btn.dataset.act);
     });
 
-    // Web fonts land after first paint; repaint the words in the real face when they do.
+    // Web fonts land after first paint: re-measure the names and repaint in the real face.
     if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
-      document.fonts.addEventListener('loadingdone', () => this._draw());
+      document.fonts.addEventListener('loadingdone', () => {
+        if (!this._root || !this._root.isConnected) return;
+        const lines = this._layout && this._layout.nameLines;
+        this._relayout();
+        if (this._layout && this._layout.nameLines !== lines) { this._fitZoom(); }
+        this._draw();
+      });
     }
   },
 
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
-    this._sizeCanvas();
+    this._inks = forcedColorsActive() ? FORCED_INKS : readInks(this._root);
+    this._relayout();
+    // The detail pane is never an empty box: it opens on the first node the player can research now.
+    if (!this._selectedId || !this._nodes().some((n) => n.id === this._selectedId)) {
+      this._selectedId = this._defaultNodeId();
+      if (this._nodeSelect) this._nodeSelect.value = this._selectedId || '';
+    }
     this._fitZoom();
     this.refresh(this._ctx);
+    this._lightTrace();
     cue('open');
     if (typeof requestAnimationFrame === 'function' && this._regions) {
       try {
@@ -857,8 +786,11 @@ export const techTreeScreen = {
     }
     const drawSig = this._drawSignature();
     if (!opts.periodic || drawSig !== this._drawSig) {
+      const before = this._drawSig ? this._drawSig.split('|')[0] : null;
       this._drawSig = drawSig;
       this._draw();
+      // A node just researched: run the light along its traces.
+      if (before != null && before !== this._researchSignature()) this._lightTrace();
     }
   },
 
@@ -890,205 +822,355 @@ export const techTreeScreen = {
     return 'locked';
   },
 
+  /** First node the player can research right now; else the first open one; else the next one. */
+  _defaultNodeId() {
+    const nodes = this._nodes();
+    const st = this._ctx && this._ctx.state;
+    const ready = nodes.find((n) => describeTechNodeReadiness(n, st, nodes).state === 'available');
+    if (ready) return ready.id;
+    const open = nodes.find((n) => this._nodeState(n) === 'available');
+    if (open) return open.id;
+    const next = nodes.find((n) => !this._isResearched(n.id));
+    return (next || nodes[0] || {}).id || null;
+  },
+
+  _locale() {
+    return (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale) || 'en-US';
+  },
+
+  /** Lay the tree out for the live locale, measuring the names in the face they are drawn in. */
+  _relayout() {
+    const loc = this._locale();
+    const g = this._g;
+    let measure = null;
+    if (g && typeof g.measureText === 'function') {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.font = kitFont(500, 16, 1);
+      setSpacing(g, 0);
+      measure = (value) => g.measureText(value).width;
+    }
+    const nameLines = measuredNameLines(this._nodes(), measure, techTreeNameLineBudget(loc));
+    const sig = loc + '|' + nameLines + '|' + this._nodes().length;
+    if (this._layout && this._layoutSig === sig) return;
+    this._layout = buildLayout(this._nodes(), { nameLines });
+    this._layoutSig = sig;
+    this._layoutLocale = loc;
+    this._sizeCanvas();
+  },
+
   _sizeCanvas() {
-    if (!this._canvas) return;
-    this._dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const lw = this._layout ? this._layout.width : 800;
-    const lh = this._layout ? this._layout.height : 600;
-    this._canvas.width = Math.round(lw * this._dpr);
-    this._canvas.height = Math.round(lh * this._dpr);
+    if (!this._canvas || !this._layout) return;
+    this._dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
     this._applyZoom();
   },
 
   /**
-   * Scale the canvas ELEMENT to the zoom (layout box and paint scale together). The previous CSS
-   * transform left the layout box at 100%, so a zoomed-out view scrolled over blank canvas.
-   * Hit-testing already divides by _zoom, and kitFont compensates the drawn font sizes,
-   * so both stay correct under element scaling.
+   * Scale the canvas ELEMENT and its backing store to the zoom, so a zoomed-out tree scrolls over
+   * the tree and not blank canvas, and a hairline stays one device pixel. Hit-testing divides by
+   * _zoom; kitFont sizes the words for the zoom.
    */
   _applyZoom() {
     if (!this._canvas || !this._layout) return;
     const zoom = this._zoom || 1;
-    this._canvas.style.width = Math.round(this._layout.width * zoom) + 'px';
-    this._canvas.style.height = Math.round(this._layout.height * zoom) + 'px';
-    setText(this._zoomBadge, Math.round(zoom * 100) + '% zoom');
+    const cssW = Math.round(this._layout.width * zoom);
+    const cssH = Math.round(this._layout.height * zoom);
+    this._canvas.style.width = cssW + 'px';
+    this._canvas.style.height = cssH + 'px';
+    const bw = Math.max(1, Math.round(cssW * this._dpr));
+    const bh = Math.max(1, Math.round(cssH * this._dpr));
+    if (this._canvas.width !== bw) this._canvas.width = bw;
+    if (this._canvas.height !== bh) this._canvas.height = bh;
+    this._syncZoomBadge();
+    this._draw();
+  },
+
+  /** The zoom reading: whether the whole tree is in view, and how to see the rest when it is not. */
+  _syncZoomBadge() {
+    const scrollEl = this._scrollEl;
+    const pct = Math.round((this._zoom || 1) * 100) + '%';
+    let whole = true;
+    if (scrollEl && this._layout && scrollEl.clientWidth > 0) {
+      const z = this._zoom || 1;
+      whole = this._layout.width * z <= scrollEl.clientWidth + 1 && this._layout.height * z <= scrollEl.clientHeight + 1;
+    }
+    setText(this._zoomBadge, whole ? 'Whole tree · ' + pct : 'Drag to pan · wheel to zoom · ' + pct);
+    if (this._zoomBadge) this._zoomBadge.dataset.whole = whole ? '1' : '0';
   },
 
   /**
-   * First paint fits the whole DAG to the scroll viewport when that stays legible, and never goes
-   * past 100%. The floor is 0.9: below that the 12px type floor makes canvas fonts physically
-   * wider than the lines the node words reserve (wrapText NAME_LINE_H), so text would overlap —
-   * better to keep 100% and scroll. The branch-band layout already fits at 100% in normal windows;
-   * this only absorbs slightly narrow ones.
+   * First paint fits the whole tree to its window and never goes past 100%. The floor is MIN_ZOOM:
+   * below it the 12 px type floor makes a name wider than its field. When even the floor does not
+   * fit, the tree scrolls and the zoom reading says "drag to pan".
    */
   _fitZoom() {
     if (!this._root || !this._layout) return;
-    const scrollEl = this._root.querySelector('.tt-scroll');
+    const scrollEl = this._scrollEl;
     if (!scrollEl || !(scrollEl.clientWidth > 0)) return;
     const fitW = scrollEl.clientWidth / Math.max(1, this._layout.width);
     const fitH = scrollEl.clientHeight > 0 ? scrollEl.clientHeight / Math.max(1, this._layout.height) : 1;
     const fit = Math.min(1, fitW, fitH);
-    this._zoom = Math.max(0.9, Math.floor(fit * 100) / 100);
+    this._zoom = Math.max(MIN_ZOOM, Math.floor(fit * 100) / 100);
     this._applyZoom();
   },
 
-  /** The strength a node's name is drawn at: focus is strength, never a frame. */
-  _nodeInk(stt, sel, hov) {
-    if (sel) return KIT_INK.signal;
-    if (stt === 'researched') return KIT_INK.bone;
-    if (stt === 'available') return KIT_INK.bone;
-    return hov ? KIT_INK.bone : KIT_INK.boneLocked;
+  /**
+   * The light runs along the selected node's traces (stroke-dash settle, --dp-d-settle). One
+   * short animation on open and after a research, never a loop; reduced motion shows it lit.
+   */
+  _lightTrace() {
+    this._traceT = 1;
+    const video = this._ctx && this._ctx.state && this._ctx.state.settings && this._ctx.state.settings.video;
+    if (reducedMotion() || (video && video.motionReduce) || typeof requestAnimationFrame !== 'function') { this._draw(); return; }
+    const start = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const DURATION = 420;
+    this._traceT = 0;
+    const tick = (now) => {
+      const t = Math.min(1, ((Number.isFinite(now) ? now : Date.now()) - start) / DURATION);
+      // the settle curve: a long soft tail (--dp-ease-settle)
+      this._traceT = 1 - Math.pow(1 - t, 3);
+      this._draw();
+      if (t < 1 && this._root && this._root.isConnected) requestAnimationFrame(tick);
+      else this._traceT = 1;
+    };
+    requestAnimationFrame(tick);
+  },
+
+  /** The route a trace takes from a parent's right edge to a child's left edge. */
+  _route(parentId, childId) {
+    const L = this._layout;
+    const pp = L.positions[parentId];
+    const cp = L.positions[childId];
+    if (!pp || !cp) return null;
+    const midH = L.plateH / 2;
+    const px = pp.x + PLATE_W, py = pp.y + midH;
+    const cx = cp.x, cy = cp.y + midH;
+    const busX = cx - COL_GAP / 2;
+    if (L.shelfOf[parentId] === L.shelfOf[childId] && busX > px) {
+      return [[px, py], [busX, py], [busX, cy], [cx, cy]];
+    }
+    // Across shelves: out into the parent's gap, along the corridor between the shelves, then in.
+    const upper = Math.min(L.shelfOf[parentId], L.shelfOf[childId]);
+    const shelf = L.shelves[upper];
+    const corridorY = shelf.y + shelf.h + SHELF_GAP / 2;
+    const outX = px + COL_GAP / 2;
+    return [[px, py], [outX, py], [outX, corridorY], [busX, corridorY], [busX, cy], [cx, cy]];
   },
 
   _draw() {
-    const g = this._g, cv = this._canvas;
-    if (!g || !this._layout) return;
-    const loc = (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale) || 'en-US';
-    if (this._layoutLocale !== loc) {
-      this._layout = buildLayout(this._nodes());
-      this._layoutLocale = loc;
-    }
-    const boxH = techTreeNodeHeight(loc);
-    const nameLines = techTreeNameLineBudget(loc);
+    const g = this._g, cv = this._canvas, L = this._layout;
+    if (!g || !cv || !L) return;
+    const zoom = this._zoom || 1;
+    const inks = this._inks || INK_FALLBACK;
+    const forced = forcedColorsActive();
+    const px = (n) => n / zoom; // a length in screen pixels, in canvas units
     this._drawSig = this._drawSignature();
-    g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
-    const w = cv.width / this._dpr, h = cv.height / this._dpr;
-    g.clearRect(0, 0, w, h); // transparent: the sky is the ground
+    g.setTransform(this._dpr * zoom, 0, 0, this._dpr * zoom, 0, 0);
+    g.clearRect(0, 0, L.width, L.height); // transparent: the sky is the ground
     g.imageSmoothingEnabled = true;
-    if (g.imageSmoothingQuality) g.imageSmoothingQuality = 'high';
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
 
     const nodes = this._nodes();
-    const pos = this._layout.positions;
-    const zoom = this._zoom || 1;
-    const strip = kitImage('plates/plate.legend.strip.png');
-    const stripSel = kitImage('plates/plate.row.selected.png');
+    const pos = L.positions;
+    const researched = new Set(this._researched());
+    const selChain = this._selectedId ? ancestorsOf(this._selectedId, L.byId) : new Set();
+    const hovChain = this._hoverId && this._hoverId !== this._selectedId ? ancestorsOf(this._hoverId, L.byId) : new Set();
 
-    // Lane labels sit in each lane's top inset at data size, 38 %; an etched hairline closes the
-    // lane below its last tile. Branch identity is lane + word, never hue.
-    g.textAlign = 'left'; g.textBaseline = 'top';
-    g.lineWidth = 1;
+    // ---- lanes: the name etched in the gutter, the count as a reading under it ----
+    g.textAlign = 'left';
+    g.textBaseline = 'top';
     for (const b of BRANCHES) {
-      const top = this._layout.branchTop[b.id];
-      if (top == null) continue;
-      g.fillStyle = KIT_INK.legend;
-      g.globalAlpha = 0.64;
-      g.font = kitLegendFont(12, zoom);
-      g.fillText(String(b.label).toUpperCase(), PAD_X, top + 2);
-      g.globalAlpha = 1;
-      const bottom = this._layout.laneBottom[b.id];
-      if (bottom != null && bottom + LANE_GAP < this._layout.height - PAD_Y) {
-        drawEtchLine(g, PAD_X, bottom + LANE_GAP / 2, this._layout.width - PAD_X);
-      }
+      const lane = L.laneRects[b.id];
+      if (!lane) continue;
+      g.fillStyle = inks.inkDim;
+      g.font = kitFont(700, 12, zoom, KIT_DISPLAY_FACE);
+      setSpacing(g, px(1.6));
+      g.fillText(String(lane.label).toUpperCase(), lane.x, lane.y + 2);
+      setSpacing(g, 0);
+      const done = lane.ids.filter((id) => researched.has(id)).length;
+      g.fillStyle = done ? inks.phos : inks.phosDim;
+      g.font = kitFont(600, 18, zoom);
+      g.fillText(done + '/' + lane.ids.length, lane.x, lane.y + 22);
+      g.fillStyle = inks.inkMute;
+      g.font = kitFont(400, 12, zoom);
+      g.fillText('researched', lane.x, lane.y + 46);
     }
 
-    // ---- prereq edges: parent's right edge → child's left edge, always pointing right, etched ----
-    g.strokeStyle = KIT_INK.hair;
-    g.globalAlpha = 1;
+    // ---- traces: a dim hairline where nothing is owned, the idle lamp where the parent is owned,
+    // lit where both ends are owned ----
+    const edges = [];
     for (const n of nodes) {
-      if (!n.prereqs) continue;
-      const np = pos[n.id];
-      if (!np) continue;
-      const childLeft = { x: np.x, y: np.y + boxH / 2 };
-      for (const p of n.prereqs) {
-        const pp = pos[p];
-        if (!pp) continue;
-        const parentRight = { x: pp.x + NODE_W, y: pp.y + boxH / 2 };
-        const reach = Math.max(COL_GAP * 0.55, (childLeft.x - parentRight.x) * 0.5);
-        g.beginPath();
-        g.moveTo(parentRight.x, parentRight.y);
-        g.bezierCurveTo(parentRight.x + reach, parentRight.y, childLeft.x - reach, childLeft.y, childLeft.x, childLeft.y);
-        g.stroke();
+      for (const p of n.prereqs || []) {
+        const route = this._route(p, n.id);
+        if (route) edges.push({ from: p, to: n.id, route });
       }
     }
+    for (const e of edges) {
+      const fromOwned = researched.has(e.from);
+      const toOwned = researched.has(e.to);
+      g.save();
+      if (fromOwned && toOwned) {
+        g.strokeStyle = inks.lamp;
+        g.lineWidth = px(1.5);
+        if (!forced) { g.shadowColor = inks.lampBloom; g.shadowBlur = 6 * this._dpr; }
+      } else if (fromOwned) {
+        g.strokeStyle = inks.lampDim;
+        g.lineWidth = px(1.25);
+      } else {
+        g.strokeStyle = inks.ruleHi;
+        g.lineWidth = px(1);
+      }
+      tracePath(g, e.route, TRACE_R);
+      g.stroke();
+      g.restore();
+    }
+    // The path back to the roots: the hovered node's in the lamp, the selected node's hot, with bloom.
+    const lightChain = (targetId, chain, colour, width, progress) => {
+      const inChain = (id) => id === targetId || chain.has(id);
+      g.save();
+      g.strokeStyle = colour;
+      g.lineWidth = px(width);
+      if (!forced) { g.shadowColor = inks.lampBloom; g.shadowBlur = 10 * this._dpr; }
+      for (const e of edges) {
+        if (!inChain(e.to) || !chain.has(e.from)) continue;
+        tracePath(g, e.route, TRACE_R);
+        if (progress < 1) {
+          let len = 0;
+          for (let i = 1; i < e.route.length; i += 1) {
+            len += Math.abs(e.route[i][0] - e.route[i - 1][0]) + Math.abs(e.route[i][1] - e.route[i - 1][1]);
+          }
+          g.setLineDash([len, len]);
+          g.lineDashOffset = len * (1 - progress);
+        }
+        g.stroke();
+        g.setLineDash([]);
+      }
+      g.restore();
+    };
+    if (hovChain.size) lightChain(this._hoverId, hovChain, inks.lamp, 1.75, 1);
+    if (selChain.size) lightChain(this._selectedId, selChain, inks.lampHot, 2, this._traceT == null ? 1 : this._traceT);
 
-    // ---- kit tiles: legend-strip plates, status light, quiet type ----
+    // ---- nodes: printed fields; state is form and light ----
+    const nameLines = L.nameLines;
     for (const n of nodes) {
       const p = pos[n.id];
       if (!p) continue;
       const stt = this._nodeState(n);
       const sel = n.id === this._selectedId;
       const hov = n.id === this._hoverId;
-      const px = p.x - PLATE_PAD_X;
-      const py = p.y - PLATE_PAD_Y;
-      const pw = NODE_W + PLATE_PAD_X * 2;
-      const ph = boxH + PLATE_PAD_Y * 2;
-      // Lit legend strips are a solid amber bar — they wash the name. Nodes sit on the
-      // dark strip; the selected node takes the amber-edge row plate instead.
-      const plateImg = sel ? stripSel : strip;
-      const slice = sel ? SELECTED_SLICE : STRIP_SLICE;
-      g.globalAlpha = stt === 'locked' && !sel ? 0.62 : 1;
-      // Deckplate: smoked glass tiles drawn here; forced colours keeps the flat system rendering.
-      const plated = !forcedColorsActive();
-      if (plated) drawGlassTile(g, px, py, pw, ph, stt, sel, hov, zoom);
-      else {
-        g.fillStyle = KIT_INK[stt];
-        g.fillRect(px, py, pw, ph);
-        g.strokeStyle = sel ? KIT_INK.signal : KIT_INK.hair;
-        g.lineWidth = (sel ? 2 : 1) / zoom;
-        g.setLineDash(stt === 'locked' ? [3 / zoom, 3 / zoom] : []);
-        g.strokeRect(px, py, pw, ph);
+      const onPath = selChain.has(n.id);
+      const x = p.x, y = p.y, w = PLATE_W, h = L.plateH;
+      g.save();
+      platePath(g, x, y, w, h, CUT);
+      g.fillStyle = stt === 'locked' ? inks.fieldLocked : inks.field;
+      g.fill();
+      if (stt === 'researched') { g.fillStyle = inks.fieldLit; g.fill(); }
+      if (sel || hov) { g.fillStyle = inks.fieldInk; g.fill(); }
+      // the edge: the lamp around what you can research now, bone around what is open but not
+      // yet affordable, a hairline around what is locked
+      const affordable = stt === 'available' && this._affordable(n);
+      if (stt === 'available') {
+        g.strokeStyle = affordable ? inks.lamp : inks.inkDim;
+        g.globalAlpha = sel || hov ? 1 : (affordable ? 0.82 : 0.6);
+        g.lineWidth = px(1);
+        g.stroke();
+        g.globalAlpha = 1;
+      } else if (stt === 'locked') {
+        g.strokeStyle = onPath || hov || sel ? inks.ruleHi : inks.rule;
+        g.lineWidth = px(1);
+        if (forced) g.setLineDash([px(3), px(3)]);
+        g.stroke();
         g.setLineDash([]);
+      } else if (forced) {
+        g.strokeStyle = inks.ink;
+        g.lineWidth = px(1);
+        g.stroke();
       }
-      g.globalAlpha = 1;
-      // Availability is the node's lamp (bottom right); the amber edge belongs to the selection alone.
-      const lightKind = stt === 'researched' ? 'good' : stt === 'available' ? (sel || hov ? 'on' : 'dim') : 'off';
-      // Status light sits bottom-right so the name still wraps to NODE_W
-      // (growth locales already budget every pixel of that box).
-      drawLight(g, lightKind, p.x + NODE_W - 10, p.y + boxH - 14);
+      // selection: the lamp bar on the leading edge (the one selection language)
+      if (sel) {
+        g.fillStyle = inks.lamp;
+        g.fillRect(x, y, px(2.5), h);
+      }
+      // the cut corner lights on what is owned and on what is selected
+      if (stt === 'researched' || sel) {
+        g.beginPath();
+        g.moveTo(x + w - CUT, y);
+        g.lineTo(x + w, y + CUT);
+        g.strokeStyle = inks.lampHot;
+        g.lineWidth = px(2);
+        if (!forced) { g.shadowColor = inks.lampBloom; g.shadowBlur = 8 * this._dpr; }
+        g.stroke();
+      }
+      g.restore();
 
-      g.fillStyle = this._nodeInk(stt, sel, hov);
-      g.font = kitFont(sel ? 500 : 400, 16, zoom);
-      g.textAlign = 'left'; g.textBaseline = 'top';
-      wrapText(g, n.name, p.x, p.y, NODE_W, NAME_LINE_H, nameLines);
-
-      g.font = kitFont(400, 12, zoom);
-      g.fillStyle = KIT_INK.boneCost;
-      g.textBaseline = 'bottom';
+      // the words
+      const tx = x + PLATE_PAD_X, ty = y + PLATE_PAD_Y;
+      g.textAlign = 'left';
+      g.textBaseline = 'top';
+      g.fillStyle = stt === 'locked' && !sel && !hov ? inks.inkMute : inks.ink;
+      g.font = kitFont(stt === 'locked' ? 400 : 500, 16, zoom);
+      setSpacing(g, 0);
+      wrapText(g, n.name, tx, ty, NODE_W, NAME_LINE_H, nameLines);
+      const costY = ty + nameLines * NAME_LINE_H + 1;
       if (stt === 'researched') {
-        g.fillText('researched', p.x, p.y + boxH);
+        g.fillStyle = inks.lamp;
+        g.font = kitFont(700, 12, zoom, KIT_DISPLAY_FACE);
+        setSpacing(g, px(1.6));
+        g.fillText('RESEARCHED', tx, costY);
+        setSpacing(g, 0);
       } else {
         const cost = n.cost || {};
-        g.fillText(fmtCostCompact(cost.credits || 0) + ' cr · ' + Math.round(cost.rp || 0).toLocaleString() + ' RP', p.x, p.y + boxH);
+        const credits = Math.round(cost.credits || 0);
+        const rp = Math.round(cost.rp || 0);
+        const text = fmtCostCompact(credits) + ' cr' + (rp ? ' · ' + rp.toLocaleString() + ' RP' : '');
+        g.fillStyle = stt === 'locked' ? inks.inkMute : (affordable ? inks.phos : inks.phosDim);
+        g.font = kitFont(500, 12, zoom);
+        g.fillText(text, tx, costY);
       }
     }
   },
 
+  /** Whether the player holds the credits and research points a node costs. */
+  _affordable(node) {
+    const cost = (node && node.cost) || {};
+    const player = (this._ctx && this._ctx.state && this._ctx.state.player) || {};
+    return Math.round(cost.credits || 0) <= (Number(player.credits) || 0)
+      && Math.round(cost.rp || 0) <= (Number(player.researchPoints) || 0);
+  },
+
   _onCanvasMove(e) {
+    if (this._dragMoved && this._drag) return;
     const hit = this._hitTest(e);
     const id = hit ? hit.id : null;
     if (id !== this._hoverId) { this._hoverId = id; this._draw(); }
-    this._canvas.style.cursor = hit ? 'pointer' : 'default';
+    this._canvas.style.cursor = hit ? 'pointer' : (this._zoomBadge && this._zoomBadge.dataset.whole === '0' ? 'grab' : 'default');
   },
 
   _onCanvasClick(e) {
+    if (this._dragMoved) { this._dragMoved = false; return; }
     const hit = this._hitTest(e);
     if (!hit) return;
     this._selectNode(hit.id);
   },
 
   _selectNode(id) {
-    if (!this._nodes().some(node => node.id === id)) return;
+    if (!this._nodes().some((node) => node.id === id)) return;
     this._selectedId = id;
     if (this._nodeSelect) this._nodeSelect.value = id;
     cue('move');
     this._syncSidebar();
-    this._draw();
+    this._lightTrace();
   },
 
   _hitTest(e) {
     const rect = this._canvas.getBoundingClientRect();
-    // Account for CSS transform scale: divide by zoom to get canvas-space coordinates
     const mx = (e.clientX - rect.left) / this._zoom;
     const my = (e.clientY - rect.top) / this._zoom;
-    const pos = this._layout.positions;
-    const boxH = techTreeNodeHeight();
+    const L = this._layout;
     for (const n of this._nodes()) {
-      const p = pos[n.id];
+      const p = L.positions[n.id];
       if (!p) continue;
-      if (
-        mx >= p.x - PLATE_PAD_X && mx <= p.x + NODE_W + PLATE_PAD_X
-        && my >= p.y - PLATE_PAD_Y && my <= p.y + boxH + PLATE_PAD_Y
-      ) return n;
+      if (mx >= p.x && mx <= p.x + PLATE_W && my >= p.y && my <= p.y + L.plateH) return n;
     }
     return null;
   },
@@ -1101,30 +1183,25 @@ export const techTreeScreen = {
     const known = new Set(this._nodes().map((n) => n.id));
     const researchedCount = this._researched().filter((id) => known.has(id)).length;
     setText(this._els && this._els.count, `${researchedCount}/${this._nodes().length}`);
+    // The line under the title says what the player can do here, in numbers.
+    const nodes = this._nodes();
+    const ready = nodes.filter((n) => describeTechNodeReadiness(n, st, nodes).state === 'available').length;
+    const open = nodes.filter((n) => this._nodeState(n) === 'available').length;
+    const line = ready
+      ? (ready === 1 ? 'One node' : ready + ' nodes') + ' ready to research now'
+      : open
+        ? (open === 1 ? 'One node is' : open + ' nodes are') + ' open; earn credits and research points to unlock them'
+        : researchedCount >= nodes.length ? 'Every node researched' : 'Research the open nodes to reach the rest';
+    setText(this._els && this._els.branch, line);
   },
 
   _paintDossier() {
     const sel = this._els && this._els.selected;
     const actions = this._els && this._els.actions;
     if (sel) {
-      const heading = sel.querySelector('h2');
-      if (heading) paintMarking(heading);
       for (const cap of sel.querySelectorAll('.k-caps')) paintLegend(cap);
-      for (const row of sel.querySelectorAll('.k-row')) paintRow(row);
+      for (const row of sel.querySelectorAll('.k-row')) row.classList.add('fh-row');
       for (const p of sel.querySelectorAll('.k-sentence, .k-empty')) paintBody(p);
-      const heroN = sel.querySelector('.k-hero__n');
-      if (heroN) {
-        heroN.classList.add('fh-heronum');
-        pin(heroN, {
-          'font-family': 'var(--fh-face-display)',
-          'font-variation-settings': "'wght' 800, 'wdth' 125",
-          color: 'var(--fh-signal)',
-        });
-      }
-      const heroW = sel.querySelector('.k-hero__w');
-      if (heroW) paintLegend(heroW, true);
-      const rule = sel.querySelector('.k-rule');
-      if (rule) paintHairline(rule);
     }
     if (actions) {
       const btn = actions.querySelector('button');
@@ -1138,7 +1215,7 @@ export const techTreeScreen = {
     if (!sel || !actions) return;
     this._sidebarSig = this._sidebarSignature();
     if (!this._selectedId) {
-      setText(this._els.branch, 'Select a node');
+      if (actions.parentNode === sel && sel.parentNode) sel.parentNode.appendChild(actions);
       sel.innerHTML = `<p class="k-empty">Select a node to inspect its cost, effects and prerequisites.</p>`;
       actions.innerHTML = '';
       this._paintDossier();
@@ -1150,28 +1227,34 @@ export const techTreeScreen = {
     const cost = n.cost || {};
     const readiness = describeTechNodeReadiness(n, st, this._nodes());
     const branch = BRANCHES.find((b) => b.id === n.branch);
-    setText(this._els.branch, (branch ? branch.label : String(n.branch || '')) + ' branch');
+    const branchLabel = branch ? branch.label : String(n.branch || '');
+    const tier = (this._layout.depthOf[n.id] || 0) + 1;
 
     const prereqHtml = (n.prereqs && n.prereqs.length)
-      ? `<ul class="k-rows" aria-label="Prerequisites">` + n.prereqs.map((p) => {
+      ? `<ul class="k-rows tt-reqs" aria-label="Prerequisites">` + n.prereqs.map((p) => {
           const pn = (this._layout.byId[p] || {}).name || p;
           const ok = this._isResearched(p);
-          return `<li class="k-row k-row--static"><span class="k-row__name">${escapeHtml(pn)}</span><span class="k-row__sub">${ok ? 'researched' : 'not yet researched'}</span></li>`;
+          return `<li class="k-row k-row--static" data-met="${ok ? '1' : '0'}"><span class="k-row__name">${escapeHtml(pn)}</span><span class="k-row__sub">${ok ? 'researched' : 'not yet researched'}</span></li>`;
         }).join('') + `</ul>`
       : `<p class="k-sentence">No prerequisites.</p>`;
     const unlockRows = unlockRowsHtml(n.unlocks);
     const effects = formatUnlocks(n.unlocks);
+    const rpText = cost.rp ? Math.round(cost.rp).toLocaleString() : '0';
+    // A locked node's first question is what stands in the way, so its requirements come first.
+    const requiresHtml = `<div class="k-caps">Requires</div>${prereqHtml}`;
 
     sel.innerHTML = `
-      <h2 class="k-display k-t-title">${escapeHtml(n.name)}</h2>
-      <div class="k-hero k-hero--signal"><div class="k-hero__n">${fmtCr(cost.credits || 0)}</div><div class="k-hero__w">credits</div></div>
-      ${cost.rp ? `<p class="k-sentence">and ${escapeHtml(String(cost.rp))} research points</p>` : ''}
+      <p class="tt-dossier__kicker">${escapeHtml(branchLabel)} branch · tier ${tier}</p>
+      <h2 class="tt-dossier__name">${escapeHtml(n.name)}</h2>
+      <p class="tt-dossier__state" data-state="${escapeHtml(readiness.state)}">${escapeHtml(stateSentence(readiness))}</p>
+      <dl class="tt-dossier__cost" aria-label="Cost">
+        <div><dt>Credits</dt><dd>${escapeHtml(fmtCr(cost.credits || 0))}</dd></div>
+        <div><dt>Research points</dt><dd>${escapeHtml(rpText)}</dd></div>
+      </dl>
+      ${readiness.state === 'locked' ? requiresHtml : ''}
       ${effects || !unlockRows ? `<p class="k-sentence">${effects || 'No listed effects.'}</p>` : ''}
-      <hr class="k-rule">
-      <div class="k-caps">Requires</div>
-      ${prereqHtml}
-      ${unlockRows ? `<div class="k-caps">Unlocks</div><ul class="k-rows" aria-label="Unlocks">${unlockRows}</ul>` : ''}
-      <p class="k-sentence k-sentence--emph">${escapeHtml(stateSentence(readiness))}</p>
+      ${unlockRows ? `<div class="k-caps">Unlocks</div><ul class="k-rows tt-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}
+      ${readiness.state === 'locked' ? '' : requiresHtml}
     `;
 
     if (readiness.state === 'available') {
@@ -1179,6 +1262,10 @@ export const techTreeScreen = {
     } else {
       actions.innerHTML = disabledActionHtml(readiness);
     }
+    // The verb sits under the price it spends, above the lists, so a node with six unlocks never
+    // pushes Unlock (or the reason it is locked) below the pane.
+    const costEl = sel.querySelector('.tt-dossier__cost');
+    if (costEl) costEl.insertAdjacentElement('afterend', actions);
     this._paintDossier();
   },
 
@@ -1237,10 +1324,16 @@ function disabledActionHtml(readiness) {
 /** The ships and modules a node unlocks, as static kit rows (name · kind). */
 function unlockRowsHtml(u) {
   if (!u) return '';
-  const row = (name, kind) => `<li class="k-row k-row--static"><span class="k-row__name">${name}</span><span class="k-row__sub">${kind}</span></li>`;
+  const row = (name, kind, ref) => `<li class="k-row k-row--static"><span class="k-row__name">${ref ? entitySpanHtml(ref, name) : name}</span><span class="k-row__sub">${kind}</span></li>`;
   const rows = [];
-  if (u.ships && u.ships.length) rows.push(...u.ships.map(unlockDisplayName).map((name) => row(name, 'ship')));
-  if (u.modules && u.modules.length) rows.push(...u.modules.map(unlockDisplayName).map((name) => row(name, 'module')));
+  if (u.ships && u.ships.length) {
+    const names = u.ships.map(unlockDisplayName);
+    rows.push(...u.ships.map((id, i) => row(names[i], 'ship', 'hull:' + id)));
+  }
+  if (u.modules && u.modules.length) {
+    const names = u.modules.map(unlockDisplayName);
+    rows.push(...u.modules.map((id, i) => row(names[i], 'module', 'module:' + id)));
+  }
   return rows.join('');
 }
 

@@ -111,7 +111,7 @@ export const WIRED_SITES = [
     file: 'src/ui/station/stationApp.js',
     label: 'station shell — handoff steps, vital-act quote reasons',
     needles: [
-      ['` data-why="${escapeHtml(st.text)}" aria-label=', 1],
+      ['` data-why="${escapeHtml(next.text)}" aria-label=', 1],
       ['cost.title ? ` data-why="${escapeHtml(cost.title)}"` : \'\'', 1],
     ],
   },

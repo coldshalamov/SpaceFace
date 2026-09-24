@@ -45,6 +45,31 @@ export const HITSTUN_LAW = Object.freeze({
   worldRefMass: 16,
 });
 
+// The shove beat (owner direction 2026-09-21). A concussion-class hit already bleeds a light
+// hull's speed, but two seconds later it is back on its line and back on the trigger. A
+// shove-class hit must knock the victim about one visible screen — 126 WU, FEEL_CONTRACT B3,
+// the same frame the inertial shunt tunes in — off the line it was flying, and the helm stays
+// lost for the coast that does it: beat = screenWu / deltaV. A harder shove finishes the same
+// displacement sooner, so the beat narrows as the shove grows and the base law's own duration
+// (capped at durationMaxS) overtakes it in the upper band. The beat only ever EXTENDS a stun
+// the base law already delivered — minU keeps it off hulls whose mass-weighted shove is not
+// shove-class, so heavies keep the helm exactly where the base law gives it — and it never
+// touches damage, spin, or the player.
+export const SHOVE_BEAT_LAW = Object.freeze({
+  minU: 0.3,
+  screenWu: 126,
+  maxS: 4.5,
+});
+
+// The delivered-impulse weapon family: hits whose payload is momentum (concussion slugs, vector
+// mines, bomb blasts, impulse charges). Rope throws, well flings, terrain collisions and tether
+// shares have their own tuned helm economies and keep the base law alone.
+const SHOVE_CLASS_HITSTUN_SOURCES = Object.freeze(new Set(['gun', 'weapon', 'bomb', 'impulse_charge']));
+
+export function isShoveClassHitstunSource(source) {
+  return SHOVE_CLASS_HITSTUN_SOURCES.has(source);
+}
+
 export function hitstunMassFactor(attackerMass, victimMass, opts = {}) {
   const min = Number.isFinite(opts.min) ? opts.min : HITSTUN_LAW.massFactorMin;
   const max = Number.isFinite(opts.max) ? opts.max : HITSTUN_LAW.massFactorMax;
@@ -73,13 +98,29 @@ export function resolveHitstunLaw(input = {}) {
   const rawDuration = u <= HITSTUN_LAW.uFloor
     ? 0
     : HITSTUN_LAW.slope * (u - HITSTUN_LAW.uFloor);
-  const durationS = rawDuration <= 0
+  const baseDurationS = rawDuration <= 0
     ? 0
     : Math.min(HITSTUN_LAW.durationMaxS, Math.ceil(rawDuration * 60 - 1e-12) / 60);
+  // The shove beat: extend a delivered stun to the coast that carries the victim about one
+  // screen off the line it was flying. It never starts a stun — no base stun, no beat — and
+  // never shortens one (consumers take max(existing, now + durationS)). `shoveBeatS` reports
+  // only a beat that actually set the duration; a base law already past the screen reads 0.
+  let durationS = baseDurationS;
+  let shoveBeatS = 0;
+  if (input.shove === true && baseDurationS > 0 && u >= SHOVE_BEAT_LAW.minU && deltaV > 0) {
+    const beatS = Math.min(
+      SHOVE_BEAT_LAW.maxS,
+      Math.ceil((SHOVE_BEAT_LAW.screenWu / deltaV) * 60 - 1e-12) / 60,
+    );
+    if (beatS > durationS) {
+      durationS = beatS;
+      shoveBeatS = beatS;
+    }
+  }
   const entrySpin = durationS > 0
     ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
     : 0;
-  return Object.freeze({ k, mF, u, durationS, entrySpin, worldBody });
+  return Object.freeze({ k, mF, u, durationS, entrySpin, shoveBeatS, worldBody });
 }
 
 export function signedHitSide(target, impulse, hit, fallbackId) {

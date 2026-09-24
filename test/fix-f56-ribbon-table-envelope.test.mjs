@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { tableVfxDrawWuFromState } from '../src/render/tabletopPolicy.js';
+import { PROJECTILE_DRAW_PAD_WU } from '../src/combat/projectileFlight.js';
 import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
 
 function projectile(id, x, ownerId = 'npc') {
@@ -78,7 +79,7 @@ test('non-priority ribbon begins releasing after it leaves the live table envelo
     update();
     const drawWu = tableVfxDrawWuFromState(state);
     shot.prevPos.x = shot.pos.x;
-    shot.pos.x = drawWu + 1;
+    shot.pos.x = drawWu + PROJECTILE_DRAW_PAD_WU + 8;
     update();
     const slot = presenter.ribbons.byEntity.get(shot.id);
     assert.notEqual(slot, undefined, 'released ribbon should remain briefly while it fades');
@@ -92,18 +93,19 @@ for (const priority of [
   { name: 'player', ownerId: 'pilot', targetId: null },
   { name: 'current target', ownerId: 'foe', targetId: 'foe' },
 ]) {
-  test(`${priority.name} projectile ribbon stays full beyond the table envelope`, () => {
-    const shot = projectile(priority.ownerId === 'pilot' ? 12 : 13, 700, priority.ownerId);
-    const { presenter, update } = harness([shot], priority.targetId);
+  test(`${priority.name} projectile ribbon releases past the padded frame`, () => {
+    const { presenter, state, update } = harness([], priority.targetId);
+    const drawWu = tableVfxDrawWuFromState(state);
+    const shot = projectile(
+      priority.ownerId === 'pilot' ? 12 : 13,
+      drawWu + PROJECTILE_DRAW_PAD_WU + 24,
+      priority.ownerId,
+    );
+    state.entityList.push(shot);
     try {
       update();
-      shot.prevPos.x = shot.pos.x;
-      shot.pos.x += 10;
-      update();
       const slot = presenter.ribbons.byEntity.get(shot.id);
-      assert.notEqual(slot, undefined);
-      assert.equal(presenter.ribbons.lingerAge[slot], 0);
-      assert.equal(ribbonHeadX(presenter, shot.id), shot.pos.x);
+      assert.equal(slot, undefined, 'an off-frame ribbon is not drawn, whoever fired it');
     } finally {
       presenter.dispose();
     }

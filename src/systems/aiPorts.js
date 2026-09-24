@@ -27,7 +27,7 @@ import {
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
-import { isTumbling } from '../combat/tumbleStatus.js';
+import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -47,6 +47,9 @@ const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const EMPTY_ATTACHMENTS = Object.freeze([]);
 const AI_SPATIAL_MIN_COLLIDABLES = 96;
+// INF-029: reported-track grade for a dispatched offender with a dispatch snapshot. Credible
+// (above the doctrine 0.55 engagement floor) but never certain: the sighting is old.
+const REPORTED_TRACK_CONFIDENCE = 0.6;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -883,6 +886,9 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
     // ship relents instead of thrusting through its own tumble.
     tumbling: isTumbling(state, entity),
+    // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
+    // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
+    recovering: isRecovering(state, entity),
     tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
     capabilities,
     subsystemFractions: subsystemFractionView,
@@ -972,14 +978,29 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   // offense and feeds the assignment to its own units; a responder dispatched from beyond its own
   // sensor reach still closes on the scene instead of drifting on a null intercept. Cloaking still
   // breaks the track; hostility and fire authority are resolved per contact as usual.
-  const securityTargetId = ((self.data && self.data.ai) || self.ai || {}).securityTargetId;
+  const selfAi = (self.data && self.data.ai) || self.ai || {};
+  const securityTargetId = selfAi.securityTargetId;
   const offender = securityTargetId != null ? getEntity(state, securityTargetId) : null;
   if (offender && offender.alive && !out.some(c => c.id === offender.id)
     && !cloakHidesPlayerFrom(state, self, offender)) {
+    // INF-029: the reported track carries last-seen information, never a live feed. When the
+    // dispatch snapshot exists the contact holds the scene's position with unknown velocity,
+    // marked reported (unseen, reported confidence); live sightings still win outright via the
+    // guard above, so reacquisition restores the accurate picture.
+    const snap = selfAi.securityTargetPos;
+    const reported = snap && Number.isFinite(Number(snap.x)) && Number.isFinite(Number(snap.z))
+      ? { ...offender, pos: { x: Number(snap.x), z: Number(snap.z) }, vel: { x: 0, z: 0 } }
+      : offender;
     const hostile = isHostileForAI(state, self, offender);
-    out.push({ ...buildContactBase(state, offender, combatRuntimeFor(state, offender.id),
-      attachmentIndex, 'ship', freeze, cacheOwner), confidence: 1,
-      threat: threatFor(state, self, offender, hostile), hostile });
+    const base = buildContactBase(state, reported, combatRuntimeFor(state, offender.id),
+      attachmentIndex, 'ship', freeze, cacheOwner);
+    out.push({
+      ...base,
+      ...(reported === offender
+        ? { confidence: 1 }
+        : { visible: false, confidence: REPORTED_TRACK_CONFIDENCE }),
+      threat: threatFor(state, self, reported, hostile), hostile,
+    });
   }
   return out;
 }

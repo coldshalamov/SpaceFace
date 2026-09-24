@@ -246,6 +246,22 @@ export class Sg02DynamicBodyOwner {
     this._frameOriginSeq = normalizeFrameOriginSeq(options.frameOriginSeq);
     this._frameScratch = { x: 0, z: 0 };
     this._globalScratch = { x: 0, z: 0 };
+    // Contact-impact merge bookkeeping is retained across ticks: aId -> Map<bId, {stamp,receipt}>
+    // replaces per-event `a\0b` string keys, and the emitted receipt list is a reused scratch.
+    this._impactMergeRows = new Map();
+    this._impactReceipts = [];
+    this._impactStamp = 0;
+    this._contactPointScratch = { x: 0, z: 0 };
+    this._impactNormalScratch = { x: 1, z: 0 };
+    // Bound once so the per-event contactPair callback does not allocate a closure per event.
+    // Reads/writes _contactPointScratch; last manifold wins, same as the inline closure did.
+    this._contactManifoldCb = (manifold) => {
+      if (manifold.numSolverContacts() < 1) return;
+      const point = manifold.solverContactPoint(0);
+      const s = this._contactPointScratch;
+      s.x = finite(point && point.x, s.x);
+      s.z = finite(point && point.z, s.z);
+    };
     this._diagnostics = {
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
       tick: 0,
@@ -459,7 +475,7 @@ export class Sg02DynamicBodyOwner {
   applyImpulse(input = {}) {
     const rec = this.records.get(input.entityId);
     if (!rec || !rec.spec.dynamic) return false;
-    const impulse = planeForce(input.impulse);
+    const impulse = planeForceInto(input.impulse, _planeForceScratch);
     const evidenceBefore = journalFor() ? rec.body.linvel() : null;
     // PQ-137.11 C. A hit may not spin the player's hull (owner ruling; the player is already
     // excluded from tumble and hitstun in tumbleStates.js / collisionConsequences.js). An impulse
@@ -469,7 +485,7 @@ export class Sg02DynamicBodyOwner {
     // The LINEAR impulse is passed through in full: nothing is scaled, damped or clamped. Only the
     // torque arm is dropped, and only for the player.
     if (recordTakesOffCentreImpulse(rec) && input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
-      rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation()), true);
+      rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation(), _vecWriteScratch), true);
     } else {
       if (input.point) rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
       rec.body.applyImpulse(impulse, true);
@@ -686,9 +702,15 @@ export class Sg02DynamicBodyOwner {
       this.world.step();
     }
     this.tick++;
-    // Bound solver contact spikes before publishing the authoritative motion snapshot.
+    // Bound solver contact spikes before publishing the authoritative motion snapshot. Each
+    // body's post-step WASM kinematics are read ONCE into a retained per-record scratch shared
+    // by the give pass and _enforcePlane; fields a give rewrites are flagged so the plane pass
+    // re-reads the authoritative value instead of the stale scratch.
     this._stepContactReceipts = stepReceipts;
-    for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
+    for (const rec of this.dynamicRecords) {
+      this._readPostStepKinematics(rec);
+      this._applyStructuralGive(rec);
+    }
     this._stepContactReceipts = null;
 
     if (journalFor()) for (const receipt of stepReceipts) {
@@ -809,11 +831,27 @@ export class Sg02DynamicBodyOwner {
     const vx = quantize(kinematics.vx, REELED_ATTACHMENT_REPLAY_QUANTUM);
     const vz = quantize(kinematics.vz, REELED_ATTACHMENT_REPLAY_QUANTUM);
     const wy = quantize(kinematics.wy, REELED_ATTACHMENT_REPLAY_QUANTUM);
-    rec.body.setTranslation({ x, y: 0, z }, true);
-    rec.body.setRotation(quatFromYaw(yaw), true);
-    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
-    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
-    Object.assign(kinematics, { x, z, yaw, vx, vz, wy });
+    _vecWriteScratch.x = x;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = z;
+    rec.body.setTranslation(_vecWriteScratch, true);
+    rec._bodyPoseX = Math.fround(x);
+    rec._bodyPoseZ = Math.fround(z);
+    rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    _vecWriteScratch.x = vx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = vz;
+    rec.body.setLinvel(_vecWriteScratch, true);
+    _vecWriteScratch.x = 0;
+    _vecWriteScratch.y = wy;
+    _vecWriteScratch.z = 0;
+    rec.body.setAngvel(_vecWriteScratch, true);
+    kinematics.x = x;
+    kinematics.z = z;
+    kinematics.yaw = yaw;
+    kinematics.vx = vx;
+    kinematics.vz = vz;
+    kinematics.wy = wy;
   }
 
   _captureExpectedKinematics(rec) {
@@ -846,6 +884,43 @@ export class Sg02DynamicBodyOwner {
     e.yaw = wrapAngle(yawFromQuat(rec.body.rotation()) + e.wy * dt);
   }
 
+  // Reads linvel/angvel (and rotation for the player, whose give rule needs solver yaw) into a
+  // retained scratch. Rapier's getters allocate fresh objects with no out-parameter API, so the
+  // per-record object absorbs the per-tick allocation; dirty flags mark components a give pass
+  // rewrote so _enforcePlane re-reads the authoritative WASM value.
+  _readPostStepKinematics(rec) {
+    const post = rec.postStep || (rec.postStep = {
+      v: { x: 0, y: 0, z: 0 },
+      w: { x: 0, y: 0, z: 0 },
+      q: { x: 0, y: 0, z: 0, w: 1 },
+      qRead: false,
+      vDirty: false,
+      wDirty: false,
+      qDirty: false,
+    });
+    const v = rec.body.linvel();
+    const w = rec.body.angvel();
+    post.v.x = v.x;
+    post.v.y = v.y;
+    post.v.z = v.z;
+    post.w.x = w.x;
+    post.w.y = w.y;
+    post.w.z = w.z;
+    post.vDirty = false;
+    post.wDirty = false;
+    post.qDirty = false;
+    post.qRead = false;
+    if (rec.entity && rec.entity.isPlayer === true) {
+      const q = rec.body.rotation();
+      post.q.x = q.x;
+      post.q.y = q.y;
+      post.q.z = q.z;
+      post.q.w = q.w;
+      post.qRead = true;
+    }
+    return post;
+  }
+
   // PQ-137.11: player contact structural give.
   // The player is not ammunition. Preserves the no-contact baseline from _captureExpectedKinematics(),
   // restricts contact velocity response to along heading, limits response to 25% of solver dV,
@@ -853,7 +928,8 @@ export class Sg02DynamicBodyOwner {
   _applyPlayerStructuralGive(rec) {
     const e = rec.expected;
     if (!e) return 0;
-    const v = rec.body.linvel();
+    const post = rec.postStep;
+    const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
     const vx = finite(v.x);
     const vz = finite(v.z);
     const dvx = vx - e.vx;
@@ -865,8 +941,8 @@ export class Sg02DynamicBodyOwner {
     // receipt can show both "what a rock tried to do to my nose" and "what I let through" instead
     // of only the second. Measured here and nowhere else: after the restore below the evidence is
     // gone. Nothing on this path changes what the rule does.
-    const w = rec.body.angvel();
-    const solverYaw = wrapAngle(yawFromQuat(rec.body.rotation()));
+    const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
+    const solverYaw = wrapAngle(yawFromQuat(post && post.qRead === true && post.qDirty !== true ? post.q : rec.body.rotation()));
     const solverHeadingKickRad = Number.isFinite(e.yaw) ? wrapAngle(solverYaw - e.yaw) : 0;
     const solverYawRateKick = finite(w.y) - finite(e.wy);
     const expectedSpeedForCourse = Math.hypot(e.vx, e.vz);
@@ -946,11 +1022,22 @@ export class Sg02DynamicBodyOwner {
       finalVx += hx * appliedAlong;
       finalVz += hz * appliedAlong;
     }
-    rec.body.setLinvel({ x: finalVx, y: 0, z: finalVz }, true);
+    _vecWriteScratch.x = finalVx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = finalVz;
+    rec.body.setLinvel(_vecWriteScratch, true);
+    if (post) post.vDirty = true;
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
-    rec.body.setRotation(quatFromYaw(yaw), true);
-    rec.body.setAngvel({ x: 0, y: finite(e.wy), z: 0 }, true);
+    rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    _vecWriteScratch.x = 0;
+    _vecWriteScratch.y = finite(e.wy);
+    _vecWriteScratch.z = 0;
+    rec.body.setAngvel(_vecWriteScratch, true);
+    if (post) {
+      post.qDirty = true;
+      post.wDirty = true;
+    }
 
     rec._lastAppliedPlayerDeltaV = actualPlayerDeltaV;
     // What the solver asked for, and what the rule answered. Heading and course retained are ZERO
@@ -1048,8 +1135,9 @@ export class Sg02DynamicBodyOwner {
       this._applyPlayerStructuralGive(rec);
       return;
     }
-    const v = rec.body.linvel();
-    const w = rec.body.angvel();
+    const post = rec.postStep;
+    const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
+    const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     let vx = finite(v.x);
     let vz = finite(v.z);
     let wy = finite(w.y);
@@ -1072,7 +1160,8 @@ export class Sg02DynamicBodyOwner {
       touched = true;
     }
     if (contactYaw && Number.isFinite(e.yaw)) {
-      rec.body.setRotation(quatFromYaw(e.yaw), true);
+      rec.body.setRotation(quatFromYawInto(e.yaw, _quatWriteScratch), true);
+      if (post) post.qDirty = true;
       touched = true;
     }
     if (Math.abs(wy) > SANE_MAX_YAW_RATE) {
@@ -1080,8 +1169,18 @@ export class Sg02DynamicBodyOwner {
       touched = true;
     }
     if (!touched) return;
-    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
-    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    _vecWriteScratch.x = vx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = vz;
+    rec.body.setLinvel(_vecWriteScratch, true);
+    _vecWriteScratch.x = 0;
+    _vecWriteScratch.y = wy;
+    _vecWriteScratch.z = 0;
+    rec.body.setAngvel(_vecWriteScratch, true);
+    if (post) {
+      post.vDirty = true;
+      post.wDirty = true;
+    }
   }
 
   _createRecord(entity, spec) {
@@ -1169,6 +1268,10 @@ export class Sg02DynamicBodyOwner {
       controlForce: zero3(),
       controlTorque: zero3(),
       expected: { vx: 0, vz: 0, wy: 0, yaw: 0 },
+      // Mirror of the body's stored f32 translation so _maybeResyncBodyPose can compare without
+      // allocating a Rapier vector each sync; refreshed at every setTranslation site.
+      _bodyPoseX: Math.fround(posX),
+      _bodyPoseZ: Math.fround(posZ),
       kinematics: {
         x: posX,
         z: posZ,
@@ -1300,7 +1403,16 @@ export class Sg02DynamicBodyOwner {
 
   _captureContactImpacts() {
     if (!this._eventQueue || typeof this._eventQueue.drainContactForceEvents !== 'function') return [];
-    const merged = new Map();
+    // Retained nested-map merge keyed by raw entity ids (aId bucket -> bId -> receipt). Receipt
+    // objects, pos, and normal stay fresh per event -- they escape to drainContactImpacts
+    // callers -- but the merge structure, output array, and manifold point scratch are reused
+    // every step. The final sort is a strict total order on unique (aId,bId) pairs, so bucket
+    // flatten order cannot change the result.
+    const merged = this._impactMergeRows;
+    merged.clear();
+    const receipts = this._impactReceipts;
+    receipts.length = 0;
+    const pointScratch = this._contactPointScratch;
     this._eventQueue.drainContactForceEvents((event) => {
       const ownedA = this._colliderOwners.get(event.collider1());
       const ownedB = this._colliderOwners.get(event.collider2());
@@ -1309,27 +1421,23 @@ export class Sg02DynamicBodyOwner {
       const recB = ownedB.rec;
       const rawImpulse = Math.max(0, finite(event.totalForceMagnitude())) * this.fixedDt;
       if (!(rawImpulse > 0)) return;
-      const dynamicCaps = [];
-      if (recA.spec.dynamic) dynamicCaps.push(effectiveMass(recA) * MAX_CONTACT_DV);
-      if (recB.spec.dynamic) dynamicCaps.push(effectiveMass(recB) * MAX_CONTACT_DV);
-      if (!dynamicCaps.length) return;
-      const boundedImpulse = Math.min(rawImpulse, Math.min(...dynamicCaps));
+      // Scalar running min; identical to Math.min(...dynamicCaps) including NaN propagation.
+      let cap = Infinity;
+      if (recA.spec.dynamic) cap = Math.min(cap, effectiveMass(recA) * MAX_CONTACT_DV);
+      if (recB.spec.dynamic) cap = Math.min(cap, effectiveMass(recB) * MAX_CONTACT_DV);
+      if (cap === Infinity) return;
+      const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
 
       const direction = event.maxForceDirection();
       const translationA = recA.body.translation();
       const translationB = recB.body.translation();
-      let px = (finite(translationA.x) + finite(translationB.x)) * 0.5;
-      let pz = (finite(translationA.z) + finite(translationB.z)) * 0.5;
+      pointScratch.x = (finite(translationA.x) + finite(translationB.x)) * 0.5;
+      pointScratch.z = (finite(translationA.z) + finite(translationB.z)) * 0.5;
       if (typeof this.world.contactPair === 'function') {
-        this.world.contactPair(ownedA.collider, ownedB.collider, (manifold) => {
-          if (manifold.numSolverContacts() < 1) return;
-          const point = manifold.solverContactPoint(0);
-          px = finite(point && point.x, px);
-          pz = finite(point && point.z, pz);
-        });
+        this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
       }
-      const global = frameToGlobal({ x: px, z: pz }, this._frameOrigin, this._globalScratch);
+      const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
       const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
       const a = aFirst ? recA : recB;
       const b = aFirst ? recB : recA;
@@ -1354,9 +1462,13 @@ export class Sg02DynamicBodyOwner {
         nABz,
       );
       const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz);
-      const key = `${String(a.entity.id)}\u0000${String(b.entity.id)}`;
-      const existing = merged.get(key);
-      const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, Math.min(...dynamicCaps));
+      let byB = merged.get(a.entity.id);
+      if (!byB) {
+        byB = new Map();
+        merged.set(a.entity.id, byB);
+      }
+      const existing = byB.get(b.entity.id);
+      const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, cap);
       const normal = normalizePlanarDirection(direction);
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
@@ -1382,9 +1494,12 @@ export class Sg02DynamicBodyOwner {
         receipt.appliedPlayerHeadingRad = 0;
         receipt.appliedPlayerCourseRad = 0;
       }
-      merged.set(key, receipt);
+      byB.set(b.entity.id, receipt);
     });
-    const receipts = [...merged.values()].sort((a, b) => compareIds(a.aId, b.aId) || compareIds(a.bId, b.bId));
+    for (const byB of merged.values()) {
+      for (const receipt of byB.values()) receipts.push(receipt);
+    }
+    receipts.sort((a, b) => compareIds(a.aId, b.aId) || compareIds(a.bId, b.bId));
     return receipts;
   }
 
@@ -1396,9 +1511,19 @@ export class Sg02DynamicBodyOwner {
       return false;
     }
     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
-    const p = rec.body.translation();
-    const dx = local.x - finite(p.x);
-    const dz = local.z - finite(p.z);
+    // _bodyPoseX/Z mirror the body's stored f32 translation (maintained at every setTranslation
+    // site and refreshed post-step by _enforcePlane), so this comparison usually avoids a WASM
+    // object allocation entirely. Falls back to a live read for records created before the
+    // mirror existed or touched by an unmaintained path.
+    let px = rec._bodyPoseX;
+    let pz = rec._bodyPoseZ;
+    if (px === undefined || pz === undefined) {
+      const p = rec.body.translation();
+      px = rec._bodyPoseX = p.x;
+      pz = rec._bodyPoseZ = p.z;
+    }
+    const dx = local.x - finite(px);
+    const dz = local.z - finite(pz);
     const noInterp = !!(entity.flags && entity.flags.noInterp);
     if (!noInterp && dx * dx + dz * dz <= POSE_RESYNC_EPS2) return false;
 
@@ -1406,14 +1531,30 @@ export class Sg02DynamicBodyOwner {
     const vx = finite(entity.vel && entity.vel.x);
     const vz = finite(entity.vel && entity.vel.z);
     const wy = finite(entity.angVel);
-    rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
-    rec.body.setRotation(quatFromYaw(yaw), true);
-    rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
-    rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    _vecWriteScratch.x = local.x;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = local.z;
+    rec.body.setTranslation(_vecWriteScratch, true);
+    rec._bodyPoseX = Math.fround(local.x);
+    rec._bodyPoseZ = Math.fround(local.z);
+    rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    _vecWriteScratch.x = vx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = vz;
+    rec.body.setLinvel(_vecWriteScratch, true);
+    _vecWriteScratch.x = 0;
+    _vecWriteScratch.y = wy;
+    _vecWriteScratch.z = 0;
+    rec.body.setAngvel(_vecWriteScratch, true);
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     if (rec.entity) rec.entity.physicsSleeping = false;
     const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
-    Object.assign(kin, { x: local.x, z: local.z, vx, vz, yaw, wy });
+    kin.x = local.x;
+    kin.z = local.z;
+    kin.vx = vx;
+    kin.vz = vz;
+    kin.yaw = yaw;
+    kin.wy = wy;
     rec.snapshot.id = entity.id;
     rec.snapshot.x = quantize(finite(entity.pos && entity.pos.x), this.quantum);
     rec.snapshot.z = quantize(finite(entity.pos && entity.pos.z), this.quantum);
@@ -1430,7 +1571,12 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.records.values()) {
       if (!rec.entity || !rec.body) continue;
       const local = globalToFrame(rec.entity.pos, this._frameOrigin, this._frameScratch);
-      rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+      _vecWriteScratch.x = local.x;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = local.z;
+      rec.body.setTranslation(_vecWriteScratch, true);
+      rec._bodyPoseX = Math.fround(local.x);
+      rec._bodyPoseZ = Math.fround(local.z);
       const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
       kin.x = local.x;
       kin.z = local.z;
@@ -1439,10 +1585,14 @@ export class Sg02DynamicBodyOwner {
     }
   }
 
-  _globalPointToFrameLocal(source, fallbackTranslation) {
+  _globalPointToFrameLocal(source, fallbackTranslation, out = null) {
     if (source && typeof source === 'object' && (source.x != null || source.z != null)) {
       const local = globalToFrame(source, this._frameOrigin, this._frameScratch);
-      return { x: local.x, y: finite(source.y), z: local.z };
+      const o = out || { x: 0, y: 0, z: 0 };
+      o.x = local.x;
+      o.y = finite(source.y);
+      o.z = local.z;
+      return o;
     }
     return worldPoint(source, fallbackTranslation);
   }
@@ -1481,8 +1631,8 @@ export class Sg02DynamicBodyOwner {
 
   _applyCommand(rec, command) {
     if (command.control) {
-      const force = planeForce(command.control.force);
-      const torque = yawTorque(command.control.torque);
+      const force = planeForceInto(command.control.force, _planeForceScratch);
+      const torque = yawTorqueInto(command.control.torque, _yawTorqueScratch);
       rec.body.addForce(force, true);
       rec.body.addTorque(torque, true);
       add3Into(rec.appliedForce, force);
@@ -1493,7 +1643,7 @@ export class Sg02DynamicBodyOwner {
     }
     for (const impulse of command.impulses || []) {
       const before = journalFor() ? rec.body.linvel() : null;
-      rec.body.applyImpulse(planeForce(impulse), true);
+      rec.body.applyImpulse(planeForceInto(impulse, _planeForceScratch), true);
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
@@ -1530,27 +1680,47 @@ export class Sg02DynamicBodyOwner {
   }
 
   _enforcePlane(rec) {
+    // Reuse the post-step batch read: untouched components still hold the body's values. A give
+    // pass that rewrote a component flags it dirty so this pass re-reads the authoritative WASM
+    // value (Rapier stores f32, so mirroring the written f64 would diverge by an ulp).
+    const post = rec.postStep;
     const p = rec.body.translation();
-    const v = rec.body.linvel();
-    const q = rec.body.rotation();
+    const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
+    const q = post && post.qRead === true && post.qDirty !== true ? post.q : rec.body.rotation();
     const yaw = wrapAngle(yawFromQuat(q));
-    const w = rec.body.angvel();
+    const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     const x = finite(p.x);
     const z = finite(p.z);
     const vx = finite(v.x);
     const vz = finite(v.z);
     const wy = finite(w.y);
+    // _bodyPoseX/Z mirror the body's stored f32 pose (write sites mirror the f32-rounded value)
+    // so _maybeResyncBodyPose can compare without a WASM translation() read.
     if (Math.abs(finite(p.y)) > 1e-9 || x !== p.x || z !== p.z) {
-      rec.body.setTranslation({ x, y: 0, z }, true);
+      _vecWriteScratch.x = x;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = z;
+      rec.body.setTranslation(_vecWriteScratch, true);
+      rec._bodyPoseX = Math.fround(x);
+      rec._bodyPoseZ = Math.fround(z);
+    } else {
+      rec._bodyPoseX = p.x;
+      rec._bodyPoseZ = p.z;
     }
     if (Math.abs(finite(v.y)) > 1e-9 || vx !== v.x || vz !== v.z) {
-      rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+      _vecWriteScratch.x = vx;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = vz;
+      rec.body.setLinvel(_vecWriteScratch, true);
     }
     if (Math.abs(finite(q.x)) > 1e-9 || Math.abs(finite(q.z)) > 1e-9 || !Number.isFinite(q.y) || !Number.isFinite(q.w)) {
-      rec.body.setRotation(quatFromYaw(yaw), true);
+      rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     }
     if (Math.abs(finite(w.x)) > 1e-9 || Math.abs(finite(w.z)) > 1e-9 || wy !== w.y) {
-      rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+      _vecWriteScratch.x = 0;
+      _vecWriteScratch.y = wy;
+      _vecWriteScratch.z = 0;
+      rec.body.setAngvel(_vecWriteScratch, true);
     }
     const out = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
     out.x = x;
@@ -1600,7 +1770,10 @@ export class Sg02DynamicBodyOwner {
       nextVx = vx * scale;
       nextVz = vz * scale;
     }
-    rec.body.setLinvel({ x: nextVx, y: 0, z: nextVz }, true);
+    _vecWriteScratch.x = nextVx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = nextVz;
+    rec.body.setLinvel(_vecWriteScratch, true);
     if (kinematics) {
       kinematics.vx = nextVx;
       kinematics.vz = nextVz;
@@ -1630,25 +1803,28 @@ export class Sg02DynamicBodyOwner {
   _publishTelemetry(rec) {
     if (!this.publishTelemetry) return;
     if (!rec.spec.dynamic) return;
-    writePhysicsTelemetry(rec.entity, {
-      tick: this.tick,
-      bodyHandle: rec.body.handle,
-      dynamic: !!rec.spec.dynamic,
-      ccd: rec.ccdEnabled,
-      mass: positive(rec.effectiveMass, rec.spec.mass),
-      inertiaY: positive(rec.effectiveInertiaY, rec.spec.inertiaY),
-      force: rec.appliedForce,
-      torque: rec.appliedTorque,
-      linearAcceleration: {
-        x: rec.appliedForce.x / positive(rec.effectiveMass, rec.spec.mass),
-        y: 0,
-        z: rec.appliedForce.z / positive(rec.effectiveMass, rec.spec.mass),
-      },
-      angularAccelerationY: rec.appliedTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY),
-      lateralAcceleration: 0,
-      authority: measureThrusterAuthority(rec.entity),
-      mode: this.mode,
+    // Retained input record: writePhysicsTelemetry reads every field synchronously into its own
+    // frozen publication, so the input literal does not need to be fresh per call.
+    const input = this._telemetryInput || (this._telemetryInput = {
+      linearAcceleration: { x: 0, y: 0, z: 0 },
     });
+    input.tick = this.tick;
+    input.bodyHandle = rec.body.handle;
+    input.dynamic = !!rec.spec.dynamic;
+    input.ccd = rec.ccdEnabled;
+    input.mass = positive(rec.effectiveMass, rec.spec.mass);
+    input.inertiaY = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
+    input.force = rec.appliedForce;
+    input.torque = rec.appliedTorque;
+    const linear = input.linearAcceleration;
+    linear.x = rec.appliedForce.x / positive(rec.effectiveMass, rec.spec.mass);
+    linear.y = 0;
+    linear.z = rec.appliedForce.z / positive(rec.effectiveMass, rec.spec.mass);
+    input.angularAccelerationY = rec.appliedTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY);
+    input.lateralAcceleration = 0;
+    input.authority = measureThrusterAuthority(rec.entity);
+    input.mode = this.mode;
+    writePhysicsTelemetry(rec.entity, input);
   }
 
   _findAttachment(input = {}) {
@@ -2306,6 +2482,35 @@ function yawTorque(value) {
   return { x: 0, y: v.y, z: 0 };
 }
 
+// Write-side scratches for the 60 Hz command/spring passes. Rapier setters copy fields into WASM
+// synchronously, so a shared literal is consumed before the next write touches it.
+const _planeForceScratch = { x: 0, y: 0, z: 0 };
+const _yawTorqueScratch = { x: 0, y: 0, z: 0 };
+const _vecWriteScratch = { x: 0, y: 0, z: 0 };
+const _quatWriteScratch = { x: 0, y: 0, z: 0, w: 1 };
+
+function planeForceInto(value, out) {
+  out.x = finite(value && value.x);
+  out.y = 0;
+  out.z = finite(value && value.z);
+  return out;
+}
+
+function yawTorqueInto(value, out) {
+  out.x = 0;
+  out.y = finite(value && value.y);
+  out.z = 0;
+  return out;
+}
+
+function quatFromYawInto(yaw, out) {
+  out.x = 0;
+  out.y = Math.sin(yaw / 2);
+  out.z = 0;
+  out.w = Math.cos(yaw / 2);
+  return out;
+}
+
 function applyYawTorqueImpulse(rec, value, evidence = null) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || typeof rec.body.setAngvel !== 'function') return false;
   const impulseY = finite(value && value.y);
@@ -2315,8 +2520,13 @@ function applyYawTorqueImpulse(rec, value, evidence = null) {
   // Rapier's applyTorqueImpulse currently produces zero yaw on our Y-only rotation-constrained
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
   // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
-  rec.body.setAngvel({ x: 0, y: current + impulseY / inertiaY, z: 0 }, true);
-  observeAppliedSurfaceTorque(rec.entity,current,rec.body.angvel().y,evidence);
+  _vecWriteScratch.x = 0;
+  _vecWriteScratch.y = current + impulseY / inertiaY;
+  _vecWriteScratch.z = 0;
+  rec.body.setAngvel(_vecWriteScratch, true);
+  // The post-write angvel() allocates a fresh Rapier vector; observeAppliedSurfaceTorque
+  // returns early without a journal, so only pay the read when a journal exists.
+  if (journalFor()) observeAppliedSurfaceTorque(rec.entity, current, rec.body.angvel().y, evidence);
   return true;
 }
 

@@ -19,6 +19,8 @@
 // cargo system already owns. Cosmetic debris (src/render/vfx/fragmentFamilies.js) is a different
 // class of matter entirely and is never collectible.
 
+import { presentationTableDrawWu } from './presentationSimClock.js';
+
 function hashId(id) {
   const s = String(id || '');
   let h = 0x811c9dc5;
@@ -34,8 +36,23 @@ function hashId(id) {
 // stream and for focused tests.
 
 export const TRACTOR_MAGNET_RANGE_WU = 350;   // magnet attractor presentation range
-export const TRACTOR_VORTEX_RANGE_WU = 200;   // inside this the spiral offset is visible
+export const TRACTOR_VORTEX_RANGE_WU = 200;   // fallback spiral radius before a table stamp exists
 export const TRACTOR_VORTEX_MAX_RADIUS_WU = 6.0;
+
+/** Spiral visuals follow the live table draw radius. The sim magnet range stays put. */
+export function spiralVisualRangeWu(tableDrawWu) {
+  const table = Number(tableDrawWu);
+  if (!Number.isFinite(table) || table <= 0) return TRACTOR_VORTEX_RANGE_WU;
+  return table;
+}
+
+/** True when a spiral mote sits inside the live table draw disc. */
+export function spiralMoteWithinDraw(dx, dz, tableDrawWu) {
+  const limit = spiralVisualRangeWu(tableDrawWu);
+  const x = Number(dx) || 0;
+  const z = Number(dz) || 0;
+  return (x * x + z * z) <= limit * limit;
+}
 export const TRACTOR_MAGNETIZED_MIN_PULL = 0.1;
 
 /** Pull factor in [0, 1): 0 at/ beyond magnet range, →1 at the scoop. NaN-safe. */
@@ -60,10 +77,11 @@ export function resolveTractorVortexRate(pullFactor) {
  * Writes { radius, x, z } into `out` (allocated when omitted). Radius collapses both at the
  * scoop (drop compresses into the intake) and at the vortex boundary (smooth onset).
  */
-export function resolveTractorVortex(distanceWu, vortexAngle, out = null) {
+export function resolveTractorVortex(distanceWu, vortexAngle, out = null, rangeWu = TRACTOR_VORTEX_RANGE_WU) {
   const rec = out || { radius: 0, x: 0, z: 0 };
+  const limit = spiralVisualRangeWu(rangeWu);
   const d = Number(distanceWu);
-  if (!Number.isFinite(d) || d >= TRACTOR_VORTEX_RANGE_WU) {
+  if (!Number.isFinite(d) || d >= limit) {
     rec.radius = 0;
     rec.x = 0;
     rec.z = 0;
@@ -248,9 +266,10 @@ export function createPickupMotionTracker() {
     // Magnetic spiral vortex offset
     let vortexOffsetX = 0;
     let vortexOffsetZ = 0;
-    if (!reducedMotion && isMagnetized && distToPlayer < TRACTOR_VORTEX_RANGE_WU) {
+    const spiralLimit = spiralVisualRangeWu(presentationTableDrawWu());
+    if (!reducedMotion && isMagnetized && distToPlayer < spiralLimit) {
       rec.vortexAngle += dt * resolveTractorVortexRate(pullFactor);
-      const vortex = resolveTractorVortex(distToPlayer, rec.vortexAngle, vortexScratch);
+      const vortex = resolveTractorVortex(distToPlayer, rec.vortexAngle, vortexScratch, spiralLimit);
       vortexOffsetX = vortex.x;
       vortexOffsetZ = vortex.z;
     }

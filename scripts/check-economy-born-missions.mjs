@@ -271,11 +271,20 @@ function testAcceptPathAndPayout() {
     && e.payload && e.payload.offerId === offer.id), 'board receipt emitted');
 
   // Accept through the EXISTING intent path (ui:acceptMission → missions.acceptMission).
+  // The board slot is the player-facing announcement of record: ensureBoard may re-roll the
+  // deterministic economy slot after the emit, so the payout oracle is the slot's reward.
+  const announced = board.slots.find((candidate) => candidate.id === offer.id);
+  const announcedRewardCr = announced ? announced.reward_cr : offer.reward_cr;
   bus.emit('ui:acceptMission', { missionId: offer.id });
   const accepted = bus.emitLog.filter((e) => e.evt === 'mission:accepted');
   assert.equal(accepted.length, 1, 'the real missions.js accepted the field-born offer');
   const inst = state.missions.active.find((m) => m.type === 'cargo_delivery');
   assert.ok(inst, 'a live mission instance exists');
+  assert.equal(inst.params.cmdtyId, 'cmdty_fuel_cells', 'instance carries the offer params verbatim');
+  if (inst.economyTerms) {
+    assert.equal(inst.economyTerms.rewardCr, inst.reward_cr,
+      'accepted instance keeps its quoted terms copy-through consistent');
+  }
   assert.equal(inst.params.cmdtyId, 'cmdty_fuel_cells', 'instance carries the offer params verbatim');
 
   // Deliver: put the fuel aboard and dock at the destination (the scarce station itself).
@@ -292,6 +301,7 @@ function testAcceptPathAndPayout() {
   const grants = bus.emitLog.filter((e) => e.evt === 'economy:grantCredits'
     && e.payload && e.payload.reason === `mission:${inst.id}`);
   assert.equal(grants.length, 1, 'paid via economy:grantCredits (single-writer)');
-  assert.equal(grants[0].payload.amount, offer.reward_cr, 'paid the offered field-scaled reward');
+  assert.equal(grants[0].payload.amount, inst.reward_cr, 'paid the accepted reward verbatim');
+  assert.equal(grants[0].payload.amount, announcedRewardCr, 'paid the announced field-scaled reward');
   assert.equal(state.player.cargo.items.cmdty_fuel_cells, undefined, 'the delivered fuel was consumed');
 }

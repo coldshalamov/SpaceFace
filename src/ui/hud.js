@@ -23,6 +23,7 @@ import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
+import { wantedReasonText } from './wantedReason.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -37,15 +38,26 @@ import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { objectiveText } from './screens/missionLog.js';
+import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { mountOrreryCluster } from './orrery/hudAdapter.js';
 import { createForkInstrument } from './forkInstrument.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
+import { targetBracketShape } from './targetBracket.js';
+import {
+  createObjectiveRecall,
+  rememberObjective,
+  dismissObjective,
+  recallObjective,
+  objectiveVisible,
+} from './objectiveRecall.js';
 import {
   shipConditionMarkup, updateShipCondition, hudBarMarkup,
   speedGaugeMarkup, mountRadarKit, setKitBar, setKitGauge,
@@ -76,12 +88,15 @@ import {
 import {
   contactRosterExpanded,
   firstUseAttachKind,
-  formatDestinationLine,
   formatRosterCount,
   hudJobFromState,
+  flightInstrumentRects,
   masslineInstrumentReadout,
   masslineInstrumentVisible,
+  openingInstructionSolo,
+  placeHudString,
   receiptLaneRect,
+  shipGlyphBox,
 } from './hudAttention.js';
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
@@ -350,6 +365,28 @@ export function steadyClosingMarker(prev, rawText, nowMs) {
   return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
 }
 
+// INF-086: compact live handling consequence, pure over a ships derived-stats object.
+// Returns null at/under design mass (full thrust — including a full-volume load of
+// feathers), else the thrust penalty the mass law applies to the flown accelerations.
+// Volume stays the only capacity; this number only bends handling, never gates loading.
+export function cargoHandlingNote(derived) {
+  const load = derived && Number.isFinite(derived.massLoadFactor) ? derived.massLoadFactor : 1;
+  if (!(load < 1)) return null;
+  const pct = Math.round((1 - load) * 100);
+  if (!(pct > 0)) return null;
+  return { text: `-${pct}% thrust`, pct };
+}
+
+// The mass half of the same readout: carried vs design, for the tooltip. Null when the
+// derived object carries no mass accounting (headless/early), never a zero-mass claim.
+export function cargoMassLine(derived) {
+  const cargo = derived && Number.isFinite(derived.cargoMass) ? derived.cargoMass : null;
+  const design = derived && Number.isFinite(derived.designMass) && derived.designMass > 0
+    ? derived.designMass : null;
+  if (cargo == null || design == null) return null;
+  return `Mass: ${Math.round(cargo)} / design ${Math.round(design)}`;
+}
+
 function mtWaypointDistance(state, wp) {
   return objectiveTravelReadout(state, wp).distanceText;
 }
@@ -373,6 +410,20 @@ export function objectiveBearingGlyph(state, wp) {
   // Screen bearing, clockwise from up: atan2(screenRight = -dx, screenUp = dz).
   const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
   return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
+}
+
+/**
+ * The same bearing as objectiveBearingGlyph, in dial degrees (0 = screen up, clockwise), for the
+ * objective's bearing dial. Null when there is no bearing to show.
+ */
+export function objectiveBearingDeg(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!pos || !player || !player.pos) return null;
+  const dx = Number(pos.x) - Number(player.pos.x);
+  const dz = Number(pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
+  return ((Math.atan2(-dx, dz) * 180) / Math.PI + 360) % 360;
 }
 
 /**
@@ -465,7 +516,21 @@ function mtMarkerLine(state, wp, suffix = '') {
   return suffix ? `${route} · ${suffix}` : route;
 }
 
-/** One painted destination line for the live flight tracker. Titles and GOAL restatements stay off. */
+/**
+ * The readings half of the destination: the bearing glyph leads, then distance, ETA and any extras,
+ * joined by one separator. It is its own line under the destination, so a long destination can
+ * wrap by words without ever stranding a separator at a line end or the bearing glyph alone on a
+ * line (the bench caught "... ETA 13s ·" over a lone arrow). Short enough to fit one line.
+ */
+function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
+  const lead = [bearing, distanceText].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+  return [lead, etaText, extra].map((part) => String(part || '').trim()).filter(Boolean).join(' · ');
+}
+
+/**
+ * One painted destination for the live flight tracker: where, then a line break, then the readings
+ * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
+ */
 export function flightDestinationSurface(state, command) {
   if (!command) return { show: false, line: '', urgent: false };
   if (command.owner === 'tracked-mission') {
@@ -473,33 +538,36 @@ export function flightDestinationSurface(state, command) {
     const waypoint = command.waypoint;
     const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
     const travel = objectiveTravelReadout(state, waypoint);
-    let line = formatDestinationLine({
-      action,
-      distanceText: travel.distanceText,
-      // An unknown ETA is left out, not printed as a placeholder dash.
-      etaText: travel.etaS == null ? '' : travel.etaText,
-      bearing: objectiveBearingGlyph(state, waypoint),
-    });
+    let deadline = '';
     let urgent = false;
     if (tracked && tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
       const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
-      line = formatDestinationLine({ action: line, distanceText: mtFmtTime(remaining) });
+      deadline = mtFmtTime(remaining);
       urgent = remaining < 120;
     }
-    return { show: true, line, urgent };
+    const readings = mtReadingsLine(
+      objectiveBearingGlyph(state, waypoint),
+      travel.distanceText,
+      // An unknown ETA is left out, not printed as a placeholder dash.
+      travel.etaS == null ? '' : travel.etaText,
+      deadline,
+    );
+    return { show: true, line: readings ? `${action}\n${readings}` : action, urgent };
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
+    const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const readings = mtReadingsLine(
+      objectiveBearingGlyph(state, wp),
+      travel.distanceText,
+      travel.etaS == null ? '' : travel.etaText,
+      routeGuide && routeGuide.summary,
+    );
     return {
       show: true,
-      line: formatDestinationLine({
-        action: mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp),
-        distanceText: travel.distanceText,
-        etaText: travel.etaS == null ? '' : travel.etaText,
-        bearing: objectiveBearingGlyph(state, wp),
-      }) + (routeGuide && routeGuide.summary ? ` · ${routeGuide.summary}` : ''),
+      line: readings ? `${action}\n${readings}` : action,
       urgent: false,
     };
   }
@@ -617,14 +685,26 @@ export function contactOverflowSummary(contacts, visibleCount) {
   return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
-/** A known radar contact must never exist while its targeting roster is wholly absent. */
-export function contactRosterVisible({
-  eligibleContactCount = 0,
-  pinned = false,
-  nearbyHostile = false,
-  revealActive = false,
-} = {}) {
-  return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
+/**
+ * Wave G7 — the contacts list stays out of the flight HUD until the player locks something.
+ * A pin, a nearby hostile, or a scan does not mount it. Half opacity is not hidden.
+ */
+export function contactRosterVisible({ locked = false } = {}) {
+  return locked === true;
+}
+
+/** Detach the roster until a lock exists, then seat it in front of the radar. */
+export function mountContactRoster(parent, roster, radar, locked) {
+  if (!parent || !roster) return false;
+  if (!contactRosterVisible({ locked })) {
+    if (roster.parentNode) roster.parentNode.removeChild(roster);
+    return false;
+  }
+  if (roster.parentNode !== parent) {
+    if (radar && radar.parentNode === parent) parent.insertBefore(roster, radar);
+    else parent.appendChild(roster);
+  }
+  return true;
 }
 
 /** One truthful reading for the manual Travel Burn stopping cue. The route executor owns braking
@@ -886,7 +966,15 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
 }
 
-export function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+// JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
+// DOM text walk (and can flush layout); hud.frame self-time in cpu-profile-flight was ~38 ms
+// over 60 s settled with dozens of setText sites on every slow/overlay tick.
+export function setText(el, text) {
+  if (!el) return;
+  if (el._sfText === text) return;
+  el._sfText = text;
+  el.textContent = text;
+}
 function setScaleX(el, value, opts = null) {
   if (!el) return;
   const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
@@ -906,6 +994,68 @@ function setStyle(el, prop, value) {
   cache[prop] = value;
   el.style[prop] = value;
 }
+
+// Optical G-lag / bloom translate3d writes. Call sites used to rebuild
+// `translate3d(${(x).toFixed(2)}px,...)` every frame; setStyle only skipped the DOM
+// write after the template alloc. Cache hundredths-of-a-px (+ suffix/plain) so a still
+// offset skips toFixed + template entirely. Same rounding → same picture.
+function setLagTranslate(el, x, y, opts = null) {
+  if (!el) return;
+  const suffix = (opts && opts.suffix) || '';
+  const plain = (opts && Object.prototype.hasOwnProperty.call(opts, 'plain'))
+    ? opts.plain
+    : 'none';
+  // Exact-zero fast path matches the old `if (x !== 0 || y !== 0)` call-site gate:
+  // no toFixed, and subsequent settled frames are two property reads.
+  if (x === 0 && y === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const nx = Number(x);
+  const ny = Number(y);
+  const ox = Number.isFinite(nx) ? nx : 0;
+  const oy = Number.isFinite(ny) ? ny : 0;
+  if (ox === 0 && oy === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const qx = Math.round(ox * 100);
+  const qy = Math.round(oy * 100);
+  if (
+    el._sfLagActive === true
+    && el._sfLagQx === qx
+    && el._sfLagQy === qy
+    && el._sfLagSuf === suffix
+  ) return;
+  el._sfLagActive = true;
+  el._sfLagQx = qx;
+  el._sfLagQy = qy;
+  el._sfLagSuf = suffix;
+  el._sfLagPlain = null;
+  const next = `translate3d(${(qx / 100).toFixed(2)}px,${(qy / 100).toFixed(2)}px,0)${suffix}`;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  cache.transform = next;
+  el.style.transform = next;
+}
+
 function setCssVar(el, name, value) {
   if (!el) return;
   const cache = el._sfCssVar || (el._sfCssVar = Object.create(null));
@@ -960,16 +1110,35 @@ export function setHidden(el, hidden) {
   el.hidden = next;
 }
 // Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
+// Quantized numeric early-out: the settled path used to rebuild the transform string every call
+// just to strcmp it against _sfHudTransform. Cache tenths-of-a-px / tenths-of-a-deg keys so a
+// still overlay skips toFixed + template alloc entirely. Picture unchanged (same rounding).
 function setHudScreenTransform(el, x, y, opts = null) {
   if (!el) return;
   const nx = Number(x);
   const ny = Number(y);
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
   const center = !opts || opts.center !== false;
-  const rotate = opts && Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
-  const offset = (opts && opts.offset) || (center ? 'translate(-50%,-50%)' : '');
-  const next = `translate3d(${nx.toFixed(1)}px,${ny.toFixed(1)}px,0) ${offset}${rotate}`.trim();
-  if (el._sfHudTransform === next) return;
+  const hasRotate = !!(opts && Number.isFinite(opts.rotate));
+  const customOffset = (opts && opts.offset) || '';
+  const qx = Math.round(nx * 10);
+  const qy = Math.round(ny * 10);
+  const qr = hasRotate ? Math.round(opts.rotate * 10) : 0;
+  if (
+    el._sfHudTx === qx
+    && el._sfHudTy === qy
+    && el._sfHudTr === qr
+    && el._sfHudTc === center
+    && el._sfHudTo === customOffset
+  ) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  el._sfHudTr = qr;
+  el._sfHudTc = center;
+  el._sfHudTo = customOffset;
+  const rotate = hasRotate ? ` rotate(${(qr / 10).toFixed(1)}deg)` : '';
+  const offset = customOffset || (center ? 'translate(-50%,-50%)' : '');
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) ${offset}${rotate}`.trim();
   el._sfHudTransform = next;
   el.style.transform = next;
 }
@@ -1215,6 +1384,10 @@ export function createHud(ctx, alerts) {
   }
   leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
+  // The chassis is always seated (it is never detached); the CSS hook that used to be
+  // #hud:has(.sf-cluster-chassis) is a class so per-frame writes no longer schedule :has()
+  // invalidation on #hud.
+  root.classList.add('sf-hud--cluster');
   // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
   // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
   const existingComms = document.getElementById('sf-comms');
@@ -1278,11 +1451,9 @@ export function createHud(ctx, alerts) {
   const commandDeck = document.createElement('div');
   commandDeck.className = 'sf-command-deck';
   clusterChassis.appendChild(commandDeck);   // seated beside integrity in the cluster
-  const threatLamp = document.createElement('div');
-  threatLamp.className = 'sf-threat-lamp';
-  threatLamp.setAttribute('aria-hidden', 'true');   // alerts announce threats; this is the glance
-  threatLamp.innerHTML = '<i class="sf-threat-lamp__lens"></i>';
-  clusterChassis.appendChild(threatLamp);
+  // The threat lamp is the THREAT row's lamp in fire control (below). It used to be a second,
+  // free-floating "THREAT" legend pinned above the chassis, which read as a stray label detached
+  // from the row that carries the same state.
   // The threat ring around the ship: bearing arcs to near hostiles (red is threat-only).
   const threatRing = document.createElement('div');
   threatRing.className = 'sf-threat-ring';
@@ -1322,6 +1493,19 @@ export function createHud(ctx, alerts) {
     '<div class="sf-mt-title mono"></div>' +
     '<div class="sf-mt-obj mono"></div>' +
     '<div class="sf-mt-time mono"></div>';
+  // ORRERY: the objective's bearing as a small dial beside its words -- a ring, its quarter ticks,
+  // and the amber needle toward the objective (the skin shows it; the old face never does)
+  const mtDial = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  mtDial.setAttribute('class', 'sf-mt-dial');
+  mtDial.setAttribute('viewBox', '0 0 34 34');
+  mtDial.setAttribute('aria-hidden', 'true');
+  mtDial.style.display = 'none';
+  mtDial.innerHTML = '<circle cx="17" cy="17" r="13" class="sf-mt-dial__ring"/>'
+    + '<path d="M17 2.5 L17 6.5 M31.5 17 L27.5 17 M17 31.5 L17 27.5 M2.5 17 L6.5 17" class="sf-mt-dial__ticks"/>'
+    + '<g class="sf-mt-dial__needle"><path d="M14.4 17 L17 3.8 L19.6 17 Z"/><circle cx="17" cy="17" r="2.8"/></g>';
+  missionTracker.prepend(mtDial);
+  const mtNeedle = mtDial.querySelector('.sf-mt-dial__needle');
+  let mtNeedleDeg = null;
   leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
   missionTracker.style.pointerEvents = 'auto';
   const objectiveHudDrag = createHudDragController({
@@ -1330,6 +1514,21 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const objectiveRecall = createObjectiveRecall();
+  if (ctx.bus) {
+    ctx.bus.on('hud:recallObjective', () => {
+      if (objectiveRecall.dismissed) {
+        const restored = recallObjective(objectiveRecall);
+        if (restored) {
+          setText(mtObj, restored);
+          setDisplay(missionTracker, true);
+        }
+      } else {
+        dismissObjective(objectiveRecall);
+        setDisplay(missionTracker, false);
+      }
+    });
+  }
 
   // ---- bottom-center (HUD 2.0, GDD §9.4): only SPD + WPN live here permanently. Cargo, credits,
   // and ship class are CONTEXTUAL CHIPS — they appear when their value changes, then fade. The old
@@ -1356,7 +1555,9 @@ export function createHud(ctx, alerts) {
       '<span class="sf-ml-instrument__v mono" data-k="mllen">—</span>' +
     '</div>' +
     '<div class="sf-ml-instrument__release mono" data-k="mlrel" hidden>RELEASE</div>';
-  commandDeck.prepend(center);
+  commandDeck.prepend(center);   // seats .sf-speed: the gauge is always mounted, never removed
+  commandDeck.classList.add('sf-command-deck--speed');
+  root.classList.add('sf-hud--speed');
   commandDeck.appendChild(masslineInstrument);
   const mlFill = masslineInstrument.querySelector('[data-k=mlfill]');
   const mlLen = masslineInstrument.querySelector('[data-k=mllen]');
@@ -1409,8 +1610,9 @@ export function createHud(ctx, alerts) {
 
   // ---- fire control: TARGET and TETHER at a glance, seated above the speed window ----
   // FRONTEND_PROGRAM Wave 1: speed, target, threat and tether must be one glance, in one place.
-  // The cluster already holds speed and the threat lamp; this strip adds the other two as
-  // instrument rows, each with its LED. Informational text, so no live region (alerts speak).
+  // The cluster already holds speed; this strip carries target, tether and threat as instrument
+  // rows, each with its LED (the THREAT row's LED is the threat lamp). Informational text, so no
+  // live region (alerts speak).
   const fcStrip = document.createElement('div');
   fcStrip.className = 'sf-fc-strip';
   fcStrip.setAttribute('role', 'group');
@@ -1422,7 +1624,7 @@ export function createHud(ctx, alerts) {
     + '<div class="sf-fc-row" data-k="fctether" data-state="idle"><i class="sf-fc-led" aria-hidden="true"></i>'
       + '<span class="sf-fc-k">Tether</span><span class="sf-fc-v" data-k="fclname">Idle</span>'
       + '<span class="sf-fc-r" data-k="fclmass"></span></div>'
-    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led" aria-hidden="true"></i>'
+    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led sf-threat-lamp" aria-hidden="true"></i>'
       + '<span class="sf-fc-k">Threat</span><span class="sf-fc-v" data-k="fchname">Clear</span>'
       + '<span class="sf-fc-r" data-k="fchrange"></span></div>';
   commandDeck.prepend(fcStrip);
@@ -1439,9 +1641,26 @@ export function createHud(ctx, alerts) {
   };
   // Written by the roster scan (5 Hz), read by fire control (10 Hz): no second hostile scan.
   const threatReadout = { state: 'clear', count: 0, nearest: Infinity };
+  // The annunciator prints TAKING FIRE / SHIELDS DOWN for 1.5 s on any hit to the player
+  // (alerts.js, combat:damage). A hit from something the roster scan does not list (out past the
+  // scan radius, a rock thrown by a hostile's line) would otherwise leave this row reading "Clear"
+  // under a TAKING FIRE banner. The row holds "Under fire" for the same window, so they agree.
+  const UNDER_FIRE_HOLD_MS = 1500;
+  let underFireUntilMs = 0;
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('combat:damage', (hit) => {
+      if (hit && hit.isPlayer) underFireUntilMs = performance.now() + UNDER_FIRE_HOLD_MS;
+    });
+  }
   function updateFireControl(p, tether, latching, ml) {
-    setAttr(fc.threatRow, 'data-state', threatReadout.state);
-    setText(fc.hname, threatReadout.state === 'clear' ? 'Clear'
+    let underFire = false;
+    if (underFireUntilMs > 0) {
+      if (performance.now() < underFireUntilMs) underFire = threatReadout.state === 'clear';
+      else underFireUntilMs = 0;
+    }
+    setAttr(fc.threatRow, 'data-state', underFire ? 'contact' : threatReadout.state);
+    setText(fc.hname, underFire ? 'Under fire'
+      : threatReadout.state === 'clear' ? 'Clear'
       : threatReadout.count + ' hostile' + (threatReadout.count === 1 ? '' : 's'));
     setText(fc.hrange, Number.isFinite(threatReadout.nearest) ? Math.round(threatReadout.nearest) + ' WU' : '');
     const tid = state.player && state.player.targetId;
@@ -1559,14 +1778,26 @@ export function createHud(ctx, alerts) {
     const handling = p.handling != null ? p.handling.toFixed(2) : '—';
     return `Throttle: ${pct}%\nMax speed: ${Math.round(maxSp)} wu/s\nMass: ${Math.round(mass)}\nHandling: ${handling}`;
   }
+  // INF-086: compact live handling consequence for the load surface. The number is the
+  // SAME load factor that scales the flown accelerations (ships derived stats, refreshed
+  // on cargo:changed) — not a second cap: volume stays the only capacity, mass only
+  // bends handling. A full hold of feathers reads full volume with full thrust.
+  function liveDerived() {
+    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    return (p && p.data && p.data.derived) || null;
+  }
   function buildCargoTip() {
     const c = (state.player || {}).cargo || {};
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
+    const note = cargoHandlingNote(liveDerived());
+    const massLine = cargoMassLine(liveDerived());
     const keys = Object.keys(items);
-    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty`;
+    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}`;
     const lines = [`Cargo: ${used} / ${cap} u`];
+    if (massLine) lines.push(massLine);
+    lines.push(note ? `Handling: ${note.text} (heavy)` : 'Handling: full thrust');
     for (const id of keys.slice(0, 8)) {
       const qty = items[id];
       const name = cargoDisplayName(id);
@@ -1579,7 +1810,7 @@ export function createHud(ctx, alerts) {
     const player = state.player || {};
     const cr = Math.round(player.credits || 0);
     const st = player.stats || {};
-    return `Credits: ${cr.toLocaleString()} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString()}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString()}`;
+    return `Credits: ${cr.toLocaleString('en-US')} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString('en-US')}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString('en-US')}`;
   }
   function buildWeaponsTip(p) {
     if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
@@ -1640,6 +1871,13 @@ export function createHud(ctx, alerts) {
   // CSS-driven cooldown sweep (no rAF — see check:ui-frame-sleep).
   const powerRail = createPowerRail({ bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
   root.appendChild(powerRail.el);
+  // ORRERY (design/frontend/ORRERY.md Phase 1): the one-pivot Cluster owns the bottom-left and the
+  // ordnance. It reads the same sources as the chassis and rail (src/ui/orrery/hudAdapter.js); those
+  // stay mounted and hidden (#hud[data-hud="orrery"]) until the live route is checked, because
+  // their DOM contracts are pinned by tests and the slot-claim protocol still drives the rail.
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
+  // The radar keeps its canvas (contacts, rocks, trails); ORRERY takes its frame (rim, range, Hand).
+  if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
   // Prompts borrow the number row rather than racing the rail for it.
   const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
   const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
@@ -1676,6 +1914,7 @@ export function createHud(ctx, alerts) {
   );
   root.appendChild(dmgInd.el);
   ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
+  ctx.bus.on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
   ctx.bus.on('collision', (p) => {
     const other = state.entities && state.entities.get
       ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)
@@ -1718,6 +1957,18 @@ export function createHud(ctx, alerts) {
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
+  const elDecision = document.createElement('div');
+  elDecision.className = 'sf-nav-label';
+  elDecision.style.display = 'none';
+  leftContext.appendChild(elDecision);
+  let decisionText = '';
+  function updateAdventureDecisionLine() {
+    const next = state.ui && state.ui.docked ? adventureDecisionHudLine(state) : '';
+    if (next === decisionText) return;
+    decisionText = next;
+    elDecision.style.display = next ? '' : 'none';
+    if (elDecision.textContent !== next) elDecision.textContent = next;
+  }
 
 
   const arrow = document.createElement('div');
@@ -1738,10 +1989,18 @@ export function createHud(ctx, alerts) {
   const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
   ctx.bus.on('hud:firstUse', (payload) => {
     if (!payload || !payload.text) return;
+    const kind = firstUseAttachKind(payload.verbId);
+    // G13: a HUD string is not a caption on the player's hull. A hint whose only anchor is the
+    // player ("Research unlocked gear.", "Fit the module.") goes to the ordinary receipt line;
+    // hints anchored to a station, rock or latched body still float at that body.
+    if (kind === 'player' && (payload.entityId == null || payload.entityId === state.playerId)) {
+      ctx.bus.emit('toast', { text: payload.text, kind: 'info', ttl: 7 });
+      return;
+    }
     firstUseHint = {
       verbId: payload.verbId,
       text: payload.text,
-      kind: firstUseAttachKind(payload.verbId),
+      kind,
       entityId: payload.entityId,
       until: (state.simTime || 0) + 7,
     };
@@ -1821,15 +2080,31 @@ export function createHud(ctx, alerts) {
   function triggerElectronicDisruption(cause = 'shield') {
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
     const isFlashReduced = getFlashReduced() || !!(state.settings && state.settings.video && state.settings.video.flashReduce);
-    if (isMotionReduced || isFlashReduced) return;
+    const reduced = isMotionReduced || isFlashReduced;
+    // The restrained audio blip is the cue under Reduce, not a second effect: the audio system
+    // owns mute gating centrally, so emitting here is silent for muted players and identifying
+    // for everyone else. Never gate words behind the flash gate with it.
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+    }
+    if (reduced) {
+      // INF-100: the scanline flash stays off, but the hazard must still read as words — EMP has
+      // no banner or caption anywhere else, so a muted Reduce player would otherwise lose the hit
+      // entirely. A short label replaces the flash; full mode is unchanged below.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('toast', {
+          text: cause === 'emp' ? 'EMP HIT — systems disrupted' : 'SHIELDS COLLAPSED',
+          kind: 'warn',
+          ttl: 1.8,
+        });
+      }
+      return;
+    }
     root.classList.remove('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.remove('active');
     void root.offsetWidth; // force animation restart
     root.classList.add('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.add('active');
-    if (ctx.bus && typeof ctx.bus.emit === 'function') {
-      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-    }
     if (disruptionTimeout) clearTimeout(disruptionTimeout);
     disruptionTimeout = setTimeout(() => {
       root.classList.remove('sf-hud--glitch');
@@ -2151,16 +2426,24 @@ export function createHud(ctx, alerts) {
     if (!p || !p.text) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
-    caption.textContent = p.text;
-    caption.hidden = false;
-    caption.classList.toggle('assertive', !!p.assertive);
-    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
-    caption.classList.add('show');
     // Route to the appropriate live region so screen readers get the right politeness without
     // mutating aria-live on a single element (which confuses some ATs).
     const live = p.assertive ? liveAssertive : livePolite;
     live.textContent = '';
     live.textContent = p.text;
+    // Opening one-instruction rule (hudAttention): physical events are not sentences — while the
+    // objective owns the first two minutes the visible caption retires. The live-region line
+    // above still lands for assistive tech, which is not on screen.
+    if (openingInstructionSolo(state) || (p.physical === true && p.showVisible === false)) {
+      caption.classList.remove('show');
+      caption.hidden = true;
+      return;
+    }
+    caption.textContent = p.text;
+    caption.hidden = false;
+    caption.classList.toggle('assertive', !!p.assertive);
+    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
+    caption.classList.add('show');
     const ttl = p.assertive ? 3200 : 2400;
     captionHideTimer = setTimeout(() => {
       caption.classList.remove('show');
@@ -3106,7 +3389,7 @@ export function createHud(ctx, alerts) {
       const age = cargoMemoryAgeLabel(state, best.seenAt);
       const jumps = best.jumps == null ? '?' : best.jumps;
       const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
-      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString()} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString('en-US')} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
       routeBtn.disabled = false;
       routeBtn.onclick = () => {
         applyTradeNavigation(ctx, best.stationId, commodityId);
@@ -3234,7 +3517,7 @@ export function createHud(ctx, alerts) {
           const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
           const total = Math.max(0, Math.round(Number(entry.total) || 0));
           const profit = Math.round(Number(entry.profit) || 0);
-          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString()} CR</span>` : '';
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString('en-US')} CR</span>` : '';
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
@@ -3242,7 +3525,7 @@ export function createHud(ctx, alerts) {
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
-                <span class="sf-ledger-val">${total.toLocaleString()} CR</span>
+                <span class="sf-ledger-val">${total.toLocaleString('en-US')} CR</span>
                 ${profitHtml}
               </div>
             </div>
@@ -3500,10 +3783,13 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('credits:changed', () => { creditsDirty = true; });
   ctx.bus.on('cargo:changed', () => { cargoDirty = true; });
   ctx.bus.on('ship:statsChanged', () => { cargoDirty = true; });
+  // INF-086: the handling suffix rides the derived refresh, which lands after the
+  // cargo event that caused it — refresh on both so collecting/jettisoning always
+  // repaint the consequence.
+  ctx.bus.on('ship:massChanged', () => { cargoDirty = true; });
   ctx.bus.on('mission:updated', () => { objDirty = true; });
   ctx.bus.on('mission:accepted', () => { objDirty = true; });
   ctx.bus.on('mission:completed', () => { objDirty = true; });
-  ctx.bus.on('mission:abandoned', () => { objDirty = true; });
 
   // Reticle accuracy bloom: the crosshair expands with sustained fire and contracts when cool — a
   // classic combat-readability cue. Driven by the player's own combat:fire events; _recoilBloom
@@ -3517,18 +3803,22 @@ export function createHud(ctx, alerts) {
 
   // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
   // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
+  // INF-077: the alert traces the heat to its convicting incident (see wantedReason.js) —
+  // the accepted receipt's kind, affected party, and witness/jurisdiction basis. Suspicion
+  // without a receipt shows no reason at all, never a witness claim.
   let wantedActive = false;
   if (alerts) {
     ctx.bus.on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
       const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
+      const reason = wantedReasonText(p, state.player);
       if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE', ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE' + reason, ttl: Infinity });
         wantedActive = true;
       } else if (wanted && wantedActive) {
         // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND', ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND' + reason, ttl: Infinity });
       } else if (!wanted && wantedActive) {
         alerts.clear('wanted');
         wantedActive = false;
@@ -3571,7 +3861,7 @@ export function createHud(ctx, alerts) {
     _credTo = target;
     _credT = 0;
     creditsDirty = false;
-    setText(elCredits, Math.round(_credFrom).toLocaleString());
+    setText(elCredits, Math.round(_credFrom).toLocaleString('en-US'));
     if (_credTo !== _credFrom) {
       chipShow('credits');   // money moved — surface the chip
       // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow
@@ -3588,14 +3878,19 @@ export function createHud(ctx, alerts) {
   function tickCreditsTween(dt) {
     if (_credT >= 1) return;
     _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
-    setText(elCredits, Math.round(_credCurrent()).toLocaleString());
+    setText(elCredits, Math.round(_credCurrent()).toLocaleString('en-US'));
   }
   function refreshCargo() {
     cargoDirty = false;
     const c = (state.player || {}).cargo || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
-    const label = `${used} / ${cap} u`;
+    // INF-086: the chip keeps volume (the only capacity) and appends the live handling
+    // consequence when the load actually bends the ship. Collecting heavy cargo grows
+    // the suffix; jettisoning shrinks it; feathers never earn one.
+    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const note = cargoHandlingNote(p && p.data && p.data.derived);
+    const label = note ? `${used} / ${cap} u · ${note.text}` : `${used} / ${cap} u`;
     if (elCargo && elCargo.textContent !== label) chipShow('cargo');   // hold changed — surface it
     setText(elCargo, label);
     setClass(elCargo, 'sf-warn', cap > 0 && used >= cap);
@@ -3663,11 +3958,7 @@ export function createHud(ctx, alerts) {
       }
       const innerRing = lockRing.firstElementChild;
       if (innerRing) {
-        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-          setStyle(innerRing, 'transform', `translate3d(${(opticalGLag.x * 0.95).toFixed(2)}px,${(opticalGLag.y * 0.95).toFixed(2)}px,0)`);
-        } else {
-          setStyle(innerRing, 'transform', 'none');
-        }
+        setLagTranslate(innerRing, opticalGLag.x * 0.95, opticalGLag.y * 0.95);
       }
     } else {
       setClass(lockRing, 'active', false);
@@ -3679,7 +3970,7 @@ export function createHud(ctx, alerts) {
       }
       if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
       const innerRing = lockRing.firstElementChild;
-      if (innerRing) setStyle(innerRing, 'transform', 'none');
+      if (innerRing) setLagTranslate(innerRing, 0, 0);
     }
     // Lock-acquired tone & snap-shut latch: fire on rising edge (not-locked → locked).
     if (isLocked && !_wasLocked) {
@@ -3745,13 +4036,15 @@ export function createHud(ctx, alerts) {
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
+        const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
+        if (lockDiamond.dataset.shape !== shape) lockDiamond.dataset.shape = shape;
         const innerDiamond = lockDiamond.firstElementChild;
         if (innerDiamond) {
-          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-            setStyle(innerDiamond, 'transform', `translate3d(${(opticalGLag.x * 0.9).toFixed(2)}px,${(opticalGLag.y * 0.9).toFixed(2)}px,0) rotate(45deg)`);
-          } else {
-            setStyle(innerDiamond, 'transform', 'rotate(45deg)');
-          }
+          const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
+          setLagTranslate(innerDiamond, opticalGLag.x * 0.9, opticalGLag.y * 0.9, {
+            suffix: spin,
+            plain: spin ? 'rotate(45deg)' : 'none',
+          });
         }
       } else {
         setClass(lockDiamond, 'visible', false);
@@ -3779,11 +4072,7 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
       const innerPip = leadPip.firstElementChild;
       if (innerPip) {
-        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-          setStyle(innerPip, 'transform', `translate3d(${(opticalGLag.x * 1.05).toFixed(2)}px,${(opticalGLag.y * 1.05).toFixed(2)}px,0)`);
-        } else {
-          setStyle(innerPip, 'transform', 'none');
-        }
+        setLagTranslate(innerPip, opticalGLag.x * 1.05, opticalGLag.y * 1.05);
       }
       if (leadPipArc && !pipOverlay.onSolution) {
         const pointer = state.input && state.input.pointerScreen;
@@ -3810,7 +4099,7 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
-  let lowShieldActive = false, lowHullActive = false;
+  let lowShieldActive = false, lowHullActive = false, lowFuelActive = false, fuelWarnArmed = false;
   let lastDefId = null;
   let elReticle = null;
   let cachedNavStationId = null;
@@ -3826,7 +4115,7 @@ export function createHud(ctx, alerts) {
   const overlayClock = createHudClock(30);
   const radarClock = createHudClock(10);
 
-  function syncSafetyAlerts(p, hullFrac, shieldFrac) {
+  function syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac) {
     if (!alerts || !p) return;
     if (hullFrac == null) hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
     if (shieldFrac == null) shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
@@ -3838,6 +4127,23 @@ export function createHud(ctx, alerts) {
     if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
     if (!lowHull && lowHullActive) alerts.clear('low-hull');
     lowHullActive = lowHull;
+    // A hidden-HUD tick calls this without a fuel sample. Leaving the lamp alone
+    // keeps a menu from clearing FUEL LOW and speaking it again on the way back.
+    if (fuelFrac == null) return;
+    const fuel = fuelReserveWarning(
+      { low: lowFuelActive },
+      fuelFrac,
+      fuelWarnArmed,
+    );
+    if (fuel.raise) alerts.raise({ key: 'low-fuel', sev: 'warn', text: 'FUEL LOW', ttl: Infinity });
+    if (fuel.speak && ctx.bus && typeof ctx.bus.emit === 'function') {
+      // Finite ttl takes the one-voice floor and the existing alert tone. The pill stays
+      // until the tank climbs back out. Empty still owns OUT OF FUEL on its own event.
+      ctx.bus.emit('alert', { key: 'fuel-low', sev: 'warn', text: 'FUEL LOW', ttl: 3 });
+    }
+    if (fuel.clear) alerts.clear('low-fuel');
+    lowFuelActive = fuel.low;
+    fuelWarnArmed = fuel.nextArmed;
   }
 
   function escapeHtml(s) {
@@ -3919,9 +4225,9 @@ export function createHud(ctx, alerts) {
   const _overviewContacts = [];        // retained scratch: cleared per call, never reallocated
   const _overviewOrder = [];           // retained scratch: this sample's rows, in display order
   let _overviewIdScratch = new Set();  // retained scratch: swapped with _knownContactIds each call
-  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): known targeting contacts remain available
-  // whenever radar can identify them. Scan/threat reveals still surface the empty shell for a beat,
-  // and state.settings.ui.overviewOpen remains the manual PIN (O key).
+  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): only a lock mounts it (Wave G7), and an
+  // empty sample hides it even then. While mounted, scan/threat reveals and the manual PIN
+  // (state.settings.ui.overviewOpen, O key) expand it from the count line to full rows.
   const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
   const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
   const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
@@ -4031,6 +4337,7 @@ export function createHud(ctx, alerts) {
       if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
       state.player.targetId = rec.id;
+      if (state.input) state.input.targetAssistDisabled = false;
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
       updateOverview();
     });
@@ -4116,8 +4423,9 @@ export function createHud(ctx, alerts) {
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
+    const locked = !!(state.player && state.player.targetId != null);
     if (!player || !player.pos) {
-      setDisplay(elOverview, false);
+      mountContactRoster(rightDock, elOverview, radar.el, false);
       return;
     }
     const playerTeam = player.team;
@@ -4203,14 +4511,13 @@ export function createHud(ctx, alerts) {
     _knownContactIds = curIds;
 
     const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
-    const visible = contactRosterVisible({
-      eligibleContactCount: contacts.length,
-      pinned,
-      nearbyHostile,
-      revealActive: nowMs < _overviewRevealUntil,
-    });
-    if (!visible) {
-      // Rows stay retained while hidden; the next reveal reconciles them back to the truth.
+    if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
+    // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
+    // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
+    // display below would beat the stylesheet's `:empty { display:none }`, so an empty list would
+    // sit on the deck as a bare glass bar. Hide it here instead; rows stay retained while hidden
+    // and the next non-empty sample reconciles them back to the truth.
+    if (!contacts.length) {
       setDisplay(elOverview, false);
       return;
     }
@@ -4415,11 +4722,7 @@ export function createHud(ctx, alerts) {
     setArc(targetArcHull, rHull, hullFrac);
 
     if (targetArcsSvg) {
-      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-        setStyle(targetArcsSvg, 'transform', `translate3d(${(opticalGLag.x * 0.85).toFixed(2)}px,${(opticalGLag.y * 0.85).toFixed(2)}px,0)`);
-      } else {
-        setStyle(targetArcsSvg, 'transform', 'none');
-      }
+      setLagTranslate(targetArcsSvg, opticalGLag.x * 0.85, opticalGLag.y * 0.85);
     }
   }
 
@@ -4547,7 +4850,11 @@ export function createHud(ctx, alerts) {
     if (!p || isMotionReduced) {
       stepHudGLagSpring(opticalGLag, 0, 0, frameDt, true);
       gLocSustainedTime = 0;
-      if (glocVignette) setOpacity(glocVignette, '0');
+      if (glocVignette) {
+        setOpacity(glocVignette, '0');
+        // Same as the zero-fraction branch below: an invisible vignette leaves the compositor.
+        setStyle(glocVignette, 'display', 'none');
+      }
     } else {
       const isBoosting = !!(p.boost && p.boost.energy > 0 && state.input && state.input.actions && state.input.actions.boost);
       const target = calculateHudGLagTarget(p, frameDt, lastPlayerVel, isBoosting);
@@ -4584,23 +4891,25 @@ export function createHud(ctx, alerts) {
           setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
         } else {
           setOpacity(glocVignette, '0');
+          // Mirror the show path: without display:none the fullscreen will-change layer stayed
+          // in the compositor forever after the first fade to zero.
+          setStyle(glocVignette, 'display', 'none');
         }
       }
     }
 
     if (!elReticle) elReticle = document.getElementById('aim-reticle');
     if (elReticle && elReticle.firstElementChild) {
-      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-        setStyle(elReticle.firstElementChild, 'transform', `translate3d(${(opticalGLag.x).toFixed(2)}px,${(opticalGLag.y).toFixed(2)}px,0)`);
-      } else {
-        setStyle(elReticle.firstElementChild, 'transform', 'none');
-      }
+      setLagTranslate(elReticle.firstElementChild, opticalGLag.x, opticalGLag.y);
     }
 
     // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
     // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
     // the rail genuinely stops costing anything once the numbers settle.
     if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
+    // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
+    // means a settled frame writes nothing.
+    if (orreryCluster) orreryCluster.update(state, p, slow);
     // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
     if (slow) forkInstrument.update(state);
@@ -4678,7 +4987,7 @@ export function createHud(ctx, alerts) {
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
 
       // contextual low alerts via alerts module
-      syncSafetyAlerts(p, hullFrac, shieldFrac);
+      syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
 
       if (slow) {
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
@@ -4800,12 +5109,12 @@ export function createHud(ctx, alerts) {
       if (elReticle) {
         const inner = elReticle.firstElementChild;
         if (inner) {
-          const bloomScale = (1 + _recoilBloom * 0.25).toFixed(3);
-          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-            setStyle(inner, 'transform', `translate3d(${opticalGLag.x.toFixed(2)}px,${opticalGLag.y.toFixed(2)}px,0) scale(${bloomScale})`);
-          } else {
-            setStyle(inner, 'transform', `scale(${bloomScale})`);
-          }
+          const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
+          const bloomScale = (bloomQ / 1000).toFixed(3);
+          setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
+            suffix: ` scale(${bloomScale})`,
+            plain: `scale(${bloomScale})`,
+          });
         }
       }
       // Class/archetype label: surfaces the ship's role + drive family so the player feels the
@@ -4833,12 +5142,25 @@ export function createHud(ctx, alerts) {
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
       const dest = flightDestinationSurface(state, command);
+      // the dial's needle takes the nearest way round to the objective's bearing
+      const bearingDeg = objectiveBearingDeg(state, (command && command.waypoint) || wp);
+      if (bearingDeg != null && mtNeedle) {
+        let next = bearingDeg;
+        if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
+        if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
+          mtNeedleDeg = next;
+          mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
+        }
+      }
+      setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
       setDisplay(mtTitle, false);
       setDisplay(mtTime, false);
-      if (!dest.show) {
+      if (dest.line) rememberObjective(objectiveRecall, dest.line);
+      const showObjective = objectiveVisible(objectiveRecall, dest.show);
+      if (!showObjective) {
         setDisplay(missionTracker, false);
       } else {
-        setText(mtObj, dest.line);
+        setText(mtObj, objectiveRecall.text || dest.line);
         setClass(mtTime, 'sf-mt-urgent', dest.urgent);
         setDisplay(missionTracker, true);
       }
@@ -4891,6 +5213,8 @@ export function createHud(ctx, alerts) {
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
     if (slow) placeReceiptLane();
+    if (slow) updateAdventureDecisionLine();
+    if (slow) refreshLeftContextClasses();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
@@ -5024,11 +5348,18 @@ export function createHud(ctx, alerts) {
     // The edge arrow never lands on a machined plate: the left column and the right dock own
     // their edges, so an arrow that would sit on one steps just inboard of it.
     let edgeX = edgePlacement.x;
-    const edgeY = edgePlacement.y;
+    let edgeY = edgePlacement.y;
     const obstacles = objectiveEdgeObstacles(performance.now());
     const leftBox = obstacles.left;
     const rightBox = obstacles.right;
-    if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+    const orreryBox = obstacles.orrery;
+    // The ORRERY instrument is not a plate: stepping inboard of its box would park the arrow in
+    // the middle of the screen. On the left edge the arrow rides up above it; on the bottom edge
+    // it steps right of it. Either way it stays on its own edge and never lands on a numeral.
+    if (orreryBox && edgeX < orreryBox.right && edgeY > orreryBox.top - 16) {
+      if (edgePlacement.edge === 'bottom') edgeX = orreryBox.right + 18;
+      else edgeY = orreryBox.top - 18;
+    } else if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
       edgeX = leftBox.right + 18;
     } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
       edgeX = rightBox.left - 18;
@@ -5044,7 +5375,7 @@ export function createHud(ctx, alerts) {
 
   // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
   // rides an edge — one layout read, never per frame.
-  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null };
+  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null, orrery: null };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
     const box = el.getBoundingClientRect();
@@ -5053,12 +5384,15 @@ export function createHud(ctx, alerts) {
   function objectiveEdgeObstacles(nowMs) {
     if (nowMs - objectiveEdgeBoxes.at > 500) {
       objectiveEdgeBoxes.at = nowMs;
-      objectiveEdgeBoxes.left = plateBox(leftStack);
+      // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
+      objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
       objectiveEdgeBoxes.right = plateBox(rightDock);
+      objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryCluster.host.querySelector('.orr-cluster')) : null;
     }
     return objectiveEdgeBoxes;
   }
 
+  const ORRERY_RECEIPT_INSET = 30;
   function placeReceiptLane() {
     const laneRoot = document.getElementById('toasts');
     if (!laneRoot) return;
@@ -5072,9 +5406,46 @@ export function createHud(ctx, alerts) {
     setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
     // Bottom-anchored: the stack must clear the command-deck readout band (see
     // receiptLaneRect) and grow upward, never down into the speed/weapon row.
-    setStyle(laneRoot, 'bottom', `${Math.round(lane.bottomInset)}px`);
+    // The inset clears the old command-deck band; with ORRERY on that band is hidden and the
+    // bottom-left instrument ends left of the lane, so the receipts sit low on the bottom edge.
+    setStyle(laneRoot, 'bottom', `${Math.round(orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
+    placeFlightReadouts(w, h);
+  }
+
+  function placeFlightBox(el, rect) {
+    if (!el || !rect || !el.style) return;
+    setStyle(el, 'position', 'fixed');
+    setStyle(el, 'left', `${Math.round(rect.x)}px`);
+    setStyle(el, 'top', `${Math.round(rect.y)}px`);
+    setStyle(el, 'width', `${Math.round(rect.width)}px`);
+    setStyle(el, 'height', `${Math.round(rect.height)}px`);
+    setStyle(el, 'margin', '0');
+    setStyle(el, 'right', 'auto');
+    setStyle(el, 'bottom', 'auto');
+    setStyle(el, 'transform', 'none');
+  }
+
+  // Owner, 2026-09-22, on the live HUD: "there's overlapping text". G12 pinned the speed readout
+  // and the weapon name to fixed boxes centred on the bottom band -- exactly where the ordnance rail
+  // lives -- and its check only kept the three readouts off EACH OTHER, never off the rail. Both
+  // readouts are seated in the cluster chassis now (its flex layout keeps them apart), so only the
+  // dock prompt keeps a computed box; any fixed placement G12 left on the other two is cleared.
+  function placeFlightReadouts(w, h) {
+    const boxes = flightInstrumentRects(w, h);
+    unplaceFlightBox(speedGaugeEl);
+    unplaceFlightBox(document.getElementById('sf-wpnstat'));
+    const dock = document.querySelector('#alerts .sf-alert--dock');
+    if (dock) placeFlightBox(dock, boxes.dockPrompt);
+  }
+
+  function unplaceFlightBox(el) {
+    if (!el || !el.style || el.style.position !== 'fixed') return;
+    if (el.classList && el.classList.contains('sf-hud-positioned')) return; // a player's own drag
+    for (const prop of ['position', 'left', 'top', 'width', 'height', 'margin', 'right', 'bottom', 'transform']) {
+      el.style.removeProperty(prop);
+    }
   }
 
   function updateFirstUseHint(player) {
@@ -5107,9 +5478,35 @@ export function createHud(ctx, alerts) {
       setHidden(firstUse, firstUseHint.kind !== 'player');
       return;
     }
-    const x = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
-    const y = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
-    setHudScreenTransform(firstUse, x, y);
+    const rawX = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
+    const rawY = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
+    const onPlayer = !firstUseHint.entityId || firstUseHint.entityId === state.playerId;
+    const hull = shipGlyphBox();
+    const cleared = onPlayer
+      ? placeHudString(
+        { x: rawX, y: rawY },
+        { x: proj.x, y: proj.y },
+        Math.max(hull.width, hull.height),
+      )
+      : { x: rawX, y: rawY };
+    setHudScreenTransform(firstUse, cleared.x, cleared.y);
+  }
+
+  // The comms strip used to hide/show through two :has() rules on #hud; every hidden/inline-style
+  // write inside it then scheduled a style invalidation over the whole HUD each frame. The same
+  // states are classes now, recomputed on the slow tick (and once at mount). Semantics match the
+  // old selectors exactly: empty = every direct child hidden or inline display:none (zero children
+  // counts as empty); crun = a direct .sf-crun child that is not hidden.
+  function refreshLeftContextClasses() {
+    let empty = true;
+    let crun = false;
+    for (const child of leftContext.children) {
+      const childHidden = child.hidden || child.style.display === 'none';
+      if (!childHidden) empty = false;
+      if (child.classList.contains('sf-crun') && !child.hidden) crun = true;
+    }
+    setClass(leftContext, 'sf-leftcontext--empty', empty);
+    setClass(leftContext, 'sf-leftcontext--crun', crun);
   }
 
   function setVisible(v) {
@@ -5158,6 +5555,8 @@ export function createHud(ctx, alerts) {
     });
   }
 
+  refreshLeftContextClasses();
+
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
@@ -5176,6 +5575,7 @@ export function createHud(ctx, alerts) {
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
+      if (orreryCluster) orreryCluster.dispose();
       forkInstrument.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();

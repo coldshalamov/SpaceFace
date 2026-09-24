@@ -31,16 +31,59 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B1, B6]
 register_rule: |
-  Leftover tired leftover shift. Leftover claim. Leftover ain't. No leftover corporate jargon.
+  Tired shift voice. Claim, crew, vein, quota. Contractions and ain't are
+  welcome here; this is the one house that sounds tired. Never corporate,
+  never liturgical, never clause-bound. The rock remembers. The shift
+  does not end.
 register_tell: |
   Long shift
+  Drift
+  claim
+  ain't
+  shift
+  the ore
+  our ore
+  that ore
+  belt
+  vein
+  quota
+  rocks
+  rigs
+  riggers
+  drift rig
+  crew
+  pay grade
+  whistle
+  moisture
+  miner
+  honest day
+  you working
+  spoken for
+  gotta
+  sign up
+  dug
+  scales
+  hauls
+  rookies
+  by rights
 register_forbidden: |
-  Leftover corporate jargon, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover Clause, leftover VARIANCE FILE.
+  Ref 44-C
+  variance
+  clause
+  pattern
+  liturgy
+  accord
+  invoice
+  syndicate
+  chorus
+  ascension
 register_example: |
   Drift Collective. Just checking you ain’t claim-jumping. Long shift.
 register_example_cite: src/data/barks.js#faction_dmc.scan[0]
 voice_direction: |
-  Directed leftover synthetic rigger. Tired leftover mid. No leftover recorded actor.
+  Directed synthetic rigger (PQ-158.04 bark_dmc: f0 95 Hz, rate 0.90x,
+  bandpass 280-2200 Hz). Tired and low, gravel in the noise floor; slow,
+  no lift. No recorded actor.
 ```
 
 **Note (name collision):** the *faction* Drift Miners Collective shares a name with the *character* Drift (the Meridian Exchange clerk). They are separate entities. The character `npc_drift` works for the Meridian Exchange (MTS-adjacent), not for this faction.

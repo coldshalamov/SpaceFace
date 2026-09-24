@@ -8,16 +8,16 @@ import {
 } from '../src/ui/controlPrompts.js';
 
 const CLASSIC_KBM = Object.freeze({
-  flight: 'W/Up thrust  •  0 or S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F Massline  •  4 anchor seed  •  RMB mine  •  B selected Site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  M local map  •  N star map  •  J log  •  K codex  •  I cargo  •  L comms',
+  flight: 'W/Up thrust  •  0 or S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F Massline  •  Y shove  •  4 anchor seed  •  RMB mine  •  B selected Site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  M local map  •  N star map  •  J log  •  K codex  •  I cargo  •  L comms',
   mining: 'RMB hold to mine  •  B beam selected Site  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
-  combat: 'LMB fire  •  Space/F Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  9 bomb  •  Comma cycle bombs  •  G auto-target  •  Shift boost to dodge',
+  combat: 'LMB fire  •  Space/F Massline  •  Y shove  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  9 bomb  •  Comma cycle bombs  •  G auto-target  •  Shift boost to dodge',
   station: 'E dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  E/Esc undock',
   gate: 'N open Star Map  •  Select destination  •  Jump to travel between systems',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D steer, and the mouse aims.',
   tutorialMine: 'The Hitch is armed: LMB fires the Pulse Laser S. Hold RMB on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: 'Follow the cyan station arrow. Press E at the dock prompt. Bring the discrepancy back before someone edits it out.',
   firstFlight: 'W thrusts. A D steer. Mouse aims.',
-  firstCombat: 'Fire with LMB. Space/F controls the Massline. G toggles auto-target.',
+  firstCombat: 'Fire with LMB. Space/F controls the Massline. Y shove. G toggles auto-target.',
   firstStation: 'Review Departure Check before E or Escape undocks.',
   firstGate: 'Open the Star Map (N). Plot a gate route.',
 });
@@ -25,18 +25,18 @@ const CLASSIC_KBM = Object.freeze({
 const SCHEME_OVERRIDES = Object.freeze({
   classic: Object.freeze({}),
   'helm-assist': Object.freeze({
-    flight: 'Mouse steer+aim  •  W thrust  •  0 or S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  M map  •  N chart',
-    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  0 or S/Down brake  •  9 bomb  •  Comma cycle bombs',
+    flight: 'Mouse steer+aim  •  W thrust  •  0 or S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  Q shove  •  4 anchor seed  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  M map  •  N chart',
+    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  Q shove  •  LMB fire  •  0 or S/Down brake  •  9 bomb  •  Comma cycle bombs',
     tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, 0 or S/Down brakes, Space/F controls the Massline.',
     firstFlight: 'Nose follows the mouse. W thrusts. 0 or S/Down brakes to a stop.',
-    firstCombat: 'G toggles auto-target. Guns track lock.',
+    firstCombat: 'G toggles auto-target. Space/F controls the Massline. Q shove. Guns track lock.',
   }),
   pilot: Object.freeze({
-    flight: 'W thrust  •  0 or S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  M map  •  N chart',
-    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  9 bomb  •  Comma cycle bombs',
+    flight: 'W thrust  •  0 or S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  Y shove  •  4 anchor seed  •  Shift boost  •  Tab target  •  M map  •  N chart',
+    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  Y shove  •  LMB fire  •  9 bomb  •  Comma cycle bombs',
     tutorialFlight: 'Follow the yellow nav arrow. W thrusts; 0 or S/Down brakes; A/D turns; mouse aims; Space/F controls the Massline.',
     firstFlight: 'W thrusts. 0 or S/Down brakes to a stop. A D turn. Mouse aims.',
-    firstCombat: 'G toggles auto-target. Guns track lock.',
+    firstCombat: 'G toggles auto-target. Space/F controls the Massline. Y shove. Guns track lock.',
   }),
 });
 

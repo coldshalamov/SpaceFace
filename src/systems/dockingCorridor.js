@@ -119,14 +119,38 @@ export const dockingCorridor = {
   _publishProxyDiagnostics(state) {
     const runtime = state.physicsRuntime || (state.physicsRuntime = {});
     const stations = (state.entityIndex && (state.entityIndex.dockStations || state.entityIndex.stations)) || state.entityList || [];
-    const out = [];
-    const seen = new Set();
+    // Reuse the publish scratch every tick. Stations rarely move; cache the template-key on the
+    // station so settled flight stops rebuilding `${proxy}|x|z|rot|bearing` strings and allocating
+    // a fresh out[]/Set (fresh profile: _publishProxyDiagnostics ~20 ms self / 60 s).
+    const out = this._proxyDiagOut || (this._proxyDiagOut = []);
+    out.length = 0;
+    const seen = this._proxyDiagSeen || (this._proxyDiagSeen = new Set());
+    seen.clear();
     for (const station of stations) {
       if (!station || !station.alive || station.type !== 'station') continue;
       const manifest = resolveCollisionProxyManifest(station);
       if (!manifest) continue;
       const data = station.data || {};
-      const key = `${data.collisionProxy}|${finite(station.pos && station.pos.x)}|${finite(station.pos && station.pos.z)}|${finite(station.rot)}|${data.corridorBearingDeg}`;
+      const px = finite(station.pos && station.pos.x);
+      const pz = finite(station.pos && station.pos.z);
+      const rot = finite(station.rot);
+      const bearing = data.corridorBearingDeg;
+      const proxyId = data.collisionProxy;
+      let key = station._sfProxyDiagKey;
+      if (!key
+        || station._sfProxyDiagPx !== px
+        || station._sfProxyDiagPz !== pz
+        || station._sfProxyDiagRot !== rot
+        || station._sfProxyDiagBearing !== bearing
+        || station._sfProxyDiagProxy !== proxyId) {
+        key = `${proxyId}|${px}|${pz}|${rot}|${bearing}`;
+        station._sfProxyDiagKey = key;
+        station._sfProxyDiagPx = px;
+        station._sfProxyDiagPz = pz;
+        station._sfProxyDiagRot = rot;
+        station._sfProxyDiagBearing = bearing;
+        station._sfProxyDiagProxy = proxyId;
+      }
       let entry = this._proxyGeometryCache.get(station.id);
       if (!entry || entry.key !== key) {
         entry = {
@@ -136,8 +160,8 @@ export const dockingCorridor = {
             stationId: data.stationId || null,
             proxyId: manifest.id,
             flags: manifest.flags,
-            pos: { x: finite(station.pos && station.pos.x), z: finite(station.pos && station.pos.z) },
-            rot: finite(station.rot),
+            pos: { x: px, z: pz },
+            rot,
             corridorBearingDeg: manifest.docking ? effectiveCorridorBearingDeg(manifest, station) : null,
             berth: manifest.docking ? resolveBerthWorld(station, manifest) : null,
             corridor: manifest.docking ? Object.freeze({

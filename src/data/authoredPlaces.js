@@ -96,6 +96,26 @@ export const ZONE_TETHYS_ANVIL = Object.freeze({
 });
 
 /**
+ * Prism Gallery — the first optic lattice a pilot can fly to.
+ *
+ * Sector-local centre is the gallery's own midpoint (structure origin 1680,-2100 plus the
+ * lattice bounds centre — currently 233,0 with metals at (-2,±1)). Ceres' global origin is
+ * not zero, so a dropped frame cannot hide here. No presence: the rocks are the toy, and this
+ * disc does not add a spawn budget. Radius covers the lattice plus room to line up a shot.
+ */
+export const ZONE_CERES_PRISM_GALLERY = Object.freeze({
+  id: 'zone_ceres_prism_gallery',
+  name: 'Prism Gallery',
+  type: 'anomaly_deep',
+  factionId: 'faction_dmc',
+  reason: 'Pale diamonds split an energy bolt into a ring. Dull stone eats the ring. Bright metal '
+    + 'banks it. The lane is a fuse: one shot into the near crystal runs the length and opens in the cluster.',
+  center: Object.freeze({ x: 1913, z: -2100 }),
+  radius: 520,
+  threat: 2,
+});
+
+/**
  * Throughline Weigh — PQ-020's no-presence transit pocket between the two Ceres core approaches.
  *
  * The zone contributes one map-readable checkpoint and no spawn budget. Its physical beacon is the
@@ -118,7 +138,7 @@ export const ZONE_CERES_THROUGHLINE = Object.freeze({
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
-  sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE]),
+  sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
 });
 

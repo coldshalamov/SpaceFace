@@ -1,0 +1,918 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.breakaway-fork",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f95006bb218f8f7a0ec51a11d905e0b91115d2a3217de14e318a8f1f2531348d",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          53.998992919921875,
+          1.0009765625,
+          37.5
+        ],
+        "min": [
+          6.001006126403809,
+          -7.0009765625,
+          -37.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac49bb8f45d985ef0c9a2f7f7b1d1e93d9e5343377f8388cf2ece740e7f47f60",
+      "id": "sf.render.breakaway-fork.mesh.ceramic-dark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "0feeec0d0e8a247d4cae804a121d518b81b6d0f03f1d27f51b5e1d011d9cb7f8",
+      "materialPipelineKey": "opaque",
+      "meshName": "ceramic_dark",
+      "nodeId": "sf.render.breakaway-fork.mesh.ceramic-dark",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          80.00082397460938,
+          3.998626470565796,
+          35.54999923706055
+        ],
+        "min": [
+          10.949177742004395,
+          -6.79862642288208,
+          -35.54999923706055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fde55874cbf0e723068fb4059c50da583e8f351dd0752d44155aea34d5d8db73",
+      "id": "sf.render.breakaway-fork.mesh.copper.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "eaf27d804db2519f1fc12a448709add00bf92fa7506d4ecf445b79f67c361d40",
+      "materialPipelineKey": "opaque",
+      "meshName": "copper",
+      "nodeId": "sf.render.breakaway-fork.mesh.copper",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          89.5,
+          3.4986116886138916,
+          37.501708984375
+        ],
+        "min": [
+          -1.5,
+          -9.498611450195312,
+          -37.501708984375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0238aa9ce5cbbae22cddcce2b6918af3ef204e2f7b81f595a40e3c2f0011f4c",
+      "id": "sf.render.breakaway-fork.mesh.graphite.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "ffe41ccef2e4e54babfe8013c8470977bb60e5bae364f18d40d8422be98f6c28",
+      "materialPipelineKey": "opaque",
+      "meshName": "graphite",
+      "nodeId": "sf.render.breakaway-fork.mesh.graphite",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          88.25,
+          2.99871826171875,
+          29.04825782775879
+        ],
+        "min": [
+          0.5,
+          -8.99871826171875,
+          -29.04825782775879
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1146721354f57b2e82bd57dca545e129708f79282bd79cfe2421486390875dc9",
+      "id": "sf.render.breakaway-fork.mesh.machined.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "1d75b82b80ed990f1d475a875ddd16e69b8a7393a18171c5e15af3034461c8b4",
+      "materialPipelineKey": "opaque",
+      "meshName": "machined",
+      "nodeId": "sf.render.breakaway-fork.mesh.machined",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          80,
+          5.400875091552734,
+          35.50157928466797
+        ],
+        "min": [
+          -3.5,
+          -1.5508750677108765,
+          -35.50157928466797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ea56a7e4c63d457af6bcca7f3b7ab4b5dc98f32b7e7e97891ea38fbdc06a13a4",
+      "id": "sf.render.breakaway-fork.mesh.paint-bone.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "14833b724d761326e2f7eae1a783e127e270bbdfc54429e85e7b892d63522ffb",
+      "materialPipelineKey": "opaque",
+      "meshName": "paint_bone",
+      "nodeId": "sf.render.breakaway-fork.mesh.paint-bone",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          80.5,
+          5.650622367858887,
+          33.251285552978516
+        ],
+        "min": [
+          11.25,
+          2.04937744140625,
+          -33.251285552978516
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28bc53832d3463d7d75eac9787fd5dc98bbe0b095efe7e2b9f801e427f920a43",
+      "id": "sf.render.breakaway-fork.mesh.signal-amber.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "a648e8f70b7fa53999cfd4cc31fa6fa24b3ce6a79f48d1e69d802d8e0e1319d7",
+      "materialPipelineKey": "opaque",
+      "meshName": "signal_amber",
+      "nodeId": "sf.render.breakaway-fork.mesh.signal-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0feeec0d0e8a247d4cae804a121d518b81b6d0f03f1d27f51b5e1d011d9cb7f8",
+      "id": "material:0feeec0d0e8a247d4cae804a",
+      "name": "ceramic_dark",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "14833b724d761326e2f7eae1a783e127e270bbdfc54429e85e7b892d63522ffb",
+      "id": "material:14833b724d761326e2f7eae1",
+      "name": "paint_bone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1d75b82b80ed990f1d475a875ddd16e69b8a7393a18171c5e15af3034461c8b4",
+      "id": "material:1d75b82b80ed990f1d475a87",
+      "name": "machined",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a648e8f70b7fa53999cfd4cc31fa6fa24b3ce6a79f48d1e69d802d8e0e1319d7",
+      "id": "material:a648e8f70b7fa53999cfd4cc",
+      "name": "signal_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "eaf27d804db2519f1fc12a448709add00bf92fa7506d4ecf445b79f67c361d40",
+      "id": "material:eaf27d804db2519f1fc12a44",
+      "name": "copper",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ffe41ccef2e4e54babfe8013c8470977bb60e5bae364f18d40d8422be98f6c28",
+      "id": "material:ffe41ccef2e4e54babfe8013",
+      "name": "graphite",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.breakaway-fork.mesh.ceramic-dark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ceramic_dark",
+      "nodeName": "ceramic_dark",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.mesh.copper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "copper",
+      "nodeName": "copper",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.mesh.graphite",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "graphite",
+      "nodeName": "graphite",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.mesh.machined",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "machined",
+      "nodeName": "machined",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.mesh.paint-bone",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "paint_bone",
+      "nodeName": "paint_bone",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.mesh.signal-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "signal_amber",
+      "nodeName": "signal_amber",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.breakaway-fork.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.breakaway-fork.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_BREAKAWAY_FORK_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.breakaway-fork.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "80f38640742cd3140af7c977f4a3cd5f2c151d6f5d06f2c9fa5e999dec2325e9"
+    },
+    "sourceGlb": {
+      "bytes": 10868,
+      "sha256": "063fe04ea2dd6e49b0fed63b1e7badd19813883f32ac08e46b90629aa7162912",
+      "uri": "place_breakaway_fork.glb"
+    },
+    "sourceManifest": {
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 13916,
+    "sha256": "dd19006c468a5a658683920ba025997ff0f7d8524429cf207ef2878012c5ac3c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        43,
+        -1.923994541168213,
+        0
+      ],
+      "max": [
+        89.5,
+        5.650622367858887,
+        37.501708984375
+      ],
+      "min": [
+        -3.5,
+        -9.498611450195312,
+        -37.501708984375
+      ],
+      "size": [
+        93,
+        15.1492338180542,
+        75.00341796875
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "socket_mouth",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "socket_mouth",
+          "spaceface.socketRole": "fork_mouth"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          0,
+          1
+        ],
+        "name": "socket_seat",
+        "planIndex": 9,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "socket_seat",
+          "spaceface.socketRole": "fork_seat"
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          77,
+          5.5,
+          0,
+          1
+        ],
+        "name": "socket_service",
+        "planIndex": 10,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "socket_service",
+          "spaceface.socketRole": "service"
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 1,
+      "hull": 5
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "ceramic"
+      }
+    ],
+    "nodeCount": 11,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "paint_bone",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "graphite",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "machined",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "copper",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "signal_amber",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ceramic_dark",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_breakaway_fork.glb"
+  },
+  "runtimeHash": "d4b8a06cafe4e03371a5013e546c59374161ad465b8c4be8f9fcada0ec3a4e15",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          89.5,
+          5.650622367858887,
+          37.501708984375
+        ],
+        "min": [
+          -3.5,
+          -9.498611450195312,
+          -37.501708984375
+        ]
+      },
+      "id": "sf.render.breakaway-fork.body",
+      "nodeIds": [
+        "sf.render.breakaway-fork.mesh.ceramic-dark",
+        "sf.render.breakaway-fork.mesh.copper",
+        "sf.render.breakaway-fork.mesh.graphite",
+        "sf.render.breakaway-fork.mesh.machined",
+        "sf.render.breakaway-fork.mesh.paint-bone",
+        "sf.render.breakaway-fork.mesh.signal-amber",
+        "sf.render.breakaway-fork.root"
+      ]
+    }
+  ]
+}

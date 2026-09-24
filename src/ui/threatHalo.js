@@ -190,6 +190,44 @@ const EDGE_RIGHT = 'right';
 const EDGE_BOTTOM = 'bottom';
 const EDGE_LEFT = 'left';
 
+/** A hostile can shoot when it is alive and not explicitly unarmed. */
+export function hostileCanShoot(entity) {
+  if (!entity || entity.alive === false) return false;
+  const data = entity.data || {};
+  if (data.unarmed === true || data.canShoot === false) return false;
+  const weapons = data.weapons || entity.weapons;
+  if (Array.isArray(weapons)) return weapons.length > 0;
+  return true;
+}
+
+/**
+ * Wave G4 — one edge mark for a shooter outside the frame. In-frame, dead, and unarmed
+ * attackers get none. The side is the quadrant of the off-frame screen point.
+ */
+export function offscreenShooterMarker({
+  alive = true,
+  canShoot = false,
+  onScreen = false,
+  screenX = 0,
+  screenY = 0,
+  frameWidth = 1280,
+  frameHeight = 720,
+} = {}) {
+  if (!alive || !canShoot || onScreen) return null;
+  const w = Math.max(1, Number(frameWidth) || 1280);
+  const h = Math.max(1, Number(frameHeight) || 720);
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const dx = screenX - cx;
+  const dy = screenY - cy;
+  const nx = Math.abs(dx) / cx;
+  const ny = Math.abs(dy) / cy;
+  const side = nx >= ny
+    ? (dx < 0 ? EDGE_LEFT : EDGE_RIGHT)
+    : (dy < 0 ? EDGE_TOP : EDGE_BOTTOM);
+  return { side };
+}
+
 function clamp(value, min, max) {
   return value < min ? min : (value > max ? max : value);
 }
@@ -244,9 +282,16 @@ function setOpacity(el, opacity) {
   el.style.opacity = next;
 }
 
+// Quantized numeric early-out: settled chevrons rebuilt translate3d every overlay tick
+// just to strcmp _sfTransform. Cache tenths-of-a-px so a still cue skips toFixed + template.
+// Picture unchanged (same toFixed(1) rounding).
 function setHudTransform(el, x, y) {
-  const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
-  if (el._sfTransform === next) return;
+  const qx = Math.round(Number(x) * 10);
+  const qy = Math.round(Number(y) * 10);
+  if (el._sfHudTx === qx && el._sfHudTy === qy) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) translate(-50%,-50%)`;
   el._sfTransform = next;
   el.style.transform = next;
 }
@@ -288,9 +333,11 @@ export function createThreatHalo(root, busOrOpts) {
   layer.style.display = 'none';
   root.appendChild(layer);
 
+  const missileGlyph = buildMissileGlyph();
+
   const hostileSlots = new Array(HOSTILE_LIMIT);
   for (let i = 0; i < HOSTILE_LIMIT; i++) {
-    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '');
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', missileGlyph);
     const arc = document.createElement('div');
     arc.className = 'sf-threat-halo__arc';
     slot.appendChild(arc);
@@ -300,7 +347,6 @@ export function createThreatHalo(root, busOrOpts) {
   }
 
   const missileSlots = new Array(MISSILE_LIMIT);
-  const missileGlyph = buildMissileGlyph();
   for (let i = 0; i < MISSILE_LIMIT; i++) {
     const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--missile', missileGlyph);
     layer.appendChild(slot);
@@ -892,7 +938,19 @@ export function createThreatHalo(root, busOrOpts) {
       projectionWorld.z = entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
       const telegraphed = !!cueForIds(entity.id, null);
-      if (!projected || (projected.onScreen && !telegraphed)) continue;
+      if (!projected) continue;
+      // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
+      // One mark per shooter, never one per projectile.
+      const marker = offscreenShooterMarker({
+        alive: entity.alive !== false,
+        canShoot: hostileCanShoot(entity),
+        onScreen: projected.onScreen === true,
+        screenX: projected.x,
+        screenY: projected.y,
+        frameWidth: viewportW || 1280,
+        frameHeight: viewportH || 720,
+      });
+      if (!marker) continue;
 
       const dist = Math.sqrt(distSq);
       const tier = contactThreatTier(entity, true);
@@ -978,6 +1036,9 @@ export function createThreatHalo(root, busOrOpts) {
         setForceHue(slot, slot._sfArc, null, null);
       }
       setAttr(slot, 'data-faction', hostileFaction[i] || null);
+      // An unannounced hostile burning down on the player reads as the same amber edge pulse
+      // as an incoming torpedo; announced attack runs keep their telegraph hue instead.
+      setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
       shown++;
     }
 

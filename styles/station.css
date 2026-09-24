@@ -6,17 +6,17 @@
 
 /* ───────────── the shell ───────────── */
 
-.k-screen > .sx-app { display: contents; }
+.k-screen > .sx-app, .dp-frame > .sx-app { display: contents; }
 
 .sxb-berth__world { left: 0; width: 100%; }
 .sxb-berth__world[hidden] { display: none; }
 .sxb-berth__plate { left: 0; width: 100%; pointer-events: none; }
 
-.sxb-berth__name { max-width: 14ch; }
+.sxb-berth__name { max-width: none; white-space: normal; overflow-wrap: break-word; }
 .sxb-berth__name .sxb-berth__word { display: inline-block; }
 .sxb-berth__ident { margin: 0; }
 .sxb-berth__news { margin: calc(12px * var(--k-s)) 0 0; max-width: var(--k-measure); }
-.sxb-berth--clear { padding-right: calc(380px * var(--k-s)); }
+.sxb-berth--clear { padding-right: 0; }
 .sxb-handoff { display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--k-s)) calc(12px * var(--k-s)); margin-top: calc(16px * var(--k-s)); }
 .sxb-handoff[hidden] { display: none; }
 .sxb-handoff__k { margin-right: calc(8px * var(--k-s)); }
@@ -71,7 +71,7 @@
 .sx-depchip, .sx-holdrow { all: unset; box-sizing: border-box; display: grid; width: 100%; cursor: pointer;
   grid-template-columns: var(--k-row-cols, minmax(0, 1fr) auto); align-items: center; column-gap: var(--k-gap);
   min-height: var(--k-row); padding: 0 var(--k-pad); border-top: 1px solid var(--k-hair); font-size: var(--k-fs-data); color: var(--k-bone-62); }
-.sx-depchip:hover, .sx-depchip:focus-visible, .sx-holdrow:hover, .sx-holdrow:focus-visible { color: var(--k-text-live); box-shadow: inset 2px 0 0 var(--k-signal); }
+.sx-depchip:hover, .sx-depchip:focus-visible, .sx-holdrow:hover, .sx-holdrow:focus-visible { color: var(--k-text-live); box-shadow: none; }
 .sx-depchip .k-row__num { font-size: var(--k-fs-body); color: inherit; }
 .sx-holdrow__body { display: flex; flex-direction: column; min-width: 0; }
 .sx-holdbay { width: 100%; margin-bottom: calc(16px * var(--k-s)); }
@@ -99,6 +99,22 @@
    the svg fell back to inline 100% width (~53 px) and ate the whole name cell. A row icon is
    text-sized: 18 px inline with the name, sightline -4 px onto the baseline. */
 .sx-mkt-row__name .of-commodity-icon { display: inline-block; width: 18px; height: 18px; margin-right: 7px; vertical-align: -4px; color: var(--k-bone-62); }
+/* Feature 16 — direct profit badge: held cargo beating its cost basis gets the green mark on the
+   row itself, so route math never leaves the register. */
+.sx-mkt-row__profit {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px 0;
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  vertical-align: 2px;
+  color: var(--k-good);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  opacity: 0.92;
+  white-space: nowrap;
+}
 .sx-mkt__quote > * + *, .sx-mkt__console > * + *, .sx-trade > * + * { margin-top: calc(16px * var(--k-s)); }
 .sx-mkt__quote { padding-right: calc(420px * var(--k-s)); }
 .sx-mkt__hero { margin-top: calc(8px * var(--k-s)); }
@@ -128,7 +144,7 @@
 .sx-ledger .st-ledger-detail[hidden], .sx-ledger__read[hidden] { display: none; }
 .sx-ledger__read > * + * { margin-top: calc(16px * var(--k-s)); }
 .sx-ledger .st-ledger-entry { cursor: default; }
-.sx-ledger .st-ledger-entry[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--k-signal); color: var(--k-text-live); }
+.sx-ledger .st-ledger-entry[aria-selected="true"] { box-shadow: none; color: var(--k-text-live); }
 
 /* ───────────── missions (§1.5) ───────────── */
 
@@ -155,12 +171,10 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-job__track { flex: none; }
 .sx-job.is-tracked .sx-job__title { color: var(--k-text-live); }
 
-/* Job titles run 30-45 chars while the hang column only fits ~24 — a single-line ellipsis
-   clipped EVERY row (including the 15-char tracked contract), which read as a broken list.
-   Wrap to two data-size lines so the full title lands; the ellipsis still clamps line 2 as the
-   fallback for genuinely oversized names. */
+/* Wave G5 — station mission titles stay whole. Wrap on word boundaries. No mid-word ellipsis. */
 .sx-ct-row__title, .sx-job__title {
-  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  white-space: normal; display: block; overflow: visible; text-overflow: clip;
+  overflow-wrap: break-word; -webkit-line-clamp: unset;
   font-size: var(--k-fs-data); line-height: 1.25;
 }
 
@@ -170,7 +184,7 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 /* The dossier headline is a contract title ("First trade: 8u Fuel Cells to Ceres"), not a hero
    marking: at the kit's title size it wrapped to four lines at 1280x800 and the fourth line fell
    below the dossier's clip. The size follows the width and stays under the kit title size. */
-.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; font-size: clamp(26px, 2.4vw, var(--k-fs-title)); line-height: 1.02; max-width: 26ch; }
+.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; font-size: clamp(26px, 2.4vw, var(--k-fs-title)); line-height: 1.05; max-width: none; overflow-wrap: break-word; }
 .sx-dossier__reward { margin-top: calc(24px * var(--k-s)); }
 .sx-dossier__terms { max-width: var(--k-measure); margin-top: calc(24px * var(--k-s)); }
 .sx-term__v { display: flex; flex-direction: column; align-items: flex-end; }
@@ -278,7 +292,7 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__stage { position: relative; }
 .sx-sw__canvas { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; display: block; cursor: grab; outline: none; touch-action: none; }
 .sx-sw__canvas.is-dragging { cursor: grabbing; }
-.sx-sw__canvas:focus-visible { box-shadow: inset 0 0 0 1px var(--k-signal); }
+.sx-sw__canvas:focus-visible { box-shadow: none; }
 .sx-sw__stage > :not(.sx-sw__canvas) { z-index: 1; }
 .sx-sw__baylines, .sx-sw__power { position: absolute; inset: 0; pointer-events: none; }
 .sx-sw__baylines { display: none; }
@@ -309,7 +323,7 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__gauges { position: absolute; right: 0; top: 0; width: calc(400px * var(--k-s)); --k-row-cols: minmax(0, 1fr) auto; max-height: calc(100% - var(--k-row) * 2); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 .sx-sw--flight .sx-sw__gauges { top: 0; }
 .sx-sw__gauges .k-row { min-height: calc(var(--k-row) * 0.8); }
-.sx-sw__gauges .k-row:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--k-signal); }
+.sx-sw__gauges .k-row:focus-visible { outline: none; box-shadow: none; }
 .sx-sw-gauge__v { display: inline-flex; gap: 0.5em; align-items: baseline; }
 .sx-sw-ghost { font-size: var(--k-fs-data); }
 .sx-sw-ghost[hidden] { display: none; }
@@ -333,14 +347,17 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 /* The systems board: the same hardpoint buttons laid out as chips when there is no hull preview to
    pin them to (secondaryPreviewWebGlBlocked on Intel/ANGLE — a second hangar compile TDRs the
    flight context there). Without this the pins piled on one point above the name and no system
-   could be chosen on the owner's own laptop. */
-.sx-sw__slotfield.is-board { inset: auto 0 0 0; top: auto; display: flex; flex-wrap: wrap; align-content: flex-end; gap: calc(6px * var(--k-s)) calc(8px * var(--k-s)); padding-right: calc(400px * var(--k-s) + var(--k-gap)); }
+   could be chosen on the owner's own laptop. The field is capped at its containing block: a wrap
+   taller than the stage used to overflow upward, and the first chip row slid under the opaque berth
+   header where no click could reach it. `safe` keeps the bottom anchor when the board fits and
+   falls back to top-packing — scrollable, never clipped — when it does not. */
+.sx-sw__slotfield.is-board { inset: auto 0 0 0; top: auto; max-height: 100%; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-end; align-content: safe flex-end; gap: calc(6px * var(--k-s)) calc(8px * var(--k-s)); padding-right: calc(400px * var(--k-s) + var(--k-gap)); }
 .sx-sw__slotfield.is-board .sx-hardpoint { position: static; width: auto; height: auto; display: inline-flex; align-items: center; gap: calc(8px * var(--k-s)); padding: calc(5px * var(--k-s)) calc(10px * var(--k-s)); border: 1px solid var(--k-hair); background: rgb(8 10 14 / 78%); }
 .sx-sw__slotfield.is-board .sx-hardpoint__leader { display: none; }
 .sx-sw__slotfield.is-board .sx-hardpoint__reticle { position: static; flex: 0 0 auto; }
 .sx-sw__slotfield.is-board .sx-hardpoint__copy { position: static; transform: none; text-align: left; }
 .sx-sw__slotfield.is-board .sx-hardpoint.is-selected { border-color: var(--k-signal); }
-.sx-sw__slotfield.is-board .sx-hardpoint:focus-visible { box-shadow: inset 0 0 0 1px var(--k-signal); }
+.sx-sw__slotfield.is-board .sx-hardpoint:focus-visible { box-shadow: none; }
 /* With no hull preview the stage is the nameplate plus the systems board: tall enough for both,
    no orbit words or drag cue (there is nothing to orbit), and the stats take the rest and scroll.
    The window itself is never an empty bay: the authored berth-bay plate is the final picture —
@@ -376,8 +393,19 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
   display: flex; align-items: center; padding: 0 calc(20px * var(--k-s));
   background: linear-gradient(to right, rgb(6 8 12 / 84%), rgb(6 8 12 / 42%) 70%, transparent);
 }
+/* Everything that describes a preview that is not on screen yet yields while the optics resolve.
+   The gauges and the power ring were missing from this list, so on THE SHIP the acquiring card sat
+   on top of a live "439 / +12/s" plate and a verb cluster, all three legible at once and none of
+   them readable. `visibility`, not `display`: the layout must not move when the hull lands. */
 .sx-sw__stage.is-acquiring .sx-sw__nameplate,
-.sx-sw__stage.is-acquiring .sx-sw__slotfield { visibility: hidden; }
+.sx-sw__stage.is-acquiring .sx-sw__slotfield,
+.sx-sw__stage.is-acquiring .sx-sw__scarfield,
+.sx-sw__stage.is-acquiring .sx-sw__gauges,
+.sx-sw__stage.is-acquiring .sx-sw__power,
+.sx-sw__stage.is-acquiring .sx-sw__baylines,
+.sx-sw__stage.is-acquiring .sx-sw__focusline,
+.sx-sw__stage.is-acquiring .sx-sw__camera,
+.sx-sw__stage.is-acquiring .sx-sw__dragcue { visibility: hidden; }
 
 /* The stage: the title block above, the foot below; the stage's absolute children hang off it. */
 .sx-sw__main { display: flex; flex-direction: column; min-height: 0; }
@@ -430,7 +458,7 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__carousel { position: relative; display: flex; flex-direction: column; min-height: 0; margin-top: calc(16px * var(--k-s)); }
 .sx-sw__railstep, .sx-sw__railtrack { display: none; }
 .sx-sw__list { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; outline: none; }
-.sx-sw__list:focus-visible { box-shadow: inset 2px 0 0 var(--k-signal); }
+.sx-sw__list:focus-visible { box-shadow: none; }
 button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; text-align: left; }
 .sx-sw__list > .sx-sw-row:last-child { border-bottom: 1px solid var(--k-hair); }
 .sx-sw-row__body { display: flex; flex-direction: column; min-width: 0; }
@@ -456,7 +484,7 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-chooser__list { margin-top: calc(16px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; --k-row-cols: minmax(0, 1fr) auto; }
 .sx-chooser__list > .sx-modrow:last-child { border-bottom: 1px solid var(--k-hair); }
 .sx-modrow { align-items: start; padding-top: calc(10px * var(--k-s)); padding-bottom: calc(10px * var(--k-s)); cursor: default; }
-.sx-modrow:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--k-signal); }
+.sx-modrow:focus-visible { outline: none; box-shadow: none; }
 .sx-modrow.is-eq .sx-modrow__name { color: var(--k-signal); }
 .sx-modrow.is-locked .sx-modrow__name { color: var(--k-bone-38); }
 .sx-modrow__body { display: flex; flex-direction: column; min-width: 0; gap: calc(2px * var(--k-s)); }
@@ -490,103 +518,118 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-buybar, .sx-sw-circuit__acts { gap: calc(24px * var(--k-s)); }
 
 /* THE SHIP in flight: the same panel filling the kit stage screen; no station bay behind. */
-.sf-ship.k-screen > .sx-sw { grid-row: 1 / -1; grid-column: 1 / -1; grid-template-columns: var(--k-hang) minmax(0, 1fr); }
-.sf-ship.k-screen::before { background: rgb(26 20 16 / 0.35); }
+/* THE SHIP is the shared shipworks stage in its flight host. It gets the station's three-column
+   shape -- fleet rail, stage, systems -- because the markup has three regions plus a hidden
+   chooser; two columns wrapped the last two onto a second row on top of the first. */
+.sf-ship.dp-frame > .sx-sw {
+  grid-row: 1 / -1; grid-column: 1 / -1;
+  grid-template-columns: 230px minmax(0, 1fr) 285px;
+  grid-template-areas: 'hang stage side';
+  min-height: 0;
+}
+.sf-ship.dp-frame > .sx-sw > .sx-sw__chooser { grid-area: hang; }
+/* The preview canvas is absolutely positioned, so the stage has no intrinsic height and collapsed
+   to its overlay content -- which clipped the acquiring card's own button. The station host got a
+   300px floor from station-orbital.css; the flight host never did. It fills its column here. */
+.sf-ship.dp-frame .sx-sw__main { display: flex; flex-direction: column; min-height: 0; gap: var(--dp-gap); }
+.sf-ship.dp-frame .sx-sw__stage { flex: 1 1 auto; min-height: calc(340px * var(--dp-s, 1)); }
+.sf-ship.dp-frame .sx-sw__stats { flex: 0 0 auto; }
+/* A long systems list scrolls inside its rail rather than running out of the frame. */
+.sf-ship.dp-frame .sx-sw__side { overflow: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; }
 
-/* ───────────── Field Hardware chrome vs Orbital Command walls ─────────────
-   orbital.css paints an opaque header, a 190px Facilities sidebar and a 48px website title.
-   Prefix `#screens .sx-berth:not(.sx-observatory)` beats those rules without touching orbital.css. Materials are
-   nine-sliced kit PNGs (keys, plates, lights, legend strips) — not CSS borders standing in. */
+/* ───────────── Field Hardware chrome over the live berth ─────────────
+   orbital.css still carries a leftover website-wall station block. These rules apply to the
+   live `.sx-berth` (including `.sx-observatory`) and beat that sheet by specificity plus load
+   order (station.css injects last). Materials are nine-sliced kit PNGs. */
 
-#screens .sx-berth:not(.sx-observatory).k-screen {
+#screens .sx-berth.dp-frame,
+#screens .sx-berth.sx-observatory.k-screen {
+  display: grid;
   inset: 0;
-  padding: calc(22px * var(--k-s)) calc(32px * var(--k-s)) calc(14px * var(--k-s));
+  /* Symmetric. The right padding was 400px -- a hole kept for a vitals panel floating over the frame;
+     the purse and gauges now live in the head band, so the frame runs edge to edge. */
+  padding: calc(22px * var(--k-s)) calc(32px * var(--k-s)) calc(14px * var(--k-s)) calc(32px * var(--k-s));
   border: 0;
   background: transparent;
   box-shadow: none;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "title" "stage" "foot";
+  grid-template-areas: "head" "body" "foot";
   gap: 0;
   column-gap: 0;
   row-gap: 0;
 }
-#screens .sx-berth:not(.sx-observatory).k-screen::before { background: var(--k-scrim); }
-#screens .sx-berth:not(.sx-observatory).k-screen.k-screen--dense::before { background: rgb(26 20 16 / 0.38); }
+#screens .sx-berth.dp-frame::before { background: var(--k-scrim); }
+#screens .sx-berth.dp-frame.k-screen--dense::before { background: rgb(26 20 16 / 0.38); }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-berth {
+/* The 3D berth is the picture. orbital.css used to park it at 16% opacity behind a website wall. */
+#screens .sx-berth .sxb-berth__world { opacity: 1; z-index: -2; }
+#screens .sx-berth .so-station-mark {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+}
+
+#screens .sx-berth .sxb-berth {
   position: relative;
-  grid-area: title;
   min-height: 0;
-  padding: 0 calc(360px * var(--k-s)) calc(12px * var(--k-s)) 0;
+  padding: 0 0 calc(12px * var(--k-s)) 0;
   border: 0;
   background: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth--clear { padding-right: calc(360px * var(--k-s)); }
-#screens .sx-berth:not(.sx-observatory) .of-port-mark,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__lamp {
+#screens .sx-berth .sxb-berth--clear { padding-right: 0; }
+#screens .sx-berth .of-port-mark,
+#screens .sx-berth .sxb-berth__lamp {
   position: absolute;
   left: 0;
   top: calc(8px * var(--k-s));
   width: 12px;
   height: 12px;
-  background: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png") center / contain no-repeat;
+  background: radial-gradient(closest-side, var(--dp-lamp, #f2b950) 98%, transparent) center / contain no-repeat;
 }
-html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__lamp {
-  background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png");
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
+  background-image: radial-gradient(closest-side, var(--dp-danger, #ff5038) 98%, transparent);
 }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__ident {
-  display: inline-block;
-  margin: 0 0 calc(6px * var(--k-s)) calc(20px * var(--k-s));
-  max-width: 42ch;
-  padding: 0;
-  border-style: solid;
-  border-width: 12px 16px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
-  border-image-slice: 12 16 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px 16px;
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 600, "wdth" 62;
-  font-size: var(--k-fs-fine);
-  letter-spacing: var(--fh-track-legend, 0.06em);
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--k-signal);
+/* 2026-09-22: this was a nine-slice legend plate with 12/16px borders, line-height 1 and a 42ch
+   cap -- sized for one line, holding three facts ("Trade hub · Class L · Solar Concord Navy"). It
+   wrapped to two lines inside a box built for one and printed over its own border on every tab.
+   It is the nameplate's eyebrow now (.dp-title__eyebrow, on this element): one etched line above
+   the name, which is what it was always trying to be. Only the truncation stays here. */
+#screens .sx-berth .sxb-berth__ident {
+  margin: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__ident:empty { display: none; }
+#screens .sx-berth .sxb-berth__ident:empty { display: none; }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__name,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__name.k-t-hero,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__name.fh-hero {
-  max-width: 14ch;
-  margin: 0 0 0 calc(20px * var(--k-s));
-  font-family: var(--fh-face-display, var(--k-display));
-  font-weight: 900;
-  font-stretch: 125%;
-  font-variation-settings: "wght" 900, "wdth" 125;
-  font-size: var(--fh-size-hero, var(--k-fs-hero));
-  letter-spacing: var(--fh-track-display, 0.02em);
-  line-height: 0.9;
-  text-transform: uppercase;
-  color: var(--k-text-live);
+/* 2026-09-22: the berth's name used to be `max-width: 14ch` at --fh-size-hero (140px), so HELIOS
+   STATION wrapped to two lines and the head ate two fifths of the frame before the market got a
+   pixel. A station is not the game's name: it is a screen title, and Deckplate's nameplate
+   (.dp-title__name, on this element) sizes it. Only the placement stays here. */
+#screens .sx-berth .sxb-berth__name,
+#screens .sx-berth .sxb-berth__name.k-t-hero,
+#screens .sx-berth .sxb-berth__name.fh-hero {
+  max-width: none;
+  margin: 0;
+  white-space: nowrap;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__name.k-t-title,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__name.fh-title {
+#screens .sx-berth .sxb-berth__name.k-t-title,
+#screens .sx-berth .sxb-berth__name.fh-title {
   font-size: var(--fh-size-screenTitle, var(--k-fs-title));
   font-variation-settings: "wght" 800, "wdth" 125;
 }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__plate {
+#screens .sx-berth .sxb-berth__plate {
   background-image: url("../assets/ui/kit/assets/plates/plate.backdrop.berth-bay.png");
   background-size: cover;
   background-position: center;
   opacity: 1;
 }
-#screens .sx-berth:not(.sx-observatory)[data-k-stage="live"] .sxb-berth__plate { opacity: 0; }
+#screens .sx-berth[data-k-stage="live"] .sxb-berth__plate { opacity: 0; }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-tape {
+#screens .sx-berth .sxb-tape {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -594,10 +637,10 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   margin: calc(12px * var(--k-s)) 0 0 calc(20px * var(--k-s));
   max-width: min(72ch, 58vw);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__news,
-#screens .sx-berth:not(.sx-observatory) .sxb-event,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__patch,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__route {
+#screens .sx-berth .sxb-berth__news,
+#screens .sx-berth .sxb-event,
+#screens .sx-berth .sxb-berth__patch,
+#screens .sx-berth .sxb-berth__route {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -605,13 +648,13 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   margin: 0;
   max-width: none;
   padding: 0;
+  /* Was a nine-sliced legend strip, then a computed "strip of stock with a shadowed lip". A tape
+     is printed words on the veil (owner, 2026-09-22: no CSS imitating a material). */
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   background: none;
-  border-style: solid;
-  border-width: 12px 16px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
-  border-image-slice: 12 16 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px 16px;
+  box-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-fine);
@@ -620,17 +663,19 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   text-transform: uppercase;
   color: var(--k-signal);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__news:empty,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__news[hidden],
-#screens .sx-berth:not(.sx-observatory) .sxb-event[hidden],
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__patch[hidden],
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__route[hidden] { display: none; }
+#screens .sx-berth .sxb-berth__news:empty,
+#screens .sx-berth .sxb-berth__news[hidden],
+#screens .sx-berth .sxb-event[hidden],
+#screens .sx-berth .sxb-berth__patch[hidden],
+#screens .sx-berth .sxb-berth__route[hidden] { display: none; }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-event[data-tone="danger"] {
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+#screens .sx-berth .sxb-event[data-tone="danger"] {
+  padding-left: 10px;
+  background: linear-gradient(90deg, var(--dp-danger, #ff5038) 2px, transparent 0);
+  box-shadow: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__patch,
-#screens .sx-berth:not(.sx-observatory) .sxb-berth__route {
+#screens .sx-berth .sxb-berth__patch,
+#screens .sx-berth .sxb-berth__route {
   color: var(--k-bone-62);
   text-transform: none;
   letter-spacing: 0;
@@ -641,9 +686,9 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-event__badge { display: inline; color: var(--k-signal); }
-#screens .sx-berth:not(.sx-observatory) .sxb-event[data-tone="danger"] .sxb-event__badge { color: var(--k-red); }
-#screens .sx-berth:not(.sx-observatory) .sxb-event__title {
+#screens .sx-berth .sxb-event__badge { display: inline; color: var(--k-signal); }
+#screens .sx-berth .sxb-event[data-tone="danger"] .sxb-event__badge { color: var(--k-red); }
+#screens .sx-berth .sxb-event__title {
   display: inline;
   margin: 0;
   font-family: inherit;
@@ -653,7 +698,7 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   text-transform: inherit;
   color: var(--k-text-live);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-event__body {
+#screens .sx-berth .sxb-event__body {
   display: inline;
   margin: 0;
   font-family: var(--k-text);
@@ -668,94 +713,185 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-handoff { margin: calc(10px * var(--k-s)) 0 0 calc(20px * var(--k-s)); }
+#screens .sx-berth .sxb-handoff { margin: calc(10px * var(--k-s)) 0 0 calc(20px * var(--k-s)); }
 
-/* Vitals: one machined plate, not a website header strip. */
-#screens .sx-berth:not(.sx-observatory) .sxb-crown {
-  top: calc(18px * var(--k-s));
-  right: calc(24px * var(--k-s));
-  width: calc(320px * var(--k-s));
-  z-index: 1;
-  display: block;
-  align-items: stretch;
-  gap: 0;
+/* == THE HEAD BAND =============================================================================
+   2026-09-22. The berth's name on the left; on the right, the berth's own readout -- the purse as
+   the band's display number and four gauges on one line beneath it, with a service verb only
+   under the gauge that needs one. Until today this was a panel beside the workspace on every
+   tab, which is why market, shipworks, industry, contracts, factions, bar and ledger all had the
+   same left-list / middle-detail / right-card shape and read as one screen seven times. Moving it
+   up here gives each tab the whole width below to be its own instrument
+   (design/frontend/ONE_PHOTOGRAPH.md section 9.3).
+
+   Nothing here is a surface: the purse and the gauges are readings on the berth's veil. */
+#screens .sx-berth .sxb-berth.dp-frame__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title   trigger"
+    "title   crown"
+    "tape    crown"
+    "handoff crown";
+  grid-template-rows: auto auto auto 1fr;
+  column-gap: clamp(24px, 3vw, 64px);
+  row-gap: 0;
+  align-items: start;
+}
+#screens .sx-berth .sxb-berth.dp-frame__head > .dp-title { grid-area: title; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-tape { grid-area: tape; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-handoff { grid-area: handoff; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .so-command-trigger {
+  grid-area: trigger; grid-column: auto;
+  position: static; justify-self: end; align-self: start;
+}
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-crown {
+  grid-area: crown; grid-column: auto;
+  position: static; justify-self: end; align-self: start;
+  display: flex; flex-direction: column; align-items: flex-end; gap: calc(10px * var(--k-s));
+  width: auto; max-width: none; max-height: none; overflow: visible;
+  margin: calc(8px * var(--k-s)) 0 0; padding: 0;
+  border: 0; border-image: none; background: none; box-shadow: none;
   text-align: right;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-purse { order: 0; flex: none; }
-#screens .sx-berth:not(.sx-observatory) .sxb-purse__value,
-#screens [data-screen="station"] .sxb-purse__value {
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 800, "wdth" 125;
-  font-size: var(--fh-size-heroNum, var(--k-fs-num));
-  letter-spacing: 0.02em;
-  color: var(--k-text-live);
+
+/* The purse: a label and the number, on one baseline. The number is a READING, so it is phosphor
+   (ONE_PHOTOGRAPH section 1, "two temperatures"): the cool ink of what you read. */
+#screens .sx-berth .sxb-crown .sxb-purse {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: calc(14px * var(--k-s));
+  position: relative; order: 0; flex: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-purse__label {
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 600, "wdth" 62;
+#screens .sx-berth .sxb-crown .sxb-purse__label {
+  font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 62;
+  font-size: var(--dp-fs-etch, 12px); letter-spacing: .2em; text-transform: uppercase;
+  color: #c2cfdb;
+}
+#screens .sx-berth .sxb-crown .sxb-purse__value,
+#screens [data-screen="station"] .sxb-crown .sxb-purse__value {
+  font-family: var(--dp-face-display); font-variation-settings: "wght" 780, "wdth" 112;
+  font-size: var(--dp-fs-hero, 56px); line-height: .9; letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-phos, #dfeeff);
+  text-shadow: 0 0 18px var(--dp-phos-halo, rgb(150 210 255 / .22)), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5));
+}
+
+/* The gauges: four readings on one line. Each is a label and its value, a 2px track under them,
+   and -- only when the ship needs it -- the service verb beneath. */
+#screens .sx-berth .sxb-crown .sxb-vitals {
+  display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start; justify-content: flex-end;
+  gap: calc(26px * var(--k-s));
+  margin: 0; padding: 0; list-style: none;
+}
+#screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital.k-row {
+  position: relative; display: block;
+  width: clamp(118px, calc(150px * var(--k-s)), 170px); min-height: 0;
+  margin: 0; padding: 0; border: 0; background: none; box-shadow: none;
+  text-align: left;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__head {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center;
+  column-gap: 6px; row-gap: 7px; width: 100%; padding-right: 0;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__head .so-icon { width: 15px; height: 15px; color: var(--dp-ink-dim, #b7b4a6); }
+#screens .sx-berth .sxb-crown .sxb-vital__label {
+  font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 70;
+  font-size: var(--dp-fs-etch, 12px); letter-spacing: .14em; text-transform: uppercase;
+  color: #c2cfdb;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__track {
+  grid-column: 1 / -1; display: block; width: 100%; height: 2px; margin: 0;
+  background: var(--dp-rule-hi, rgb(232 226 212 / .22)); border-radius: 0; box-shadow: none;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__fill { display: block; height: 2px; border-radius: 0; background: var(--dp-ink-dim, #b7b4a6); box-shadow: none; }
+#screens .sx-berth .sxb-crown .sxb-vital[data-tone="warn"] .sxb-vital__fill { background: var(--dp-lamp, #f2b950); box-shadow: 0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
+#screens .sx-berth .sxb-crown .sxb-vital[data-tone="bad"] .sxb-vital__fill { background: var(--dp-danger, #ff5038); box-shadow: 0 0 6px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
+#screens .sx-berth .sxb-crown .sxb-vital__value {
+  position: absolute; top: 0; right: 0;
+  font-family: var(--dp-face-read); font-weight: 600; font-size: var(--dp-fs-data, 14px); line-height: 15px;
+  font-variant-numeric: tabular-nums; color: var(--dp-phos, #dfeeff); white-space: nowrap;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__value.k-signal { color: var(--dp-lamp-hot, #ffd98c); }
+#screens .sx-berth .sxb-crown .sxb-vital__value.k-bad { color: var(--dp-danger-hot, #ff8a70); }
+#screens .sx-berth .sxb-crown .sxb-vital__acts {
+  display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; min-width: 0;
+  margin-top: calc(8px * var(--k-s));
+}
+#screens .sx-berth .sxb-crown .sxb-vital__acts:empty { display: none; }
+/* A verb can be wider than its gauge (RESUPPLY · 66 MUN · 792 CR): the last gauge hangs its verb
+   from the frame's right edge instead of running past it. */
+#screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts {
+  position: absolute; right: 0; top: 100%; width: max-content; justify-content: flex-end;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__ok { font-size: var(--dp-fs-etch, 12px); color: #c2cfdb; }
+/* The hold's head is its manifest button: it reads as the same gauge, and says it opens. */
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold] { cursor: pointer; }
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold]:is(:hover, :focus-visible) .sxb-vital__label { color: var(--dp-ink, #e8e2d4); }
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold]:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 4px; }
+
+/* The workspace owns the width the purse used to take. */
+#screens .sx-berth .dp-frame__body--station { grid-template-columns: minmax(0, 1fr); }
+
+/* Narrow frames: the gauges wrap two by two under the purse before anything shrinks. */
+@media (max-width: 1280px) {
+  #screens .sx-berth .sxb-crown .sxb-vitals { flex-wrap: wrap; max-width: calc(2 * 150px + 26px); }
+}
+@media (max-width: 900px) {
+  #screens .sx-berth .sxb-berth.dp-frame__head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "trigger" "title" "crown" "tape" "handoff";
+  }
+  #screens .sx-berth .sxb-berth.dp-frame__head > :is(.sxb-crown, .so-command-trigger) { justify-self: start; }
+  #screens .sx-berth .sxb-crown, #screens .sx-berth .sxb-crown .sxb-purse { align-items: flex-start; justify-content: flex-start; }
+}
+
+#screens .sx-berth .sxb-vital__acts .k-word,
+#screens .sx-berth .sxb-vital__act {
+  min-height: 30px;
+  padding: 0 calc(var(--dp-cut, 10px) + 8px) 0 10px;
+  /* A vital's verb spends credits: a printed ghost key with the cut. */
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  box-shadow: none;
   font-size: var(--k-fs-fine);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--k-bone-38);
-}
-#screens .sx-berth:not(.sx-observatory) .sxb-vitals { flex: none; margin: calc(8px * var(--k-s)) 0 0; --k-row-cols: 1fr auto auto; }
-#screens .sx-berth:not(.sx-observatory) .sxb-vitals .k-row {
-  min-height: calc(32px * var(--k-s));
-  padding: calc(4px * var(--k-s)) 0;
-  column-gap: calc(10px * var(--k-s));
-  border-color: var(--k-hair);
-}
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__label,
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__value { font-size: var(--k-fs-data); }
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__track { width: calc(88px * var(--k-s)); height: 4px; margin-top: 4px; }
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__acts { min-width: 0; gap: 4px; }
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__acts .k-word,
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__act {
-  min-height: 36px;
-  padding: 0 calc(8px * var(--k-s));
-  background: none;
-  border-style: solid;
-  border-width: 12px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px;
-  font-size: var(--k-fs-fine);
   color: var(--k-text-live);
+  text-shadow: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__acts .k-word:hover,
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__act:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+#screens .sx-berth .sxb-vital__acts .k-word:hover,
+#screens .sx-berth .sxb-vital__act:hover {
+  background: var(--dp-cut-lit), linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-vital__ok { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
+#screens .sx-berth .sxb-vital__acts .k-word:active,
+#screens .sx-berth .sxb-vital__act:active {
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(232 226 212 / .05) 0);
+  box-shadow: none;
+}
+#screens .sx-berth .sxb-vital__ok { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
 
 /* Workspace sits on the berth — smoked window, not an opaque website stage. */
-#screens .sx-berth:not(.sx-observatory) #sx-panel {
-  grid-area: stage;
-  padding: calc(8px * var(--k-s));
+#screens .sx-berth #sx-panel {
+  padding: 0;
   margin: 0;
   min-height: 0;
   overflow: hidden;
   background: none;
 }
-#screens .sx-berth:not(.sx-observatory) #sx-panel > .k-panel { height: 100%; min-height: 0; padding: 0; gap: calc(28px * var(--k-s)); }
-#screens .sx-berth:not(.sx-observatory) #sx-panel > .k-panel > .k-hang {
-  border-style: solid;
-  border-width: 24px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 24px;
+#screens .sx-berth #sx-panel > .k-panel { height: 100%; min-height: 0; padding: 0; gap: calc(28px * var(--k-s)); }
+/* The index is the tab's one sheet: a printed field (it was a "sunk plate" lit dark at the lip). */
+#screens .sx-berth #sx-panel > .k-panel > .k-hang {
+  border: 0;
+  border-radius: 0;
+  padding: 18px;
+  background: var(--dp-field, rgb(10 12 16 / .84));
+  box-shadow: none;
+}
+#screens .sx-berth #sx-panel > .k-panel > .k-stage {
   background: none;
 }
-#screens .sx-berth:not(.sx-observatory) #sx-panel > .k-panel > .k-stage {
-  background: none;
-}
-#screens .sx-berth:not(.sx-observatory) :is(.sx-clear-corner,.sx-mkt__quote,.sx-ct__dossier,.sx-fab,.sx-fac-overview,.sx-ledger .st-ledger-detail,.sx-ledger__read) { padding-right: 0; }
+#screens .sx-berth :is(.sx-clear-corner,.sx-mkt__quote,.sx-ct__dossier,.sx-fab,.sx-fac-overview,.sx-ledger .st-ledger-detail,.sx-ledger__read) { padding-right: 0; }
 
 /* Destination keys along the bottom edge — not a Facilities website rail. */
-#screens .sx-berth:not(.sx-observatory) .sxb-ops {
-  grid-area: foot;
+#screens .sx-berth .sxb-ops {
   min-height: 0;
   padding: calc(8px * var(--k-s)) 0 0;
   margin: 0;
@@ -766,7 +902,7 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   align-items: flex-end;
   gap: calc(12px * var(--k-s)) calc(16px * var(--k-s));
 }
-#screens .sx-berth:not(.sx-observatory) .of-facility-rail {
+#screens .sx-berth .of-facility-rail {
   grid-area: auto;
   flex: 1 1 auto;
   min-width: 0;
@@ -775,7 +911,7 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   border: 0;
   overflow: visible;
 }
-#screens .sx-berth:not(.sx-observatory) .of-rail-label {
+#screens .sx-berth .of-rail-label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -783,71 +919,179 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
-#screens .sx-berth:not(.sx-observatory) .sx-dock__group--nav {
+#screens .sx-berth .sx-dock__group--nav {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: stretch;
   gap: calc(6px * var(--k-s));
 }
-#screens .sx-berth:not(.sx-observatory) .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
+#screens .sx-berth .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
 
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key {
+/* == THE DESTINATION RAIL =======================================================================
+   Seven destinations, on every station screen: the most-seen control in the game.
+
+   WHAT THIS REPLACED, and why it had to go. Each tile was painted with
+   `border-image-source: url(keys/key.legend.rest.png)` at `border-image-slice: 14 fill` - a
+   160x40 bitmap stretched across a ~120x40 tab. A 320x80 @2x sits beside it on disk and no
+   stylesheet ever referenced it, so on the Electron app at devicePixelRatio 2 every tab in the
+   game was a 160px image upsampled to 320px. That is the smudge, and it lived in the material
+   layer, not in a style choice. ONE_PHOTOGRAPH.md section 4.11 retires raster nine-slices as UI
+   material.
+
+   WHAT IT IS NOW. Section 4.2: "a filter or a tab is a lit legend on a rail. A key is mass only
+   when pressing it changes the world." Opening a tab does not change the world, so a destination
+   is LIGHT, not mass - no bevel, no box, no fill. One etched rail line runs under all seven and
+   each destination is a mark and a word standing on it. Everything is computed, so it resolves at
+   the device resolution on any display.
+
+   FOUR STATES, FOUR DISTINCT WEIGHTS - which is the point. Before this, the focused tab and the
+   current tab were both a solid amber fill, so the screen showed two "selected" tabs and the
+   focused one shouted louder than the one you were actually on.
+     rest     bone at mute, mark at mute
+     hover    warms to full ink; a short bone bar appears under it
+     CURRENT  full ink, mark lit amber, a 2px lamp bar welded under the word   <- the loudest
+     next     one small amber bead above the word, quieter than current (onboarding, 4.7)
+     focus    a full-width bone bar, never an amber ring (4.3) */
+#screens .sx-berth .sx-dock__group--nav {
+  position: relative;
+  gap: clamp(2px, 0.6vw, 10px);
+  align-items: stretch;
+}
+/* The rail itself: one etched line the whole group stands on. A hairline disappears at 1x, so it
+   is 2px - a dark score with a lit edge beneath, which reads as an engraved channel, not a
+   border. */
+#screens .sx-berth .sx-dock__group--nav::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: linear-gradient(180deg, var(--dp-rule) 1px, transparent 0);
+  pointer-events: none;
+}
+#screens .sx-berth .sx-tile.k-word,
+#screens .sx-berth .sx-tile.fh-key {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: auto;
-  gap: calc(6px * var(--k-s));
-  min-height: 40px;
-  min-width: calc(96px * var(--k-s));
-  padding: 0 calc(10px * var(--k-s));
+  gap: calc(7px * var(--k-s));
+  min-height: 42px;
+  min-width: 0;
+  padding: 0 clamp(10px, 1.1vw, 18px);
+  /* The whole raster material, gone. */
   background: none;
-  border-style: solid;
-  border-width: 14px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
-  border-image-slice: 14 fill;
-  border-image-repeat: stretch;
-  border-image-width: 14px;
+  border: 0;
+  border-image-source: none;
   box-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 600, "wdth" 62;
+  font-variation-settings: "wght" 560, "wdth" 78;
   font-size: var(--k-fs-fine);
-  letter-spacing: var(--fh-track-legend, 0.06em);
+  letter-spacing: var(--fh-track-legend, 0.08em);
   text-transform: uppercase;
   text-align: center;
-  color: var(--k-bone-62);
+  color: var(--dp-ink-mute, var(--k-bone-62));
+  transition: color 160ms var(--dp-ease-lamp, ease),
+              font-variation-settings 160ms var(--dp-ease-lamp, ease);
 }
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word::after,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key::after { display: none; }
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word:hover,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
-  color: var(--k-text-live);
+@media (prefers-reduced-motion: reduce) {
+  #screens .sx-berth .sx-tile.k-word,
+  #screens .sx-berth .sx-tile.fh-key { transition-duration: 1ms; }
 }
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word:focus-visible,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
-  color: var(--k-text-live);
+/* The lamp bar. ONE element carries hover, current and focus, so a tile can never show two. */
+#screens .sx-berth .sx-tile.k-word::after,
+#screens .sx-berth .sx-tile.fh-key::after {
+  content: "";
+  display: block;
+  position: absolute; left: 50%; translate: -50% 0; bottom: 0;
+  height: 2px; width: 0;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 10px rgb(242 185 80 / .55);
+  transition: width 200ms var(--dp-ease-lamp, ease);
+  pointer-events: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word[aria-selected="true"],
-#screens .sx-berth:not(.sx-observatory) .sx-tile.k-word.is-active,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key[aria-selected="true"],
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key.is-active,
-#screens .sx-berth:not(.sx-observatory) .sx-tile.fh-key.is-lit {
+#screens .sx-berth .sx-tile.k-word:hover,
+#screens .sx-berth .sx-tile.fh-key:hover {
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 640, "wdth" 86;
+}
+#screens .sx-berth .sx-tile.k-word:hover::after,
+#screens .sx-berth .sx-tile.fh-key:hover::after {
+  width: 34%; background: var(--dp-ink, #e2e8f0); box-shadow: none; opacity: .5;
+}
+/* CURRENT. The heaviest thing on the rail, and the only amber that spans the full word. */
+#screens .sx-berth .sx-tile.k-word[aria-selected="true"],
+#screens .sx-berth .sx-tile.k-word.is-active,
+#screens .sx-berth .sx-tile.fh-key[aria-selected="true"],
+#screens .sx-berth .sx-tile.fh-key.is-active,
+#screens .sx-berth .sx-tile.fh-key.is-lit {
   background: none;
   border-color: transparent;
   box-shadow: none;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
-  color: var(--k-text-live);
+  border-image-source: none;
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 760, "wdth" 100;
 }
-#screens .sx-berth:not(.sx-observatory) .sx-tile__seat { display: none; }
-#screens .sx-berth:not(.sx-observatory) .sx-tile__badge { margin: 0; font-size: var(--k-fs-fine); color: var(--k-signal); }
-#screens .sx-berth:not(.sx-observatory) .sx-tile__label { flex: 0 1 auto; }
+#screens .sx-berth .sx-tile.k-word[aria-selected="true"]::after,
+#screens .sx-berth .sx-tile.k-word.is-active::after,
+#screens .sx-berth .sx-tile.fh-key[aria-selected="true"]::after,
+#screens .sx-berth .sx-tile.fh-key.is-active::after,
+#screens .sx-berth .sx-tile.fh-key.is-lit::after {
+  width: 100%; opacity: 1;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 12px rgb(242 185 80 / .5);
+}
+#screens .sx-berth .sx-tile[aria-selected="true"] .sx-tile__seat,
+#screens .sx-berth .sx-tile.is-active .sx-tile__seat { color: var(--dp-lamp-hot, #f2b950); }
 
-#screens .sx-berth:not(.sx-observatory) .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
-#screens .sx-berth:not(.sx-observatory) .sx-receipt { font-size: var(--k-fs-data); white-space: normal; }
-#screens .sx-berth:not(.sx-observatory) .sx-comms__history {
+/* NEXT (onboarding, 4.7). A bead above the word. Deliberately quieter than CURRENT: it is a
+   suggestion, not where you are. It uses ::before so it can never fight the lamp bar. */
+#screens .sx-berth .sx-tile[data-dp-next]::before {
+  content: "";
+  position: absolute; left: 50%; translate: -50% 0; top: 4px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 9px rgb(242 185 80 / .8);
+}
+#screens .sx-berth .sx-tile[data-dp-next]:not([aria-selected="true"]) { color: var(--dp-ink, #e2e8f0); }
+
+/* FOCUS. Section 4.3 kills the ring. A full-width BONE bar says which one the keyboard holds;
+   amber stays reserved for CURRENT, so the two can never be confused again. `!important` because
+   station-orbital.css and Deckplate hardware both set an amber outline-color with it, and an
+   unflagged `outline:none` loses to them. */
+#screens .sx-berth .sx-tile.k-word:focus-visible,
+#screens .sx-berth .sx-tile.fh-key:focus-visible {
+  outline: 2px solid transparent !important;
+  outline-offset: 0 !important;
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 700, "wdth" 92;
+}
+#screens .sx-berth .sx-tile:focus-visible .sx-tile__seat { color: var(--dp-ink, #e2e8f0); }
+#screens .sx-berth .sx-tile.k-word:focus-visible::after,
+#screens .sx-berth .sx-tile.fh-key:focus-visible::after {
+  width: 100%; opacity: 1; height: 2px;
+  background: var(--dp-ink, #e2e8f0); box-shadow: none;
+}
+#screens .sx-berth .sx-tile[aria-selected="true"]:focus-visible::after {
+  background: var(--dp-lamp-hot, #f2b950); box-shadow: 0 0 12px rgb(242 185 80 / .5);
+}
+
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-tile.k-word::after,
+  #screens .sx-berth .sx-tile.fh-key::after { background: Highlight; }
+  #screens .sx-berth .sx-tile.k-word:focus-visible,
+  #screens .sx-berth .sx-tile.fh-key:focus-visible { outline: 2px solid Highlight !important; }
+}
+
+#screens .sx-berth .sx-tile__seat {
+  display: inline-flex; align-items: center; color: inherit;
+  transition: color 160ms var(--dp-ease-lamp, ease);
+}
+#screens .sx-berth .sx-tile__badge { margin: 0; font-size: var(--k-fs-fine); color: var(--k-signal); }
+#screens .sx-berth .sx-tile__label { flex: 0 1 auto; }
+
+#screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
+#screens .sx-berth .sx-receipt { font-size: var(--k-fs-data); white-space: normal; }
+#screens .sx-berth .sx-comms__history {
   left: 0;
   transform: none;
   width: min(540px, 80vw);
@@ -855,12 +1099,12 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   background: none;
   box-shadow: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sx-comms__toggle.k-word::after,
-#screens .sx-berth:not(.sx-observatory) .sxb-help.k-word::after,
-#screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word::after { display: none; }
+#screens .sx-berth .sx-comms__toggle.k-word::after,
+#screens .sx-berth .sxb-help.k-word::after,
+#screens .sx-berth .sxb-launch.k-word::after { display: none; }
 
-#screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word,
-#screens .sx-berth:not(.sx-observatory) .sxb-launch.fh-key {
+#screens .sx-berth .sxb-launch.k-word,
+#screens .sx-berth .sxb-launch.fh-key {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -868,13 +1112,15 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   min-height: 56px;
   min-width: calc(140px * var(--k-s));
   padding: 0 calc(16px * var(--k-s));
-  background: none;
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.rest.png");
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 18px;
+  /* The one key on the station that changes the world: the field IS the lamp, with the cut.
+     (It was a nine-sliced render, then a computed amber cap with a lit lip; both imitated a
+     material, which the owner ruled out on 2026-09-22.) */
+  border: 0;
+  border-radius: 0;
+  padding-right: calc(var(--dp-cut, 10px) + 16px * var(--k-s));
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp, #f2b950) 0);
+  box-shadow: none;
+  text-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-data);
@@ -882,48 +1128,72 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__l
   text-transform: uppercase;
   color: var(--k-text-live);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.hover.png");
+#screens .sx-berth .sxb-launch.k-word:hover,
+#screens .sx-berth .sxb-launch.fh-key:hover {
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp-hot, #ffd98c) 0);
+  box-shadow: var(--dp-lamp-glow, 0 0 28px rgb(242 185 80 / .35));
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.focus.png");
+#screens .sx-berth .sxb-launch.k-word:active,
+#screens .sx-berth .sxb-launch.fh-key:active {
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp-dim, #8a6b3a) 0);
+  box-shadow: none;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="risk"] {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.rest.png");
+/* Focus is a bone bracket, never an amber ring -- amber already means "this is the live verb"
+   here, so borrowing it for focus would say two different things with one colour (4.3). */
+#screens .sx-berth .sxb-launch.k-word:focus-visible,
+#screens .sx-berth .sxb-launch.fh-key:focus-visible {
+  outline: 2px solid var(--dp-ink, #e8e2d4) !important;
+  outline-offset: 3px !important;
+  box-shadow: var(--dp-lamp-glow, 0 0 28px rgb(242 185 80 / .35));
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="risk"]:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.hover.png");
+/* Undocking into danger: the cap goes red-hot, not grey. */
+#screens .sx-berth .sxb-launch[data-state="risk"] {
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-danger, #ff5038) 0);
+  box-shadow: none;
+  color: #1a0806;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch__copy { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch .sxb-launch__state { color: var(--k-bone-38); margin: 2px 0 0; font-size: var(--k-fs-fine); letter-spacing: 0.08em; }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="ready"] .sxb-launch__state { color: var(--k-good); }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="check"] .sxb-launch__state { color: var(--k-signal); }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="risk"] .sxb-launch__state { color: var(--k-red); }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch__light {
+#screens .sx-berth .sxb-launch[data-state="risk"]:hover {
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-danger-hot, #ff8a70) 0);
+  box-shadow: 0 0 24px var(--dp-danger-bloom, rgb(255 80 56 / .38));
+}
+@media (forced-colors: active) {
+  #screens .sx-berth .sxb-launch.k-word:focus-visible,
+  #screens .sx-berth .sxb-launch.fh-key:focus-visible { outline: 2px solid Highlight !important; }
+}
+#screens .sx-berth .sxb-launch__copy { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+#screens .sx-berth .sxb-launch .sxb-launch__state { color: var(--k-bone-38); margin: 2px 0 0; font-size: var(--k-fs-fine); letter-spacing: 0.08em; }
+#screens .sx-berth .sxb-launch[data-state="ready"] .sxb-launch__state { color: var(--k-good); }
+#screens .sx-berth .sxb-launch[data-state="check"] .sxb-launch__state { color: var(--k-signal); }
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__state { color: var(--k-red); }
+#screens .sx-berth .sxb-launch__light {
   flex: 0 0 12px;
   width: 12px;
   height: 12px;
-  background: url("../assets/ui/kit/assets/lights/light.dot.good.on.png") center / contain no-repeat;
+  background: radial-gradient(closest-side, var(--dp-ink, #e8e2d4) 98%, transparent) center / contain no-repeat;
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="check"] .sxb-launch__light {
-  background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png");
+#screens .sx-berth .sxb-launch[data-state="check"] .sxb-launch__light {
+  background-image: radial-gradient(closest-side, var(--dp-lamp, #f2b950) 98%, transparent);
 }
-#screens .sx-berth:not(.sx-observatory) .sxb-launch[data-state="risk"] .sxb-launch__light {
-  background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png");
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__light {
+  background-image: radial-gradient(closest-side, var(--dp-danger, #ff5038) 98%, transparent);
 }
 
-#screens .sx-berth:not(.sx-observatory) .sx-pop {
+#screens .sx-berth .sx-pop {
   padding: calc(18px * var(--k-s));
   background: none;
   box-shadow: none;
   color: var(--k-text-live);
 }
 
-html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__ident,
-html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__news,
-html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-event {
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__ident,
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__news,
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   color: var(--k-text-live);
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-white.png");
+  /* WANTED: the tape goes bone-bright -- a flat printed bone field, dark ink on it. */
+  background: #e2dccd;
+  box-shadow: none;
+  color: #1a1206;
+  padding: 2px 8px;
 }
 
 /* ───────────── shared scroll-edge fade ───────────── */
@@ -940,62 +1210,66 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-event {
 }
 
 @media (max-height: 780px) and (min-width: 900px) {
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth { min-height: 0; padding-top: 0; padding-bottom: calc(8px * var(--k-s)); }
-  #screens .sx-berth:not(.sx-observatory) #sx-panel { padding: calc(6px * var(--k-s)) 0; }
+  #screens .sx-berth .sxb-berth { min-height: 0; padding-top: 0; padding-bottom: calc(8px * var(--k-s)); }
+  #screens .sx-berth #sx-panel { padding: calc(6px * var(--k-s)) 0; }
 }
 @media (min-width: 2200px) {
-  #screens .sx-berth:not(.sx-observatory).k-screen { grid-template-columns: minmax(0, 1fr); }
-  #screens .sx-berth:not(.sx-observatory) #sx-panel { padding-inline: 0; }
+  #screens .sx-berth.dp-frame { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth #sx-panel { padding-inline: 0; }
 }
 @media (max-width: 1100px) {
-  #screens .sx-berth:not(.sx-observatory).k-screen { grid-template-columns: minmax(0, 1fr); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth { padding-left: 0; padding-right: calc(280px * var(--k-s)); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__lamp { left: 0; width: 12px; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-crown { width: calc(260px * var(--k-s)); gap: 0; right: calc(16px * var(--k-s)); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-purse { flex-basis: auto; }
-  #screens .sx-berth:not(.sx-observatory) .sx-tile.k-word { padding: 0 calc(8px * var(--k-s)); gap: 4px; font-size: var(--k-fs-fine); }
-  #screens .sx-berth:not(.sx-observatory) #sx-panel { padding: calc(8px * var(--k-s)) 0; }
+  #screens .sx-berth.dp-frame {
+    grid-template-columns: minmax(0, 1fr);
+    padding-right: calc(292px * var(--k-s));
+  }
+  #screens .sx-berth .sxb-berth { padding-left: 0; padding-right: 0; }
+  #screens .sx-berth .sxb-berth__lamp { left: 0; width: 12px; }
+  #screens .sx-berth .sxb-crown { width: calc(260px * var(--k-s)); gap: 0; right: calc(16px * var(--k-s)); }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
+  #screens .sx-berth .sx-tile.k-word { padding: 0 calc(8px * var(--k-s)); gap: 4px; font-size: var(--k-fs-fine); }
+  #screens .sx-berth #sx-panel { padding: calc(8px * var(--k-s)) 0; }
 }
 @media (max-width: 899px) {
-  #screens .sx-berth:not(.sx-observatory).k-screen {
+  #screens .sx-berth.dp-frame {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: "title" "stage" "foot";
+    grid-template-areas: "head" "body" "foot";
+    padding-right: calc(228px * var(--k-s));
   }
-  #screens .sx-berth:not(.sx-observatory) .of-facility-rail { padding: 0; border: 0; overflow: visible; }
-  #screens .sx-berth:not(.sx-observatory) .sx-dock__group--nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  #screens .sx-berth:not(.sx-observatory) .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
-  #screens .sx-berth:not(.sx-observatory) .sx-tile.k-word { min-height: 40px; justify-content: center; padding: 0 8px; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth { min-height: 0; padding: 0 calc(220px * var(--k-s)) 8px 0; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name.k-t-hero,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name.fh-hero { font-size: var(--fh-size-screenTitle, var(--k-fs-title)); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__news { font-size: var(--k-fs-fine); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__patch,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__route { font-size: var(--k-fs-fine); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__lamp { left: 0; top: 4px; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-crown { width: calc(200px * var(--k-s)); gap: 0; top: 12px; right: 12px; position: absolute; background: none; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-purse { flex-basis: auto; }
+  #screens .sx-berth .of-facility-rail { padding: 0; border: 0; overflow: visible; }
+  #screens .sx-berth .sx-dock__group--nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  #screens .sx-berth .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
+  #screens .sx-berth .sx-tile.k-word { min-height: 40px; justify-content: center; padding: 0 8px; }
+  #screens .sx-berth .sxb-berth { min-height: 0; padding: 0 0 8px 0; }
+  #screens .sx-berth .sxb-berth__name,
+  #screens .sx-berth .sxb-berth__name.k-t-hero,
+  #screens .sx-berth .sxb-berth__name.fh-hero { font-size: var(--fh-size-screenTitle, var(--k-fs-title)); }
+  #screens .sx-berth .sxb-berth__news { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sxb-berth__patch,
+  #screens .sx-berth .sxb-berth__route { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sxb-berth__lamp { left: 0; top: 4px; }
+  #screens .sx-berth .sxb-crown { width: calc(200px * var(--k-s)); gap: 0; top: 12px; right: 12px; position: absolute; background: none; }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
   #screens [data-screen="station"] .sxb-purse__value { font-size: var(--k-fs-title); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-vital__track { width: 52px; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-ops { padding: 8px 0 0; min-height: 0; }
+  #screens .sx-berth .sxb-vital__track { width: calc(64px * var(--k-s)); }
+  #screens .sx-berth .sxb-ops { padding: 8px 0 0; min-height: 0; }
 }
 @media (max-width: 650px) {
-  #screens .sx-berth:not(.sx-observatory).k-screen {
+  #screens .sx-berth.dp-frame {
     overflow: hidden;
     padding: calc(12px * var(--k-s));
-    grid-template-areas: "title" "stage" "foot";
+    grid-template-areas: "head" "body" "foot";
     grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-columns: minmax(0, 1fr);
   }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth { padding: 0 0 8px; min-height: 0; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name.k-t-hero,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__name.fh-hero { font-size: var(--k-fs-sub); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__news { padding-right: 0; max-height: none; overflow: visible; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__patch,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__route { padding-right: 0; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-crown {
+  #screens .sx-berth .sxb-berth { padding: 0 0 8px; min-height: 0; }
+  #screens .sx-berth .sxb-berth__name,
+  #screens .sx-berth .sxb-berth__name.k-t-hero,
+  #screens .sx-berth .sxb-berth__name.fh-hero { font-size: var(--k-fs-sub); }
+  #screens .sx-berth .sxb-berth__news { padding-right: 0; max-height: none; overflow: visible; }
+  #screens .sx-berth .sxb-berth__patch,
+  #screens .sx-berth .sxb-berth__route { padding-right: 0; }
+  #screens .sx-berth .sxb-crown {
     position: absolute;
     grid-area: auto;
     width: min(100%, 220px);
@@ -1004,42 +1278,514 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-event {
     top: 8px;
     right: 8px;
   }
-  #screens .sx-berth:not(.sx-observatory) .sxb-vitals { display: block; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-vitals .k-row { display: grid; min-height: 28px; flex: none; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-vital__acts .k-word { min-height: 36px; }
+  #screens .sx-berth .sxb-vitals { display: block; }
+  #screens .sx-berth .sxb-vitals .k-row { display: grid; min-height: 28px; flex: none; }
+  #screens .sx-berth .sxb-vital__acts .k-word { min-height: 36px; }
   #screens [data-screen="station"] .sxb-purse__value { font-size: var(--k-fs-menu); }
-  #screens .sx-berth:not(.sx-observatory) .sxb-purse { flex-basis: auto; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-purse__label { font-size: var(--k-fs-fine); }
-  #screens .sx-berth:not(.sx-observatory) .sx-dock__group--nav { width: auto; }
-  #screens .sx-berth:not(.sx-observatory) .sx-tile.k-word { font-size: var(--k-fs-fine); }
-  #screens .sx-berth:not(.sx-observatory) .sx-tile__seat { display: none; }
-  #screens .sx-berth:not(.sx-observatory) #sx-panel { padding: 8px 0; overflow: auto; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word { min-height: 48px; font-size: var(--k-fs-data); padding: 0 12px; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-ops { gap: 8px; flex-wrap: wrap; background: none; }
-  #screens .sx-berth:not(.sx-observatory) .sx-comms { min-width: 120px; }
-  #screens .sx-berth:not(.sx-observatory) .sx-receipt { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
+  #screens .sx-berth .sxb-purse__label { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sx-dock__group--nav { width: auto; }
+  #screens .sx-berth .sx-tile.k-word { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sx-tile__seat { display: inline-flex; align-items: center; color: inherit; }
+  #screens .sx-berth #sx-panel { padding: 8px 0; overflow: auto; }
+  #screens .sx-berth .sxb-launch.k-word { min-height: 48px; font-size: var(--k-fs-data); padding: 0 12px; }
+  #screens .sx-berth .sxb-ops { gap: 8px; flex-wrap: wrap; background: none; }
+  #screens .sx-berth .sx-comms { min-width: 120px; }
+  #screens .sx-berth .sx-receipt { font-size: var(--k-fs-fine); }
 }
 
 @media (forced-colors: active) {
-  #screens .sx-berth:not(.sx-observatory) .sx-tile.k-word,
-  #screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word,
-  #screens .sx-berth:not(.sx-observatory) .sxb-vital__act,
-  #screens .sx-berth:not(.sx-observatory) .sx-comms__toggle,
-  #screens .sx-berth:not(.sx-observatory) .sxb-help {
+  #screens .sx-berth .sx-tile.k-word,
+  #screens .sx-berth .sxb-launch.k-word,
+  #screens .sx-berth .sxb-vital__act,
+  #screens .sx-berth .sx-comms__toggle,
+  #screens .sx-berth .sxb-help {
     border: 1px solid ButtonText;
     background: Canvas;
     color: CanvasText;
     border-image: none;
   }
-  #screens .sx-berth:not(.sx-observatory) .sx-tile.k-word[aria-selected="true"],
-  #screens .sx-berth:not(.sx-observatory) .sxb-launch.k-word {
+  #screens .sx-berth .sx-tile.k-word[aria-selected="true"],
+  #screens .sx-berth .sxb-launch.k-word {
     border: 2px solid Highlight;
     color: Highlight;
   }
-  #screens .sx-berth:not(.sx-observatory) .sxb-crown,
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__news,
-  #screens .sx-berth:not(.sx-observatory) .sxb-event,
-  #screens .sx-berth:not(.sx-observatory) .sx-pop { border: 1px solid CanvasText; border-image: none; }
-  #screens .sx-berth:not(.sx-observatory) .sxb-berth__lamp,
-  #screens .sx-berth:not(.sx-observatory) .sxb-launch__light { forced-color-adjust: none; }
+  #screens .sx-berth .sxb-crown,
+  #screens .sx-berth .sxb-berth__news,
+  #screens .sx-berth .sxb-event,
+  #screens .sx-berth .sx-pop { border: 1px solid CanvasText; border-image: none; }
+  #screens .sx-berth .sxb-berth__lamp,
+  #screens .sx-berth .sxb-launch__light { forced-color-adjust: none; }
 }
+
+/* The shipworks verb rack sits in the ~115px fleet column, but its verbs are sentences ("Take it
+   to the range", "Select a slot") laid out as non-wrapping inline-blocks. They ran past the column
+   and slid UNDER the stage panel at x=300, so the player saw "range", "ecord", ": a slot" -- three
+   words with their heads cut off. Nothing was clipping them; they were simply behind something.
+   A verb wraps inside its own column instead. */
+/* The shipworks verb rack carried `margin-right: calc(400px * var(--k-s) + var(--k-gap))` -- a
+   hard-coded reservation for a 400px right panel that the berth layout no longer puts there. It
+   squeezed the rack to 115px, so its verbs ("Take it to the range", "Select a slot") overflowed
+   and slid UNDER the stage panel: the player saw "range", "ecord", ": a slot", three words with
+   their heads cut off. Nothing was clipping them; they were behind something.
+
+   The rack sits at the end of its own row and wraps at spaces. NOT `overflow-wrap: anywhere` --
+   that broke "Record" into "Reco / rd", which is worse than the bug it fixed. */
+#screens .sx-berth .sx-sw__main > .sx-sw-verbs {
+  margin-right: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: calc(16px * var(--k-s));
+  min-width: 0;
+}
+#screens .sx-berth .sx-sw-verb { white-space: nowrap; max-width: 100%; }
+
+/* ── MEASURED LEGIBILITY FIXES (scripts/ui-contrast.mjs, against the composited frame) ─────────
+   Every number below was read off the rendered PNG, not judged by eye. */
+
+/* UNDOCK measured 2.15:1 -- and it was MY regression from the material retire. The raster
+   key.primary.rest.png happened to be dark enough for bone text; the computed amber cap that
+   replaced it is much brighter, and the label kept var(--k-text-live). The most consequential
+   control in the game had the worst contrast on the screen. Amber cap takes dark ink. */
+#screens .sx-berth .sxb-launch .sxb-launch__label,
+#screens .sx-berth .sxb-launch__label { color: #1a1206; text-shadow: 0 1px 0 rgb(255 236 200 / .28); }
+/* "Ready" sits on the cap's lit upper band, so a mid-brown that looked fine on the body measured
+   2.89:1 there. It takes the same ink as the label; the tier gap is size and weight, which cost
+   nothing in contrast. */
+#screens .sx-berth .sxb-launch .sxb-launch__state,
+#screens .sx-berth .sxb-launch[data-state="ready"] .sxb-launch__state {
+  color: #1a1206; text-shadow: none; font-variation-settings: "wght" 520;
+}
+/* Undocking into danger keeps a light label: that cap is deep red, not amber. */
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__label { color: #fff0ea; text-shadow: 0 1px 0 rgb(0 0 0 / .45); }
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__state { color: #f6ccc0; }
+
+/* 3.45:1 -- the service search is a real control, not a watermark. */
+#screens .sx-berth .so-command-trigger,
+#screens .sx-berth .so-command-trigger * { color: #cfdbe6; }
+/* 3.65:1 -- a purse legend beside a five-figure number still has to be readable. */
+#screens .sx-berth .sxb-purse__label { color: #c2cfdb; }
+/* 4.45:1 -- a keycap hint is quiet by design, but it is an instruction. */
+#screens .sx-berth .dp-kbd, .dp-kbd { color: #cbd6e2; }
+
+/* 3.59:1 / 4.48:1 -- a hero figure's unit legend ("power", "condition") is the word that says what
+   the number means; it cannot be the least readable thing beside it. */
+#screens .sx-berth .k-hero__w,
+#screens .sx-berth .k-hero__w.fh-legend { color: #c2cfdb; }
+
+/* A rung's state word ("unlocked", "locked") is a quiet reading, not a hidden one: over the bay's
+   lit right half it measured 4.34:1 at the muted tier (scripts/ui-contrast.mjs), so it takes the
+   station's measured quiet ink instead. */
+#screens .sx-berth .sx-ladder__name .k-row__sub { color: #c9c6be; }
+
+/* == THE MARKET, AS AN INSTRUMENT ================================================================
+   2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md sections 4.5, 4.6 and 9.3). The quote used to open
+   with a seven-line essay and close on a 300x74 drawing stretched to fill a dark box -- a picture
+   of an instrument that showed nothing. Now:
+     the board   the commodity register, left
+     the quote   the name and price, ONE line of readings (driver words, not paragraphs), then the
+                 trace itself -- ten minutes of this station's price as a 2px phosphor line, the
+                 galactic average dashed, buy and sell as two lamp ticks, the forecast cone after
+                 "now" -- with a crosshair that reads any sample under the pointer, and the four
+                 readings beneath it, which double as the trace's key
+     the console the trade: a quantity you can drag, the total, the verb
+   The console no longer floats over the quote: the analysis scrolls in its own region above it. */
+#screens .sx-berth .sx-screen__body > .sx-mkt {
+  grid-template-columns: minmax(520px, 36%) minmax(0, 1fr);
+  column-gap: clamp(24px, 2.6vw, 56px);
+}
+#screens .sx-berth .sx-screen__body .sx-mkt__stage { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; }
+#screens .sx-berth .sx-screen__body .sx-mkt__analysis {
+  flex: 1 1 0; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  padding: 4px 6px 28px 0; scrollbar-gutter: stable;
+  /* a scrolled line fades into the console instead of being cut in half at its edge */
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+}
+/* "Stable demand" repeated the Trend reading above it; it stays for assistive technology. */
+#screens .sx-berth .sx-mkt__quote > .sx-mkt-cone-read {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+#screens .sx-berth .sx-mkt__quote { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 32px; row-gap: 0; padding: 0; }
+#screens .sx-berth .sx-mkt__quote > * { grid-column: 1 / -1; margin: 0; }
+#screens .sx-berth .sx-mkt__quote > .sx-mkt-cat-inline { grid-column: 1; }
+#screens .sx-berth .sx-mkt__quote > .sx-mkt-title { grid-column: 1; margin-top: 6px; font-size: clamp(30px, 2.4vw, 44px); line-height: 1; }
+#screens .sx-berth .sx-mkt__quote > .sx-mkt__hero { grid-column: 2; grid-row: 1 / span 2; align-self: end; text-align: right; margin: 0; padding: 0; }
+#screens .sx-berth .sx-mkt__quote .sx-mkt__hero .k-hero__n {
+  font-family: var(--dp-face-display); font-variation-settings: "wght" 760, "wdth" 108;
+  font-size: var(--dp-fs-hero, 56px); line-height: .9; letter-spacing: .01em; font-variant-numeric: tabular-nums;
+  color: var(--dp-lamp-hot, #ffd98c); text-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), var(--dp-text-legible);
+}
+#screens .sx-berth .sx-mkt__quote .sx-mkt__hero .k-hero__w { margin-top: 6px; font-family: var(--dp-face-etch); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #c2cfdb; }
+/* The tracked-contract line reads after the readings, not above the name. */
+#screens .sx-berth .sx-mkt__quote > .sx-mkt-tracked { order: 20; margin-top: 16px; padding: 4px 0 4px 12px; border: 0; background: linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0); }
+
+/* the reading line */
+#screens .sx-berth .sx-mkt-drivers {
+  display: flex; flex-wrap: wrap; gap: 10px clamp(20px, 2.4vw, 44px);
+  margin: 22px 0 0; padding: 14px 0 0; list-style: none;
+  border-top: 1px solid var(--dp-rule, rgb(232 226 212 / .10));
+}
+#screens .sx-berth .sx-mkt-drivers__item { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+#screens .sx-berth .sx-mkt-drivers__k { font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 70; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #c2cfdb; }
+#screens .sx-berth .sx-mkt-drivers__v { font-family: var(--dp-face-read); font-weight: 600; font-size: 16px; color: var(--dp-ink, #e8e2d4); white-space: nowrap; }
+#screens .sx-berth .sx-mkt-drivers__item[data-dir="up"] .sx-mkt-drivers__v { color: var(--dp-lamp-hot, #ffd98c); }
+#screens .sx-berth .sx-mkt-drivers__item[data-dir="down"] .sx-mkt-drivers__v { color: var(--dp-phos, #dfeeff); }
+/* the paragraph stays for assistive technology (the stage is aria-describedby it), out of sight */
+#screens .sx-berth .sx-mkt-essay {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+#screens .sx-berth .sx-mkt-chain { margin-top: 12px; padding: 0; border: 0; font-size: 13px; }
+#screens .sx-berth .sx-mkt-chain__flow { color: var(--dp-ink-dim, #b7b4a6); }
+#screens .sx-berth .sx-mkt-chain__dock { color: #c2cfdb; }
+
+/* the trace */
+#screens .sx-berth .sx-mkt-instrument { position: relative; margin: 26px 0 0; padding: 0 0 0 44px; }
+#screens .sx-berth .sx-mkt-instrument__plot {
+  position: relative; height: clamp(150px, 19vh, 240px);
+  border-bottom: 1px solid var(--dp-rule-hi, rgb(232 226 212 / .22));
+}
+#screens .sx-berth .sx-mkt-instrument .sx-mkt-chart {
+  display: block; width: 100%; height: 100%; margin: 0; overflow: visible; border: 0; background: none;
+}
+#screens .sx-berth .sx-mkt-chart .sx-mkt-line { stroke: var(--dp-phos, #dfeeff); stroke-width: 2px; }
+#screens .sx-berth .sx-mkt-chart .of-chart-area { fill: rgb(150 210 255 / .06); }
+#screens .sx-berth .sx-mkt-chart .sx-mkt-avg { stroke: var(--dp-phos-dim, #9fb4c8); stroke-width: 1px; opacity: .8; }
+#screens .sx-berth .sx-mkt-chart .sx-mkt-now { stroke: var(--dp-rule-hi, rgb(232 226 212 / .22)); stroke-width: 1px; }
+#screens .sx-berth .sx-mkt-chart .sx-mkt-cone { fill: rgb(150 210 255 / .05); }
+#screens .sx-berth .sx-mkt-chart .sx-mkt-forecast { stroke: var(--dp-phos-dim, #9fb4c8); stroke-width: 1.5px; }
+#screens .sx-berth .sx-mkt-instrument__y {
+  position: absolute; left: -44px; width: 38px; text-align: right;
+  font-family: var(--dp-face-read); font-variant-numeric: tabular-nums; font-size: 12px; color: #c2cfdb;
+}
+#screens .sx-berth .sx-mkt-instrument__y--max { top: 0; transform: translateY(-50%); }
+#screens .sx-berth .sx-mkt-instrument__y--min { bottom: 0; transform: translateY(50%); }
+#screens .sx-berth .sx-mkt-instrument__avg {
+  position: absolute; left: 8px; transform: translateY(-130%);
+  font-family: var(--dp-face-etch); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dp-phos-dim, #9fb4c8);
+}
+#screens .sx-berth .sx-mkt-instrument__tick {
+  position: absolute; right: 0; display: flex; flex-direction: row-reverse; align-items: center; gap: 7px;
+  font-family: var(--dp-face-etch); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dp-lamp-hot, #ffd98c); white-space: nowrap;
+}
+#screens .sx-berth .sx-mkt-instrument__tick i { display: block; width: 18px; height: 2px; background: var(--dp-lamp, #f2b950); box-shadow: 0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
+/* buy above its line, sell below, so equal quotes never print on top of each other */
+#screens .sx-berth .sx-mkt-instrument__tick--buy { transform: translateY(-120%); }
+#screens .sx-berth .sx-mkt-instrument__tick--sell { transform: translateY(20%); }
+#screens .sx-berth .sx-mkt-instrument__dot {
+  position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+  background: var(--dp-phos, #dfeeff); box-shadow: 0 0 10px var(--dp-phos-halo, rgb(150 210 255 / .22)), 0 0 3px rgb(150 210 255 / .6);
+}
+/* the crosshair */
+#screens .sx-berth .sx-mkt-instrument__cursor { position: absolute; inset: 0; pointer-events: none; }
+#screens .sx-berth .sx-mkt-instrument__cursor[hidden] { display: none; }
+#screens .sx-berth .sx-mkt-instrument__cursor i {
+  position: absolute; top: 0; bottom: 0; left: var(--cx, 0%); width: 1px; background: rgb(223 238 255 / .42);
+}
+#screens .sx-berth .sx-mkt-instrument__cursor::after {
+  content: ""; position: absolute; left: var(--cx, 0%); top: var(--cy, 50%); width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%; background: var(--dp-lamp-hot, #ffd98c); box-shadow: 0 0 10px var(--dp-lamp-bloom, rgb(242 185 80 / .34));
+}
+#screens .sx-berth .sx-mkt-instrument__cursor b {
+  position: absolute; left: calc(var(--cx, 0%) + 12px); top: calc(var(--cy, 50%) - 30px);
+  padding: 3px 8px; background: var(--dp-field, rgb(10 12 16 / .84));
+  font-family: var(--dp-face-read); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums;
+  color: var(--dp-phos, #dfeeff); white-space: nowrap;
+}
+#screens .sx-berth .sx-mkt-instrument__cursor.is-left b { left: auto; right: calc(100% - var(--cx, 0%) + 12px); }
+#screens .sx-berth .sx-mkt-instrument__cursor[data-kind="f"] b { color: var(--dp-phos-dim, #9fb4c8); }
+#screens .sx-berth .sx-mkt-chart-key {
+  display: flex; justify-content: space-between; margin: 7px 0 0 44px;
+  font-family: var(--dp-face-etch); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #c2cfdb;
+}
+
+/* the four readings: the trace's key */
+#screens .sx-berth .sx-mkt-readouts {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 clamp(16px, 2vw, 40px);
+  margin: 22px 0 0; padding: 0;
+}
+#screens .sx-berth .sx-mkt-readouts__item { margin: 0; min-width: 0; }
+#screens .sx-berth .sx-mkt-readouts dt {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 70; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #c2cfdb;
+}
+#screens .sx-berth .sx-mkt-readouts__sub { letter-spacing: .08em; text-transform: none; font-family: var(--dp-face-read); color: #c2cfdb; }
+#screens .sx-berth .sx-mkt-readouts__mark { display: inline-block; width: 16px; height: 2px; flex: 0 0 auto; }
+#screens .sx-berth .sx-mkt-readouts__item--buy .sx-mkt-readouts__mark,
+#screens .sx-berth .sx-mkt-readouts__item--sell .sx-mkt-readouts__mark { background: var(--dp-lamp, #f2b950); }
+#screens .sx-berth .sx-mkt-readouts__item--avg .sx-mkt-readouts__mark { height: 1px; background: repeating-linear-gradient(90deg, var(--dp-phos-dim, #9fb4c8) 0 3px, transparent 3px 7px); }
+#screens .sx-berth .sx-mkt-readouts__item--demand .sx-mkt-readouts__mark { display: none; }
+#screens .sx-berth .sx-mkt-readouts dd {
+  margin: 8px 0 0; font-family: var(--dp-face-read); font-weight: 600; font-size: 24px; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--dp-phos, #dfeeff); text-shadow: var(--dp-phos-emit-soft, 0 0 6px rgb(150 210 255 / .14));
+}
+#screens .sx-berth .sx-mkt__quote > .sx-mkt-sale { margin-top: 16px; font-size: 13px; color: var(--dp-lamp-hot, #ffd98c); }
+
+/* the console: one band under the quote */
+#screens .sx-berth .sx-mkt__console {
+  display: block; flex: 0 0 auto; margin: 0; padding: 16px 20px 14px; border: 0;
+  background: var(--dp-field, rgb(10 12 16 / .84)); box-shadow: none;
+}
+#screens .sx-berth .sx-mkt__console .sx-trade.fh-plate {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "qty total note words" "breakdown breakdown breakdown breakdown";
+  align-items: end; gap: 10px clamp(20px, 2.4vw, 44px);
+  padding: 0; border: 0; background: none;
+}
+#screens .sx-berth .sx-trade > .sx-qty { grid-area: qty; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; align-items: center; gap: 6px 14px; margin: 0; }
+#screens .sx-berth .sx-trade > .sx-qty .sx-qty__k { grid-column: 1 / -1; margin: 0; font-size: 12px; letter-spacing: .16em; color: #c2cfdb; }
+#screens .sx-berth .sx-trade .sx-qty__in {
+  width: 5.5ch; min-width: 0; height: 44px; padding: 0 2px; box-sizing: border-box;
+  border: 0; background: linear-gradient(0deg, var(--dp-rule-hi, rgb(232 226 212 / .22)) 2px, transparent 0);
+  font-family: var(--dp-face-read); font-weight: 600; font-size: 28px; font-variant-numeric: tabular-nums; text-align: center;
+  color: var(--dp-phos, #dfeeff); cursor: ew-resize; touch-action: none;
+}
+#screens .sx-berth .sx-trade .sx-qty__in:focus-visible,
+#screens .sx-berth .sx-mkt__console.is-scrubbing .sx-qty__in { outline: 0; background: linear-gradient(0deg, var(--dp-lamp, #f2b950) 2px, transparent 0); }
+#screens .sx-berth .sx-trade .sx-qty__words { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; flex-wrap: nowrap; }
+#screens .sx-berth .sx-trade > .so-trade-total { grid-area: total; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin: 0; }
+#screens .sx-berth .sx-trade > .so-trade-total [data-trade-total-label] { font-family: var(--dp-face-etch); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #c2cfdb; }
+#screens .sx-berth .sx-trade > .so-trade-total strong { font-family: var(--dp-face-read); font-weight: 600; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--dp-phos, #dfeeff); }
+#screens .sx-berth .sx-trade > .sx-trade__note { grid-area: note; align-self: end; margin: 0 0 10px; font-size: 13px; color: var(--dp-lamp-hot, #ffd98c); }
+#screens .sx-berth .sx-trade > .sx-trade__words { grid-area: words; display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
+#screens .sx-berth .sx-trade > .sx-trade__words .sx-trade__go.fh-key { min-height: 48px; font-size: 14px; letter-spacing: .12em; }
+#screens .sx-berth .sx-trade > .so-trade-breakdown { grid-area: breakdown; margin: 0; border-top: 1px solid var(--dp-rule, rgb(232 226 212 / .10)); }
+#screens .sx-berth .sx-trade > .so-trade-breakdown summary { color: var(--dp-lamp-hot, #ffd98c); }
+#screens .sx-berth .sx-trade > .so-trade-breakdown summary span { color: #c2cfdb; }
+#screens .sx-berth .so-trade-breakdown[open] .sx-trade__rows { background: var(--dp-sheet, rgb(8 9 12 / .9)); border: 0; border-radius: 0; box-shadow: none; }
+@media (max-width: 1280px) {
+  #screens .sx-berth .sx-screen__body > .sx-mkt { grid-template-columns: minmax(420px, 42%) minmax(0, 1fr); }
+  #screens .sx-berth .sx-mkt__console .sx-trade.fh-plate { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "qty total words" "note note note" "breakdown breakdown breakdown"; }
+  #screens .sx-berth .sx-mkt-readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { #screens .sx-berth .sx-mkt-instrument__cursor { transition: none; } }
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-mkt-chart .sx-mkt-line { stroke: CanvasText; }
+  #screens .sx-berth .sx-mkt-instrument__dot, #screens .sx-berth .sx-mkt-instrument__cursor::after { background: Highlight; }
+  #screens .sx-berth .sx-mkt-instrument__tick i, #screens .sx-berth .sx-mkt-readouts__mark { background: CanvasText; }
+}
+#screens .sx-berth .sx-mkt-instrument__plot:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 4px; }
+#screens .sx-berth .sx-mkt-instrument__live {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* == THE BAR: THE CONTACT, LIT =================================================================
+   2026-09-22. The bar is a conversation, so its signature is the person: the contact's portrait
+   (a produced 1024px painting, src/data/portraits.js) stands large in the right half of the stage
+   and falls away into the bay on its left and lower edges, the way a figure stands in low light --
+   instead of a 240px thumbnail in a corner beside a 420px padding hole. The conversation reads down
+   the left. The fade is the photograph's own vignette, not a frame. */
+#screens .sx-berth .sx-bar__stage .sx-talk {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 42%);
+  column-gap: clamp(24px, 3vw, 64px); align-items: start;
+  padding-right: 0;
+}
+#screens .sx-berth .sx-bar__stage .sx-talk > * { grid-column: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk > * + * { margin-top: calc(22px * var(--k-s)); }
+#screens .sx-berth .sx-bar__stage .sx-talk__head { display: contents; }
+#screens .sx-berth .sx-bar__stage .sx-talk__id { grid-column: 1; grid-row: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk__avatar {
+  grid-column: 2; grid-row: 1 / span 12; align-self: start; justify-self: stretch;
+  width: 100%; height: auto; aspect-ratio: 4 / 5; max-height: min(640px, 64vh); margin: -8px 0 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%), linear-gradient(0deg, transparent 0, #000 30%, #000 86%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent 0, #000 26%), linear-gradient(0deg, transparent 0, #000 30%, #000 86%, transparent 100%);
+  mask-composite: intersect;
+}
+#screens .sx-berth .sx-bar__stage .sx-talk__avatar :is(img, canvas, .sx-portrait) {
+  display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%;
+  border: 0; border-radius: 0; box-shadow: none; filter: saturate(.92) contrast(1.04);
+}
+#screens .sx-berth .sx-bar__stage .sx-talk__name { font-size: clamp(34px, 3vw, 56px); line-height: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk__reply { font-size: clamp(17px, 1.15vw, 21px); line-height: 1.45; color: var(--dp-ink, #e8e2d4); }
+#screens .sx-berth .sx-bar__stage .sx-talk__reply.is-idle { color: #c9c6be; }
+@media (max-width: 1100px) {
+  #screens .sx-berth .sx-bar__stage .sx-talk { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth .sx-bar__stage .sx-talk__avatar { grid-column: 1; grid-row: auto; max-width: 320px; }
+}
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-bar__stage .sx-talk__avatar { -webkit-mask-image: none; mask-image: none; }
+}
+#screens .sx-berth .sx-mkt__console.is-scrubbing .sx-qty__in { user-select: none; caret-color: transparent; }
+
+/* ------------------------------------------------------------------------------------------------
+   CONTRACTS: THE HANG READS WHOLE (2026-09-22 demo pass)
+   An accepted job was a flex row -- title | nowrap meta | Track -- so the meta ("Deliver to
+   destination · Helios Gate") took the width and the title clamped to "Contract 47-A:…". The row is
+   now two lines: the title owns line one beside Track, the objective runs under it.
+   A board decision ("Two posted jobs can be taken…") borrowed the posted-row grid, which put its
+   option name in the crest column and its trade-off in the payout column, in capitals. Each option
+   is now a stacked choice: the job, then what it costs you, in a sentence.
+   ------------------------------------------------------------------------------------------------ */
+#screens .sx-berth .sx-ct__jobs .sx-job {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title track" "meta track";
+  align-items: center; column-gap: calc(16px * var(--k-s)); row-gap: 4px;
+  padding-block: calc(12px * var(--k-s));
+}
+#screens .sx-berth .sx-ct__jobs .sx-job__title { grid-area: title; -webkit-line-clamp: 2; }
+#screens .sx-berth .sx-ct__jobs .sx-job__meta {
+  grid-area: meta; white-space: normal; -webkit-line-clamp: 2; color: var(--dp-ink-dim, #b9b4a8);
+}
+#screens .sx-berth .sx-ct__jobs .sx-job__track { grid-area: track; align-self: center; }
+
+#screens .sx-berth .sx-decision { display: flex; flex-direction: column; gap: 2px; margin-bottom: calc(18px * var(--k-s)); }
+#screens .sx-berth .sx-decision > .k-sentence { margin: 0 0 calc(8px * var(--k-s)); }
+#screens .sx-berth .sx-decision__opt.k-row {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  min-height: 0; padding: calc(12px * var(--k-s)) 12px calc(12px * var(--k-s)) 14px;
+  text-align: left;
+}
+#screens .sx-berth .sx-decision__opt > .k-row__name {
+  white-space: normal; overflow: visible; text-overflow: clip; max-width: none;
+}
+#screens .sx-berth .sx-decision__opt > .k-row__sub {
+  white-space: normal; text-transform: none; letter-spacing: 0; font-family: inherit;
+  font-size: var(--k-fs-data, 13px); line-height: 1.4; color: var(--dp-ink-dim, #b9b4a8); max-width: none;
+}
+
+/* The exchange's column heads stay put while the rows scroll under them; at 42 % the rows showed
+   through and "COMMODITY BUY SELL" printed over "Stellarite Ore 839 0%". The head is now the
+   sheet itself, with its hairline, so a scrolled row passes cleanly beneath it. */
+#screens .sx-berth .sx-mkt-table thead { background: rgb(9 11 14); }
+#screens .sx-berth .sx-mkt-table thead th {
+  background: rgb(9 11 14);
+  box-shadow: inset 0 -1px 0 var(--dp-rule, rgb(232 226 212 / .10));
+}
+#screens .sx-berth .sx-mkt-row__tr.is-flat { color: var(--dp-ink-mute, #9a968c); }
+
+/* ───────────── SHIPWORKS + THE SHIP — the hull render, the system callouts, THE SHIP's columns ─────────────
+   One block for the shared ship stage (src/ui/station/screens/shipworks.js), both hosts: the dock
+   tab and the in-flight THE SHIP screen. Printed and lit (design/frontend/ONE_PHOTOGRAPH.md 9):
+   the hull is produced art, a callout is a printed field with the cut, a bead is flat ink. */
+
+/* The produced render (src/ui/ship/hullPoster.js) is the stage until the authored hull has drawn,
+   and for good where the live preview never arrives. It sits over the canvas and under every
+   overlay; shipworks.js places it so its hull fills the room the labels leave. The canvas clears
+   to an opaque frame while the dock and hull stream in, so behind a render it waits, unfocusable. */
+.sx-sw__stage > .sx-sw__poster {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0;
+  object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none;
+  opacity: 1; transition: opacity 600ms var(--k-ease, ease-out);
+}
+.sx-sw__stage > .sx-sw__poster[hidden] { display: none; }
+.sx-sw__stage.is-live > .sx-sw__poster { opacity: 0; }
+.sx-sw__stage.has-poster > .sx-sw__canvas { transition: opacity 600ms var(--k-ease, ease-out); }
+.sx-sw__stage.has-poster:not(.is-live) > .sx-sw__canvas { opacity: 0; pointer-events: none; }
+/* A render cannot be orbited, and scars are pinned to the live hull's geometry: both wait for it. */
+.sx-sw__stage.has-poster:not(.is-live) :is(.sx-sw__camera, .sx-sw__dragcue, .sx-sw__scarfield) { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .sx-sw__stage > .sx-sw__poster, .sx-sw__stage.has-poster > .sx-sw__canvas { transition: none; }
+}
+
+/* The callouts (src/ui/ship/calloutLayout.js): a bead on the socket, a leader, the label in a
+   column beside the hull. A label opens the slot's hardware, so it is a printed field with the
+   cut; a fitted slot carries the lamp bar on its leading edge, an open one a quiet rule. */
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy {
+  box-sizing: border-box; padding: 5px calc(var(--dp-cut, 10px) + 8px) 6px 12px;
+  background:
+    linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+  text-shadow: none;
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy {
+  background:
+    linear-gradient(90deg, var(--dp-rule-hi, rgb(232 226 212 / .22)) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, .is-selected) .sx-hardpoint__copy {
+  background:
+    var(--dp-cut-lit, linear-gradient(transparent 0 0)),
+    linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0),
+    linear-gradient(var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:focus-visible .sx-hardpoint__copy {
+  background:
+    var(--dp-cut-lit, linear-gradient(transparent 0 0)),
+    var(--dp-bracket, linear-gradient(90deg, #e8e2d4 2px, transparent 0)),
+    linear-gradient(var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy em { color: var(--dp-ink-dim, #b9b4a8); }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy b { color: var(--dp-ink-dim, #b9b4a8); }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__copy b { color: var(--dp-lamp-hot, #ffd98c); }
+/* The bead: flat ink, 7 px; lamp when the slot is under the hand or chosen. */
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__reticle {
+  left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dp-ink, #e8e2d4); box-shadow: 0 0 0 2px rgb(10 12 16 / .7);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__reticle {
+  background: var(--dp-lamp, #f2b950); box-shadow: 0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .45));
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__leader path { stroke: rgb(232 226 212 / .5); stroke-width: 1.25; }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke: var(--dp-lamp, #f2b950); }
+/* THE SHIP's Deckplate sheet pins the bead and leader with an id selector; the same rules, as strong. */
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint__reticle { box-shadow: 0 0 0 2px rgb(10 12 16 / .7); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy b { color: var(--dp-ink-dim, #b9b4a8); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__reticle {
+  background: var(--dp-lamp, #f2b950); box-shadow: 0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .45));
+}
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint__leader path { stroke: rgb(232 226 212 / .5); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke: var(--dp-lamp, #f2b950); }
+
+/* The bomb rack's sockets read name over state, like the system rows above them. */
+.sx-sw-rack__copy > .k-row__sub { white-space: normal; }
+
+/* THE SHIP in flight: the three columns are the grid's, never laid over each other. The systems
+   column was still the dock's 400 px absolute plate pinned to the panel's right edge, so it sat
+   80 px over the stage; the stats and the verbs kept a 400 px right margin for a plate that is not
+   in their column. */
+.sf-ship.dp-frame > .sx-sw > .sx-sw__rail { grid-column: 1; grid-row: 1; }
+.sf-ship.dp-frame > .sx-sw > .sx-sw__main { grid-column: 2; grid-row: 1; min-width: 0; }
+.sf-ship.dp-frame > .sx-sw > .sx-sw__side {
+  grid-column: 3; grid-row: 1; position: relative; inset: auto; width: auto; max-height: none;
+}
+.sf-ship.dp-frame .sx-sw__stats { margin-right: 0; flex: 0 1 auto; min-height: 0; max-height: 48%; overflow: hidden auto; }
+.sf-ship.dp-frame .sx-sw__main > .sx-sw-verbs { margin-right: 0; }
+/* The fleet card: the hull's role on its own line, whole, under the name; "Active" rides the
+   name's line instead of squeezing the role into "STARTER SC..." beside it. */
+.sx-sw-row.k-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name flag" "sub sub"; align-items: baseline; row-gap: 2px; }
+.sx-sw-row > .sx-sw-row__body { display: contents; overflow: visible; } /* a box-less wrapper clips nothing; its inherited overflow:hidden read as a panel eating its copy */
+.sx-sw-row .sx-sw-row__name { grid-area: name; min-width: 0; }
+.sx-sw-row .sx-sw-row__sub { grid-area: sub; white-space: normal; overflow: visible; text-overflow: clip; }
+.sx-sw-row > .sx-sw-row__flag, .sx-sw-row > .sx-sw-row__price { grid-area: flag; }
+
+/* The six readings are one strip under the hull (shipworks.js moves the rack out of the stage):
+   a printed band on the stats plate's head, the reading in phosphor after its etched name. */
+#screens .sx-sw > .sx-sw__main > .sx-sw__gauges,
+.sx-sw > .sx-sw__main > .sx-sw__gauges {
+  position: static; inset: auto; width: auto; max-height: none; overflow: visible; flex: 0 0 auto;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px calc(36px * var(--k-s, 1));
+  margin: calc(12px * var(--k-s, 1)) 0 0; padding: 12px 18px 10px;
+  background: linear-gradient(0deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0), var(--dp-field, rgb(10 12 16 / .84));
+}
+#screens .sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge,
+.sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge {
+  display: inline-flex; align-items: baseline; gap: 10px; min-height: 0; padding: 0; margin: 0;
+  border: 0; background: none; box-shadow: none;
+}
+.sx-sw > .sx-sw__main > .sx-sw__gauges + .sx-sw__stats { margin-top: 0; }
+html body #screens #sf-ship .sx-sw > .sx-sw__main > .sx-sw__gauges {
+  padding: 12px 18px 10px;
+  background: linear-gradient(0deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0), var(--dp-field, rgb(10 12 16 / .84));
+}
+html body #screens #sf-ship .sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge { min-height: 0; }
+
+/* A build key reads "Save fit 0/6", not "SAVE FIT0/6". */
+.sx-sw-preset__label + .sx-sw-preset__sub { margin-inline-start: .5em; }
+
+/* THE SHIP's hull name is the screen's display moment, sized to the frame: at 1280 x 800 the
+   kit's title size took a third of the stage's height and left the hull a thumbnail. */
+.sf-ship.dp-frame .sx-sw__name { font-size: clamp(34px, min(3.6vw, 6.4vh), 76px); }
+
+/* The dock host on a short frame (1280 x 800): the stage gives up height before the stats do,
+   so the four hero numbers are never cut in half at the fold; the rows under them scroll. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-sw > .sx-sw__main > .sx-sw__stage { flex: 1 1 0; min-height: calc(190px * var(--k-s, 1)); }
+:is(#screens .sx-observatory, .sx-observatory) .sx-sw > .sx-sw__main > .sx-sw__stats { flex: 0 1 auto; min-height: calc(120px * var(--k-s, 1)); overflow: hidden auto; }

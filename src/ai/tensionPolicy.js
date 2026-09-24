@@ -34,9 +34,32 @@ export function tensionPacingBlockReason(dir, state, shape, now) {
   if (!p || !shape) return null;
   if (shape.deck === 'combat' && !p.allowCombat) return 'tension_recovery';
   if (shape.deck === 'combat' && shape.tier === 'major' && !p.allowMajor) return 'tension_reserve';
+  // INF-080: the earned recovery is not combat-only. A meaningful non-combat demand — a
+  // distress decision, a convoy hail, a customs scan — landing seconds after a kill talks
+  // over the loot inspection the fight paid for. During aftermath/recovery it defers like
+  // combat. Ambient world-life (tier ambient) is not a demand: props keep flowing so
+  // nearby work continues honestly, and live rows are untouched (this gate only blocks
+  // NEW offers — active threats and running jobs never consult it).
+  if (shape.deck !== 'combat' && shape.tier !== 'ambient'
+    && (p.phase === 'aftermath' || p.phase === 'recovery')) return 'tension_recovery';
+  // INF-080 (voice owner): the immediate tail. barkDirector stamps a short post-combat
+  // silence on every fight outcome; a meaningful demand inside it would talk over the
+  // kill confirmations before tension even reaches aftermath. Same deferral, shorter
+  // fuse. Absent/unparseable windows fail open.
+  if (shape.deck !== 'combat' && shape.tier !== 'ambient' && voiceQuietUntil(state) > now) {
+    return 'post_combat_silence';
+  }
   const last = Number.isFinite(dir?.lastMeaningfulAt) ? dir.lastMeaningfulAt : -1e9;
   if (shape.tier !== 'ambient' && now - last < clamp(p.minGapS, 30, 90)) return 'tension_spacing';
   return null;
+}
+
+// Read-only view of the voice owner's post-combat window (barkDirector stamps
+// postCombatSilenceUntil on every fight outcome). Same sim clock the gate's `now`
+// already uses; anything unparseable fails open to -Infinity (no deferral).
+function voiceQuietUntil(state) {
+  const until = Number(state && state.barkDirector && state.barkDirector.postCombatSilenceUntil);
+  return Number.isFinite(until) ? until : -Infinity;
 }
 
 /** Earliest-due selection with a <=20 s contextual preference. Older work wins;

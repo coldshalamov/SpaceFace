@@ -5,9 +5,11 @@ import { COMMODITIES } from '../data/commodities.js';
 import {
   CONTACT_COUNTER_DEFS,
   createInitialStationContactCounters,
+  normalizeRescueMemory,
   normalizeStationContactCounters,
   normalizeStationContactRecord,
 } from '../data/stationContacts.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   VONN_FREIGHT_CASE_VERSION,
   VONN_FREIGHT_CONTACT_ID,
@@ -47,7 +49,22 @@ function ensureCounterBag(state) {
 function ensureLifeState(state) {
   if (!state.stationLife || typeof state.stationLife !== 'object') state.stationLife = {};
   if (!Array.isArray(state.stationLife.traffic)) state.stationLife.traffic = [];
+  // INF-074: unclaimed rescue gossip, keyed by sector. A rescue posts a notice; the first
+  // barkeep the pilot talks to in that sector claims it onto their own record. Notices are
+  // durable (a later meeting after Continue still hears it) and validate on load.
+  if (!state.stationLife.rescueNotices || typeof state.stationLife.rescueNotices !== 'object'
+    || Array.isArray(state.stationLife.rescueNotices)) {
+    state.stationLife.rescueNotices = {};
+  }
   return state.stationLife;
+}
+
+function sectorOfStation(stationId) {
+  if (!stationId) return null;
+  for (const sec of SECTORS) {
+    if (Array.isArray(sec.stations) && sec.stations.some((st) => st && st.id === stationId)) return sec.id;
+  }
+  return null;
 }
 
 function commodityLabel(id) {
@@ -185,6 +202,7 @@ export const stationContacts = {
     });
     on('freight:custodyReceipt', (payload = {}) => this._recordVonnFreightCustody(payload));
     on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
+    on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
     on('save:restoring', () => this._clearVonnFreightReceipts());
     on('vestaOreCache:resolved', (payload = {}) => {
       if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
@@ -195,6 +213,7 @@ export const stationContacts = {
     on('save:loaded', () => {
       this._reconcileDossArchive('save-loaded');
       this._normalizeVonnFreightLoss('save-loaded');
+      this._normalizeRescueNotices();
     });
     this._reconcileDossArchive('init');
   },
@@ -203,7 +222,7 @@ export const stationContacts = {
     if (!this.state) return;
     this.state.player.stationContacts = {};
     this.state.player.stationContactCounters = createInitialStationContactCounters();
-    this.state.stationLife = { traffic: [] };
+    this.state.stationLife = { traffic: [], rescueNotices: {} };
     this._clearVonnFreightReceipts();
   },
 
@@ -243,6 +262,22 @@ export const stationContacts = {
       && previous.vonnFreightLoss && !previous.vonnFreightLoss.followupHeard
       ? { ...previous.vonnFreightLoss, followupHeard: true }
       : previous.vonnFreightLoss;
+    // INF-074: bar gossip becomes personal. The first barkeep the pilot talks to in a
+    // rescue sector claims that sector's notice onto their own record — merchants, pilots,
+    // and every other role never see it. Claiming and acknowledging are separate passes
+    // (news travels on this visit, it is remembered on the next), so the line shows on a
+    // later meeting and never repeats.
+    let rescueMemory = normalizeRescueMemory(previous.rescueMemory);
+    if (String(payload.role || '').toLowerCase() === 'barkeep') {
+      const sectorId = sectorOfStation(payload.stationId || previous.stationId);
+      const life = ensureLifeState(this.state);
+      if (!rescueMemory && sectorId && life.rescueNotices[sectorId]) {
+        rescueMemory = normalizeRescueMemory({ ...life.rescueNotices[sectorId], acknowledged: false });
+        if (rescueMemory) delete life.rescueNotices[sectorId];
+      } else if (previous.rescueMemory && rescueMemory && !rescueMemory.acknowledged) {
+        rescueMemory = { ...rescueMemory, acknowledged: true };
+      }
+    }
     const next = normalizeStationContactRecord({
       ...previous,
       met: true,
@@ -256,6 +291,7 @@ export const stationContacts = {
       lastDockSimTime: now,
       flags,
       ...(vonnFreightLoss ? { vonnFreightLoss } : {}),
+      ...(rescueMemory ? { rescueMemory } : {}),
     });
     bag[contactId] = next;
     this.bus.emit('stationContact:changed', { contactId, record: { ...next, flags: { ...next.flags } } });
@@ -332,6 +368,33 @@ export const stationContacts = {
 
   _clearVonnFreightReceipts() {
     if (this._vonnFreightReceipts) this._vonnFreightReceipts.clear();
+  },
+
+  /**
+   * INF-074: a real rescue posts bar gossip. Only a rescue outcome with a recovery id and a
+   * sector writes a notice — black-boxes, strips, and failures never do, so the memory is
+   * evidence-backed by construction. No rep, no credits, no cargo: this system only records.
+   */
+  _noteRescueNotice(payload) {
+    if (!payload || payload.outcome !== 'rescue') return;
+    const recordId = String(payload.recoveryId || payload.recordId || '').trim();
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!recordId || !sectorId) return;
+    const life = ensureLifeState(this.state);
+    life.rescueNotices[sectorId] = {
+      recordId: recordId.slice(0, 96),
+      sectorId: sectorId.slice(0, 96),
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+  },
+
+  _normalizeRescueNotices() {
+    const life = ensureLifeState(this.state);
+    for (const [sectorId, notice] of Object.entries(life.rescueNotices)) {
+      if (!notice || typeof notice !== 'object' || !notice.recordId || !notice.sectorId) {
+        delete life.rescueNotices[sectorId];
+      }
+    }
   },
 
   _recordVonnWreckCompletion(payload) {

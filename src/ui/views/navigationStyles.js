@@ -8,7 +8,7 @@ export const CSS = `
    stage-right column, .gm-apron the foot. Every gm-* class / id / data-attribute stays as an inert
    hook for the map checks. */
 #sf-galaxymap {
-  --gm-apron-h: clamp(168px, 26vh, 232px);
+  --gm-apron-h: clamp(200px, 30vh, 300px);
   --gm-rail-w: calc(var(--k-hang) * 0.5);
   --gm-inspector-w: calc(var(--k-hang) * 0.7);
   position: absolute;
@@ -197,10 +197,12 @@ export const CSS = `
   scrollbar-color: var(--k-hair) transparent;
 }
 #sf-galaxymap .gm-left-rail { grid-area: hang; }
-#sf-galaxymap .gm-right-inspector { grid-area: inspector; display: flex; flex-direction: column; gap: var(--k-pad); }
+/* The inspector is as tall as what it says, up to the stage: a column stretched to the full stage
+   height left a dead band between the no-selection note and the engage key. */
+#sf-galaxymap .gm-right-inspector { grid-area: inspector; align-self: start; max-height: 100%; display: flex; flex-direction: column; gap: var(--k-pad); }
 
 /* ---- The hang (.gm-left-rail): five disclosures of words -------------------------------------- */
-#sf-galaxymap .gm-rail-sec { border-top: 1px solid var(--k-hair); padding: calc(10px * var(--k-s)) 0; }
+#sf-galaxymap .gm-rail-sec { border-top: 1px solid var(--k-hair); padding: calc(6px * var(--k-s)) 0; }
 #sf-galaxymap .gm-rail-sec:last-child { border-bottom: 1px solid var(--k-hair); }
 #sf-galaxymap .gm-rail-sum {
   display: flex;
@@ -217,14 +219,14 @@ export const CSS = `
 #sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum,
 #sf-galaxymap .gm-rail-sum:hover { color: var(--k-text-live); }
 #sf-galaxymap .gm-rail-sum-n { font-size: var(--k-fs-fine); letter-spacing: 0; text-transform: none; color: var(--k-bone-38); }
-#sf-galaxymap .gm-rail-body { padding-top: var(--k-pad); display: flex; flex-direction: column; gap: var(--k-pad); }
+#sf-galaxymap .gm-rail-body { padding-top: calc(6px * var(--k-s)); display: flex; flex-direction: column; gap: calc(10px * var(--k-s)); }
 #sf-galaxymap .gm-layer-buttons { display: flex; flex-direction: column; gap: var(--k-pad); }
 #sf-galaxymap .gm-layer-bank { display: flex; flex-direction: column; gap: calc(8px * var(--k-s)); }
 #sf-galaxymap .gm-layer-btn { display: block; width: max-content; max-width: 100%; }
 #sf-galaxymap .gm-layer-btn.active { color: var(--k-text-live); }
 /* No icons and no state chips: the word and its underline carry the lens state (KIT_SPEC §12). */
 #sf-galaxymap .gm-layer-ico, #sf-galaxymap .gm-layer-state { display: none; }
-#sf-galaxymap .gm-rail-commodity { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-rail-commodity { display: flex; flex-direction: column; gap: calc(2px * var(--k-s)); }
 #sf-galaxymap .gm-rail-commodity select {
   appearance: none;
   -webkit-appearance: none;
@@ -285,8 +287,8 @@ export const CSS = `
   display: flex;
   flex-direction: column;
   gap: var(--k-pad);
-  flex: 1 1 auto;
-  min-height: 80px;
+  flex: 0 1 auto;
+  min-height: 0;
   overflow: hidden auto;
   scrollbar-width: thin;
   scrollbar-color: var(--k-hair) transparent;
@@ -421,18 +423,59 @@ export const CSS = `
 #sf-galaxymap .gm-career__fig, #sf-galaxymap .gm-career__phase { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
 #sf-galaxymap .gm-career__place, #sf-galaxymap .gm-career__who { font-size: var(--k-fs-data); color: var(--k-bone-38); }
 
-/* ---- The foot (.gm-apron): the route as one sentence, the cargo deck as six rows ------------- */
+/* ---- The foot (.gm-apron): the route and the cargo deck when they exist, over the four
+   navigation answers as one band of readouts across the frame. The band is always there; the row
+   above it collapses to nothing when there is no route and no lane, so the foot never holds an
+   empty field. The top row is minmax(0, 1fr) so a tall deck scrolls inside its own table instead
+   of pushing the answers off the bottom of the frame. ---------------------------------------- */
 #sf-galaxymap .gm-apron {
   grid-area: foot;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "ribbon deck" "nav nav";
   column-gap: var(--k-gap);
+  row-gap: 0;
   align-items: end;
   min-height: 0;
   max-height: var(--gm-apron-h);
   pointer-events: none;
 }
 #sf-galaxymap .gm-apron > * { pointer-events: auto; min-width: 0; min-height: 0; }
+#sf-galaxymap .gm-apron-ribbon { grid-area: ribbon; }
+#sf-galaxymap .gm-apron .gm-deck { grid-area: deck; }
+#sf-galaxymap .gm-apron :is(.gm-ribbon, .gm-deck) { margin-bottom: calc(14px * var(--k-s)); }
+#sf-galaxymap .gm-navfoot {
+  grid-area: nav;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--k-gap);
+  align-items: start;
+  padding-top: calc(10px * var(--k-s));
+  border-top: 1px solid var(--k-hair);
+}
+#sf-galaxymap .gm-navfoot:empty { display: none; }
+#sf-galaxymap .gm-navfoot .gm-nav-row {
+  display: flex;
+  flex-direction: column;
+  /* the base row's align-items:baseline survives the flex-column override, leaving children at
+     max-content width instead of stretching to the track -- long detail lines escape the band */
+  align-items: stretch;
+  gap: calc(2px * var(--k-s));
+  min-width: 0;
+  min-height: 0;
+  border-top: 0;
+  padding: 0 0 0 calc(12px * var(--k-s));
+}
+#sf-galaxymap .gm-navfoot .gm-nav-row[data-tone="tracked"] { box-shadow: none; padding-left: calc(12px * var(--k-s)); }
+#sf-galaxymap .gm-navfoot :is(.gm-nav-row-k, .gm-nav-row-v, .gm-nav-row-d) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
 #sf-galaxymap .gm-ribbon { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
 #sf-galaxymap .gm-ribbon-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1ch; }
 #sf-galaxymap .gm-ribbon-arrival:not(:empty)::before { content: "· "; color: var(--k-bone-38); }
@@ -443,7 +486,9 @@ export const CSS = `
 #sf-galaxymap .gm-ribbon-leg { display: inline-flex; align-items: baseline; gap: 0.5ch; padding: 0; cursor: default; white-space: normal; color: var(--k-bone-62); }
 #sf-galaxymap .gm-ribbon-leg::after { display: none; }
 #sf-galaxymap .gm-ribbon-leg:hover { color: var(--k-bone-62); }
-#sf-galaxymap .gm-ribbon-leg + .gm-ribbon-leg::before { content: "·"; color: var(--k-bone-38); }
+/* Each leg leads with its own state glyph (done / active / next), so no separator between legs:
+   a separator plus the next leg's dot printed two dots in a row. */
+#sf-galaxymap .gm-ribbon-legs { column-gap: 2ch; }
 #sf-galaxymap .gm-ribbon-leg[data-leg-state="done"], #sf-galaxymap .gm-ribbon-leg[data-leg-state="done"]:hover { color: var(--k-bone-38); }
 #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"], #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"]:hover { color: var(--k-text-live); }
 #sf-galaxymap .gm-ribbon-leg-g { color: var(--k-bone-38); }
@@ -452,11 +497,17 @@ export const CSS = `
 #sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--k-signal); }
 #sf-galaxymap .gm-ribbon-haz[data-haz="contested"] { color: var(--k-red); }
 #sf-galaxymap .gm-ribbon-warn { color: var(--k-red); }
+#sf-galaxymap .gm-ribbon-meta { display: flex; flex-wrap: wrap; gap: 0 2ch; }
+/* The route's reason line runs the column's width: wrapped at the reading measure it took two lines
+   of a foot that has to leave the stage its height. */
+#sf-galaxymap .gm-ribbon .gm-ribbon-reason { max-width: none; }
 #sf-galaxymap .gm-ribbon-actions { gap: calc(8px * var(--k-s)) var(--k-gap); }
-#sf-galaxymap .gm-deck { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-deck { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); min-height: 0; }
 #sf-galaxymap .gm-deck-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--k-gap); }
 #sf-galaxymap .gm-deck-table {
   display: block;
+  flex: 0 1 auto;
+  min-height: 0;
   max-height: calc(var(--k-row) * 6 + 2px);
   overflow: hidden auto;
   scrollbar-width: thin;
@@ -521,7 +572,8 @@ export const CSS = `
 #sf-galaxymap[data-layout="narrow"] .gm-layer-buttons, #sf-galaxymap[data-layout="narrow"] .gm-layer-bank { flex-direction: row; flex-wrap: wrap; align-items: baseline; }
 #sf-galaxymap[data-layout="narrow"] .gm-rail-legend, #sf-galaxymap[data-layout="narrow"] .gm-hint-text, #sf-galaxymap[data-layout="narrow"] .gm-rail-footer { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-right-inspector { max-height: 30%; }
-#sf-galaxymap[data-layout="narrow"] .gm-apron { grid-template-columns: minmax(0, 1fr); max-height: 24%; }
+#sf-galaxymap[data-layout="narrow"] .gm-apron { grid-template-columns: minmax(0, 1fr); grid-template-areas: "ribbon" "nav"; max-height: 34%; }
+#sf-galaxymap[data-layout="narrow"] .gm-navfoot { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: calc(8px * var(--k-s)); }
 #sf-galaxymap[data-layout="narrow"] .gm-deck { display: none; }
 
 /* ---- Motion and contrast --------------------------------------------------------------------- */

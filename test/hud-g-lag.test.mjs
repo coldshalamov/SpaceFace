@@ -559,6 +559,56 @@ test('combat:emp event triggers electronic disruption glitch', () => {
   }
 });
 
+test('full mode EMP keeps glitch plus audio blip and adds no words', () => {
+  const fx = mountTestFixture();
+  const audio = [];
+  const toasts = [];
+  fx.bus.on('audio:cue', (p) => audio.push(p));
+  fx.bus.on('toast', (p) => toasts.push(p));
+  try {
+    fx.bus.emit('combat:emp', { targetId: fx.player.id });
+    assert.equal(fx.hud.getDisrupted(), true, 'full mode keeps the flash');
+    assert.ok(audio.some((p) => p && p.id === 'ui_deny'), 'full mode keeps the restrained blip');
+    assert.equal(toasts.length, 0, 'full mode adds no replacement words');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('motion-reduced EMP keeps blip and gains a short label instead of the flash', () => {
+  const fx = mountTestFixture({ motionReduce: true });
+  const audio = [];
+  const toasts = [];
+  fx.bus.on('audio:cue', (p) => audio.push(p));
+  fx.bus.on('toast', (p) => toasts.push(p));
+  try {
+    fx.bus.emit('combat:emp', { targetId: fx.player.id });
+    assert.equal(fx.hud.getDisrupted(), false, 'reduced motion must suppress the flash');
+    assert.ok(audio.some((p) => p && p.id === 'ui_deny'), 'reduced motion keeps the restrained blip');
+    assert.ok(toasts.some((p) => p && p.text === 'EMP HIT — systems disrupted' && p.kind === 'warn'),
+      'reduced motion replaces the flash with a short label');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('flash-reduced shield break keeps blip and names the hazard without the flash', () => {
+  const fx = mountTestFixture({ flashReduce: true });
+  const audio = [];
+  const toasts = [];
+  fx.bus.on('audio:cue', (p) => audio.push(p));
+  fx.bus.on('toast', (p) => toasts.push(p));
+  try {
+    fx.bus.emit('combat:damage', { targetId: fx.player.id, brokeShield: true });
+    assert.equal(fx.hud.getDisrupted(), false, 'reduced flash must suppress the flash');
+    assert.ok(audio.some((p) => p && p.id === 'ui_deny'), 'reduced flash keeps the restrained blip');
+    assert.ok(toasts.some((p) => p && p.text === 'SHIELDS COLLAPSED' && p.kind === 'warn'),
+      'reduced flash replaces the flash with a short label');
+  } finally {
+    fx.restore();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Integration Tests: Multi-Stage Missile Lock-On Arc
 // ---------------------------------------------------------------------------

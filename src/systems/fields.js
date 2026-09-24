@@ -21,7 +21,7 @@
 // Old saves without field data still normalize away; sector changes and new games clear fields.
 
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
-import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
+import { createFieldKernel, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
 import {
   classifyClusterReceipt,
   mergeClusterSecondaries,
@@ -29,7 +29,7 @@ import {
 } from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
-import { fieldEvidenceInput } from '../combat/stuntEvidence.js';
+import { journalFor } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
@@ -68,6 +68,51 @@ const MASS_STATE_REFRESH_LEAD_TICKS = 30;
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
+
+// INF-042 lifecycle: a deployed Well or Repulsor builds, sustains, and dissipates. The kernel
+// enforces the SAME phase the records publish — strength itself ramps — so the visual
+// lifecycle and the hazard lifecycle cannot disagree: no invisible active field, no
+// harmful-looking expired one. Spans are short against a 9s well; pause freezes them with
+// simTime; cancellation and sector exit remove the field outright (a killed field
+// dissipates nothing). Cone, sheet, seed, and NPC snares (no deploy clock) stay full-force.
+export const FIELD_WINDUP_S = 0.4;
+export const FIELD_DISSIPATE_S = 0.6;
+export const FIELD_PHASE_WINDING = 'winding';
+export const FIELD_PHASE_ACTIVE = 'active';
+export const FIELD_PHASE_DISSIPATING = 'dissipating';
+
+export function fieldLifecyclePhase(createdAt, expireAt, now) {
+  if (!Number.isFinite(createdAt) || !Number.isFinite(expireAt)) {
+    return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
+  }
+  const age = now - createdAt;
+  if (age < FIELD_WINDUP_S) {
+    return { phase: FIELD_PHASE_WINDING, mult: Math.max(0, Math.min(1, age / FIELD_WINDUP_S)) };
+  }
+  const remaining = expireAt - now;
+  if (remaining < FIELD_DISSIPATE_S) {
+    return { phase: FIELD_PHASE_DISSIPATING, mult: Math.max(0, Math.min(1, remaining / FIELD_DISSIPATE_S)) };
+  }
+  return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
+}
+
+/**
+ * Enforce the lifecycle on kernel records in place: the sampler, the predictor, and the
+ * published records all read this same strength afterwards, so one number is the hazard
+ * and the picture. Only clocked Well/Repulsor deployments ramp; everything else passes
+ * through untouched.
+ */
+export function applyFieldLifecycle(fieldsList, now) {
+  if (!Array.isArray(fieldsList)) return;
+  for (const f of fieldsList) {
+    if (!f || (f.kind !== FIELD_KINDS.WELL && f.kind !== FIELD_KINDS.REPULSOR)) continue;
+    if (!Number.isFinite(f.createdAt) || !Number.isFinite(f.expireAt)) continue;
+    if (f.baseStrength == null) f.baseStrength = f.strength;
+    const { phase, mult } = fieldLifecyclePhase(f.createdAt, f.expireAt, now);
+    f.lifecyclePhase = phase;
+    f.strength = f.baseStrength * mult;
+  }
+}
 
 function massStatePolarity(kind) {
   if (kind === FIELD_KINDS.WELL) return 1;
@@ -265,6 +310,15 @@ export const fields = {
     this._combatKernel = getCombatKernel(ctx);
     // Reused scratch — zero per-tick allocation in the force loop.
     this._queryOut = [];
+    this._looseListsScratch = [null, null, null];
+    this._impulseScratch = { x: 0, y: 0, z: 0 };
+    // Stunt-evidence reuse: one record per field object (kernel retains field records and mutates
+    // them in place, so the WeakMap drops rows with expired fields). queuePhysicsImpulse copies
+    // kind/tick/provenance onto the pooled impulse vector synchronously, and every command drains
+    // in the physics step before the next fields tick can rewrite the row — so a shared row per
+    // (field, tick) is observably identical to the old fresh-object-per-entity evidence.
+    this._evidenceRows = new WeakMap();
+    this._evidenceAmbiguous = { kind: 'field', tick: 0, provenance: null };
     this._affected = new Map();
     this._massStateFields = new Map();
     this._massStateStrengths = new Map();
@@ -1135,9 +1189,18 @@ export const fields = {
     const cx = field.center.x;
     const cz = field.center.z;
     const index = state && state.entityIndex;
-    const lists = index && index.__spacefaceEntityIndexV1
-      ? [index.pickups, index.wrecks, index.payloads]
-      : [state && state.entityList];
+    // Retained loose-list scratch: same iteration order (pickups, wrecks, payloads) without a
+    // per-field array literal each tick.
+    const lists = this._looseListsScratch;
+    if (index && index.__spacefaceEntityIndexV1) {
+      lists[0] = index.pickups;
+      lists[1] = index.wrecks;
+      lists[2] = index.payloads;
+      lists.length = 3;
+    } else {
+      lists[0] = state && state.entityList;
+      lists.length = 1;
+    }
     for (let i = 0; i < lists.length; i++) {
       const list = lists[i];
       if (!list) continue;
@@ -1221,6 +1284,8 @@ export const fields = {
     const now = nowOf(state);
     if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
     const fieldsList = this._kernel.list();
+    // INF-042: the lifecycle runs before sampling, so force, predictor, and records agree.
+    applyFieldLifecycle(fieldsList, now);
     if (fieldsList.length === 0 || dt <= 0) {
       this._flushEndedWells(state);
       return { queries: 0, affected: 0, accelSum: 0 };
@@ -1273,7 +1338,13 @@ export const fields = {
       // Same seam momentumSink.js uses for effective mass; still one additive membrane write.
       const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1))
         * positive(profile.physicsMassScale, 1);
-      queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt }, fieldEvidenceInput(e,fieldsList,state,profile));
+      // Scratch input: queuePhysicsImpulse copies x/y/z into its pooled command vector before
+      // returning, so the literal does not need to be fresh per affected body.
+      const impulse = this._impulseScratch;
+      impulse.x = accel.ax * mass * dt;
+      impulse.y = 0;
+      impulse.z = accel.az * mass * dt;
+      queuePhysicsImpulse(e, impulse, this._fieldEvidence(e, fieldsList, state, profile));
       this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
       this._noteWellClusterBody(e, fieldsList, profile, accel, state);
       affectedCount++;
@@ -1354,6 +1425,43 @@ export const fields = {
     for (const [key, pair] of ledger) {
       if (pair.lastTick !== tick) ledger.delete(key);
     }
+  },
+
+  // Same computation as stuntEvidence.fieldEvidenceInput — first containing field wins,
+  // a second match collapses to provenance:null — but returns retained per-field records
+  // instead of a fresh evidence object per affected body. See init for the lifetime argument.
+  _fieldEvidence(entity, fields, state, profile) {
+    const j = journalFor(state);
+    const life = j && j.lives.get(`${typeof entity.id}:${String(entity.id)}`);
+    if (!life || (!j.bodies.has(life.id) && entity.type !== 'projectile')) return null;
+    let match = null;
+    for (const f of fields) {
+      if (!(f.radius > 0) || !f.center
+        || !fieldContainsPoint(f, entity.pos.x, entity.pos.z)
+        || (profile && !fieldAffectsBody(f, profile))) continue;
+      if (match) {
+        const ambiguous = this._evidenceAmbiguous;
+        ambiguous.tick = state.tick;
+        return ambiguous;
+      }
+      match = f;
+    }
+    if (!match) return null;
+    let row = this._evidenceRows.get(match);
+    if (!row) {
+      row = {
+        kind: 'field',
+        tick: 0,
+        provenance: { actorId: null, field: { id: null, ownerId: null, x: 0, z: 0, radius: 0 } },
+      };
+      this._evidenceRows.set(match, row);
+    }
+    const p = row.provenance, pf = p.field;
+    row.tick = state.tick;
+    p.actorId = match.ownerId;
+    pf.id = match.id; pf.ownerId = match.ownerId;
+    pf.x = match.center.x; pf.z = match.center.z; pf.radius = match.radius;
+    return row;
   },
 
   _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state) {
@@ -1634,6 +1742,9 @@ export const fields = {
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
+      // INF-042: the enforced phase travels with the record, so the VFX owner and the HUD
+      // word the same lifecycle the kernel is forcing. Unphased kinds read active.
+      rec.phase = f.lifecyclePhase || FIELD_PHASE_ACTIVE;
       rec.halfAngleRad = f.halfAngleRad; rec.halfWidth = f.halfWidth;
       rec.volume = f.volume || fieldVolumeOf(f);
       rec.palette = FIELD_PALETTE[f.kind] || FIELD_PALETTE[rec.volume] || null;
@@ -1685,6 +1796,7 @@ export const fields = {
     rec.dir.x = 1; rec.dir.z = 0;
     rec.radius = def.radius;
     rec.strength = 0;
+    rec.phase = FIELD_PHASE_ACTIVE;
     rec.falloff = 1;
     rec.halfAngleRad = 0;
     rec.halfWidth = 0;

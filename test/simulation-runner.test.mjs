@@ -139,7 +139,7 @@ test('SimulationRunner carries between-tick journal writes and aggregates the ea
   assert.equal(first.journalEnd, 2);
 
   ship.presentationVisualRevision = 1;
-  journal.recordVisual(state.tick, ship);
+  const visualSequence = journal.recordVisual(state.tick, ship);
   runner.advance(LOOP_FIXED_DT * 2.1, 1);
 
   const latest = {};
@@ -147,8 +147,18 @@ test('SimulationRunner carries between-tick journal writes and aggregates the ea
   assert.equal(latest.tick, 3);
   assert.equal(latest.journalStart, 2,
     'the next completion must include records published after the prior fixed tick');
-  assert.equal(latest.journalEnd, 5);
-  assert.equal(runner.getDiagnostics().committedJournalSequence, 5);
+  // Transform records coalesce into the retained prior record, so the visual write is
+  // the only new sequence; it carries the refreshed latest pose for the consumer.
+  assert.equal(latest.journalEnd, visualSequence);
+  assert.equal(latest.journalEnd, 3);
+  const delivered = {};
+  assert.equal(journal.visitRange(2, 3, delivered, (record) => {
+    if (record.sequence === visualSequence) {
+      assert.equal(record.kind, 'visual');
+      assert.equal(record.x, 3);
+    }
+  }), 1);
+  assert.equal(runner.getDiagnostics().committedJournalSequence, 3);
 });
 
 test('completed-tick queue exhaustion fails before advancing authoritative state', () => {
@@ -188,11 +198,14 @@ test('a slow frame rate keeps real time; only a hitch sheds catch-up', () => {
   // OWNER, 2026-09-20: "sometimes it hitches while I'm playing ... it's overall just not a smooth
   // and playable experience." The old policy capped any frame over 33 ms to two steps and any
   // frame after a slow draw to one, so a 25 fps machine ran the whole game at 40-80 % speed.
+  // Lane D (2026-09-22): soft-GPU sustained ~12 fps (~83 ms) must stay on the slow path too —
+  // classifying those callbacks as hitches resumed only two ticks and ran the game at ~40 %.
   assert.equal(MAX_CATCHUP_STEPS, 4, 'flight catch-up ceiling must stay four 60 Hz steps');
   assert.equal(HITCH_CATCHUP_STEPS, 2);
+  assert.equal(HITCH_FRAME_TICKS, 6.5);
   assert.ok(HITCH_FRAME_TICKS > MAX_CATCHUP_STEPS,
     'every frame the catch-up ceiling can fully serve is a slow frame, never a hitch');
-  for (const fps of [60, 45, 30, 25, 20, 15]) {
+  for (const fps of [60, 45, 30, 25, 20, 15, 12, 10]) {
     assert.equal(isHitchFrame(1 / fps), false, fps + ' fps is a frame rate, not a hitch');
     assert.equal(frameSimStepCap({ frameDt: 1 / fps }), MAX_CATCHUP_STEPS);
   }

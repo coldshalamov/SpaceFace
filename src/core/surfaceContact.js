@@ -21,6 +21,9 @@ const MATERIAL_RESPONSE = Object.freeze({
   furnace: SURFACE_RESPONSE.absorb,
   slag: SURFACE_RESPONSE.absorb,
   rock: SURFACE_RESPONSE.absorb,
+  // Survival-arena monoliths. Reflects only for a shot that already carries ricochet;
+  // every other shot is consumed. Campaign rock stays absorb.
+  bank_stone: SURFACE_RESPONSE.reflect,
   ship: SURFACE_RESPONSE.none,
   projectile: SURFACE_RESPONSE.none,
   station: SURFACE_RESPONSE.none,
@@ -63,6 +66,15 @@ export function unitSurfaceNormal(normal) {
 export function surfaceResponseFor(material) {
   const id = typeof material === "string" && material ? material : "default";
   return MATERIAL_RESPONSE[id] || SURFACE_RESPONSE.none;
+}
+
+/** Survival cover and swarm debris. Not the campaign asteroid material. */
+export const BANK_STONE_MATERIAL = "bank_stone";
+
+export function withBankStone(data) {
+  const bag = data && typeof data === "object" ? data : {};
+  bag.surfaceMaterial = BANK_STONE_MATERIAL;
+  return bag;
 }
 
 export function isSurfaceContactReceipt(value) {

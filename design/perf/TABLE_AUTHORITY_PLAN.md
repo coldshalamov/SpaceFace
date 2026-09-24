@@ -238,10 +238,23 @@ does not spam create/destroy; picture contract holds.
 
 **Stay off:** membership, residency, clocks.
 
-**Work:** present last snapshot first; leftover time to sim; max **one** extra **table** catch-up
-after a late present. Do not start a Worker.
+**Work (landed, do not re-litigate the flip):**
+
+1. **Order is fixed:** simulate the elapsed time, then present that moment
+   (`presentFirst: 'restore-only'`). Always-present-first (2026-09-09) and
+   healthy-sim / late-draw-first flipping (Gap F2) both lost: the flip froze
+   14–26 % of presents below 60 fps and snapped the hull; selective present-first
+   is forbidden. Restore frames still present before the clock restarts.
+2. **Catch-up / shed:** `MAX_CATCHUP_STEPS = 4` for steady frame rates (full
+   realtime down to 15 fps; soft-GPU ~10–12 fps keeps the ceiling and sheds only
+   the excess). A true hitch (`HITCH_FRAME_TICKS = 6.5`, ~108 ms+) resumes
+   **two** ticks (`HITCH_CATCHUP_STEPS`) and sheds the rest — one hitch does not
+   become three or four CMS ticks. Do not restore the old one-step-after-late-present
+   cap; it ran weak GPUs at 40–65 % speed. Do not start a Worker.
 
 **Done when:** one hitch does not become three; hashes hold; flight still 60 Hz deterministic.
+Pinned by `test/simulation-runner.test.mjs`, `test/presentation-runner.test.mjs`,
+`test/presentation-continuity.test.mjs` (incl. soft-GPU ~12 fps).
 
 ### Later (do not spawn now)
 

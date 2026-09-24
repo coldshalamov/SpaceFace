@@ -327,3 +327,41 @@ test('check-min-spec-floors reports pending when no evidence exists', async () =
   assert.equal(code, 2, `expected pending exit 2:\nstdout=${stdout}\nstderr=${stderr}`);
   assert.match(stdout + stderr, /pending|absent/i);
 });
+
+// ── v6 warning-class emissions (PQ-033.02 sitting, 2026-09-23) ───────────────
+// The v6 acceptance pair failed zero-warnings on two classes this unit acts on.
+// These source contracts pin the emissions so the next soak pair verifies the
+// fix instead of silently regressing it.
+
+test('opening submission post-submit validation is an informational admission diagnostic', () => {
+  const renderer = read('src/render/renderer.js');
+  // Demoted from console.warn (v6 counted it once per run on the warnings
+  // channel). Exactly one per document behind the openingSubmissionValidation
+  // guard; the payload stays on state.render for evidence.
+  assert.match(renderer,
+    /console\.info\(\s*`\[render\] opening submission post-submit validation failed/,
+    'the post-submit diagnostic must ride the informational admission channel');
+  assert.doesNotMatch(renderer,
+    /console\.warn\(\s*`\[render\] opening submission post-submit validation failed/,
+    'the demotion must not leave a warn-channel copy of the diagnostic');
+  assert.match(renderer, /!this\.state\.render\.openingSubmissionValidation/,
+    'the diagnostic stays once-per-document behind its validation guard');
+});
+
+test('a preload whose residency owner died rejects incomplete instead of resolving blind', () => {
+  const partsLibrary = read('src/render/partsLibrary.js');
+  // The v6 Electron/browser evidence class "whole-ship LOD demotion failed …
+  // release mode requires …": an owner that went inactive mid-preload resolved
+  // an incomplete scoped library and compose threw the require error onto the
+  // warnings channel. ensureEntityLibrary must abort with the established
+  // owner-inactive signal both classifiers log informationally.
+  assert.match(partsLibrary,
+    /owner became inactive during entity preload/,
+    'the owner-gone abort must fire before admission, not return an incomplete library');
+  assert.match(partsLibrary,
+    /owner became inactive during entity admission/,
+    'the owner-gone abort must also cover the post-admission inactive window');
+  assert.match(partsLibrary,
+    /ownerInactive\(\) && !libraryHasPreloadPlan\(library, plan\)/,
+    'an inactive owner with a satisfied plan still resolves normally');
+});

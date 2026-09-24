@@ -3,6 +3,7 @@
 // save system is implemented it owns newGame() and this delegates to it.
 import * as THREE from 'three';
 import { createGameState } from './core/gameState.js';
+import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
@@ -48,6 +49,11 @@ const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
   ? !__SPACEFACE_PRODUCTION__
   : debugRuntimeEnabled();
 const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 180000;
+// One bounded second window before declaring startup failure. Staging pipelines keep
+// running between waits, so a transient stall (host contention, driver-variant compile
+// burst) resolves inside a short retry; a persistent stall still fails quickly. Kept
+// short so the app-side worst case stays inside the route's own load bound.
+const AUTHORED_VISUAL_RETRY_TIMEOUT_MS = 30000;
 
 function debugRuntimeEnabled() {
   const env = typeof process !== 'undefined' && process.env ? process.env : null;
@@ -444,6 +450,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     token: transitionToken,
     async prepareRun() {
       for (const e of [...state.entityList]) {
+        clearEntityRuntime(e);
         bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
       }
@@ -539,10 +546,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       state, bus, runTransitionGuard, transitionToken,
     ),
     waitForLibrary: () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
-    waitForVisuals: () => waitForInitialAuthoredVisuals(
+    waitForVisuals: () => waitForInitialAuthoredVisualsWithRetry(
       state,
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
       () => runTransitionGuard.isCurrent(transitionToken),
+      bus,
     ),
     waitForWarmup: async () => {
       // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
@@ -636,6 +644,7 @@ function resolveNewGamePlusOverlay(registry, opts = {}) {
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
   if (!runTransitionGuard.isCurrent(transitionToken)) return false;
   for (const entity of [...state.entityList]) {
+    clearEntityRuntime(entity);
     bus.emit('entity:destroyed', {
       id: entity.id,
       type: entity.type,
@@ -686,10 +695,11 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     });
     await nextPaint();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-    const visualsReady = await waitForInitialAuthoredVisuals(
+    const visualsReady = await waitForInitialAuthoredVisualsWithRetry(
       state,
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
       () => runTransitionGuard.isCurrent(transitionToken),
+      bus,
     );
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
@@ -868,13 +878,42 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
   return retryResult;
 }
 
+// One bounded second window before declaring startup failure. Staging pipelines keep
+// running between waits, so a transient stall (host contention, driver-variant compile
+// burst) resolves inside the retry while a persistent stall still fails closed. Without
+// this a one-shot timeout lands the player on a frozen menu with a valid save (D31).
+async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurrent = null, bus = null) {
+  let ready = await waitForInitialAuthoredVisuals(state, timeoutMs, isCurrent);
+  if (ready || (isCurrent && !isCurrent())) return ready;
+  console.warn('[SpaceFace] authored visuals staging stalled; retrying once before declaring startup failure', authoredVisualReadiness(state));
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('game:loadingProgress', {
+      id: 'authored-visuals',
+      progress: 0.5,
+      label: 'Building the opening scene',
+      detail: 'Still committing authored objects — retrying the staging wait',
+      transition: 'continue',
+    });
+  }
+  ready = await waitForInitialAuthoredVisuals(state, AUTHORED_VISUAL_RETRY_TIMEOUT_MS, isCurrent);
+  return ready;
+}
+
 async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
   const started = nowMs();
   let readiness = authoredVisualReadiness(state);
+  let heartbeatLogged = false;
   while (!readiness.pipelineReady && nowMs() - started < timeoutMs) {
     await nextFrame();
     if (isCurrent && !isCurrent()) return false;
     readiness = authoredVisualReadiness(state);
+    // A same-session restore re-stages every required pipeline; on a contended host the gate
+    // can sit inside its own bound long enough that probes and players both wonder what is
+    // stuck. Name the blocking entries once mid-wait instead of only at the timeout warn.
+    if (!heartbeatLogged && nowMs() - started > 25000) {
+      heartbeatLogged = true;
+      console.warn('[SpaceFace] authored visuals still staging after 25s', readiness);
+    }
   }
   if (readiness.pipelineReady) return true;
   console.warn('[SpaceFace] initial authored visuals were not staged before pipeline preparation', readiness);

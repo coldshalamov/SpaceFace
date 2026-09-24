@@ -168,7 +168,9 @@ test('unchanged readouts perform zero DOM writes, even as cooldown fractions cha
   assert.equal(doc.body.children.length, 0);
 });
 
-test('focus updates readiness before its unchanged-state return and releases on exit, reset and reinit', t => {
+test('focus dresses down the screen and borrows the camera but mounts no flight sentence card', t => {
+  // ZERO_TO_HERO §3 HUD quiet: 0 persistent sentence cards in flight; the ordnance ring
+  // carries the trap count, so crucibleFocus no longer mounts the readout.
   const doc = installDocument(t);
   const state = fixture();
   const focus = Object.create(crucibleFocus);
@@ -176,25 +178,19 @@ test('focus updates readiness before its unchanged-state return and releases on 
   const ctx = { state, bus: { emit: (event, payload) => zooms.push([event, payload]) } };
   focus.init(ctx);
   focus.update(1 / 60, state);
-  const root = focus._combatReadout.root;
   assert.equal(doc.body.classList.contains(CRUCIBLE_FOCUS_CLASS), true);
-  assert.equal(doc.body.children.length, 1);
+  assert.equal(focus._combatReadout, undefined, 'no flight sentence card is mounted');
+  assert.equal(doc.body.children.length, 0, 'nothing is appended to the focus host');
+  assert.equal(zooms.length, 1, 'the camera is still borrowed once');
   const count = doc.writes;
   focus.update(1 / 60, state);
-  assert.equal(doc.writes, count);
+  assert.equal(doc.writes, count, 'a steady run writes nothing');
   state.player.cargo.items.cmdty_impulse_charge = 0;
   focus.update(1 / 60, state);
-  assert.equal(focus._combatReadout.root, root);
-  assert.match(root.textContent, /0 remaining · empty/);
+  assert.equal(doc.writes, count, 'readiness churn is not a DOM write anymore');
   assert.equal(zooms.length, 1, 'readiness does not reapply the camera');
-  state.run.phase = 'draft'; focus.update(1 / 60, state);
-  assert.equal(root.hidden, true);
-  state.run.phase = 'active'; focus.update(1 / 60, state);
-  assert.equal(root.hidden, false);
   focus.init(ctx);
-  assert.equal(doc.body.children.length, 0);
   focus.update(1 / 60, state); focus.newGame();
-  assert.equal(doc.body.children.length, 0);
   focus.update(1 / 60, state);
   state.run.phase = 'ended'; focus.update(1 / 60, state);
   assert.equal(doc.body.children.length, 0);

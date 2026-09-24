@@ -6,6 +6,8 @@ import {
   unregisterDynamicBufferOwner,
 } from '../dynamicBufferRanges.js';
 
+import { resolveWeaponPresentationFamily } from '../vfxProfiles.js';
+
 export const HULL_SCORCH_CAPACITY = 32;
 
 // Cooling curve shared by the pool and the tests: heat starts at the weapon's initial
@@ -28,12 +30,22 @@ const SCORCH_HEAT_BY_VARIANT = Object.freeze({
   torpedo: 0.9,
   missile: 0.85,
   railgun: 0.85,
+  'vector-mine': 0.85,
   autocannon: 0.8,
+  flak: 0.75,
+  disruptor: 0.7,
   'pulse-bolt': 0.65,
 });
 
 export function heatForWeaponVariant(variant) {
-  return SCORCH_HEAT_BY_VARIANT[variant] ?? 0.8;
+  if (typeof variant === 'string' && SCORCH_HEAT_BY_VARIANT[variant] !== undefined) {
+    return SCORCH_HEAT_BY_VARIANT[variant];
+  }
+  const resolved = resolveWeaponPresentationFamily(variant);
+  if (resolved && resolved.variant && SCORCH_HEAT_BY_VARIANT[resolved.variant] !== undefined) {
+    return SCORCH_HEAT_BY_VARIANT[resolved.variant];
+  }
+  return 0.8;
 }
 
 /**

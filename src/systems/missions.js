@@ -90,6 +90,11 @@ import {
 } from '../data/missionConditions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
+import {
+  decorateCapitalBossSpawnSpec,
+  capitalBossBallastPosition,
+  spawnCapitalActorOnce,
+} from '../missions/capitalBossSpawn.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
@@ -121,6 +126,7 @@ import {
   sayHeistCue,
 } from '../missions/heistMissionRuntime.js';
 import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
+import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -205,6 +211,28 @@ for (const sec of SECTORS) {
 }
 const ALL_STATIONS = [...STATION_INFO.values()];
 
+/** STATION_INFO first, then a runtime content.sectors registry when one is mounted. */
+function stationInfoFor(state, stationId) {
+  const reg = state && state.content && state.content.sectors;
+  if (reg) {
+    const list = Array.isArray(reg) ? reg : Object.values(reg);
+    for (const sec of list) {
+      for (const st of sec.stations || []) {
+        if (st.id === stationId) {
+          return {
+            id: st.id, name: st.name, type: st.type, size: st.size || 'M',
+            missionProfile: st.missionProfile || st.type,
+            boardAnchorType: st.boardAnchorType || null,
+            factionId: st.factionId || sec.factionId, sectorId: sec.id,
+            sectorTier: sec.tier, security: sec.security,
+          };
+        }
+      }
+    }
+  }
+  return STATION_INFO.get(stationId) || null;
+}
+
 // Commodities a player can plausibly haul for delivery / be asked to mine / smuggle.
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
@@ -276,10 +304,7 @@ function stampAuthoredTwist(offer) {
   const condition = missionConditionById(twistId);
   const next = { ...offer, clauses: [...existing, row] };
   if (condition && condition.brief) {
-    const base = String(next.brief || '').trim();
-    const line = base ? `${base} ${condition.brief}` : condition.brief;
-    next.brief = line.length <= CONDITION_BRIEF_MAX ? line
-      : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+    next.brief = withClauseBriefSuffix(String(next.brief || '').trim(), condition.brief);
   }
   return next;
 }
@@ -296,10 +321,7 @@ function stampCapitalBossTwist(offer) {
   const condition = missionConditionById(twistId);
   const next = { ...offer, clauses: [...existing, row] };
   if (condition && condition.brief) {
-    const base = String(next.brief || '').trim();
-    const line = base ? `${base} ${condition.brief}` : condition.brief;
-    next.brief = line.length <= CONDITION_BRIEF_MAX ? line
-      : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+    next.brief = withClauseBriefSuffix(String(next.brief || '').trim(), condition.brief);
   }
   return next;
 }
@@ -339,6 +361,17 @@ const MISSION_WRECK_COLLISION_MASK = Masks.SHIP | Masks.ASTEROID | Masks.PROJECT
 // nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
 const CONDITION_WARN_COOLDOWN_S = 8;
 const CONDITION_BRIEF_MAX = 150;
+
+// A clause the player cannot read before accepting is a hidden condition. When the combined
+// line overflows the cap, the base brief yields — the term text is never the part that gets cut.
+function withClauseBriefSuffix(base, suffix) {
+  const line = base ? `${base} ${suffix}` : suffix;
+  if (line.length <= CONDITION_BRIEF_MAX) return line;
+  const room = CONDITION_BRIEF_MAX - suffix.length - 4; // "... " separator
+  if (room > 0) return `${base.slice(0, room).trimEnd()}... ${suffix}`;
+  return suffix.length <= CONDITION_BRIEF_MAX ? suffix
+    : `${suffix.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+}
 const TICK_CONDITION_ID_SET = new Set(TICK_CONDITION_IDS);
 const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
@@ -394,6 +427,196 @@ function missionMutationFor(reason) {
     if (text.startsWith(`${key}:`)) return MISSION_MUTATIONS[key];
   }
   return null;
+}
+
+/**
+ * INF-066: stamp where a lost escortee died. The destroy payload carries the last position but
+ * the entity row is already deleted (coreSystem), so the sector + pos must be captured here —
+ * this is what routes the salvage successor to the true wreck instead of the old destination.
+ * Returns null when nothing usable survives (callers keep the legacy fallbacks).
+ */
+export function escortLossSite(pos, sectorId) {
+  if (!pos || typeof pos !== 'object') return null;
+  const x = Number(pos.x);
+  const z = Number(pos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || sectorId == null) return null;
+  return { sectorId: String(sectorId), wreckPos: { x, z } };
+}
+
+/**
+ * INF-066: resolve a salvage successor's recovery site. Reads the stamped loss site first
+ * (escort failure), then the successor's own carried params, then the legacy fallback chain —
+ * one helper for both the offer builder (failing mission) and the waypoint/salvage hooks
+ * (successor mission) so the two can never disagree about where the wreck is.
+ */
+export function mutationWreckRouting(m, currentSectorId) {
+  const p = (m && m.params) || {};
+  const stampedPos = m && m._escorteeWreckPos;
+  const paramPos = p.lostWreckPos;
+  const rawPos = (stampedPos && Number.isFinite(stampedPos.x) && Number.isFinite(stampedPos.z))
+    ? stampedPos
+    : (paramPos && Number.isFinite(paramPos.x) && Number.isFinite(paramPos.z) ? paramPos : null);
+  const sectorId = (m && m._escorteeSectorId) || p.lostSectorId
+    || (m && m.destSectorId) || currentSectorId || null;
+  return {
+    sectorId: sectorId == null ? null : String(sectorId),
+    wreckPos: rawPos ? { x: rawPos.x, z: rawPos.z } : null,
+  };
+}
+
+/** INF-066: salvage-family mutation tags — the only missions with a recovery leg. */
+export function isMutationRecovery(m) {
+  const tag = m && m.mutationTag;
+  return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
+}
+
+/**
+ * INF-069: the convoy client's three-state arc, bound to live settlement — never to intent.
+ * `recovering` answers the first salvage credit; `completed` answers the dock (full thanks
+ * only when the full manifest actually changed hands, short-settle otherwise); `failed`
+ * answers abandonment or expiry with a closed file and no thanks. Returns null for every
+ * mission that is not a salvage successor, so ordinary contracts keep their own voice and
+ * the client can neither thank for unperformed work nor re-introduce itself after settling
+ * (settlement fires once; the reaction carries a once-flag at the call site).
+ */
+export function convoyClientVoice(m, outcome, homeName) {
+  if (!isMutationRecovery(m)) return null;
+  const home = String(homeName || 'home');
+  const sender = `${home} Salvage Desk`;
+  const p = (m && m.params) || {};
+  const qty = Math.max(1, Math.floor(Number(p.qty) || 1));
+  if (outcome === 'recovering') {
+    return {
+      sender,
+      text: `You're into the wreck — bring what's left of it home to ${home}. The desk pays for what comes back.`,
+    };
+  }
+  if (outcome === 'completed') {
+    if (p.completionMethod === 'partial_recovery') {
+      return {
+        sender,
+        text: `Short manifest logged. It isn't the whole convoy, but it settles what came home to ${home}.`,
+      };
+    }
+    return {
+      sender,
+      text: `Full ${qty}u manifest home at ${home}. The convoy's file is closed with thanks — settled in full.`,
+    };
+  }
+  if (outcome === 'failed' || outcome === 'expired') {
+    return {
+      sender,
+      text: `The wreck's gone cold and the file is closed at ${home}. No payment, no blame — there was nothing left to bring home.`,
+    };
+  }
+  return null;
+}
+
+/** INF-068: the convoy-wreck pocket geometry — a near-ring offset plus a slow drift. */
+export const CONVOY_WRECK_RING_WU = 60;
+export const CONVOY_WRECK_DRIFT_WU_S = 6;
+
+/**
+ * INF-068: author the convoy-wreck pocket for one salvage successor. The lost hull died where
+ * the stamp says; the pocket spawns one drifting wreck there holding the contract commodity
+ * with its core armed. Arming `data.unstableReactor` is the whole trick: the salvage catalog
+ * answers it with the vent-reactor action (vent or tow clear), and the salvage update ticks
+ * its burst timer — both physical answers work through existing systems, and settlement stays
+ * the canonical credit-plus-dock path. Pure over the mission plus explicit inputs; the caller
+ * supplies rng angles and the clock. Returns null when the mission is not a salvage successor
+ * with a known loss site and a contract commodity.
+ */
+export function convoyWreckPocket(m, opts = {}) {
+  if (!m || m.type !== 'salvage_retrieval' || !isMutationRecovery(m)) return null;
+  const p = m.params || {};
+  const cmdtyId = p.cmdtyId;
+  const qty = Math.max(1, Math.floor(Number(p.qty) || 1));
+  if (!cmdtyId) return null;
+  const routing = mutationWreckRouting(m, opts.currentSectorId || null);
+  if (!routing.wreckPos || !routing.sectorId) return null;
+  const nowS = Number(opts.nowS) || 0;
+  const catalog = (typeof salvageActionById === 'function' && salvageActionById('vent_reactor')) || {};
+  const timerS = Math.max(1, Number(catalog.timerS) || 8);
+  const damage = Math.max(1, Math.min(Number(catalog.burstDamage) || 18, 24));
+  const persistedDueAt = Number(p.convoyWreckDueAt);
+  const dueAt = Number.isFinite(persistedDueAt) ? persistedDueAt : nowS + timerS;
+  const ringAngle = Number(opts.ringAngle) || 0;
+  const driftAngle = Number(opts.driftAngle) || 0;
+  const pos = {
+    x: routing.wreckPos.x + Math.cos(ringAngle) * CONVOY_WRECK_RING_WU,
+    z: routing.wreckPos.z + Math.sin(ringAngle) * CONVOY_WRECK_RING_WU,
+  };
+  return {
+    sectorId: routing.sectorId,
+    dueAt,
+    spec: {
+      type: 'wreck',
+      pos,
+      vel: {
+        x: Math.cos(driftAngle) * CONVOY_WRECK_DRIFT_WU_S,
+        z: Math.sin(driftAngle) * CONVOY_WRECK_DRIFT_WU_S,
+      },
+      rot: 0,
+      radius: 9,
+      mass: 60,
+      hull: 1,
+      hullMax: 1,
+      factionId: null,
+      team: 2,
+      collides: false,
+      flags: { noInterp: true, missionPinned: true, durable: true },
+      data: {
+        parentType: 'ship',
+        unstableReactor: { dueAt, damage, vented: false, burst: false, towedClear: false },
+        authoredSalvagePool: { [cmdtyId]: qty },
+        authoredScanLabel: 'Convoy wreck — unstable core',
+        identityKey: `mission:${m.id}:convoy-wreck`,
+        homeSectorId: routing.sectorId,
+        sectorId: routing.sectorId,
+        durable: true,
+        missionId: m.id,
+        missionTag: m.id,
+        missionPinned: true,
+      },
+    },
+  };
+}
+
+/**
+ * INF-067: is an ordinary bounty contract void because its mark is gone? True when the killed
+ * entity is a tagged target, the objective is still unmet, and every tagged target is dead or
+ * gone (the just-killed id counts as gone unconditionally — the event IS its death). Authored
+ * (storyTag) bounties own their own failure branches and never void here. Pure over the
+ * instance plus a liveness predicate, so tests pin it without the system.
+ */
+export function bountyTargetLost(m, killedId, isGone) {
+  if (!m || m.status !== 'active' || m.type !== 'bounty_hunt') return false;
+  if (m.storyTag) return false;
+  const ids = Array.isArray(m.targetEntityIds) ? m.targetEntityIds : [];
+  if (!ids.includes(killedId)) return false;
+  const target = Math.max(1, m.objectiveTarget || 1);
+  if ((m.objectiveProgress || 0) >= target) return false;
+  const gone = typeof isGone === 'function' ? isGone : () => true;
+  return ids.every((id) => id === killedId || gone(id));
+}
+
+/**
+ * INF-066: partial-recovery settlement math. A successor that docks short of its full qty
+ * settles once for what is actually aboard: proportional pay on the successor's own (already
+ * halved) stake. Returns null when nothing is aboard — the caller keeps the legacy
+ * "not carrying" path. Pure; the caller consumes via the cargo single-writer.
+ */
+export function mutationPartialSettlement(have, need, rewardCr) {
+  const needQty = Math.max(1, Math.floor(Number(need) || 1));
+  const haveQty = Math.max(0, Math.floor(Number(have) || 0));
+  const deliverQty = Math.min(haveQty, needQty);
+  if (deliverQty <= 0) return null;
+  const partial = deliverQty < needQty;
+  return {
+    deliverQty,
+    partial,
+    payCr: Math.max(0, Math.round((Number(rewardCr) || 0) * deliverQty / needQty)),
+  };
 }
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
@@ -603,7 +826,10 @@ function setPieceCauseOf(value) {
 function isFingerprintBoardSource(source) {
   return source === 'poiBehavior'
     || source === SET_PIECE_MISSION_SOURCE
-    || source === LANDMARK_QUEST_SOURCE;
+    || source === LANDMARK_QUEST_SOURCE
+    // Each cargo-kill chain mints its own salvage offer — dedupe per chain, not per source, so
+    // a second completed chain at the same station still boards its contract.
+    || source === 'cargoKillChain';
 }
 
 function isZeroPayLandmarkMission(mission, rewardCr) {
@@ -825,6 +1051,8 @@ export const missions = {
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
+    bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
     // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
@@ -937,6 +1165,16 @@ export const missions = {
   // =========================================================================================
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
+    // Flush settlement-detached capital boss fights AFTER the score's own fixed-tick step has run
+    // at least once past the terminal observation, so capitalBoss:ended (final voice/telemetry)
+    // is emitted before the record is removed.
+    if (this._pendingCapitalBossDetaches && this._pendingCapitalBossDetaches.size) {
+      const pending = this._pendingCapitalBossDetaches;
+      this._pendingCapitalBossDetaches = new Set();
+      for (const fightId of pending) {
+        this.bus.emit('capitalBoss:detach', { fightId });
+      }
+    }
     const active = state.missions.active;
     const now = state.simTime;
     for (let i = active.length - 1; i >= 0; i--) {
@@ -1165,7 +1403,7 @@ export const missions = {
    *  so accepted/expired offers don't reappear mid-visit. */
   ensureBoard(stationId) {
     const state = this.state;
-    const info = STATION_INFO.get(stationId);
+    const info = stationInfoFor(state, stationId);
     if (!info) return null; // gates / unknown stations have no board
     const epoch = this._epoch();
     let board = state.missions.boards[stationId];
@@ -1210,6 +1448,12 @@ export const missions = {
     // not swallow it (the ledger never re-fires a lane, so a dropped row kills the arc for the save).
     const retainedGhostConvoyOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'ghostConvoyRumor'
+    )).slice(0, 1);
+    // One salvage contract minted from a completed cargo-kill sale. The news line names this
+    // station, so a board refresh must not drop the row before the player can take it.
+    const retainedCargoKillOffers = previousSlots.filter((offer) => (
+      offer && offer.source === 'cargoKillChain'
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
     // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
     // together through an epoch refresh until the player accepts one; acceptMission withdraws the
@@ -1259,6 +1503,7 @@ export const missions = {
         ...retainedMegaHeists,
         ...retainedCapitalBoss,
         ...retainedGhostConvoyOffers,
+        ...retainedCargoKillOffers,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1719,6 +1964,67 @@ export const missions = {
   },
 
   /**
+   * One salvage contract after a cargo-ship kill is salvaged and sold. The economy already moved
+   * the destination price; this is the board opportunity, not a fine or a failed contract.
+   */
+  _onCargoKillOpportunity(fact) {
+    if (!fact || fact.kind !== 'price_move' || !fact.chainId || !fact.saleStationId) return false;
+    const info = stationInfoFor(this.state, fact.saleStationId);
+    if (!info) return false;
+    const commodity = CMDTY_BY_ID.get('cmdty_scrap_metal');
+    const qty = 4;
+    const unit = commodity ? commodity.basePrice : 10;
+    const epoch = this._epoch();
+    const offer = {
+      id: `cksalv_${fact.chainId}`,
+      source: 'cargoKillChain',
+      type: 'salvage_retrieval',
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: 640,
+      time_limit_s: 900,
+      duration_s: 900,
+      collateral_cr: 0,
+      riskTier: 1,
+      preloadedCargo: false,
+      destStationId: info.id,
+      destSectorId: info.sectorId,
+      distance: 600,
+      params: {
+        cmdtyId: 'cmdty_scrap_metal',
+        qty,
+        cargoValue: unit * qty,
+        fValue: 1.2,
+        taskTime: 30,
+        wreckPos: fact.pos ? { x: fact.pos.x, z: fact.pos.z } : null,
+        sectorId: fact.sectorId || info.sectorId,
+      },
+      title: `Recover ${qty}u ${commodity ? commodity.name : 'Scrap Metal'} for ${info.name}`,
+      brief: `A witness marked the hull. ${info.name} pays for the scrap that is still out there.`,
+      summary: fact.moved
+        ? `Witness at the kill. ${fact.commodityId} moved at the destination.`
+        : 'Witness at the kill. The wreck is still recoverable.',
+      cause: {
+        tag: 'salvage',
+        chainId: fact.chainId,
+        fingerprint: fact.chainId,
+        witness: true,
+        priceStationId: fact.stationId || null,
+      },
+      expiresAtEpoch: epoch + 2,
+      storyTag: null,
+    };
+    const boarded = this._onExternalBoardOffer(offer);
+    if (!boarded) return false;
+    const text = `A witness kept the bearing. Salvage contract live: ${offer.title}.`;
+    const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+      ? this.helpers.voice.say({ channel: 'news', text, kind: 'salvage' })
+      : false;
+    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 4, source: 'cargoKillChain' });
+    return true;
+  },
+
+  /**
    * Adopt an emit-only field contract into the normal board without accepting it.
    * Idempotent by stable offer id and capped at one economyContract row per station epoch.
    */
@@ -1735,6 +2041,7 @@ export const missions = {
       // lossLedger's ghost-convoy lane bounty: a complete, priced offer built from real lane
       // losses — the rumor's news line points here, so the board must be allowed to carry it.
       || rawOffer.source === 'ghostConvoyRumor'
+      || rawOffer.source === 'cargoKillChain'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
     );
     if (!allowedSource) return false;
@@ -1742,7 +2049,7 @@ export const missions = {
     if (rawOffer.source === LANDMARK_QUEST_SOURCE && !validateLandmarkQuestOffer(rawOffer)) return false;
     if (rawOffer.source === SET_PIECE_MISSION_SOURCE && !setPieceCauseOf(rawOffer)) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
-    const info = STATION_INFO.get(rawOffer.stationId);
+    const info = stationInfoFor(this.state, rawOffer.stationId);
     if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
     const epoch = this._epoch();
     if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
@@ -2041,12 +2348,9 @@ export const missions = {
     if (!terms.length) return stamped;
     const suffix = terms.map((c) => c.brief).filter(Boolean).join(' ');
     if (suffix) {
-      const base = String(stamped.brief || '').trim();
-      const line = base ? `${base} ${suffix}` : suffix;
       // The chart inspector prints this as leg prose; the shipped generator clamps its half to 90,
       // so the combined line stays inside two short lines rather than reflowing the panel.
-      stamped.brief = line.length <= CONDITION_BRIEF_MAX ? line
-        : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+      stamped.brief = withClauseBriefSuffix(String(stamped.brief || '').trim(), suffix);
     }
     return stamped;
   },
@@ -3079,6 +3383,30 @@ export const missions = {
       return base;
     }
 
+    // INF-066: a salvage successor's recovery leg marks the wreck it was mutated for. While the
+    // hold is short of the full qty the marker sits on the loss site with both legs in words;
+    // once recovery is complete it falls through to the generic delivery marker below.
+    // INF-068: no marker on an empty position — once the armed core's clock has run out the
+    // wreck is gone (burst takes the cargo), and the delivery leg below owns the marker.
+    if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
+      const sectorNow = this.state.world && this.state.world.currentSectorId;
+      const routing = mutationWreckRouting(m, sectorNow);
+      const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
+      const short = (m.objectiveProgress || 0) < target;
+      const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(this.state.simTime) || 0);
+      if (short && !clockOut && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
+        const home = (station && station.name) || 'home';
+        return {
+          ...base,
+          stationId: null,
+          sectorId: routing.sectorId,
+          pos: { x: routing.wreckPos.x, z: routing.wreckPos.z },
+          reason: `Recover the convoy wreck, then deliver to ${home}`,
+        };
+      }
+    }
+
     if (m.type === 'mining_quota') {
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
@@ -3461,13 +3789,55 @@ export const missions = {
       this._completeMission(m, i);
       return true;
     }
+    // INF-066: mutation-successor recovery legs credit real salvage work. Loot the player's own
+    // beam pulled from a wreck in the loss sector counts toward the contract commodity — the
+    // goods are fungible scrap, so sector + commodity is the honest bound, and the dock
+    // settlement below still requires the goods to be aboard before anything pays.
+    if (p.loot && typeof p.loot === 'object') {
+      const sectorNow = this.state.world && this.state.world.currentSectorId;
+      for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+        const m = this.state.missions.active[i];
+        if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
+        if (!isMutationRecovery(m)) continue;
+        const routing = mutationWreckRouting(m, sectorNow);
+        if (!routing.sectorId || routing.sectorId !== sectorNow) continue;
+        const cmdtyId = m.params && m.params.cmdtyId;
+        const got = cmdtyId ? Math.max(0, Math.floor(Number(p.loot[cmdtyId]) || 0)) : 0;
+        if (got <= 0) continue;
+        const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
+        const before = m.objectiveProgress || 0;
+        m.objectiveProgress = Math.min(target, before + got);
+        if (m.objectiveProgress !== before) {
+          this._refreshTrackedMissionNav(m);
+          this.bus.emit('mission:updated', {
+            missionId: m.id,
+            objectiveProgress: m.objectiveProgress,
+            salvageRecovered: true,
+          });
+          // INF-069: the client's reaction to the player's approach — once, on the first real
+          // credit, persisted on the mission so Continue never repeats it.
+          if (before <= 0 && m.params && !m.params.convoyClientReacted) {
+            m.params.convoyClientReacted = true;
+            const voice = convoyClientVoice(m, 'recovering', this._stationName(m.destStationId));
+            if (voice) {
+              this.bus.emit('comms:popup', {
+                sender: voice.sender,
+                text: voice.text,
+                category: 'personal',
+                ttl: 8,
+              });
+            }
+          }
+        }
+      }
+    }
     return false;
   },
 
   _onKill(p) {
     if (!p) return;
     const byPlayer = p.killerId === this.state.playerId;
-    if (!byPlayer) return; // mission kills only count for the player
+    if (!byPlayer) { this._voidLostBountyTargets(p); return; } // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
@@ -3494,17 +3864,44 @@ export const missions = {
     }
   },
 
+  /**
+   * INF-067: a tagged bounty target destroyed by someone else. When the mark is gone with the
+   * objective unmet, the contract voids fairly (no penalty, deposit back) instead of stranding
+   * the player in a mission whose destination no longer exists. Never respawns the target.
+   */
+  _voidLostBountyTargets(p) {
+    if (!p || p.id == null) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (missionObservesClauseEvent(m, 'entity:killed')) continue;
+      const gone = (id) => {
+        const e = this.state.entities && this.state.entities.get(id);
+        return !e || e.alive === false;
+      };
+      if (bountyTargetLost(m, p.id, gone)) {
+        this._failMission(m, i, 'target_lost');
+      }
+    }
+  },
+
   _onEntityDestroyed(p) {
     if (!p || p.id == null) return;
     // PQ-019C: a destroyed capsule is a `payload_destroyed` CANDIDATE, arbitrated against whatever
     // else happened this tick — not an immediate failure. It is stamped from the live tick because
     // this listener runs synchronously with the destruction that caused it.
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
-    // Escort fail: the escortee entity died.
+    // Escort fail: the escortee entity died. Stamp the loss site first (INF-066) — the
+    // destroy payload's last pos is the only pointer to the hull, and the entity row is
+    // already deleted, so the salvage successor routes to the true wreck from this stamp.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'escort') continue;
       if (m._escorteeId != null && m._escorteeId === p.id) {
+        const site = escortLossSite(p.pos, this.state.world && this.state.world.currentSectorId);
+        if (site) {
+          m._escorteeSectorId = site.sectorId;
+          m._escorteeWreckPos = site.wreckPos;
+        }
         this._failMission(m, i, 'escortee_lost');
       }
     }
@@ -4388,35 +4785,54 @@ export const missions = {
     const encounterId = m && m.params && m.params.encounterId;
     const encounter = capitalBossEncounter(encounterId);
     if (!helpers || !helpers.spawnEntity || !encounter) return;
-    const have = this._countAuthoredRoles(m);
-    const occupied = new Set((m.targetEntityIds || []).map((id) => (
-      missionTargetSlotOf(this.state.entities.get(id), m.id)
-    )).filter((slot) => slot != null));
-    const nextSlot = () => {
-      let slot = 0;
-      while (occupied.has(slot)) slot += 1;
-      occupied.add(slot);
-      return slot;
-    };
+    const state = this.state;
+    m.params = m.params || {};
+    // Finite cast: the ledger is the durable issuance record serialized with mission params.
+    // Keys are authored role slots `missionId/role/index`. A spent, dead or consumed actor keeps
+    // its issued slot forever; only a genuinely denied spawn (null, slot never created) may retry.
+    const actorLedger = (m.params.capitalActorLedger ??= {});
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
-    for (const actor of encounter.actors || []) {
+    // Stable authored indices 0..count-1, never haveCount..want: a count of alive rocks cannot
+    // distinguish "never spawned" from "spent", so the old count-based loop would replenish
+    // ammunition after consumption or reload.
+    const orderedActors = [
+      ...(encounter.actors || []).filter((a) => a && a.role === PHYSICAL_ROLE.CAPITAL),
+      ...(encounter.actors || []).filter((a) => a && a.role !== PHYSICAL_ROLE.CAPITAL),
+    ];
+    // The capital's placed pose anchors the authored ballast layout. This is INITIAL layout for
+    // this spawn batch only — never a per-tick formation constraint or a teleport of a live rock.
+    let bossPose = null;
+    const liveBoss = this._physicalTargetOf(m, PHYSICAL_ROLE.CAPITAL);
+    if (liveBoss && liveBoss.alive !== false) {
+      bossPose = { pos: { x: liveBoss.pos.x, z: liveBoss.pos.z }, rot: liveBoss.rot || 0 };
+    }
+
+    for (const actor of orderedActors) {
       const want = Math.max(1, actor.count || 1);
-      const haveCount = have[actor.role] || 0;
-      for (let i = haveCount; i < want; i++) {
-        const durableSlot = nextSlot();
-        const rng = nextRng(durableSlot);
-        const ang = rng() * Math.PI * 2;
-        const r = 200 + rng() * 80;
-        const pos = actor.hostile
-          ? (missionHostileSpawnPos(this.state, { x: px, z: pz }, rng) || {
-            x: px + 360, z: pz + 180,
-          })
-          : { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+      const isCapital = actor.role === PHYSICAL_ROLE.CAPITAL;
+      for (let actorIndex = 0; actorIndex < want; actorIndex++) {
+        const actorKey = `${m.id}/${actor.role}/${actorIndex}`;
+        if (Object.hasOwn(actorLedger, actorKey)) continue;
+        const rng = nextRng(actorKey);
+        const rot = rng() * Math.PI * 2;
+        let pos;
+        if (isCapital) {
+          pos = missionHostileSpawnPos(state, { x: px, z: pz }, rng) || { x: px + 360, z: pz + 180 };
+        } else if (bossPose) {
+          const anchored = capitalBossBallastPosition(encounter, bossPose, actorIndex);
+          pos = { x: anchored.x, z: anchored.z };
+        } else {
+          // Boss not placed yet this pass (denial is retryable): hold the ballast on the mission
+          // ring rather than inventing a boss pose.
+          const ang = rng() * Math.PI * 2;
+          const r = 200 + rng() * 80;
+          pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        }
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'bruiser_brawler', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: this.state.tick,
+            startedTick: state.tick,
             motive: 'capital_interdiction',
             engagementTrigger: 'capital_boss_contract',
           });
@@ -4442,13 +4858,14 @@ export const missions = {
           if (actor.shipClass) spec.data.shipClass = actor.shipClass;
           spec.flags = spec.flags || {};
           spec.flags.invuln = false;
+          spec.rot = rot;
         } else {
           spec = {
             type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
             team: 2,
             pos,
             vel: { x: 0, z: 0 },
-            rot: rng() * Math.PI * 2,
+            rot,
             radius: actor.radius || 12,
             mass: actor.mass || 40,
             hull: actor.hull || 80,
@@ -4465,12 +4882,148 @@ export const missions = {
         spec.data.capitalSubsystemRoles = { ...(encounter.subsystemRoles || CAPITAL_BOSS.subsystemRoles) };
         spec.data.capitalImmunity = false;
         if (actor.tetherable) spec.data.tetherable = true;
-        const ent = helpers.spawnEntity(spec);
-        if (!ent) continue;
-        this._stampMissionTargetIdentity(ent, m, durableSlot);
-        m.targetEntityIds.push(ent.id);
+        // Instance missionTag is kept (mission ownership); the decorator assigns the explicit
+        // DEFINITION doctrine in data.ai.combatDoctrineId and stamps persistence/save identity.
+        decorateCapitalBossSpawnSpec(spec, actor, encounter, { missionId: m.id, index: actorIndex });
+        const entity = spawnCapitalActorOnce({
+          ledger: actorLedger,
+          spec,
+          spawnEntity: (owned) => this.spawnOwnedCapitalBossActor(m, owned),
+        });
+        if (entity && isCapital) {
+          bossPose = { pos: { x: entity.pos.x, z: entity.pos.z }, rot: entity.rot || rot };
+        }
       }
     }
+    // The whole initial cast exists (or its denials are ledgered): start the authored score
+    // synchronously so stock fire is closed before the capital's first AI decision tick.
+    if (Object.hasOwn(actorLedger, `${m.id}/${PHYSICAL_ROLE.CAPITAL}/0`)) {
+      const boss = this._physicalTargetOf(m, PHYSICAL_ROLE.CAPITAL);
+      if (boss) {
+        this.bus.emit('capitalBoss:start', {
+          encounterId: encounter.id,
+          fightId: m.id,
+          bossId: boss.id,
+          targetId: state.playerId,
+          mirror: 1,
+        });
+      }
+    }
+  },
+
+  /**
+   * The ONE mission-owned spawn boundary for a capital boss cast (and wing members). Enforces the
+   * native spawn budget, adjusts an authored placement that would overlap the player, another live
+   * body or a protected area (the authored offset is a desire, not a bypass of native placement
+   * safety), stamps durable mission identity on the owner's numeric target slot, and registers the
+   * returned id. A null/throwing native spawn never leaks a budget grant.
+   */
+  spawnOwnedCapitalBossActor(m, spec) {
+    const helpers = this.helpers;
+    if (!m || !helpers || typeof helpers.spawnEntity !== 'function') {
+      throw new Error('Capital boss owned spawn requires the mission spawn owner');
+    }
+    if (!spec || !spec.pos) return null;
+    const state = this.state;
+    const jitterKey = (spec.data && (spec.data.capitalBossActorKey || spec.data.capitalBossWingKey)) || m.id;
+    spec.pos = capitalBossAdjustedPlacement(
+      state,
+      spec.pos,
+      Number.isFinite(spec.radius) ? spec.radius : 12,
+      jitterKey,
+    );
+    if (!spec.pos) return null; // hard safety floor violated: denied, retryable, nothing issued
+    const budget = helpers.spawnBudget;
+    const requester = `mission:${m.id}`;
+    if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+      return null;
+    }
+    let ent = null;
+    try {
+      ent = helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+    this._stampMissionTargetIdentity(ent, m, this._nextCapitalBossTargetSlot(m));
+    m.targetEntityIds.push(ent.id);
+    return ent;
+  },
+
+  /** Mission owner's numeric durable-slot allocator. Separate from authored role indices. */
+  _nextCapitalBossTargetSlot(m) {
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    let slot = 0;
+    while (occupied.has(slot)) slot += 1;
+    return slot;
+  },
+
+  /**
+   * The living-world adopt view is shipLike/wrecks by design ("never rocks or FX"), so the capital
+   * cast's mission-pinned BALLAST bodies (asteroids) silently fall out of targetEntityIds on every
+   * adopt pass. Under the old count-based spawner that shed turned into the renewable-ammunition
+   * fountain; under the finite ledger it must instead be repaired by CONTENT: durable actor/wing
+   * keys re-attach their live bodies, and issued slots never mint replacements.
+   */
+  _reattachCapitalBossCastTargets(m) {
+    if (!isCapitalBossMission(m)) return 0;
+    const prefix = `${m.id}/`;
+    const have = new Set(m.targetEntityIds || []);
+    let reattached = 0;
+    for (const e of this.state.entityList || []) {
+      if (!e || e.alive === false) continue;
+      const key = e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
+      if (!key || !String(key).startsWith(prefix) || have.has(e.id)) continue;
+      m.targetEntityIds.push(e.id);
+      have.add(e.id);
+      reattached += 1;
+    }
+    return reattached;
+  },
+
+  /**
+   * Restore-side owner reconciliation for one restored fight: re-adopt live rematerialized
+   * targets (durable mission+slot identity is the save seam), re-attach the authored cast by
+   * durable key (the adopt view never yields asteroids), and re-point issuance ledger entity ids
+   * at their durable-key rematerializations. Issued slots are never re-minted and spent/denied
+   * slots are preserved; an absent entity keeps its issued slot (it may be temporarily unloaded —
+   * absence is not permission to respawn).
+   */
+  reconcileCapitalBossOwner(record) {
+    const fightId = record && record.fightId;
+    if (fightId == null) return 0;
+    const m = (this.state.missions.active || []).find((row) => (
+      row && row.id === fightId && isCapitalBossMission(row)
+    ));
+    if (!m) return 0;
+    this._adoptLiveMissionTargets(m);
+    this._reattachCapitalBossCastTargets(m);
+    let repointed = 0;
+    const liveByKey = new Map();
+    for (const e of this.state.entityList || []) {
+      const key = e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
+      if (key && e.alive !== false) liveByKey.set(String(key), e);
+    }
+    const repoint = (ledger) => {
+      for (const [slot, entry] of Object.entries(ledger || {})) {
+        if (!entry || entry.entityId == null) continue;
+        const live = liveByKey.get(String(slot));
+        if (live && live.id !== entry.entityId) {
+          entry.entityId = live.id;
+          repointed += 1;
+        }
+      }
+    };
+    repoint(m.params && m.params.capitalActorLedger);
+    repoint(m.params && m.params.capitalWingLedger);
+    return repointed;
   },
 
   _countAuthoredRoles(m) {
@@ -4819,7 +5372,7 @@ export const missions = {
           if (this._entityAtStoryDestDock(core, m)) this._completePhysical(m, i, 'sling_in');
           continue;
         }
-        if (this._entityNearDestBerth(core, m) || this.state.world.currentSectorId === m.destSectorId) {
+        if (this._entityNearDestBerth(core, m)) {
           this._completePhysical(m, i, 'sling_in');
         }
         continue;
@@ -4991,6 +5544,34 @@ export const missions = {
       // Cargo/passenger/salvage/smuggling: require the actual cargo to be aboard, then consume it.
       if (t === 'cargo_delivery' || t === 'passenger_transport'
           || t === 'salvage_retrieval' || t === 'smuggling_run') {
+        // INF-066: a salvage successor that docks short of its full qty settles ONCE for what is
+        // actually aboard — proportional pay on its own (halved) stake, goods consumed through
+        // the cargo single-writer, mission completed as a partial recovery. Ordinary salvage
+        // and every other type keep the legacy all-or-nothing path below.
+        if (t === 'salvage_retrieval' && isMutationRecovery(m) && m.params && m.params.cmdtyId) {
+          const need = Math.max(1, m.params.qty || 1);
+          const cargo = this.state.player && this.state.player.cargo;
+          const have = Number((cargo && cargo.items && cargo.items[m.params.cmdtyId]) || 0);
+          if (have > 0 && have < need) {
+            const deal = mutationPartialSettlement(have, need, m.reward_cr);
+            if (deal && deal.partial) {
+              removeCargo(this.state, m.params.cmdtyId, deal.deliverQty);
+              this.bus.emit('cargo:delivered', {
+                commodityId: m.params.cmdtyId, qty: deal.deliverQty,
+                missionId: m.id, stationId: m.destStationId,
+              });
+              m.reward_cr = deal.payCr;
+              m.params.completionMethod = 'partial_recovery';
+              this.bus.emit('toast', {
+                text: `Partial recovery: ${deal.deliverQty}/${need}u brought home — settled for ${deal.payCr.toLocaleString('en-US')} cr.`,
+                kind: 'warn',
+                ttl: 4,
+              });
+              this._completeMission(m, i);
+              continue;
+            }
+          }
+        }
         if (!this._deliverCargo(m)) {
           if (m.storyTag === CONTRACT_47A_B0_TAG) {
             m.params.sampleRecovered = false;
@@ -5065,6 +5646,11 @@ export const missions = {
   },
 
   _missionClientName(m) {
+    // INF-069: a salvage successor answers in its home station's voice, not the board's.
+    if (isMutationRecovery(m)) {
+      const home = this._stationName(m && m.destStationId);
+      return `${home || 'Contract Board'}${home ? ' Salvage Desk' : ''}`;
+    }
     const fac = m && m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
     return fac ? (fac.short || fac.name) + ' Contract' : 'Contract Board';
   },
@@ -5091,8 +5677,13 @@ export const missions = {
         return 'Bulk ore received at ' + dest + '. The refinery logged the tether-haul and cleared the contract.';
       case 'mining_quota':
         return 'Quota received. The assay office logged ' + cargo + '; the rest of the rock can stay quiet.';
-      case 'salvage_retrieval':
+      case 'salvage_retrieval': {
+        // INF-069: the convoy client's answer to the actual outcome — full thanks only when
+        // the full manifest changed hands (this branch runs inside settlement, never on intent).
+        const voice = convoyClientVoice(m, 'completed', this._stationName(m && m.destStationId));
+        if (voice) return voice.text;
         return 'Recovery logged. Useful wreckage became inventory before another crew filed the claim.';
+      }
       case 'smuggling_run':
         return 'The cargo disappeared into ' + dest + '\'s books without becoming a customs story.';
       case 'bounty_hunt':
@@ -5130,6 +5721,12 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    // INF-069: the convoy client's answer to abandonment or expiry — a closed file, no thanks.
+    if (isMutationRecovery(m)) {
+      const voice = convoyClientVoice(m, 'failed', this._stationName(m && m.destStationId));
+      if (voice) return voice.text;
+    }
+    if (reason === 'target_lost') return 'The mark was destroyed before you closed in near ' + dest + '. The contract is void — deposit refunded, no standing lost.';
     if (reason === 'deadline') return 'Deadline missed near ' + dest + '. The board has already marked the lane cold.';
     if (reason === 'abandoned') return 'Contract abandoned. Progress was cleared from the board and the client will remember the gap.';
     if (reason === 'escort_abandoned') return 'Escort contract voided. The convoy was left outside acceptable coverage.';
@@ -5392,6 +5989,9 @@ export const missions = {
     // --reload-at golden (same precedent as `clauses`/`heist` in _instanceFromOffer).
     successor.mutatedFromMissionId = m.id;
     successor.mutationTag = descriptor.tag;
+    // INF-068: a salvage successor materializes its convoy-wreck pocket through the ordinary
+    // sector-enter spawn flow — the wreck is a real body to work, not a rumor.
+    if (isMutationRecovery(successor)) successor.needsTargets = true;
     if (descriptor.keepTargets) {
       const kept = Array.isArray(m.targetEntityIds) ? m.targetEntityIds.slice() : [];
       successor.targetEntityIds = kept;
@@ -5440,22 +6040,24 @@ export const missions = {
     if (descriptor.tag === 'salvage' || descriptor.tag === 'recovery' || descriptor.tag === 'cooked') {
       // The wreck the convoy left is the content. Commodity/qty derive from the failing id; the
       // pointer to the lost hull and its sector read straight off the mission — nothing invented.
+      // INF-066: the loss-site stamp (escort failure) feeds the shared routing helper, so the
+      // successor's recovery leg starts where the hull actually died, not at the old destination.
       const cmdtyId = MUTATION_SALVAGE_CMDTYS[
         (hash32(String(m.id), reasonText, 'mutation-salvage-cmdty') >>> 0) % MUTATION_SALVAGE_CMDTYS.length
       ];
       const qty = 2 + ((hash32(String(m.id), reasonText, 'mutation-salvage-qty') >>> 0) % 3);
+      const routing = mutationWreckRouting(m, state.world && state.world.currentSectorId);
       return {
         ...base,
         destStationId: homeStationId,
-        destSectorId: m._escorteeSectorId || m.destSectorId
-          || (state.world && state.world.currentSectorId) || null,
+        destSectorId: routing.sectorId,
         title: descriptor.tag === 'salvage'
           ? `Salvage the convoy wreck — bring it home to ${homeName}`
           : descriptor.tag === 'cooked'
             ? `The cargo cooked — recover what remains for ${homeName}`
             : `Recover what the wreck left — ${homeName}`,
         brief: descriptor.tag === 'salvage'
-          ? `The convoy is gone. Its wreck is still on the drift; ${homeName} pays for what comes back.`
+          ? `The convoy is gone. Its wreck is still on the drift with an unstable core; tow it clear, vent it, or strip it before it bursts — ${homeName} pays for what comes back.`
           : descriptor.tag === 'cooked'
             ? `The lot vented. What is left still pays at ${homeName}.`
             : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
@@ -5463,6 +6065,8 @@ export const missions = {
           cmdtyId,
           qty,
           lostEntityId: m._escorteeId != null ? m._escorteeId : null,
+          lostSectorId: routing.sectorId,
+          lostWreckPos: routing.wreckPos,
           brokenClause: clauseId,
           mutationReroute: true,
         },
@@ -5565,9 +6169,15 @@ export const missions = {
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
     // mission:failed payload factionId-FREE so factions' onMissionLost doesn't ALSO penalise.
-    const penalty = missionRepDeltaFor(m, 'failed');
+    // INF-067: a voided contract (target lost to a third party) is not the player's fault — no
+    // penalty, and the deposit comes back. Rewards and penalties follow the visible resolution.
+    const voided = reason === 'target_lost';
+    const penalty = voided ? 0 : missionRepDeltaFor(m, 'failed');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_failed:${m.type}` });
+    }
+    if (voided && m.collateral_cr > 0) {
+      this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
     // A preloaded manifest belongs to the failed contract. Remove the remaining sealed quantity
     // through cargo authority so abandoning and reissuing cannot duplicate freight.
@@ -5576,7 +6186,7 @@ export const missions = {
     this._logCompletion(m.type, 0, false);
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
       rewardCr: 0,
-      collateralLostCr: m.collateral_cr || 0,
+      collateralLostCr: voided ? 0 : m.collateral_cr || 0,
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
@@ -5599,8 +6209,11 @@ export const missions = {
       ...setPieceEventFields(m, setPieceTransition),
     });
     // A mutated failure is not a scolding: the toast says what the situation turned INTO.
+    // A voided contract is not a scolding either: it says the job is gone and the deposit is back.
     if (mutation) {
       this.bus.emit('toast', { text: mutation.toastText, kind: 'warn', ttl: 5 });
+    } else if (voided) {
+      this.bus.emit('toast', { text: `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`, kind: 'warn', ttl: 5 });
     } else {
       this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
     }
@@ -5696,6 +6309,8 @@ export const missions = {
     });
     // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
     this._adoptLiveMissionTargets(m);
+    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key.
+    this._reattachCapitalBossCastTargets(m);
     // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
@@ -5879,6 +6494,9 @@ export const missions = {
     if (!helpers || !helpers.spawnEntity) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns.
     this._adoptLiveMissionTargets(m);
+    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key
+    // BEFORE the finite-ledger spawn pass decides what is still owed.
+    this._reattachCapitalBossCastTargets(m);
     const player = helpers.player ? helpers.player() : this.state.entities.get(this.state.playerId);
     const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
     const nextRng = (durableSlot = null) => {
@@ -6095,6 +6713,53 @@ export const missions = {
       } else if (budget && typeof budget.releaseSome === 'function') {
         budget.releaseSome(requester, 1);
       }
+    } else if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
+      // INF-068: the convoy-wreck pocket. One unstable drifting wreck holding the contract
+      // cargo, spawned where the hull actually died. Tow it clear or vent it (safe), or race
+      // its core (fast) — the burst takes the cargo with it, so the tradeoff is real, and both
+      // answers end in the same canonical credit-plus-dock settlement. No respawn once the
+      // armed core's clock has run out: the wreck had its chance.
+      m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
+        const e = this.state.entities.get(id);
+        return e && e.alive !== false;
+      });
+      const nowS = Number(this.state.simTime) || 0;
+      const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= nowS;
+      if (!m.targetEntityIds.length && !clockOut) {
+        const budget = helpers.spawnBudget;
+        const requester = `mission:${m.id}`;
+        if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+          this._noteMissionSpawnDeferred(m, 1, 0);
+        } else {
+          const rng = nextRng();
+          const pocket = convoyWreckPocket(m, {
+            nowS,
+            ringAngle: rng() * Math.PI * 2,
+            driftAngle: rng() * Math.PI * 2,
+            currentSectorId: this.state.world && this.state.world.currentSectorId,
+          });
+          let ent = null;
+          try {
+            ent = pocket && helpers.spawnEntity ? helpers.spawnEntity(pocket.spec) : null;
+          } catch (error) {
+            if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+            throw error;
+          }
+          if (ent) {
+            if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+            this._stampMissionTargetIdentity(ent, m, 0);
+            m.targetEntityIds.push(ent.id);
+            m.params = m.params || {};
+            m.params.lostWreckPos = { x: pocket.spec.pos.x, z: pocket.spec.pos.z };
+            m.params.convoyWreckDueAt = pocket.dueAt;
+            this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
+            if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+          } else if (budget && typeof budget.releaseSome === 'function') {
+            budget.releaseSome(requester, 1);
+          }
+        }
+      }
     } else if (m.type === AUTHORED_SET_PIECE_TYPE) {
       this._spawnAuthoredSetPieceTargets(m, nextRng, px, pz);
     } else if (m.type === CAPITAL_BOSS_TYPE) {
@@ -6203,6 +6868,15 @@ export const missions = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
+    // Capital boss contracts hand the authored score back at the settlement boundary. The detach
+    // is DEFERRED to this system's next update tick: settlement can land synchronously inside the
+    // kill event, before the score's fixed-tick step has emitted capitalBoss:ended with its final
+    // voice/telemetry. Between settlement and the flush the cast is already swept (or terminal),
+    // so no living capital is ever ungated.
+    if (isCapitalBossMission(m)) {
+      this._pendingCapitalBossDetaches = this._pendingCapitalBossDetaches || new Set();
+      this._pendingCapitalBossDetaches.add(String(m.id));
+    }
     const follow = m.params && m.params.poiSignalFollowup;
     const world = this.registry && this.registry.get && this.registry.get('world');
     if (follow && world && typeof world.markWorldRecordDestroyed === 'function') {
@@ -7189,6 +7863,54 @@ function outsideMissionPortSafety(state, pos) {
     if (gate && gate.pos && distSq(pos, gate.pos) < 1000 * 1000) return false;
   }
   return true;
+}
+
+/** True when the authored cast placement is comfortable: port-safe and clear of live bodies. */
+function capitalBossPlacementClear(state, pos, radius) {
+  if (!outsideMissionPortSafety(state, pos)) return false;
+  const player = state.entities && state.entities.get(state.playerId);
+  if (player && player.alive !== false && player.pos) {
+    const pad = radius + (player.radius || 10) + 150;
+    if (distSq(pos, player.pos) < pad * pad) return false;
+  }
+  const list = state.entityList;
+  if (Array.isArray(list)) {
+    for (const other of list) {
+      if (!other || other.alive === false || !other.pos || other.collides === false) continue;
+      const pad = radius + (other.radius || 10) + 60;
+      if (distSq(pos, other.pos) < pad * pad) return false;
+    }
+  }
+  return true;
+}
+
+const CAPITAL_BOSS_PLACEMENT_ATTEMPTS = 10;
+
+/**
+ * Authored capital offsets are initial-layout DESIRES. When one would overlap the player, another
+ * live body or a protected area, spin the spawn deterministically around the desired point (seeded
+ * from the durable actor key — never Math.random) until it is comfortable. Returns null only when
+ * the hard safety floor (port safety + player clearance) cannot be met anywhere tried: a genuinely
+ * denied spawn is retryable and issues nothing.
+ */
+function capitalBossAdjustedPlacement(state, pos, radius, jitterKey) {
+  if (capitalBossPlacementClear(state, pos, radius)) return pos;
+  const baseSeed = hash32(state && state.meta && state.meta.seed || 1, String(jitterKey || 'capital-boss'));
+  for (let attempt = 0; attempt < CAPITAL_BOSS_PLACEMENT_ATTEMPTS; attempt++) {
+    const spin = ((baseSeed ^ hash32(state && state.meta && state.meta.seed || 1, attempt + 1)) >>> 0)
+      / 4294967296 * Math.PI * 2;
+    const dist = 220 + (((baseSeed >>> 8) ^ hash32(state && state.meta && state.meta.seed || 1, attempt + 7)) >>> 0) % 940;
+    const candidate = { x: pos.x + Math.cos(spin) * dist, z: pos.z + Math.sin(spin) * dist };
+    if (capitalBossPlacementClear(state, candidate, radius)) return candidate;
+  }
+  // Hard floor only: never on top of the player, never inside a protected area.
+  if (!outsideMissionPortSafety(state, pos)) return null;
+  const player = state.entities && state.entities.get(state.playerId);
+  if (player && player.alive !== false && player.pos) {
+    const pad = radius + (player.radius || 10) + 40;
+    if (distSq(pos, player.pos) < pad * pad) return null;
+  }
+  return pos;
 }
 
 function distSq(a, b) {

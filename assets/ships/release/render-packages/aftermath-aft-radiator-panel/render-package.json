@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2a012109c034daaff15d5c697fece48456bd8015478a01d6d8f89f5cdb950572",
+  "contentHash": "ddf454697b2b52762d25eb5817d92b035508a1139f5fefab16112297dd62bee1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1415,14 +1415,14 @@
       "uri": "place_aftermath_aft_radiator_panel.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 41988,
-    "sha256": "8e8a1977db307540fa58b21f8f6475456b1c0768653a087b91b006a42498412d",
+    "sha256": "7236a7398e3dc5cd7210e8e3c6ad5e1667bb4021d47e072cc290ac01f046c65d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1490,8 +1490,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 15,
-      "mechanical": 2
+      "hull": 14,
+      "mechanical": 2,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1507,7 +1508,7 @@
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -2046,7 +2047,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_radiator_panel.glb"
   },
-  "runtimeHash": "0cd11295cc5883a26abe9b998b3bf342d57f4cfd428dd172629f6b800f9ea9bd",
+  "runtimeHash": "b9ad8843abefa2391499ab598846a8253d20f8ced719b9f14e73f07b672f3a80",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

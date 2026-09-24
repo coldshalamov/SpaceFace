@@ -113,8 +113,11 @@ test('colour is by meaning: role tokens present, zero hardcoded hex, no roleless
 test('trend / legality / speed / badge colour is a meaning role, not a rainbow', () => {
   assert.equal(chartTrendRole(true), 'you');
   assert.equal(chartTrendRole(false), 'foe');
-  assert.equal(chartTrendColor(true), 'var(--sf-you)');
-  assert.equal(chartTrendColor(false), 'var(--sf-foe)');
+  // The station screens moved onto Deckplate, the one token system (owner unification ruling
+  // 2026-09-22; station kit commit e00f13491): the 'you' trend paints the lamp, 'foe' the lamp
+  // driven to failure. The meaning roles above are unchanged; only the token root moved.
+  assert.equal(chartTrendColor(true), 'var(--dp-lamp)');
+  assert.equal(chartTrendColor(false), 'var(--dp-danger)');
   assert.equal(marketLegalityRole('contraband'), 'foe');
   assert.equal(marketLegalityRole('restricted'), 'goal');
   assert.equal(marketLegalityRole('legal'), 'calm');

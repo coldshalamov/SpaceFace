@@ -8,6 +8,8 @@ import { DriveForge } from '../ribbon/driveForge.js';
 import { PlasmaRibbonPlume } from '../ribbon/plasmaRibbons.js';
 import { resolveRcsFirings } from '../../rcsJets.js';
 import { PLAYER_RETRO_VOLUME_RECIPE } from '../recipes/plasmaStreamRecipe.js';
+import { getEngineProfileBase } from '../../vfxProfiles.js';
+import { retroProfileFor, retroWorldScale } from '../retroProfiles.js';
 
 export { PLAYER_RETRO_VOLUME_RECIPE };
 
@@ -78,12 +80,14 @@ export function integrateRetroSpool(volume, demand, dt) {
  * @param {object|null} a11y reduced motion / flash flags
  * @param {number} [bite] the one-shot overpressure transient from integrateRetroSpool
  */
-export function retroEnvelopeForDemand(peak, a11y = null, bite = 0) {
+export function retroEnvelopeForDemand(peak, a11y = null, bite = 0, variant = null, visualScale = 1) {
   const drive = Math.max(0, Math.min(1.4, Number(peak) || 0));
   const punch = Math.max(0, Math.min(1, Number(bite) || 0));
   const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
-  const lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + drive * 0.5);
-  const exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
+  const lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (variant?.length || 1)
+    * visualScale * (0.55 + drive * 0.5);
+  const exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU
+    * (variant?.width || 1) * visualScale;
   return {
     drive,
     // Carried into the ribbon sheets' boost channel: the sheets collimate and sear rather than
@@ -96,7 +100,8 @@ export function retroEnvelopeForDemand(peak, a11y = null, bite = 0) {
     tailRadiusWU: exitRadiusWU * PLAYER_RETRO_VOLUME_RECIPE.tailFlare,
     radiance: (PLAYER_RETRO_VOLUME_RECIPE.radiance || 1.12) * flashScale
       * (0.6 + drive * 0.55) * (1 + punch * 0.5 * flashScale),
-    spread: PLAYER_RETRO_VOLUME_RECIPE.spread * (1 - punch * 0.18),
+    spread: PLAYER_RETRO_VOLUME_RECIPE.spread * (variant?.width || 1)
+      * visualScale * (1 - punch * 0.18),
     opacity: PLAYER_RETRO_VOLUME_RECIPE.opacity,
     construction: RETRO_JET_CONSTRUCTION,
   };
@@ -144,7 +149,7 @@ export function applyPlayerRetroVolume(volume, sockets, peak, dt, a11y, paramsOu
       construction: RETRO_JET_CONSTRUCTION,
     };
   }
-  const envelope = retroEnvelopeForDemand(spool, a11y, volume.bite);
+  const envelope = retroEnvelopeForDemand(spool, a11y, volume.bite, volume.variant, volume.visualScale);
   if (paramsOut) {
     paramsOut.drive = envelope.drive;
     paramsOut.animRate = envelope.animRate;
@@ -256,6 +261,9 @@ export class PlayerRetroJets {
     };
     this._camObj = null;
     this._liveCount = 0;
+    this.profileId = null;
+    this.variant = retroProfileFor(null);
+    this.visualScale = 1;
     // Asymmetric spool state owned here so the release can decay across frames (B10).
     this.spool = 0;
     // One-shot overpressure on brake engagement (see integrateRetroSpool).
@@ -272,8 +280,8 @@ export class PlayerRetroJets {
     this.group.visible = false;
 
     const ribbonOpts = {
-      ribbons: recipe.ribbons || 18,
-      stations: recipe.stations || 32,
+      ribbons: recipe.ribbons || 8,
+      stations: recipe.stations || 40,
       across: recipe.across || 5,
       jetLength: recipe.lengthWU,
       coreColor: recipe.coreColor,
@@ -292,8 +300,8 @@ export class PlayerRetroJets {
       this._plumes.push(plume);
 
       const forge = new DriveForge(T, {
-        lengthWU: 1.6, mouthScale: 0.86, aftScale: 1.02,
-        opacity: 0.2, radiance: 1.35, forceSinglePass: true,
+        lengthWU: 1.35, mouthScale: 0.82, aftScale: 1.06,
+        opacity: 0.24, radiance: 1.55, forceSinglePass: true,
       });
       forge.mesh.name = `${this.name}-forge-${i}`;
       forge.attach(this.group);
@@ -309,6 +317,35 @@ export class PlayerRetroJets {
     for (let i = 0; i < this._plumes.length; i++) {
       this._plumes[i].setCamera(camera);
       this._forges[i].setCamera(camera);
+    }
+  }
+
+  configure(engineProfileId, hullRadius) {
+    this.visualScale = retroWorldScale(hullRadius);
+    const id = engineProfileId || 'engine_ion_small';
+    if (this.profileId === id) return;
+    this.profileId = id;
+    this.variant = retroProfileFor(id);
+    const engine = getEngineProfileBase(id);
+    for (let i = 0; i < this._plumes.length; i++) {
+      const u = this._plumes[i].material.uniforms;
+      u.uCoreColor.value.set(engine.coreColor || '#ffffff');
+      u.uMidColor.value.set(engine.plumeCore || '#36c8ff');
+      u.uEdgeColor.value.set(engine.plumeHalo || '#5a78ff');
+      // A retro is a brake dart: collimated at the lip, then it frays into a few curling
+      // streamers that shred and dissolve. The cruising drive's rolling sheets and broad far
+      // widths are what read as a squid ball when squeezed into two short bow jets — but a column
+      // with no breakup at all is a rigid tube, so the tail is allowed to live.
+      u.uCoherence.value = this.variant.coherence;
+      u.uRollAmp.value = 0.55;
+      u.uSwirl.value = 1.15;
+      u.uWobble.value = 0.9;
+      u.uCurve.value = 0.9;
+      u.uFlowRate.value = this.variant.flow;
+      u.uAxialFreq.value = 3.5;
+      const forge = this._forges[i].material.uniforms;
+      forge.uCoreColor.value.set(engine.coreColor || '#ffffff');
+      forge.uEdgeColor.value.set(engine.plumeCore || '#36c8ff');
     }
   }
 
@@ -376,6 +413,14 @@ export class PlayerRetroJets {
         continue;
       }
       const sock = sockets[i];
+      const u = plume.material.uniforms;
+      u.uWidthNear.value = shape.throatRadius * 0.52;
+      u.uWidthFar.value = shape.throatRadius * 1.05;
+      u.uEmbed.value = shape.throatRadius * 0.55;
+      if (sock.retroIris && sock.retroIris.material) {
+        sock.retroIris.material.emissiveIntensity = sock.retroIris.idle
+          + shape.drive * (sock.retroIris.lit - sock.retroIris.idle);
+      }
       let ax = Number.isFinite(sock.ax) ? sock.ax : -1;
       let ay = Number.isFinite(sock.ay) ? sock.ay : 0;
       let az = Number.isFinite(sock.az) ? sock.az : 0;

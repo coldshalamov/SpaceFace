@@ -19,7 +19,10 @@ import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { icon, factionIcon } from '../station/icons.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -87,13 +90,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '10px 14px',
     ...extra,
@@ -108,13 +105,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -159,12 +150,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -220,15 +206,9 @@ function paintCap(node) {
     'justify-content': 'center',
     'align-items': 'center',
     'box-sizing': 'border-box',
-    background: 'transparent',
     color: 'var(--fh-text)',
     cursor: 'default',
-    'border-style': 'solid',
-    'border-width': FH_KEY.small.width,
-    'border-image-source': 'url("' + fhUrl('keys/' + FH_KEY.small.file + '.rest.png') + '")',
-    'border-image-slice': '12 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': FH_KEY.small.width,
+    ...capPins('small', 'rest', FH_KEY.small.width),
   });
 }
 function paintRow(row) {
@@ -384,7 +364,7 @@ export function controlSections(state) {
       ['Lateral thruster (right)', 'strafeRight'],
       ['Boost (hold) / Dash (tap)', 'boost'],
       ['Fire weapons', 'fire'],
-      ['Auto-target / draw-to-fly (toggle)', 'autoFire'],
+      ['Draw-to-fly (optional toggle)', 'autoFire'],
       ['Countermeasure', 'countermeasure'],
       ['Massline tap: latch / cut', 'tether'],
       ['Massline directional control', null, directional || '—'],
@@ -399,11 +379,12 @@ export function controlSections(state) {
       ['Cycle bomb-bay payload', 'cycleBomb'],
     ]],
     ['Interface (fixed keys)', [
-      ['Aim weapons', null, 'Mouse'],
+      ['Aim weapons freely', null, 'Backspace, then Mouse'],
       ['Mine beam', null, 'RMB on rock'],
       ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
       ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
-      ['Cycle target', null, 'Tab'],
+      ['Cycle combat lock', null, 'Tab / Shift+Tab'],
+      ['Release combat lock', null, 'Backspace'],
       ['Dock', null, `${BINDINGS.dock.label} (when prompted)`],
       ['Pause', null, 'ESC / P'],
       ['Star-map', null, BINDINGS.starmap.label],
@@ -497,9 +478,15 @@ function register(head, body, { sortedIndex = 0, ariaLabel = 'Register' } = {}) 
   const tbody = el('tbody');
   for (const cells of body) {
     const tr = el('tr');
-    cells.forEach(([text, extra], index) => {
+    cells.forEach(([text, extra, ref], index) => {
       const cls = [head[index].num ? 'k-num fh-data' : index === 0 ? 'k-name fh-emphasis' : 'fh-body', extra || ''].filter(Boolean).join(' ');
       const td = el('td', cls, text);
+      if (ref) {
+        td.textContent = '';
+        const linkText = el('span', '', text);
+        decorateEntityNode(linkText, ref);
+        td.appendChild(linkText);
+      }
       pin(td, { 'border-top': '0', 'box-shadow': 'none' });
       tr.appendChild(td);
     });
@@ -693,7 +680,7 @@ export const helpScreen = {
       { label: 'Shield', num: true }, { label: 'Speed', num: true }, { label: 'Cargo', num: true }, { label: 'Price', num: true },
     ];
     const body = sorted.map((s) => [
-      [s.name],
+      [s.name, null, 'hull:' + s.id],
       [s.role.replace(/_/g, ' ')],
       ['T' + s.tier],
       [s.hull],
@@ -719,7 +706,7 @@ export const helpScreen = {
       const legalRole = legalityRole(c.legality);
       const legalCls = legalRole === 'calm' ? '' : 'is-' + legalRole + (legalRole === 'foe' ? ' k-bad' : '');
       return [
-        [c.name],
+        [c.name, null, 'commodity:' + c.id],
         [c.category],
         [c.basePrice + ' cr'],
         [c.volPerU != null ? c.volPerU.toFixed(1) : '-'],
@@ -747,7 +734,7 @@ export const helpScreen = {
       { label: 'Mass', num: true }, { label: 'Volume', num: true }, { label: 'Tags' },
     ];
     const oreBody = rawOres.map((o) => [
-      [o.name],
+      [o.name, null, 'commodity:' + o.id],
       ['T' + o.tier],
       [o.baseValue + ' cr'],
       [o.mass.toFixed(1)],
@@ -788,7 +775,9 @@ export const helpScreen = {
       crest.innerHTML = crestHtml(f.id);
       row.appendChild(crest);
       const main = el('div');
-      main.appendChild(el('span', 'k-row__name fh-emphasis', f.name + ' (' + f.short + ')'));
+      const fname = el('span', 'k-row__name fh-emphasis', f.name + ' (' + f.short + ')');
+      decorateEntityNode(fname, 'faction:' + f.id);
+      main.appendChild(fname);
       const sub = [
         f.controls && f.controls.length ? 'Controls: ' + f.controls.join(', ') : '',
         f.startingRep != null ? 'Starting rep: ' + (f.startingRep > 0 ? '+' : '') + f.startingRep : '',

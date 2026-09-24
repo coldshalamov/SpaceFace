@@ -12,30 +12,42 @@ function overlaps(a, b) {
     && a.y + a.height > b.y;
 }
 
-test('a radar-known contact keeps the contact roster persistently available', () => {
+test('the contacts list stays out of the flight HUD until the player locks something', () => {
   assert.equal(typeof hud.contactRosterVisible, 'function',
     'HUD must expose the contact-roster visibility contract');
-
   assert.equal(hud.contactRosterVisible({
+    locked: false,
     eligibleContactCount: 1,
-    pinned: false,
-    nearbyHostile: false,
-    revealActive: false,
-  }), true, 'a contact at 2600-4000 WU must not exist on radar while the roster is hidden');
-
-  assert.equal(hud.contactRosterVisible({
-    eligibleContactCount: 0,
-    pinned: false,
-    nearbyHostile: false,
-    revealActive: false,
-  }), false, 'an empty on-demand roster should stay out of the playfield');
-
-  assert.equal(hud.contactRosterVisible({
-    eligibleContactCount: 0,
     pinned: true,
-    nearbyHostile: false,
-    revealActive: false,
-  }), true, 'the existing manual pin remains authoritative');
+    nearbyHostile: true,
+    revealActive: true,
+  }), false, 'a pin, a hostile, or a scan does not mount the list');
+  assert.equal(hud.contactRosterVisible({ locked: true }), true, 'a lock mounts the list');
+
+  const parent = { children: [], insertBefore(node, before) {
+    const at = this.children.indexOf(before);
+    if (node.parentNode) node.parentNode.removeChild(node);
+    node.parentNode = this;
+    if (at < 0) this.children.push(node);
+    else this.children.splice(at, 0, node);
+  }, appendChild(node) {
+    if (node.parentNode) node.parentNode.removeChild(node);
+    node.parentNode = this;
+    this.children.push(node);
+  }, removeChild(node) {
+    const i = this.children.indexOf(node);
+    if (i >= 0) this.children.splice(i, 1);
+    if (node.parentNode === this) node.parentNode = null;
+  } };
+  const roster = { parentNode: null };
+  const radar = { parentNode: parent };
+  parent.children.push(radar);
+  assert.equal(hud.mountContactRoster(parent, roster, radar, false), false);
+  assert.equal(roster.parentNode, null);
+  assert.equal(hud.mountContactRoster(parent, roster, radar, true), true);
+  assert.equal(roster.parentNode, parent);
+  assert.equal(parent.children[0], roster);
+  assert.equal(parent.children[1], radar);
 });
 
 test('persistent roster stays in the reserved right stack at target resolutions', () => {

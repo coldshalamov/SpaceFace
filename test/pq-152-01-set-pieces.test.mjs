@@ -1,4 +1,4 @@
-// PQ-152.01 — ten authored set pieces on the route. Seed 15210.
+// PQ-152.01 — eleven authored set pieces on the route. Seed 15210.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -178,6 +178,18 @@ const DRIVES = Object.freeze({
       h.sim.bus.emit('massline:throw', { payloadId: core.id, aimTargetId: null });
     },
   },
+  heavy_tow: {
+    tow_in(h, mission) {
+      const core = targetsByRole(h, mission, 'slag_core')[0];
+      h.sim.bus.emit('tether:latched', { targetId: core.id });
+      h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    },
+    sling_in(h, mission) {
+      const core = targetsByRole(h, mission, 'slag_core')[0];
+      core.pos = { x: 80, z: 40 };
+      h.sim.bus.emit('massline:throw', { payloadId: core.id, aimTargetId: null });
+    },
+  },
   convoy_defence: {
     recatch_pods(h, mission) {
       const pod = targetsByRole(h, mission, 'cargo_pod')[0];
@@ -273,10 +285,10 @@ const DRIVES = Object.freeze({
   },
 });
 
-test('PQ-152.01 catalog is ten physical headlines with two solutions', () => {
+test('PQ-152.01 catalog is eleven physical headlines with two solutions', () => {
   const validation = validateAuthoredSetPieceCatalog();
   assert.equal(validation.ok, true, validation.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 10);
+  assert.equal(AUTHORED_SET_PIECES.length, 11);
   assert.equal(SET_PIECE_MISSIONS.length, 5, 'SP1 chains stay five');
   for (const row of AUTHORED_SET_PIECES) {
     assert.match(row.title, AUTHORED_SET_PIECE_HEADLINE);
@@ -289,13 +301,15 @@ test('PQ-152.01 catalog is ten physical headlines with two solutions', () => {
   assert.ok(ids.includes(AUTHORED_SET_PIECE_TYPE));
   assert.equal(ids[ids.length - 1], 'heist_intercept', 'heist stays last / structural zero');
   assert.equal(OFFER_MIX.trade_hub.length, 10, 'positional mix stays ten columns');
-  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 0, 'Helios trade_hub physical weight stays 0');
-  assert.equal(OFFER_MIX.military.demolition, 0);
+  // Updated honestly with the mid-game economy heartbeat (b65ad1f40): civilian hubs post
+  // physical work by workload share; the old structural-zero pin predates that landing.
+  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 2);
+  assert.equal(OFFER_MIX.military.demolition, 2);
   assert.equal(OFFER_MIX.bounty_board.tow_recovery, 0);
   assert.equal(OFFER_MIX.contracts_hub.demolition, 0);
 });
 
-test('PQ-152.01 seed 15210 posts all ten authored set pieces on the route', () => {
+test('PQ-152.01 seed 15210 posts all eleven authored set pieces on the route', () => {
   const found = scanBoards(SEED);
   const helios = boot(SEED);
   const heliosBoard = helios.missionsSys.ensureBoard('station_helios');

@@ -205,6 +205,14 @@ suite and both unmodified 47a goldens green; report candidate SHA and capture se
 
 ### B. Audio and victim-attached status craft
 
+**PQ-205.01 closed the catalog and status-owned loops.** Real cue IDs live on the eight
+payloads (`bombs.frag.burst` … `bombs.anchor.settle`); dedicated synth recipes replace the
+shared `sfx_explosion_small` / ECM fallback. The slug inhale is a bounded, source-following
+loop that dies on every `bombs:fieldEnded` / cleanup path; collapse is a separate snap.
+Thermite burn and tar residue follow `combat.entities[*].statuses` duration and stacks, so a
+thermite bomb and an incendiary weapon share the same truthful burn. Receipt:
+`design/program/roadmap/receipts/PQ-205.01-REPORT.md`.
+
 Adopt the actual cue IDs in `src/data/bombs.js` into the existing audio catalog. The preliminary
 report claimed three new IDs but listed only two: `bombs.goo.burst` and `bombs.emp.pulse`; inspect
 code, not that count. Give the slug a bounded, source-following inhale and a collapse snap; terminate
@@ -218,6 +226,14 @@ asset/cue needs catalog validation and reduced-flash/motion checks. Do not decla
 "graceful degradation" as a completed sound design.
 
 ### C. NPC mirror and shootable counterplay
+
+**PQ-205.02 closed the NPC mirror and shootable proxy.** The mine-layer wake doctrine is the
+one telegraphed pursuit-lane: after `wake_mines`, `src/ai/npcBombMirror.js` calls `bombs.drop`
+(frag cassette) and `commandDetonate` — no copied fuze. The capsule is a moving projectile-sweep
+proxy (`adaptBombProjectileProxy`: `collides`, `Masks.PROJECTILE`, `physicsBody:false`, pose from
+the kinematic owner). Destroying it is **inert** in every pre-burst phase (safe, armed, warning):
+the payload does not cook. Same-tick bullet/command/expiry races retire or detonate exactly once.
+Receipt: `design/program/roadmap/receipts/PQ-205.02-REPORT.md`.
 
 NPCs call `bombs.drop(owner, payloadId, state)` and `commandDetonate(owner.id, state)`; no copied
 fuze/cooldown/effect implementation. Keep their ammunition/acquisition policy in its proper owner.

@@ -1,0 +1,82 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/scrap_sweeper.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/scrap_sweeper",
+  "focus": [
+    -0.0365,
+    0.0,
+    0.925
+  ],
+  "boundsMin": [
+    -9.5,
+    -3.1472,
+    -1.65
+  ],
+  "boundsMax": [
+    9.4269,
+    3.1472,
+    3.5
+  ],
+  "size": [
+    18.9269,
+    6.2944,
+    5.15
+  ],
+  "lightScale": 1.7525,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 120,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 240,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 224,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 1904,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 2704,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 1684,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 6876,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/scrap_sweeper/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/scrap_sweeper/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/scrap_sweeper/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

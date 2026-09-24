@@ -35,6 +35,15 @@ const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
 const DAMAGE_PIN_S = 2;
 
+// Glass/runway membership is tested per entity per rendered frame
+// (entityMeshVisibility.shouldSubmitEntityMesh + renderer hold-exempt paths), so these must be
+// Sets — the old array publish made every visible root pay an O(n) includes scan. `includes` is
+// kept as an O(1) alias of `has` because callers written against the array publish still spell
+// the lookup that way; both paths now cost the same.
+class ActivityIdSet extends Set {
+  includes(id) { return this.has(id); }
+}
+
 function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
@@ -181,8 +190,8 @@ function ensureRuntime(state) {
       wakeTokensById: new Map(),
       wakeEventsById: new Map(),
       wakeBoundaryTick: -1,
-      glassIds: [],
-      runwayIds: [],
+      glassIds: new ActivityIdSet(),
+      runwayIds: new ActivityIdSet(),
       counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0, r0: 0, r1: 0, r2: 0, r3: 0 },
       pinFacts: emptyPinFacts(),
       contextScratch: {},
@@ -246,8 +255,8 @@ function publishScalars(state, runtime) {
   target.r1 = counts.r1;
   target.r2 = counts.r2;
   target.r3 = counts.r3;
-  published.glassCount = runtime.glassIds.length;
-  published.runwayCount = runtime.runwayIds.length;
+  published.glassCount = runtime.glassIds.size;
+  published.runwayCount = runtime.runwayIds.size;
   published.exactCount = runtime.exactIds.length;
   published.aggregatePopulation = counts.s4;
   state.activityRuntime = published;
@@ -415,10 +424,72 @@ function applyStamp(entity, classified, simTime) {
 }
 
 function rebuildPinFacts(state, player, facts, simTime) {
-  facts.targetId = null;
-  facts.miningId = null;
-  facts.dockId = null;
-  facts.hailId = null;
+  const playerId = player && player.id;
+  const cache = facts._cache || (facts._cache = {
+    membership: NaN,
+    playerId: null,
+    targetId: null,
+    miningId: null,
+    dockId: null,
+    hailId: null,
+    trackedSignal: null,
+    attachments: null,
+    events: null,
+    eventsLen: -1,
+    damageExpiry: Infinity,
+  });
+
+  // Cheap scalar pins first — needed both for the cache key and for callers this tick.
+  let nextTargetId = null;
+  let nextMiningId = null;
+  let nextDockId = null;
+  let nextHailId = null;
+  if (player && player.data && player.data.miningTargetId != null) {
+    nextMiningId = player.data.miningTargetId;
+  }
+  const playerCombat = player && player.data && player.data.combat;
+  if (playerCombat && playerCombat.targetId != null) nextTargetId = playerCombat.targetId;
+  else if (playerCombat && playerCombat.lockTarget != null) nextTargetId = playerCombat.lockTarget;
+  const dockId = player && (
+    (player.data && (player.data.dockStationId || player.data.dockTargetId))
+    || (player.flags && player.flags.dockStationId)
+  );
+  if (dockId != null) nextDockId = dockId;
+  const hail = state && (state.comms && (state.comms.hailTargetId || state.comms.targetId)
+    || state.ui && state.ui.hailTargetId);
+  if (hail != null) nextHailId = hail;
+  const signalState = state && state.signalInvestigation;
+  const trackedSignal = signalState && signalState.trackedId;
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const events = state && state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
+    ? state.combat.trace.events
+    : null;
+  const eventsLen = events ? events.length : 0;
+  const membership = entityIndexVersion(state);
+
+  facts.targetId = nextTargetId;
+  facts.miningId = nextMiningId;
+  facts.dockId = nextDockId;
+  facts.hailId = nextHailId;
+
+  const damageStillValid = !(Number.isFinite(cache.damageExpiry) && simTime >= cache.damageExpiry);
+  if (
+    cache.membership === membership
+    && cache.playerId === playerId
+    && cache.targetId === nextTargetId
+    && cache.miningId === nextMiningId
+    && cache.dockId === nextDockId
+    && cache.hailId === nextHailId
+    && cache.trackedSignal === trackedSignal
+    && cache.attachments === attachments
+    && cache.events === events
+    && cache.eventsLen === eventsLen
+    && damageStillValid
+  ) {
+    // Sets/Maps from last rebuild still match this tick's pin inputs.
+    return;
+  }
+
   facts.tether.clear();
   facts.aggro.clear();
   facts.projectileThreat.clear();
@@ -426,31 +497,16 @@ function rebuildPinFacts(state, player, facts, simTime) {
   facts.damagedByPlayerUntil.clear();
   facts.damagedPlayerUntil.clear();
 
-  const playerId = player && player.id;
-  // SG-06: this pass is reachable from the AI production ports and may not read the player
-  // meta record (`state.player`) — that record couples a reader to credits/heat/cargo data it
-  // was denied. Player-intent pins therefore arrive only through entity-carried state the pass
-  // already owns: the combat-owned target id and weapons-owned missile lock on the player craft.
-  // Mining lock: entity-carried only. Do not read state.player here — that is the 47-A hash leak.
-  if (player && player.data && player.data.miningTargetId != null) {
-    facts.miningId = player.data.miningTargetId;
-  }
-  const playerCombat = player && player.data && player.data.combat;
-  if (playerCombat && playerCombat.targetId != null) facts.targetId = playerCombat.targetId;
-  else if (playerCombat && playerCombat.lockTarget != null) facts.targetId = playerCombat.lockTarget;
-
-  // Scanner owns the durable tracked contact. Resolve its stable signal record back to the live
-  // entity id without asking the HUD or a render list to decide residency. Explicit live scanner
-  // marks are accepted as the same authoritative seam for older saves/fixtures.
-  const signalState = state && state.signalInvestigation;
-  const trackedId = signalState && signalState.trackedId;
-  const trackedRecord = trackedId && signalState.records && signalState.records[trackedId];
+  // SG-06: player-intent pins arrive only through entity-carried state (see scalar
+  // block above). Scanner owns the durable tracked contact — resolve its signal record
+  // without asking the HUD to decide residency.
+  const trackedId = trackedSignal;
+  const trackedRecord = trackedId && signalState && signalState.records && signalState.records[trackedId];
   if (trackedRecord) {
     if (trackedRecord.entityId != null) facts.tracked.add(trackedRecord.entityId);
     if (trackedRecord.sourceId != null) facts.tracked.add(trackedRecord.sourceId);
   }
 
-  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments && typeof attachments === 'object') {
     for (const key of Object.keys(attachments)) {
       const att = attachments[key];
@@ -459,16 +515,6 @@ function rebuildPinFacts(state, player, facts, simTime) {
       if (att.targetId != null) facts.tether.add(att.targetId);
     }
   }
-
-  const dockId = player && (
-    (player.data && (player.data.dockStationId || player.data.dockTargetId))
-    || (player.flags && player.flags.dockStationId)
-  );
-  if (dockId != null) facts.dockId = dockId;
-
-  const hail = state && (state.comms && (state.comms.hailTargetId || state.comms.targetId)
-    || state.ui && state.ui.hailTargetId);
-  if (hail != null) facts.hailId = hail;
 
   const index = state && state.entityIndex;
   const ships = index && Array.isArray(index.aiShips) ? index.aiShips : null;
@@ -510,9 +556,6 @@ function rebuildPinFacts(state, player, facts, simTime) {
     }
   }
 
-  const events = state && state.combat && state.combat.trace && Array.isArray(state.combat.trace.events)
-    ? state.combat.trace.events
-    : null;
   if (events && playerId != null) {
     const tick = state.tick | 0;
     const untilT = simTime + DAMAGE_PIN_S;
@@ -533,6 +576,28 @@ function rebuildPinFacts(state, player, facts, simTime) {
       }
     }
   }
+
+  cache.membership = membership;
+  cache.playerId = playerId;
+  cache.targetId = nextTargetId;
+  cache.miningId = nextMiningId;
+  cache.dockId = nextDockId;
+  cache.hailId = nextHailId;
+  cache.trackedSignal = trackedSignal;
+  cache.attachments = attachments;
+  cache.events = events;
+  cache.eventsLen = eventsLen;
+  let damageExpiry = Infinity;
+  if (facts.damagedByPlayerUntil.size || facts.damagedPlayerUntil.size) {
+    damageExpiry = simTime + DAMAGE_PIN_S;
+    for (const until of facts.damagedByPlayerUntil.values()) {
+      if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
+    }
+    for (const until of facts.damagedPlayerUntil.values()) {
+      if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
+    }
+  }
+  cache.damageExpiry = damageExpiry;
 }
 
 function countTier(counts, tier) {
@@ -556,8 +621,8 @@ function pushActivityIds(runtime, entity, stamp) {
   else if (stamp.simTier === SIM_TIER.S1_NEAR) runtime.nearIds.push(id);
   else if (stamp.simTier === SIM_TIER.S2_ABSTRACT) runtime.abstractIds.push(id);
   else runtime.dormantIds.push(id);
-  if (stamp.presentationTier === PRESENTATION_TIER.R0_GLASS) runtime.glassIds.push(id);
-  else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.push(id);
+  if (stamp.presentationTier === PRESENTATION_TIER.R0_GLASS) runtime.glassIds.add(id);
+  else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.add(id);
 }
 
 /**
@@ -675,17 +740,20 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   }
   for (let i = 0; i < scratch.length; i++) add(scratch[i]);
   // The spatial hash only indexes physics bodies. Closed-form movers that opted out of
-  // physics (travel-lane traffic repositions itself every tick at 420 WU/s) are invisible
-  // to the radius query, so without this scan an S3/R3 stamp from spawn time survives the
-  // whole pass through the player's glass and the hull never earns a mesh. The no-hash
-  // path below already visits this disc; the hash path must visit at least the same set.
-  // `add` dedupes against the hash results, so physics entities cost one Set lookup here.
+  // physics (travel-lane traffic stamps `physicsBody: false` and repositions itself every
+  // tick at 420 WU/s) are invisible to the radius query, so without this scan an S3/R3
+  // stamp from spawn time survives the whole pass through the player's glass and the hull
+  // never earns a mesh. Restrict the catch-up walk to the explicit opt-out stamp — walking
+  // the entire live list every incremental classify was ~60–100 ms self in
+  // cpu-profile-flight (classifyWorld), and physics-backed rows are already in `seen`
+  // from the hash query above.
   if (origin) {
     const enter = reach + NEAR_ENTER_PAD_WU;
     const enter2 = enter * enter;
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+      if (entity.physicsBody !== false) continue;
       const dx = finite(entity.pos.x) - origin.x;
       const dz = finite(entity.pos.z) - origin.z;
       if (dx * dx + dz * dz <= enter2) add(entity);
@@ -742,8 +810,8 @@ function classifyWorld(state, runtime) {
   runtime.wakeBoundaryTick = -1;
   runtime.changedIds.length = 0;
   runtime.currentEntityIds.clear();
-  runtime.glassIds.length = 0;
-  runtime.runwayIds.length = 0;
+  runtime.glassIds.clear();
+  runtime.runwayIds.clear();
   const counts = runtime.counts;
   counts.s0 = 0;
   counts.s1 = 0;
@@ -1102,6 +1170,22 @@ export function entityNeedsPhysics(entity) {
   if (!activity || !activity.simTier) return true;
   if (activity.pinnedExact) return true;
   return isExactTier(activity.simTier);
+}
+
+/**
+ * Exact/near craft keep the 60 Hz flight integrator. Abstract/dormant/aggregate craft are
+ * owned by catch-up / scheduled wakes — continuous drag on a shelved actor fights that
+ * authority and burns registry.step on the settled long-tail. A live intent on a wake edge
+ * still steps once so the command is consumed.
+ */
+export function entityNeedsFlightStep(entity) {
+  if (!entity || entity.alive === false) return false;
+  const activity = entity.activity;
+  if (!activity || !activity.simTier) return true;
+  if (activity.pinnedExact) return true;
+  if (isExactTier(activity.simTier)) return true;
+  const intent = entity.data && entity.data.intent;
+  return !!(intent && typeof intent === 'object');
 }
 
 export function entityNeedsAiThink(entity, state = null) {

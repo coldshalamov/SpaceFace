@@ -601,6 +601,146 @@ test('save/Continue: an outgoing virtual job cannot leave a phantom hull marker 
     'deserialize removes the outgoing runtime marker instead of leaving traffic permanently yielded');
 });
 
+// ═══ job-owned persistence: the mid-job save mark is stamped at dispatch and released at release ═
+// PQ-033.02 — spawn-stamped traffic hulls never shed flags.persistent, so every hull that ever
+// held a job serialized forever (save grew ~1 hull/10 cycles at ~8 KB each). The release drops
+// the mark only when no other owner (mission/custody/itinerary/activity/tow/lot) needs it.
+test('job-owned persistence: assign stamps the durable worker; release drops the un-anchored mark', () => {
+  const sim = boot();
+  const e = hull(sim, 'rec-persist');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  assert.equal(e.flags && e.flags.persistent, undefined, 'fixture starts un-stamped');
+
+  const jobId = sim.helpers.npcJobs.assign(e, haulerSpec());
+  assert.equal(jobId, 'job:rec-persist');
+  assert.equal(e.flags.persistent, true, 'taking a job restores the mid-job persistence mark');
+
+  assert.equal(sim.helpers.npcJobs.release(jobId), true);
+  assert.equal(e.data.jobId, undefined);
+  assert.equal(e.flags && e.flags.persistent, undefined,
+    'released un-anchored worker sheds the mark — its durable record still preserves it');
+});
+
+test('job-owned persistence: anchored workers keep the mark through release', () => {
+  const sim = boot();
+  const anchors = [
+    ['itinerary', { itinerary: { kind: 'claim_depot', bodyId: 'b1' } }],
+    ['mission', { missionId: 'msn-1' }],
+    ['custody', { freightCustodyPersistence: { lotId: 'l1' } }],
+    ['activity', { ceresActivityCast: true }],
+    ['named lane', { namedLaneContactId: 'lane-1' }],
+    ['scripted', { scenarioActorId: 'actor-1' }],
+    ['manifest chain', { cargoManifest: { lines: [], totalQty: 0, custody: true } }],
+    ['data-level', { persistent: true }],
+  ];
+  let n = 0;
+  for (const [label, extra] of anchors) {
+    n += 1;
+    const e = hull(sim, `rec-anchor-${n}`);
+    e.data.trafficRole = 'hauler';
+    Object.assign(e.data, extra);
+    e.flags.persistent = true; // the anchor's own owner stamped it — npcJobs never does
+    const jobId = sim.helpers.npcJobs.assign(e, haulerSpec());
+    assert.ok(jobId, `${label}: job assigned`);
+    assert.equal(sim.helpers.npcJobs.release(jobId), true);
+    assert.equal(e.flags.persistent, true,
+      `${label}: another persistence owner keeps the mark through release`);
+  }
+});
+
+test('job-owned persistence: a towed lot sheds its mark when the tow releases', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const tug = hull(sim, 'rec-tug');
+  tug.data.trafficRole = 'tug';
+  const lot = sim.spawn({ type: 'wreck', team: 2, pos: { x: 30, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 40 });
+  lot.data = { towable: true, npcTowedByJobId: 'job:rec-tug' };
+  lot.flags = { persistent: true };
+
+  const entry = {
+    worldRecordId: 'rec-tug',
+    towAttachmentId: null,
+    towTargetId: lot.id,
+    towTargetRef: lot,
+    towOwnerRef: tug,
+    towNextScanSimT: 0,
+  };
+  jobs._clearTugAttachment(entry, 'npc_tow_job_released');
+  assert.equal(lot.data.npcTowedByJobId, undefined, 'tow binding released');
+  assert.equal(lot.flags && lot.flags.persistent, undefined,
+    'the detached lot reverts to an ordinary loose body');
+
+  // A custody-marked lot keeps its mark — the tow was not its only persistence owner.
+  const custodyLot = sim.spawn({ type: 'payload', team: 2, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 6, mass: 30 });
+  custodyLot.data = { towable: true, npcTowedByJobId: 'job:rec-tug', manifestId: 'm-1', lotSource: { lotId: 'l-9' } };
+  custodyLot.flags = { persistent: true };
+  jobs._clearTugAttachment({ ...entry, towTargetId: custodyLot.id, towTargetRef: custodyLot }, 'npc_tow_job_released');
+  assert.equal(custodyLot.flags.persistent, true, 'custody/provenance lot stays serialized');
+
+  // A live-attached lot carries the occupational latch (flags.tethered + npcMasslineLatch).
+  // The latch is itself a 'tethered' anchor — the release must unpin before checking anchors
+  // or the mark-drop is unreachable for every real tow (review 4a).
+  const latched = sim.spawn({ type: 'wreck', team: 2, pos: { x: 50, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 40 });
+  latched.data = { towable: true, npcTowedByJobId: 'job:rec-tug', npcMasslineLatch: true };
+  latched.flags = { persistent: true, tethered: true };
+  jobs._clearTugAttachment({ ...entry, towTargetId: latched.id, towTargetRef: latched }, 'npc_tow_job_released');
+  assert.equal(latched.data.npcMasslineLatch, undefined, 'latch unpinned');
+  assert.equal(latched.flags.tethered, undefined, 'tethered flag cleared');
+  assert.equal(latched.flags.persistent, undefined,
+    'latched lot sheds its mark — the tethered anchor must not veto its own release');
+});
+
+test('job-owned persistence: a virtualized job keeps the mark through the sweep; relink restamps', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-sweep');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  assert.equal(e.flags.persistent, true, 'dispatch stamped the mid-job mark');
+
+  // Sector exit virtualizes the job: data.jobId is deleted while the entry lives on in byId.
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  assert.equal(e.data.jobId, undefined, 'exit dropped the live marker');
+  const entry = jobs._byId()['job:rec-sweep'];
+  assert.ok(entry && entry.entityId === null, 'job is virtual, awaiting relink');
+
+  // The sweep must not strip the mark while the job is alive — a stripped hull shelves into
+  // the far table where _tryRelink can never find it, stalling the job until proximity.
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags.persistent, true, 'virtual job still holds the mid-job mark');
+
+  // A rematerialized hull arrives unmarked — world records deliberately don't carry flags —
+  // so relink re-binds jobId bare and the sweep re-earns the mark on the live tick. (Stamping
+  // inside _tryRelink would mark hulls during save restore, where _spawnPersistentEntities
+  // then culls them as stale — the mark must land on the live tick, after the envelope wins.)
+  delete e.flags.persistent;
+  assert.equal(jobs._tryRelink(entry, sim.state.simTime), true);
+  assert.equal(e.data.jobId, 'job:rec-sweep', 'virtual job re-bound to its hull');
+  assert.equal(e.flags.persistent, undefined,
+    'relink re-binds without stamping — a mid-restore mark is culled as stale before the live tick');
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags.persistent, true, 'the sweep restamps a relinked mid-job hull');
+});
+
+test('job-owned persistence: the sweep still drops the mark once the virtual job is gone', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-sweep-gone');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  assert.equal(e.data.jobId, undefined);
+
+  // The job ended while virtual — remove it the way a completed/Released job leaves byId.
+  delete jobs._byId()['job:rec-sweep-gone'];
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags && e.flags.persistent, undefined,
+    'no live entry owns the worldRecordId — the mark is dead weight and drops');
+});
+
 test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)', () => {
   const sim = createSimulation({ seed: 7, systems: [npcJobsRuntime, save] });
   sim.state.mode = 'flight';
@@ -619,4 +759,85 @@ test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads 
   assert.equal(loaded, true, 'an old (v11) save loads through the v11→v12 migration');
   const jobs = sim.registry.get('npcJobsRuntime');
   assert.deepEqual(jobs._byId(), {}, 'old save → empty job bag (migration seeded {byId:{}}, runtime deserialized cleanly)');
+});
+
+test('id list: update reuses one job-id list while the bag is settled', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const eA = hull(sim, 'rec-ids-a');
+  const eB = hull(sim, 'rec-ids-b');
+  sim.helpers.npcJobs.assign(eA, minerSpec());
+  sim.helpers.npcJobs.assign(eB, minerSpec());
+  steps(sim, 30);
+  const first = jobs._jobIdList();
+  assert.ok(Array.isArray(first));
+  assert.deepEqual([...first].sort(), ['job:rec-ids-a', 'job:rec-ids-b']);
+  steps(sim, 60);
+  assert.equal(jobs._jobIdList(), first, 'a settled bag reuses the same list instance across updates');
+  assert.deepEqual(new Set(jobs._jobIdList()), new Set(Object.keys(jobs._byId())));
+});
+
+test('id list: assign, release, newGame and deserialize each dirty the list', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const eA = hull(sim, 'rec-mut-a');
+  sim.helpers.npcJobs.assign(eA, minerSpec());
+  const withA = jobs._jobIdList();
+  assert.deepEqual([...withA], ['job:rec-mut-a']);
+
+  const eB = hull(sim, 'rec-mut-b');
+  sim.helpers.npcJobs.assign(eB, minerSpec());
+  const withAB = jobs._jobIdList();
+  assert.notEqual(withAB, withA, 'assign dirties the cached list');
+  assert.deepEqual(new Set(withAB), new Set(['job:rec-mut-a', 'job:rec-mut-b']));
+
+  assert.equal(sim.helpers.npcJobs.release('job:rec-mut-b'), true);
+  const afterRelease = jobs._jobIdList();
+  assert.notEqual(afterRelease, withAB, 'release dirties the cached list');
+  assert.deepEqual([...afterRelease], ['job:rec-mut-a']);
+
+  const blob = JSON.parse(JSON.stringify(jobs.serialize()));
+  jobs.newGame();
+  assert.deepEqual(jobs._jobIdList(), [], 'newGame wipes the bag and the list together');
+  jobs.deserialize(blob);
+  assert.deepEqual(jobs._jobIdList(), ['job:rec-mut-a'], 'deserialize restores the saved id set');
+});
+
+test('id list: a malformed entry swept during update leaves the list', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-malformed-ok');
+  sim.helpers.npcJobs.assign(e, minerSpec());
+  jobs._byId()['job:malformed'] = { worldRecordId: 'rec-ghost' };
+  const e2 = hull(sim, 'rec-malformed-ok2');
+  sim.helpers.npcJobs.assign(e2, minerSpec());
+  assert.ok(jobs._jobIdList().includes('job:malformed'), 'precondition: the tombstone id was listed');
+  sim.step(DT);
+  assert.equal(jobs._byId()['job:malformed'], undefined, 'update sweeps the malformed entry');
+  assert.equal(jobs._jobIdList().includes('job:malformed'), false,
+    'the sweep dirties the list — no stale id is iterated next tick');
+});
+
+test('id list: a job that completes offscreen is relinked out of the list, not left stale', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-away-done');
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  steps(sim, 5);
+  assert.ok(jobs._jobIdList().includes('job:rec-away-done'));
+
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  despawn(sim.state, e.id);
+  const entry = jobs._byId()['job:rec-away-done'];
+  assert.ok(entry && entry.entityId === null, 'the job virtualized on exit');
+  sim.state.world.currentSectorId = 'sector_b';
+  sim.state.simTime = entry.lastAdvanceSimT + 120;
+  sim.state.world.currentSectorId = 'sector_a';
+  hull(sim, 'rec-away-done');
+  sim.bus.emit('sector:enter', { sectorId: 'sector_a' });
+
+  assert.equal(jobs._byId()['job:rec-away-done'], undefined,
+    'the offscreen COMPLETE relink deletes the record');
+  assert.equal(jobs._jobIdList().includes('job:rec-away-done'), false,
+    'the relink delete dirties the list — the finished id cannot be iterated');
 });

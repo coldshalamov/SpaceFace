@@ -14,10 +14,16 @@ import {
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { fittingsFromDefaultModules } from '../../systems/ships.js';
+import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
+import { createStopScale, createTurntable } from '../orrery/stopDial.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
 // Launch with no interaction emits the exact legacy ship_kestrel payload.
@@ -68,11 +74,18 @@ function pin(node, props) {
   }
   return node;
 }
+// ORRERY (design/frontend/ORRERY.md §6 New game): the Field Hardware paint helpers below pinned raster
+// plates, key sprites and etched tiles inline with !important, which no sheet can answer. Under ORRERY
+// they only mark each node for the composition sheet (src/ui/orrery/screenLayouts.js, .orr-newgame)
+// and pin nothing, so every id, class hook, Tab stop and handler stays exactly as it was.
+const ORRERY = true;
 function installShell(root) {
+  if (ORRERY) { root.classList.add('fh-shell', 'orr-newgame'); return; }
   root.classList.add('fh-shell');
   pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
 }
 function hairline() {
+  if (ORRERY) { const gap = el('div', 'orr-ng-gap'); gap.setAttribute('aria-hidden', 'true'); return gap; }
   const rule = el('hr', 'k-rule fh-hairline');
   return pin(rule, {
     border: '0',
@@ -84,6 +97,7 @@ function hairline() {
 }
 function paintMarking(node) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-title'); return node; }
   node.classList.add('fh-title');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -96,6 +110,7 @@ function paintMarking(node) {
 }
 function paintLegend(node, lit = false) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-label'); return node; }
   node.classList.add('fh-legend');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -109,6 +124,7 @@ function paintLegend(node, lit = false) {
 }
 function paintPlate(node, variant = 'sunk', extra = {}) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-caption'); return node; }
   const spec = FH_PLATE[variant] || FH_PLATE.sunk;
   node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
   if (forcedColorsActive()) {
@@ -118,13 +134,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '8px 12px',
     ...extra,
@@ -132,6 +142,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
 }
 function paintInput(input) {
   if (!input) return input;
+  if (ORRERY) { input.classList.add('orr-ng-input'); return input; }
   input.classList.add('fh-input');
   const apply = (state) => {
     if (forcedColorsActive()) {
@@ -139,13 +150,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -162,6 +167,11 @@ function paintInput(input) {
 }
 function paintKey(button, kind = 'legend') {
   if (!button) return button;
+  if (ORRERY) {
+    button.classList.add('k-word', 'orr-ng-key', 'orr-ng-key--' + kind);
+    button._fhSync = () => {};
+    return button;
+  }
   const spec = FH_KEY[kind] || FH_KEY.legend;
   button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
   const apply = (state) => {
@@ -184,15 +194,11 @@ function paintKey(button, kind = 'legend') {
       ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.font,
       'text-transform': 'uppercase',
-      'justify-content': 'center',
+      // a rail word sets flush left (data-key-align); every other key centres its legend
+      'justify-content': button.dataset.keyAlign || 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -311,6 +317,42 @@ function shipDefFor(ctx, shipId) {
   return SHIP_BY_ID.get(shipId) || null;
 }
 
+// A rail word: the legend key's printed pins, set flush left like the field labels above it and the
+// one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
+// asks for it through data-key-align rather than overriding once (the hull names sat centred over
+// left-set tags).
+// The chosen hull's numbers as three bone tick-scale arcs: a lit fill for this hull, faint marks
+// where the other two starters sit, the reading in the display face under the arc. (Fixed specs are
+// bone; ice is for data in motion.)
+function paintStarterStats(host, card, scale, others = []) {
+  const rows = [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']];
+  host.textContent = '';
+  const a0 = -110; const a1 = 110;
+  const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
+  const arc = (from, to, r = 22) => { const [x0, y0] = p(from, r); const [x1, y1] = p(to, r); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+  for (const [name, key, unit] of rows) {
+    const value = Number(card[key]) || 0;
+    const f = Math.max(0, Math.min(1, value / scale[key]));
+    const ticks = [];
+    for (let a = a0; a <= a1 + 0.01; a += 10) { const [x0, y0] = p(a, 25); const [x1, y1] = p(a, a % 50 === 0 ? 31 : 28); ticks.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
+    const ghosts = others.map((o) => {
+      const g = a0 + (a1 - a0) * Math.max(0, Math.min(1, (Number(o[key]) || 0) / scale[key]));
+      const [x0, y0] = p(g, 17); const [x1, y1] = p(g, 27);
+      return `<path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}" class="orr-ng-stat__ghost"/>`;
+    }).join('');
+    const reading = value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value));
+    const cell = el('div', 'orr-ng-stat');
+    cell.innerHTML = `<svg viewBox="0 0 60 44"><path d="${ticks.join(' ')}" class="orr-ng-stat__ticks"/>`
+      + `<path d="${arc(a0, a1)}" class="orr-ng-stat__track"/><path d="${arc(a0, a0 + (a1 - a0) * f)}" class="orr-ng-stat__fill"/>${ghosts}</svg>`
+      + `<b>${reading}<i>${unit}</i></b><span>${name}</span>`;
+    host.appendChild(cell);
+  }
+}
+function railWord(b) {
+  b.dataset.keyAlign = 'flex-start';
+  paintKey(b, 'legend');
+}
+
 // The stage shows the slot-parallel fittings array the render track consumes (a raw id list
 // would place modules in the wrong slot positions), resolved by the same fit rule the run uses.
 function starterStageFittings(starter) {
@@ -370,6 +412,7 @@ export const newGameScreen = {
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', coreText('newGame'));
+    injectOrreryScreens();
     installShell(rootEl);
 
     // Title. `.sf-ng-header` is an inert hook the layout probe measures.
@@ -415,13 +458,15 @@ export const newGameScreen = {
     });
     starterWords.setAttribute('aria-labelledby', starterField.label.id);
     starterWords.classList.add('of-pause');
-    for (const b of starterWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
+    for (const b of starterWords.querySelectorAll('.k-word')) railWord(b);
     const starterDesc = el('p', 'k-sentence', '');
     starterDesc.id = 'sf-ng-starter-desc';
     starterWords.setAttribute('aria-describedby', starterDesc.id);
     starterField.wrap.appendChild(starterWords);
     starterField.wrap.appendChild(starterDesc);
     body.appendChild(starterField.wrap);
+    // ORRERY: the hull choice is made at the hull -- it moves to the stage (below, once the stage
+    // exists) as stations on an arc under the ship with the Hand rising from a hub beneath it.
     body.appendChild(hairline());
 
     // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
@@ -438,7 +483,7 @@ export const newGameScreen = {
     });
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
     diffWords.classList.add('of-pause');
-    for (const b of diffWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
+    for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
@@ -446,6 +491,8 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
+    // ORRERY: difficulty is a four-stop scale with the amber index.
+    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 470 });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -508,7 +555,9 @@ export const newGameScreen = {
     newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
-    const seedDesc = el('p', 'k-t-fine k-38', 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
+    const seedDesc = el('p', 'k-t-fine k-38', ORRERY
+      ? 'Blank is a random universe; a seed always deals the same contracts and markets.'
+      : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
     body.appendChild(seedField.wrap);
@@ -573,6 +622,10 @@ export const newGameScreen = {
       for (const [slot, moduleName] of starterLoadoutRows(starter)) {
         const li = el('li');
         const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
+        if (ORRERY) {
+          const m = /^(.*\S)\s+([SMLX]{1,2})$/.exec(String(moduleName));
+          if (m) { word.textContent = m[1]; const size = el('small', 'orr-ng-size', m[2]); size.title = 'Size ' + m[2]; word.appendChild(size); }
+        }
         word.setAttribute('aria-disabled', 'true');
         word.title = slot;
         paintLegend(word);
@@ -614,6 +667,29 @@ export const newGameScreen = {
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
     stage.appendChild(caption);
+    // ORRERY: the left column holds the pilot's choices; the hull's choice, what it carries, its
+    // numbers and the run it opens are about the hull, so they read at the hull.
+    if (ORRERY) {
+      caption.append(loadoutField.wrap, route);
+      // the stats as three short arcs of ice, filled against the largest of the starters
+      const cards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
+      const scale = { massT: Math.max(...cards.map((c) => c.massT), 1), thrust: Math.max(...cards.map((c) => c.thrust), 1), lineWuPerS: Math.max(...cards.map((c) => c.lineWuPerS), 1) };
+      const stats = el('div', 'orr-ng-stats');
+      stats.setAttribute('aria-hidden', 'true');
+      caption.insertBefore(stats, loadoutField.wrap);
+      this._paintStats = (starter) => paintStarterStats(stats, starterAirCard(starter), scale,
+        NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
+      // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
+      // sit under the ship rather than across it
+      // the hull choice as a turntable round the ship's base: the three hulls stand on its front arc
+      // as their rendered hero art, the amber index riding the ring to the chosen one
+      const pick = el('div', 'orr-ng-pick');
+      pick.appendChild(starterField.wrap);
+      rootEl.appendChild(pick);
+      const art = {};
+      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'hero'); if (url) art['starter:' + s.id] = url; }
+      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132 });
+    }
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
 
@@ -711,7 +787,8 @@ export const newGameScreen = {
       // reached by the Up/Down arrow bridges (or pointer) instead.
       b.tabIndex = -1;
     }
-    refs.starterDesc.textContent = starter.line;
+    refs.starterDesc.textContent = starterAirCard(starter).sentence;
+    if (this._paintStats) this._paintStats(starter);
     const ship = shipDefFor(refs.ctx, starter.shipId);
     refs.hullName.textContent = (ship && ship.name) || starter.name;
     refs.hullBlurb.textContent = starter.blurb;

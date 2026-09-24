@@ -12,6 +12,8 @@ import {
   hunterTrickById,
   hunterTrickForContract,
 } from '../data/hunterTricks.js';
+import { mineLayerWakePoint } from '../ai/mineLayerVerb.js';
+import { chaffDecoyPoint } from './countermeasures.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export {
@@ -35,6 +37,7 @@ export const bountyHunt = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
     this._subs = [];
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
@@ -51,7 +54,7 @@ export const bountyHunt = {
     for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
         normalizeHunter(entity, state);
-        tickHunterTrick(entity, state, this.bus, this.helpers);
+        tickHunterTrick(entity, state, this);
       }
     }
   },
@@ -160,25 +163,57 @@ function ensureHunterTrick(entity, state) {
   return { trick, rt: hunt.trickState };
 }
 
-function tickHunterTrick(entity, state, bus, helpers) {
+function tickHunterTrick(entity, state, host) {
   const data = entity.data || {};
   const hunt = data.bountyHunt;
   if (!hunt || hunt.role !== 'hunter' || !hunt.pursuing) return;
   const { trick, rt } = ensureHunterTrick(entity, state);
   const now = finite(state && state.simTime, 0);
 
+  // A wake-mine trail keeps seeding after activation, on the mine-layer cadence.
+  if ((rt.mineDropsLeft || 0) > 0 && now + 1e-6 >= finite(rt.nextMineAt, now)) {
+    if (dropTrickMine(entity, host)) rt.mineDropsLeft -= 1;
+    rt.nextMineAt = now + finite(rt.mineCadenceS, 0.7);
+  }
+
   if (rt.phase === 'cooldown' && now >= finite(rt.readyAt, 0)) {
     rt.phase = 'idle';
   }
 
   if (rt.phase === 'telegraphing') {
-    if (now + 1e-6 >= finite(rt.activatesAt, now)) activateHunterTrick(entity, state, trick, rt, bus);
+    if (now + 1e-6 < finite(rt.activatesAt, now)) return;
+    if (trick.interruptsOnDamage && telegraphInterrupted(entity, rt)) {
+      fizzleHunterTrick(entity, state, trick, rt, host.bus);
+      return;
+    }
+    activateHunterTrick(entity, state, trick, rt, host);
     return;
   }
 
   if (rt.phase !== 'idle') return;
   if (now < finite(rt.readyAt, 0)) return;
-  startHunterTrickTelegraph(entity, state, trick, rt, bus, helpers);
+  startHunterTrickTelegraph(entity, state, trick, rt, host.bus, host.helpers);
+}
+
+// Damage during the telegraph fizzles tricks whose telegraph says so (the jump spool's
+// "interrupt before the flash" is a real counter, not flavor text).
+function telegraphInterrupted(entity, rt) {
+  return finite(entity.hull, 0) < finite(rt.telegraphHull, 0)
+    || finite(entity.shield, 0) < finite(rt.telegraphShield, 0);
+}
+
+function fizzleHunterTrick(entity, state, trick, rt, bus) {
+  const now = finite(state && state.simTime, 0);
+  rt.phase = 'cooldown';
+  rt.activatedAt = null;
+  rt.readyAt = now + trick.cooldownS * 0.5;
+  emit(bus, 'bountyHunt:trickFizzled', {
+    entityId: entity.id,
+    contractId: contractIdForHunter(entity),
+    trickId: trick.id,
+    reason: 'damage_interrupt',
+    at: now,
+  });
 }
 
 function startHunterTrickTelegraph(entity, state, trick, rt, bus, helpers) {
@@ -188,6 +223,8 @@ function startHunterTrickTelegraph(entity, state, trick, rt, bus, helpers) {
   rt.telegraphedAt = now;
   rt.activatesAt = now + trick.counterWindowS;
   rt.activatedAt = null;
+  rt.telegraphHull = finite(entity.hull, 0);
+  rt.telegraphShield = finite(entity.shield, 0);
   rt.lastVerb = clonePlain(trick.verb);
   const payload = {
     entityId: entity.id,
@@ -211,7 +248,7 @@ function startHunterTrickTelegraph(entity, state, trick, rt, bus, helpers) {
   }
 }
 
-function activateHunterTrick(entity, state, trick, rt, bus) {
+function activateHunterTrick(entity, state, trick, rt, host) {
   const now = finite(state && state.simTime, 0);
   const payload = {
     entityId: entity.id,
@@ -220,13 +257,13 @@ function activateHunterTrick(entity, state, trick, rt, bus) {
     at: now,
     verb: clonePlain(trick.verb),
   };
-  applyHunterTrick(entity, state, trick, payload);
+  applyHunterTrick(entity, state, trick, payload, rt, host);
   rt.phase = 'cooldown';
   rt.activatedAt = now;
   rt.readyAt = now + trick.cooldownS;
   rt.activationCount = (rt.activationCount || 0) + 1;
   rt.lastVerb = clonePlain(trick.verb);
-  emit(bus, 'bountyHunt:trickActivated', payload);
+  emit(host.bus, 'bountyHunt:trickActivated', payload);
 }
 
 function applyHunterTrick(entity, state, trick, payload) {

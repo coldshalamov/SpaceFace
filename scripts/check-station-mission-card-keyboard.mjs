@@ -16,7 +16,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const contractsSrc = readFileSync(join(ROOT, 'src/ui/station/screens/contracts.js'), 'utf8');
 
 // ── Static: the live board's mission rows are keyboard-reachable native buttons ──
-assert.match(contractsSrc, /<button type="button" class="sx-ct-row\$\{[^"]+\}"[^>]*data-mid=/,
+assert.match(contractsSrc, /<button type="button" (?:\$\{[^}]+\} )?class="sx-ct-row\$\{[^"]+\}"[^>]*data-mid=/,
   'live mission rows must be native buttons carrying data-mid (keyboard-activatable by default)');
 assert.match(contractsSrc, /role="tab"/,
   'live mission rows must expose tab semantics for the dock strip');

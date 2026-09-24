@@ -1,6 +1,6 @@
 // Presenter/atlas dressing. POI markers, landmarks, and band props are not combat entities.
 
-import { allocateEntityId } from '../core/entity.js';
+import { allocateEntityId, clearEntityRuntime } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 
 export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
@@ -90,6 +90,7 @@ export function dropDressingRow(state, id) {
   if (idx >= 0) table.rows.splice(idx, 1);
   table.byId.delete(id);
   table.version++;
+  clearEntityRuntime(row);
   return true;
 }
 
@@ -103,6 +104,7 @@ export function dropDressingSector(state, sectorId) {
     if (home !== sectorId) continue;
     table.rows.splice(i, 1);
     table.byId.delete(row.id);
+    clearEntityRuntime(row);
     dropped++;
   }
   if (dropped) table.version++;

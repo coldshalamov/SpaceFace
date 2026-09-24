@@ -78,6 +78,16 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'Hauler docked at {station}; {name} hits the floor',
     '{station}: freight arrival softens {noun} prices',
   ],
+  // INF: a contracted feeder died before its handoff and the delivery run came back empty. The
+  // shortfall is world evidence, never a player accusation — the miner may have died to anything.
+  // Every variant names the broken link (the empty shelf / the lost feeder), not just generic
+  // variance, or the line reads as ordinary noise instead of a remembered consequence.
+  freight_short: [
+    'Belt run docks empty at {station} — its feeder never made the handoff',
+    '{station} intake short: the feeder hauler found an empty shelf',
+    'A feeder run came up light at {station} — the miner shelf was bare',
+    '{station} reports its ore run delivered nothing — feeder lost upstream',
+  ],
   // generic fallback for unknown event types
   event: [
     '{station}: {name} market unsettled',

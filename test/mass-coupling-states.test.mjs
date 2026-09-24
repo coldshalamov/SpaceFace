@@ -98,6 +98,11 @@ test('player Well pins and Repulsor unmoors a non-owner through the production s
       state.input.actions.deployWell = true;
       sim.step();
       sim.step();
+      // INF-042 (daa3c4b15) gave every deployed field a FIELD_WINDUP_S = 0.4 s ramp: strength
+      // rises from zero so the hazard cannot exist before its VFX does. Two ticks is 0.03 s, at
+      // ~8 % strength — far too weak to pin. Step past the windup so this test asserts what it
+      // has always meant to assert (a LANDED Well pins), not how fast a field arms.
+      for (let i = 0; i < 30; i++) sim.step();
 
       let targetRuntime = state.combat.entities[String(target.id)];
       let playerRuntime = state.combat.entities[String(player.id)];
@@ -131,6 +136,8 @@ test('player Well pins and Repulsor unmoors a non-owner through the production s
       state.input.actions.deployRepulsor = true;
       sim.step();
       sim.step();
+      // Same INF-042 windup as the Well above.
+      for (let i = 0; i < 30; i++) sim.step();
 
       targetRuntime = state.combat.entities[String(target.id)];
       playerRuntime = state.combat.entities[String(player.id)];

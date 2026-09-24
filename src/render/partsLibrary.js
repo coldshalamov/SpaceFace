@@ -9,6 +9,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -26,6 +28,7 @@ import {
 import { isReleaseAssetMode } from './releaseMode.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
+import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
@@ -49,8 +52,10 @@ import {
 } from './rigidOpaqueBatchPolicy.js';
 import {
   authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
+  combatantAdmissionPriority,
   planarRangeWU,
   sectorArrivalPriorityHint,
+  survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import {
@@ -68,7 +73,7 @@ import {
   selectPlacePackageLayer,
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
-import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -191,7 +196,6 @@ const CULL_FRUSTUM = new THREE.Frustum();
 const CULL_CAMERA_POSITION = new THREE.Vector3();
 const CULL_SPHERE = new THREE.Sphere(new THREE.Vector3(), INSTANCE_FRUSTUM_PAD);
 let fallbackNavLightGeometry = null;
-const FALLBACK_NAV_LIGHT_MAT = new THREE.Matrix4();
 const SHIP_ASSEMBLY_SLOTS = Object.freeze(['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod']);
 const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_trade_hub.glb',
@@ -682,6 +686,42 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
   return { ...state.stats };
 }
 
+/** Forensic dump: per-pool chunk/slot state and which owners still hold slots. */
+export function dumpAuthoredInstancePoolState(scene) {
+  const state = scene && sceneStates.get(scene);
+  if (!state) return null;
+  const ownerLabel = (owner) => {
+    const ud = owner && owner.userData || {};
+    return owner && (ud.sfStableEntityKey || ud.entityId || owner.name || owner.type) || 'null';
+  };
+  const pools = [];
+  for (const [key, pool] of state.pools) {
+    pools.push({
+      key,
+      retirementPending: !!pool.retirementPending,
+      chunks: [...pool.chunks].map((chunk) => ({
+        name: chunk.mesh && chunk.mesh.name,
+        ordinal: chunk.ordinal,
+        retired: !!chunk.retired,
+        settling: !!chunk.retirementSettling,
+        inScene: !!(chunk.mesh && chunk.mesh.parent),
+        count: chunk.mesh ? chunk.mesh.count : -1,
+        slots: chunk.slots.size,
+        slotOwners: [...chunk.slots.values()].map((slot) => ownerLabel(slot.owner)),
+      })),
+    });
+  }
+  const retiring = [...state.retiringChunks].map((chunk) => ({
+    name: chunk.mesh && chunk.mesh.name,
+    retired: !!chunk.retired,
+    settling: !!chunk.retirementSettling,
+    slots: chunk.slots.size,
+    inScene: !!(chunk.mesh && chunk.mesh.parent),
+  }));
+  const owners = [...state.ownerSlots.keys()].map(ownerLabel);
+  return { pools, retiring, owners };
+}
+
 export const PART_LIBRARY_CONTRACT = Object.freeze({
   version: 1,
   root: PART_ROOT,
@@ -1026,10 +1066,9 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
 export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
-  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) {
-    // The Kestrel production body is authored for the player hero ship (see isPlayerKestrel):
-    // an NPC Kestrel must stay on the modular authored path even when the V4 record is loaded.
-    if (data.defId === 'ship_kestrel') return entity.isPlayer === true;
+  // hullDefId is the far-actor table's canonical ship-def alias (leanIdentityData): a hull
+  // promoted before defId is re-stamped must still resolve its required body.
+  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId || data.hullDefId)) {
     return true;
   }
   if (REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES.has(String(data.trafficRole || ''))) return true;
@@ -1673,7 +1712,7 @@ export function wholeShipVisualForEntity(entity, options = {}) {
     ));
   }
   if (options.requiredWholeShip !== true && !requiresProductionWholeShipForEntity(entity)) return null;
-  const defId = data.defId;
+  const defId = data.defId || data.hullDefId;
   const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
   return applyFactionWholeShipKit(entity, file ? liveWholeShipSelection(
     file,
@@ -1736,6 +1775,10 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
+    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2 body
+    // is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp link).
+    ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
+      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
   ]);
 }
 
@@ -1833,6 +1876,36 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
 }
 
 /**
+ * Bounded retry for admission verdicts that published nothing drawable. A transient fetch or
+ * decode failure otherwise blanks its owner for the whole session: the asset task is cached
+ * resolved-null and 'unavailable'/'fallback-after-error' sit outside READMISSION_STATUSES by
+ * design. Retry is bounded (attempt cap + exponential backoff) and only applies while the
+ * boundary still shows nothing — statuses whose procedural body is on screen stay terminal so
+ * a late re-admission never pops a second identity over a readable hull.
+ */
+export const AUTHORED_ADMISSION_RETRY_MAX = 4;
+export const AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS = 2500;
+
+export function authoredAdmissionRetriableStatus(status) {
+  return status === 'unavailable' || status === 'fallback-after-error';
+}
+
+export function retryFailedAuthoredAdmission(boundary, nowMs) {
+  const data = boundary && boundary.userData;
+  if (!data || !authoredAdmissionRetriableStatus(data.authoredAssetState)) return false;
+  // A retained readable fallback is a real visual; only still-invisible roots retry.
+  if (data.authoredReadableFallbackRetained === true) return false;
+  const attempts = data.authoredAdmissionRetryCount || 0;
+  if (attempts >= AUTHORED_ADMISSION_RETRY_MAX) return false;
+  const now = Number.isFinite(nowMs) ? nowMs : 0;
+  const nextAt = data.authoredAdmissionNextRetryAt;
+  if (Number.isFinite(nextAt) && now < nextAt) return false;
+  data.authoredAdmissionRetryCount = attempts + 1;
+  data.authoredAdmissionNextRetryAt = now + AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS * (2 ** attempts);
+  return markAuthoredBoundaryForReadmission(boundary, 'transient-admission-retry');
+}
+
+/**
  * Wrap a ship admission substrate in the authored-asset boundary. Pending authored assets stay
  * invisible; the renderer requests admission as soon as the stable boundary joins the scene.
  */
@@ -1848,6 +1921,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
+  // A substrate carrying a resolving marker keeps exactly one drawable while admission is
+  // pending — the marker is abstract by design, so this never publishes a substitute identity.
+  // The per-frame visibility pass hides the marker again the moment the state is terminal.
+  if (fallbackRoot.userData && fallbackRoot.userData.authoredResolvingMarker === true) {
+    fallbackRoot.visible = true;
+  }
 
   // Preserve the public inspection surface used by diagnostics/checks while making lifecycle hooks
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.
@@ -1880,8 +1959,8 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
   syncActiveSurface(boundary, active);
 
-  const trigger = firstRenderable(fallbackRoot);
-  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  let trigger = firstRenderable(fallbackRoot);
+  let previousBeforeRender = trigger && trigger.onBeforeRender;
   let armed = true;
   function authoredAssetTrigger(renderer, scene, ...rest) {
     if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
@@ -1919,9 +1998,18 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       ...requestOptions,
     };
     boundary.userData.authoredAssetState = 'loading';
+    boundary.userData.authoredUpgradeRequestedAt = Date.now();
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
+      // Two exemplar boundaries built from one spec share entity.id — without an explicit key the
+      // second dedupes into the first's completion and its own compose never runs (the parked
+      // 'loading' boundary that hung the opening cohort wait and left roster pool chunks cold).
+      key: typeof requestOptions.upgradeJobKey === 'string' ? requestOptions.upgradeJobKey : undefined,
       boundary,
-      fallbackRoot,
+      // The interior root a commit should remove is whatever is live at request time — the
+      // original procedural fallback on first admission, the previous authored/LOD root on a
+      // readmission. Capturing the param `fallbackRoot` here kept the detached substrate tree
+      // pinned by this boundary's requestAuthoredUpgrade closure for the boundary's whole life.
+      fallbackRoot: active,
       entity: liveEntity,
       renderer,
       scene,
@@ -1929,6 +2017,14 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       setActive: (next) => {
         active = next;
         syncActiveSurface(boundary, active);
+        if (next !== fallbackRoot) {
+          // Commit detached the procedural substrate — drop the references that would otherwise
+          // keep that island reachable through the retained request/update/LOD closures, and let
+          // `fallbackRoot` track the live interior root a later commit should remove.
+          trigger = null;
+          previousBeforeRender = null;
+          fallbackRoot = next;
+        }
       },
     })).then((result) => {
       if (result && result.status === 'cancelled-before-queue') {
@@ -1936,6 +2032,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         if (boundary.userData.authoredAssetState === 'loading') {
           boundary.userData.authoredAssetState = 'awaiting-authored-admission';
         }
+        boundary.userData.authoredReadmissionReason = 'cancelled-before-queue-detached';
         armed = true;
         if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
       }
@@ -2029,7 +2126,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       options: upgradeOptions,
       run: () => upgradeAuthoredCargoCapsuleBoundary(
         boundary,
-        fallbackRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        activeRoot,
         liveEntity,
         renderer,
         scene,
@@ -2139,9 +2238,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   let authoredDisposed = false;
   const disposePreparedCargoCapsule = () => {
     if (authoredDisposed) return false;
-    disposeDetachedAuthoredCargoCapsule(authored.root);
-    unregisterPreparedAuthoredAdmission(authored);
-    authoredDisposed = true;
+    try {
+      disposeDetachedAuthoredCargoCapsule(authored.root);
+      authoredDisposed = true;
+    } finally {
+      // A disposal throw must not strand the registry entry — it pins the boundary and the
+      // whole prepared tree as a strong key/value in sceneState.preparedAuthoredRoots.
+      unregisterPreparedAuthoredAdmission(authored);
+    }
     return true;
   };
   if (options.deferBoundaryPublication === true) {
@@ -2168,7 +2272,10 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     return false;
   }
   const publicationWait = waitForOpeningGraphPublicationRelease();
-  if (publicationWait) await publicationWait;
+  if (publicationWait) {
+    boundary.userData.authoredPreparePhase = 'awaiting-publication';
+    await publicationWait;
+  }
   if (!boundary.parent) {
     await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
@@ -2522,7 +2629,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       boundary,
       entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2627,7 +2736,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       boundary,
       entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2750,10 +2861,15 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   let authoredDisposed = false;
   const disposePreparedPlace = () => {
     if (authoredDisposed) return false;
-    disposeDetachedPlaceFallback(authored.root);
-    authored.root.clear();
-    unregisterPreparedAuthoredAdmission(authored);
-    authoredDisposed = true;
+    try {
+      disposeDetachedPlaceFallback(authored.root);
+      authored.root.clear();
+      authoredDisposed = true;
+    } finally {
+      // A disposal throw must not strand the registry entry — it pins the boundary and the
+      // whole prepared tree as a strong key/value in sceneState.preparedAuthoredRoots.
+      unregisterPreparedAuthoredAdmission(authored);
+    }
     return true;
   };
   if (options.deferBoundaryPublication === true) {
@@ -2785,7 +2901,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       return false;
     }
     const publicationWait = waitForOpeningGraphPublicationRelease();
-    if (publicationWait) await publicationWait;
+    if (publicationWait) {
+      boundary.userData.authoredPreparePhase = 'awaiting-publication';
+      await publicationWait;
+    }
     if (!boundary.parent) {
       await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
@@ -3538,10 +3657,9 @@ function normalizePlacePropBindings(bindings) {
   }
 }
 
-function buildFallbackPlaceProp(entity, placeFile) {
+export function buildFallbackPlaceProp(entity, placeFile = '') {
   const data = entity && entity.data || {};
-  const placeId = data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
-  const radius = Math.max(3, Number(entity && entity.radius) || 8);
+  const placeId = data.placeId || String(placeFile || '').replace(/^places\//, '').replace(/\.glb$/, '');
   const group = new THREE.Group();
   group.name = `SF_PlaceFallback_${placeId}`;
   group.userData.kind = 'place';
@@ -3550,23 +3668,6 @@ function buildFallbackPlaceProp(entity, placeFile) {
     assetBoundary: 'GLTFKit v1 — authored world-place prop fallback',
     gracefulFallback: true,
   };
-
-  const color = fallbackPlaceColor(placeId, data.paletteClass);
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.68,
-    metalness: 0.22,
-    emissive: new THREE.Color(color).multiplyScalar(0.28),
-    emissiveIntensity: 0.25,
-  });
-  // Authored world-place fallback: same reasoning as the station fallback above.
-  installIllustratedSurface(material);
-  const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
-  mesh.name = `SF_PlaceFallback_${placeId}_Hull`;
-  mesh.scale.set(radius * 0.28, radius * 0.20, radius * 0.28);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
   return group;
 }
 
@@ -3676,6 +3777,13 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (!boundaryBelongsToScene(job.boundary, scene)) {
     return Promise.resolve({ status: 'cancelled-before-queue', boundary: job.boundary });
   }
+  // A live survival run admits the arena's fight roster, not the staging sector's far dressing.
+  // Refusing at enqueue keeps the boundary armed ('awaiting-authored-admission'), so the ordinary
+  // approach trigger re-requests it if the player ever closes to the fight-fit envelope — and
+  // anything still deferred re-requests when the run ends and the sector returns.
+  if (survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
+    return Promise.resolve({ status: 'deferred-arena-dressing', boundary: job.boundary });
+  }
   let resolveCompletion;
   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
@@ -3707,6 +3815,9 @@ export function enqueueBoundaryUpgrade(scene, job) {
   else state.jobs.splice(insertionIndex, 0, queuedJob);
   state.byBoundary.set(queuedJob.boundary, queuedJob);
   state.byKey.set(queuedJob.key, queuedJob);
+  if (state.firstFlightHandoffHold === true && firstFlightReadableShipJob(queuedJob)) {
+    primeNextAuthoredAssetPlan(state);
+  }
   if (!state.running) processUpgradeQueue(state);
   else scheduleNextUpgradeFrame(state);
   return completion;
@@ -3776,6 +3887,9 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightPrefetchJob = null;
+  if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
+  state.heldShipWakeTimer = null;
   state.loadingHullsOnly = false;
   scheduleNextUpgradeFrame(state);
   return held;
@@ -3787,6 +3901,9 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   if (!state) return false;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightPrefetchJob = null;
+  if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
+  state.heldShipWakeTimer = null;
   state.loadingHullsOnly = true;
   scheduleNextUpgradeFrame(state);
   return true;
@@ -3796,9 +3913,14 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
 export function holdAuthoredUpgradeQueueForFirstFlight(scene) {
   const state = scene && upgradeQueuesByScene.get(scene);
   if (!state) return false;
+  // The opening cohort's broad hold is over at the first-flight boundary. Carrying it into
+  // flight masks the selective ship lane below, even though firstFlightHandoffHold still fences
+  // every non-ship job until the regular release latch.
+  state.openingHandoffHold = false;
   state.firstFlightHandoffHold = true;
   state.loadingHullsOnly = false;
   invalidateScheduledUpgradeFrame(state);
+  scheduleNextUpgradeFrame(state);
   return true;
 }
 
@@ -3812,6 +3934,8 @@ function upgradeQueueState(scene) {
       inFlight: 0,
       frameScheduled: false,
       frameScheduleToken: 0,
+      heldShipWakeTimer: null,
+      firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
       loadingHullsOnly: false,
@@ -3839,6 +3963,11 @@ function upgradeQueueState(scene) {
 function authoredUpgradePriority(job) {
   const entity = job && job.entity;
   if (entity && entity.isPlayer === true) return 0;
+  // A hostile ship inside the camera's fight-fit envelope is being acted on now: it outranks the
+  // critical starting hub and every dressing job. Recomputed on each admission, so a hostile that
+  // closes the distance promotes while it waits; nothing in flight is ever pre-empted.
+  const combatant = combatantAdmissionPriority(entity, authoredRuntimeState());
+  if (combatant !== null) return combatant;
   if (isCriticalStartingHub(entity)) return 1;
   const background = backgroundUpgradePriority(job);
   // A sector arrival hands this queue the destination's whole authored population in one burst, and
@@ -3870,6 +3999,51 @@ function authoredRuntimeState() {
   return globalThis && globalThis.window && globalThis.window.SF
     ? globalThis.window.SF.state || null
     : null;
+}
+
+// The first-flight guard protects leftover places and FX from linking into the opening picture.
+// It must not park a combat/contact ship that has reached the readable glass: that leaves its
+// zero-draw admission boundary (and the temporary marker) where a ship should be for 20 seconds.
+// A complete NPC body can spend several seconds in decode and pipeline preparation. Start queued
+// runway ships before the contact reaches the glass instead of making the player watch that work.
+const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
+function firstFlightReadableShipJob(job) {
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const entity = job && job.entity;
+  const player = live && live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  const runwayDistance = planarRangeWU(entity, player);
+  return !!(live && live.mode === 'flight' && render
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && render.sectorShellAdmission !== true
+    && entity && entity.type === 'ship' && entity.alive !== false
+    // Submission includes a ship whose outline intersects the glass even when its pivot does
+    // not. The frustum center-point helper can say false while its marker is already drawn.
+    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
+      || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
+        && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
+}
+
+function scheduleHeldShipWake(state) {
+  if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
+  state.heldShipWakeTimer = setTimeout(() => {
+    state.heldShipWakeTimer = null;
+    scheduleNextUpgradeFrame(state);
+  }, 100);
+  state.heldShipWakeTimer.unref?.();
+}
+
+function firstFlightShipCanPassBusyPlace(state) {
+  if (!state || state.firstFlightHandoffHold !== true || state.inFlight !== 1
+      || !state.jobs.some(firstFlightReadableShipJob)) return false;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
+  // A slow hub/place upload may remain in flight long after the opening shell has gone. Reserve
+  // one additional serial ship slot for that case. A detached ship that already released its CPU
+  // slot may still be linking GPU pipelines and must not block the next visible contact.
+  return active.length === 1 && active[0].entity?.type !== 'ship';
 }
 
 export function waitForOpeningGraphPublicationRelease() {
@@ -4097,6 +4271,7 @@ function cancelQueuedJob(state, job) {
   cleanupQueuedJob(state, job);
   const residency = job && job.renderer && getAssetResidency(job.renderer);
   if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
+  if (job.boundary) releaseOwnerInstances(job.boundary);
   if (job.boundary && job.boundary.userData) {
     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
   }
@@ -4159,22 +4334,33 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled || state.openingHandoffHold === true
-      || state.firstFlightHandoffHold === true) return;
+  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
     return;
   }
-  if (state.inFlight >= authoredUpgradeConcurrencyLimit()) return;
+  if (state.firstFlightHandoffHold === true
+      && !state.jobs.some(firstFlightReadableShipJob)) {
+    scheduleHeldShipWake(state);
+    return;
+  }
+  if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
+  if (state.inFlight >= authoredUpgradeConcurrencyLimit()
+      && !firstFlightShipCanPassBusyPlace(state)) return;
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
   state.frameScheduled = true;
   const token = (Number(state.frameScheduleToken) || 0) + 1;
   state.frameScheduleToken = token;
   scheduleUpgradeFrame(() => {
-    if (state.frameScheduleToken !== token || state.openingHandoffHold === true
-        || state.firstFlightHandoffHold === true) return;
+    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+    if (state.firstFlightHandoffHold === true
+        && !state.jobs.some(firstFlightReadableShipJob)) {
+      state.frameScheduled = false;
+      scheduleHeldShipWake(state);
+      return;
+    }
     admitNextUpgradeJob(state);
   });
 }
@@ -4194,9 +4380,26 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
+    if (state.firstFlightHandoffHold === true) {
+      const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
+      if (urgentDelta) return urgentDelta;
+    }
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
-    return priorityDelta || a.sequence - b.sequence;
+    if (priorityDelta) return priorityDelta;
+    if (state.firstFlightHandoffHold === true
+        && firstFlightReadableShipJob(a) && firstFlightReadableShipJob(b)) {
+      const live = authoredRuntimeState();
+      const player = live?.entities?.get?.(live.playerId);
+      const nearA = planarRangeWU(a.entity, player);
+      const nearB = planarRangeWU(b.entity, player);
+      if (nearA !== null && nearB !== null && nearA !== nearB) return nearA - nearB;
+    }
+    return a.sequence - b.sequence;
   });
+  if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
+    scheduleHeldShipWake(state);
+    return null;
+  }
   if (state.loadingHullsOnly === true) {
     const hullIndex = state.jobs.findIndex(isLoadingHullUpgradeJob);
     if (hullIndex < 0) {
@@ -4223,12 +4426,17 @@ function admitNextUpgradeJob(state) {
   }
 
   job.lifecycle = 'in-flight';
+  job.serialSlotReleased = false;
+  if (state.firstFlightHandoffHold === true && job.options) {
+    job.options.urgentFirstFlightAdmission = true;
+  }
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
   let serialSlotReleased = false;
   const releaseSerialSlotAfterPipelineStaging = () => {
     if (serialSlotReleased || job.lifecycle !== 'in-flight') return false;
     serialSlotReleased = true;
+    job.serialSlotReleased = true;
     state.inFlight = Math.max(0, state.inFlight - 1);
     scheduleNextUpgradeFrame(state);
     return true;
@@ -4307,6 +4515,30 @@ function authoredUpgradeConcurrencyLimit() {
 function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
+  if (state.firstFlightHandoffHold === true) {
+    if (state.firstFlightPrefetchJob
+        && state.jobs.includes(state.firstFlightPrefetchJob)
+        && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
+    state.firstFlightPrefetchJob = null;
+    const player = liveState.entities?.get?.(liveState.playerId);
+    const eligible = state.jobs.filter((job) => firstFlightReadableShipJob(job)
+      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
+    eligible.sort((a, b) => {
+      const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
+      if (priority) return priority;
+      return (planarRangeWU(a.entity, player) ?? Infinity)
+        - (planarRangeWU(b.entity, player) ?? Infinity);
+    });
+    const job = eligible[0];
+    if (!job) return;
+    state.firstFlightPrefetchJob = job;
+    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    job.prefetchPromise.then(() => scheduleNextUpgradeFrame(state), (error) => {
+      job.prefetchError = error && error.message ? error.message : String(error);
+      scheduleNextUpgradeFrame(state);
+    });
+    return;
+  }
   // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
   // every queued ship, which effectively asked the serial decode lane to process the whole live
   // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
@@ -4494,17 +4726,25 @@ export function describeAuthoredUpgradeQueue(scene) {
   if (!state) return { present: false, pending: 0, inFlight: 0, running: false, held: false, jobs: [] };
   const jobs = [];
   const seen = new Set();
+  // `jobs` is a display sample, but the aggregate flags must scan the whole set: overlap
+  // releases the serial slot once a job's pipeline stages, so dozens of detached admissions can
+  // be mid-compile while the first eight entries already read settled — an idle verdict sampled
+  // from the truncated list released the cook with site/place jobs still linking into flight.
+  let compiling = 0;
   for (const job of [...state.jobs, ...state.byBoundary.values()]) {
     if (!job || seen.has(job)) continue;
     seen.add(job);
-    jobs.push({
-      key: job.key || null,
-      lifecycle: job.lifecycle || null,
-      status: job.boundary && job.boundary.userData
-        ? job.boundary.userData.authoredAssetState
-        : null,
-    });
-    if (jobs.length >= 8) break;
+    const status = job.boundary && job.boundary.userData
+      ? job.boundary.userData.authoredAssetState
+      : null;
+    if (job.lifecycle === 'in-flight' || status === 'compiling-pipelines') compiling += 1;
+    if (jobs.length < 8) {
+      jobs.push({
+        key: job.key || null,
+        lifecycle: job.lifecycle || null,
+        status,
+      });
+    }
   }
   return {
     present: true,
@@ -4512,8 +4752,39 @@ export function describeAuthoredUpgradeQueue(scene) {
     inFlight: state.inFlight,
     running: !!state.running,
     held: state.openingHandoffHold === true || state.firstFlightHandoffHold === true,
+    openingHeld: state.openingHandoffHold === true,
+    firstFlightHeld: state.firstFlightHandoffHold === true,
+    frameScheduled: state.frameScheduled === true,
+    compiling,
     jobs,
   };
+}
+
+/** Detached-boundary leak diagnostics: reports which authored registries still hold
+ * this boundary so witness tooling can name the retainer without heap archaeology. */
+export function inspectAuthoredBoundaryRegistrations(scene, boundary) {
+  const out = {
+    preparedRoots: 0,
+    queuedLifecycle: null,
+    queuedKey: null,
+    inJobsArray: 0,
+  };
+  if (!scene || !boundary) return out;
+  const state = sceneStates.get(scene);
+  const roots = state && state.preparedAuthoredRoots && state.preparedAuthoredRoots.get(boundary);
+  if (roots && roots.size) out.preparedRoots = roots.size;
+  const queue = upgradeQueuesByScene.get(scene);
+  if (queue) {
+    const job = queue.byBoundary.get(boundary);
+    if (job) {
+      out.queuedLifecycle = job.lifecycle || 'queued';
+      out.queuedKey = job.key || null;
+    }
+    for (const queued of queue.jobs) {
+      if (queued && queued.boundary === boundary) out.inJobsArray += 1;
+    }
+  }
+  return out;
 }
 
 /** Admit queued upgrades without waiting for a display rAF. Loading-shell only. */
@@ -4589,9 +4860,7 @@ export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
       pending: described.pending,
       inFlight: described.inFlight,
       running: described.running,
-      compiling: (described.jobs || []).some((job) => (
-        job.lifecycle === 'in-flight' || job.status === 'compiling-pipelines'
-      )),
+      compiling: described.compiling > 0,
     };
   };
   const pump = () => {
@@ -5160,6 +5429,13 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         ? '[partsLibrary] authored admission aborted; owner left before publish'
         : '[partsLibrary] authored composition failed; no substitute visual published', {
       entity: entity && entity.id,
+      // Selector fields decide which whole-ship map the entity needed — without them a
+      // "no required packaged whole-ship selection" warning cannot name the missing row.
+      defId: entity && entity.data && entity.data.defId,
+      trafficRole: entity && entity.data && entity.data.trafficRole,
+      assetRef: entity && entity.data && entity.data.assetRef,
+      lootTableId: entity && entity.data && entity.data.lootTableId,
+      silhouette: entity && entity.data && entity.data.silhouette,
       message: String(error && error.message || error),
       causes: error && Array.isArray(error.errors)
         ? error.errors.map((cause) => String(cause && (cause.message || cause.reason || cause))).slice(0, 8)
@@ -5207,10 +5483,12 @@ async function disposePreparedAuthoredShip(authored) {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
   await attempt(root, () => root.clear());
+  // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
+  // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
+  unregisterPreparedAuthoredAdmission(authored);
   if (cleanupErrors.length) {
     throw new AggregateError(cleanupErrors, 'Prepared authored ship cleanup failed');
   }
-  unregisterPreparedAuthoredAdmission(authored);
   authored.preparedCleanupComplete = true;
   return true;
 }
@@ -5357,6 +5635,10 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
           libraryScope: 'whole-ship-lod-family',
           residencyRole: 'whole-ship-lod-family',
+          // The demoted level composes outside the admission pipeline: without the boundary as
+          // residency owner the package is only cache/bootstrap-owned and a sweep can evict it
+          // between load and createInstance ("must be retained before creating an instance").
+          residencyOwner: boundary,
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
@@ -5378,7 +5660,25 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         roots[requested] = composed.root;
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
-        console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error);
+        // AggregateError reasons do not survive console text capture, which leaves the
+        // demotion failure undiagnosable in soak evidence. Name the causes inline.
+        const causes = Array.isArray(error && error.errors)
+          ? error.errors.map((cause) => String((cause && (cause.message || cause)) || '?')).slice(0, 6)
+          : [String((error && (error.message || error)) || '?')];
+        // Owner-inactive aborts are the expected race: the entity evicted, died, or the context
+        // reset while the demoted level's pipelines were compiling. The active level stays put
+        // and a later LOD request retries — teardown noise, not a defect worth a soak warning.
+        // A "must be retained" throw is the same race one step later: the composed part's
+        // package can only lose its boundary-owner retain — and thereby become sweepable — when
+        // the demotion's residency context ended between library load and createInstance. A live,
+        // claimed boundary keeps the mixed-lifetime pin, so the message cannot fire otherwise.
+        const ownerGone = causes.length > 0
+          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating an instance/i.test(cause));
+        if (ownerGone) {
+          console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
+        } else {
+          console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
+        }
       } finally {
         if (pendingLevel === requested) pendingLevel = null;
       }
@@ -5409,8 +5709,19 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
-  const publicationWait = waitForOpeningGraphPublicationRelease();
-  if (publicationWait) await publicationWait;
+  // A readable ship admitted after first paint has already passed the exact compile/upload gate.
+  // The global publication freeze only fences leftover opening work; making this ship wait on it
+  // would put the resolving marker back on the glass for the full first-flight hold.
+  const live = authoredRuntimeState();
+  const urgentFlightShip = options.urgentFirstFlightAdmission === true
+    && live && live.mode === 'flight'
+    && Number.isFinite(live.render && live.render.firstPlayableFrameAt)
+    && live.render.sectorShellAdmission !== true;
+  const publicationWait = urgentFlightShip ? null : waitForOpeningGraphPublicationRelease();
+  if (publicationWait) {
+    boundary.userData.authoredPreparePhase = 'awaiting-publication';
+    await publicationWait;
+  }
   if (!boundary.parent) {
     if (preparedAuthored) {
       await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
@@ -5616,14 +5927,25 @@ async function ensureEntityLibrary(renderer, entity, options = {}) {
   // Combat/traffic identity can land while a captured plan's GLB is still decoding. Keep admitting
   // until the live selector's records are in the library Map — sector prewarm residency is not
   // that Map, so compose would otherwise throw on a hull that was never admitted.
+  //
+  // An owner that goes inactive mid-preload must never hand compose an incomplete library as a
+  // success: its own loads resolve null by design (assetLoader cancels owner-departed decodes
+  // silently) and the resident-only slot rewrite can drop the required whole-ship record
+  // entirely. Resolving here made the whole-ship LOD demotion compose against that hole and warn
+  // "release mode requires … it did not pass the live authored-asset loader." Abort with the
+  // established owner-inactive signal instead — the admission error handler and the LOD-demotion
+  // owner-gone classifier both log it informationally and a later request retries.
+  const ownerInactive = () => (
+    typeof options.isResidencyOwnerActive === 'function' && options.isResidencyOwnerActive() !== true
+  );
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-      return library;
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      throw new Error('Authored visual preparation owner became inactive during entity preload');
     }
     retainLibraryPlan(renderer, library, plan, options);
     await admitEntityPlan(renderer, options, library, plan);
-    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-      return library;
+    if (ownerInactive() && !libraryHasPreloadPlan(library, plan)) {
+      throw new Error('Authored visual preparation owner became inactive during entity admission');
     }
     const currentPlan = authoredPreloadPlanForEntity(entity, options);
     if (libraryHasPreloadPlan(library, currentPlan)) {
@@ -5800,6 +6122,11 @@ function handoffBootstrapIfCovered(renderer, residency = null) {
 
 export function releaseBoundaryResidency(renderer, boundary, reason) {
   const residency = renderer && getAssetResidency(renderer);
+  // The boundary owns its composed parts' instance-pool slots. THREE's `removed` event only
+  // reaches the outermost detached root, so a boundary nested under an entity mesh never gets
+  // the listener drain — the slot keeps `owner -> boundary` alive and the chunk can never
+  // retire. Every residency release doubles as the owner-instance drain.
+  if (boundary) releaseOwnerInstances(boundary);
   return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }
 
@@ -6090,6 +6417,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
+  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -6301,11 +6629,10 @@ function flightRootTemplateKey({
   loadoutFingerprint,
 }) {
   const data = entity && entity.data || {};
-  // Whole-ship bodies skip every accessory slot after hull. Excluding those skipped selections is
-  // important: they are seed-selected during assembly, so including them makes identical Kestrel
-  // visuals diverge by entity id even though the unused records never affect pixels.
+  // Whole-ship bodies skip structural accessories, but the selected engine determines the visible
+  // bow retro hardware even when its main bell is baked into the body.
   const consumedSelected = wholeShip
-    ? [...selected.entries()].filter(([slot]) => slot === 'hull')
+    ? [...selected.entries()].filter(([slot]) => slot === 'hull' || slot === 'engine')
     : [...selected.entries()];
   const selectedSources = consumedSelected
     .sort(([left], [right]) => left.localeCompare(right))
@@ -7926,20 +8253,37 @@ function staticBatchGroupKey(tags = {}) {
   ].join('|');
 }
 
+function staticBatchLeafCacheKey(entry, tags) {
+  const prim = entry && entry.primitive;
+  const name = prim && prim.name || '';
+  const primElements = prim && prim.matrix && prim.matrix.elements;
+  const partElements = entry && entry.partMatrix && entry.partMatrix.elements;
+  const url = entry && entry.record && entry.record.url || '';
+  const t = tags || {};
+  return `${url}|${t.lod || 'always'}|${t.damageRole || ''}|${name}|${primElements ? Array.from(primElements).join(',') : ''}|${partElements ? Array.from(partElements).join(',') : ''}`;
+}
+
 function flushStaticBatch(parent, bindings, bucket, options = {}) {
   const material = resolveCanonicalHullMaterial(bucket.material);
   const merged = buildStaticBatchGeometry(bucket, options);
   if (!merged) {
     const tier1Geometry = tier1CausalCounters();
     for (const entry of bucket.entries) {
-      const geometry = entry.primitive.geometry.clone();
-      if (tier1Geometry) {
-        tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
-        tier1Geometry.countGeometryTransform('static-batch');
+      // The transform-bound leaf is byte-identical across same-class boundaries; share the
+      // cached clone instead of re-uploading the same buffers at every live compose.
+      const leafKey = staticBatchLeafCacheKey(entry, bucket.tags);
+      let geometry = takeCachedStaticBatchGeometry(leafKey);
+      if (!geometry) {
+        geometry = entry.primitive.geometry.clone();
+        if (tier1Geometry) {
+          tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
+          tier1Geometry.countGeometryTransform('static-batch');
+        }
+        promoteStaticPositionToFloat(geometry);
+        geometry.applyMatrix4(entry.primitive.matrix);
+        geometry.applyMatrix4(entry.partMatrix);
+        rememberStaticBatchGeometry(leafKey, geometry);
       }
-      promoteStaticPositionToFloat(geometry);
-      geometry.applyMatrix4(entry.primitive.matrix);
-      geometry.applyMatrix4(entry.partMatrix);
       addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
     }
     return;
@@ -7954,6 +8298,24 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     return;
   }
 
+  // The group merge is byte-identical across same-class boundaries: bucket keys already encode
+  // urls/tags/entry transforms, so their sorted join is a stable group key. Share the merged
+  // output or every live compose re-uploads the same buffers mid-round.
+  const groupCacheKey = buckets.map(staticBatchGeometryCacheKey).sort().join('&&');
+  const cachedGroup = takeCachedStaticBatchGeometry(groupCacheKey);
+  if (cachedGroup) {
+    const materialsCached = buckets.map((bucket) => resolveCanonicalHullMaterial(bucket.material));
+    const urlsCached = new Set();
+    let partsCached = 0;
+    for (const bucket of buckets) {
+      partsCached += bucket.entries.length;
+      for (const url of bucket.urls) urlsCached.add(url);
+    }
+    addStaticBatchMesh(parent, bindings, cachedGroup, materialsCached, buckets[0].tags,
+      [...urlsCached], `StaticGroup_${partsCached}_${materialsCached.length}`);
+    return;
+  }
+
   const geometries = [];
   const materials = [];
   const urls = new Set();
@@ -7962,7 +8324,10 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     const geometry = buildStaticBatchGeometry(bucket, options);
     if (!geometry) {
       for (const pending of geometries) {
-        if (pending && typeof pending.dispose === 'function') pending.dispose();
+        if (pending && typeof pending.dispose === 'function'
+          && !(pending.userData && pending.userData.spacefaceSharedAsset)) {
+          pending.dispose();
+        }
       }
       for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
       return;
@@ -7979,7 +8344,10 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
   const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
   if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'static-batch-group');
   for (const geometry of normalized) {
-    if (geometry && typeof geometry.dispose === 'function') {
+    // Bucket geometries are shared cache entries now — disposing one steals the resident
+    // buffer from every other boundary that drew it. Only fresh normalized copies dispose.
+    if (geometry && typeof geometry.dispose === 'function'
+      && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
       if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-group');
       geometry.dispose();
     }
@@ -7988,6 +8356,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
     return;
   }
+  rememberStaticBatchGeometry(groupCacheKey, merged);
   addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
 }
 
@@ -8018,7 +8387,7 @@ function buildStaticBatchGeometry(bucket, options = {}) {
   }
   if (merged) {
     rememberStaticBatchGeometry(cacheKey, merged);
-    return typeof merged.clone === 'function' ? merged.clone() : merged;
+    return merged;
   }
   return null;
 }
@@ -8058,7 +8427,8 @@ export function normalizeStaticBatchGeometries(geometries, options = {}) {
     if (!preserveIndexedGeometry && next.index && typeof next.toNonIndexed === 'function') {
       next = next.toNonIndexed();
       if (tier1Geometry) tier1Geometry.countGeometryDeindex('static-batch');
-      if (next !== geometry && typeof geometry.dispose === 'function') {
+      if (next !== geometry && typeof geometry.dispose === 'function'
+        && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
         if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-deindex');
         geometry.dispose();
       }
@@ -8518,6 +8888,290 @@ function canPoolRenderPackageShipMesh(source, tags = {}) {
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
   return true;
+}
+
+// PQ-210.00 — force the render-package instance pool to promote without a live ship pair.
+// Pool chunks key on (geometry, sharedMaterialFor(material, tags, palette)) and only promote
+// when a second distinct owner registers the same key, so each palette that can appear in the
+// round needs its own pair of witnesses. The stubs mount under a hidden catalog root, so
+// visibleProxyChainReachesOwner never submits a matrix for them — the chunk keeps count 0,
+// draws nothing, and simply stays resident for the round.
+//
+// The warm also prepares and activates the deferred chunk admissions it creates. Leaving them
+// to the orphan lane paces a catalog-sized backlog one-per-present into the flight window —
+// the exact off-frame link/upload drip this pass exists to prevent. Witness slots contribute
+// no visible matrices, so activation publishes each chunk at count 0.
+//
+// witnessPairs: [{ ownerA, ownerB, palette }] — one entry per live palette.
+export async function warmRenderPackageShipPool(scene, record, witnessPairs, options = {}) {
+  if (!record?.renderPackage) return 0;
+  if (!scene?.isScene) return 0;
+  // Always the ordinary instance route: createFlightInstance ignores createNode, so only
+  // createInstance feeds the pool candidate path.
+  const createPackageInstance = record.renderPackage.createInstance?.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function' || !Array.isArray(witnessPairs)) return 0;
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  // One probe instance with a bare-group createNode enumerates the shared plan entries —
+  // planNodes/planEntries come back without a single real clone. The candidate registrations
+  // below then clone only the poolable sources, so a package pays O(poolable × palettes)
+  // instead of O(nodes × palettes) clones per warm.
+  let planEntries = null;
+  try {
+    const probe = createPackageInstance({
+      name: `SF_PoolWitnessProbe_${record.assetId || 'package'}`,
+      residencyRole: 'survival-roster-prewarm',
+      createNode: () => new THREE.Group(),
+    });
+    planEntries = probe?.planEntries || null;
+  } catch (error) {
+    console.warn('[partsLibrary] pool witness probe failed for', record.assetId || record.url, error);
+    return 0;
+  }
+  if (!Array.isArray(planEntries)) return 0;
+
+  const poolAdmissions = new Set();
+  const poolableSources = [];
+  for (const entry of planEntries) {
+    const source = entry?.source;
+    if (!source?.isMesh) continue;
+    const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
+    if (!canPoolRenderPackageShipMesh(source, tags)) continue;
+    poolableSources.push({ source, tags });
+  }
+  const poolState = sceneState(scene);
+  let warmed = 0;
+  for (const pair of witnessPairs) {
+    if (!pair || !pair.ownerA?.isObject3D || !pair.ownerB?.isObject3D) continue;
+    // One (geometry, sharedMaterial) key needs exactly two distinct owners to promote — a
+    // package with duplicate-material nodes still promotes once per key, and a key that a
+    // twin exemplar or live boundary already pushed into the pool needs no witness at all.
+    const uniqueKeys = new Map();
+    for (const { source, tags } of poolableSources) {
+      const material = sharedMaterialFor(source.material, tags, pair.palette || {});
+      // Pool identity prefers the geometry's first-writer-wins batch stamp — stamp BEFORE
+      // keying so this check reads the same identity admitRenderPackageShipPoolCandidate
+      // will compute (and the same one a primitives-path stamp already established).
+      stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+      const key = instancePoolKey(source.geometry, material);
+      if (uniqueKeys.has(key)) continue;
+      if (packagePoolSlots(poolState && poolState.pools.get(key)).length > 0) continue;
+      uniqueKeys.set(key, { source, material });
+    }
+    for (const owner of [pair.ownerA, pair.ownerB]) {
+      for (const { source, material } of uniqueKeys.values()) {
+        try {
+          const object = source.clone(false);
+          object.material = material;
+          object.userData = {
+            ...(object.userData || {}),
+            spacefacePackageMaterialPrepared: true,
+          };
+          // Stamp the shared pool material's canonical family key now — production boundaries
+          // canonicalize at upgrade completion, and a chunk that compiled under the raw key
+          // would relink the canonical program at its first live draw.
+          canonicalizeObjectSurfaceProgramKeys(object);
+          admitRenderPackageShipPoolCandidate(
+            scene,
+            owner,
+            object,
+            source.geometry,
+            material,
+            `${record.assetId || 'PackageShip'}_${source.name || 'Mesh'}`,
+            poolAdmissions,
+          );
+          warmed++;
+        } catch (error) {
+          console.warn('[partsLibrary] pool witness candidate failed for', record.assetId || record.url, error);
+        }
+      }
+    }
+  }
+  if (poolAdmissions.size > 0) {
+    // Do NOT route each chunk through prepareRenderPackagePoolAdmission here: that enqueues one
+    // ambient pipeline item per chunk (~2k across the catalog) into a lane that is already the
+    // cook's bottleneck, for compiles that are all program-family dedupes. The holder's count-0
+    // instance twin already linked the color family, and the survival cook's post-settle pool
+    // seal (color+depth) plus the first-frame residency census (buffers) cover the published
+    // count-0 chunk wholesale. Mark prepared and publish — the pool exists for live joins and
+    // its instanceMatrix upload rides the census instead of 2k lane slots.
+    for (const admission of poolAdmissions) {
+      if (!admission || admission.cancelled) continue;
+      if (!admission.prepared) {
+        admission.result = { skipped: true, reason: 'roster warm: pool seal + census own GPU state' };
+        admission.prepared = true;
+      }
+      try { activateRenderPackagePoolAdmission(admission); }
+      catch (error) {
+        console.warn('[partsLibrary] pool witness chunk activation failed', record.assetId || record.url, error);
+      }
+    }
+  }
+  return warmed;
+}
+
+/**
+ * PQ-210.00 — (geometry, sharedMaterial) pairs a live ship boundary could draw for this record
+ * under `palette`, with no pool side effects: the same probe-instance enumeration
+ * warmRenderPackageShipPool uses, stopped before candidate registration. The bounded crucible
+ * warm mounts these as hidden meshes/count-0 instanced twins, which links the direct and
+ * USE_INSTANCING palette-material program families behind the shell WITHOUT publishing the
+ * per-(key × palette) chunk fleet the receipt measured as the launch regression (a mid-round
+ * chunk then only owes its small instanceMatrix upload — the program family is already warm).
+ */
+export function paletteWarmSubjectsForRecord(record, palette) {
+  if (!record?.renderPackage) return [];
+  const createPackageInstance = record.renderPackage.createInstance?.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function') return [];
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  let planEntries = null;
+  try {
+    const probe = createPackageInstance({
+      name: `SF_PaletteWarmProbe_${record.assetId || 'package'}`,
+      residencyRole: 'crucible-roster-warm',
+      createNode: () => new THREE.Group(),
+    });
+    planEntries = probe?.planEntries || null;
+  } catch (error) {
+    console.warn('[partsLibrary] palette warm probe failed for', record.assetId || record.url, error);
+    return [];
+  }
+  if (!Array.isArray(planEntries)) return [];
+  const uniqueKeys = new Map();
+  for (const entry of planEntries) {
+    const source = entry?.source;
+    if (!source?.isMesh) continue;
+    const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
+    if (!canPoolRenderPackageShipMesh(source, tags)) continue;
+    const material = sharedMaterialFor(source.material, tags, palette || {});
+    stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+    const key = instancePoolKey(source.geometry, material);
+    if (uniqueKeys.has(key)) continue;
+    uniqueKeys.set(key, { geometry: source.geometry, material });
+  }
+  return [...uniqueKeys.values()];
+}
+
+// The palette set a hidden pool warm must cover for the current run: pool chunk keys bake the
+// shared material, which bakes paletteFor(entity). NPC palettes are deterministic faction/team
+// bases (per-entity appearance overrides are a player-only feature), so the fallback trio plus
+// the sector faction cover every traffic/law/civilian composer the round can field. Roster
+// palettes are deliberately NOT included: the twin exemplar builds promote each roster ship's
+// chunk keys under its exact palette already, and adding faction palettes here multiplies
+// candidates by poolable-node count for zero new coverage.
+export function poolWitnessPalettesForState(state) {
+  const palettes = [];
+  const seen = new Set();
+  const add = (entity) => {
+    const palette = paletteFor(entity || {});
+    const signature = [
+      palette.hull, palette.accent, palette.thruster, palette.dark,
+      palette.finish, palette.wear,
+      palette.tints ? JSON.stringify(palette.tints) : '',
+    ].join('|');
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    palettes.push(palette);
+  };
+  const sector = (state && state.world && state.world.sectors
+      && state.world.sectors[state.world.currentSectorId])
+    || (state && state.world && state.world.currentSector)
+    || null;
+  add({ team: 1 });
+  // No factionId resolves the civilian fallback — place/site/dressing entities land here.
+  add({ team: 2 });
+  add({ team: 2, factionId: 'faction_free' });
+  add({ team: 2, factionId: (sector && sector.factionId) || 'faction_free' });
+  return { palettes };
+}
+
+// Roster ships promote their own lod0 chunk keys through the twin exemplar builds, but a live
+// spawn demoting to lod1/lod2 mid-round composes a SIBLING file under the same faction palette
+// — a chunk key the exemplar never created. Map each roster ship's whole-ship LOD files to its
+// exact palette so the catalog warm covers just those (file, palette) pairs instead of every
+// palette on every package.
+export function rosterPoolWitnessFilePalettes(entities) {
+  const byFile = new Map();
+  const addFor = (entity) => {
+    if (!entity || entity.type !== 'ship') return;
+    const palette = paletteFor(entity);
+    const signature = [
+      palette.hull, palette.accent, palette.thruster, palette.dark,
+      palette.finish, palette.wear,
+      palette.tints ? JSON.stringify(palette.tints) : '',
+    ].join('|');
+    for (const level of [0, 1, 2]) {
+      let file = null;
+      try { file = wholeShipLodFileForEntity(entity, level); } catch (_) { file = null; }
+      const normalized = normalizePartUrl(file).replace(/^.*\/parts\//, '');
+      if (!normalized) continue;
+      let palettes = byFile.get(normalized);
+      if (!palettes) byFile.set(normalized, palettes = new Map());
+      if (!palettes.has(signature)) palettes.set(signature, palette);
+    }
+  };
+  for (const entity of entities || []) addFor(entity);
+  // Static swarm roster: the wave planner draws future waves from SWARM_ROSTER +
+  // SWARM_BOSS_ROTATION packages, so a wave-2+ ship's (file, faction-palette) pair is
+  // enumerable from data alone — no live entity needed. Without this a choir zealot
+  // (same ashline_dart.glb file as the wave-1 wasp, different faction palette) promotes
+  // its chunk inside the fight.
+  for (const pseudo of swarmRosterShipExemplarSpecs()) addFor(pseudo);
+  return byFile;
+}
+
+/**
+ * Ship-shaped pseudo-entities for every enemy the swarm wave planner can field — the same
+ * (lootTableId, defId, silhouette, factionId) surface a real combat spawn carries, so
+ * wholeShipLodFileForEntity/paletteFor/vf.build resolve exactly what the live spawn resolves.
+ * Admission subjects only — never registered with the sim.
+ */
+export function swarmRosterShipExemplarSpecs(idPrefix = 'crucible-warm:ship:') {
+  const prefix = String(idPrefix || 'crucible-warm:ship:');
+  return swarmRosterEnemyDefs().map((def) => ({
+    id: `${prefix}${def.id}`,
+    type: 'ship',
+    team: 1,
+    factionId: def.factionId,
+    radius: 8,
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+    data: {
+      lootTableId: def.id,
+      defId: def.shipId,
+      silhouette: def.silhouette,
+      shipClass: def.shipClass,
+    },
+  }));
+}
+
+let _swarmRosterEnemyDefsCache = null;
+function swarmRosterEnemyDefs() {
+  if (_swarmRosterEnemyDefsCache) return _swarmRosterEnemyDefsCache;
+  const ids = new Set();
+  for (const entry of SWARM_ROSTER || []) {
+    if (entry && entry.enemyId) ids.add(entry.enemyId);
+  }
+  for (const boss of SWARM_BOSS_ROTATION || []) {
+    for (const pkg of (boss && boss.packages) || []) {
+      if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
+    }
+  }
+  const byId = new Map();
+  for (const def of ENEMY_TYPES || []) {
+    if (def && def.id) byId.set(def.id, def);
+  }
+  _swarmRosterEnemyDefsCache = [...ids].map((id) => byId.get(id)).filter(Boolean);
+  return _swarmRosterEnemyDefsCache;
 }
 
 function admitRenderPackageShipPoolCandidate(
@@ -9361,9 +10015,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
       chunk.meshDisposed = true;
     });
   }
-  if (cleanupErrors.length) {
-    throw new AggregateError(cleanupErrors, `Instance chunk ${chunk.mesh?.name || chunk.ordinal} cleanup failed`);
-  }
+  // Registry removal is unconditional: a failed GPU-side cleanup must still retire the
+  // chunk. Otherwise the half-finalized chunk stays pinned in retiringChunks/pool.chunks
+  // forever — detached from the scene but holding its slots, mesh, and pool alive.
   chunk.retired = true;
   if (chunk.packageAdmission === admission) chunk.packageAdmission = null;
   state.affectedChunks.delete(chunk);
@@ -9373,6 +10027,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   chunk.free.length = 0;
   const index = pool.chunks.indexOf(chunk);
   if (index >= 0) pool.chunks.splice(index, 1);
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, `Instance chunk ${chunk.mesh?.name || chunk.ordinal} cleanup failed`);
+  }
   return chunk;
 }
 
@@ -9896,8 +10553,10 @@ function registerOwnerRelease(owner, release) {
   if (!state) {
     state = { releases: new Set(), pending: new Set(), errors: [] };
     state.listener = () => {
-      const errors = drainOwnerReleaseCallbacks(state);
-      if (errors.length) throw new AggregateError(errors, 'Authored instance owner release failed');
+      // Never throw through Object3D's event dispatch: scene.remove() callers would see a
+      // GPU cleanup failure abort their whole eviction sweep. Errors stay recorded and are
+      // surfaced by releaseOwnerInstances; failed releases re-queue for that drain.
+      drainOwnerReleaseCallbacks(state);
     };
     owner.addEventListener('removed', state.listener);
     ownerReleaseState.set(owner, state);
@@ -9905,7 +10564,7 @@ function registerOwnerRelease(owner, release) {
   state.releases.add(release);
 }
 
-function releaseOwnerInstances(owner) {
+export function releaseOwnerInstances(owner) {
   const state = ownerReleaseState.get(owner);
   if (!state) return Promise.resolve(true);
   drainOwnerReleaseCallbacks(state);
@@ -10721,20 +11380,28 @@ function buildFallbackFin(hull, materials, placement) {
 }
 
 function buildFallbackNavLights(hull, materials, bindings) {
+  // Two plain meshes on the shared sphere geometry — a per-ship InstancedMesh would owe a fresh
+  // instanceMatrix bufferData on first draw, inside the round. Shared geometry is already
+  // resident, so this variant uploads nothing. One extra draw call per nav-light-less hull.
   const material = materials.accent.clone();
-  const lights = new THREE.InstancedMesh(getFallbackNavLightGeometry(), material, 2);
+  const lights = new THREE.Group();
   lights.name = 'GLTFKit_Nav_Lights';
-  lights.setMatrixAt(0, FALLBACK_NAV_LIGHT_MAT.makeTranslation(0.25, 0.18, -0.38));
-  lights.setMatrixAt(1, FALLBACK_NAV_LIGHT_MAT.makeTranslation(0.25, 0.18, 0.38));
-  lights.instanceMatrix.needsUpdate = true;
-  lights.castShadow = false;
-  lights.receiveShadow = false;
-  lights.userData.keepSeparate = true;
-  lights.userData.spacefaceNoShadow = true;
+  for (const side of [-1, 1]) {
+    const light = new THREE.Mesh(getFallbackNavLightGeometry(), material);
+    light.name = `GLTFKit_Nav_Lights_${side < 0 ? 'port' : 'starboard'}`;
+    light.position.set(0.25, 0.18, side * 0.38);
+    light.castShadow = false;
+    light.receiveShadow = false;
+    light.userData.keepSeparate = true;
+    light.userData.spacefaceNoShadow = true;
+    light.userData.damageRole = 'navLight';
+    light.userData.spacefaceTags = { damageRole: 'navLight' };
+    lights.add(light);
+    bindings.navLights.push(light);
+  }
   lights.userData.damageRole = 'navLight';
   lights.userData.spacefaceTags = { damageRole: 'navLight' };
   hull.add(lights);
-  bindings.navLights.push(lights);
   return lights;
 }
 
@@ -10852,9 +11519,15 @@ function disposeDetachedObject(root) {
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
   root.traverse((object) => {
-    if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
     const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of materials) if (material && typeof material.dispose === 'function') material.dispose();
+    for (const material of materials) {
+      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
   });
 }
 

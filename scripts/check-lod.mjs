@@ -2,7 +2,7 @@
 //
 // Verifies the projected-screen-size selector resolves the live thresholds (LOD0 above 120px, LOD1
 // below 120px, LOD2 below 45px), that hysteresis prevents oscillation at a boundary, and that the Kestrel's
-// updateLod reaction drops its decals at LOD1+ while preserving the silhouette. Headless — mirrors
+// updateLod reaction drops its decals at LOD2 while preserving the silhouette. Headless — mirrors
 // check-kestrel-hero.mjs (stubbed 2D canvas, no jsdom/GPU).
 //
 // Run: node scripts/check-lod.mjs
@@ -82,18 +82,26 @@ check('Kestrel carries updateLod reaction', typeof root.userData.updateLod === '
 root.userData.updateLod('lod0');
 let decalsAtLod0 = 0;
 root.traverse((o) => { if (o.name && o.name.startsWith('Kestrel_Decal_') && o.visible) decalsAtLod0++; });
+check('decals visible at LOD0', decalsAtLod0 > 0, `decals=${decalsAtLod0}`);
+
+// Decals stay through the readable LOD1 band (~120px contacts) and drop only at LOD2 — the
+// current §12.4 contract after the readable-marks pass in kestrelHero.js.
 root.userData.updateLod('lod1');
 let decalsAtLod1 = 0;
 root.traverse((o) => { if (o.name && o.name.startsWith('Kestrel_Decal_') && o.visible) decalsAtLod1++; });
-check('decals visible at LOD0', decalsAtLod0 > 0, `decals=${decalsAtLod0}`);
-check('decals dropped at LOD1', decalsAtLod1 === 0, `decals=${decalsAtLod1}`);
+check('decals stay through readable LOD1 band', decalsAtLod1 === decalsAtLod0, `decals=${decalsAtLod1}`);
 
-// Silhouette preserved at LOD1: the pressure hull / drive are still visible (spec §12.4).
-let hullVisibleAtLod1 = false;
+root.userData.updateLod('lod2');
+let decalsAtLod2 = 0;
+root.traverse((o) => { if (o.name && o.name.startsWith('Kestrel_Decal_') && o.visible) decalsAtLod2++; });
+check('decals dropped at LOD2', decalsAtLod2 === 0, `decals=${decalsAtLod2}`);
+
+// Silhouette preserved at LOD2: the pressure hull / drive are still visible (spec §12.4).
+let hullVisibleAtLod2 = false;
 root.traverse((o) => {
-  if (o.isMesh && o.visible && /Hull|Static|Drive/i.test(o.name)) hullVisibleAtLod1 = true;
+  if (o.isMesh && o.visible && /Hull|Static|Drive/i.test(o.name)) hullVisibleAtLod2 = true;
 });
-check('silhouette preserved at LOD1 (hull/drive visible)', hullVisibleAtLod1);
+check('silhouette preserved at LOD2 (hull/drive visible)', hullVisibleAtLod2);
 
 // Decals restored on return to LOD0 (reversible, like damage states).
 root.userData.updateLod('lod0');

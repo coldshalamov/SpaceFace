@@ -964,3 +964,56 @@ test('a package containing skinned content is rejected rather than silently deep
   );
   loader.dispose();
 });
+
+test('load claims the consumer owner at commit so byte pressure cannot evict a mount in flight', async () => {
+  // Regression for the save/load station-shell hang (PQ-033.02): a decoded package used to sit
+  // strictly render-package-cache-owned between commit and the caller's async retain
+  // continuation, so inline byte-pressure enforcement could reclaim it mid-mount and the loader
+  // retried forever while the authored-readiness gate stayed closed. The consumer owner now lands
+  // on the entry inside the decode commit, before the promise resolves.
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry({ maxPackageCacheOnlyBytes: 1 });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const consumer = { type: 'test-boundary-consumer' };
+  const loaded = await loader.load(packageMetadata(), {
+    residencyOwner: consumer,
+    residencyRole: 'current-sector',
+    residencySectorId: 'sector-test',
+  });
+
+  assert.equal(loaded.evicted, false,
+    'a just-committed package must still be resident for its claiming consumer');
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row, 'decoded package is registered');
+  assert.ok(row.roles.includes('current-sector'),
+    'the consumer role is pinned synchronously at commit, not after a later continuation');
+  assert.ok(row.sectors.includes('sector-test'), 'the consumer sector id is retained');
+  loader.dispose();
+});
+
+test('cache hits claim the consumer owner before the shared package resolves', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+  const metadata = packageMetadata();
+  const firstConsumer = { type: 'test-boundary-consumer-a' };
+  await loader.load(metadata, { residencyOwner: firstConsumer, residencyRole: 'current-sector' });
+  residency.releaseOwner(firstConsumer, 'consumer-a-departed');
+
+  const secondConsumer = { type: 'test-boundary-consumer-b' };
+  const loaded = await loader.load(structuredClone(metadata), {
+    residencyOwner: secondConsumer,
+    residencyRole: 'live-boundary',
+  });
+  assert.equal(loaded.evicted, false);
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row.roles.includes('live-boundary'),
+    'a second consumer claims the shared decode on the hit path too');
+  loader.dispose();
+});

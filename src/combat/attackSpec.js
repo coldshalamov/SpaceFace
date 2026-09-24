@@ -271,6 +271,24 @@ function applyPropagationOverlay(draft, overlay) {
   if (chain.requireBounce) draft.propagation.chain.requireBounce = true;
 }
 
+function chainFromWeapon(weapon) {
+  const chain = weapon && weapon.emergentChain;
+  if (!chain || !(chain.count > 0)) return null;
+  return {
+    count: chain.count,
+    range: Number.isFinite(chain.range) && chain.range > 0 ? chain.range : 110,
+  };
+}
+
+function splitFromWeapon(weapon) {
+  const split = weapon && weapon.emergentSplit;
+  if (!split || !(split.count > 0)) return null;
+  return {
+    count: split.count,
+    payloadScale: Number.isFinite(split.payloadScale) ? split.payloadScale : 0.45,
+  };
+}
+
 function baseDraft(weapon) {
   const kind = emitterKindOf(weapon);
   const damage = Number.isFinite(weapon.dmg) ? weapon.dmg : 0;
@@ -279,6 +297,9 @@ function baseDraft(weapon) {
     ? weapon.projSpeed
     : 0;
   const spreadDeg = Number.isFinite(weapon.spreadDeg) ? weapon.spreadDeg : 0;
+  const generationMax = Number.isInteger(weapon.lineageGenerationMax)
+    ? weapon.lineageGenerationMax
+    : DEFAULT_CONSTRAINTS.generationMax;
   return {
     schemaVersion: ATTACK_SPEC_SCHEMA_VERSION,
     sourceWeaponId: weapon.id,
@@ -292,13 +313,13 @@ function baseDraft(weapon) {
       kind: trajectoryKindOf(weapon),
       speed,
       inheritedVelocity: 0,
-      bounces: 0,
+      bounces: Number.isInteger(weapon.emergentBounces) ? weapon.emergentBounces : 0,
       afterBounceSteer: null,
     },
     propagation: {
       pierce: 0,
-      split: null,
-      chain: null,
+      split: splitFromWeapon(weapon),
+      chain: chainFromWeapon(weapon),
     },
     payload: [
       { kind: 'damage', channels: { [channel]: damage } },
@@ -312,7 +333,7 @@ function baseDraft(weapon) {
     ],
     constraints: {
       lineageProcBudget: DEFAULT_CONSTRAINTS.lineageProcBudget,
-      generationMax: DEFAULT_CONSTRAINTS.generationMax,
+      generationMax,
       childMax: DEFAULT_CONSTRAINTS.childMax,
       sameTargetCooldownTicks: DEFAULT_CONSTRAINTS.sameTargetCooldownTicks,
       activeFamilyCap: DEFAULT_CONSTRAINTS.activeFamilyCap,

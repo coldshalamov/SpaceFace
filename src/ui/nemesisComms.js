@@ -33,11 +33,30 @@ export function mountNemesisComms({ root, bus, state, claimInput } = {}) {
   const live = panel.querySelector('.nm-live'), button = panel.querySelector('button');
   let encounterId = '', disposed = false;
   const offs = [];
-  const releaseInput = claimInput(panel);
-  if (typeof releaseInput !== 'function') throw new TypeError('claimInput(panel) must return its cleanup function');
+  // The production claimInput is a structural gate: it verifies the panel sits inside
+  // #ui-root (panel.closest), which can only resolve once the panel is attached.
+  // Append first — the panel starts hidden, so no input can reach it before the claim —
+  // and detach again if the claim fails, so a failed mount leaves nothing behind.
   root.appendChild(panel);
-  const showKit = (kitId) => { const kit = NEMESIS_KITS[kitId] || NEMESIS_KITS.open;
-    fit.textContent = kit.tell; opening.textContent = `Opening: ${kit.opening}`; };
+  let releaseInput;
+  try {
+    releaseInput = claimInput(panel);
+  } catch (error) {
+    panel.remove();
+    throw error;
+  }
+  if (typeof releaseInput !== 'function') {
+    panel.remove();
+    throw new TypeError('claimInput(panel) must return its cleanup function');
+  }
+  const showKit = (kitId, secondaryId = null) => { const kit = NEMESIS_KITS[kitId] || NEMESIS_KITS.open;
+    fit.textContent = kit.tell; opening.textContent = `Opening: ${kit.opening}`;
+    // INF-075: the wing refit reads alongside the primary — its tell and its counter stay visible.
+    const wing = (secondaryId && secondaryId !== kitId && NEMESIS_KITS[secondaryId]) || null;
+    if (wing) {
+      fit.textContent += ` Wing: ${wing.tell}`;
+      opening.textContent += ` Wing opening: ${wing.opening}`;
+    } };
   const offered = (id) => { encounterId = id; status.textContent = 'SILE ORRA / CEASE FIRE';
     line.textContent = 'The guns are cooling. I have no argument left. Your choice.';
     live.textContent = 'Acceptance is permanent. Orra can still be destroyed before you accept.';
@@ -52,7 +71,7 @@ export function mountNemesisComms({ root, bus, state, claimInput } = {}) {
   const synchronize = () => {
     const memory = state.nemesis, a = memory && memory.active;
     if (!a) { panel.hidden = true; button.hidden = true; encounterId = ''; return; }
-    encounterId = a.id; panel.hidden = false; showKit(a.plan.primary);
+    encounterId = a.id; panel.hidden = false; showKit(a.plan.primary, a.plan.secondary);
     status.textContent = `SILE ORRA / ${NEMESIS_CHAPTERS[a.plan.chapter].title.toUpperCase()}`;
     line.textContent = 'The fit is committed. The pilot can still change their mind.';
     live.textContent = 'No mid-fight refit.'; button.hidden = true;
@@ -60,7 +79,7 @@ export function mountNemesisComms({ root, bus, state, claimInput } = {}) {
   };
   on('nemesis:announced', (p) => { encounterId = ''; panel.hidden = false; button.hidden = true;
     status.textContent = 'SILE ORRA / INBOUND'; line.textContent = 'A familiar transmission. A revised ship.';
-    live.textContent = 'Read the fit before you commit.'; showKit(p.kit); });
+    live.textContent = 'Read the fit before you commit.'; showKit(p.kit, p.secondary); });
   on('nemesis:engaged', synchronize);
   on('nemesis:voice', (p) => { if (p.encounterId === encounterId && !['destroyed', 'lost'].includes(p.situation)) {
     line.textContent = p.text.replace(/^ORRA:\s*/, ''); } });

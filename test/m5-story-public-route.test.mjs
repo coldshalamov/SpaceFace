@@ -141,6 +141,71 @@ test('final-disposition guidance promotes each ready physical interface without 
   assert.equal(action.mapAction.stationId, 'station_ashcache');
 });
 
+function stateAtB7PreOffer() {
+  const state = stateAtB7();
+  // Beat 7 reached, but the shared endgame gate has not been met yet: no Deep Reach record,
+  // no desk visit, no offer. This is the window the old "Build sector power" grind card owned.
+  state.story.endgameOffered = false;
+  state.story.branch = null;
+  state.story.flags = { endgame: true };
+  state.careers.origins = {};
+  state.claims = { bodies: [] };
+  state.player.credits = 4000;
+  state.player.ownedShips = [];
+  state.world.currentSectorId = 'sector_helios_prime';
+  return state;
+}
+
+test('pre-offer Deep Reach card teaches the live shared gate, not the retired wealth grind', () => {
+  const state = stateAtB7PreOffer();
+  const action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.label, 'ENDGAME');
+  assert.equal(action.title, 'Run the Ashfall operation');
+  assert.match(action.body, /Deep Reach operation/);
+  assert.match(action.body, /Kurtz ledger/);
+  assert.match(action.body, /Ash Cache/);
+  // The retired universal gate (net worth + branch standing + capital/claim/outpost stake) must
+  // not be taught as ending qualification; those are door-A commission facts, not a shared gate.
+  assert.doesNotMatch(action.body, /100,000/);
+  assert.doesNotMatch(action.body, /branch standing/);
+  assert.doesNotMatch(action.meta, /100,000/);
+  assert.equal(action.meta, 'HISTORY OPEN · DESK PENDING');
+  assert.equal(action.mapAction.stationId, 'station_ashcache');
+  assert.equal(action.mapAction.sectorId, 'sector_ashfall_reach');
+});
+
+test('ledger-path progress counts its recorded-work kinds live', () => {
+  const state = stateAtB7PreOffer();
+  state.player.cargo = { items: { cmdty_personal_ledger: 1 }, capVolume: 40, usedVolume: 1 };
+  state.player.stats = { tradesCount: 30 };
+  const action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.match(action.body, /You hold the Kurtz ledger/);
+  assert.match(action.body, /1 of 3 kinds/);
+  assert.match(action.body, /trades, contracts, named kills/);
+  // Ledger custody itself proves the desk visit (lifeLedger deskVisited), so only HISTORY stays open.
+  assert.match(action.body, /Ash Cache desk has your file/);
+  assert.equal(action.meta, 'HISTORY OPEN · DESK VISITED');
+
+  state.player.stats = { tradesCount: 30, missionsDone: 10 };
+  const richer = storyActionForBeat(STORY_BEATS[7], state);
+  assert.match(richer.body, /2 of 3 kinds/);
+});
+
+test('recorded history flips the pre-offer card to the desk leg', () => {
+  const state = stateAtB7PreOffer();
+  state.story.flags.deep_reach_operation_complete = true;
+  let action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.title, 'Bring Ashfall your record');
+  assert.match(action.body, /Deep Reach operation is on record/);
+  assert.match(action.body, /Dock at Ash Cache/);
+  assert.equal(action.meta, 'HISTORY RECORDED · DESK PENDING');
+
+  state.story.flags.kurtz_desk_opened = true;
+  action = storyActionForBeat(STORY_BEATS[7], state);
+  assert.equal(action.meta, 'HISTORY RECORDED · DESK VISITED');
+  assert.match(action.body, /Ash Cache desk has your file/);
+});
+
 test('final disposition persists beside tracked, untracked, and trade-route work', () => {
   const state = stateAtB7();
   const mission = { id: 'mission_ordinary', status: 'active' };

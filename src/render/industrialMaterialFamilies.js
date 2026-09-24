@@ -28,14 +28,17 @@ export function applyIllustratedMaterialResponse(material, role) {
 /** Coatings carry colour, bare mechanisms catch highlights, ceramics and seals stay dry. */
 export const MATERIAL_FAMILIES = Object.freeze({
   // Intact coating over plate. The coating is dielectric, so metalness is pulled well down and the
-  // surface reads as a satin colour mass instead of a mirror wearing a hull texture.
+  // surface reads as a satin colour mass instead of a mirror wearing a hull texture. The
+  // rusty_painted_metal scan measures 0.75-1.00 (mean 0.82): a maintained coating sits at the
+  // scan's low edge — satin, never glossy.
   painted_shell: Object.freeze({
-    id: 'painted_shell', substance: 'coating-over-metal', env: 1.40, roughness: 0.54, metalness: 0.30,
+    id: 'painted_shell', substance: 'coating-over-metal', env: 1.40, roughness: 0.72, metalness: 0.30,
   }),
   // Coating partly lost — field repair, service panels, a scavenger's plate. Still dielectric, but
-  // the exposed metal underneath earns some of its reflection back.
+  // the exposed metal underneath earns some of its reflection back. Roughness rides the rusted
+  // end of the same scan so worn paint never reads smoother than intact.
   painted_shell_worn: Object.freeze({
-    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.45, roughness: 0.78, metalness: 0.64,
+    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.45, roughness: 0.85, metalness: 0.64,
   }),
   // Bare armour and salvage plate: metallic, but structural mass is never glossy.
   bare_structure: Object.freeze({
@@ -53,8 +56,11 @@ export const MATERIAL_FAMILIES = Object.freeze({
   radiator_fin: Object.freeze({
     id: 'radiator_fin', substance: 'thermal-fin', env: 1.70, roughness: 0.94, metalness: 1.00,
   }),
+  // Elastomer gasket and seal stock: the Rubber004 scan measures mean roughness 0.59
+  // (range 0.40-0.82) — satin, not dead-matte. A multiplier near the scan lets seals
+  // pick up a soft sheen under service lighting instead of reading as dry chalk.
   matte_seal: Object.freeze({
-    id: 'matte_seal', substance: 'elastomer', env: 0.55, roughness: 1.12, metalness: 0.15,
+    id: 'matte_seal', substance: 'elastomer', env: 0.55, roughness: 0.62, metalness: 0.15,
   }),
   // Printed markings do not shine. Today they carry the same 2.1 as the plate they sit on, which is
   // motivates a separate response for printed markings.

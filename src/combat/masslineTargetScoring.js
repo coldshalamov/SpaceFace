@@ -395,9 +395,14 @@ export function classifyMasslineIntent(player, candidates, opts = {}) {
       runnerUpPrecision = value;
     }
   }
+  // A reticle on a candidate's center is stronger intent than a neighbor merely overlapping
+  // its body. The ordinary separation still handles imprecise edge paints; the narrow direct
+  // center case lets a ship win over a large asteroid whose radius also covers the cursor.
+  const directCenterPaint = preciseValue >= 0.99
+    && (runnerUpPrecision < 0 || preciseValue - runnerUpPrecision >= 0.01);
   const isUnambiguousPaint = precise
-    && preciseValue >= PRECISE_CURSOR_THRESHOLD
-    && (runnerUpPrecision < 0 || preciseValue - runnerUpPrecision >= PRECISE_CURSOR_SEPARATION);
+    && (directCenterPaint || (preciseValue >= PRECISE_CURSOR_THRESHOLD
+      && (runnerUpPrecision < 0 || preciseValue - runnerUpPrecision >= PRECISE_CURSOR_SEPARATION)));
   if (isUnambiguousPaint) {
     const id = isTowCandidate(precise) ? 'tow/salvage' : 'precision-pick';
     return contextRecord(id, precise.id, 'cursor-paint');

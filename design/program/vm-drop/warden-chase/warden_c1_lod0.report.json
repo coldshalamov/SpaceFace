@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "asset": "ship_warden",
+  "revision": "chase_form_v1",
+  "lod": 0,
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/warden_production_v1.glb",
+  "output": "/workspace/spaceface/design/program/vm-drop/warden-chase/warden_c1_lod0.glb",
+  "cockpit": {
+    "kind": "tub+canopy",
+    "location": [
+      3.85,
+      0.0,
+      0.6
+    ]
+  },
+  "tower": {
+    "kind": "hole+stack",
+    "location": [
+      -1.85,
+      0.0,
+      0.92
+    ]
+  },
+  "casemates": {
+    "wells": [
+      {
+        "side": "Port",
+        "kind": "hole"
+      },
+      {
+        "side": "Starboard",
+        "kind": "hole"
+      }
+    ]
+  },
+  "drive": {
+    "houses": [
+      {
+        "side": "Port",
+        "y": -1.8
+      },
+      {
+        "side": "Center",
+        "y": 0.0
+      },
+      {
+        "side": "Starboard",
+        "y": 1.8
+      }
+    ]
+  },
+  "size": [
+    19.29,
+    5.449,
+    4.056
+  ],
+  "boundsMin": [
+    -9.49,
+    -2.699,
+    -1.056
+  ],
+  "boundsMax": [
+    9.8,
+    2.75,
+    3.0
+  ],
+  "triangles": 26526,
+  "hullTriangles": 16128,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_AccentBand",
+    "LOD0_AftWalk",
+    "LOD0_BellThroat_Center",
+    "LOD0_Bell_Center",
+    "LOD0_Bell_Port",
+    "LOD0_Bell_Starboard",
+    "LOD0_CabinShoulder",
+    "LOD0_Canopy",
+    "LOD0_DeckCrate",
+    "LOD0_DriveCollar_Center",
+    "LOD0_Hull"
+  ],
+  "bytes": 1076840,
+  "gates": {
+    "TUBE_PADDLE": "NO",
+    "CAGE_READ": "NO",
+    "wells": "HOLES"
+  }
+}

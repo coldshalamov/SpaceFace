@@ -491,7 +491,8 @@ test('the first-frame pool census seal is not gated on KHR or the prepare budget
   assert.ok(barrierIndex >= 0, 'the KHR first-picture barrier must still exist');
   assert.ok(sealIndex > barrierIndex,
     'the seal must run after the barrier decision, not inside it');
-  const between = body.slice(barrierIndex, sealIndex);
+  const between = body.slice(barrierIndex, sealIndex)
+    .split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
   assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
     'no prepare-budget gate may sit between the barrier decision and the seal');
 });
@@ -565,7 +566,7 @@ test('live mesh builds hold unready geometry behind the residency latch', () => 
   const buildStart = RENDERER_SOURCE.indexOf('const m = this.vf.build(e);');
   assert.ok(buildStart >= 0, 'the live mesh build must exist');
   const body = RENDERER_SOURCE.slice(buildStart, buildStart + 4000);
-  const flagIndex = body.indexOf('data.geometryPending = true');
+  const flagIndex = body.indexOf('.geometryPending = true');
   assert.ok(flagIndex >= 0, 'the pending latch must still be armed');
   const before = body.slice(0, flagIndex);
   assert.match(before, /hasUnresidentGeometry\(m\)/,
@@ -612,12 +613,12 @@ test('latched geometry roots compile on the explicit lane, not the ambient quiet
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
   const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
-  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(root,\s*\{\s*explicit:\s*true\s*\}\)/,
+  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(\s*root,\s*\{[^}]*explicit:\s*true[^}]*\}\s*,?\s*\)/,
     'latched roots must bypass the ambient compile queue');
   const admitStart = RENDERER_SOURCE.indexOf('const admitSubjectPipelines = (subject');
   assert.ok(admitStart >= 0, 'the subject admission must exist');
   const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 1400);
-  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
+  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject[^)]*\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
     'the explicit flag must route to compileExplicit, not the quiet-window queue');
 });
 
@@ -628,7 +629,7 @@ test('latched geometry roots compile on the explicit lane, not the ambient quiet
 test('the live geometry admission queue drains nearest-deadline-first', () => {
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
-  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
+  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 3800);
   assert.match(queueBlock, /priorityOf:\s*\(entity\)\s*=>/,
     'the queue must grade pending roots instead of draining strict FIFO');
   assert.match(queueBlock, /entityIsExplicitRenderFocus\(entity, state\)/,

@@ -75,6 +75,7 @@ const T = Object.freeze({
       R('Sondeando su matrícula — llámelo estudio de mercado. Quédese quieto.', 'Ping de votre registre — appelons ça de la recherche marché. Ne bougez pas.', 'Register-Ping — nennen wir’s Marktforschung. Stillhalten.', 'Sondando o registro — chame de pesquisa de mercado. Fique parado.'),
       R('Llamada del Sindicato. Nos gusta saber con quién hacemos negocios.', 'Appel du Syndicat. On aime savoir avec qui on traite.', 'Syndikat-Ruf. Wir wissen gern, mit wem wir Geschäfte machen.', 'Chamada do Sindicato. Gostamos de saber com quem fazemos negócio.'),
       R('Revisión de cuenta. Su saldo está sano. La salud de sus competidores está en el tablero.', 'Vérification de compte. Votre solde est sain. La santé de vos concurrents est au tableau.', 'Kontoprüfung. Ihr Saldo ist gesund. Die Gesundheit der Konkurrenz steht an der Tafel.', 'Checagem de conta. Seu saldo está saudável. A saúde dos concorrentes está no quadro.'),
+      R('Control de carril Tethys: sondeo del registro contra conocimientos de embarque abiertos. Mantenga el rumbo.', 'Contrôle de voie Tethys : ping du registre sur les connaissements ouverts. Gardez le cap.', 'Tethys-Spurkontrolle: Register-Ping gegen offene Frachtbriefe. Kurs halten.', 'Controle de faixa Tethys: sondando o registro contra conhecimentos de embarque abertos. Mantenha o rumo.'),
     ],
     warn: [
       R('Este carril lleva peaje, amigo. No lo ha pagado.', 'Cette voie a un péage, l’ami. Vous ne l’avez pas payé.', 'Diese Spur hat Maut, Freund. Sie ist nicht bezahlt.', 'Esta faixa tem pedágio, amigo. Você não pagou.'),
@@ -118,6 +119,8 @@ const T = Object.freeze({
       R('Carril comercial asegurado. Tenga los créditos a mano.', 'Voie commerciale sécurisée. Gardez les crédits sous la main.', 'Handelsspur gesichert. Credits griffbereit.', 'Faixa comercial segura. Tenha os créditos à mão.'),
       R('Convoy del Sindicato de paso. Sin tasas hoy. Disfrútelo.', 'Convoi du Syndicat qui passe. Pas de frais aujourd’hui. Profitez.', 'Syndikat-Konvoi passiert. Heute keine Gebühren. Genießen.', 'Comboio do Sindicato passando. Sem taxas hoje. Aproveite.'),
       R('Buen ciclo. Aire Limpio está arriba. No pregunte a costa de quién.', 'Bon cycle. Air Clair est en hausse. Ne demandez pas sur qui il baisse.', 'Guter Zyklus. Klare Luft ist oben. Nicht fragen, auf wessen Kosten.', 'Bom ciclo. Ar Limpo está em alta. Não pergunte sobre quem caiu.'),
+      R('Llamada del mercado Tethys: presente el conocimiento de embarque o salde la tarifa de tránsito en la boya.', 'Appel de la bourse Tethys : présentez le connaissement ou réglez le tarif de transit à la bouée.', 'Tethys-Börsenruf: Frachtbrief vorlegen oder Transittarif an der Boje begleichen.', 'Chamada da bolsa Tethys: apresente o conhecimento de embarque ou quite a tarifa de trânsito na boia.'),
+      R('Mercante Tethys en aproximación: despacho de carga en fianza registrado en el mercado Meridian.', 'Trader Tethys en approche : dédouanement de fret sous bond consigné à la bourse Meridian.', 'Tethys-Händler im Anflug: verzollte Frachtfreigabe bei der Meridian-Börse gebucht.', 'Comerciante Tethys chegando: desembaraço de carga alfandegada registrado na bolsa Meridian.'),
     ],
   }),
   faction_dmc: Object.freeze({
@@ -126,6 +129,7 @@ const T = Object.freeze({
       R('Leyendo el casco. ¿Perdido, o trabajando?', 'Lecture de coque. T’es perdu, ou t’es au boulot ?', 'Rumpf gelesen. Verlaufen, oder bei der Arbeit?', 'Lendo o casco. Perdido, ou trabalhando?'),
       R('Llamada de minero. Diga el asunto, corto.', 'Appel de mineur. Dis ton affaire, fais court.', 'Minenruf. Sag dein Geschäft, knapp.', 'Chamada de minerador. Diz o negócio, curto.'),
       R('Decimocuarto turno esta semana. Leyendo el faro. Procura no ser interesante.', 'Quatorzième vacation cette semaine. Lecture de balise. Essaie de pas être intéressant.', 'Vierzehnte Schicht diese Woche. Bake gelesen. Versuch, nicht interessant zu sein.', 'Décimo quarto turno esta semana. Lendo o farol. Tenta não ser interessante.'),
+      R('Control del astillero Ceres. Revisa tu vector de deriva; el muelle de la refinería está lleno hasta el pórtico.', 'Contrôle du chantier Ceres. Vérifie ton vecteur de dérive ; le dock de la raffinerie est plein jusqu’au portique.', 'Ceres-Werftkontrolle. Driftvektor prüfen; Raffineriedock ist bis zum Portalkran voll.', 'Controle do estaleiro Ceres. Confere teu vetor de deriva; a doca da refinaria tá cheia até o pórtico.'),
     ],
     warn: [
       R('Eso es una concesión archivada en la que te estás metiendo. Atrás, no queremos lío.', 'C’est une concession classée dans laquelle tu dérives. Recule, on veut pas d’embrouille.', 'Das ist ein abgelegter Claim, in den du treibst. Weg da, wir wollen keinen Ärger.', 'Isso é concessão arquivada na qual você tá entrando. Recua, a gente não quer treta.'),
@@ -168,6 +172,8 @@ const T = Object.freeze({
       R('Solo trabajando el cinturón. Tú a lo tuyo.', 'On bosse la ceinture. Fais ta vie.', 'Nur den Gürtel abarbeiten. Mach du deins.', 'Só trabalhando o cinturão. Você faz o seu.'),
       R('Buenos acarreos por ahí. Es un trecho largo hasta cualquier parte.', 'Bons hauls là-bas. C’est loin, n’importe où.', 'Gute Schleppfahrten da draußen. Weit bis irgendwohin.', 'Bons carregos por aí. É um trecho longo até qualquer lugar.'),
       R('Nueve abajo en el Pozo Cuatro. Dos aquí arriba. Mismo mineral. Mismas cuotas. Pasa de largo.', 'Neuf en bas au Puits Quatre. Deux ici. Même minerai. Mêmes quotas. Passe.', 'Neun unten Schacht Vier. Zwei hier oben. Dasselbe Erz. Dieselben Quoten. Vorbei.', 'Nove lá embaixo no Poço Quatro. Dois aqui em cima. Mesmo minério. Mesmas cotas. Pasa.'),
+      R('Llamada del astillero Ceres: mantén la distancia de los muelles de la refinería, el turno va caliente.', 'Appel du chantier Ceres : garde tes distances des docks de la raffinerie, la vacation tourne chaud.', 'Ceres-Werftruf: Abstand zu den Raffineriedocks halten, die Schicht läuft heiß.', 'Chamada do estaleiro Ceres: mantém distância das docas da refinaria, o turno tá correndo quente.'),
+      R('Mercante Ceres en aproximación: cargamento de mineral Drift del cinturón, despeja la cinta.', 'Trader Ceres en approche : chargement de minerai Drift de la ceinture, libère le convoyeur.', 'Ceres-Händler im Anflug: Drift-Erzfracht aus dem Gürtel, Förderband freimachen.', 'Comerciante Ceres chegando: carga de minério Drift do cinturão, libera o transportador.'),
     ],
   }),
   faction_reach: Object.freeze({

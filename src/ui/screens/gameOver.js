@@ -10,6 +10,8 @@
 
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
+import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 
 /** The receipt's fields and their labels. The kicker, the second line, the hero words and the
@@ -177,6 +179,7 @@ export const gameOverScreen = {
   id: 'gameOver',
   data: { locked: true },
   _summaryEls: null,
+  _summarySig: null,
   _defaultButton: null,
   _titleEl: null,
   _subEl: null,
@@ -187,6 +190,7 @@ export const gameOverScreen = {
   _menuButton: null,
 
   mount(rootEl, ctx) {
+    this._rootEl = rootEl;
 
     injectDeckplate();
     rootEl.innerHTML = '';
@@ -244,6 +248,9 @@ export const gameOverScreen = {
     const recapRows = el('dl', 'sf-go-recap__rows');
     recap.appendChild(recapRows);
     this._recapRows = recapRows;
+    // A remount rebuilds the DOM from scratch — the signature cache must not tell the first
+    // _refreshSummary the fresh tree is already right.
+    this._summarySig = null;
     rootEl.appendChild(recap);
     // Cause, sortie and damage read in the title; they are kept as summary keys for the refresh.
     this._summaryEls.cause = h;
@@ -333,6 +340,7 @@ export const gameOverScreen = {
 
   onShow(ctx) {
     this._refreshSummary(ctx);
+    this._armDeathSlide(ctx);
     // The kit's settle needs a real frame clock; the after-action unit test runs under a fake document.
     if (typeof requestAnimationFrame === 'function' && this._titleRegion) {
       settle(this._titleRegion, { from: 'left', state: 'gameover-title' });
@@ -345,7 +353,43 @@ export const gameOverScreen = {
     }
   },
 
-  onHide() {},
+  onHide() {
+    if (this._slideTimer) {
+      clearTimeout(this._slideTimer);
+      this._slideTimer = null;
+    }
+    this._endDeathSlide();
+  },
+
+  _armDeathSlide(ctx) {
+    const settings = ctx && ctx.state && ctx.state.settings;
+    const root = this._rootEl;
+    if (!settings || !root) return;
+    const video = settings.video || {};
+    const access = settings.accessibility || {};
+    if (video.motionReduce || video.flashReduce || access.flashReduce) return;
+    if (this._slideTimer) clearTimeout(this._slideTimer);
+    root.classList.remove('k-screen--cold');
+    const hidden = [];
+    for (const child of root.children) {
+      if (!child || !child.style) continue;
+      hidden.push(child);
+      child.style.visibility = 'hidden';
+    }
+    this._slideHidden = hidden;
+    this._slideTimer = setTimeout(() => this._endDeathSlide(), 400);
+  },
+
+  _endDeathSlide() {
+    const root = this._rootEl;
+    if (root) root.classList.add('k-screen--cold');
+    const hidden = this._slideHidden;
+    if (hidden) {
+      for (const child of hidden) child.style.visibility = '';
+      this._slideHidden = null;
+    }
+    this._slideTimer = null;
+  },
   refresh(ctx) { this._refreshSummary(ctx); },
 
   /** The career record: lifetime figures the player earned before this loss. */
@@ -372,16 +416,39 @@ export const gameOverScreen = {
   },
 
   _refreshSummary(ctx) {
-    this._refreshRecap(ctx);
     const els = this._summaryEls;
     if (!els) return;
     const state = ctx && ctx.state || {};
     const receipt = currentDefeat(ctx);
     const recovery = receipt && receipt.recovery || {};
     const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    const death = lastDeathSummary(ctx);
+    const stats = state.player && state.player.stats || {};
+    const vitals = receipt && receipt.vitalsPct || {};
+    // The shell repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }), and the
+    // screen-import check pins refresh() to a bare `this._refreshSummary(ctx)` call, so the
+    // periodic skip lives here as a content signature — the same gate footprint/mainMenu use.
+    // Everything on this surface is static after death; the one live update
+    // (player:recoveryFailed) lands in the receipt fields the signature covers. An unchanged
+    // signature means the DOM already says it: no 14-node recap rebuild, no recovery innerHTML
+    // re-parse.
+    const sig = [
+      difficulty, death.cause, death.lifespan, state.meta && state.meta.playtimeS,
+      stats.missionsDone, stats.kills, stats.tradesCount,
+      stats.lifetimeProfit, stats.biggestSingleProfit,
+      receipt ? 1 : 0,
+      receipt && receipt.fatalSummary, receipt && receipt.cause, receipt && receipt.direction,
+      receipt && receipt.dominantLayer, receipt && receipt.subsystemId,
+      vitals.shield, vitals.armor, vitals.hull,
+      recovery.stationName, recovery.stationId, recovery.costCr, recovery.quotedCostCr,
+      recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
+      recovery.insuranceStatus,
+    ].join('|');
+    if (sig === this._summarySig) return;
+    this._summarySig = sig;
+    this._refreshRecap(ctx);
     const ironman = difficulty === 'ironman';
     const recoverable = !ironman && !!receipt;
-    const death = lastDeathSummary(ctx);
     const cargoLost = Math.max(0, Number(recovery.cargoLostQty) || 0);
     const protectedQty = Math.max(0, Number(recovery.persistentCargoProtected) || 0);
     const cargoText = cargoLost > 0
@@ -412,6 +479,8 @@ export const gameOverScreen = {
       const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
     }
+    // The named recovery berth is a station door, not just a caption.
+    if (els.dock && recovery.stationId) decorateEntityNode(els.dock, 'station:' + recovery.stationId);
     // No recovery cost to report: the readout leaves the report instead of showing a lone dash.
     const costHero = els.cost && typeof els.cost.closest === 'function' ? els.cost.closest('.k-hero') : null;
     if (costHero) costHero.hidden = values.cost === '-';
@@ -444,11 +513,16 @@ export const gameOverScreen = {
         : 'Recovery receipt unavailable. Load a save or start a new run.';
     }
     if (this._recoveryEl) {
-      this._recoveryEl.textContent = recoverable
-        ? `RECOVERY BERTH · ${recovery.stationName || 'lawful dock'} · ${costText} · ${cargoText}`
-        : ironman
+      if (recoverable) {
+        const dockHtml = recovery.stationId
+          ? entitySpanHtml('station:' + recovery.stationId, escapeHtml(recovery.stationName || 'lawful dock'))
+          : escapeHtml(recovery.stationName || 'lawful dock');
+        this._recoveryEl.innerHTML = `RECOVERY BERTH · ${dockHtml} · ${escapeHtml(costText)} · ${escapeHtml(cargoText)}`;
+      } else {
+        this._recoveryEl.textContent = ironman
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';
+      }
     }
     setWordHidden(this._retryButton, !recoverable);
     setWordHidden(this._loadButton, false);

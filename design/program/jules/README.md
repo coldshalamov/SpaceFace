@@ -1,7 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace Jules directed task bank
 
-This directory turns surplus cloud inference into bounded, reviewable work. It contains **1,000 exact tasks** for Jules, a deterministic selector/claim tool, human-readable catalogs, and a local-integration contract.
+This directory turns surplus cloud inference into bounded, reviewable work. It contains **171 curated tasks** for Jules, a deterministic selector/claim tool, human-readable catalogs, and a local-integration contract.
+
+The bank was generated at scale on 2026-08-27 (1,000 templated tasks, five per seam) and curated
+on 2026-09-22 down to the tasks worth a cloud PR. Removed: frame/GPU performance work and
+aesthetic render work (their truth lives in local probes and the chase-camera review program,
+not in a cloud diff), tooling aimed at forbidden or already-owned surfaces (goldens, dependency
+intake, the dispatch router, doc drift), determinism seams already pinned by the golden
+envelopes, and duplicate clones within each seam. The nine creative seams were rewritten as one
+flagship task each: tow-the-hulk salvage, a working-miner shift, a readable law inspection, the
+getaway raider, tether-repair rescue, aftermath-to-job chains, durable swarm wrecks, live
+shortage contracts, and one physical sector oddity.
 
 It is deliberately **not** a second SpaceFace roadmap or acceptance authority. The live program queue still owns admitted product work. A bank task is a candidate cloud job. A smarter local integrator decides whether its PR is correct, current, valuable, collision-free, and mergeable.
 
@@ -22,17 +32,17 @@ It avoids open-ended “improve the game” prompts, broad subsystem rewrites, s
 
 | Lane | Tasks | Primary model |
 |---|---:|---|
-| Deterministic test hardening | 170 | Flash |
-| Bounded bug hunts and surgical fixes | 150 | Flash; Pro for live integration |
-| Determinism, replay, save, and lifecycle | 90 | Flash; Pro for serialization review |
-| Performance, allocation, residency, and disposal | 90 | Mixed |
-| UI, UX, input reachability, and accessibility | 100 | Flash; Pro for hierarchy |
-| Flight, combat, AI, and game feel | 100 | Mixed |
-| World, economy, missions, mining, and progression | 100 | Mixed |
-| Rendering, assets, VFX, camera, and audio | 80 | Mixed |
-| Tooling, data integrity, diagnostics, and documentation drift | 70 | Flash; Pro for operator integration |
-| Small creative production slices | 50 | Pro |
-| **Total** | **1,000** | **700 Flash / 300 Pro** |
+| Deterministic test hardening | 40 | Flash |
+| Bounded bug hunts and surgical fixes | 50 | Flash |
+| Determinism, replay, save, and lifecycle | 5 | Flash |
+| Performance, allocation, residency, and disposal | 1 | Flash (allocation audits only; frame/GPU perf is local) |
+| UI, UX, input reachability, and accessibility | 15 | Flash |
+| Flight, combat, AI, and game feel | 22 | Flash |
+| World, economy, missions, mining, and progression | 17 | Flash |
+| Rendering, assets, VFX, camera, and audio | 5 | Flash (manifest/lifecycle/audio tables only; looks are local) |
+| Tooling, data integrity, diagnostics | 7 | Flash |
+| Small creative production slices | 9 | Pro (flagship slices) |
+| **Total** | **171** | **162 Flash / 9 Pro** |
 
 The canonical data is [`task-bank.json`](./task-bank.json). The schema is
 [`task-bank.schema.json`](./task-bank.schema.json). The generated catalogs start at
@@ -114,22 +124,22 @@ Useful filters:
 --max-per-lane <N>
 ```
 
-## A 300-request daily schedule
+## The full-bank recipe
 
 Claim the Flash batch first. The Pro selector then sees those active collision domains and routes around them.
 
 ```bash
 node scripts/jules-dispatch.mjs \
-  --next --count 210 --model flash \
+  --next --count 162 --model flash \
   --risk low,medium,high --max-per-collision 2 \
-  --seed 2026-08-27-flash \
+  --seed 2026-09-22-flash \
   --claim-selected --worker jules-flash \
   --format prompt > /tmp/spaceface-jules-flash.txt
 
 node scripts/jules-dispatch.mjs \
-  --next --count 90 --model pro \
-  --max-per-collision 2 \
-  --seed 2026-08-27-pro \
+  --next --count 9 --model pro \
+  --max-per-collision 1 \
+  --seed 2026-09-22-pro \
   --claim-selected --worker jules-pro \
   --format prompt > /tmp/spaceface-jules-pro.txt
 ```
@@ -217,15 +227,15 @@ The useful number is not PR count. It is **merged independent value per local-re
 
 ## Catalogs
 
-- [Deterministic test hardening (170)](./catalog/test-hardening.md)
-- [Bounded bug hunts and surgical fixes (150)](./catalog/bug-hunt.md)
-- [Determinism, replay, save, and lifecycle (90)](./catalog/determinism-save.md)
-- [Performance, allocation, residency, and disposal (90)](./catalog/performance-lifecycle.md)
-- [UI, UX, input reachability, and accessibility (100)](./catalog/ui-ux-accessibility.md)
-- [Flight, combat, AI, and game feel (100)](./catalog/ai-combat-flight.md)
-- [World, economy, missions, mining, and progression (100)](./catalog/world-economy-missions-mining.md)
-- [Rendering, assets, VFX, camera, and audio (80)](./catalog/render-assets-vfx-audio.md)
-- [Tooling, data integrity, diagnostics, and documentation drift (70)](./catalog/tooling-data-docs.md)
-- [Small creative production slices (50)](./catalog/creative-expansion.md)
+- [Deterministic test hardening (40)](./catalog/test-hardening.md)
+- [Bounded bug hunts and surgical fixes (50)](./catalog/bug-hunt.md)
+- [Determinism, replay, save, and lifecycle (5)](./catalog/determinism-save.md)
+- [Performance, allocation, residency, and disposal (1)](./catalog/performance-lifecycle.md)
+- [UI, UX, input reachability, and accessibility (15)](./catalog/ui-ux-accessibility.md)
+- [Flight, combat, AI, and game feel (22)](./catalog/ai-combat-flight.md)
+- [World, economy, missions, mining, and progression (17)](./catalog/world-economy-missions-mining.md)
+- [Rendering, assets, VFX, camera, and audio (5)](./catalog/render-assets-vfx-audio.md)
+- [Tooling, data integrity, diagnostics (7)](./catalog/tooling-data-docs.md)
+- [Small creative production slices (9)](./catalog/creative-expansion.md)
 
 The catalogs are generated views for review and browsing. `task-bank.json` is canonical. Do not hand-edit catalog entries independently.

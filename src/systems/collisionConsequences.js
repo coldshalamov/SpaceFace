@@ -491,7 +491,10 @@ export function playerRamPlateImpact(entity, playerId, tick, provenance, state) 
   };
 }
 
-function buildCollisionPresentationProvenance(target, other, receipt) {
+// Shared by every collision-consequence producer (this system and masslineThrow's tangent
+// meeting): the lethal packet must carry the same frozen provenance block or combat's kill
+// receipt cannot tell a thrown-hull slam from an unauthored hit.
+export function buildCollisionPresentationProvenance(target, other, receipt) {
   return Object.freeze({
     position: freezeTransientPoint(receipt && receipt.pos),
     direction: freezeIncomingCollisionDirection(target, other, receipt),

@@ -31,6 +31,7 @@
 import * as THREE from 'three';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
+import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
 import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
@@ -49,7 +50,8 @@ import {
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
-import { resolveFunnelMoteStream, TRACTOR_VORTEX_RANGE_WU } from './pickupMotionPresentation.js';
+import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
+import { notePresentationFrame } from './presentationSimClock.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -79,8 +81,18 @@ import {
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
+import { PROJECTILE_DRAW_PAD_WU, projectileOnReadableFrame } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import {
+  collectStatusAttachedVictims,
+  planStatusAttachedEmit,
+  statusAttachedAccessibility,
+} from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
+import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
+import { readCustomsWeir } from '../presentation/customsWeir.js';
+import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
 import {
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
@@ -210,7 +222,25 @@ import {
   resolveMasslineReleaseArcPlan,
   writeMasslineReleaseArcGeometry,
 } from './masslineReleaseArc.js';
+import {
+  MASSLINE_SWING_TRACE_CAPACITY,
+  MASSLINE_SWING_TRACE_LIFE_S,
+  MASSLINE_SWING_TRACE_MIN_TANGENTIAL,
+  createMasslineSwingTrace,
+  createMasslineSwingTraceGeometry,
+  pushMasslineSwingSample,
+  resetMasslineSwingTrace,
+  writeMasslineSwingTraceGeometry,
+} from './masslineSwingTrace.js';
+import {
+  createDockingCradle,
+  createDockingCradleGeometry,
+  resetDockingCradle,
+  updateDockingCradle,
+  writeDockingCradleGeometry,
+} from './dockingCradle.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
+import { TargetContour, resolveTargetContour } from './targetContour.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
   MOMENTUM_SINK_VFX_HZ,
@@ -485,6 +515,10 @@ const TETHER_RELEASE_FADE_RATE = 3.5;   // /s — clean release fades out quickl
 const TETHER_SNAP_FADE_RATE = 2.6;      // /s — a break holds long enough to show its recoil
 const TETHER_SNAP_WHIP_S = 0.30;        // seconds of violent recoil after a break
 const TETHER_LOAD_SHIVER_WU = 0.52;     // peak lateral shiver at full presentation load (~10 px)
+// Latch kinetic wave: seconds for the bright hitch band to run the chord from the anchor back to
+// the ship. Slightly quicker than the 0.55 s settle whip so the two reads separate — the wave is
+// the hook's energy arriving home; the whip is the rope physically settling onto its bite.
+const TETHER_LATCH_WAVE_S = 0.42;
 // Where the load ramp switches from "working" to "fighting". tether.load is a phase-floored
 // presentation signal (tetherGameplay LOAD_BASE_BY_PHASE): slack 0 / capture 0.35 / loaded 0.55 /
 // overload 0.9. Measured with scripts/probe-tether-visual-drive.mjs (640-mass rock, full main
@@ -497,6 +531,21 @@ const TETHER_SPARK_LOAD = 0.72;
 // The capture floor. Load below this is "the line just caught"; the visible-strain reads measure
 // how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
 const TETHER_CAPTURE_FLOOR = 0.35;
+
+// Solid-slug weapon variants that shed armor spall on a hull hit. Energy/beam/explosive families
+// stay out — they have their own contact grammar and no metal-on-metal read.
+const KINETIC_SPALL_VARIANTS = new Set(['autocannon', 'railgun', 'siege-lance', 'concussion-slug', 'flak']);
+
+// Feature 13 — the death tell. A hull at 0 HP holds its final blast for a beat while the reactor
+// runs away: interior light swells, thrusters sputter, whine rises. Audio mirrors the same 0.4 s
+// (audioSystem._onKilled already delays the capital boom by 400 ms; small kills now match).
+const OVERLOAD_FLARE_S = 0.4;
+const PENDING_DETONATION_POOL = 12;
+
+// Feature 19 gate transit sweep: seven cyan streaks marching bow→stern over ~0.55 s while the
+// ship crosses the throat — the "light sweeps the hull" read without a full-screen flash.
+const TRANSIT_SWEEP_DUR = 0.55;
+const TRANSIT_SWEEP_COUNT = 7;
 
 // Engine-trail relevance gating. Player/target stay full. NPC ribbons follow
 // the live table (tableNpcTrailTier). Leftover 2200/3600/2800 horizons retired.
@@ -537,6 +586,7 @@ const VFX_LOOT_MAGNET_HZ = 24;
 // real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
 const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
+const _lootMagnetMotePosScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
 // Wreck cryo-coolant wisps: dead hulks slowly vent split coolant lines. A cadence-gated scan of
 // the indexed wrecks bucket; per-wreck vent slots are deterministic (id-hashed phase against sim
@@ -816,6 +866,9 @@ function emptyVfxSubsystemDiag() {
     miningBeam: 0,
     tetherCable: 0,
     masslineReleaseArc: 0,
+    swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
+    dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
+    apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
     seamMarkers: 0,
     combatBeams: 0,
@@ -1086,6 +1139,21 @@ export const vfx = {
     // Raised from 24. Eviction is now class-aware (a small death cannot interrupt a capital
     // breakup), but headroom is still what keeps a genuine massacre from clipping its own tail.
     this._explosions = new PhasedExplosionLifecycle({ capacity: 40 });
+    // Reactor-overload detonation queue: entity:killed opens a ~0.4 s flare window (feature 13)
+    // and only then does the phased explosion start. Records are pooled — kills must not allocate
+    // in the render loop — and keyed to simTime so a paused sim holds the tell frozen.
+    this._pendingDetonations = [];
+    for (let i = 0; i < PENDING_DETONATION_POOL; i++) {
+      this._pendingDetonations.push({
+        active: false, at: 0, sputterAt: 0,
+        p: null, classId: null, radius: 0, cause: null,
+        x: 0, z: 0,
+      });
+    }
+    // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
+    // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
+    this._transitSweepT = -1;
+    this._transitSweepSpawned = 0;
     this._impactRecords = createImpactRecordPool(8);
     this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false };
     this._arcadeStructural = null;
@@ -1361,6 +1429,7 @@ export const vfx = {
     }
     releaseVfxDynamicBufferOwner(this._seamMarkers && this._seamMarkers.dynamicBufferOwner);
     invokeVfxDisposer(this._fieldGeom, 'field force surfaces');
+    invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
 
     // Child presenters own their internal pools/materials. They are retired before their parent
     // references are cleared, and every call is isolated so one optional presentation feature
@@ -1393,6 +1462,8 @@ export const vfx = {
     }
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
     disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
+    invokeVfxDisposer(this._targetContour, 'target contour');
+    this._targetContour = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
@@ -1416,6 +1487,7 @@ export const vfx = {
     this._hexRgbCache?.clear?.();
     this._rcsScaleCache?.clear?.();
     this._tumbleVfxCd?.clear?.();
+    this._statusAttachedCd?.clear?.();
     this._trailCandidates = null;
     this._ribbonCandidates = null;
     this._projectileCandidates = null;
@@ -1498,11 +1570,13 @@ export const vfx = {
     this._seamMarkers = null;
     this._fieldGeom = null;
     this._fieldGeomInitialized = false;
+    this._emergentPools = null;
     this._planetSkim = null;
     this._miningBeam = null;
     this._tetherCable = null;
     this._arcPreview = null;
     this._masslineReleaseArc = null;
+    this._targetContour = null;
     this._lights = [];
     this._freeLights = null;
     this._energy = null;
@@ -1547,9 +1621,11 @@ export const vfx = {
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
+    add(this._targetContour && this._targetContour.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
+    add(this._emergentPools && this._emergentPools.group);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
     );
@@ -1752,6 +1828,10 @@ export const vfx = {
     this._initTetherCable();
     this._initArcPreview();
     this._initMasslineReleaseArc();
+    this._initMasslineSwingTrace();
+    this._initDockingCradle();
+    this._initApexFlare();
+    this._initTargetContour();
     this._initSeamMarkers();
     this._initCombatBeams();
     this._initArcadeStructural();
@@ -2091,12 +2171,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2106,6 +2186,8 @@ export const vfx = {
     add('mining:start', (p) => this._onMiningStart(p));
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
+    add('salvage:cutComplete', (p) => this._onSalvageCutComplete(p));
+    add('salvage:completed', (p) => this._onSalvageCompleted(p));
     add('mining:yield', (p) => this._onMiningYield(p));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
@@ -2122,6 +2204,7 @@ export const vfx = {
     // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
+    add('bombs:destroyed', (p) => this._onBombDestroyed(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -2189,9 +2272,10 @@ export const vfx = {
   },
 
   /**
-   * Shift live local VFX anchors by origin rebase delta. Long ribbon history is the exception: it is
-   * cleared so the next live nozzle pose reseeds without a screen-crossing bridge. Aligns the
-   * internal membrane to the current world origin so a later sync is a no-op (no double shift).
+   * Shift live local VFX anchors by origin rebase delta. Ribbon history shifts with the frame
+   * (INF-047): the laid samples are still true, only re-expressed — wiping them would retract
+   * a wake across a mere coordinate change. Aligns the internal membrane to the current world
+   * origin so a later sync is a no-op (no double shift).
    */
   reprojectFrame(dx, dz) {
     const ox = Number.isFinite(dx) ? dx : 0;
@@ -2255,9 +2339,13 @@ export const vfx = {
       // current nozzle on the next update instead of risking one frame that joins two coordinate
       // spaces with a screen-crossing strip.
       if (this._ribbonTrails && this._ribbonTrails.size) {
+        // INF-047: a frame-origin jump is a coordinate change, not a teleport — the laid
+        // samples are still true, so re-express them in the new frame instead of wiping the
+        // wake. Only trails without a shift path fall back to clear.
         for (const trail of this._ribbonTrails.values()) {
           if (!trail) continue;
-          if (typeof trail.clear === 'function') trail.clear();
+          if (typeof trail.reproject === 'function') trail.reproject(ox, oz);
+          else if (typeof trail.clear === 'function') trail.clear();
         }
       }
       if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
@@ -2270,6 +2358,7 @@ export const vfx = {
       this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
+      this._targetContour?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
     if (this._frameMembrane) this._frameMembrane.reset(this.state);
@@ -2365,7 +2454,10 @@ export const vfx = {
   ) {
     if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!this._scene) return null;
-    if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
+    // Status-attached marks arrive pre-scaled by their own accessibility plan and life-clipped to
+    // the owning status; a second pass here would double-dim them and clamp short-lived marks'
+    // life UP past the status owner (flashMinLife), so they spawn with the bypass raised.
+    if ((kind === SPR_FLASH || kind === SPR_COMBUSTION) && !this._spawnFlashAccessibilityBypass) {
       const authored = this._flashAccessibilityScratch;
       authored.life = life;
       authored.size0 = size0;
@@ -2916,11 +3008,12 @@ export const vfx = {
     if (this._frameMembrane) this._frameMembrane.toGlobal(globalXZ, globalXZ);
     const local = this._toLocalXZ(globalXZ.x, globalXZ.z, this._spawnLocalXZ);
     sock.x = local.x;
-    sock.y = 0;
+    sock.y = this._socketWorldPos.y;
     sock.z = local.z;
     sock.ax = -this._socketForward.x;
     sock.ay = 0;
     sock.az = -this._socketForward.z;
+    sock.retroIris = socket.userData && socket.userData.retroIris;
     return true;
   },
 
@@ -3252,6 +3345,11 @@ export const vfx = {
     const profile = resolveImpactPresentationProfile(p && p.weaponId, p);
     const scale = profile.scale || 1;
     const recipe = resolveWeaponRecipe(p && p.weaponId, p);
+    // Kinetic spall: a solid slug biting armor throws 3-4 tumbling metal shards down the impact
+    // line. Cosmetic only — no gameplay entities, no colliders, half-second lives.
+    if (!hitShield && KINETIC_SPALL_VARIANTS.has(recipe && recipe.variant)) {
+      this._emitArmorSpall(pos, p, scale);
+    }
     let presenterHit = null;
     if (this._weaponPresenter) {
       presenterHit = this._weaponPresenter.handleHit(p, hitShield);
@@ -3678,6 +3776,48 @@ export const vfx = {
     }
   },
 
+  // Kinetic armor spall — the signature of a solid slug meeting plate: 3-4 bright metal shards
+  // shed along the round's travel line plus a couple of hot sparks. Tumbling reads as the slight
+  // cross-axis scatter on each streak; nothing here collides, simulates, or lives past ~0.5 s.
+  _emitArmorSpall(pos, p, scale = 1) {
+    if (!pos || !this._scene) return;
+    const approach = (p && (p.approach || p.dir)) || null;
+    let ax = approach && Number(approach.x) || 0;
+    let az = approach && Number(approach.z) || 0;
+    const aLen = Math.hypot(ax, az);
+    if (aLen < 1e-6) {
+      const nx = p && p.normal && Number(p.normal.x);
+      const nz = p && p.normal && Number(p.normal.z);
+      if (Number.isFinite(nx) && Number.isFinite(nz) && Math.hypot(nx, nz) > 1e-6) {
+        ax = -nx; az = -nz;
+      } else { ax = 1; az = 0; }
+    } else { ax /= aLen; az /= aLen; }
+    const reduced = this._isReduced();
+    const shards = reduced ? 2 : 4;
+    for (let k = 0; k < shards; k++) {
+      // Bias along the impact vector with a bounded tumble scatter — shards deflect, not disperse.
+      const spread = (k - (shards - 1) / 2) * 0.30 + (Math.random() - 0.5) * 0.22;
+      const ca = Math.cos(spread), sa = Math.sin(spread);
+      const dx = ax * ca - az * sa;
+      const dz = ax * sa + az * ca;
+      const speed = (26 + Math.random() * 30) * scale;
+      this._spawnProjectileTrailStreak(
+        pos.x, 0.35, pos.z,
+        reduced ? 0.28 : 0.42 + Math.random() * 0.1,
+        0.07 * scale, 0.55 * scale, 0.85,
+        k % 2 ? '#cfd6dd' : '#fff2d4',
+        dx * speed, dz * speed, dx, dz,
+      );
+    }
+    this._c0.set('#fff2d4'); this._c1.set('#8a6a3c');
+    for (let k = 0; k < (reduced ? 1 : 2); k++) {
+      const a = Math.atan2(az, ax) + (Math.random() - 0.5) * 1.4;
+      const sp = 20 + Math.random() * 26;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.14 + Math.random() * 0.12, 0.9, 0, this._c0, this._c1, 1.6, 0, 0);
+    }
+  },
+
   // Grazing kinetic skip: an acute-angle round glances off angled plate and carries on
   // as a directional spark burst plus a skipping tracer leader. Presentation-only — no sim
   // event, no new projectile, no ArcadeStructural bank burst (those stay combat-owned).
@@ -3887,6 +4027,8 @@ export const vfx = {
     nx /= normalLength;
     nz /= normalLength;
     const normalAngle = Math.atan2(nz, nx);
+    const hitRead = impactRead(p);
+    const impulseAngle = impactAxisAngle(hitRead);
     if (impactProfile.family === 'beam') {
       if (this._combatBeams) this._combatBeams.retarget(p, this._t);
       const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
@@ -3902,13 +4044,11 @@ export const vfx = {
       const col = this._shieldColor(fid);
       const r = (tgt && tgt.radius) || 8;
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
-      if (tgt) {
-        addShieldContact(tgt.id, nx, 0.12, nz, p.brokeShield ? 1.4 : 1.0);
-      }
+      const reducedFlash = this._isReduced();
 
       if (p.brokeShield) {
-        // Shield break: five fixed tangent tears crawl around the shell. No screen-facing annulus.
-        this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
+        // Shield break: the tear, not the scar as well. Five fixed tangent tears crawl the shell.
+        if (!reducedFlash) this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
         if (this._weaponPresenter && this._weaponPresenter.quarks) {
           const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
           this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
@@ -3930,12 +4070,10 @@ export const vfx = {
             0.28, 0.12, r * (0.45 + Math.random() * 0.28), 0.58, col,
             0, 0, tx, tz);
         }
-      } else {
-        // Ordinary shield receipt reinforces only the local tangent scar already established by
-        // the weapon-family contact. It cannot become another generic circular flash.
-        this._spawnProjectileTrailStreak(pos.x, 0.2, pos.z, 0.14, 0.20,
-          Math.min(4.2, r * 0.55), 0.40, col, 0, 0, -nz, nx);
-        this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
+      } else if (tgt) {
+        // Ordinary shield receipt is the contact scar only. A second streak reads as a second hit.
+        addShieldContact(tgt.id, nx, 0.12, nz, 1.0);
+        if (!reducedFlash) this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
       }
     }
     if (p.armorHit) {
@@ -3965,7 +4103,7 @@ export const vfx = {
       }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
-      this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
+      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
@@ -3992,18 +4130,16 @@ export const vfx = {
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
       if (!breached) {
-        this._impactParticleCone(pos.x, pos.z, normalAngle, 0.95, 9, 24,
+        this._impactParticleCone(pos.x, pos.z, hitRead.shapeId === 'hull-cone' ? impulseAngle : normalAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
-      this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
+      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
       if (this._weaponPresenter && this._weaponPresenter.quarks && tgt && tgt.hp != null && tgt.maxHp != null && tgt.hp / tgt.maxHp < 0.35) {
         const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
         this._weaponPresenter.quarks.spawnDamageVenting(local.x, 0.35, local.z, nx, 0.2, nz, 6);
       }
     }
-    // player hits get a camera kick — STRONGER, proportional to damage
-    if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
   },
 
   _onPresentationCue(p) {
@@ -4220,6 +4356,8 @@ export const vfx = {
     }
     if (id === 'travel.transition.continuity') {
       this._spawnSprite(SPR_COMBUSTION, pos.x - dx * 8, 0, pos.z - dz * 8, 1.18, 14, 3, 0.38, 0, '#d7e6ff', dx * 22, dz * 22, 0.34, Math.atan2(dz, dx));
+      // Nose-to-tail cyan sweep across the hull while the ship crosses the throat (feature 19).
+      if (!reduced) { this._transitSweepT = 0; this._transitSweepSpawned = 0; }
       return;
     }
     if (id === 'travel.arrival.oriented') {
@@ -4719,10 +4857,135 @@ export const vfx = {
     };
     const death = resolveDeathPresentationClass(victim);
     const scaledRadius = scaleDeathExplosionRadius(victim.radius, death.tier);
-    // The resolved record is the ONE decision point for how this death presents: mass picks the
-    // class and the radius, cause picks the cadence. Passing death.cause down instead of letting
-    // _queueExplosion re-derive it keeps a single answer rather than two that can drift apart.
-    this._queueExplosion(p, death.classId, scaledRadius, death.cause);
+    // Feature 13 — the ~0.4 s reactor-overload tell before the blast. The resolved record is the
+    // ONE decision point for how this death presents: mass picks the class and the radius, cause
+    // picks the cadence. The flare opens now; _queueExplosion runs when the window closes.
+    this._scheduleDetonation(p, death.classId, scaledRadius, death.cause);
+  },
+
+  /**
+   * Open the overload window for a fresh kill: emit the runaway flare at the kill site, queue the
+   * phased explosion behind OVERLOAD_FLARE_S, and voice the rising whine. Presentation only — the
+   * sim already removed the hull; what the player sees is the wreck husk blooming with interior
+   * light before the shockwave lands.
+   */
+  _scheduleDetonation(p, classId, scaledRadius, cause) {
+    const now = Number.isFinite(this.state && this.state.simTime)
+      ? this.state.simTime : (this._t || 0);
+    const pos = this._posFrom(p, p && p.id);
+    if (pos && this._scene) this._emitOverloadFlare(pos, scaledRadius, p);
+    // No juice cue here: the raw entity:killed audio route already owns the whine + delayed boom
+    // (audioSystem._onKilled). Emitting a second semantic id would only double the voice.
+    // Pool pressure: under a massacre the oldest queued tell detonates immediately rather than
+    // dropping the explosion outright.
+    let rec = null;
+    for (let i = 0; i < this._pendingDetonations.length; i++) {
+      const slot = this._pendingDetonations[i];
+      if (!slot.active) { rec = slot; break; }
+      if (!rec || slot.at < rec.at) rec = slot;
+    }
+    if (rec && rec.active) this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+    if (!rec) return;
+    rec.active = true;
+    rec.at = now + OVERLOAD_FLARE_S;
+    rec.sputterAt = now + OVERLOAD_FLARE_S * 0.5;
+    rec.p = p;
+    rec.classId = classId;
+    rec.radius = scaledRadius;
+    rec.cause = cause;
+    if (pos) { rec.x = pos.x; rec.z = pos.z; } else { rec.x = NaN; rec.z = NaN; }
+  },
+
+  /**
+   * The tell itself: a swelling interior-light core plus a few erratic drive sputters along the
+   * hull's last heading. Short SPR_FLASH carries the "light through the panels" read; the streaks
+   * are directional (dead-man's drift / spin), not a generic radial burst.
+   */
+  _emitOverloadFlare(pos, radius, p) {
+    const reduced = this._isReduced();
+    const r = Math.max(4, radius || 6);
+    // Interior light: fast attack, swell, and a hard cutoff into the explosion — SPR_FLASH opacity
+    // fades over life so the brightest instant lands right at detonation.
+    this._spawnSprite(SPR_FLASH, pos.x, 0.3, pos.z, OVERLOAD_FLARE_S,
+      r * 0.35, r * 1.35, 0.35, 0.9, '#ffdca8', 0, 0);
+    this._c0.set('#ff9a3c'); this._c1.set('#3a1c08');
+    const sputters = reduced ? 2 : 4;
+    const vel = p && (p.targetVelocity || p.vel) || null;
+    const hx = vel && Number.isFinite(vel.x) ? vel.x : 0;
+    const hz = vel && Number.isFinite(vel.z) ? vel.z : 0;
+    for (let k = 0; k < sputters; k++) {
+      // Erratic thruster spits: biased along the hull's motion, jittered hard across it.
+      const a = Math.atan2(hz, hx) + (Math.random() - 0.5) * 2.6 + (k / sputters) * Math.PI;
+      const sp = 9 + Math.random() * 16;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      this._spawnProjectileTrailStreak(
+        pos.x + dx * r * 0.3, 0.4, pos.z + dz * r * 0.3,
+        0.12 + Math.random() * 0.1, 0.10, 0.7, 0.9, '#ffb35c',
+        dx * sp, dz * sp, dx, dz,
+      );
+    }
+  },
+
+  /** Mid-window sputter and the detonation drain. Runs on the sim clock like the gas phase. */
+  _updatePendingDetonations() {
+    const list = this._pendingDetonations;
+    if (!list) return;
+    const now = Number.isFinite(this.state && this.state.simTime)
+      ? this.state.simTime : (this._t || 0);
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[i];
+      if (!rec.active) continue;
+      if (now >= rec.sputterAt && rec.sputterAt < rec.at) {
+        rec.sputterAt = rec.at; // one mid-window spit per kill
+        if (Number.isFinite(rec.x) && this._scene && !this._isReduced()) {
+          this._c0.set('#ffcf8a'); this._c1.set('#40200a');
+          for (let k = 0; k < 2; k++) {
+            const a = Math.random() * Math.PI * 2;
+            const sp = 12 + Math.random() * 14;
+            this._spawnParticle(rec.x + Math.cos(a) * 1.5, rec.z + Math.sin(a) * 1.5,
+              Math.cos(a) * sp, Math.sin(a) * sp, 0.16, 0.9, 0, this._c0, this._c1, 1.4, 0, 0);
+          }
+        }
+      }
+      if (now >= rec.at) {
+        rec.active = false;
+        const payload = rec.p;
+        rec.p = null;
+        this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
+      }
+    }
+  },
+
+  _resetPendingDetonations() {
+    if (!this._pendingDetonations) return;
+    for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; }
+    this._transitSweepT = -1;
+    this._transitSweepSpawned = 0;
+  },
+
+  /** Feature 19: cyan streaks step bow→stern across the hull for ~0.55 s during gate transit. */
+  _updateTransitSweep(dt) {
+    if (this._transitSweepT < 0) return false;
+    this._transitSweepT += dt;
+    const k = this._transitSweepT / TRANSIT_SWEEP_DUR;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state && this.state.playerId);
+    if (k >= 1 || !player || !player.pos) {
+      this._transitSweepT = -1;
+      return false;
+    }
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const dx = Math.cos(heading), dz = Math.sin(heading);
+    const half = (Number.isFinite(player.radius) ? player.radius : 3) * 2.2;
+    const want = Math.floor(k * TRANSIT_SWEEP_COUNT);
+    while (this._transitSweepSpawned < want) {
+      const s = this._transitSweepSpawned / Math.max(1, TRANSIT_SWEEP_COUNT - 1);
+      const off = half * (1 - 2 * s);
+      this._spawnSprite(SPR_COMBUSTION,
+        player.pos.x + dx * off, 0.3, player.pos.z + dz * off,
+        0.4, 0.6, 1.8, 0.75, 0, '#7fe8ff', dx * 6, dz * 6, 0.3, Math.atan2(dz, dx));
+      this._transitSweepSpawned++;
+    }
+    return true;
   },
 
   _isCapitalKill(p) {
@@ -5861,7 +6124,8 @@ export const vfx = {
     }
     // Orbit/crawl paths require their station center. Refuse a phantom local loop if the station
     // vanished on a sector boundary before the renderer saw the event.
-    if ((profile.trajectory === 'hull-crawl' || profile.trajectory === 'docking-orbit')
+    if ((profile.trajectory === 'hull-crawl' || profile.trajectory === 'docking-orbit'
+      || profile.trajectory === 'dish-sweep')
       && (!station || !station.pos)) return false;
 
     let slot = null;
@@ -5963,7 +6227,8 @@ export const vfx = {
         slot.centerX = station.pos.x;
         slot.centerZ = station.pos.z;
       } else if (slot.profile.trajectory === 'hull-crawl'
-        || slot.profile.trajectory === 'docking-orbit') {
+        || slot.profile.trajectory === 'docking-orbit'
+        || slot.profile.trajectory === 'dish-sweep') {
         this._retireStationSideEvent(slot);
         continue;
       }
@@ -6105,6 +6370,30 @@ export const vfx = {
         reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
       emitted += this._spawnStationSideEventStreak(x - dx * (podGap * 0.5), 0.4, z - dz * (podGap * 0.5),
         reducedMotion ? 0.56 : 0.34, 0.055, podGap - 0.75, 0.36, '#d7e6ff', 0, 0, dx, dz);
+    } else if (slot.kind === 'sensor_sweep') {
+      // The research array swings a slim calibration beam along the radial normal and reads a dotted
+      // telemetry return behind the boom. No ejecta, no hull: a listening instrument, not a mover —
+      // and explicitly never a launched combat ship.
+      const beamLength = reducedMotion ? 3.2 : 4.6;
+      emitted += this._spawnStationSideEventStreak(x, 0.5, z,
+        reducedMotion ? 0.72 : 0.46, 0.055, beamLength, 0.42, '#7fd6ff', 0, 0, nx, nz);
+      const rowOffset = (frame.accentSlot - 3) * 0.30;
+      emitted += this._spawnStationSideEventStreak(x + dx * rowOffset, 0.34, z + dz * rowOffset,
+        1.6, 0.06, 0.42, 0.46, '#9fb6c4', 0, 0, dx, dz);
+      if (frame.accentSlot % 3 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        x,
+        0.46,
+        z,
+        0.1,
+        0.26,
+        0.38,
+        0.44,
+        0,
+        '#bfe9ff',
+        0,
+        0,
+      )) emitted++;
     }
     return emitted;
   },
@@ -7698,12 +7987,27 @@ export const vfx = {
     beam.glow.material.opacity = verb === 'cut' ? 0.24 : 0.30;
 
     if (verb === 'cut') {
-      if (Math.random() < (reduced ? 0.3 : 0.7)) {
-        const spallAngle = Math.atan2(-dz, -dx) + (Math.random() - 0.5) * 0.6;
-        const spallSpeed = 10 + Math.random() * 15;
-        this._spawnProjectileTrailStreak(txG, 0.5, tzG, 0.6, 0.08, 0.6, 0.8, '#fffaf0',
-          Math.cos(spallAngle) * spallSpeed, Math.sin(spallAngle) * spallSpeed,
-          Math.cos(spallAngle), Math.sin(spallAngle));
+      // Welding shower: a spray of bright sparks fanning off the contact seam — mostly along the
+      // hull tangent with some backward scatter — plus a persistent hot bead at the kerf. Dense
+      // enough to read as industrial cutting against the dark, not a lone tracer.
+      const seamAngle = Math.atan2(nx, nz); // hull tangent at the contact point
+      const sparkCount = reduced ? 1 : 2;
+      for (let k = 0; k < sparkCount; k++) {
+        if (Math.random() < 0.85) {
+          // Fan along the seam (tangent) with a bias away from the hull face.
+          const along = Math.atan2(-dz, -dx);
+          const a = (Math.random() < 0.6)
+            ? seamAngle + (Math.random() - 0.5) * 1.1 + (Math.random() < 0.5 ? Math.PI : 0)
+            : along + (Math.random() - 0.5) * 0.9;
+          const sp = 14 + Math.random() * 26;
+          this._spawnProjectileTrailStreak(txG, 0.5, tzG, 0.28 + Math.random() * 0.22,
+            0.07, 0.5, 0.9, Math.random() < 0.6 ? '#fffaf0' : '#ffc35c',
+            Math.cos(a) * sp, Math.sin(a) * sp,
+            Math.cos(a), Math.sin(a));
+        }
+      }
+      if (Math.random() < (reduced ? 0.25 : 0.5)) {
+        this._spawnSprite(SPR_FLASH, txG, 0.5, tzG, 0.16, 0.5, 1.6, 0.9, 0, '#fff6e0', 0, 0, 0, 0);
       }
     } else if (verb === 'repair') {
       if (Math.random() < (reduced ? 0.2 : 0.5)) {
@@ -7971,6 +8275,125 @@ export const vfx = {
     arc.mesh.visible = true;
   },
 
+  _ensureWorldSegment(slot, color) {
+    if (this[slot]) return this[slot];
+    if (!this._scene) return null;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(12);
+    const attr = new THREE.BufferAttribute(pos, 3);
+    attr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', attr);
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    mesh.renderOrder = 12;
+    this._scene.add(mesh);
+    this[slot] = { mesh, pos };
+    return this[slot];
+  },
+
+  _writeWorldSegment(slot, color, x0, z0, x1, z1, opacity) {
+    const seg = this._ensureWorldSegment(slot, color);
+    if (!seg) return;
+    const ux = x1 - x0;
+    const uz = z1 - z0;
+    const len = Math.hypot(ux, uz) || 1;
+    const px = (-uz / len) * 0.35;
+    const pz = (ux / len) * 0.35;
+    const a = this._toLocalXZ(x0, z0, this._spawnLocalXZ);
+    const b = this._toLocalXZ(x1, z1, this._spawnLocalXZ);
+    const p = seg.pos;
+    p[0] = a.x + px; p[1] = 1.2; p[2] = a.z + pz;
+    p[3] = a.x - px; p[4] = 1.2; p[5] = a.z - pz;
+    p[6] = b.x + px; p[7] = 1.2; p[8] = b.z + pz;
+    p[9] = b.x - px; p[10] = 1.2; p[11] = b.z - pz;
+    seg.mesh.geometry.attributes.position.needsUpdate = true;
+    seg.mesh.material.opacity = opacity;
+    seg.mesh.visible = opacity > 0.01;
+  },
+
+  _updatePayloadReleaseGhost() {
+    const ghost = this.state && this.state.player && this.state.player.masslineTelemetry
+      && this.state.player.masslineTelemetry.payloadReleaseGhost;
+    if (!ghost || ghost.active !== true) {
+      if (this._payloadGhost) this._payloadGhost.mesh.visible = false;
+      return;
+    }
+    this._writeWorldSegment('_payloadGhost', 0x9fd8ff, ghost.x0, ghost.z0, ghost.x1, ghost.z1, 0.55);
+  },
+
+  _updateWantedSearchRing() {
+    const volume = readWantedSearchVolume(this.state);
+    if (!this._wantedRing && this._scene) {
+      const geo = new THREE.RingGeometry(0.985, 1, 64);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xff5c5c,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.frustumCulled = false;
+      mesh.visible = false;
+      mesh.renderOrder = 4;
+      this._scene.add(mesh);
+      this._wantedRing = mesh;
+    }
+    const mesh = this._wantedRing;
+    if (!mesh) return;
+    if (!volume) {
+      mesh.visible = false;
+      return;
+    }
+    const local = this._toLocalXZ(volume.x, volume.z, this._spawnLocalXZ);
+    mesh.position.set(local.x, 0.6, local.z);
+    mesh.scale.set(volume.radius, 1, volume.radius);
+    mesh.material.opacity = volume.opacity;
+    mesh.visible = true;
+  },
+
+  // Two edges, not a disc: Helios is a corridor, Tethys is a cone. Brighter while you are inside.
+  _updateCustomsWeirLines() {
+    const live = readCustomsWeir(this.state);
+    const segments = live && live.segments ? live.segments : [];
+    for (let i = 0; i < 2; i++) {
+      const slot = `_weirEdge${i}`;
+      const seg = segments[i];
+      if (!seg) {
+        if (this[slot] && this[slot].mesh) this[slot].mesh.visible = false;
+        continue;
+      }
+      this._writeWorldSegment(slot, 0x7ec8ff, seg.x0, seg.z0, seg.x1, seg.z1, live.seen ? 0.62 : 0.28);
+    }
+  },
+
+  _updateRouteRibbon() {
+    const ribbon = routeRibbon(this.state);
+    if (!ribbon || ribbon.active !== true) {
+      if (this._routeRibbon) this._routeRibbon.mesh.visible = false;
+      return;
+    }
+    const start = ribbon.points[0];
+    const end = ribbon.points[1];
+    this._writeWorldSegment(
+      '_routeRibbon',
+      0xc8a15a,
+      start.x,
+      start.z,
+      end.x,
+      end.z,
+      (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
+    );
+  },
+
   _arcPreviewActive() {
     const arc = this._arcPreview;
     if (!arc) return false;
@@ -7984,6 +8407,37 @@ export const vfx = {
   // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
   // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
   // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
+  // INF-045 — disciplined target contour: one world-space ring on the locked/engaged
+  // target, drawn after the field force surfaces (renderOrder 17 > 16) with depth testing ON.
+  // Force surfaces never write depth, so the contour reads through a Well; hulls and rock do,
+  // so real occluders still win. Tint alone carries faction (red hostile, cyan otherwise).
+  _targetContour: null,
+  _initTargetContour() {
+    if (!this._scene || this._targetContour) return;
+    this._targetContour = new TargetContour(this._scene);
+  },
+  _resetTargetContour() {
+    const contour = this._targetContour;
+    if (!contour) return;
+    contour.clear();
+  },
+  _updateTargetContour() {
+    const contour = this._targetContour;
+    if (!contour) return false;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') {
+      contour.clear();
+      return false;
+    }
+    const resolved = resolveTargetContour(state);
+    if (!resolved) {
+      contour.clear();
+      return false;
+    }
+    const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
+    contour.setTarget(local.x, local.z, resolved.radius, resolved.hostile);
+    return true;
+  },
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
     if (!this._scene) return;
@@ -8142,6 +8596,330 @@ export const vfx = {
     const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
     arc.mesh.material.opacity = arc.fade * accessibility.flashOpacityScale;
     arc.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Massline swing trace — the luminous arc of where the tethered body has just swept.
+  // Not the predictor's release annulus and not a projectile trail: this is the flail head's
+  // own history on the XZ plane, so the pilot can read the swing they are about to spend.
+  // -------------------------------------------------------------------------
+  _masslineSwingTrace: null,
+
+  _initMasslineSwingTrace() {
+    if (!this._scene) return;
+    const trace = createMasslineSwingTrace(MASSLINE_SWING_TRACE_CAPACITY);
+    const scratch = createMasslineSwingTraceGeometry(MASSLINE_SWING_TRACE_CAPACITY - 1);
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.25, 1.25, 1.25),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-massline-swing-trace';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 7;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._masslineSwingTrace = { mesh, trace, scratch, samplePos: { x: 0, z: 0 } };
+  },
+
+  _resetMasslineSwingTrace() {
+    const st = this._masslineSwingTrace;
+    if (!st) return;
+    resetMasslineSwingTrace(st.trace);
+    st.mesh.visible = false;
+    st.mesh.material.opacity = 0;
+    st.mesh.geometry.setDrawRange(0, 0);
+  },
+
+  _updateMasslineSwingTrace(dt) {
+    const st = this._masslineSwingTrace;
+    if (!st) return false;
+    const trace = st.trace;
+    const state = this.state;
+    const playerTether = state && state.player && state.player.tether;
+    const remoteTether = state && state.player && state.player.remoteMassline;
+    const remote = !!(remoteTether && remoteTether.active
+      && remoteTether.sourceId != null && remoteTether.targetId != null);
+    const tether = remote ? remoteTether : playerTether;
+    const live = !!(tether && tether.active && tether.targetId != null);
+    const target = live ? this._ent(tether.targetId) : null;
+    const source = live
+      ? (remote ? this._ent(tether.sourceId) : (this.helpers && this.helpers.player
+        ? this.helpers.player() : this._ent(state.playerId)))
+      : null;
+
+    if (live && target && target.alive !== false && source && target.pos && target.vel) {
+      // A new latch restarts the trail — never let one target's arc bleed into the next.
+      if (trace.targetId !== target.id) {
+        resetMasslineSwingTrace(trace);
+        trace.targetId = target.id;
+      }
+      // Only a real swing draws the arc. A straight tow leaves the swept ribbon off so the cue
+      // keeps meaning "this body is orbiting you", not "a line exists".
+      const sv = source.vel || { x: 0, z: 0 };
+      const rx = target.pos.x - source.pos.x;
+      const rz = target.pos.z - source.pos.z;
+      const dist = Math.hypot(rx, rz);
+      const tangential = dist > 1e-6
+        ? Math.abs(rx * (target.vel.z - sv.z) - rz * (target.vel.x - sv.x)) / dist
+        : 0;
+      if (tangential >= MASSLINE_SWING_TRACE_MIN_TANGENTIAL) {
+        presentedAnchorXZ(target, this._renderInterpolationAlpha(), st.samplePos);
+        pushMasslineSwingSample(trace, st.samplePos.x, st.samplePos.z, this._t);
+      }
+      trace.fade = Math.min(1, trace.fade + dt * 8);
+    } else {
+      // Release/break/target-loss: let the arc dissolve where it was instead of popping away.
+      trace.fade = Math.max(0, trace.fade - dt * 3.5);
+      if (trace.fade <= 0 && trace.count > 0) resetMasslineSwingTrace(trace);
+    }
+
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const geometry = writeMasslineSwingTraceGeometry(st.scratch, trace, {
+      nowS: this._t,
+      lifeS: MASSLINE_SWING_TRACE_LIFE_S,
+      fade: trace.fade * accessibility.flashOpacityScale,
+      y: 1.35,
+      width: 2.6,
+      brightness: 0.4,
+    });
+    if (!(geometry.indexCount > 0)) {
+      if (st.mesh.visible) {
+        st.mesh.visible = false;
+        st.mesh.material.opacity = 0;
+        st.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = geometry.positions;
+    for (let vertex = 0; vertex < geometry.indexCount / 6 * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    st.mesh.geometry.setDrawRange(0, geometry.indexCount);
+    st.mesh.geometry.attributes.position.needsUpdate = true;
+    st.mesh.geometry.attributes.color.needsUpdate = true;
+    st.mesh.material.opacity = Math.min(0.8, trace.fade * 0.8);
+    st.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Magnetic docking cradle (feature 14) — the green holo pad on the bay floor. The sim-side
+  // dockingCorridor system owns the capture assist; this adapter owns ONLY the hologram, fed by
+  // the published state.dockingCorridor readout + the matching collisionProxies diagnostics row.
+  // -------------------------------------------------------------------------
+  _dockingCradle: null,
+
+  _initDockingCradle() {
+    if (!this._scene) return;
+    const cradle = createDockingCradle();
+    const scratch = createDockingCradleGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-docking-cradle';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._dockingCradle = { mesh, cradle, scratch };
+  },
+
+  _resetDockingCradle() {
+    const dc = this._dockingCradle;
+    if (!dc) return;
+    resetDockingCradle(dc.cradle);
+    dc.mesh.visible = false;
+    dc.mesh.material.opacity = 0;
+    dc.mesh.geometry.setDrawRange(0, 0);
+  },
+
+  _updateDockingCradle(dt) {
+    const dc = this._dockingCradle;
+    if (!dc) return false;
+    const state = this.state;
+    const readout = state && state.dockingCorridor;
+    // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
+    // frozen records — reading them here never touches sim state.
+    let proxy = null;
+    const rows = state && state.physicsRuntime && state.physicsRuntime.collisionProxies;
+    if (readout && (readout.stationId != null || readout.proxyId != null) && Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        if (readout.stationId != null && row.stationId === readout.stationId) { proxy = row; break; }
+        if (readout.stationId == null && readout.proxyId != null && row.proxyId === readout.proxyId) { proxy = row; break; }
+      }
+    }
+    const wasPhase = dc.cradle.phase;
+    const cradle = updateDockingCradle(dc.cradle, dt, readout, proxy);
+    // The magnetic latch grabbing is a one-shot voice, not a loop — emit on the transition only.
+    if (cradle.phase === 'capture' && wasPhase !== 'capture') {
+      this._emitJuiceCue('presentation.dock.capture', {
+        pos: { x: cradle.berthX, z: cradle.berthZ }, stationId: readout && readout.stationId,
+      }, 0.5);
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const video = state && state.settings && state.settings.video;
+    const reducedMotion = !!(video && video.motionReduce);
+    const geometry = writeDockingCradleGeometry(dc.scratch, cradle, {
+      y: 0.35,
+      reducedMotion,
+      gain: accessibility.flashOpacityScale,
+    });
+    if (!(geometry.indexCount > 0)) {
+      if (dc.mesh.visible) {
+        dc.mesh.visible = false;
+        dc.mesh.material.opacity = 0;
+        dc.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = geometry.positions;
+    for (let vertex = 0; vertex < (geometry.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    dc.mesh.geometry.setDrawRange(0, geometry.indexCount);
+    dc.mesh.geometry.attributes.position.needsUpdate = true;
+    dc.mesh.geometry.attributes.color.needsUpdate = true;
+    dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
+    dc.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Slingshot apex flare — the "you nailed that" beat. Two concentric chromatic rings
+  // (cyan inner, magenta outer) expand off the ship at slightly different rates, so the edges
+  // separate as they grow: an aberration fringe, not a shockwave. ~1 s, flash/motion-scaled.
+  // -------------------------------------------------------------------------
+  _apexFlare: null,
+
+  _initApexFlare() {
+    if (!this._scene) return;
+    const mkRing = (hex) => {
+      const g = new THREE.RingGeometry(0.9, 1.0, 48, 1);
+      g.rotateX(-Math.PI / 2);
+      const m = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(hex),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+        toneMapped: false,
+      });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 9;
+      this._scene.add(mesh);
+      return mesh;
+    };
+    this._apexFlare = {
+      inner: mkRing('#7ce4ff'),
+      outer: mkRing('#ff7ce4'),
+      active: false,
+      age: 0,
+      life: 1.0,
+      r0: 8,
+    };
+  },
+
+  _resetApexFlare() {
+    const f = this._apexFlare;
+    if (!f) return;
+    f.active = false;
+    f.inner.visible = false;
+    f.outer.visible = false;
+    f.inner.material.opacity = 0;
+    f.outer.material.opacity = 0;
+  },
+
+  _triggerApexFlare() {
+    const f = this._apexFlare;
+    if (!f) return;
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player() : this._ent(this.state && this.state.playerId);
+    if (!player || !player.pos) return;
+    f.r0 = Math.max(6, (Number.isFinite(player.radius) ? player.radius : 6) * 1.35);
+    f.age = 0;
+    f.life = 1.0;
+    f.active = true;
+  },
+
+  _updateApexFlare(dt) {
+    const f = this._apexFlare;
+    if (!f || !f.active) return false;
+    f.age += dt;
+    const t = f.age / f.life;
+    if (t >= 1) {
+      f.active = false;
+      f.inner.visible = false;
+      f.outer.visible = false;
+      return false;
+    }
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player() : this._ent(this.state && this.state.playerId);
+    if (!player || !player.pos) { f.active = false; f.inner.visible = false; f.outer.visible = false; return false; }
+    // The flare rides the hull — the pilot is rocketing away, and the burst belongs to the ship.
+    const local = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const flash = acc.flashOpacityScale;
+    const ease = 1 - (1 - t) * (1 - t);
+    f.inner.scale.set(f.r0 * (1 + ease * 5.2), 1, f.r0 * (1 + ease * 5.2));
+    f.outer.scale.set(f.r0 * (1 + ease * 6.6), 1, f.r0 * (1 + ease * 6.6));
+    f.inner.position.set(local.x, 1.7, local.z);
+    f.outer.position.set(local.x, 1.75, local.z);
+    const a = (1 - t) * (1 - t);
+    f.inner.material.opacity = 0.85 * a * flash;
+    f.outer.material.opacity = 0.5 * a * flash;
+    f.inner.visible = f.inner.material.opacity > 0.01;
+    f.outer.visible = f.outer.material.opacity > 0.01;
     return true;
   },
 
@@ -8329,6 +9107,12 @@ export const vfx = {
       // as "physical strain" — that comment needs the same correction; it is not this file.)
       strain: s * masslineA11y.pulseScale,
       whip: visualWhip,
+      // uLatchWave: the one-shot bright band running anchor→ship on latch. The shader keys the
+      // band position off this value (0 = at the hitch, 1 = spent); with reduced motion/flash the
+      // wave is simply already spent rather than frozen mid-chord.
+      latchWave: transientScale > 0.01
+        ? Math.min(1, cable.latchAge / TETHER_LATCH_WAVE_S)
+        : 1,
       overload: overload && masslineA11y.pulseScale > 0,
       reel: cable.reelGlow * masslineA11y.pulseScale,
       pulseSpeed: masslineA11y.animatePulse
@@ -8827,6 +9611,14 @@ export const vfx = {
       // recipe's momentum spray lives on the break path instead (see _onTetherSnap).
     }
 
+    // Slingshot apex: the rated release landed at the crest of a real swing. This handler only
+    // runs for deliberate clean cuts (the token match above), and releasedAtApex additionally
+    // demands the omega crest — a break or a lazy let-go never reaches this beat.
+    if (p.releasedAtApex === true) {
+      this._triggerApexFlare();
+      this.bus.emit('audio:cue', { id: 'massline.slingshotApex' });
+    }
+
     const last = this._lastMasslineReleaseVfx;
     last.stage = 'rated';
     last.targetId = target.id;
@@ -8868,6 +9660,8 @@ export const vfx = {
   // the plane of contact — a disc around the line axis, not a ball. Ported onto the live pools.
   _onTetherLatch(p) {
     this._resetMasslineReleaseArc();
+    // A new hitch starts a fresh sweep history — the previous body's arc must never bleed in.
+    this._resetMasslineSwingTrace();
     this._emitJuiceCue('presentation.tether.attach', p, 1);
     if (!this._scene) return;
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
@@ -8912,12 +9706,13 @@ export const vfx = {
     this._spawnProjectileTrailStreak(anchor.x, 0.3, anchor.z, 0.30,
       0.34, Math.min(9, Math.max(2.5, chord * 0.2)), 0.85, '#d7f7ff',
       -dirX * 4, -dirZ * 4, -dirX, -dirZ);
-    // The travelling pulse: one bright streak that crosses the chord in its lifetime and dies at
-    // the anchor — a segment of the line lighting up, not a particle flying near it.
+    // The travelling pulse runs anchor→ship: the kinetic wave of the catch riding the line home.
+    // (The ribbon's own uLatchWave band travels the same direction on the same beat — the shader
+    // wave is the line lighting up, this streak is the packet of energy arriving at the hull.)
     const pulseLife = 0.22;
-    this._spawnProjectileTrailStreak(ship.x, 0.34, ship.z, pulseLife,
+    this._spawnProjectileTrailStreak(anchor.x, 0.34, anchor.z, pulseLife,
       0.42, 3.4, 0.95, '#ffffff',
-      dirX * (chord / pulseLife), dirZ * (chord / pulseLife), dirX, dirZ);
+      -dirX * (chord / pulseLife), -dirZ * (chord / pulseLife), -dirX, -dirZ);
     // Spark ring thrown off the anchor IN the plane of contact: a disc around the line axis —
     // alternating the two perpendicular directions with jitter, never an isotropic ball.
     this._c0.set('#eaf6ff');
@@ -9184,6 +9979,14 @@ export const vfx = {
       // The tar settles: one last dull puff, nothing bright.
       this._spawnSprite(SPR_PUFF, p.pos.x, 0.06, p.pos.z, 1.8, 0.6, 2.4, 0.3, 0, '#6f8f3a', 0, 0, 2.4, 0);
     }
+  },
+
+  // PQ-205.02 inert shoot-down: the capsule pops, it does not cook. A short dull puff, no blast.
+  _onBombDestroyed(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    this._spawnSprite(SPR_PUFF, p.pos.x, 0.08, p.pos.z, reduced ? 0.7 : 1.1, 0.45, 1.6, 0.4, 0, '#c8d0d4', 0, 0, 1.8, 0);
   },
 
   // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /
@@ -10012,6 +10815,69 @@ export const vfx = {
     );
   },
 
+  // Salvage plate release: the cut seam lets go — a last puff of weld dust and the freed plate
+  // flashing once as it separates. Hydraulic-release audio rides the cue.
+  _onSalvageCutComplete(p) {
+    if (!this._scene || !p) return;
+    const plate = p.payloadId != null ? this._ent(p.payloadId) : null;
+    const target = p.targetId != null ? this._ent(p.targetId) : null;
+    const pos = (plate && plate.pos) || (target && target.pos) || p.pos;
+    if (!pos) return;
+    // Separation puff at the freed plate + a hard glint where the seam opened.
+    this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, 0.5, 2.4, 6.0, 0.45, 0, '#cbb9a0', 0, 0);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, 0.14, 1.4, 4.5, 0.85, 0, '#fff6e0', 0, 0);
+    const n = this._isReduced() ? 4 : 8;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 10 + Math.random() * 18;
+      this._spawnProjectileTrailStreak(pos.x, 0.5, pos.z, 0.3, 0.07, 0.5, 0.85,
+        k % 2 ? '#fffaf0' : '#ffc35c', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
+    }
+    this._emitJuiceCue('presentation.salvage.plate_release', { pos }, 1);
+  },
+
+  // Salvage completion collapse: the drained hulk leaves the sim the same tick this event fires
+  // (alive=false in mining._drainWreck), so the removal needs a mask — one buckle flash, a heavy
+  // dust body, and a few shard streaks at the wreck's last pose instead of a pop while the
+  // player's beam is still on it. No juice cue: cue-count contracts stay frozen.
+  _onSalvageCompleted(p) {
+    if (!this._scene || !p) return;
+    const pos = this._posFrom(p, p.wreckId != null ? p.wreckId : null);
+    if (!pos) return;
+    const wreck = p.wreckId != null ? this._ent(p.wreckId) : null;
+    const r = Math.max(4, Number.isFinite(p.radius) ? p.radius : ((wreck && wreck.radius) || 8));
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.4, r * 0.5, r * 1.1, 0.9, 0.0, '#ffd9a0', 0, 0);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, r * 0.7, r * 1.6, 0.5, 0.0, '#8f8578', 0, 0);
+    const n = this._isReduced() ? 4 : 10;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 8 + Math.random() * 14;
+      this._spawnProjectileTrailStreak(pos.x, 0.5, pos.z, 0.35, 0.07, 0.55, 0.8,
+        k % 2 ? '#d8d2c4' : '#ff9a4d', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
+    }
+    if (this._gas) {
+      this._gas.emitFractureDust({
+        x: pos.x,
+        y: 0.3,
+        z: pos.z,
+        heading: 0,
+        severity: 0.85,
+        scale: r * 1.5,
+        seed: ((((Number(p.wreckId) | 0) || 7) * 2654435761) >>> 16 & 0xffff) / 0xffff,
+        occluderX: pos.x,
+        occluderY: 0,
+        occluderZ: pos.z,
+        occluderRadius: r * 0.7,
+      });
+    }
+    this._flashLight({ x: pos.x, z: pos.z }, '#ffb066', 5.0, 4.0, 160);
+    this.bus.emit('audio:cue', {
+      id: 'sfx_salvage_plate',
+      position: { x: pos.x, z: pos.z },
+      gain: 0.7,
+    });
+  },
+
   _onWeaponVent(payload) {
     if (!this._scene || !payload || payload.phase !== 'start') return;
     const owner = this._ent(payload.ownerId);
@@ -10442,6 +11308,7 @@ export const vfx = {
 
   update(frameDt) {
     if (this._destroyed === true) return;
+    notePresentationFrame(this.state);
     // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
     const tier1Perf = this.state && this.state.perfRuntime;
     const tier1Counter = tier1Perf && tier1Perf.tier1;
@@ -10539,8 +11406,14 @@ export const vfx = {
     } else {
       sub.tetherCable = 0;
     }
+    sub.swingTrace = this._updateMasslineSwingTrace(dt) ? 1 : 0;
+    sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
+    sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
+    this._updateStatusAttachedVfx(dt);
+    // INF-045: the lock contour tracks the target every frame it exists.
+    sub.targetContour = this._updateTargetContour() ? 1 : 0;
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -10549,6 +11422,10 @@ export const vfx = {
     } else {
       sub.arcPreview = 0;
     }
+    this._updatePayloadReleaseGhost();
+    this._updateWantedSearchRing();
+    this._updateCustomsWeirLines();
+    this._updateRouteRibbon();
     if (this._masslineReleaseArcActive()) {
       sub.masslineReleaseArc = this._updateMasslineReleaseArc(dt) ? 1 : 0;
     } else {
@@ -10625,6 +11502,17 @@ export const vfx = {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
+    if (this.state && this.state.emergent && this.state.emergent.hot) {
+      if (!this._emergentPools && this._scene) {
+        this._emergentPools = createEmergentPrimitivePools();
+        this._scene.add(this._emergentPools.group);
+      }
+      if (this._emergentPools) {
+        this._emergentPools.update(this.state, (x, z, out) => this._toLocalXZ(x, z, out));
+      }
+    } else if (this._emergentPools) {
+      this._emergentPools.update(this.state, (x, z, out) => this._toLocalXZ(x, z, out));
+    }
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
     // PQ-013 planetary skim — band scroll + reentry sheath pool; slept when no site is registered
     // (dormant sectors cost one boolean read; the sheath slots exist only after first relevance).
@@ -10635,6 +11523,8 @@ export const vfx = {
       if (this._planetSkim) this._sleepPlanetSkim();
       sub.planetSkim = 0;
     }
+    this._updatePendingDetonations();
+    this._updateTransitSweep(dt);
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
     const cam = this.state && this.state.render && this.state.render.camera;
     const viewportH = this.state && this.state.render && this.state.render.viewport
@@ -10795,17 +11685,19 @@ export const vfx = {
           0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
           this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
         );
-        // Gravimetric funnel mote — inside the vortex range the tractor field itself reads as a
-        // spiral stream converging on the scoop, not just the drop flying home. Deterministic
-        // phase from the drop id + sim time (resolveFunnelMoteStream); velocity aims at the bay.
-        const moteDistSq = pdx * pdx + pdz * pdz;
-        if (moteDistSq < TRACTOR_VORTEX_RANGE_WU * TRACTOR_VORTEX_RANGE_WU) {
-          const mote = resolveFunnelMoteStream(e.id, this._t || 0, _funnelMoteScratch);
-          const t = mote.cycle;
-          const spiralR = (1 - t) * 3.5;
-          const mx = e.pos.x - pdx * t + Math.cos(mote.angle) * spiralR;
-          const mz = e.pos.z - pdz * t + Math.sin(mote.angle) * spiralR;
-          const dl = Math.sqrt(moteDistSq) || 1;
+        // Gravimetric funnel mote. The spiral sits on the live table disc, not a fixed
+        // 200 WU ring that stays up after the glass has shrunk. Phase is still the drop id
+        // plus sim time (resolveFunnelMoteStream); velocity aims at the bay.
+        const mote = resolveFunnelMoteStream(e.id, this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0, _funnelMoteScratch);
+        const t = mote.cycle;
+        const spiralR = (1 - t) * 3.5;
+        const mx = e.pos.x - pdx * t + Math.cos(mote.angle) * spiralR;
+        const mz = e.pos.z - pdz * t + Math.sin(mote.angle) * spiralR;
+        _lootMagnetMotePosScratch.x = mx;
+        _lootMagnetMotePosScratch.z = mz;
+        const moteFocus = lootMagnetFocusDelta(state, player.pos, _lootMagnetMotePosScratch, _lootMagnetFocusScratch);
+        if (spiralMoteWithinDraw(moteFocus.x, moteFocus.z, tableWu)) {
+          const dl = Math.hypot(pdx, pdz) || 1;
           this._spawnSprite(SPR_FLASH, mx, 1.0, mz,
             0.22, 0.55, 0.18, 0.5, 0.0, col,
             (-pdx / dl) * 36, (-pdz / dl) * 36,
@@ -11794,8 +12686,8 @@ export const vfx = {
       // released brake can spool down attached to the hull — a frozen render-local pose would
       // stay behind in the world while the ship flies on (B10).
       this._retroHeldSockets = [
-        { lx: 0, lz: 0, lax: 1, laz: 0 },
-        { lx: 0, lz: 0, lax: 1, laz: 0 },
+        { lx: 0, ly: 0, lz: 0, lax: 1, laz: 0, role: 'reverse-left' },
+        { lx: 0, ly: 0, lz: 0, lax: 1, laz: 0, role: 'reverse-right' },
       ];
       this._retroHeldCount = 0;
       this._retroParams = { ...PLAYER_RETRO_VOLUME_RECIPE, drive: 0, boost: 0, turbulence: 0 };
@@ -12053,6 +12945,15 @@ export const vfx = {
       this._releasePlayerPlumeEventLight();
       return false;
     }
+    // An authored boundary that has not published a hull has no engine to glow. Its sockets fall
+    // back to the entity pose, so without this gate an invisible ship still parks a live point
+    // light under whatever it is docked at — the "light strobing the station" defect.
+    const viewRoot = player.view && player.view.root;
+    const visualRoot = viewRoot && viewRoot.userData && viewRoot.userData.authoredVisualRoot;
+    if (typeof visualRoot === 'string' && visualRoot.startsWith('none-')) {
+      this._releasePlayerPlumeEventLight();
+      return false;
+    }
     const driveState = record.driveState;
     const drive = driveState && Number.isFinite(driveState.plumeDrive)
       ? Math.max(0, driveState.plumeDrive) : 0;
@@ -12128,7 +13029,9 @@ export const vfx = {
     if (!rcsSystem) return;
     energy.rcsSystem = rcsSystem;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
-    if (actuators && energy.rcsCooldown <= 0) {
+    // player can be absent between death and respawn while the family system still reports
+    // actuators for it (_actuatorsFor treats a null entity as the player) — no pose, no firing.
+    if (actuators && player && energy.rcsCooldown <= 0) {
       const pose = this._rcsPoseScratch;
       pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
       pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
@@ -12196,7 +13099,14 @@ export const vfx = {
     const energy = this._energy;
     const volume = energy && energy.retroVolume;
     if (!volume) return;
-    if (!player || !player.pos) { volume.reset(); return; }
+    if (!player || !player.pos) {
+      this._retroBrakeEngaged = false;
+      volume.reset();
+      return;
+    }
+    if (typeof volume.configure === 'function') {
+      volume.configure(this._engineProfileIdFor(player), player.radius);
+    }
 
     const pose = this._rcsPoseScratch;
     pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
@@ -12210,11 +13120,17 @@ export const vfx = {
       )
       : null;
 
+    // Same rule as the main bell in _engineDriveFor: a thrusting carve projects backwards onto the
+    // hull axis, but with forward held that is the turn, not a brake, so the bow pair stays cold.
+    const input = this.state.input;
+    const pilotHoldsDrive = !!(input && Number.isFinite(input.moveZ) && input.moveZ > 0.05
+      && !(actuators && actuators.pilotBrake));
+
     const view = this._retroSocketView;
     view.length = 0;
     let peak = 0;
     const authoredSockets = this._rcsSocketObjects(player);
-    if (firings) {
+    if (firings && !pilotHoldsDrive) {
       for (let i = 0; i < firings.length && view.length < this._retroSockets.length; i++) {
         const jet = firings[i];
         if (jet.role !== 'reverse-left' && jet.role !== 'reverse-right') continue;
@@ -12237,12 +13153,14 @@ export const vfx = {
           sock.ay = 0;
           sock.az = -jet.dirZ;
         }
+        sock.role = jet.role;
         view.push(sock);
         if (jet.intensity > peak) peak = jet.intensity;
       }
     }
 
     if (!view.length) {
+      this._retroBrakeEngaged = false;
       // Release tail: the demand is gone but the spool may still be winding down. Rebuild the
       // bow pose under the hull's CURRENT transform so the pair shrinks in place on the ship
       // instead of being left hanging at the world spot where the brake let go (B10).
@@ -12254,12 +13172,17 @@ export const vfx = {
         for (let i = 0; i < this._retroHeldCount; i++) {
           const held = this._retroHeldSockets[i];
           const sock = this._retroSockets[i];
-          sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
-          sock.y = 0;
-          sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
-          sock.ax = held.lax * cf - held.laz * sf;
-          sock.ay = 0;
-          sock.az = held.lax * sf + held.laz * cf;
+          const mounted = held.role === 'reverse-left'
+            ? authoredSockets && authoredSockets.retroPort
+            : authoredSockets && authoredSockets.retroStarboard;
+          if (!this._writeRetroSocketPose(mounted, sock)) {
+            sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
+            sock.y = held.ly || 0;
+            sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
+            sock.ax = held.lax * cf - held.laz * sf;
+            sock.ay = 0;
+            sock.az = held.lax * sf + held.laz * cf;
+          }
           view.push(sock);
         }
         const cam = this.state.render && this.state.render.camera;
@@ -12268,6 +13191,7 @@ export const vfx = {
         return;
       }
       volume.reset();
+      this._retroBrakeEngaged = false;
       return;
     }
 
@@ -12285,11 +13209,27 @@ export const vfx = {
         const dx = src.x - shipLocal.x;
         const dz = src.z - shipLocal.z;
         dst.lx = dx * cf + dz * sf;
+        dst.ly = src.y;
         dst.lz = -dx * sf + dz * cf;
         dst.lax = src.ax * cf + src.az * sf;
         dst.laz = -src.ax * sf + src.az * cf;
+        dst.role = src.role;
       }
     }
+
+    // The actuator supplies the real counter-force. A short view displacement at deliberate
+    // high-speed engagement makes the hull's initial change of acceleration readable without
+    // adding an unphysical velocity impulse or changing the ship's stopping distance.
+    const vx = Number.isFinite(player.vel?.x) ? player.vel.x : 0;
+    const vz = Number.isFinite(player.vel?.z) ? player.vel.z : 0;
+    const speed = Math.hypot(vx, vz);
+    const deliberateBrake = !!(actuators && actuators.pilotBrake && peak > 0.18 && speed > 20);
+    if (deliberateBrake && !this._retroBrakeEngaged && !(a11y && a11y.reducedMotion)) {
+      const ctrl = this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.014, 0.32);
+      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34);
+    }
+    this._retroBrakeEngaged = deliberateBrake;
 
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);
@@ -12423,13 +13363,19 @@ export const vfx = {
     return driveId && this._rcsScaleCache.get(driveId) || this._rcsDefaultScale;
   },
 
-  /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
+  /** Signed applied-acceleration truth published by flightV3; presentation never re-simulates physics. */
   _actuatorsFor(e) {
     const state = this.state;
-    if (e && state.playerId != null && e.id !== state.playerId) return null;
-    const runtime = state.flightRuntime;
-    const telemetry = runtime && runtime.telemetry;
-    if (telemetry && telemetry.actuators) return telemetry.actuators;
+    // INF-046 — the propulsion kernel publishes applied acceleration into EVERY stepped
+    // entity's _flightFrame, so nozzle truth is no longer player-only. The player keeps the
+    // richer runtime telemetry (manual/assist provenance); an NPC reads its own frame.
+    // Returning the player's block for an NPC would light the wrong ship's nozzles.
+    const isPlayer = !e || state.playerId == null || e.id === state.playerId;
+    if (isPlayer) {
+      const runtime = state.flightRuntime;
+      const telemetry = runtime && runtime.telemetry;
+      if (telemetry && telemetry.actuators) return telemetry.actuators;
+    }
     const frame = e && e._flightFrame;
     if (frame && frame.actuators && Number.isFinite(frame.actuators.reverse)) return frame.actuators;
     const acc = frame && frame.acceleration;
@@ -12489,9 +13435,14 @@ export const vfx = {
       this._mainDriveDemandScratch,
     );
     const reverse = md ? Math.max(0, md.reverse || 0) : Math.max(0, actuators && actuators.reverse || 0);
-    const retroOnly = !!(md && md.retroOnly);
+    // A velocity-vectoring carve swings the velocity ahead of the nose, so the net acceleration
+    // (pure centripetal, speed held) projects backwards onto the hull axis and reads as retro
+    // demand. With the pilot holding forward that is not a brake: the main jet blanked for the
+    // whole of every thrusting turn. Only the pilot's own brake darkens the bell while W is held.
+    const pilotHoldsDrive = pilotForward > 0.05 && !(actuators && actuators.pilotBrake);
+    const retroOnly = !!(md && md.retroOnly) && !pilotHoldsDrive;
     if (md) {
-      if (retroOnly || reverse > 0.05) {
+      if (retroOnly || (reverse > 0.05 && !pilotHoldsDrive)) {
         throttle = md.main;
       } else if (md.main > 0.001) {
         throttle = md.main;
@@ -12545,7 +13496,7 @@ export const vfx = {
     out.speedDrive = speedDrive;
     out.boost = boost;
     out.cruise = cruise;
-    out.reverse = reverse;
+    out.reverse = pilotHoldsDrive ? 0 : reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
     out.dashFired = !!this._plumeDashPending;
@@ -12560,6 +13511,55 @@ export const vfx = {
       flashReduce: !!(settings.accessibility && settings.accessibility.flashReduce),
       ...extra,
     };
+  },
+
+  _updateStatusAttachedVfx(dt) {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
+    if (!this._statusAttachedCd) this._statusAttachedCd = new Map();
+    if (!this._statusAttachedVictims) this._statusAttachedVictims = [];
+    const acc = statusAttachedAccessibility(this.state.settings);
+    const victims = collectStatusAttachedVictims(this.state, this._statusAttachedVictims);
+    const live = this._statusAttachedLive || (this._statusAttachedLive = new Set());
+    live.clear();
+    const cd = this._statusAttachedCd;
+    const frameDt = Math.max(0, dt || 0);
+    this._spawnFlashAccessibilityBypass = true;
+    for (let i = 0; i < victims.length; i++) {
+      const victim = victims[i];
+      const key = victim.key;
+      live.add(key);
+      const plan = planStatusAttachedEmit(victim, cd.get(key) || 0, acc, frameDt);
+      cd.set(key, plan.nextCadenceAgeS);
+      if (!plan.emit) continue;
+      const sprites = plan.sprites;
+      for (let s = 0; s < sprites.length; s++) {
+        const sprite = sprites[s];
+        const kind = sprite.kind === 'combustion' ? SPR_COMBUSTION : SPR_PUFF;
+        this._spawnSprite(
+          kind,
+          victim.x + sprite.offset,
+          sprite.y,
+          victim.z,
+          sprite.life,
+          sprite.size0,
+          sprite.size1,
+          sprite.opacity0,
+          sprite.opacity1,
+          sprite.color,
+          sprite.vx,
+          sprite.vz,
+          1.15,
+          0,
+        );
+      }
+    }
+    this._spawnFlashAccessibilityBypass = false;
+    const stale = this._statusAttachedStale || (this._statusAttachedStale = []);
+    stale.length = 0;
+    for (const key of cd.keys()) {
+      if (!live.has(key)) stale.push(key);
+    }
+    for (let i = 0; i < stale.length; i++) cd.delete(stale[i]);
   },
 
   /**
@@ -13205,6 +14205,20 @@ export const vfx = {
     return false;
   },
 
+  _projectileTrailOnFrame(entity) {
+    const state = this.state;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    return projectileOnReadableFrame(
+      state,
+      entity && entity.pos,
+      player && player.pos,
+      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
+      this._projectileFrameLook || (this._projectileFrameLook = { x: 0, z: 0 }),
+    );
+  },
+
   _emitProjectileTrails(dt) {
     if (!this._scene) return false;
     resetProjectileTrailDiag(this._projectileTrailDiag);
@@ -13234,6 +14248,9 @@ export const vfx = {
       const prof = resolveProjectileTrailProfile(data.weaponId, data);
       const plan = buildProjectileTrailSpawnPlan(prof, e, burst, this._projectileTrailPlanScratch);
       if (plan.skip) continue;
+      // Trails are frame dressing. The round keeps flying; the wake is only
+      // painted while the body is on the glass.
+      if (!this._projectileTrailOnFrame(e)) continue;
       if (plan.mode === 'propelled') {
         plan.emitSmoke = ((this._projectileTrailFrameIndex + i) % 3) === 0;
       }
@@ -13376,7 +14393,17 @@ export const vfx = {
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4 && driveInfo.drive < 0.04) {
-        this._retireRibbonTrail(e.id, !isPlayer);
+        // INF-047: a stopped hull stops EARNING history; the committed wake stays where it
+        // was laid and fades by age alone (trail.retire), never wiped because the speed
+        // read zero. Only the age factor changes its visibility.
+        const retiring = this._ribbonTrails.get(e.id);
+        if (retiring && typeof retiring.retire === 'function' && typeof retiring.rebuild === 'function') {
+          retiring.retire(this._t);
+          retiring.rebuild(0.6, (this._t * (flashReduce ? 0.18 : 0.34)) % 1, this._t, 1.5);
+          if (retiring.inspect().visiblePointCount > 0) active = true;
+        } else {
+          this._retireRibbonTrail(e.id, !isPlayer);
+        }
         continue;
       }
       if (!isPlayer) {
@@ -13832,7 +14859,7 @@ export function runProjectileTrailEmissionSelfCheck() {
   if (bolts.byEntity && bolts.byEntity.has(11)) fail('missile must keep its mesh body rather than an energy card');
 
   const offTableId = 15;
-  const offTableX = tableVfxDrawWuFromState({}) + 24;
+  const offTableX = tableVfxDrawWuFromState({}) + PROJECTILE_DRAW_PAD_WU + 24;
   const offTableSystem = _makeProjectileTrailSelfCheckHarness([
     _selfCheckProjectile(offTableId, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: offTableX, z: 0 }),
   ]);

@@ -221,8 +221,11 @@ export function createScreenManager(ctx) {
         // Cancel that stale callback so it cannot hide the newly active screen.
         cancelPendingExit(rec);
         // A kit screen (styles/kit.css `.k-screen`) lays out as a grid; an inline `flex` here
-        // would override it. Every other screen keeps the legacy flex root.
-        rec.el.style.display = (typeof rec.el.classList?.contains === 'function' && rec.el.classList.contains('k-screen')) ? 'grid' : 'flex';
+        // would override it. The deckplate frame (.dp-frame, src/ui/deckplate/layout.js) is the
+        // same head/body/foot grid — the station dropped k-screen but still is a grid shell.
+        // Every other screen keeps the legacy flex root.
+        rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
+          && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;

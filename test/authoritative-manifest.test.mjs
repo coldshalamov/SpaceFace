@@ -40,8 +40,15 @@ test('production init + update order lengths match the live browser baseline', (
   // (nemesis) and the encounter host (nemesisEncounter) join both orders immediately before the
   // AI slot (engine → host → tacticalAI); nemesisSignals routes voice/toast receipts and is
   // event-only, so init grows by three while update grows by two.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 155);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 116);
+  // 155 -> 156 init / 116 -> 117 update: packet 09 (Three Capitals) adds exactly one system.
+  // capitalBossEncounters initialises after the combat kernel (it validates
+  // helpers.routeCombatDamage at init) and ticks immediately before the AI slot (score orders
+  // precede AI action consumption on the same fixed tick), so init and update move together.
+  // 156 -> 157 init / 117 -> 118 update: emergent combat primitives. One fixed-step owner,
+  // after bombs and before impulseCharges, so it still sees chargeDetonate and queues forces
+  // before the physics solve.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 157);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 118);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -70,6 +77,13 @@ test('production init + update order lengths match the live browser baseline', (
     < PRODUCTION_UPDATE_ORDER.indexOf('aiSlot'));
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('nemesisSignals'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('nemesisSignals'));
+  // Packet 09 ordering contract: the capital score publishes before AI consumes on the same
+  // fixed tick, and it initialises after the combat kernel installed the damage ports.
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('capitalBossEncounters')
+    < PRODUCTION_UPDATE_ORDER.indexOf('aiSlot'));
+  assert.ok(PRODUCTION_INIT_ORDER.indexOf('combat')
+    < PRODUCTION_INIT_ORDER.indexOf('capitalBossEncounters'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('capitalBossEncounters'));
 });
 
 // J6: every system in update order must also be initialized (update ⊆ init).
@@ -168,8 +182,10 @@ test('browser production system set is unchanged vs production manifest constant
   // the existing stuntGrammar observer so trick receipts reach titles and barks; 148 with the
   // drift-bomb bay (one system, both orders); 150 with the station yard and the pacing director;
   // 152 with the Chronicler and the tension director (genie packet returns); 155 with the
-  // nemesis packet (nemesis + nemesisEncounter + event-only nemesisSignals).
-  assert.equal(registry.systems.length, 155);
+  // nemesis packet (nemesis + nemesisEncounter + event-only nemesisSignals); 156 with packet 09's
+  // capitalBossEncounters (one system in both orders; score orders precede AI action consumption).
+  // 157 with emergentPrimitives (one system in both orders; reads chargeDetonate before it is consumed).
+  assert.equal(registry.systems.length, 157);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

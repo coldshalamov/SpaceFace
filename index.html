@@ -13,7 +13,10 @@
   <link rel="stylesheet" href="./styles/intro.css" />
   <link rel="stylesheet" href="./styles/asteroid-ops.css" />
   <link rel="stylesheet" href="styles/accessibility.css">
-  <link rel="stylesheet" href="./styles/hud.css" />
+  <!-- hud.css is NOT linked here: styles/ui.css @imports it, which is how every other page
+       in this repo gets it -- including build/web/index.html, the packaged build. Linking it
+       again loaded a second copy after menu/intro/asteroid-ops/accessibility, so the dev page
+       and the shipped page resolved HUD rules in a different order. One copy, one order. -->
   <!-- The frontend kit (design/frontend/direction/KIT_SPEC.md §1): tokens, temperature and the
        k- components. Loaded after the legacy sheets so its rules win on migrated screens. -->
   <link rel="stylesheet" href="./styles/kit.css" />
@@ -27,6 +30,8 @@
       "three/addons/": "./vendor/addons/",
       "three.quarks": "./node_modules/three.quarks/dist/three.quarks.esm.js",
       "quarks.core": "./node_modules/quarks.core/dist/quarks.core.esm.js",
+      "three-mesh-bvh": "./node_modules/three-mesh-bvh/src/index.js",
+      "@elemaudio/web-renderer": "./node_modules/@elemaudio/web-renderer/dist/index.js",
       "@dimforge/rapier3d-compat": "./vendor/rapier3d-compat/rapier.mjs",
       "@floating-ui/dom": "./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs",
       "@floating-ui/core": "./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs",
@@ -49,7 +54,7 @@
     </div>
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
-      <canvas id="boot-terminal-canvas" class="boot-canvas" width="640" height="380"></canvas>
+      <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
       <div class="boot-scrim" aria-hidden="true"></div>
       <header class="boot-meta" aria-hidden="true">
         <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>

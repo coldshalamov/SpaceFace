@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
+import { stationControlAttrs } from './stationBindingMap.js';
 
 export function factionPresenceServiceRows(state, stationId) {
   const own = state && state.factionPresence;
@@ -126,6 +127,30 @@ function protectionFraction(entity) {
   return Math.min(hullFrac, armorFrac);
 }
 
+// INF-089: the speakable reason a disabled service verb carries — exact blocking condition
+// plus the nearest valid action. Only quotes that declare a disabledReason get one; done-state
+// facts (full tank, intact hull) stay quiet spans, and advisory partials stay enabled.
+export function disabledServiceWhy(quote) {
+  if (!quote || !quote.disabled) return '';
+  const parts = [quote.disabledReason, quote.remedy].map((s) => String(s || '').trim()).filter(Boolean);
+  return parts.join(' — ');
+}
+
+function escWhyAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// INF-089: a dead-end verb that keeps its place in the tab order. aria-disabled (not disabled)
+// so keyboard/controller focus can reach it; the whyReveal layer reads data-why on hover AND
+// focus, and the click path toasts the same phrase instead of failing silently.
+export function disabledVitalActHtml(id, label, text, why) {
+  const copy = `${label} · ${text}`;
+  return `<button type="button" ${stationControlAttrs(id)} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
+    ` data-vital-act="${escWhyAttr(id)}" data-why="${escWhyAttr(why)}" aria-disabled="true"` +
+    ` aria-label="${escWhyAttr(label + '. ' + why)}">${escWhyAttr(copy)}</button>`;
+}
+
 function recommendationCandidate(service, quote, stationServices, opts) {
   const row = serviceRow(service);
   const offered = isServiceOffered(service, stationServices);
@@ -199,6 +224,21 @@ export function serviceReadinessRecommendation(state, entity, stationServices = 
 export function serviceQuote(type, state, entity) {
   const p = state && state.player || {};
   const credits = playerCredits(state);
+  // One job per verb: the yard queues what it already holds, and a second booking of the same
+  // type can never deliver (the live job already covers the deficit). The disabled path turns
+  // the click into an honest line instead of a second charge.
+  if ((type === 'repair' || type === 'refuel') && playerYardJobs(state).some((j) => j.type === type)) {
+    const verb = type === 'refuel' ? 'refuel' : 'repair';
+    return {
+      amount: 0,
+      cost: 0,
+      detail: 'The yard is already working your ' + verb + ' job.',
+      buttonLabel: type === 'refuel' ? 'Refuel' : 'Repair',
+      disabled: true,
+      disabledReason: 'the yard is already on your ' + verb + ' job — watch it finish or undock to cancel',
+      chips: [{ text: 'yard busy', kind: 'warn' }],
+    };
+  }
   if (type === 'refuel') {
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);
@@ -210,6 +250,9 @@ export function serviceQuote(type, state, entity) {
     }
     const affordableUnits = Math.max(0, Math.floor(credits / SERVICE_PRICES.fuelCrPerUnit));
     if (credits < cost && affordableUnits <= 0) {
+      // INF-089 dead end: broke with an empty tank. The blocking condition is exact and the
+      // remedy names the nearest real credit source (cargo in the hold → Market sell).
+      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
       return {
         amount: 0,
         cost,
@@ -217,6 +260,9 @@ export function serviceQuote(type, state, entity) {
         buttonLabel: 'Refuel',
         disabled: true,
         disabledReason: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        remedy: carrying
+          ? 'Sell cargo at the Market to raise fuel money'
+          : 'Take a station contract or sell salvage, then refuel',
         chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u', kind: 'bad' }],
       };
     }
@@ -394,4 +440,62 @@ export function serviceQuote(type, state, entity) {
     };
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
+}
+
+// ── The yard, made visible ──────────────────────────────────────────────────────────────────
+// stationServices simulates pads, crews and a job queue (and emits service:* events), but no
+// dock surface ever read the slice — a paid job ran invisible, and undocking cancelled it in
+// silence. These pure helpers turn the live state into what the player is owed: where the job
+// stands, and what undocking would do to it.
+
+export function playerYardJobs(state) {
+  const s = state && state.stationServices;
+  const jobs = s && s.player && Array.isArray(s.player.jobs) ? s.player.jobs : [];
+  return jobs.filter(Boolean);
+}
+
+export function yardJobReadout(state) {
+  const jobs = playerYardJobs(state);
+  if (!jobs.length) return null;
+  const s = state.stationServices;
+  const player = s.player;
+  const yardView = (s.stations && s.stations[player.stationId]) || null;
+  const head = jobs[0];
+  const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
+  const frac = head.total > 0 ? Math.max(0, Math.min(1, head.applied / head.total)) : 0;
+  const pct = Math.round(frac * 100) + '%';
+  let status;
+  let value;
+  let detail;
+  let tone;
+  if (player.padIdx < 0) {
+    status = 'Holding';
+    value = 'yard full';
+    const waiting = yardView ? yardView.waitingClients : 0;
+    detail = `No free pad — ${waiting} client${waiting === 1 ? '' : 's'} ahead of you`;
+    tone = 'warn';
+  } else if (head.status === 'active') {
+    status = `${label} underway`;
+    value = pct;
+    const crewsBusy = yardView ? yardView.busyCrews : null;
+    detail = `Pad ${player.padIdx + 1}` +
+      (crewsBusy != null ? ` · ${crewsBusy} crew${crewsBusy === 1 ? '' : 's'} on the floor` : '');
+    tone = 'ok';
+  } else {
+    status = `${label} queued`;
+    value = '0%';
+    detail = 'On the pad — waiting on a free crew';
+    tone = 'warn';
+  }
+  const extra = jobs.length - 1;
+  if (extra > 0) detail += ` · +${extra} more job${extra === 1 ? '' : 's'} queued`;
+  return {
+    label: 'Yard',
+    status,
+    value,
+    detail,
+    tone,
+    frac,
+    aria: `Yard: ${status}, ${value}. ${detail}`,
+  };
 }

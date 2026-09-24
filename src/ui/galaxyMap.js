@@ -1,5 +1,7 @@
 import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
+import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
+import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
 // This screen unifies the two legacy maps (localmap.js = live near-field system, starmap.js =
@@ -22,6 +24,7 @@ import { CSS } from './views/navigationStyles.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
@@ -1007,12 +1010,25 @@ function sectorRecordById(state, id) {
  * countable at glyph scale and just read as texture.
  */
 /** Display name for a sector id, preferring live world state over the authored catalog. */
+// A raw identifier is never a name a player may read. The last resort used to return the id
+// verbatim, so a sector with no live record and no authored entry printed `sector_helios` — and the
+// chart's title rule uppercases, so the screen's hero element read SECTOR_HELIOS, underscore and
+// all (design/frontend/THE_BAR.md §3, tell 1). Turn the id into words instead.
+function humanizeId(id) {
+  const words = String(id)
+    .replace(/^(sector|system|zone|place)[_-]/i, '')
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  return words.join(' ') || String(id);
+}
+
 function sectorNameOf(state, sectorId) {
   if (!sectorId) return '';
   const live = state && state.world && state.world.sectors && state.world.sectors[sectorId];
   if (live && live.name) return String(live.name);
   const authored = SECTOR_BY_ID.get(sectorId);
-  return authored && authored.name ? String(authored.name) : String(sectorId);
+  return authored && authored.name ? String(authored.name) : humanizeId(sectorId);
 }
 
 function sectorBerthCount(state, sectorId) {
@@ -1796,7 +1812,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
       scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
       scanOre: kind === 'asteroid'
-        ? String((e.data && e.data.scanOreGlyph) || asteroidOreGlyph(e.data && e.data.typeId))
+        ? String((e.data && e.data.scanOreGlyph) || asteroidScanGlyph(e.data && e.data.typeId))
         : null,
       // Continuous residency keeps neighbouring sectors' furniture alive, so the LOCAL scope can
       // see gates and stations that belong to somewhere else. Flag them rather than hide them:
@@ -2200,7 +2216,7 @@ export function resolveRouteEngageAction(state) {
   const nav = state && state.nav;
   const executor = nav && nav.executor;
   const status = executor && executor.status;
-  const hidden = { visible: false, enabled: false, label: 'Engage Route', reason: '', event: null };
+  const hidden = { visible: false, enabled: false, label: mapControlLabel('engage'), reason: '', event: null };
   if (!nav) return hidden;
 
   // Already flying it: the control becomes the way out, so a pilot is never trapped in a route.
@@ -2212,19 +2228,19 @@ export function resolveRouteEngageAction(state) {
       const why = executor && executor.interruptReason
         ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
         : '';
-      return { visible: true, enabled: true, label: 'Resume Route', reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
+      return { visible: true, enabled: true, label: mapControlLabel('resume'), reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
     }
-    return { visible: true, enabled: true, label: 'Disengage', reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
+    return { visible: true, enabled: true, label: mapControlLabel('disengage'), reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
   }
 
   if (!nav.route) {
-    return { visible: true, enabled: false, label: 'Engage Route', reason: 'No route plotted — set a course to a sector first', event: null };
+    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'No route plotted — set a course to a sector first', event: null };
   }
   const legs = routeLegCount(nav.route);
   return {
     visible: true,
     enabled: true,
-    label: 'Engage Route',
+    label: mapControlLabel('engage'),
     reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
@@ -2243,6 +2259,18 @@ function executorLegCount(executor) {
 function titleCasePhase(phase) {
   const s = String(phase || '');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/**
+ * Keyboard (`g`) and pad (`accept`) both reach route engage. Unavailable routes do not emit.
+ * @returns {boolean}
+ */
+export function applyMapEngage({ key, pad, state, bus } = {}) {
+  const spec = MAP_CONTROLS.engage;
+  const keyHit = key && String(key).toLowerCase() === spec.key;
+  const padHit = pad === spec.pad;
+  if (!keyHit && !padHit) return false;
+  return emitRouteEngageAction(bus, resolveRouteEngageAction(state));
 }
 
 /** Emit the resolved engage/disengage intent. Returns false when the action is unavailable. */
@@ -2296,7 +2324,7 @@ function injectStyle() {
   if (!HAS_DOC || _styleInjected || document.getElementById(STYLE_ID)) { _styleInjected = true; return; }
   const el = document.createElement('style');
   el.id = STYLE_ID;
-  el.textContent = CSS + '\n' + CHART_HARDWARE;
+  el.textContent = CSS + '\n' + CHART_HARDWARE + '\n' + MAP_WORKBENCH_CSS;
   if (document.head && typeof document.head.appendChild === 'function') document.head.appendChild(el);
   _styleInjected = true;
 }
@@ -2650,7 +2678,9 @@ function sectorHoldingsSignal(state, sectorId) {
 }
 
 function weightedCommodityLabel(lines = []) {
-  const top = Array.from(lines)
+  // `profile && profile.produces` hands in null for a sector with no economy profile; Array.from(null)
+  // threw and took the whole THREAT tab down with it.
+  const top = Array.from(lines || [])
     .filter((line) => line && line.commodityId)
     .sort((a, b) => (Number(b.weight) || 0) - (Number(a.weight) || 0))
     .slice(0, 2)
@@ -3271,6 +3301,9 @@ export const galaxyMapScreen = {
   _weatherEl: null,
   _lastWeatherKey: null,
   _deckEl: null,
+  _navFootEl: null,
+  _lastNavFootKey: null,
+  _chromeRectCache: null,
   _deckTableEl: null,
   _deckSortBtn: null,
   _deckSortMode: 'best',
@@ -3292,24 +3325,48 @@ export const galaxyMapScreen = {
    *
    * `layoutMapLabels` already does deterministic decluttering and already accepts `reserved` — the
    * brief says extend it, not write a second solver, so the new furniture is expressed as more
-   * reserved rectangles rather than as a competing pass. Anything drawn on the shared path after
-   * the level (the cartouche today) belongs here, or labels get placed underneath it and the
-   * overlap defect comes back wearing new geometry.
+   * reserved rectangles rather than as a competing pass. Anything painted on the shared path after
+   * the level belongs here, or labels get placed underneath it and the overlap defect comes back
+   * wearing new geometry. (The navigation answers used to be such a plate; they are DOM in the
+   * foot row now.) The DOM chrome that sits over the full-frame canvas (the lens rail, the
+   * inspector, the foot) is reserved too: those regions are words on hairlines now, not opaque
+   * fields, so a label placed under them prints through the words.
    */
   _reservedLabelRects(w, h, extra = []) {
     const rects = Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
-    const rows = this._lastNavContext && this._lastNavContext.rows;
-    const bounds = navCartoucheBounds(rows ? rows.length : 0, w, h);
-    if (bounds) {
+    for (const rect of this._chromeLabelRects(w, h)) rects.push(rect);
+    return rects;
+  },
+
+  /**
+   * Canvas-space rectangles of the DOM regions laid over the chart. Measured at most every 250 ms
+   * (and whenever the canvas size changes) so a LOCAL-scale draw at display refresh does not force
+   * a layout per frame. Headless fixtures hand back a full-frame rect for every element; anything
+   * covering half the canvas or more is not a chrome region and is skipped.
+   */
+  _chromeLabelRects(w, h) {
+    if (!HAS_DOC || !this._root || !this._canvas || typeof this._canvas.getBoundingClientRect !== 'function') return [];
+    const now = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+      ? performance.now() : 0;
+    const cache = this._chromeRectCache;
+    if (cache && cache.w === w && cache.h === h && now - cache.at < 250) return cache.rects;
+    const frame = this._canvas.getBoundingClientRect();
+    const rects = [];
+    for (const selector of ['.gm-left-rail', '.gm-right-inspector', '.gm-apron']) {
+      const el = typeof this._root.querySelector === 'function' ? this._root.querySelector(selector) : null;
+      if (!el || typeof el.getBoundingClientRect !== 'function') continue;
+      const r = el.getBoundingClientRect();
+      const width = Number(r && r.width) || 0;
+      const height = Number(r && r.height) || 0;
+      if (!(width > 0 && height > 0) || width * height >= w * h * 0.5) continue;
       rects.push({
-        // A few pixels of breathing room, so a label may not merely avoid overlapping the plate but
-        // must clear its edge — abutting text reads as an overlap even when it technically is not.
-        x: bounds.x - 4,
-        y: bounds.y - 4,
-        width: bounds.width + 8,
-        height: bounds.height + 8,
+        x: (Number(r.left) || 0) - (Number(frame.left) || 0) - 8,
+        y: (Number(r.top) || 0) - (Number(frame.top) || 0) - 8,
+        width: width + 16,
+        height: height + 16,
       });
     }
+    this._chromeRectCache = { w, h, at: now, rects };
     return rects;
   },
 
@@ -3580,10 +3637,10 @@ export const galaxyMapScreen = {
     if (typeof rootEl.setAttribute === 'function') rootEl.setAttribute('data-fh-register', 'bench');
     if (rootEl.dataset) rootEl.dataset.kReady = '0';
     if (rootEl.style && typeof rootEl.style.setProperty === 'function') {
-      rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
+      rootEl.style.setProperty('--gm-apron-h', 'clamp(200px, 30vh, 300px)');
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
-            <button class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
+            <button ${mapControlAttrs('layer')} class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
               <span class="gm-layer-ico" aria-hidden="true">${dpIcon(LAYER_KIT_ICON[layer.id] || 'scan', 18)}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
@@ -3605,7 +3662,7 @@ export const galaxyMapScreen = {
             </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
           <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
-    rootEl.innerHTML = navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml });
+    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml }));
 
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
@@ -3742,6 +3799,9 @@ export const galaxyMapScreen = {
     this._ribbonEl = rootEl.querySelector('#gm-route-ribbon');
     this._weatherEl = rootEl.querySelector('#gm-crest-weather');
     this._deckEl = rootEl.querySelector('#gm-cargo-deck');
+    this._navFootEl = rootEl.querySelector('#gm-navfoot');
+    this._lastNavFootKey = null;
+    this._chromeRectCache = null;
     this._deckTableEl = rootEl.querySelector('#gm-deck-table');
     this._deckSortBtn = rootEl.querySelector('#gm-deck-sort');
     this._localModelDirty = true;
@@ -4511,6 +4571,12 @@ export const galaxyMapScreen = {
     // map-close key; Enter/Space/letters/slash keep their native text-entry behavior.
     if (textEntry && key !== 'escape') return false;
 
+    if (applyMapEngage({ key, state: (ctx || this._ctx) && (ctx || this._ctx).state, bus: (ctx || this._ctx) && (ctx || this._ctx).bus })) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      this._updateEngageControl();
+      return true;
+    }
+
     // Keyboard primary action mirrors the inspector button for owned bases. Text-entry controls
     // keep native Enter/Space behavior; the global UI input router normally filters them before
     // this handler, and this local guard keeps direct/synthetic dispatch safe too.
@@ -5138,37 +5204,18 @@ export const galaxyMapScreen = {
   /**
    * OVERVIEW — never empty, and never a wall.
    *
-   * With a selection it shows that selection's detail. With NO selection it answers the four
-   * navigation questions from the same `_navContext` object the on-canvas cartouche reads, then
-   * the pocket-careers line and a short click hint. All four rows live in one section so the
-   * default panel stays compact.
+   * With a selection it shows that selection's detail. With NO selection it shows the
+   * pocket-careers line and a short click hint. The four navigation answers are NOT repeated here:
+   * the foot band (`#gm-navfoot`, `_updateNavFoot`) carries them at every scale and window size,
+   * and the same sentence twice on one screen reads as a mistake.
    */
   _overviewTabHtml(state, selectionHtml) {
     if (selectionHtml) return selectionHtml;
-    const nav = this._navContext(state);
-    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
-    // The cartouche already paints these four rows on the chart itself; repeating them verbatim
-    // made the same sentence read twice on one screen. Keep the DOM copy only as the fallback
-    // for windows too small to carry the cartouche (navCartoucheBounds returns null there).
-    const w = this._canvas ? this._canvas.width / this._dpr : 0;
-    const h = this._canvas ? this._canvas.height / this._dpr : 0;
-    const cartoucheVisible = !!navCartoucheBounds(rows.length, w, h);
-    const navHtml = cartoucheVisible ? '' : rows.map((row) => {
-      const detail = row.detail
-        ? `<div class="gm-nav-row-d">${escapeMapHtml(row.detail)}</div>`
-        : '';
-      return `<div class="gm-nav-row" data-tone="${escapeMapHtml(row.tone || '')}">
-        <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
-        <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
-        ${detail}
-      </div>`;
-    }).join('');
     // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
     // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
     // no-selection panel never grows a block that says nothing.
     const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
-      ${navHtml ? `<div class="gm-ins-section">${navHtml}</div>` : ''}
       ${careersHtml}
       <div class="gm-ins-section">
         <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
@@ -5246,7 +5293,7 @@ export const galaxyMapScreen = {
           ? ` · MODEL ${(lane.modelDeltaPct >= 0 ? '+' : '')}${Math.round(lane.modelDeltaPct)}%`
           : '';
         return `
-        <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
+        <button ${mapControlAttrs('lane')} class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
           <span class="gm-tl-head"><span>${sourceGlyph} ${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">${modelish ? '~' : ''}+${profit} cr</span></span>
           <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min · risk ${riskPct}%${ageLabel}${modelDelta}</span>
         </button>`;
@@ -5292,7 +5339,7 @@ export const galaxyMapScreen = {
         compact: true,
       });
 
-    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
+    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString('en-US') : '0';
     const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
     const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
 
@@ -5433,7 +5480,7 @@ export const galaxyMapScreen = {
     const pallasCards = pallasHiddenCacheMapReadouts(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
-      <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
+      <button ${mapControlAttrs('world-site')} class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
         data-world-site-sector="${escapeMapHtml(marker.sectorId)}"
         aria-label="Inspect World Site ${escapeMapHtml(marker.name)}"
         aria-pressed="${!!(t && t.id === marker.id)}">
@@ -5441,7 +5488,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-row-val">${escapeMapHtml(marker.stageLabel)}</span>
       </button>`).join('');
     const rumorRows = rumorCards.map((rumor) => `
-      <button class="gm-site-row" type="button" data-frontier-rumor-id="${escapeMapHtml(rumor.rumorId)}"
+      <button ${mapControlAttrs('frontier-rumor')} class="gm-site-row" type="button" data-frontier-rumor-id="${escapeMapHtml(rumor.rumorId)}"
         data-frontier-rumor-sector="${escapeMapHtml(rumor.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(rumor.name)} search area"
         aria-pressed="${!!(t && t.id === rumor.rumorId)}">
@@ -5451,7 +5498,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(rumor.objective)}</span>
       </button>`).join('');
     const vestaRows = vestaCards.map((cache) => `
-      <button class="gm-site-row" type="button" data-vesta-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+      <button ${mapControlAttrs('vesta-cache')} class="gm-site-row" type="button" data-vesta-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
         data-vesta-cache-sector="${escapeMapHtml(cache.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
         aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
@@ -5461,7 +5508,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
       </button>`).join('');
     const pallasRows = pallasCards.map((cache) => `
-      <button class="gm-site-row" type="button" data-pallas-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+      <button ${mapControlAttrs('pallas-cache')} class="gm-site-row" type="button" data-pallas-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
         data-pallas-cache-sector="${escapeMapHtml(cache.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
         aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
@@ -5541,7 +5588,7 @@ export const galaxyMapScreen = {
       const plot = resolveGalaxyMapPlotAction(state, t);
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
-    const html = acts.map((a) => `<button class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+    const html = acts.map((a) => `<button ${mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
       host.innerHTML = html;
@@ -5609,7 +5656,7 @@ export const galaxyMapScreen = {
 
     if (!this._tabButtons.length) {
       host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -5715,7 +5762,11 @@ export const galaxyMapScreen = {
     const player = playerEntity(state);
     const sectorId = currentSectorId(state);
     const sector = sectorRecordById(state, sectorId);
-    const sec = Number.isFinite(Number(sector && sector.security)) ? Number(sector.security) : 0.5;
+    // `sector &&` short-circuits to null, Number(null) is 0, and 0 is finite — so the guard passed
+    // with no sector and the next read threw. Every station, range and chart shot on the bench was
+    // printing "Cannot read properties of null (reading 'security')" from exactly here, and the
+    // header weather stopped updating for the rest of that frame.
+    const sec = sector && Number.isFinite(Number(sector.security)) ? Number(sector.security) : 0.5;
     const local = player && player.pos ? globalToSectorLocalForSector(player.pos, sectorId) : null;
     const zone = local ? zoneAt(sectorId, local.x, local.z) : null;
     const ecology = regionalEcologyReadout(state, sectorId);
@@ -5803,10 +5854,36 @@ export const galaxyMapScreen = {
     `;
   },
 
+  /**
+   * The four navigation answers as the foot band: POSITION / TRACKING / DESTINATION / NEXT LEG,
+   * each a key-value readout (label, value, detail) in `resolveMapNavContext` order. Change-keyed,
+   * because `_draw` runs at display refresh at LOCAL scale and the rows only change when the answer
+   * does. The row classes (`gm-nav-row`, `-k`, `-v`, `-d`, `data-tone`) are the contract the
+   * journey steps read the answers from, so they stay the same names the inspector fallback used.
+   */
+  _updateNavFoot(nav) {
+    if (!HAS_DOC || !this._navFootEl) return;
+    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
+    const key = rows.map((row) => `${row.key}|${row.value}|${row.detail || ''}|${row.tone || ''}`).join('#');
+    if (this._lastNavFootKey === key) return;
+    this._lastNavFootKey = key;
+    this._navFootEl.innerHTML = rows.map((row) => {
+      const detail = row.detail
+        ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>`
+        : '';
+      return `<div class="gm-nav-row" data-nav-row="${escapeMapHtml(row.key || '')}" data-tone="${escapeMapHtml(row.tone || '')}">
+          <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
+          <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
+          ${detail}
+        </div>`;
+    }).join('');
+  },
+
   _updateCargoDeck(state) {
     if (!HAS_DOC || !this._deckTableEl) return;
     if (!state) {
       this._deckTableEl.innerHTML = '';
+      if (this._deckEl) this._deckEl.hidden = true;
       return;
     }
     if (this._deckSortBtn) {
@@ -5829,6 +5906,10 @@ export const galaxyMapScreen = {
       includeHeldCargo: true,
       sortBy: this._deckSortMode,
     });
+    // No lane, no band. The empty state used to hold a wide field across half the foot with three
+    // lines of prose in it; the ECONOMY tab still says how to seed lanes. The copy stays in the DOM
+    // (hidden) so a fixture reading the table still finds the empty state.
+    if (this._deckEl) this._deckEl.hidden = !this._deckRoutes.length;
     if (!this._deckRoutes.length) {
       this._deckTableEl.innerHTML = `
         <div class="gm-deck-empty">
@@ -5857,7 +5938,7 @@ export const galaxyMapScreen = {
         ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
         : '';
       return `
-        <button class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
+        <button ${mapControlAttrs('deck-route')} class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
                 aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
           <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
           <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
@@ -5989,7 +6070,7 @@ export const galaxyMapScreen = {
         actionsEl.innerHTML = RIBBON_ACTION_IDS.map((id) => {
           const a = ribbon.actions[id];
           if (!a) return '';
-          return `<button class="gm-ribbon-btn k-word k-word--body fh-key fh-key--small" type="button" data-ribbon-action="${a.id}"
+          return `<button ${mapControlAttrs(a.id)} class="gm-ribbon-btn k-word k-word--body fh-key fh-key--small" type="button" data-ribbon-action="${a.id}"
             ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}"
             data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
         }).join('');
@@ -6062,7 +6143,7 @@ export const galaxyMapScreen = {
           const tracked = m.id === trackedId;
           const dest = m.destSectorId || (m.params && m.params.sectorId) || null;
           const destName = dest ? escapeMapHtml(sectorNameOf(state, dest)) : 'No fixed destination';
-          return `<button class="gm-rail-item k-row${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true" aria-selected="true"' : ''}>
+          return `<button ${mapControlAttrs('rail-mission')} class="gm-rail-item k-row${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true" aria-selected="true"' : ''}>
             <span class="gm-rail-item-t k-row__name">${tracked ? '<span class="gm-rail-track-g" aria-hidden="true">◆</span>' : ''}${escapeMapHtml(missionSummary(m))}</span>
             <span class="gm-rail-item-s k-row__sub">${destName}${tracked ? ' · tracked' : ''}</span>
           </button>`;
@@ -6074,12 +6155,12 @@ export const galaxyMapScreen = {
     const bmHost = openOf('bookmarks') && this._root.querySelector('#gm-rail-bookmarks');
     if (bmHost) {
       const html = `${this._bookmarks.length
-        ? this._bookmarks.map((b, i) => `<button class="gm-rail-item k-row" type="button" data-rail-bookmark="${i}">
+        ? this._bookmarks.map((b, i) => `<button ${mapControlAttrs('rail-bookmark')} class="gm-rail-item k-row" type="button" data-rail-bookmark="${i}">
             <span class="gm-rail-item-t k-row__name">${escapeMapHtml(b.label)}</span>
             <span class="gm-rail-item-s k-row__sub">${Math.round(b.focusGlobal.x)}, ${Math.round(b.focusGlobal.z)} · ${escapeMapHtml(formatDistanceWU(b.spanWU))} span</span>
           </button>`).join('')
         : '<div class="gm-ins-note">No bookmarks. Bookmark the current view to come back to it.</div>'}
-        <button class="gm-ins-btn gm-rail-add k-word k-word--body" type="button" data-rail-bookmark-add>Bookmark this view</button>`;
+        <button ${mapControlAttrs('bookmark-add')} class="gm-ins-btn gm-rail-add k-word k-word--body" type="button" data-rail-bookmark-add>${mapControlLabel('bookmark-add')}</button>`;
       if (bmHost.innerHTML !== html) bmHost.innerHTML = html;
     }
 
@@ -6125,7 +6206,7 @@ export const galaxyMapScreen = {
       // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
       // there". `data-rail-alt` stays as the activation key. Each option states its own cost in
       // words — hops, fuel and worst-leg interdiction — so the comparison never rests on colour.
-      rows.push(`<button class="gm-rail-item k-row${same ? ' is-current' : ''}" type="button"
+      rows.push(`<button ${mapControlAttrs('route-option')} class="gm-rail-item k-row${same ? ' is-current' : ''}" type="button"
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
@@ -6752,10 +6833,7 @@ export const galaxyMapScreen = {
     // the scope remembers. GALAXY is excluded: at that scale nothing is reading local contacts.
     if (level !== 'galaxy') this._syncLocalIntel(state);
 
-    // Resolved BEFORE the level dispatch so each level can reserve the cartouche's rectangle in the
-    // label solver, and drawn AFTER it so nothing paints over the readout. Both halves matter: the
-    // reservation is what keeps a sector label from being placed under the plate in the first place,
-    // and it needs the row count before any label is laid out.
+    // Resolved once per frame; the foot band and the framing controls both read this one object.
     const navContext = this._navContext(state);
     this._lastNavContext = navContext;
 
@@ -6763,11 +6841,13 @@ export const galaxyMapScreen = {
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
 
-    // THE NAVIGATION CARTOUCHE — drawn on the SHARED path, after the level, so the four answers are
+    // THE NAVIGATION FOOT — refreshed on the SHARED path, after the level, so the four answers are
     // present at every scale by construction. Putting it inside the three level draws would let a
     // future edit to any one of them silently drop the readout at that scale, which is exactly the
-    // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces.
-    drawNavCartouche(g, navContext.rows, w, h, { title: level.toUpperCase() });
+    // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces. It is DOM in the layout's foot
+    // row, not a plate painted on the canvas: the painted plate sat under the DOM foot, whose field
+    // printed over half of it.
+    this._updateNavFoot(navContext);
     this._syncFramingControls(navContext);
 
     // SLICE C: the ribbon rides the shared draw path for the same reason the cartouche does — so
@@ -7334,6 +7414,23 @@ export const galaxyMapScreen = {
       });
       this._goalLabelPlacement = goalLabelPos;
     }
+    // The operator tag ("YOU") is painted last at a fixed offset up-right of the ship, outside the
+    // solver. Block its rectangle too, or the home sector's name is placed straight through it.
+    if (model.player && model.player.drawPos) {
+      const opText = mapOperatorLabel(state);
+      if (opText) {
+        g.save();
+        g.font = FONT_MONO(600, 8);
+        const opW = g.measureText(opText).width;
+        g.restore();
+        galaxyReserved.push({
+          x: sx(model.player.drawPos.x) + 14 - 3,
+          y: sy(model.player.drawPos.z) - 9 - 9,
+          width: opW + 6,
+          height: 18,
+        });
+      }
+    }
     const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
       reserved: this._reservedLabelRects(w, h, galaxyReserved),
     });
@@ -7449,20 +7546,8 @@ export const galaxyMapScreen = {
     const labelCandidates = [];
     setMapCanvasAriaLabel(this._canvas, 'system', this._layers.holdings ? model.ownership : []);
 
-    // Header sector plate: brass index tick + Saira name, quiet and machined.
-    g.save();
-    g.fillStyle = INK.brass;
-    g.beginPath();
-    g.moveTo(16, 15); g.lineTo(22, 18); g.lineTo(16, 21); g.closePath();
-    g.fill();
-    g.fillStyle = hexToRgba(INK.ink0, 0.85);
-    g.font = FONT_DISPLAY(600, 13);
-    g.textAlign = 'left'; g.textBaseline = 'top';
-    g.fillText(String(model.sectorName || '').toUpperCase(), 27, 13);
-    g.font = FONT_MONO(500, 8);
-    g.fillStyle = INK.ink2;
-    g.fillText('SYSTEM SURVEY', 27, 30);
-    g.restore();
+    // No sector stamp in the canvas corner: the title lockup already names the sector, and the
+    // stamp was 8px type in the page margin, the only place the chart printed below the 12px floor.
 
     // Player position marker on the system map: amber heading triangle with a white keyline.
     // This mark was already here, but it projected the GLOBAL player position onto a sector-local
@@ -7562,7 +7647,7 @@ export const galaxyMapScreen = {
         const cz = Number(f.center && f.center.z) || 0;
         const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
         const fx = sx(cx), fy = sz(cz), fr = radius * pxPerWU;
-        const glyph = asteroidOreGlyph(f.type);
+        const glyph = asteroidScanGlyph(f.type);
         g.save();
         g.strokeStyle = hexToRgba(INK.brass, 0.30);
         g.fillStyle = hexToRgba(INK.brass, 0.045);
@@ -8658,180 +8743,6 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   g.restore();
 }
 
-/**
- * THE NAVIGATION CARTOUCHE — the four always-present answers, painted on the chart itself.
- *
- * Deliberately NOT a DOM panel. ADR D9.9 rejects new permanent panels outright: the reported
- * density paradox ("too little useful information, yet crowded") is a progressive-disclosure
- * failure, and a fifth rail would make it worse. A cartouche is what a paper survey chart already
- * has — the block in the corner that tells you what you are looking at — so this is in-identity
- * furniture rather than added UI, it costs no layout, and it cannot push the chart smaller.
- *
- * Tone maps to colour AND to a leading glyph AND to weight, never to colour alone:
- *   TRACKED -> filled brass tick + bright ink   (the only tone permitted bright gold)
- *   PLAIN   -> hairline tick + normal ink
- *   MUTED   -> open dash + dimmed ink
- */
-/**
- * The cartouche's geometry, derived in ONE place so the drawer and the label declutterer cannot
- * disagree about where it is. A reserved rectangle that drifted from the plate it describes would
- * silently reintroduce the marker-overlap defect it exists to prevent.
- *
- * Returns null when the chart is too small to carry a cartouche at all.
- */
-function navCartoucheBounds(rowCount, w, h) {
-  if (!(rowCount > 0)) return null;
-  // Two 12px lines per row (label over value) need 28px: at 26 the value line started 10px under
-  // the label and the two printed through each other on every frame.
-  const rowH = 28;
-  const padX = 12;
-  const padY = 10;
-  const boxW = Math.min(300, Math.max(212, w * 0.26));
-  const boxH = padY * 2 + rowCount * rowH;
-  // A chart this narrow has nowhere to put a cartouche without covering the marks it describes.
-  // Withholding it is better than occluding the thing the pilot is reading.
-  if (w < 420 || h < boxH + 90) return null;
-  return { x: 14, y: h - boxH - 14, width: boxW, height: boxH, rowH, padX, padY };
-}
-
-function drawNavCartouche(g, rows, w, h, options = {}) {
-  if (!Array.isArray(rows) || !rows.length) return;
-  const bounds = navCartoucheBounds(rows.length, w, h);
-  if (!bounds) return;
-  const { rowH, padX, padY, width: boxW, height: boxH, x: x0, y: y0 } = bounds;
-
-  g.save();
-  g.translate(x0, y0);
-
-  // Plate: the chart's glass, painted — the same pane the DOM regions wear. A smoked face falling
-  // away from the one upper-left light, a reflection plane across its upper third, seated in a dark
-  // line with a lit top and left rim and a shadowed lip.
-  const face = g.createLinearGradient(0, 0, 0, boxH);
-  face.addColorStop(0, 'rgba(17, 21, 27, 0.9)');
-  face.addColorStop(1, 'rgba(7, 9, 12, 0.94)');
-  g.fillStyle = face;
-  g.fillRect(0, 0, boxW, boxH);
-  const spec = g.createLinearGradient(0, 0, boxW * 0.21, boxH);
-  spec.addColorStop(0, 'rgba(255, 250, 240, 0.075)');
-  spec.addColorStop(0.27, 'rgba(255, 250, 240, 0.028)');
-  spec.addColorStop(0.285, 'rgba(255, 250, 240, 0)');
-  g.fillStyle = spec;
-  g.fillRect(0, 0, boxW, boxH);
-  g.lineWidth = 1;
-  g.strokeStyle = 'rgba(2, 3, 5, 0.92)';
-  g.strokeRect(0.5, 0.5, boxW - 1, boxH - 1);
-  g.beginPath(); g.moveTo(2, 1.5); g.lineTo(boxW - 2, 1.5);
-  g.strokeStyle = 'rgba(255, 236, 204, 0.3)'; g.stroke();
-  g.beginPath(); g.moveTo(1.5, 2); g.lineTo(1.5, boxH - 2);
-  g.strokeStyle = 'rgba(255, 236, 204, 0.12)'; g.stroke();
-  g.beginPath(); g.moveTo(2, boxH - 1.5); g.lineTo(boxW - 2, boxH - 1.5);
-  g.strokeStyle = 'rgba(0, 0, 0, 0.5)'; g.stroke();
-
-  // The scale legend sits in the plate's lower right; the last value is fitted short of it.
-  let titleW = 0;
-  if (options.title) {
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    titleW = g.measureText(options.title).width;
-    setLetterSpacing(g, '0px');
-  }
-
-  let y = padY;
-  rows.forEach((row, index) => {
-    const tracked = row.tone === NAV_ROW_TONE.TRACKED;
-    const muted = row.tone === NAV_ROW_TONE.MUTED;
-    const last = index === rows.length - 1;
-
-    // Leading lamp — the non-colour half of the tone signal: lit and glowing when tracked, a dark
-    // lamp when plain, no lamp (an open dash) when muted.
-    const lx = padX - 1.5;
-    const ly = y + 7;
-    if (tracked) {
-      const glow = g.createRadialGradient(lx, ly, 0, lx, ly, 7);
-      glow.addColorStop(0, '#fff6df');
-      glow.addColorStop(0.22, '#ffd98c');
-      glow.addColorStop(0.5, '#f2b950');
-      glow.addColorStop(0.72, 'rgba(242, 185, 80, 0.28)');
-      glow.addColorStop(1, 'rgba(242, 185, 80, 0)');
-      g.fillStyle = glow;
-      g.beginPath(); g.arc(lx, ly, 7, 0, Math.PI * 2); g.fill();
-    } else if (muted) {
-      g.strokeStyle = INK.ink2;
-      g.beginPath(); g.moveTo(lx - 3, ly); g.lineTo(lx + 3, ly); g.stroke();
-    } else {
-      g.fillStyle = '#17140f';
-      g.beginPath(); g.arc(lx, ly, 3.2, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-      g.stroke();
-      g.fillStyle = 'rgba(255, 236, 204, 0.16)';
-      g.beginPath(); g.arc(lx - 0.8, ly - 0.9, 1, 0, Math.PI * 2); g.fill();
-    }
-
-    // Sizes are written at the 12px floor. The label is an etched legend (the condensed face in
-    // caps, tracked out); the value is the reading face.
-    g.textAlign = 'left';
-    g.textBaseline = 'top';
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    g.fillStyle = 'rgba(232, 226, 212, 0.56)';
-    g.fillText(row.label, padX + 8, y);
-    setLetterSpacing(g, '0px');
-
-    g.font = CARTOUCHE_VALUE;
-    g.fillStyle = tracked ? '#ffd98c' : (muted ? INK.ink2 : '#e8e2d4');
-    const budget = boxW - padX * 2 - 10 - (last && titleW ? titleW + 14 : 0);
-    g.fillText(fitCartoucheText(g, row.value, budget), padX + 8, y + 13);
-
-    if (row.detail) {
-      g.font = FONT_MONO(500, 12);
-      g.fillStyle = 'rgba(232, 226, 212, 0.5)';
-      const detailW = g.measureText(row.detail).width;
-      // Detail is right-aligned against the plate edge so the four value strings stay on one
-      // reading column no matter how long each detail happens to be.
-      if (detailW < boxW - padX * 2 - 90) {
-        g.textAlign = 'right';
-        g.fillText(row.detail, boxW - padX, y + 1);
-        g.textAlign = 'left';
-      }
-    }
-    y += rowH;
-  });
-
-  if (options.title) {
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    g.fillStyle = 'rgba(232, 226, 212, 0.42)';
-    g.textAlign = 'right';
-    g.textBaseline = 'bottom';
-    g.fillText(options.title, boxW - padX + 1.6, boxH - 6);
-    setLetterSpacing(g, '0px');
-  }
-  g.restore();
-}
-
-/** The cartouche's two voices: the etched legend (Archivo, condensed caps) and the reading face. */
-const CARTOUCHE_ETCH = 'condensed 700 12px Archivo, "Instrument Sans", system-ui, sans-serif';
-const CARTOUCHE_VALUE = '600 13px "Instrument Sans", system-ui, sans-serif';
-/** letterSpacing is a newer canvas property; where it is missing the legend is simply untracked. */
-function setLetterSpacing(g, value) {
-  if (g && 'letterSpacing' in g) g.letterSpacing = value;
-}
-
-/** Ellipsize to a pixel budget. A cartouche that overflows its plate is worse than a short label. */
-function fitCartoucheText(g, text, maxWidth) {
-  const s = String(text == null ? '' : text);
-  if (!s) return '';
-  if (g.measureText(s).width <= maxWidth) return s;
-  let lo = 0;
-  let hi = s.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (g.measureText(`${s.slice(0, mid)}…`).width <= maxWidth) lo = mid;
-    else hi = mid - 1;
-  }
-  return `${s.slice(0, Math.max(1, lo))}…`;
-}
-
 /** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
 function drawHostileMark(g, x, y, rot) {
   g.save();
@@ -9199,16 +9110,6 @@ const HAZARD_CANVAS_GLYPHS = {
   debris: 'debris',
 };
 
-function asteroidOreGlyph(typeId) {
-  switch (typeId) {
-    case 'ast_metallic': return 'Fe';
-    case 'ast_icy': return 'H₂O';
-    case 'ast_crystalline': return 'Cr';
-    case 'ast_gas_cloud': return 'Gas';
-    case 'ast_rare_exotic': return 'Xe';
-    default: return 'Si';
-  }
-}
 
 /**
  * A faction hue is data, but a dark hue set as 12px text on the chart's ground does not read (the

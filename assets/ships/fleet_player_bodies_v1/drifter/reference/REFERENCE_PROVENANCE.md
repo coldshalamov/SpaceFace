@@ -16,3 +16,87 @@ Generated with the session image tool before modeling. Construction crops, not b
 | `nacelle_housing_fairing.png` | drive nacelle | Cursor GenerateImage, 2026-08-19 | Nacelle grown out of the flank with a hollow bell, collar, and vanes | Fairing into the chine; flare you can see into; vanes with roots | Cylinder glued on; glowing disc; gold jewelry |
 | `winglet_root_airfoil.png` | winglet root | Cursor GenerateImage, 2026-08-19 | Thick root, thinner tip, fillet into the flank, separate flap with a slot | Diamond/airfoil section; visible gap at the flap | Card of uniform thickness; Hornet interceptor delta |
 | `cargo_well_rim_interior.png` | ventral cargo well | Cursor GenerateImage, 2026-08-19 | Skin-breaking well with wall thickness and a cassette inside | Hole + rim + rails below the skin | Dark plate on the skin; glowing grate |
+
+## 2026-09-21 (C14 reference-first)
+
+Generated with Cursor GenerateImage before modeling C14. Construction crops, not beauty
+shots. Cycle-18 files listed above are provenance-only; pixels were not in-tree.
+
+Hitch chase stills used as form-language input (nested same-value slabs), not identity.
+
+| File | Component | Tool | What it is used to decide | Selected | Rejected |
+|---|---|---|---|---|---|
+| `c14/drifter_c14_workboat_planform_chase.png` | primary hull planform | Cursor GenerateImage, 2026-09-21 | Hard-chine workboat diamond: wide waist IS the hull; cargo well a hole | Single beam; well as cut; no paddle lobes | Capsule tube; dark saddlebags; glued boxes |
+| `c14/drifter_c14_sideboard_as_beam.png` | chine / sideboard | Cursor GenerateImage, 2026-09-21 | Sideboard is the gunwale of the same shell | YZ hard-chine station; small deck lip | Circular tube section; paddle glued to a sausage |
+| `c14/drifter_c14_cargo_well_cut.png` | dorsal cargo well | Cursor GenerateImage, 2026-09-21 | Boolean hole with rim, liner, crates, winch | Hole you can see into | Flush lid; painted rectangle |
+| `c14/drifter_c14_greenhouse_framed_hole.png` | greenhouse | Cursor GenerateImage, 2026-09-21 | Framed panes in a cage over a cut tub | Thin glass in a metal cage | Solid brick; fighter bubble; seats |
+
+## 2026-09-21 (C15 abeam leftover)
+
+C14 play+close killed tube/paddle. Abeam still called a raised spine with darker
+flanking volumes and a hard root crease. C15 refs freeze that leftover before
+the loft change. Cycle-14 files stay selected for planform / well / greenhouse.
+
+| File | Component | Tool | What it is used to decide | Selected | Rejected |
+|---|---|---|---|---|---|
+| `c15/drifter_c15_abeam_continuous_beam.png` | abeam hull silhouette | Cursor GenerateImage, 2026-09-21 | One continuous faceted beam from the side-top; nacelles grown from aft flanks; well a hole | Sloped topside; no saddlebag split | Raised cabin spine; dark paddle sponsons |
+| `c15/drifter_c15_yz_sloped_chine.png` | YZ station | Cursor GenerateImage, 2026-09-21 | Hard-chine trapezoid: small lip, angled topside, no vertical slab | SELECTED tub/trapezoid | REJECT circular tube + paddle lobes |
+
+## 2026-09-21 (C16 abeam silhouette)
+
+C15 play+close stayed TUBE_PADDLE NO. Abeam still called raised spine + darker
+flanks + hard root crease. C16 changes the YZ station (not more fairing on
+separate sponson meshes). Separate nacelle bodies are deleted; aft hull
+stations widen so the drives sit in the primary loft.
+
+| File | Component | Tool | What it is used to decide | Selected | Rejected |
+|---|---|---|---|---|---|
+| `c16/drifter_c16_yz_convex_beam.png` | YZ station / abeam outline | Cursor GenerateImage, 2026-09-21 | Convex diamond: max beam at mid-height; sideboard is the slope | SELECTED convex diamond | REJECT lid+vertical walls; REJECT tube+paddles |
+
+## 2026-09-21 (C17 clay abeam value)
+
+C16 geometry (one diamond, nacelle bodies gone) held on shaded. Clay
+`play_chase_abeam` still read a dark longitudinal spine + lighter flanks + a
+hard value/seam: `paint_shell` assigned Deck to the crown (slot 2) and Armor
+to the keel (slot 1), while `apply_clay` only replaced slot 0. Not a new YZ.
+C16 convex-diamond ref stays selected. No generated C17 pixels.
+
+## 2026-09-21 (C18 Hitch-plus skin)
+
+C17 cleared clay+shaded TUBE_PADDLE on all three cameras. Remaining REVISE is
+Hitch formed-shell / skin at D=144. C18 cuts chase-scale girth hoops, inset
+pockets, and athwartship Course bands into the C16 diamond. No new YZ. No
+generated C18 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C19 leftovers)
+
+C18 kept TUBE_PADDLE NO. Remaining REVISE: thin pocket fields between hoops,
+Hitch midship color/greeble at play, Hitch close panel density + circular aft
+nozzle. C19 densifies inter-hoop cuts, midship Mark bands + hardware, and a
+dorsal-facing circular nozzle cut. No new YZ. Mouths not recut. No generated
+C19 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C20 continuous skin)
+
+C19 kept TUBE_PADDLE NO and circular nozzles. Remaining REVISE: interstitial
+fields thinner/smoother than Hitch; midship greeble still loses; close empty
+fields. C20 cuts continuous panel courses that cross girth hoops (not sparse
+pockets), denser midship hardware, closer-spaced field breakup. No new YZ.
+Mouths not recut. No generated C20 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C21 plated shell)
+
+C20 kept TUBE_PADDLE NO. Remaining REVISE: open hoop/rib cage at D=144;
+midship even corrugation; empty inter-rib fields at D=58. C21 does not add
+girth hoops. Inter-hoop bays become shallow plated insets (seams as cuts
+in a sheet). Midship is formed hardware clusters on that skin. Mouths not
+recut. No generated C21 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C22 formed-shell)
+
+C21 kept TUBE_PADDLE NO and killed the cage. Remaining REVISE: flat/cheap
+plate vs Hitch formed-shell massing; midship hardware still loses; sparse
+close breakup around wells. C22 adds overlapping courses / panel steps /
+deeper recesses on the plated skin (no extra hoops), chase-readable midship
+clusters, and well-lip scores outboard of the mouths. Mouths not recut.
+No generated C22 pixels. C16 convex-diamond ref stays selected.

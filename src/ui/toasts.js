@@ -18,7 +18,7 @@
 // control / active-screen fallback — never silently to body when a restorable target exists.
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
-import { admitReceipt, RECEIPT_MAX } from './hudAttention.js';
+import { admitReceipt, RECEIPT_MAX, stuntDetectionReceipt } from './hudAttention.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
@@ -26,7 +26,7 @@ import { bindAutomationPayoffUi } from './automationPayoff.js';
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
 // font-specific glyph coverage and read as a different visual language from the HUD line set).
-const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', credits: 'credits', rep: 'rep' };
+const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', stunt: 'info', credits: 'credits', rep: 'rep' };
 
 export function createToasts(ctx) {
   const { bus } = ctx;
@@ -292,6 +292,7 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindAutomationPayoffUi(bus, () => ctx.state);
 
@@ -340,6 +341,17 @@ function isPlayerCombatActor(state, payload) {
   const playerId = state && state.playerId;
   if (playerId == null) return true;
   return payload.actorId === playerId;
+}
+
+/** VERB-05 — `stunt:trickDetected` becomes one receipt carrying the trick name. */
+export function bindStuntReceipts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  const seen = new Set();
+  bus.on('stunt:trickDetected', (trick) => {
+    const receipt = stuntDetectionReceipt(seen, trick);
+    if (!receipt || typeof bus.emit !== 'function') return;
+    bus.emit('toast', { text: receipt.text, kind: 'stunt', ttl: 3.2, channel: 'stunt' });
+  });
 }
 
 export function bindCombatDenialToasts(bus, getState) {

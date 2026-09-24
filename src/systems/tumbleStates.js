@@ -20,13 +20,16 @@ import {
   MASSLINE_TUMBLE_KIND,
   WEAPON_TUMBLE_KIND,
   WELL_TUMBLE_KIND,
+  isRecovering,
   readTumbleStatus,
   TUMBLE_STATUS_ID,
 } from '../combat/tumbleStatus.js';
 import {
   HITSTUN_IMPULSE_EVENT,
+  isShoveClassHitstunSource,
   readRecentImpulseProvenance,
   resolveHitstunLaw,
+  signedHitSide,
 } from '../combat/impulseKernel.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
@@ -34,6 +37,11 @@ const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
 const RCS_PROVENANCE = 'rcs_disruptor_spike';
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+// INF-027: post-tumble stabilization window. Long enough to read as its own beat (the ship
+// damps spin and thrusts weakly with no guns), short enough to never be helpless. Sim-time
+// stamped on entity data so save/load cannot strand or skip it.
+const TUMBLE_RECOVERY_S = 0.9;
+const TUMBLE_RECOVERY_THRUST_SCALE = 0.35;
 
 const DRIFT_CONTROL = Object.freeze({
   mode: 'drifting',
@@ -85,24 +93,35 @@ export const tumbleStates = {
       const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
       const rcs = e ? this._rcsDisrupt.get(e) : null;
-      if (!tumble && !drifting && !rcs) continue;
+      const recovering = e ? isRecovering(state, e) : false;
+      const recoveryMarker = !!(e && e.data && Number.isFinite(Number(e.data.recoveringUntil)));
+      if (!tumble && !drifting && !rcs && !recovering && !recoveryMarker) continue;
 
       let tumbleActive = !!tumble;
       if (tumbleActive && (!e.alive || e.id === state.playerId)) {
         this._clearTumbleStatus(e, e.alive ? 'player_immune' : 'entity_dead');
+        clearRecovery(e);
         tumbleActive = false;
       }
-      if (!e.alive) continue;
+      if (!e.alive) { clearRecovery(e); continue; }
 
       if (tumbleActive) {
         const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
         if (now >= finite(tumble.data && tumble.data.until, now)) {
           this._clearTumbleStatus(e, 'duration_elapsed');
-          if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
+          // INF-027: the opening ends in stabilization, not in full tactics. The helm keeps
+          // damping spin while a fraction of the AI's thrust comes back and guns stay silent;
+          // massline:recovered closes the beat so the end of the opening is recognizable.
+          const recoverUntil = now + TUMBLE_RECOVERY_S;
+          if (e.data) e.data.recoveringUntil = recoverUntil;
+          if (this.bus) {
+            this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed, recoverUntil });
+            this.bus.emit('massline:recovering', { victimId: e.id, recoverUntil });
+          }
           tumbleActive = false;
         }
       }
-      if (!tumbleActive && !drifting && !rcs) continue;
+      if (!tumbleActive && !drifting && !rcs && !isRecovering(state, e) && !recoveryMarker) continue;
 
       if (tumbleActive) {
         writePhysicsControl(e, recoveryControl(e, dt, tumble.data && tumble.data.kind));
@@ -120,6 +139,25 @@ export const tumbleStates = {
           e.data.intent.moveX = 0;
           e.data.intent.moveZ = 0;
         }
+        continue;
+      }
+      if (isRecovering(state, e)) {
+        // INF-027 stabilization response: residual spin keeps damping through the ordinary
+        // recovery control while disrupted (not dead) thrust answers the helm and guns hold.
+        writePhysicsControl(e, recoveryControl(e, dt, tumble && tumble.data && tumble.data.kind));
+        if (e.data && e.data.intent) {
+          e.data.intent.fire = false;
+          e.data.intent.moveX = finite(e.data.intent.moveX) * TUMBLE_RECOVERY_THRUST_SCALE;
+          e.data.intent.moveZ = finite(e.data.intent.moveZ) * TUMBLE_RECOVERY_THRUST_SCALE;
+          e.data.intent.boost = false;
+          e.data.intent.brake = false;
+        }
+        continue;
+      }
+      if (recoveryMarker) {
+        // The stabilization window just elapsed: tactics resume at full authority downstream.
+        clearRecovery(e);
+        if (this.bus) this.bus.emit('massline:recovered', { victimId: e.id });
         continue;
       }
       writePhysicsControl(e, DRIFT_CONTROL);
@@ -167,7 +205,10 @@ export const tumbleStates = {
       deltaV: finite(payload.relSpeed, finite(payload.massSpeed)),
       attackerId: payload.targetId,
       attackerMass: positive(payload.mass, massOf(entityById(state, payload.targetId))),
-      hitSide: numericParity(payload.victimId) ? 1 : -1,
+      // INF-044 — the spin side comes from the receipt's contact read (kick direction x
+      // contact offset), not the victim id. A mass striking port spins the victim opposite
+      // to one striking starboard; head-on reads fall back to id parity via signedHitSide.
+      hitSide: whipReceiptHitSide(victim, payload),
       requireMassline: true,
       provenance: Object.freeze({
         schemaVersion: 1,
@@ -214,12 +255,16 @@ export const tumbleStates = {
     if (!input.requireMassline && !combatFlag('weaponImpulseConsequences')) return;
 
     const cruise = resolveGovernedCombatSpeed(victim, state, 0);
+    // Shove-class hits (the delivered-impulse weapon family) extend the helm loss to the coast
+    // that carries a light victim about one screen off its line (SHOVE_BEAT_LAW); every other
+    // source keeps the base law alone.
     const law = resolveHitstunLaw({
       deltaV: input.deltaV,
       victimCruise: cruise,
       attackerMass: input.attackerMass,
       victimMass: massOf(victim),
       worldBody: input.worldBody === true,
+      shove: isShoveClassHitstunSource(input.source),
     });
     if (!(law.durationS > 0)) return;
 
@@ -240,8 +285,12 @@ export const tumbleStates = {
       u: law.u,
       k: law.k,
       mF: law.mF,
+      shoveBeatS: law.shoveBeatS,
     });
     if (!scheduled) return;
+    // A fresh forced tumble cancels any stabilization already in progress: the helm is
+    // decontrolled again, not recovering. Stacking and cap rules above are untouched.
+    clearRecovery(victim);
 
     const profile = resolveFlightProfile(victim, state);
     const body = ensurePhysicsBodySpec(victim);
@@ -270,6 +319,7 @@ export const tumbleStates = {
         mF: law.mF,
         u: law.u,
         spin: law.entrySpin,
+        shoveBeatS: law.shoveBeatS,
         durationS: until - startedAt,
         startedAt,
         until,
@@ -362,6 +412,7 @@ function freezeTumbleAnnouncement(payload) {
     mF: finite(payload.mF),
     u: finite(payload.u),
     spin: finite(payload.spin),
+    shoveBeatS: finite(payload.shoveBeatS),
     durationS: finite(payload.durationS),
     startedAt: finite(payload.startedAt),
     until: finite(payload.until),
@@ -370,6 +421,19 @@ function freezeTumbleAnnouncement(payload) {
     time: finite(payload.time),
   });
 }
+
+function clearRecovery(entity) {
+  if (entity && entity.data && entity.data.recoveringUntil != null) delete entity.data.recoveringUntil;
+}
+
+// Retained control literal: writePhysicsControl copies every field into its own retained command
+// record before returning, so callers never observe this object.
+const RECOVERY_CONTROL_SCRATCH = {
+  mode: 'tumbling',
+  force: { x: 0, y: 0, z: 0 },
+  torque: { x: 0, y: 0, z: 0 },
+  source: 'hitstun',
+};
 
 function recoveryControl(entity, dt, kind) {
   const profile = resolveFlightProfile(entity);
@@ -381,12 +445,9 @@ function recoveryControl(entity, dt, kind) {
   const maxAlpha = positive(propulsion && propulsion.yawBrake, finite(profile.angularBrake, 8)) * Math.max(0.05, yaw);
   const error = -finite(entity.angVel, 0);
   const alpha = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
-  return {
-    mode: 'tumbling',
-    force: { x: 0, y: 0, z: 0 },
-    torque: { x: 0, y: 0 + alpha * inertia, z: 0 },
-    source: kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun',
-  };
+  RECOVERY_CONTROL_SCRATCH.torque.y = alpha * inertia;
+  RECOVERY_CONTROL_SCRATCH.source = kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun';
+  return RECOVERY_CONTROL_SCRATCH;
 }
 
 function combatKernel(host) {
@@ -409,6 +470,22 @@ function entityById(state, id) {
 
 function massOf(entity) {
   return positive(entity && (entity.physicsBody && entity.physicsBody.mass || entity.mass), 1);
+}
+
+// INF-044 — resolve the whip tumble's spin side from the receipt's contact read. The kick
+// direction is the incoming relative velocity (the way the victim gets knocked); the contact
+// offset is the receipt's hull point. Legacy receipts without geometry fall back to id parity
+// inside signedHitSide, preserving the old behavior exactly where there is nothing to read.
+function whipReceiptHitSide(victim, payload) {
+  const vel = payload && payload.vel;
+  const pos = payload && payload.pos;
+  if (victim && vel && pos
+    && Number.isFinite(vel.x) && Number.isFinite(vel.z)
+    && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    && Math.hypot(vel.x, vel.z) > 1e-9) {
+    return signedHitSide(victim, { x: vel.x, z: vel.z }, { pos: { x: pos.x, z: pos.z } }, victim.id);
+  }
+  return numericParity(payload && payload.victimId) ? 1 : -1;
 }
 
 function numericParity(value) {

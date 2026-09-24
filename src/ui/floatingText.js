@@ -1,5 +1,5 @@
 // Floating combat text — pooled DOM numbers that pop off entities when they take damage (and a few
-// other beats: ore yield, credits, "SHIELD DOWN", bounty, pickups). Pure presentation: subscribes
+// other beats: ore yield, credits, bounty, pickups). Pure presentation: subscribes
 // to bus events, reads entity transforms via helpers.worldToScreen, never touches sim state. Gated
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
 import { COMMODITIES } from '../data/commodities.js';
@@ -166,7 +166,7 @@ export function createFloatingText(ctx) {
     spawn(String(Math.round(amount)), cls + (big ? ' sf-ft--big' : ''), wx, wz, p.targetId,
       { life: big ? 0.95 : 0.72, vy: big ? 58 : 42, damage: amount, damageClass: cls });
   });
-  bus.on('combat:damage', (p) => { if (p && p.brokeShield) { const e = state.entities.get(p.targetId); if (e) spawn('SHIELD DOWN', 'sf-ft--shielddown', e.pos.x, e.pos.z, null, { life: 1.0, vy: 30 }); } });
+  // INST-14: "SHIELD DOWN" does not float over the fight; alerts/voice floor owns shield-break telemetry.
   bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
   // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
   // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.

@@ -248,6 +248,7 @@ function neutralSelf(entityId) {
     heatFraction: 0,
     disabled: false,
     tumbling: false,
+    recovering: false,
     tethered: false,
     capabilities: Object.freeze([]),
     subsystemFractions: Object.freeze({}),
@@ -279,6 +280,7 @@ function normalizeSelf(value, entityId) {
     heatFraction: saturate(finite(value.heatFraction, 0)),
     disabled: !!value.disabled,
     tumbling: value.tumbling === true,
+    recovering: value.recovering === true,
     tethered: !!value.tethered,
     capabilities: Object.freeze(Array.isArray(value.capabilities) ? [...new Set(value.capabilities)].sort() : []),
     subsystemFractions: Object.freeze(isPlainObject(value.subsystemFractions) ? { ...value.subsystemFractions } : {}),
@@ -369,7 +371,7 @@ function normalizeRoeView(value) {
 function normalizeDoctrineIdView(value) {
   const id = String(value || '');
   return ['interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager',
-    'field_anchor_controller', 'capital_broadside', 'escort_screen'].includes(id)
+    'field_anchor_controller', 'capital_broadside', 'escort_screen', 'pack_pursuit'].includes(id)
     ? id
     : null;
 }

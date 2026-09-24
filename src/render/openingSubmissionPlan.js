@@ -939,6 +939,21 @@ export function createOpeningSubmissionPlan(options = {}) {
     route,
     textureList,
   );
+  // Per-leaf carrier record for the validation's missing direction: a required texture/geometry
+  // id only proves a loss when the leaf that carried it is gone or has gone bare — a still-present
+  // leaf carrying a different resource is admission churn (decode swap, LOD swap) the pre-draw
+  // census already names.
+  const capturedLeafResources = compileSubjects.map((leaf) => {
+    const textures = new Set();
+    for (const material of materialList(leaf).filter(Boolean)) {
+      texturesForMaterial(material, textures);
+    }
+    return {
+      leaf,
+      geometryId: leaf && leaf.geometry ? stableId(leaf.geometry, 'geometry:unknown') : null,
+      textureIds: [...textures].map((texture) => stableId(texture, 'texture:unknown')).sort(),
+    };
+  });
   // Declared pool-owned resources. Pooled VFX/instance batches keep a full-capacity buffer alive
   // while their draw range is empty, so the contributing-leaf census cannot observe them at plan
   // time — yet the first emission submits that same preallocated buffer inside the measured frame.
@@ -1001,6 +1016,7 @@ export function createOpeningSubmissionPlan(options = {}) {
     compileSubjects,
     residencySubjects: compileSubjects,
     textureRefs: textureList,
+    capturedLeafResources,
     // Live refs like compileSubjects/textureRefs: the submission drain admits these drawables so
     // their buffers and shadow-state program variants never first-land inside the measured frame.
     pooledResourceSubjects,
@@ -1179,14 +1195,16 @@ function revalidateProgramBindings(renderer, receipt) {
   const plan = receipt && receipt.plan;
   const revalidation = receipt && receipt.programBindingRevalidation;
   const recorded = receipt && receipt.required && receipt.required.programBindingFailures;
-  if (!plan || !revalidation) return recorded || [];
+  if (!plan || !revalidation) return { failures: recorded || [], keys: [] };
   const scene = plan.scene || null;
   const failures = [];
+  const keys = new Set();
   const seen = new Set();
   const probe = (material, label) => {
     if (!material || seen.has(material)) return;
     seen.add(material);
     const binding = materialProgramBinding(renderer, material, label);
+    for (const key of binding.keys) keys.add(key);
     if (binding.failure) failures.push(binding.failure);
   };
   for (const [index, subject] of (plan.compileSubjects || []).entries()) {
@@ -1201,7 +1219,9 @@ function revalidateProgramBindings(renderer, receipt) {
   for (const failure of revalidation.shadowProgramBindingFailures || []) {
     if (failure != null && String(failure)) failures.push(String(failure));
   }
-  return failures.sort();
+  // The bound keys are as useful as the failures: a program a plan material actually produced —
+  // whenever the driver made it — is captured work, not an unrecorded first-draw admission.
+  return { failures: failures.sort(), keys: [...keys].sort() };
 }
 
 // Refused first draws can compile the exact live subjects behind a still-unbound material.
@@ -1225,7 +1245,7 @@ export function openingSubmissionUnboundSubjects(receipt, validation) {
   return Object.freeze(subjects);
 }
 
-export function validateOpeningSubmissionReceipt(receipt, renderer) {
+export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCensus = null) {
   const info = renderer && renderer.info || {};
   const memory = info.memory || {};
   const currentCounts = {
@@ -1242,6 +1262,27 @@ export function validateOpeningSubmissionReceipt(receipt, renderer) {
   const allowedGeometryIds = unionSet(before.geometryBufferIds, required.geometryBufferIds);
   const allowedTextureIds = unionSet(before.blockingTextureIds, required.blockingTextureIds);
   const allowedShadowIds = unionSet(before.shadowResourceIds, required.shadowResourceIds);
+  // The receipt census runs before the first draw, so resources reaching the prepared scene
+  // between capture and first paint — through the admission handles the pre-submit gate waits
+  // on — used to read as uncaptured on every launch (D25). The pre-draw identity census names
+  // that settled set, and the live plan-material bindings name the programs the plan's own
+  // materials produced inside the draw; both are captured work, and only a resource no
+  // recorded path explains stays flagged.
+  if (firstDrawCensus) {
+    const censusObjects = firstDrawCensus.objects instanceof Map
+      ? [...firstDrawCensus.objects.keys()]
+      : [];
+    if (censusObjects.length) {
+      const planRoute = receipt && receipt.plan && receipt.plan.route || {};
+      const settled = collectResourceIdentitySets(censusObjects, planRoute);
+      for (const id of settled.geometryBufferIds) allowedGeometryIds.add(id);
+      for (const id of settled.blockingTextureIds) allowedTextureIds.add(id);
+      for (const id of settled.shadowResourceIds) allowedShadowIds.add(id);
+    }
+    for (const key of firstDrawCensus.programKeys || []) allowedProgramKeys.add(key);
+  }
+  const bindingRevalidation = revalidateProgramBindings(renderer, receipt);
+  for (const key of bindingRevalidation.keys) allowedProgramKeys.add(key);
   const uncapturedProgramKeys = difference(new Set(currentProgramKeys), allowedProgramKeys);
   const uncapturedGeometryBufferIds = difference(
     new Set(currentResources.geometryBufferIds), allowedGeometryIds,
@@ -1286,7 +1327,7 @@ export function validateOpeningSubmissionReceipt(receipt, renderer) {
     required.shadowResourceIds,
     required.programBindingFailures,
   ].every((value) => Array.isArray(value));
-  const missingProgramBindings = revalidateProgramBindings(renderer, receipt);
+  const missingProgramBindings = bindingRevalidation.failures;
   return freeze({
     ok: !!(planComplete && exactReceipt && receipt.planSchema === OPENING_SUBMISSION_PLAN_SCHEMA
       && missingProgramBindings.length === 0 && uncaptured.length === 0),

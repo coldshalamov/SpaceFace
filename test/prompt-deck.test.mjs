@@ -4,9 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { planLadder, routeDigit, deadlineText, digitIndex } from '../src/ui/promptDeck.js';
+import { planLadder, routeDigit, deadlineText, digitIndex, planSlotClaim } from '../src/ui/promptDeck.js';
 
-const entry = (id, deadlineAt, seq = 0, choices = []) => ({ id, deadlineAt, seq, choices });
+const entry = (id, deadlineAt, seq = 0, choices = [], headline = '') => ({ id, deadlineAt, seq, choices, headline });
 
 test('ladder orders soonest deadline first, offer sequence breaks ties', () => {
   const order = planLadder([
@@ -75,6 +75,37 @@ test('countdown grammar counts whole seconds and stands down to the flight-activ
   assert.equal(deadlineText(null, 10), 'Choose a response. Flight remains active.');
   assert.equal(deadlineText(30, 18, 'SCAN AUTHORIZED'), 'SCAN AUTHORIZED',
     'an explicit status flag replaces the countdown line (the flag slot repeats it)');
+});
+
+test('slot claim mirrors the digit walk — borrowed rail sockets show the printed answers', () => {
+  const entries = [
+    entry('parley', 20, 1, [{ id: 'comply', label: 'COMPLY' }, { id: 'refuse', label: 'REFUSE' }, { id: 'run', label: 'RUN' }]),
+    entry('law', 30, 2, [{ id: 'comply', label: 'COMPLY' }], 'SECTOR LAW'),
+    entry('encounter', 40, 0, [{ id: 'respond', label: 'RESPOND' }, { id: 'log', label: 'LOG' }], 'STRANGE SIGNAL'),
+  ];
+  // Same walk as routeDigit: parley choices 1-3, law comply 4, chip raise 5.
+  assert.deepEqual(planSlotClaim(entries, 'parley'), {
+    slots: [1, 2, 3, 4, 5],
+    answers: ['COMPLY', 'REFUSE', 'RUN', 'COMPLY', 'RAISE STRANGE SIGNAL'],
+  });
+  // A player raise re-orders the claim exactly like the keys: encounter's two choices,
+  // parley's three, then the collapsed law chip.
+  assert.deepEqual(planSlotClaim(entries, 'encounter'), {
+    slots: [1, 2, 3, 4, 5, 6],
+    answers: ['RESPOND', 'LOG', 'COMPLY', 'REFUSE', 'RUN', 'RAISE SECTOR LAW'],
+  });
+});
+
+test('slot claim releases when nothing routes — disabled choices and empty ladders claim nothing', () => {
+  assert.equal(planSlotClaim([], null), null);
+  assert.equal(planSlotClaim([entry('bare', null, 0)], null), null,
+    'a status frame with no choices captures no digits');
+  const disabledOnly = [entry('law', 30, 1, [{ id: 'comply', disabled: true }])];
+  assert.equal(planSlotClaim(disabledOnly, 'law'), null,
+    'an all-disabled frame routes no digit, so the rail stays unclaimed');
+  // Disabled choices never claim a slot: only 'flee' borrows digit 1.
+  const mixed = [entry('law', 30, 1, [{ id: 'comply', label: 'COMPLY', disabled: true }, { id: 'flee', label: 'FLEE' }])];
+  assert.deepEqual(planSlotClaim(mixed, 'law'), { slots: [1], answers: ['FLEE'] });
 });
 
 test('digit parsing covers bare keys and both keypad code families', () => {

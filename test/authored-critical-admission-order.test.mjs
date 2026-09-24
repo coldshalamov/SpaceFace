@@ -439,6 +439,137 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
   }
 });
 
+test('a hostile inside the fight-fit envelope dequeues before dressing and a queued hub', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+
+  try {
+    const scene = new THREE.Scene();
+    const starts = [];
+    const releases = new Map();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const player = { id: 'player', team: 0, pos: { x: 0, z: 0 } };
+    const runtimeState = {
+      mode: 'flight',
+      playerId: player.id,
+      player: { targetId: null },
+      entities: new Map([[player.id, player]]),
+      entityList: [player],
+      settings: { video: {} },
+      run: { kind: 'survival', phase: 'wave' },
+      world: { currentSectorId: 'sector_helios_prime', frameOrigin: { x: 0, z: 0 } },
+      camera: { liveZoom: 380, fov: 50, aspect: 16 / 9, tilt: 60, focus: { x: 0, z: 0 } },
+    };
+    globalThis.window = { SF: { state: runtimeState } };
+
+    const enqueue = ({ id, type = 'asteroid', team = 0, pos = { x: 60, z: 0 }, data = {} }) => {
+      const boundary = new THREE.Group();
+      boundary.userData.authoredAssetState = 'loading';
+      scene.add(boundary);
+      const entity = { id, type, team, alive: true, pos, mesh: boundary, data };
+      runtimeState.entities.set(id, entity);
+      return partsLibrary.enqueueBoundaryUpgrade(scene, {
+        boundary,
+        entity,
+        assetUrls: [`assets/${id}.glb`],
+        run: () => new Promise((resolve) => {
+          starts.push(id);
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          releases.set(id, () => {
+            boundary.userData.authoredAssetState = 'authored';
+            inFlight--;
+            resolve();
+          });
+        }),
+      });
+    };
+
+    // The busy-machine flood: five dressing jobs inside the envelope, then a queued critical hub.
+    for (let index = 0; index < 5; index++) {
+      enqueue({ id: `dressing-${index}`, pos: { x: 60 + index * 10, z: 0 } });
+    }
+    enqueue({
+      id: 'station_helios',
+      type: 'station',
+      pos: { x: 300, z: 0 },
+      data: { stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub' },
+    });
+    // Enqueued last, but a hostile inside the envelope outranks every dressing job and the hub.
+    enqueue({
+      id: 'hostile-1', type: 'ship', team: 1, pos: { x: 200, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    // Far dressing never reaches the queue while the run holds the arena.
+    const deferred = await enqueue({ id: 'station-far', type: 'station', pos: { x: 900, z: 0 } });
+    assert.equal(deferred.status, 'deferred-arena-dressing');
+    assert.equal(partsLibrary.getAuthoredUpgradeQueueStats(scene).pending, 7,
+      'the deferred station must not occupy the admission lane');
+
+    const runNextFrame = async () => {
+      const callback = scheduledFrames.shift();
+      assert.equal(typeof callback, 'function');
+      callback(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    };
+
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1'],
+      'a hostile inside the fight-fit envelope must dequeue before dressing and a queued hub');
+
+    releases.get('hostile-1')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios'],
+      'the queued critical hub still outranks ordinary dressing');
+
+    releases.get('station_helios')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0']);
+
+    // A hostile enqueued while dressing-0 holds the serial slot cannot pre-empt it: no new start
+    // is scheduled until the in-flight admission settles.
+    enqueue({
+      id: 'hostile-2', type: 'ship', team: 1, pos: { x: 210, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0'],
+      'an admission already in flight is never pre-empted');
+
+    releases.get('dressing-0')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.equal(starts[3], 'hostile-2',
+      'the waiting hostile takes the freed slot ahead of older dressing jobs');
+
+    releases.get('hostile-2')();
+    await new Promise((resolve) => setImmediate(resolve));
+    for (let index = 1; index < 5; index++) {
+      await runNextFrame();
+      assert.equal(starts[3 + index], `dressing-${index}`,
+        'equal-priority dressing retains FIFO order');
+      releases.get(`dressing-${index}`)();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.equal(maxInFlight, 1, 'steady flight admission stays serial');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 test('authored deadline cannot be extended by a later diagnostic resnapshot', async () => {
   let clock = 0;
   let calls = 0;

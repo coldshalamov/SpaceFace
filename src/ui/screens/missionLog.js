@@ -22,6 +22,7 @@ import {
 } from '../../story/endings/eligibility.js';
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
+import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import {
@@ -166,8 +167,14 @@ export function objectiveText(m) {
       return 'Eliminate target';
     case 'patrol_clear':
       return `Clear ${prog}/${tgt} hostiles`;
-    case 'escort':
+    case 'escort': {
+      // INF-064: the dock predicate holds the contract open until the convoy docks too
+      // (_escorteeArrivedOk), so a bare `Escort to X` leaves the player waiting inside an
+      // apparently completed marker. Expose the pending convoy — but only while a live
+      // escortee gates completion (never spawned means the predicate is satisfied by default).
+      if (m._escorteeId != null && !m._escorteeArrived) return `Escort to ${dest} · convoy en route`;
       return `Escort to ${dest}`;
+    }
     case 'recon_scan':
       if (p.originSurveySample) {
         const scans = Math.max(1, p.scanTargets || 1);
@@ -182,6 +189,50 @@ export function objectiveText(m) {
     default:
       return `${prog}/${tgt}`;
   }
+}
+
+/**
+ * INF-070: Continue restores the player's intention. A pure recap of restored state — the
+ * tracked (or first) active objective in the one shared wording, the current sector, and one
+ * unresolved risk (a blocking contract term first, then a tight clock, then a critical hull).
+ * Reads only; emits nothing, so it can never replay a reward. Null when there is no
+ * objective to resume and no risk to answer.
+ */
+export function continueRecap(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active)
+    ? state.missions.active.filter((m) => m && m.status === 'active')
+    : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const mission = (trackedId && active.find((m) => m.id === trackedId)) || active[0] || null;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const sector = sectorId && SECTOR_BY_ID.get(sectorId);
+  const location = sector && sector.name ? sector.name : null;
+  const objective = mission ? `${mission.title || 'Contract'} — ${objectiveText(mission)}` : null;
+  let risk = null;
+  if (mission) {
+    const blocked = unsatisfiedRequiredConditions(mission) || [];
+    if (blocked.length) {
+      const first = blocked[0] || {};
+      risk = `Held: ${first.pendingText || first.label || 'a contract term'} — settle it before turn-in.`;
+    } else {
+      const deadline = Number(mission.deadline_s);
+      const remaining = Number.isFinite(deadline) ? deadline - (Number(state.simTime) || 0) : null;
+      if (remaining != null && remaining < 120) {
+        risk = `Clock: ${fmtTime(Math.max(0, remaining))} left on ${mission.title || 'the contract'}.`;
+      }
+    }
+  }
+  if (!risk && state && state.entities && typeof state.entities.get === 'function') {
+    const player = state.entities.get(state.playerId);
+    const max = Number(player && player.hullMax);
+    if (max > 0 && (Number(player.hull) || 0) / max < 0.35) {
+      risk = 'Hull critical — repair before taking fire.';
+    }
+  }
+  // A bare position is not an intention — the pilot can see where they loaded. The recap
+  // speaks only when there is an objective to resume or a risk to answer.
+  if (!objective && !risk) return null;
+  return { objective, location, risk };
 }
 
 function nextStepText(m) {
@@ -403,6 +454,7 @@ function tradeRouteAction(state) {
     tone: owned > 0 ? 'primary' : 'warn',
     label: 'TRADE ROUTE',
     title: stationName,
+    titleRef: waypoint.stationId ? 'station:' + waypoint.stationId : null,
     body,
     meta,
     mapAction,
@@ -760,22 +812,23 @@ function commandWordsHtml(action, mapMissionId) {
 
 /** Resolve named contact + location for a career chip (read-only map + mission join). */
 function careerContactLocation(chip, state) {
-  if (!chip) return { contact: null, location: null };
+  if (!chip) return { contact: null, contactRef: null, location: null, locationParts: [] };
   const map = chip.mapAction || null;
   const stationId = map && map.stationId ? map.stationId : null;
   const stn = stationId ? STATION_INFO.get(stationId) : null;
   const sectorId = (map && map.sectorId) || (stn && stn.sectorId) || null;
   const sec = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
   const locationParts = [];
-  if (stn && stn.name) locationParts.push(stn.name);
-  else if (stationId) locationParts.push(prettyId(stationId, 'Station'));
-  if (sec && sec.name) locationParts.push(sec.name);
-  else if (sectorId && !(stn && stn.sectorName)) locationParts.push(prettyId(sectorId, 'Sector'));
-  else if (stn && stn.sectorName && !(sec && sec.name)) locationParts.push(stn.sectorName);
-  const location = locationParts.length ? locationParts.join(' · ') : null;
+  if (stn && stn.name) locationParts.push({ text: stn.name, ref: 'station:' + stationId });
+  else if (stationId) locationParts.push({ text: prettyId(stationId, 'Station'), ref: 'station:' + stationId });
+  if (sec && sec.name) locationParts.push({ text: sec.name, ref: 'sector:' + sectorId });
+  else if (sectorId && !(stn && stn.sectorName)) locationParts.push({ text: prettyId(sectorId, 'Sector'), ref: 'sector:' + sectorId });
+  else if (stn && stn.sectorName && !(sec && sec.name)) locationParts.push({ text: stn.sectorName, ref: sectorId ? 'sector:' + sectorId : null });
+  const location = locationParts.length ? locationParts.map((p) => p.text).join(' · ') : null;
 
   // Contact: faction short (linked ladder mission) or professional path title — never portraits.
   let contact = chip.title || null;
+  let contactRef = null;
   const linkedId = chip.linkedMissionId || null;
   if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
     const m = state.missions.active.find((x) => x && x.id === linkedId);
@@ -783,10 +836,11 @@ function careerContactLocation(chip, state) {
       const fac = FACTION_BY_ID.get(m.factionId);
       if (fac && (fac.short || fac.name)) {
         contact = String(fac.short || fac.name);
+        contactRef = 'faction:' + m.factionId;
       }
     }
   }
-  return { contact, location };
+  return { contact, contactRef, location, locationParts };
 }
 
 /**
@@ -962,11 +1016,13 @@ function careerChipHtml(chip, state) {
         + escapeHtml([placeContact ? ('Contact ' + placeContact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
         + '">'
         + (placeContact
-          ? '<span class="sf-mlog-career-contact">' + escapeHtml(placeContact) + '</span>'
+          ? '<span class="sf-mlog-career-contact">' + (place.contactRef ? entitySpanHtml(place.contactRef, escapeHtml(placeContact)) : escapeHtml(placeContact)) + '</span>'
           : '')
         + (placeContact && place.location ? '<span class="sf-mlog-career-place-sep" aria-hidden="true"> · </span>' : '')
         + (place.location
-          ? '<span class="sf-mlog-career-location">' + escapeHtml(place.location) + '</span>'
+          ? '<span class="sf-mlog-career-location">'
+            + place.locationParts.map((p) => (p.ref ? entitySpanHtml(p.ref, escapeHtml(p.text)) : escapeHtml(p.text))).join(' · ')
+            + '</span>'
           : '')
         + '</div>'
       : '')
@@ -1425,16 +1481,35 @@ export function storyActionForBeat(beat, state) {
       };
     case 7:
       {
+        // Pre-offer Deep Reach guidance. The live shared gate (story/endings/eligibility.js) is
+        // the truth: a recorded history — the Deep Reach operation, or Kurtz ledger custody
+        // backed by three kinds of recorded work — and the Ash Cache desk. Net worth and branch
+        // standing are door-A commission facts, not a universal gate; this card must not teach
+        // them as one (the endings packet retired that gate and left this card as a residual).
         const facts = snapshotEndingFacts(state);
-        const worth = Math.min(facts.netWorthCr, 100000).toLocaleString();
-        const rep = Math.min(facts.branchRep, 50);
-      return {
-        tone: 'primary',
-        label: 'ENDGAME',
-        title: 'Build sector power',
-        body: `Reach 100,000cr net worth and 50 branch standing. Own a capital hull, claim, or outpost to qualify for a filed ending.`,
-        meta: `${worth}/100,000 CR · ${rep}/50 REP`,
-      };
+        let history;
+        if (facts.deepReachComplete) {
+          history = 'The Deep Reach operation is on record.';
+        } else if (facts.independentWitness) {
+          history = 'Ledger custody and three kinds of recorded work stand on their own.';
+        } else if (facts.hasLedger) {
+          history = `You hold the Kurtz ledger; ${facts.careerEvidence.length} of 3 kinds of`
+            + ' recorded work back it — trades, contracts, named kills, assets, archives, mercy.';
+        } else {
+          history = 'Fly the Deep Reach operation — or take the Kurtz ledger and back it'
+            + ' with 3 kinds of recorded work.';
+        }
+        const desk = facts.deskVisited
+          ? 'The Ash Cache desk has your file.'
+          : 'Dock at Ash Cache in Ashfall Reach and open the desk.';
+        return {
+          tone: 'primary',
+          label: 'ENDGAME',
+          title: facts.readyByHistory ? 'Bring Ashfall your record' : 'Run the Ashfall operation',
+          body: `${history} ${desk} A filed disposition reviews the record, not the purse.`,
+          meta: `HISTORY ${facts.readyByHistory ? 'RECORDED' : 'OPEN'} · DESK ${facts.deskVisited ? 'VISITED' : 'PENDING'}`,
+          mapAction: stationRouteAction('station_ashcache', 'Plot route to Ash Cache'),
+        };
       }
     default:
       return beat ? {
@@ -2291,7 +2366,7 @@ export const missionLogScreen = {
     this._recommendEl.innerHTML = actions.map((a) => (
       '<div class="k-rows"><div class="k-row k-row--static sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
         '<div>' +
-          '<span class="k-row__name sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</span>' +
+          '<span class="k-row__name sf-mlog-rec-title">' + (a.titleRef ? entitySpanHtml(a.titleRef, escapeHtml(a.title || 'Next action')) : escapeHtml(a.title || 'Next action')) + '</span>' +
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
           '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction

@@ -35,6 +35,9 @@ import {
   tacticalRadarMetrics,
 } from './map/tacticalMapGrammar.js';
 import { installMapParityBridge } from './map/mapParityBridge.js';
+import { svg as orrSvg, circularText } from './orrery/svg.js';
+import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
+import { injectOrrery } from './orrery/tokens.js';
 
 const COMPACT_SIZE = 220;
 const COMPACT_C = COMPACT_SIZE / 2;
@@ -83,6 +86,20 @@ const CAPITAL_DEFS = new Set(
 );
 
 const trailMap = new Map();
+// Retained {x,z} slots for contact trails. updateTrail used to allocate a fresh point and
+// shift() the dropped one into GC every time a contact moved ~20 wu — steady radar.draw churn.
+const trailPointPool = [];
+
+function releaseTrailHistory(history) {
+  if (!history || !history.length) return;
+  for (let i = 0; i < history.length; i += 1) trailPointPool.push(history[i]);
+  history.length = 0;
+}
+
+function clearAllTrails() {
+  for (const history of trailMap.values()) releaseTrailHistory(history);
+  trailMap.clear();
+}
 
 /**
  * Range-ring policy: show the farthest positive finite range among the active entity's live
@@ -165,8 +182,19 @@ function updateTrail(entity) {
   const dx = last ? entity.pos.x - last.x : Infinity;
   const dz = last ? entity.pos.z - last.z : Infinity;
   if (!last || dx * dx + dz * dz > 400) {
-    history.push({ x: entity.pos.x, z: entity.pos.z });
-    if (history.length > TRAIL_MAX) history.shift();
+    let pt;
+    if (history.length >= TRAIL_MAX) {
+      // Recycle the dropped tip — same FIFO picture, no alloc and no orphaned point.
+      pt = history.shift();
+      pt.x = entity.pos.x;
+      pt.z = entity.pos.z;
+      history.push(pt);
+    } else {
+      pt = trailPointPool.length ? trailPointPool.pop() : { x: 0, z: 0 };
+      pt.x = entity.pos.x;
+      pt.z = entity.pos.z;
+      history.push(pt);
+    }
   }
 }
 
@@ -188,16 +216,6 @@ function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
     g.stroke();
   }
   g.restore();
-}
-
-function drawAsteroidBlip(g, x, y) {
-  g.beginPath();
-  g.moveTo(x, y - 1.7);
-  g.lineTo(x + 1.7, y);
-  g.lineTo(x, y + 1.7);
-  g.lineTo(x - 1.7, y);
-  g.closePath();
-  g.fill();
 }
 
 // Plain-loop ping census (10 Hz draw path): the old `contacts.some` allocated a closure per draw.
@@ -404,17 +422,46 @@ function drawObjectiveLabel(g, cue) {
   g.restore();
 }
 
-function drawRangePlate(g, metrics, range, expanded) {
-  g.save();
+// Range plate layout is a pure function of (range, expanded, metrics.size). Cache it so
+// settled flight does not re-measureText + lift-search every HUD frame (cpu-profile-flight:
+// drawRangePlate ~102 ms self over 60 s settled).
+const _rangePlateCache = {
+  range: NaN,
+  expanded: null,
+  size: NaN,
+  text: '',
+  width: 0,
+  height: 18,
+  x: 0,
+  y: 0,
+};
+
+function rangePlateLayout(metrics, range, expanded) {
+  const size = metrics.size;
+  if (
+    _rangePlateCache.range === range
+    && _rangePlateCache.expanded === expanded
+    && _rangePlateCache.size === size
+  ) {
+    return _rangePlateCache;
+  }
   const text = `RANGE ${formatRadarDistance(range)}`;
-  g.font = canvasFont(700, 12, 'data');
-  const width = Math.ceil(g.measureText(text).width) + 12;
+  if (!_rangePlateCache._probe) {
+    const c = typeof document !== 'undefined' && document.createElement
+      ? document.createElement('canvas')
+      : null;
+    _rangePlateCache._probe = c ? c.getContext('2d') : null;
+  }
+  const probe = _rangePlateCache._probe;
+  let width;
+  if (probe) {
+    probe.font = canvasFont(700, 12, 'data');
+    width = Math.ceil(probe.measureText(text).width) + 12;
+  } else {
+    width = text.length * 7 + 12;
+  }
   const height = 18;
-  // The range is the scope's scale legend: set on the BOTTOM rim, centred, where contacts are
-  // thinnest and nothing else is drawn (critic 2026-09-19: at the top-right it sat on the
-  // contacts). The canvas is circle-masked, so lift the plate until both lower corners sit inside
-  // the inscribed circle with margin.
-  const radius = metrics.size / 2;
+  const radius = size / 2;
   let lift = 8;
   for (let i = 0; i < 40; i++) {
     const dx = width / 2;
@@ -422,17 +469,30 @@ function drawRangePlate(g, metrics, range, expanded) {
     if (Math.hypot(dx, dy) <= radius - 4) break;
     lift += 2;
   }
-  const x = Math.round(radius - width / 2);
-  const y = metrics.size - lift - height;
+  _rangePlateCache.range = range;
+  _rangePlateCache.expanded = expanded;
+  _rangePlateCache.size = size;
+  _rangePlateCache.text = text;
+  _rangePlateCache.width = width;
+  _rangePlateCache.height = height;
+  _rangePlateCache.x = Math.round(radius - width / 2);
+  _rangePlateCache.y = size - lift - height;
+  return _rangePlateCache;
+}
+
+function drawRangePlate(g, metrics, range, expanded) {
+  const layout = rangePlateLayout(metrics, range, expanded);
+  g.save();
+  g.font = canvasFont(700, 12, 'data');
   g.fillStyle = 'rgba(11,13,16,0.90)';
-  g.fillRect(x, y, width, height);
+  g.fillRect(layout.x, layout.y, layout.width, layout.height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
   g.lineWidth = 1;
-  g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  g.strokeRect(layout.x + 0.5, layout.y + 0.5, layout.width - 1, layout.height - 1);
   g.fillStyle = expanded ? TACTICAL_MAP_PALETTE.ink : TACTICAL_MAP_PALETTE.inkDim;
   g.textAlign = 'left';
   g.textBaseline = 'middle';
-  g.fillText(text, x + 6, y + height / 2 + 0.5);
+  g.fillText(layout.text, layout.x + 6, layout.y + layout.height / 2 + 0.5);
   g.restore();
 }
 
@@ -475,7 +535,7 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.restore();
 }
 
-function drawBackground(g, center, radius) {
+function drawBackground(g, center, radius, { grid = true } = {}) {
   g.clearRect(0, 0, center * 2, center * 2);
   // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
   const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
@@ -493,7 +553,8 @@ function drawBackground(g, center, radius) {
   g.clip();
   g.strokeStyle = 'rgba(232,226,212,0.04)';
   g.lineWidth = 1;
-  const step = radius / 3;
+  // The square grid is the legacy face; under the ORRERY frame the scope is rings and a dotted cross.
+  const step = grid ? radius / 3 : Infinity;
   for (let d = step; d <= radius; d += step) {
     g.beginPath();
     g.moveTo(center - d, center - radius);
@@ -525,6 +586,56 @@ function drawBackground(g, center, radius) {
   g.restore();
 }
 
+// ---- ORRERY frame (design/frontend/ORRERY.md §6 Radar Orrery) ------------------------------------
+// The canvas stays the dense data layer (contacts, rocks, trails, the lead pip); the instrument
+// around it is ORRERY light: the rim, a drifting tick orbit, north, the range ENGRAVED along the
+// lower rim (it was a boxed chip on the canvas), and the amber Hand pointing at the objective. It is
+// built in canvas coordinates, so every mark lines up with what the canvas draws.
+const FRAME_PAD = 30;
+function createRadarFrame(size, center, radius) {
+  injectOrrery();
+  const root = orrSvg('svg', {
+    class: 'orr-svg sf-radar-orrery',
+    viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
+    'aria-hidden': 'true',
+  });
+  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'rest', width: 1, bloom: 4 }));
+  root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
+  root.appendChild(orrSvg('path', {
+    d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
+    class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
+  }));
+  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 9 });
+  north.textContent = 'N';
+  root.appendChild(north);
+  const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
+  objective.el.setAttribute('opacity', '0');
+  root.appendChild(objective.el);
+  let rangeText = null;
+  let rangeNode = null;
+  let bearingNow = null;
+  return {
+    el: root,
+    setRange(text) {
+      if (text === rangeText) return;
+      rangeText = text;
+      if (rangeNode) rangeNode.remove();
+      rangeNode = circularText(center, center, radius + 17, `RANGE  ${text}`.toUpperCase(),
+        { startDeg: 270, size: 8, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
+      root.appendChild(rangeNode);
+    },
+    /** bearing in degrees (0 = up, clockwise) or null for no objective */
+    setObjective(bearing) {
+      if (bearing === bearingNow) return;
+      if (bearing == null) { objective.el.setAttribute('opacity', '0'); bearingNow = null; return; }
+      if (bearingNow == null) { objective.el.setAttribute('opacity', '1'); objective.pointTo(bearing, { instant: true }); }
+      else objective.pointTo(bearing);
+      bearingNow = bearing;
+    },
+    dispose() { objective.dispose(); root.remove(); },
+  };
+}
+
 export function createRadar(ctx) {
   const { state, bus } = ctx;
   const wrap = document.createElement('div');
@@ -551,6 +662,25 @@ export function createRadar(ctx) {
   let configuredCenter = COMPACT_C;
   let configuredRadius = COMPACT_R;
   let expanded = false;
+  let orreryFrame = false;
+  let frame = null;
+  function mountOrreryFrame() {
+    if (frame) frame.dispose();
+    frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
+    // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
+    // size (220 / 200 / 132) and the expanded scope without a layout read.
+    const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
+    frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
+    dial.appendChild(frame.el);
+  }
+  /** Hand the instrument's frame to ORRERY: the canvas keeps the data, the rim/range/north move out. */
+  function setOrreryFrame(on) {
+    orreryFrame = !!on;
+    wrap.classList.toggle('sf-radar-wrap--orrery', orreryFrame);
+    drawBackground(background, configuredCenter, configuredRadius, { grid: !orreryFrame });
+    if (orreryFrame) mountOrreryFrame();
+    else if (frame) { frame.dispose(); frame = null; }
+  }
 
   function configureCanvas(size, center, radius) {
     if (configuredSize === size) return;
@@ -568,7 +698,8 @@ export function createRadar(ctx) {
     background.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.imageSmoothingEnabled = false;
     background.imageSmoothingEnabled = true;
-    drawBackground(background, center, radius);
+    drawBackground(background, center, radius, { grid: !orreryFrame });
+    if (orreryFrame) mountOrreryFrame();
   }
 
   configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
@@ -584,6 +715,7 @@ export function createRadar(ctx) {
   function setExpanded(value) {
     expanded = !!value;
     dial.classList.toggle('sf-radar--expanded', expanded);
+    wrap.classList.toggle('sf-radar-wrap--expanded', expanded);
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     wrap.style.cssText = expanded
@@ -609,6 +741,46 @@ export function createRadar(ctx) {
   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
   const hostileMarks = [];
   const infrastructureMarks = [];
+  // Retained projection + mark slots: projectRadarPoint used to Object.freeze a fresh record
+  // per contact, and each mark held that record. Scratch + pooled mark rows keep picture
+  // identical (x/y/angle/offRange copied into the mark) without per-draw alloc.
+  const projectScratch = {
+    x: 0, y: 0, dx: 0, dz: 0, distance: 0, offRange: false, angle: 0, scale: 0, resolved: true,
+  };
+  // Second scratch for the lead-line path: aim point and target point are both projected in one
+  // stroke, so they cannot share a single out record.
+  const projectScratchB = {
+    x: 0, y: 0, dx: 0, dz: 0, distance: 0, offRange: false, angle: 0, scale: 0, resolved: true,
+  };
+  const hostileMarkPool = [];
+  const infrastructureMarkPool = [];
+  function pushHostileMark(entity, projected, distanceSq) {
+    let mark = hostileMarkPool[hostileMarks.length];
+    if (!mark) {
+      mark = { entity: null, x: 0, y: 0, distanceSq: 0 };
+      hostileMarkPool[hostileMarks.length] = mark;
+    }
+    mark.entity = entity;
+    mark.x = projected.x;
+    mark.y = projected.y;
+    mark.distanceSq = distanceSq;
+    hostileMarks.push(mark);
+  }
+  function pushInfrastructureMark(entity, projected, gate, distanceSq) {
+    let mark = infrastructureMarkPool[infrastructureMarks.length];
+    if (!mark) {
+      mark = { entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0 };
+      infrastructureMarkPool[infrastructureMarks.length] = mark;
+    }
+    mark.entity = entity;
+    mark.x = projected.x;
+    mark.y = projected.y;
+    mark.gate = gate;
+    mark.offRange = projected.offRange;
+    mark.angle = projected.angle;
+    mark.distanceSq = distanceSq;
+    infrastructureMarks.push(mark);
+  }
   // Reused option records for the glyph draw calls. The draw functions destructure and read
   // only; nothing retains these between contacts.
   const neutralOpts = { selected: false, named: false, playerTeam: null, state: null };
@@ -616,6 +788,7 @@ export function createRadar(ctx) {
   const glyphOpts = { offRange: false, angle: 0 };
   const zeroVel = { x: 0, z: 0 };
   let trailPruneCountdown = 0;
+  let lastAriaLabel = '';
   const unsubscribers = [];
 
   function markContactsDirty() {
@@ -623,7 +796,7 @@ export function createRadar(ctx) {
   }
 
   function onSectorEnter() {
-    trailMap.clear();
+    clearAllTrails();
     if (expanded) setExpanded(false);
     markContactsDirty();
   }
@@ -739,7 +912,9 @@ export function createRadar(ctx) {
       const wpLabel = label;
       const legacyIdentity = `◆ AMBER DIAMOND · ${wpLabel}`;
       const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
-      const nextText = `⌜◆⌝  OBJ  ${distance}  ·  ${label}`;
+      // The diamond alone keys the objective: the corner-bracket glyphs meant to picture the
+      // scope's four-corner bracket rendered as stray marks at caption size.
+      const nextText = `◆  OBJ  ${distance}  ·  ${label}`;
       if (objectiveKey.textContent !== nextText) objectiveKey.textContent = nextText;
       objectiveKey.title = `${legacyIdentity} · FOUR-CORNER BRACKET · ROUTE CORRIDOR`;
       objectiveKey.dataset.mode = 'objective';
@@ -780,13 +955,15 @@ export function createRadar(ctx) {
     g.stroke();
     g.restore();
 
-    g.save();
-    g.fillStyle = 'rgba(232,226,212,0.62)';
-    g.font = canvasFont(700, 12, 'data');
-    g.textAlign = 'center';
-    g.textBaseline = 'bottom';
-    g.fillText('N', center, center - radius + 14);
-    g.restore();
+    if (!frame) {
+      g.save();
+      g.fillStyle = 'rgba(232,226,212,0.62)';
+      g.font = canvasFont(700, 12, 'data');
+      g.textAlign = 'center';
+      g.textBaseline = 'bottom';
+      g.fillText('N', center, center - radius + 14);
+      g.restore();
+    }
 
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
@@ -832,7 +1009,10 @@ export function createRadar(ctx) {
     if (trailPruneCountdown-- <= 0) {
       trailPruneCountdown = TRAIL_PRUNE_INTERVAL;
       for (const id of trailMap.keys()) {
-        if (!state.entities.has(id)) trailMap.delete(id);
+        if (!state.entities.has(id)) {
+          releaseTrailHistory(trailMap.get(id));
+          trailMap.delete(id);
+        }
       }
     }
 
@@ -904,7 +1084,17 @@ export function createRadar(ctx) {
     g.save();
     g.globalAlpha = 0.55;
     g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
-    for (let i = 0; i < nearRockCount; i++) drawAsteroidBlip(g, nearRockSlots[i].x, nearRockSlots[i].y);
+    // One path, one fill: identical pixels to per-blip fills (same colour, non-overlapping diamonds).
+    g.beginPath();
+    for (let i = 0; i < nearRockCount; i++) {
+      const slot = nearRockSlots[i];
+      g.moveTo(slot.x, slot.y - 1.7);
+      g.lineTo(slot.x + 1.7, slot.y);
+      g.lineTo(slot.x, slot.y + 1.7);
+      g.lineTo(slot.x - 1.7, slot.y);
+      g.closePath();
+    }
+    if (nearRockCount) g.fill();
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
@@ -936,33 +1126,42 @@ export function createRadar(ctx) {
           nearestOffRangeHostile = entity;
         }
         if (station) {
-          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
-          if (projected) infrastructureMarks.push({ entity, projected, gate, distanceSq });
+          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+          if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
         }
         continue;
       }
 
-      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
       if (!projected) continue;
       const x = projected.x;
       const y = projected.y;
       const type = entity.type;
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
-
-      if ((type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES) {
-        updateTrail(entity);
-        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-        trailUpdates += 1;
-      }
+      const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES;
 
       if (hostile) {
+        // Trails still paint on the contact pass (priority pass only draws chevrons).
+        // Skip contactColor when this hostile is past the trail budget.
+        if (wantsTrail) {
+          const colour = contactColor(entity, playerTeam, colorblindMode, state);
+          updateTrail(entity);
+          drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+          trailUpdates += 1;
+        }
         hostileCount += 1;
-        hostileMarks.push({ entity, projected, distanceSq });
+        pushHostileMark(entity, projected, distanceSq);
         continue; // drawn in the crisp priority pass below
       }
       if (station) {
-        infrastructureMarks.push({ entity, projected, gate, distanceSq });
+        pushInfrastructureMark(entity, projected, gate, distanceSq);
         continue; // drawn in the glyph pass below
+      }
+
+      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      if (wantsTrail) {
+        updateTrail(entity);
+        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+        trailUpdates += 1;
       }
 
       if (type === 'pickup') {
@@ -1016,22 +1215,22 @@ export function createRadar(ctx) {
       const selected = mark.entity.id === targetId;
       hostileOpts.selected = selected;
       hostileOpts.capital = isCapitalContact(mark.entity);
-      drawHostileGlyph(g, mark.projected.x, mark.projected.y, entityHeading(mark.entity), hostileOpts);
+      drawHostileGlyph(g, mark.x, mark.y, entityHeading(mark.entity), hostileOpts);
       if (selected || !swarmQuiet) {
         drawContactThreatPulse(
           g,
-          mark.projected.x,
-          mark.projected.y,
+          mark.x,
+          mark.y,
           selected,
           now,
           reducedMotion,
         );
       }
-      if (selected) drawTargetRing(g, mark.projected.x, mark.projected.y, center);
+      if (selected) drawTargetRing(g, mark.x, mark.y, center);
     }
 
     if (nearestOffRangeHostile) {
-      const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics);
+      const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics, projectScratch);
       if (projected) {
         drawHostileEdgeMarker(g, projected.x, projected.y, projected.angle, nearestOffRangeHostile.id === targetId);
       }
@@ -1040,15 +1239,15 @@ export function createRadar(ctx) {
     const infrastructureMarkCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
     for (let i = 0; i < infrastructureMarkCount; i += 1) {
       const mark = infrastructureMarks[i];
-      glyphOpts.offRange = mark.projected.offRange;
-      glyphOpts.angle = mark.projected.angle;
+      glyphOpts.offRange = mark.offRange;
+      glyphOpts.angle = mark.angle;
       if (mark.gate) {
-        drawGateGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
+        drawGateGlyph(g, mark.x, mark.y, glyphOpts);
       } else {
-        drawStationGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
+        drawStationGlyph(g, mark.x, mark.y, glyphOpts);
       }
-      if (mark.entity.id === targetId && !mark.projected.offRange) {
-        drawTargetRing(g, mark.projected.x, mark.projected.y, center);
+      if (mark.entity.id === targetId && !mark.offRange) {
+        drawTargetRing(g, mark.x, mark.y, center);
       }
     }
 
@@ -1067,7 +1266,7 @@ export function createRadar(ctx) {
       if (Array.isArray(pings)) {
         for (const ping of pings) {
           if (!ping || !ping.pos) continue;
-          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics);
+          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics, projectScratch);
           if (!projected || projected.offRange) continue;
           g.strokeText('?', projected.x, projected.y);
         }
@@ -1075,7 +1274,7 @@ export function createRadar(ctx) {
       for (const entity of contacts) {
         if (!entity || !entity.pos || !entity.alive || entity === player) continue;
         if (!(entity.data && entity.data.pingedUntil > (state.simTime || 0))) continue;
-        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
         if (!projected || projected.offRange) continue;
         g.strokeText('?', projected.x, projected.y);
       }
@@ -1093,7 +1292,7 @@ export function createRadar(ctx) {
           playerProjSpeed(player),
         );
         if (lead) {
-          const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics);
+          const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics, projectScratch);
           if (leadPoint) {
             g.save();
             g.strokeStyle = 'rgba(255,220,90,0.92)';
@@ -1105,7 +1304,7 @@ export function createRadar(ctx) {
             g.lineTo(leadPoint.x, leadPoint.y + 3.5);
             g.stroke();
             if (!leadPoint.offRange) {
-              const targetPoint = projectRadarPoint(player.pos, target.pos, range, metrics);
+              const targetPoint = projectRadarPoint(player.pos, target.pos, range, metrics, projectScratchB);
               if (targetPoint) {
                 g.setLineDash([2, 2]);
                 g.beginPath();
@@ -1147,6 +1346,12 @@ export function createRadar(ctx) {
       if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
     }
     updateObjectiveKey(waypoint, cue);
+    if (frame) {
+      // same frame as projectRadarPoint: screen = centre - (dx, dz) * scale, so 0 deg (up) is +z
+      frame.setObjective(waypointPos
+        ? Math.round(Math.atan2(-(waypointPos.x - player.pos.x), waypointPos.z - player.pos.z) * 180 / Math.PI)
+        : null);
+    }
 
     const beacons = state.beacons;
     if (Array.isArray(beacons) && beacons.length) {
@@ -1162,6 +1367,7 @@ export function createRadar(ctx) {
           { x: beacon.x, z: beacon.z },
           range,
           metrics,
+          projectScratch,
         );
         if (!projected || projected.offRange) continue;
         g.globalAlpha = 0.5 + beaconPulse * 0.4;
@@ -1183,14 +1389,16 @@ export function createRadar(ctx) {
     // nearest contacts at every radar size, so the scope draws none.
     drawPlayerHull(g, center, center, player.rot, { label: false });
     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
-    drawRangePlate(g, metrics, range, expanded);
+    if (frame) frame.setRange(formatRadarDistance(range));
+    else drawRangePlate(g, metrics, range, expanded);
 
-    canvas.setAttribute(
-      'aria-label',
-      waypoint
-        ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
-        : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.',
-    );
+    const ariaLabel = waypoint
+      ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
+      : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.';
+    if (ariaLabel !== lastAriaLabel) {
+      lastAriaLabel = ariaLabel;
+      canvas.setAttribute('aria-label', ariaLabel);
+    }
   }
 
   function invalidate() {
@@ -1203,10 +1411,11 @@ export function createRadar(ctx) {
       try { unsubscribe(); } catch (_) {}
     }
     try { parityTeardown(); } catch (_) {}
-    trailMap.clear();
+    if (frame) { frame.dispose(); frame = null; }
+    clearAllTrails();
   }
 
-  return { el: wrap, draw, invalidate, destroy };
+  return { el: wrap, draw, invalidate, destroy, setOrreryFrame };
 }
 
 function drawContactThreatPulse(g, x, y, selected, now, reducedMotion) {

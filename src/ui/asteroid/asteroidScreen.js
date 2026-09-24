@@ -2122,12 +2122,16 @@ export const asteroidScreen = {
       for (const un of unsubs.splice(0)) { try { un(); } catch (_) { /* listener already gone */ } }
     };
     this._stopOnly = stopSession;
-    this._refresh = () => {
+    this._refresh = (opts) => {
+      // uiRoot.frame() calls refresh() ~3x/sec on the open screen with { periodic: true }. The
+      // frame loop already re-reads the HUD on its own 150ms cadence and the identity probe
+      // catches real site changes, so a periodic pass only re-derives an unchanged projection.
+      // Real mutations (install, dismantle, lane paint, session start) mark projDirty themselves.
+      if (opts && opts.periodic) return;
       projDirty = true;
       updateHud();
-      // uiRoot.frame() calls refresh() ~3x/sec on the open screen. The old inspector rebuilt its
-      // whole (invisible) card every time; the lens only marks itself stale — the frame loop
-      // rebuilds it if and only if it is actually on the glass.
+      // The old inspector rebuilt its whole (invisible) card every time; the lens only marks
+      // itself stale — the frame loop rebuilds it if and only if it is actually on the glass.
       lensDirty = true;
     };
   },
@@ -2145,5 +2149,5 @@ export const asteroidScreen = {
     if (this._startSession) this._startSession();
   },
   onHide() { if (this._stopOnly) this._stopOnly(); },
-  refresh() { if (this._refresh) this._refresh(); },
+  refresh(ctx, opts) { if (this._refresh) this._refresh(opts); },
 };

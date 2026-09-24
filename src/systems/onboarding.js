@@ -21,10 +21,12 @@
 // without opening a menu.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
+import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -132,6 +134,8 @@ const TRAINER_FLYBY_OFFSET_WU = 52;
 const RAID_RAIDER_HULL = 150;
 const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall bearing
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
+// INF-062 — consecutive genuine latch denials before the one contextual hint.
+const LATCH_DENIAL_HINT_AFTER = 3;
 const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
 // Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
 // law cutter stands witness. Taking it reports the theft through the real law owner entry
@@ -325,16 +329,22 @@ export const onboarding = {
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
-    bus.on('save:loaded', () => {
+    bus.on('save:loaded', (p) => {
       this._teardown();
       this._dockControlInRange = false;
+      this._demoFittedThisDock = null;
       this._gateControlInRange = false;
       this._lastControlMode = null;
       this._beginStoryMode();
+      this._speakContinueRecap(p);
     });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => { this._dockControlInRange = false; this._onBeatEvent('dock:docked'); });
+    bus.on('dock:docked', () => {
+      this._dockControlInRange = false;
+      this._demoFittedThisDock = null;
+      this._onBeatEvent('dock:docked');
+    });
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell') this._onBeatEvent('sold', p);
     });
@@ -373,6 +383,13 @@ export const onboarding = {
     bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
     bus.on('player:death', () => this._onRescuePlayerDeath());
     bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
+
+    // ── Demo end card (ZERO_TO_HERO Phase 5.5) ──────────────────────────────────────────
+    // Once per save: the player undocks carrying a module they fitted during that dock →
+    // the card. The flag rides state.player.hints like every other one-time flag, so it
+    // persists with the save and adds no top-level field.
+    bus.on('module:equipped', (p) => this._onDemoModuleEquipped(p || {}));
+    bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
@@ -498,20 +515,30 @@ export const onboarding = {
     // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
     // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
     // authored first-hour BEATS rail is untouched.
-    bus.on('tether:latched', (payload) => {
+    // INF-062 — the latch lesson is taught by failure, not by interrupting success. The
+    // old first-latch 'masslineThrow' bark lectured competent pilots mid-lesson (and doubled
+    // the staged tether beat's own cut line), so it is gone. Instead, consecutive genuine
+    // latch denials earn ONE contextual hint naming the block; any clean latch resets the
+    // streak — success suppresses the pending lesson — and player.hints keeps it once-only.
+    bus.on('tether:latchDenied', (payload) => {
       if (!massline2Flag('throw')) return;
-      const target = payload && payload.targetId != null && this.state.entities
-        ? this.state.entities.get(payload.targetId)
-        : null;
-      // The express-specific lesson owns this first latch. Leave the general throw lesson unspent
-      // for the next ordinary target so one event never queues two tutorial voices.
-      if (massline2Flag('hitchhiking') && isExpressHitchTarget(target)) return;
-      this._showHint('masslineThrow', firstUseLine('masslineThrow'), payload);
+      this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
+      if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
+      const reason = payload && payload.reason;
+      const line = reason === 'cooldown'
+        ? 'Line resetting. Wait a breath, then latch.'
+        : reason === 'no-target'
+          ? 'Target a rock or wreck first. Then latch.'
+          : 'Latch needs a target in range.';
+      this._showHint('masslineLatchDenied', line, payload);
+    });
+    bus.on('tether:latched', () => {
+      this._latchDenialStreak = 0;
     });
     bus.on('tether:latched', (payload) => {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
-      if (!isExpressHitchTarget(target)) return;
+      if (!isHitchHintTarget(target)) return;
       this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), payload);
     });
     bus.on('massline:selfSling', (p) => {
@@ -560,13 +587,41 @@ export const onboarding = {
     return !!(ob && ob.active && !ob.finished);
   },
 
+  // ── Demo end card (ZERO_TO_HERO Phase 5.5) ─────────────────────────────────────────────
+  // A fitting made while docked at a station (ships.fitModule emits module:equipped with the
+  // ACTIVE ship's entity id) is remembered until the dock ends. A crucible refit also emits
+  // module:equipped but is never docked, so it cannot arm the card.
+  _onDemoModuleEquipped(p) {
+    if (!IS_DEMO || !p) return;
+    const st = this.state;
+    if (!st || !st.ui || !st.ui.docked) return;
+    if (p.shipId !== st.playerId) return;
+    this._demoFittedThisDock = p.defId || null;
+  },
+
+  _maybeShowDemoEndCard() {
+    const fitted = this._demoFittedThisDock;
+    this._demoFittedThisDock = null;
+    if (!IS_DEMO || !fitted) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
+    if (!st.player.hints) st.player.hints = {};
+    if (st.player.hints.demoEndShown) return;
+    st.player.hints.demoEndShown = true;
+    if (st.ui) st.ui.demoEnd = { moduleDefId: fitted };
+    this.bus.emit('ui:pushScreen', { id: 'demoEnd' });
+  },
+
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
   _begin(payload) {
     const st = this.state;
     this._dockControlInRange = false;
+    this._demoFittedThisDock = null;
     this._gateControlInRange = false;
     this._lastControlMode = null;
+    this._latchDenialStreak = 0;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
@@ -637,6 +692,29 @@ export const onboarding = {
     this._refreshStory();
   },
 
+  // INF-070: Continue restores the pilot's intention. One dismissible flight-log recap
+  // of restored state — active objective, current sector, one unresolved risk — on the
+  // existing comms surface. Reads only (never a reward), fires once per load, leaves
+  // controls untouched: no modal, no mode change.
+  _speakContinueRecap(payload) {
+    try {
+      if (payload && (payload.scenario || payload.harness)) return; // harness boots own their cast
+      const recap = continueRecap(this.state);
+      if (!recap) return;
+      const lines = [];
+      if (recap.objective) lines.push(`Objective: ${recap.objective}`);
+      if (recap.location) lines.push(`Position: ${recap.location}`);
+      if (recap.risk) lines.push(`Risk: ${recap.risk}`);
+      if (!lines.length) return;
+      this.bus.emit('comms:popup', {
+        sender: 'Flight Log',
+        text: `Welcome back. ${lines.join(' ')}`,
+        category: 'personal',
+        ttl: 10,
+      });
+    } catch (_) { /* never let onboarding break the bus */ }
+  },
+
   _retireTutorialPanel() {
     if (this._panel) this._panel.remove();
     this._panel = null;
@@ -662,6 +740,7 @@ export const onboarding = {
     if (ob && ob.raid) ob.raid.active = false;
     if (ob && ob.claimed) ob.claimed.active = false;
     this._trainerId = this._derelictId = this._miningRockId = null;
+    this._latchDenialStreak = 0;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
@@ -2451,6 +2530,14 @@ export const onboarding = {
   _onMissingThreeWell(payload) {
     if (!payload || payload.kind !== 'well') return;
     this._noteVerbUse('well');
+    const source = this.state?.entities?.get ? this.state.entities.get(payload.sourceId) : null;
+    const isPlayer = payload.isPlayer
+      || payload.sourceId === this.state?.playerId
+      || (source && source.ownerId === this.state?.playerId)
+      || (!payload.npc && !payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
+    if (isPlayer) {
+      this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
+    }
   },
 
   _resolveMissingThreeDone() {
@@ -2844,12 +2931,18 @@ function masslineThrowHint(state) {
   return 'Hold RIGHT MOUSE; release waits for the white diamond.';
 }
 
-function isExpressHitchTarget(entity) {
+// The hitch hint teaches riding a latched hull. It gated on the express liner's
+// itinerary flag, so the only ship that could teach it was the rarest one — the
+// opening mule and every other ship_mule freight frame could never qualify. Any
+// passive civilian on the mule hull (hauler, arclight, tanker, shuttle, express)
+// is a real ride; the itinerary flag stays as the contract for future
+// non-mule hitchable services.
+function isHitchHintTarget(entity) {
   const data = entity && entity.data;
   const ai = data && data.ai;
   return !!(entity && entity.alive !== false
     && entity.team === 2
-    && data && data.trafficRole === 'express'
-    && data.itinerary && data.itinerary.hitchable === true
+    && data && (data.defId === 'ship_mule'
+      || (data.itinerary && data.itinerary.hitchable === true))
     && ai && ai.passive === true);
 }

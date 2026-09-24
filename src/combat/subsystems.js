@@ -1,11 +1,26 @@
 import { appendCombatTrace } from './trace.js';
 
+// Subsystem id sets are fixed at ensureCombatant(); damage toggles destroyed flags but never
+// adds/removes keys. Cache the sorted id list on the runtime so applyPending + recompute skip
+// Object.keys().sort() every combat prePhysics (fresh profile: ~36 ms self).
+function sortedSubsystemIds(runtime) {
+  const map = runtime && runtime.subsystems;
+  if (!map) return EMPTY_ID_LIST;
+  let cached = runtime._sfSortedSubsystemIds;
+  if (cached) return cached;
+  cached = Object.keys(map).sort();
+  runtime._sfSortedSubsystemIds = cached;
+  return cached;
+}
+
+const EMPTY_ID_LIST = [];
+
 export function applyPendingSubsystemTransitions(context, entity, runtime) {
   const { state, catalog, attachments } = context;
   const tick = state.tick >>> 0;
   let changed = false;
   let transitionAttackerId = null;
-  for (const subsystemId of Object.keys(runtime.subsystems || {}).sort()) {
+  for (const subsystemId of sortedSubsystemIds(runtime)) {
     const subsystem = runtime.subsystems[subsystemId];
     const pending = subsystem.pendingTransition;
     if (!pending || pending.atTick > tick) continue;
@@ -46,7 +61,7 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
   let progress = true;
   while (progress) {
     progress = false;
-    for (const id of Object.keys(runtime.subsystems || {}).sort()) {
+    for (const id of sortedSubsystemIds(runtime)) {
       if (disabled.has(id)) continue;
       const def = catalog.subsystems.get(id);
       if (!def) continue;
@@ -62,7 +77,7 @@ export function recomputeCombatantModifiers(context, entity, runtime, attachment
   runtime.physicsResponse = { massScale: 1, inertiaScale: 1 };
   const blocked = new Set();
 
-  for (const id of Object.keys(runtime.subsystems || {}).sort()) {
+  for (const id of sortedSubsystemIds(runtime)) {
     const subsystem = runtime.subsystems[id];
     subsystem.effectiveDisabled = disabled.has(id);
     if (subsystem.effectiveDisabled) applyEffects(runtime, blocked, catalog.subsystems.get(id)?.disabledBehavior, 1);

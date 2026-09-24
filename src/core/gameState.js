@@ -5,7 +5,7 @@ import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
-import { AUDIO_DEFAULT_MUTE_VERSION, GAME_MOTION_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
+import { AUDIO_DEFAULT_MUTE_VERSION, GAME_MOTION_DEFAULT_VERSION, SHADOWS_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
 import { createRunState } from './runState.js';
 
 function defaultSettings() {
@@ -22,12 +22,16 @@ function defaultSettings() {
       muted: false,
       defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
     },
-    // renderScale/shadows raised from 0.85/false after a matched A/B on the 60fps target hardware
+    // renderScale raised from 0.85 after a matched A/B on the 60fps target hardware
     // (Intel iGPU, ANGLE/D3D11, 1920x1080, 20s warmup so authored admission had settled): baseline
-    // p95 16.80ms max 17.20ms vs full-res+shadows p95 16.80ms max 17.00ms. Identical — the frame is
+    // p95 16.80ms max 17.20ms vs full-res p95 16.80ms max 17.00ms. Identical — the frame is
     // vsync-locked with headroom at 44-108 draw calls, so 85% resolution was quality given away for
     // perf that was never needed. Evidence: .devshots/gfx/ab2-a-base.json vs ab2-b-quality.json.
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: true, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0 },
+    // shadows default OFF (2026-09-21 owner report): at the ~1 WU/texel the neighbourhood ortho
+    // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
+    // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
+    // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0 },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
@@ -55,7 +59,7 @@ function defaultSettings() {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
       // Full by default: the OS reduced-motion hint is an explicit opt-in (System), never a silent
       // one — Windows "Animation effects: off" is a desktop tweak, not a request to strip combat feel.
-      motionPreference: 'full', motionAsked: false, motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
+      motionPreference: 'full', motionAsked: false, motionPrompted: false, motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
     },
   };
 }
@@ -82,7 +86,7 @@ function defaultPlayer() {
     insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null },
     magnetRange: 250,
     miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, directToCargo: true },
-    stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0 },
+    stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0, creditsEarned: 0 },
     // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
     // the hint has been shown; persisted across saves so returning players aren't re-taught.
     hints: { firstFlight: false, firstCombat: false, firstShieldDrop: false, firstStation: false, firstGate: false, firstCargoFull: false },

@@ -191,7 +191,12 @@ export const achievementsScreen = {
   },
 
   onHide() { cue('close'); },
-  refresh() { this._render({ quiet: true }); },
+  refresh(ctx, options) {
+    // Live unlocks land through the ACHIEVEMENT_UNLOCKED_EVENT subscription; the shell's ~3 Hz
+    // periodic pass only rebuilt the plate and reset the player's scroll position mid-read.
+    if (options && options.periodic) return;
+    this._render({ quiet: true });
+  },
 
   dispose() {
     this._unsubscribe();

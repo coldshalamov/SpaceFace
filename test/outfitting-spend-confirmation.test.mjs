@@ -448,7 +448,7 @@ function getConfirmDialog() {
   assert.match(SHIPWORKS_SOURCE, /data-fit-slot/, 'Shipworks distinguishes Buy & Fit from Buy to Inventory');
   assert.match(SHIPWORKS_SOURCE, /selectedFit\s*=\s*!equipped\s*&&\s*!purchase\.disabled\s*&&\s*!headConflict/, 'Shipworks bases direct fitting on the selected compatible slot, not the first available slot');
   assert.match(SHIPWORKS_SOURCE, /Buy & Replace/, 'Shipworks names the supported selected-slot replacement action');
-  assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{\s*fitSlotIndex\s*\}\)/, 'Shipworks uses the selected fitting action in the shared module-spend description');
+  assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{[\s\S]*?fitSlotIndex[\s\S]*?\}\)/, 'Shipworks uses the selected fitting action in the shared module-spend description');
   assert.match(SHIPWORKS_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'Shipworks awaits paid-spend confirmation');
   assert.match(SHIPWORKS_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?return;\s*\}/, 'Shipworks cancellation returns before purchase');
   const shipworksBuyIndex = SHIPWORKS_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex })");

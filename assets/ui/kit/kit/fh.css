@@ -1,30 +1,38 @@
 /* ============================================================================================
- * fh.css — the Field Hardware component layer.
+ * fh.css -- the Field Hardware component layer, PRINTED.
  *
- * EVERY material here is a produced asset. Plates, keys, windows, gauges and sockets are
- * nine-sliced transparent PNGs rendered in Cycles from real modelled geometry
- * (assets/ui/kit/tools/bl_kit.py); tiles are seamless renders; icons and marks are inline SVG.
- * There is no `linear-gradient`, no `box-shadow` and no `border:` standing in for a material
- * anywhere in this file — the programme's asset-coverage grep is the point, and a screen built
- * from CSS borders is rejected before it is looked at.
+ * OWNER RULING 2026-09-22: "free of any common CSS anti-patterns of old internet (mostly when CSS
+ * is pretending to be physical materials, it looks awful and we need either custom or downloaded
+ * assets for a lot of things)". design/frontend/ONE_PHOTOGRAPH.md sections 0 and 9.
  *
- * `border:` appears only as `border: 0` resets and as `border-image-*` longhands.
+ * This file has been through three doctrines in one day, and the history is the lesson:
+ *   1. PRODUCED BITMAPS. Every key, plate and window was a nine-sliced Cycles render. keys/
+ *      key.legend.rest.png is 160x40 and was stretched across every station tab; on a HiDPI
+ *      display every control in the game was a bitmap upsampled 2x -- the owner's "smudges".
+ *   2. COMPUTED MATERIAL. The bitmaps became gradients: a lit top rule, a dark sill and a seat
+ *      shadow standing in for a moulded cap, plus a paint worklet grinding a brushed face. Sharp at
+ *      any size -- and exactly the CSS-pretending-to-be-metal the owner then named as the problem.
+ *   3. PRINTED AND LIT (now). A surface is a flat field; a control you can press has the cut (one
+ *      45deg chamfer, top-right) and lights on that edge; a tab is a word on a rail; the one
+ *      consequential verb IS the lamp. Where the interface wants an OBJECT -- a hull, a crest, a
+ *      commodity -- it is produced art at the size it is shown, never CSS.
+ * The Cycles renders stay on disk as reference; nothing here may reference them.
  *
- * Requires: tokens/tokens.css (custom properties), motion.css (transitions).
+ * Requires: tokens/tokens.css (custom properties), the Deckplate tokens (--dp-*), motion.css.
  *
  * --------------------------------------------------------------------------------------------
- * CLASS INDEX (S2 builds the BENCH screens on these — names are stable)
+ * CLASS INDEX (names are stable)
  *
  *  SURFACES   .fh-plate [--raised --sunk --paper --edge]   .fh-window [--deep --viewport]
- *             .fh-rail   .fh-row [.is-selected]            .fh-grain  .fh-hazard
+ *             .fh-rail   .fh-row [.is-selected]            .fh-hairline
  *  TYPE       .fh-name .fh-hero .fh-title .fh-heronum .fh-menu-item .fh-subhead
  *             .fh-body .fh-emphasis .fh-data .fh-fine .fh-legend
- *  CONTROLS   .fh-key [--primary --secondary --hazard --legend --small] .fh-socket
- *             .fh-toggle .fh-slider .fh-stepper .fh-input .fh-scroll
- *  INDICATORS .fh-light[data-colour][data-level]  .fh-bar  .fh-gauge  .fh-radar
- *             .fh-badge .fh-tape .fh-strip .fh-tag
+ *  CONTROLS   .fh-key [--primary --secondary --hazard --legend --small]  .fh-stepper  .fh-input
+ *  INDICATORS .fh-light[data-colour][data-level]
  *  CONTENT    .fh-tile .fh-icon .fh-mark .fh-crest
  *  STATE      [data-fh-lit=on|rest|off]  [data-fh-temp=docked|wanted|crucible]  :focus-visible
+ * Retired with their bitmaps (no screen used them): socket, toggle, slider, scroll, bar, gauge,
+ * radar, badge, tape, strip, tag, objective, grain, hazard.
  * ============================================================================================ */
 
 /* ---------------------------------------------------------------- foundations */
@@ -55,60 +63,50 @@ body.fh-root {
 
 /* ---------------------------------------------------------------- surfaces
  *
- * A plate is a nine-sliced render: real thickness, a lit top edge and an under-shadow are IN
- * the image, so they survive any size the layout asks for and cannot be faked by a border.
+ * A surface is a printed field: one flat colour. Its border keeps the width the kit laid out with,
+ * transparent, so no content box moves -- the field simply runs to the outer edge.
  */
 
 .fh-plate {
-  border-style: solid;
-  border-width: 24px;
-  border-image-source: url('../assets/plates/plate.bench.primary.png');
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 24px;
   padding: var(--fh-space-l);
   box-sizing: border-box;
   color: var(--fh-text);
+  border: 24px solid transparent;
+  background: var(--dp-field);
+  box-shadow: none;
 }
-.fh-plate--raised { border-image-source: url('../assets/plates/plate.bench.raised.png'); }
-.fh-plate--sunk   { border-image-source: url('../assets/plates/plate.bench.sunk.png'); }
-.fh-plate--paper  { border-image-source: url('../assets/plates/plate.bench.paper.png');
-                    color: #22201C; }
+.fh-plate--raised { background: var(--dp-field); }
+.fh-plate--sunk   { background: var(--dp-field); }
+.fh-plate--paper  { color: #22201C; background: #e2dccd; box-shadow: none; }
 .fh-plate--edge {
-  border-width: 16px;
-  border-image-source: url('../assets/plates/plate.edge.small.png');
-  border-image-slice: 16 fill;
-  border-image-width: 16px;
   padding: var(--fh-space-m);
+  border: 16px solid transparent;
+  background: var(--dp-field);
+  box-shadow: none;
 }
 
-/* The smoked window: a real darkening pane with a lit rim, so the scene reads THROUGH it and
- * stays sharp. No backdrop-filter — it is banned in flight and it blurs the world anyway. */
+/* A window: the field, a little deeper. No specular band, no lit rim -- there is no glass. */
 .fh-window {
-  border-style: solid;
-  border-width: 20px;
-  border-image-source: url('../assets/windows/window.glass.png');
-  border-image-slice: 20 fill;
-  border-image-repeat: stretch;
-  border-image-width: 20px;
+  border: 0;
+  border-radius: 0;
   padding: var(--fh-space-l);
   box-sizing: border-box;
+  background: var(--dp-field);
+  box-shadow: none;
 }
-.fh-window--deep     { border-image-source: url('../assets/windows/window.glass.deep.png'); }
-.fh-window--viewport { border-image-source: url('../assets/windows/window.viewport.png'); }
+.fh-window--deep { background: rgb(5 7 10 / .92); }
+/* The viewport is the chosen window: a lamp bar on its leading edge. */
+.fh-window--viewport { background: linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0), var(--dp-field); }
 
-/* The POSTER legend rail: the single piece of hardware a title-register screen carries. */
+/* The legend rail: a hairline, not a bar of stock. */
 .fh-rail {
-  border-style: solid;
-  border-width: 16px;
-  border-image-source: url('../assets/plates/plate.poster.rail.png');
-  border-image-slice: 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 16px;
   box-sizing: border-box;
+  border: 16px solid transparent;
+  background: linear-gradient(90deg, transparent calc(50% - .5px), var(--dp-rule-hi) 0 calc(50% + .5px), transparent 0);
+  box-shadow: none;
 }
 
-/* An engraved row. Selected rows carry the amber left-edge light and its spill. */
+/* A row. Selected rows carry the lamp on the leading edge over a faint ink field. */
 .fh-row {
   display: flex;
   align-items: center;
@@ -123,37 +121,12 @@ body.fh-root {
 .fh-row.is-selected {
   color: var(--fh-text);
   border-style: solid;
+  border-color: transparent;
   border-width: 8px 16px;
-  border-image-source: url('../assets/plates/plate.row.selected.png');
-  border-image-slice: 8 16 8 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 8px 16px;
+  background: linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0) border-box, linear-gradient(var(--dp-field-ink) 0 0) border-box;
+  box-shadow: none;
 }
-
-/* Tileables: grain, hazard stripe, etched hairline. */
-.fh-grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url('../assets/tiles/tile.grain.png');
-  background-repeat: repeat;
-  opacity: var(--fh-plate-grainOpacity, 0.06);
-  pointer-events: none;
-}
-.fh-hazard {
-  background-image: url('../assets/tiles/tile.hazard.stripe.png');
-  background-repeat: repeat-x;
-  background-size: auto 100%;
-  min-height: 24px;
-}
-[data-fh-temp='wanted'] .fh-hazard {
-  background-image: url('../assets/tiles/tile.hazard.stripe-red.png');
-}
-.fh-hairline {
-  background-image: url('../assets/tiles/tile.etch.hairline.png');
-  background-repeat: repeat-x;
-  height: 4px;
-}
+.fh-hairline { height: 1px; background: var(--dp-rule); }
 
 /* ---------------------------------------------------------------- type */
 
@@ -203,271 +176,190 @@ body.fh-root {
 
 /* ---------------------------------------------------------------- controls
  *
- * Every state is its own render with identical bounds, so swapping one never moves the layout.
- * `pressed` sinks the plate INSIDE the sprite; the element itself does not move.
+ * A key is a ghost field with the cut. The cut is painted by the fill (not clip-path), so a lit
+ * key can still throw its glow past its edge. --fhk-fill carries the state.
  */
 
 .fh-key {
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url('../assets/keys/key.secondary.rest.png');
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 18px;
-  background: transparent;
+  --fhk-fill: var(--dp-field-ink);
+  --fhk-cut: none;
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--fhk-cut),
+    linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--fhk-fill) 0);
+  box-shadow: none;
   color: var(--fh-text);
   font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend);
+  font-variation-settings: "wght" 700, "wdth" 92;
+  letter-spacing: .1em;
   text-transform: uppercase;
   font-size: var(--fh-size-fine);
   min-height: 56px;
   min-width: 120px;
-  padding: 0 var(--fh-space-xl);
+  padding: 0 calc(var(--dp-cut) + var(--fh-space-xl)) 0 var(--fh-space-xl);
   cursor: pointer;
   box-sizing: border-box;
+  text-shadow: none;
 }
-.fh-key:hover  { border-image-source: url('../assets/keys/key.secondary.hover.png'); }
-.fh-key:active { border-image-source: url('../assets/keys/key.secondary.pressed.png'); }
+.fh-key:hover { --fhk-fill: var(--dp-field-ink-hi); --fhk-cut: var(--dp-cut-lit); }
+.fh-key:active { --fhk-fill: rgb(232 226 212 / .05); }
 .fh-key:disabled,
-.fh-key[aria-disabled='true'] {
-  border-image-source: url('../assets/keys/key.secondary.disabled.png');
+.fh-key[aria-disabled="true"] {
+  --fhk-fill: rgb(232 226 212 / .04);
+  --fhk-cut: none;
   color: var(--fh-text-tertiary);
   cursor: default;
 }
 
-.fh-key--primary          { border-image-source: url('../assets/keys/key.primary.rest.png'); }
-.fh-key--primary:hover    { border-image-source: url('../assets/keys/key.primary.hover.png'); }
-.fh-key--primary:active   { border-image-source: url('../assets/keys/key.primary.pressed.png'); }
-.fh-key--primary:disabled { border-image-source: url('../assets/keys/key.primary.disabled.png'); }
+/* PRIMARY is consequence: pressing it changes the world, so the field IS the lamp. */
+.fh-key--primary {
+  --fhk-fill: var(--dp-lamp);
+  color: #1a1206;
+  font-variation-settings: "wght" 800, "wdth" 100;
+}
+.fh-key--primary:hover { --fhk-fill: var(--dp-lamp-hot); --fhk-cut: none; box-shadow: var(--dp-lamp-glow); }
+.fh-key--primary:active { --fhk-fill: var(--dp-lamp-dim); }
+.fh-key--primary:disabled {
+  --fhk-fill: transparent;
+  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0);
+  color: var(--fh-text-tertiary);
+}
 
-.fh-key--hazard          { border-image-source: url('../assets/keys/key.hazard.rest.png'); }
-.fh-key--hazard:hover    { border-image-source: url('../assets/keys/key.hazard.hover.png'); }
-.fh-key--hazard:active   { border-image-source: url('../assets/keys/key.hazard.pressed.png'); }
-.fh-key--hazard:disabled { border-image-source: url('../assets/keys/key.hazard.disabled.png'); }
+/* HAZARD: bone at rest with a red rule along the bottom; red arrives with intent. */
+.fh-key--hazard {
+  background:
+    var(--fhk-cut),
+    linear-gradient(0deg, var(--dp-danger) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--fhk-fill) 0);
+}
+.fh-key--hazard:hover { --fhk-fill: var(--dp-danger); --fhk-cut: none; color: #1a0806; box-shadow: 0 0 18px rgb(255 80 56 / .38); }
+.fh-key--hazard:disabled { color: var(--fh-text-tertiary); }
 
+/* LEGEND IS NOT A KEY. A filter or a tab changes what you are LOOKING at, never the world, so it
+ * carries no field and no cut: it is a word that lights, with one lamp bar beneath it. This is the
+ * class the station dock and the market filters wear -- the most-seen control in the game. */
 .fh-key--legend {
-  border-width: 14px;
-  border-image-source: url('../assets/keys/key.legend.rest.png');
-  border-image-slice: 14 fill;
-  border-image-width: 14px;
-  min-height: 40px;
-  min-width: 96px;
-  color: var(--fh-text-resting);
-}
-.fh-key--legend[aria-selected='true'],
-.fh-key--legend.is-lit { border-image-source: url('../assets/keys/key.legend.lit.png');
-                         color: var(--fh-text); }
-.fh-key--legend:hover  { border-image-source: url('../assets/keys/key.legend.hover.png'); }
-
-.fh-key--small {
-  border-width: 12px;
-  border-image-source: url('../assets/keys/key.small.rest.png');
-  border-image-slice: 12 fill;
-  border-image-width: 12px;
-  min-height: 36px;
-  min-width: 88px;
-  padding: 0 var(--fh-space-l);
-}
-.fh-key--small:hover  { border-image-source: url('../assets/keys/key.small.hover.png'); }
-.fh-key--small:active { border-image-source: url('../assets/keys/key.small.pressed.png'); }
-
-/* A socket is a machined recess that holds a verb icon — the action bar is sockets, not buttons */
-.fh-socket {
-  width: 56px; height: 56px;
+  position: relative;
   border: 0;
-  background: url('../assets/sockets/socket.rest.png') center / 56px 56px no-repeat;
-  display: grid; place-items: center;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 14px;
+  font-variation-settings: "wght" 560, "wdth" 78;
   color: var(--fh-text-resting);
-  cursor: pointer;
-  padding: 0;
+  transition: color 160ms ease, font-variation-settings 160ms ease;
 }
-.fh-socket[data-state='lit']     { background-image: url('../assets/sockets/socket.lit.png');
-                                   color: var(--fh-legend); }
-.fh-socket[data-state='cooling'] { background-image: url('../assets/sockets/socket.cooling.png'); }
-.fh-socket[data-state='locked']  { background-image: url('../assets/sockets/socket.locked.png');
-                                   color: var(--fh-wanted); }
-.fh-socket[data-state='empty']   { background-image: url('../assets/sockets/socket.empty.png');
-                                   color: var(--fh-text-tertiary); }
-.fh-socket-group {
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url('../assets/sockets/socket.bracket.png');
-  border-image-slice: 18 fill;
-  border-image-width: 18px;
-  display: flex; gap: var(--fh-space-s);
-  padding: var(--fh-space-s) var(--fh-space-m) var(--fh-space-l);
+.fh-key--legend::after {
+  content: "";
+  position: absolute; left: 50%; translate: -50% 0; bottom: 0;
+  height: 2px; width: 0;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 10px rgb(242 185 80 / .5);
+  transition: width 200ms ease;
+  pointer-events: none;
+}
+.fh-key--legend:hover {
+  background: none;
+  color: var(--fh-text);
+  font-variation-settings: "wght" 640, "wdth" 86;
+}
+.fh-key--legend:hover::after {
+  width: 34%; background: currentColor; box-shadow: none; opacity: .45;
+}
+.fh-key--legend[aria-selected="true"],
+.fh-key--legend[aria-pressed="true"],
+.fh-key--legend.is-lit {
+  background: none;
+  box-shadow: none;
+  color: var(--fh-text);
+  font-variation-settings: "wght" 760, "wdth" 100;
+}
+.fh-key--legend[aria-selected="true"]::after,
+.fh-key--legend[aria-pressed="true"]::after,
+.fh-key--legend.is-lit::after {
+  width: 100%; opacity: 1;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 12px rgb(242 185 80 / .45);
+}
+.fh-key--legend:disabled,
+.fh-key--legend[aria-disabled="true"] {
+  background: none; box-shadow: none; color: var(--fh-text-tertiary); cursor: default;
+}
+.fh-key--legend:disabled::after { width: 0; }
+
+/* SMALL -- an adjuster you press repeatedly (quantity, steppers): the same key, compact. */
+.fh-key--small {
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 calc(var(--dp-cut) + var(--fh-space-l)) 0 var(--fh-space-l);
 }
 
-.fh-toggle {
-  width: 72px; height: 32px; border: 0; padding: 0; cursor: pointer;
-  background: url('../assets/controls/toggle.switch.off-rest.png') center / 72px 32px no-repeat;
-}
-.fh-toggle:hover { background-image: url('../assets/controls/toggle.switch.off-hover.png'); }
-.fh-toggle[aria-checked='true'] {
-  background-image: url('../assets/controls/toggle.switch.on-rest.png');
-}
-.fh-toggle[aria-checked='true']:hover {
-  background-image: url('../assets/controls/toggle.switch.on-hover.png');
-}
-.fh-toggle:disabled { background-image: url('../assets/controls/toggle.switch.disabled-off.png');
-                      cursor: default; }
-
-.fh-slider { position: relative; height: 24px; display: flex; align-items: center; }
-.fh-slider-track {
-  flex: 1; height: 12px;
-  border-style: solid; border-width: 4px 8px;
-  border-image-source: url('../assets/controls/slider.track.png');
-  border-image-slice: 4 8 4 8 fill; border-image-width: 4px 8px;
-}
-.fh-slider-fill {
-  position: absolute; left: 0; height: 12px;
-  background: url('../assets/controls/slider.fill.png') left center / auto 12px repeat-x;
-}
-.fh-slider-thumb {
-  width: 24px; height: 24px; border: 0; padding: 0; position: absolute;
-  background: url('../assets/controls/slider.thumb.rest.png') center / 24px 24px no-repeat;
-}
-.fh-slider-thumb:hover  { background-image: url('../assets/controls/slider.thumb.hover.png'); }
-.fh-slider-thumb:active { background-image: url('../assets/controls/slider.thumb.pressed.png'); }
-
+/* A stepper reads its value in phosphor between its two keys. */
 .fh-stepper { display: inline-flex; align-items: center; gap: var(--fh-space-xs); }
 .fh-stepper-well {
-  border-style: solid; border-width: 14px;
-  border-image-source: url('../assets/controls/stepper.well.png');
-  border-image-slice: 14 fill; border-image-width: 14px;
   min-width: 160px; min-height: 44px;
   display: grid; place-items: center;
   font-family: var(--fh-face-text); font-variant-numeric: tabular-nums;
+  color: var(--dp-phos, #dfeeff);
+  border: 14px solid transparent;
+  background: linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0) border-box;
+  box-shadow: none;
 }
-.fh-stepper-minus, .fh-stepper-plus {
-  width: 44px; height: 44px; border: 0; padding: 0; cursor: pointer;
-  color: var(--fh-text); display: grid; place-items: center;
-}
-.fh-stepper-minus { background: url('../assets/controls/stepper.minus.rest.png') center / 44px no-repeat; }
-.fh-stepper-plus  { background: url('../assets/controls/stepper.plus.rest.png') center / 44px no-repeat; }
-.fh-stepper-minus:hover { background-image: url('../assets/controls/stepper.minus.hover.png'); }
-.fh-stepper-plus:hover  { background-image: url('../assets/controls/stepper.plus.hover.png'); }
 
+/* An input is words on a rail; focus lights the rail. */
 .fh-input {
-  border-style: solid; border-width: 12px;
-  border-image-source: url('../assets/controls/input.underline.rest.png');
-  border-image-slice: 12 fill; border-image-width: 12px;
-  background: transparent; color: var(--fh-text);
+  color: var(--fh-text);
   font-family: var(--fh-face-text); font-size: var(--fh-size-body);
   min-height: 40px; padding: 0 var(--fh-space-m); box-sizing: border-box;
+  border: 12px solid transparent;
+  background: linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0) border-box;
+  box-shadow: none;
 }
-.fh-input:focus-visible { border-image-source: url('../assets/controls/input.underline.focus.png'); }
-.fh-input[aria-invalid='true'] { border-image-source: url('../assets/controls/input.underline.error.png'); }
-
-.fh-scroll-track { width: 8px; background: url('../assets/controls/scroll.track.png') repeat-y; }
-.fh-scroll-thumb {
-  width: 8px;
-  border-style: solid; border-width: 6px 2px;
-  border-image-source: url('../assets/controls/scroll.thumb.rest.png');
-  border-image-slice: 6 2 6 2 fill; border-image-width: 6px 2px;
-}
+.fh-input:focus-visible { background: linear-gradient(0deg, var(--dp-lamp) 2px, transparent 0) border-box; }
+.fh-input[aria-invalid="true"] { background: linear-gradient(0deg, var(--dp-danger) 2px, transparent 0) border-box; }
 
 /* ---------------------------------------------------------------- indicators */
 
+/* A status light is a flat emitted bead, not a photographed lens. */
 .fh-light {
-  display: inline-block; width: 12px; height: 12px;
-  background: url('../assets/lights/light.dot.legend.on.png') center / contain no-repeat;
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 8px rgb(242 185 80 / .45);
 }
-.fh-light[data-colour='cold']   { background-image: url('../assets/lights/light.dot.cold.on.png'); }
-.fh-light[data-colour='wanted'] { background-image: url('../assets/lights/light.dot.wanted.on.png'); }
-.fh-light[data-colour='good']   { background-image: url('../assets/lights/light.dot.good.on.png'); }
-.fh-light[data-level='dim']     { background-image: url('../assets/lights/light.dot.legend.dim.png'); }
-.fh-light[data-level='off']     { background-image: url('../assets/lights/light.dot.legend.off.png'); }
-.fh-light--bar { width: 24px; height: 6px;
-                 background-image: url('../assets/lights/light.bar.legend.on.png'); }
-
-.fh-bar {
-  border-style: solid; border-width: 8px 10px;
-  border-image-source: url('../assets/gauges/bar.seg.bezel.png');
-  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
-  display: flex; gap: 0; align-items: center; min-height: 28px; padding: 0 2px;
-}
-.fh-bar-seg { width: 12px; height: 16px;
-              background: url('../assets/gauges/bar.seg.off.png') center / 12px 16px no-repeat; }
-.fh-bar-seg.is-on   { background-image: url('../assets/gauges/bar.seg.on.png'); }
-.fh-bar-seg.is-hot  { background-image: url('../assets/gauges/bar.seg.hot.png'); }
-.fh-bar-seg.is-cold { background-image: url('../assets/gauges/bar.seg.cold.png'); }
-
-.fh-gauge { position: relative; width: 360px; height: 200px;
-            background: url('../assets/gauges/gauge.speed.bezel.png') center / contain no-repeat; }
-.fh-gauge-face { position: absolute; left: 100px; top: 108px; width: 160px; height: 72px;
-                 background: url('../assets/gauges/gauge.speed.face.png') center / contain no-repeat;
-                 display: grid; place-items: center; }
-.fh-gauge-needle { position: absolute; left: 50%; top: 62%; transform-origin: 0 0;
-                   transform: rotate(calc(var(--fh-gauge-value, 0) * 1deg)); }
-
-.fh-radar { position: relative; width: 320px; height: 320px;
-            background: url('../assets/radar/radar.bezel.png') center / contain no-repeat; }
-.fh-radar-face { position: absolute; inset: 0;
-                 background: url('../assets/radar/radar.face.png') center / contain no-repeat; }
-[data-fh-temp='wanted'] .fh-radar-face {
-  background-image: url('../assets/radar/radar.wanted-face.png');
-}
-
-.fh-badge { width: 280px; height: 96px; position: relative;
-            background: url('../assets/badges/badge.law.png') center / contain no-repeat; }
-[data-fh-temp='wanted'] .fh-badge {
-  background-image: url('../assets/badges/badge.law.wanted.png');
-}
-
-.fh-tape { display: inline-flex; align-items: stretch; height: 24px; }
-.fh-tape::before, .fh-tape::after { content: ''; width: 16px; }
-.fh-tape::before { background: url('../assets/tapes/tape.cap.left.png') center / contain no-repeat; }
-.fh-tape::after  { background: url('../assets/tapes/tape.cap.right.png') center / contain no-repeat; }
-.fh-tape-mid { background: url('../assets/tapes/tape.mid.png') left center / auto 24px repeat-x;
-               display: grid; place-items: center; padding: 0 var(--fh-space-s); }
-.fh-tape.is-lit .fh-tape-mid { background-image: url('../assets/tapes/tape.mid-lit.png'); }
-
-.fh-strip {
-  border-style: solid; border-width: 6px 10px;
-  border-image-source: url('../assets/strips/strip.status.bezel.png');
-  border-image-slice: 6 10 6 10 fill; border-image-width: 6px 10px;
-  display: flex; gap: 6px; align-items: center; height: 20px; padding: 0 4px;
-}
-
-.fh-tag {
-  border-style: solid; border-width: 8px 10px;
-  border-image-source: url('../assets/tapes/tag.world.png');
-  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
-  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend); font-size: var(--fh-size-fine);
-  min-height: 24px; display: inline-flex; align-items: center; padding: 0 var(--fh-space-s);
-}
-
-.fh-objective {
-  border-style: solid; border-width: 16px;
-  border-image-source: url('../assets/plates/plate.objective.png');
-  border-image-slice: 16 fill; border-image-width: 16px;
-  padding: var(--fh-space-s) var(--fh-space-m);
-}
+.fh-light[data-colour="cold"]   { background: var(--dp-ink-dim, #c9c4b6); box-shadow: none; }
+.fh-light[data-colour="wanted"] { background: var(--dp-danger, #ff5038); box-shadow: 0 0 8px rgb(255 80 56 / .4); }
+.fh-light[data-colour="good"]   { background: var(--dp-ink, #e8e2d4); box-shadow: none; }
+.fh-light[data-level="dim"]     { opacity: .55; box-shadow: none; }
+.fh-light[data-level="off"]     { background: var(--dp-rule-hi, rgb(232 226 212 / .22)); box-shadow: none; }
+.fh-light--bar { width: 24px; height: 2px; border-radius: 0; }
 
 /* ---------------------------------------------------------------- content */
 
-/* Any list of things that exist in the world is a row of IMAGED tiles, never a row of words. */
+/* A tile is a produced image on a printed field. Pressable, so it has the cut; chosen, its cut
+ * and its leading edge light. */
 .fh-tile {
-  border-style: solid; border-width: 20px;
-  border-image-source: url('../assets/windows/window.glass.png');
-  border-image-slice: 20 fill; border-image-width: 20px;
+  border: 0; border-radius: 0;
+  background: var(--dp-field);
+  clip-path: var(--dp-cut-shape);
+  box-shadow: none;
   display: grid; grid-template-rows: 1fr auto;
-  min-width: 168px; min-height: 132px; padding: 0; cursor: pointer;
-  background: transparent; color: var(--fh-text-resting);
-  /* border-box like every other surface here: without it the 20 px border-image is ADDED to
-     the stated size, and a row of tiles silently grows 40 px taller than its frame. */
+  min-width: 168px; min-height: 132px; padding: 10px; cursor: pointer;
+  color: var(--fh-text-resting);
   box-sizing: border-box;
+  transition: color 160ms ease;
 }
-.fh-tile[aria-selected='true'] {
-  border-image-source: url('../assets/windows/window.viewport.png');
+.fh-tile:hover { color: var(--fh-text); background: linear-gradient(var(--dp-field-ink) 0 0), var(--dp-field); }
+.fh-tile[aria-selected="true"] {
+  background: var(--dp-cut-lit), linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0), var(--dp-field);
   color: var(--fh-text);
 }
 .fh-tile-art { display: grid; place-items: center; min-height: 78px; }
 .fh-tile-legend {
-  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  font-family: var(--fh-face-display); font-variation-settings: "wght" 600, "wdth" 62;
   letter-spacing: var(--fh-track-legend); text-transform: uppercase;
   font-size: var(--fh-size-fine); text-align: center; padding: var(--fh-space-xs) 0;
 }
@@ -482,20 +374,20 @@ body.fh-root {
 
 /* ---------------------------------------------------------------- focus
  *
- * The ring is an inline SVG border-image, so it survives forced colours (a CSS background
- * image does not) and it is legible on both the darkest and the lightest plate — proven at
- * 15.49:1 and 12.83:1 in the contrast table.
+ * Bone, never amber (amber means live). A tile is clipped to its cut, so its focus is drawn
+ * inside it as the leading bracket rather than as an outline the clip would cut away.
  */
 
-:where(.fh-key, .fh-socket, .fh-toggle, .fh-tile, .fh-input, .fh-row, .fh-slider-thumb,
-       .fh-stepper-minus, .fh-stepper-plus, .fh-menu-item):focus-visible {
+:where(.fh-key, .fh-input, .fh-row, .fh-menu-item):focus-visible {
   outline: 2px solid var(--fh-bone);
   outline-offset: 2px;
 }
+.fh-tile:focus-visible { outline: 2px solid transparent; background: var(--dp-bracket), var(--dp-field); }
 @media (forced-colors: active) {
-  :where(.fh-key, .fh-socket, .fh-toggle, .fh-tile, .fh-input):focus-visible {
+  :where(.fh-key, .fh-tile, .fh-input):focus-visible {
     outline: 3px solid Highlight;
   }
+  .fh-tile { clip-path: none; }
   .fh-icon, .fh-mark, .fh-crest { fill: CanvasText; }
 }
 

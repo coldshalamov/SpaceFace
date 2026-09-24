@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "158322ad920e20b1ded853627433878c9c8077392e850b362a47cd9376fee1ad",
+  "contentHash": "7d24937d479b55458d4730cca13fae7e6b1b2e94f5ecf05d13ad2375771500a9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,13 +74,13 @@
       },
       "drawMode": 4,
       "geometryHash": "9c1048798cde9d2dccf5799104d783a7effb05405e23bf02a25ba6e72061ed83",
-      "id": "sf.render.tally-post.node.tally-boom-mesh.primitive.0",
+      "id": "sf.render.tally-post.node.tally-boom-joined.primitive.0",
       "indexCount": 132,
       "indexed": true,
       "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
-      "nodeId": "sf.render.tally-post.node.tally-boom-mesh",
+      "nodeId": "sf.render.tally-post.node.tally-boom-joined",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -1503,7 +1503,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.node.tally-boom-mesh",
+      "id": "sf.render.tally-post.node.tally-boom-joined",
       "localTransform": [
         1,
         0,
@@ -1523,8 +1523,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "tally_boom__mesh",
-      "nodeName": "tally_boom__mesh",
+      "mergeBoundary": "tally_boom_joined",
+      "nodeName": "tally_boom_joined",
       "nodePath": [
         0,
         0,
@@ -3521,22 +3521,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ec5a1851baa619e26aadf3c4da8c1b297384a37545c17f6fcead95f0c7caed08"
+      "sha256": "8f68d6cb6562b65a0a161867ca07f73b4f147bdadfc16b8cfe561cf96d50dc42"
     },
     "sourceGlb": {
-      "bytes": 167480,
-      "sha256": "98777b2468f9ce5544804db6a1d8eaf9231e198f1ec6067ea9b00097dbeba30a",
+      "bytes": 167508,
+      "sha256": "48ff774b5dd37e8cef192b7d7b309a2970e8113ded438b3f93143f550adebe85",
       "uri": "place_tally_post.glb"
     },
     "sourceManifest": {
-      "bytes": 169401,
-      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 227380,
-    "sha256": "c181ceddc992ab7a71feb475522f05f476f4a9ebdf3b22a3087daa087e68336d",
+    "bytes": 227384,
+    "sha256": "596ed46d6b4494f7a171ee6ba2ed7e0e9de208c96457170a1b2806030ae674e8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3966,7 +3966,7 @@
           0,
           1
         ],
-        "name": "tally_boom__mesh",
+        "name": "tally_boom_joined",
         "planIndex": 9,
         "tags": {
           "canopy": false
@@ -4917,7 +4917,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_post.glb"
   },
-  "runtimeHash": "6c74af9b007d70318698024d592b3b226a2b200d1c077bbfc55b5ff1a663633e",
+  "runtimeHash": "6874ae7ebc2cf6ab6adb85bbd6198f6d1c767953f34e64b0999e6320d05ab942",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4939,7 +4939,7 @@
         "sf.render.tally-post.node.remaster-material-mechanical-brushednickel",
         "sf.render.tally-post.node.remaster-material-mechanical-shadowenamel",
         "sf.render.tally-post.node.tally-boom",
-        "sf.render.tally-post.node.tally-boom-mesh",
+        "sf.render.tally-post.node.tally-boom-joined",
         "sf.render.tally-post.node.tally-deck-crumple",
         "sf.render.tally-post.node.tally-deck-rail-e",
         "sf.render.tally-post.node.tally-deck-rail-n",

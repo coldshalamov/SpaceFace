@@ -218,6 +218,16 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
+  // INF-025: authored directional armor (Mirrorjaw prow/stern split). Clamped here so a bad
+  // row can neither immunize a hull nor multiply damage without bound; the router stays pure.
+  if (def.directionalArmor && typeof def.directionalArmor === 'object') {
+    spec.data.directionalArmor = {
+      frontArcDeg: clampDirectionalArc(def.directionalArmor.frontArcDeg),
+      frontMult: clampDirectionalMult(def.directionalArmor.frontMult),
+      rearArcDeg: clampDirectionalArc(def.directionalArmor.rearArcDeg),
+      rearMult: clampDirectionalMult(def.directionalArmor.rearMult),
+    };
+  }
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
@@ -289,6 +299,16 @@ function setVecXZ(vec, x, z) {
   if (!vec) return;
   if (typeof vec.set === 'function') vec.set(x, 0, z);
   else { vec.x = x; vec.y = 0; vec.z = z; }
+}
+
+function deathVelocity(entity) {
+  const vel = entity && entity.vel;
+  const x = Number(vel && vel.x);
+  const z = Number(vel && vel.z);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    z: Number.isFinite(z) ? z : 0,
+  };
 }
 
 function activeSectorStations(state) {
@@ -451,6 +471,22 @@ function finiteKillMetric(value) {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
+// INF-025: clamp authored directional-armor rows at the spawn seam. Arcs stay within a
+// hemisphere per side; multipliers stay finite and bounded so a bad row can neither
+// immunize a hull (frontMult 0 still routes heat/statuses, never full immunity) nor
+// multiply damage without bound.
+function clampDirectionalArc(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 150;
+  return Math.min(180, Math.max(0, n));
+}
+
+function clampDirectionalMult(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(10, Math.max(0, n));
+}
+
 export const combat = {
   name: 'combat',
   init(ctx) {
@@ -526,10 +562,17 @@ export const combat = {
     const momentum = Number.isFinite(payload.momentum) ? Math.max(0, payload.momentum) : 0;
     const damage = Math.min(WHIP_DAMAGE_MAX, momentum * WHIP_DAMAGE_MOMENTUM_SCALE);
     if (damage <= 0) return null;
+    // INF-044 — the damage rides the receipt's contact read (point, incoming axis, outward
+    // side), so the victim's sparks vent from the struck side instead of the hull center.
+    const contact = payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z)
+      ? { x: payload.pos.x, z: payload.pos.z }
+      : { x: victim.pos.x, z: victim.pos.z };
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'kinetic',
-      pos: { x: victim.pos.x, z: victim.pos.z },
+      pos: contact,
+      approach: payload.approach,
+      normal: payload.normal,
       source: { kind: 'massline_whip', massId: payload.targetId ?? null },
     });
     packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
@@ -584,9 +627,9 @@ export const combat = {
       if (difficulty === 'ironman') {
         state.combat.lastPlayerDefeat = receipt;
         t.alive = false;
+        const victimVel = deathVelocity(t);
         setVecXZ(t.vel, 0, 0);
-        bus.emit('player:death', { ...receipt, recoverable: false });
-        bus.emit('camera:shake', { amount: 0.9 });
+        bus.emit('player:death', { ...receipt, recoverable: false, victimVel });
         bus.emit('game:over', { reason: 'ironman_death', recoverable: false, receipt });
         return;
       }
@@ -675,6 +718,7 @@ export const combat = {
     t.alive = false;
     t.flags = t.flags || {};
     t.flags.defeated = true;
+    const victimVel = deathVelocity(t);
     setVecXZ(t.vel, 0, 0);
     this._pendingPlayerRecovery = { playerId: t.id, receipt };
     this.state.combat.lastPlayerDefeat = receipt;
@@ -687,8 +731,7 @@ export const combat = {
     receipt.defeatStreak = streak.count;
     const mercyScale = defeatMercyScale(this.state);
     receipt.defeatMercyScale = mercyScale < 1 ? mercyScale : null;
-    this.bus.emit('player:death', { ...receipt, recoverable: true });
-    this.bus.emit('camera:shake', { amount: 0.9 });
+    this.bus.emit('player:death', { ...receipt, recoverable: true, victimVel });
     this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt });
     return true;
   },

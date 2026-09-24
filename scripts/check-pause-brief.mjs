@@ -14,7 +14,8 @@ assert.match(localizedCoreCopySrc, /flightBrief:\s*\{\s*label:\s*'FLIGHT BRIEF'\
   'localized core copy should retain the visible flight brief label');
 assert.match(pauseSrc, /briefKicker\.textContent\s*=\s*coreText\('flightBrief'\)/,
   'pause menu should render the localized flight brief label');
-assert.match(menuFramesSrc, /'sf-pause-brief'[\s\S]{0,200}setAttribute\('aria-live', 'polite'\)/,
+// the section carries 'sf-pause-brief dp-stack' since the Deckplate pass: match the class, not the string end
+assert.match(menuFramesSrc, /'sf-pause-brief[\s'][\s\S]{0,200}setAttribute\('aria-live', 'polite'\)/,
   'flight brief should announce refreshed objective state politely');
 assert.match(pauseSrc, /coreText\('missionLog', \{ key: BINDINGS\.missionLog\.label \}\)/,
   'pause menu should label the Mission Log action with the live binding through the core copy');

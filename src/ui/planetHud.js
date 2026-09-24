@@ -8,20 +8,36 @@
 // planetRuntime, exactly once per commit.
 //
 // Reads only: state.planet, state.settings. Writes only: its own DOM subtree. Headless-guarded.
+//
+// INST-01: the skim tell is an instrument on the deck, not a cyan web pill. The injected sheet
+// paints only with the tokens that already live on #hud / :root (deckplate register,
+// src/ui/deckplate/): the flight glass face, the etched legend voice, and the warm lamp as the
+// one accent (storm is the lamp lit; reentry is the lamp driven red; the heat reading stays ink).
 
-const PLANET_HUD_CSS = `
+export const PLANET_HUD_CSS = `
 .sf-planet-pill {
   position: absolute; left: 50%; bottom: 142px; transform: translateX(-50%);
-  display: none; align-items: center; gap: 8px; padding: 4px 12px;
-  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em;
-  color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
-  border-radius: 3px; pointer-events: none; white-space: nowrap;
+  display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
+  font-family: var(--dp-face-etch, var(--hud-data, system-ui));
+  font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
+  font-variation-settings: "wght" 720, "wdth" 68; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--hud-paper, var(--dp-ink, #e8e2d4));
+  background: var(--dp-glass-flight, rgb(18 23 29 / .82));
+  border: 1px solid var(--hud-line, var(--dp-metal-4, #2f3542));
+  border-left: 2px solid var(--dp-lamp, #f2b950);
+  border-radius: var(--dp-r-instrument, 3px);
+  box-shadow: none;
+  text-shadow: var(--dp-emit, none);
+  pointer-events: none; white-space: nowrap;
 }
-.sf-planet-pill .planet-heat { font-weight: 700; color: #9fd8e8; }
-.sf-planet-pill.planet-storm { color: #ffd9a0; border-color: rgba(255, 179, 92, 0.6); }
-.sf-planet-pill.planet-storm .planet-heat { color: #ffb35c; }
-.sf-planet-pill.planet-reentry { color: #ffb9a8; border-color: rgba(255, 92, 92, 0.7); }
-.sf-planet-pill.planet-reentry .planet-heat { color: #ff5c5c; }
+.sf-planet-pill .planet-heat { font-weight: inherit; font-variant-numeric: tabular-nums; color: var(--hud-paper, var(--dp-ink, #e8e2d4)); }
+.sf-planet-pill.planet-storm { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-planet-pill.planet-storm .planet-heat { color: var(--dp-lamp-hot, #ffd98c); }
+.sf-planet-pill.planet-reentry { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
+.sf-planet-pill.planet-reentry .planet-heat { color: var(--dp-danger-hot, #ff8a70); }
+@media (forced-colors: active) {
+  .sf-planet-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; text-shadow: none; forced-color-adjust: none; }
+}
 `;
 
 const REGION_WORDS = {

@@ -664,6 +664,74 @@ test('declared pooled resources cover a 0-to-N first-draw growth but stay fail-c
   scene.remove(surprise);
 });
 
+test('a first-draw census explains queued admissions but stays fail-closed on rogue resources', () => {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  productionMetadata(root);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  material.customProgramCacheKey = () => 'opening';
+  const leaf = mesh('background', material);
+  root.add(leaf);
+  scene.add(root);
+  const plan = createOpeningSubmissionPlan({
+    ...planOptions(root, 'opening', { route: 'bloom' }),
+    route: 'bloom',
+    scene,
+    candidates: [{ root, role: 'firstFrameBackground' }],
+  });
+  const bindings = new WeakMap([[material, {
+    programs: new Map([['opening', {}]]),
+    currentProgram: { cacheKey: 'opening' },
+  }]]);
+  const renderer = {
+    info: {
+      programs: [{ cacheKey: 'opening' }],
+      memory: { geometries: 1, textures: 0 },
+    },
+    properties: { get: (value) => bindings.get(value) || {} },
+  };
+  const receipt = createOpeningSubmissionReceipt(renderer, plan, {});
+  assert.equal(validateOpeningSubmissionReceipt(receipt, renderer).ok, true);
+
+  // Between receipt capture and the first draw the admission queue delivers a sibling: a new
+  // program compiles and a new leaf submits geometry. Without a census both read uncaptured —
+  // the warning D25 fired on every launch.
+  const queuedMaterial = new THREE.MeshBasicMaterial({ color: 0x223344 });
+  queuedMaterial.customProgramCacheKey = () => 'queued-late';
+  const queued = mesh('queued-admission', queuedMaterial);
+  scene.add(queued);
+  bindings.set(queuedMaterial, {
+    programs: new Map([['queued-late', {}]]),
+    currentProgram: { cacheKey: 'queued-late' },
+  });
+  renderer.info.programs = [
+    { cacheKey: 'opening' },
+    { cacheKey: 'queued-late' },
+  ];
+  renderer.info.memory.geometries = 2;
+  const uncensused = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(uncensused.ok, false);
+  assert.ok(uncensused.uncaptured.includes('programs'));
+  assert.ok(uncensused.uncaptured.includes('geometries'));
+
+  // The pre-draw identity census names everything the queue settled before first paint — the
+  // same resources now validate as captured work.
+  const census = {
+    objects: new Map([[leaf, {}], [queued, {}]]),
+    programKeys: ['opening', 'queued-late'],
+  };
+  const explained = validateOpeningSubmissionReceipt(receipt, renderer, census);
+  assert.equal(explained.ok, true);
+  assert.deepEqual(explained.uncaptured, []);
+
+  // A program no recorded path explains still fails closed.
+  renderer.info.programs.push({ cacheKey: 'rogue-program' });
+  const rogue = validateOpeningSubmissionReceipt(receipt, renderer, census);
+  assert.equal(rogue.ok, false);
+  assert.deepEqual(rogue.uncaptured, ['programs']);
+  assert.deepEqual(rogue.uncapturedProgramKeys, ['rogue-program']);
+});
+
 test('opening submission receipt fails closed when an exact material has no live Three program binding', () => {
   const root = new THREE.Group();
   productionMetadata(root);

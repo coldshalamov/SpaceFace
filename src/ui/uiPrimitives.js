@@ -323,6 +323,12 @@ export function sfSelect(items = [], opts = {}) {
     get: () => (value == null ? '' : value),
     set(v) { value = v; syncField(); renderList(); },
   });
+  /** Post-construction disable — the root is a div, so `widget.disabled = true` would silently do
+   *  nothing; forward it to the field button (syncField honors it alongside empty options). */
+  Object.defineProperty(root, 'disabled', {
+    get: () => field.disabled,
+    set(v) { opts.disabled = !!v; syncField(); },
+  });
   /** Replace the option set (and optionally the value) in place. */
   root.sfSetOptions = (next, nextValue) => {
     options = (next || []).map((o) => ({ value: o.value, label: o.label, disabled: !!o.disabled }));

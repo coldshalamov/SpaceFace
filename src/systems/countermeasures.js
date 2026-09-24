@@ -363,7 +363,7 @@ function resetCountermeasureDiagnostics(diag) {
 const CHAFF_DECOY_BACK = 70;
 const CHAFF_DECOY_SIDE = 90;
 
-function chaffDecoyPoint(e) {
+export function chaffDecoyPoint(e) {
   const rot = Number.isFinite(e && e.rot) ? e.rot : 0;
   const px = e && e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
   const pz = e && e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;

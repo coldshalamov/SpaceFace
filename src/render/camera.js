@@ -16,6 +16,11 @@ import {
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
+import {
+  createLatchSpring,
+  stepBoostLag,
+  stepLatchSpring,
+} from '../presentation/flightOverheadMath.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -89,6 +94,7 @@ const SAFE_VIEW_Z = 0.46;
 // an absolute sanity bound; the 400 WU default only binds at extreme speed.
 const LOOKAHEAD_LEAD_S = 0.5;        // seconds of velocity carried as camera lead
 const LOOKAHEAD_LEAD_MAX_WU = 400;   // wu — absolute sanity bound when no authored cap exists
+const LOOKAHEAD_LEAD_SMOOTHING_S = 0.10; // smooth latest-tick velocity against the presented ship pose
 // U13 (WF-15): when an active attacker owns combat framing, velocity look-ahead must not yank the
 // pair out of the safe frame during a dodge. Combat keeps 0.6 of the lead — 0.30 s of velocity —
 // so the pilot's dodge still reads without the camera abandoning the threat.
@@ -155,6 +161,11 @@ export const IMPACT_KICK_WU_MAX = 4;        // absolute displacement ceiling, wo
 export const CAMERA_HOLD_S = 0.15;
 export const DEATH_CAM_HOLD_S = 1.2;
 export const DEATH_CAM_PUSH_ZOOM = 0.22;
+// Structural clearance: the renderer reports the roof height of any large structure whose
+// footprint contains the camera's XZ. The floor snaps UP instantly (never eases through
+// geometry) and releases back down at a fixed rate, so entering/leaving a structure can never
+// oscillate the camera against itself.
+export const CAMERA_CLEARANCE_RELEASE_WU_S = 110;
 // PQ-159.03 photo mode. Free camera + exposure live on the chase controller; filters stay off
 // unless the player turns them on. Capture lives on the pause surface.
 export const PHOTO_EXPOSURE_DEFAULT = 1;
@@ -1135,6 +1146,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _speedZoomFactor = SPEED_ZOOM_MIN;
   let _speedZoomSpeedEma = 0;
   let _boostZoomFactor = 1;
+  let _velocityLeadX = 0;
+  let _velocityLeadZ = 0;
+  let _boostLag = 0;
+  const _latchSpring = createLatchSpring();
 
   // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
   // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
@@ -1157,6 +1172,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _recenterT = 0;         // seconds remaining in the recenter window
   let _recenterDur = 0;       // total window length (for the ease fraction)
   let _snappedPlayerId = null;
+  // World-Y floor reported by the renderer's structure bounds. Kept between frames so the
+  // release can ease the camera back down after a structure roof stops containing it.
+  let _clearanceY = 0;
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
@@ -1214,9 +1232,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     }
     _speedZoomFactor = SPEED_ZOOM_MIN;
     _speedZoomSpeedEma = 0;
+    _velocityLeadX = 0;
+    _velocityLeadZ = 0;
     // A snap is a teleport; any in-flight kick would read as the world sliding after a cut.
     _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
     if (c.kickOffset) c.kickOffset.set(0, 0, 0);
+    _clearanceY = 0; // a teleport re-derives structure clearance at the destination, not here
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
@@ -1274,6 +1295,44 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       cam.updateMatrixWorld(true);
     },
     composition() { return _directorFrame; },
+    // Read-only snapshot of every term that fed this frame's chase zoom and focus. Diagnostic
+    // surface for scripts/probe-body-scale.mjs; gameplay never reads it.
+    zoomDiagnostics() {
+      return {
+        requestedZoom: c.zoom,
+        baseZoom: resolveBaseZoom(),
+        dynamicZoom: _dynamicZoom,
+        composedZoom: c.composedZoom,
+        speedZoomFactor: _speedZoomFactor,
+        speedEmaWu: _speedZoomSpeedEma,
+        contextZoomBias: _contextZoomBias,
+        contextMinZoom: _contextMinZoom,
+        contextZoomCap: _contextZoomCap,
+        boostZoomFactor: _boostZoomFactor,
+        pushZoom: _pushZoom,
+        holdS: _holdT,
+        velocityLeadX: _velocityLeadX,
+        velocityLeadZ: _velocityLeadZ,
+        compositionBiasX: _compositionBiasX,
+        compositionBiasZ: _compositionBiasZ,
+        boostLag: _boostLag,
+        latchSpringX: _latchSpring.x,
+        latchSpringZ: _latchSpring.z,
+        kickX: c.kickOffset ? c.kickOffset.x : 0,
+        kickZ: c.kickOffset ? c.kickOffset.z : 0,
+        focusX: c.focus ? c.focus.x : 0,
+        focusZ: c.focus ? c.focus.z : 0,
+        director: _directorFrame ? {
+          mode: _directorFrame.mode,
+          focusX: _directorFrame.focusX,
+          focusZ: _directorFrame.focusZ,
+          zoom: _directorFrame.zoom,
+          requiredZoom: _directorFrame.requiredZoom,
+          targetId: _directorFrame.targetId,
+          nearPlane: _directorFrame.nearPlane,
+        } : null,
+      };
+    },
     // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
@@ -1319,7 +1378,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       _recenterDur = isMotionReduced(state) ? base * 0.25 : base;
       _recenterT = _recenterDur;
     },
-    follow(dt, alphaParam, presentedLocal) {
+    // clearanceAt(x, z, y): optional renderer callback returning the lowest world-space Y the
+    // camera may occupy at that XZ (the roof of a containing structure) — -Infinity/NaN when the
+    // volume above the play plane is free. The floor snaps up instantly and releases downward at
+    // CAMERA_CLEARANCE_RELEASE_WU_S, so the camera never eases through geometry or jitters at a
+    // roof boundary.
+    follow(dt, alphaParam, presentedLocal, clearanceAt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
       const alpha = Number.isFinite(alphaParam)
         ? Math.max(0, Math.min(1, alphaParam))
@@ -1345,6 +1409,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _directorFrame.focusZ = c.focus.z;
           _directorFrame.zoom = _dynamicZoom;
         }
+        c.composedZoom = _dynamicZoom;
         return;
       }
       const p = readPlayerEntity(state);
@@ -1395,10 +1460,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           ? ACTIVE_ATTACKER_LOOKAHEAD_SCALE
           : 1;
 
+        let velocityLeadTargetX = 0;
+        let velocityLeadTargetZ = 0;
         if (playerSpeed > 1) {
           const laCap = Number.isFinite(c.lookAhead) ? Math.max(0, c.lookAhead) : LOOKAHEAD_LEAD_MAX_WU;
           const la = Math.min(laCap, playerSpeed * LOOKAHEAD_LEAD_S) * combatLookaheadScale;
-          fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
+          velocityLeadTargetX = (vx / playerSpeed) * la;
+          velocityLeadTargetZ = (vz / playerSpeed) * la;
           // Band-3 velocity lead (ADR D7): at >5x combat speed a few WU of camera lead along the
           // velocity vector read as terrifying speed. READ, never re-derived — `readVelocityLanguage`
           // is the one consumer of the record `feel.js` publishes; a reader that derived its own band
@@ -1411,9 +1479,18 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           const leadWU = vl && vl.drive && Number.isFinite(vl.drive.cameraLeadWU) ? vl.drive.cameraLeadWU : 0;
           if (leadWU > 0) {
             const combatLead = leadWU * combatLookaheadScale;
-            fx += (vx / playerSpeed) * combatLead; fz += (vz / playerSpeed) * combatLead;
+            velocityLeadTargetX += (vx / playerSpeed) * combatLead;
+            velocityLeadTargetZ += (vz / playerSpeed) * combatLead;
           }
         }
+        // The mesh anchor is interpolated across the presentation fence, but entity velocity is
+        // the latest fixed-tick sample. Smooth their velocity-derived offset so that sampling
+        // boundary cannot make the chase target step against the already-interpolated hull.
+        const leadRate = 1 / LOOKAHEAD_LEAD_SMOOTHING_S;
+        _velocityLeadX = damp(_velocityLeadX, velocityLeadTargetX, leadRate, frameDt);
+        _velocityLeadZ = damp(_velocityLeadZ, velocityLeadTargetZ, leadRate, frameDt);
+        fx += _velocityLeadX;
+        fz += _velocityLeadZ;
         const aimLead = resolveAimLead(state.input, p, _aimLeadScratch);
         fx += aimLead.x;
         fz += aimLead.z;
@@ -1490,6 +1567,48 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
             fx = _playerLocalScratch.x + (fx - _playerLocalScratch.x) * biasScale;
             fz = _playerLocalScratch.z + (fz - _playerLocalScratch.z) * biasScale;
           }
+          // Boost draws the chase frame back ~2% of camera distance along velocity.
+          // A heavy massline latch springs toward the anchor, then back to the ship.
+          const motionReduced = isMotionReduced(state);
+          _boostLag = stepBoostLag(
+            _boostLag,
+            !!(p.flags && p.flags.boosting),
+            _dynamicZoom,
+            frameDt,
+            motionReduced,
+          );
+          if (playerSpeed > 1 && _boostLag > 0.01) {
+            const invSpeed = 1 / playerSpeed;
+            fx -= vx * invSpeed * _boostLag;
+            fz -= vz * invSpeed * _boostLag;
+          }
+          const tetherNow = state.player && state.player.tether;
+          let latchHeavy = false;
+          let latchX = 0;
+          let latchZ = 0;
+          const tetherLatched = !!(tetherNow && tetherNow.active);
+          if (tetherLatched && tetherNow.targetId != null
+            && state.entities && typeof state.entities.get === 'function') {
+            const anchored = state.entities.get(tetherNow.targetId);
+            if (anchored && anchored.pos
+              && Number.isFinite(anchored.pos.x) && Number.isFinite(anchored.pos.z)) {
+              latchHeavy = anchored.type === 'asteroid'
+                || (anchored.type !== 'ship' && Number(anchored.mass) >= 80);
+              latchX = anchored.pos.x;
+              latchZ = anchored.pos.z;
+            }
+          }
+          stepLatchSpring(_latchSpring, {
+            latched: tetherLatched,
+            heavy: latchHeavy,
+            anchorX: latchX,
+            anchorZ: latchZ,
+            playerX: p.pos.x,
+            playerZ: p.pos.z,
+            motionReduced,
+          }, frameDt);
+          fx += _latchSpring.x;
+          fz += _latchSpring.z;
         }
         // counter-lean uses the ship's bank (already smoothed); fraction tuned for chase readability
         bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
@@ -1604,6 +1723,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
         _dynamicZoom = nextZoom;
       }
+      // The zoom the picture is opening toward, before damping arrives. Residency
+      // prefetches this so the rim of a zoom-out is already built when it lands.
+      c.composedZoom = directorOwnsComposition
+        ? finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom)
+        : targetZoom;
       // Oversized authored gates can physically surround the chase camera even while the aperture
       // is correctly composed. The director derives a conservative near plane from the mounted
       // gate's real depth bounds; easing is owned by the same 0.35 s transition as focus/zoom.
@@ -1691,11 +1815,20 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         stepCameraKick(_kick, frameDt);
       }
       c.kickOffset.set(_kick.x, 0, _kick.z);
-      cam.position.set(
-        c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x,
-        offset.y,
-        c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z,
-      );
+      const camX = c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x;
+      const camZ = c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z;
+      let camY = offset.y;
+      if (typeof clearanceAt === 'function') {
+        const floor = clearanceAt(camX, camZ, camY);
+        if (Number.isFinite(floor) && floor > _clearanceY) {
+          _clearanceY = floor; // snap up — easing upward would traverse the structure's volume
+        } else if (_clearanceY > 0) {
+          const target = Number.isFinite(floor) ? floor : 0;
+          _clearanceY = Math.max(target, _clearanceY - CAMERA_CLEARANCE_RELEASE_WU_S * frameDt);
+        }
+        if (_clearanceY > camY) camY = _clearanceY;
+      }
+      cam.position.set(camX, camY, camZ);
       cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so

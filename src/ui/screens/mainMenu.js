@@ -1,26 +1,36 @@
-import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
-import { injectDeckplate } from '../deckplate/index.js';
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
-// The sheet's title line (design/frontend/direction/DIRECTION_SHEET.md, title screen): the starter
-// hull in its hangar fills the frame, the game's name enormous top-left, a column of words down the
-// left edge, the version in fine print. Built on the frontend kit (styles/kit.css, src/ui/kit/);
-// this file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot metadata,
-// and loads that displayed slot so players trust resume before committing to a load.
-// Browser, Electron dev, and packaged desktop all arrive here through the same player route.
-// The title picture is an authored still (assets/ui/backdrops/backdrop-title.jpg): the approved
-// "Field at dusk" shot, pre-rendered at cutscene quality. A photograph that never changes should
-// not own a render loop — and a still this good should not pay a live 3D scene's load and compile
-// cost to approximate itself.
-
+// Field Hardware POSTER: uiStage `title-field` (Hitch on the dusk pad) plus produced kit
+// hardware — logotype, legend rail, selected-row plate, status strip, build light.
+// This file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot
+// metadata, and loads that displayed slot so players trust resume before committing to a load.
+import { createTitleFrame } from '../views/menuFrames.js';
+import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
+import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { createArcRail } from '../orrery/arcRail.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 const LS_PREFIX = 'sf.save.';
-const MENU_BACKDROP_SRC = TITLE_PLATE_SRC;
+/** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
+function bContinueRow(r, show) {
+  const li = r && r.bContinue && r.bContinue.closest ? r.bContinue.closest('li') : null;
+  if (!li || li.hidden === !show) return;
+  li.hidden = !show;
+  if (arcRail) arcRail.layout();
+}
+/** The attention lamp's listeners, released when the screen unmounts. */
+let detachLamp = null;
+/** ORRERY: the verbs ride the rim of the emblem's dial (design/frontend/ORRERY.md §6 Title). */
+let arcRail = null;
+// The dial's face is drawn in its own line language (arcRail drawFace); the raster emblem is the
+// loading ring's (bootRing.js).
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 12_000;
 
@@ -113,24 +123,10 @@ function normalizeSlots(idx) {
   return out;
 }
 
-function isOccupied(meta) {
-  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
-}
-
 function latestSave(slots) {
-  let best = null;
-  let bestScore = -Infinity;
-  for (const slot in (slots || {})) {
-    const meta = slots[slot];
-    if (!isOccupied(meta)) continue;
-    const when = meta.savedAt || meta.lastSavedAt || '';
-    const savedAtScore = Date.parse(when) || 0;
-    const playtimeS = Number(meta.playtimeS);
-    const playtimeScore = Number.isFinite(playtimeS) ? playtimeS : 0;
-    const score = savedAtScore || playtimeScore;
-    if (score >= bestScore) { bestScore = score; best = { slot, meta }; }
-  }
-  return best;
+  const slot = selectLatestOccupiedSlot(slots);
+  if (!slot || !slots || !slots[slot]) return null;
+  return { slot, meta: slots[slot] };
 }
 
 function slotLabel(id) {
@@ -200,6 +196,10 @@ export function leftoverBuildToken(payload) {
   return payload.build.trim();
 }
 
+/**
+ * The DIAGNOSTIC identity: version plus build hash. This is what a crash receipt and the shell
+ * bridge want, and pq-033-01 guards its composition.
+ */
 export function leftoverVersionLabel(payload) {
   const version = leftoverVersionToken(payload);
   if (!version) return 'SpaceFace';
@@ -207,12 +207,30 @@ export function leftoverVersionLabel(payload) {
   return 'SpaceFace v' + version + (build ? ' · ' + build : '');
 }
 
+/**
+ * The PLAYER-FACING line: version only.
+ *
+ * ONE_PHOTOGRAPH.md section 4.15 kills developer strings on player screens, and named this one:
+ * the commit hash in the title foot and the pause foot. A version number is legitimate -- a player
+ * quoting "v0.1.0" in a bug report helps them and us. A twelve-character git SHA does not: it
+ * means nothing to the reader and it read as debris on the two calmest screens in the game.
+ *
+ * The hash is not lost, only moved off the wall: leftoverVersionLabel still composes it for
+ * diagnostics, and the title foot carries it as a title attribute so it is one hover away for
+ * anyone filing a report.
+ */
+export function leftoverVersionDisplay(payload) {
+  const version = leftoverVersionToken(payload);
+  return version ? 'SpaceFace v' + version : 'SpaceFace';
+}
+
 export function applyLeftoverVersionText(target, payload) {
   if (!target) return '';
   const version = leftoverVersionToken(payload);
   if (!version) return target.textContent || '';
-  const label = leftoverVersionLabel(payload);
+  const label = leftoverVersionDisplay(payload);
   target.textContent = label;
+  target.title = leftoverVersionLabel(payload);
   return label;
 }
 
@@ -264,59 +282,112 @@ export function paintLeftoverVersion(target, stillCurrent) {
 
 let refs = null;
 
+/** The one lit verb's action. Demo: the Crucible door always (ZERO_TO_HERO Phase 5.1). Otherwise
+ *  Continue when a save exists, New Game when none does — the pre-demo decision, unchanged. */
+export function titlePrimaryAction(demo, hasSave) {
+  if (demo) return 'crucible';
+  return hasSave ? 'continue' : 'newGame';
+}
+
+/** The verbs' reading order. DEMO_READINESS §5: in the demo the Crucible is the FIRST button,
+ *  not just the lit one — Adventure (New Game renamed) second, Continue third. */
+export function titleVerbOrder(demo) {
+  if (demo) return ['crucible', 'newGame', 'continue', 'settings', 'quit'];
+  return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
+}
+
 export const mainMenuScreen = {
   id: 'mainMenu',
 
-  // The title stands on the authored "Field at dusk" still — it declares no `stage`, so the
-  // ScreenManager never writes state.ui.stageRequest and no second scene is assembled on the
-  // renderer. The live title-field stage this replaced loaded eight place GLBs plus the hull and
-  // compiled its own pipelines while the menu was already open, then faded the plate out: the
-  // menu stall and the "same scene rendered twice" pop both came from that path, and its held
-  // brown frame is what flashed during Continue's handoff. The pre-rendered still is the same
-  // approved picture at zero frame cost.
+  // P20/P22: the approved "Field at dusk" shot as a live presentation scene on the main renderer
+  // (src/render/uiStage.js). Simulation stays frozen; the plate is the assemble / no-WebGL fallback.
+  stage: { scene: 'title-field', hullDefId: NEW_GAME.shipId },
 
   mount(rootEl, ctx) {
     injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    // No `k-screen`: the frame IS the screen now (dp-frame--screen), and leaving the kit's grid
+    // class on the root would put `#screens .of-title.k-screen` back in the cascade against it.
+    rootEl.classList.add('screen');
+    rootEl.dataset.screen = 'mainMenu';
     rootEl.dataset.kReady = '0';
 
     const { backdrop, title, stage, status } = createTitleFrame(rootEl);
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
     // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
-    const items = [
-      { action: 'continue', label: coreText('continue'), sub: 'Checking saves...', current: true },
-      { action: 'newGame', label: coreText('newGame') },
-      { action: 'load', label: 'Load' },
+    // THE COLUMN IS FIVE VERBS, and one of them is the reason a stranger opened the game. Until
+    // 2026-09-22 it was eight words at identical weight, so NEW GAME weighed exactly as much as
+    // SANDBOX and the screen had made no decision. Everything that is a REFERENCE rather than a way
+    // into the game moved to the footer line with Credits and Achievements; what is left is play,
+    // resume, the other mode, the settings, and the way out.
+    //
+    // `primary` is resolved after the save scan (_applySave): Continue when there is something to
+    // continue, New Game when there is not — except in the demo, where the Crucible is always the
+    // one lit verb (ZERO_TO_HERO Phase 5.1). Marking it here would light a dead verb on first paint.
+    // DEMO_READINESS §5: in the demo the Crucible is the FIRST button, not just the lit one —
+    // titleVerbOrder owns the reading order both modes share.
+    const labels = {
+      // The demo renames the verb to the mode it starts; the accessible name stays coreText so
+      // every route that finds "New Game" still does.
+      newGame: IS_DEMO ? 'Adventure' : coreText('newGame'),
+      continue: coreText('continue'),
+      load: 'Load',
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
-      { action: 'crucible', label: 'Crucible' },
-      // "Archive" — opens the Codex on its Archive tab, where the authored intro cinematics replay.
-      { action: 'archive', label: 'Archive' },
-      { action: 'settings', label: coreText('settings') },
-    ];
+      crucible: 'Crucible',
+      settings: coreText('settings'),
+      quit: 'Quit',
+    };
+    const items = titleVerbOrder(IS_DEMO).map((action) => ({
+      action,
+      label: labels[action],
+      ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
+      ...(action === 'quit' ? { danger: true } : {}),
+    }));
+    // The quiet line: reference and dev, at etch size, out of the way of the decision.
+    // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
+    const asideItems = [{ action: 'archive', label: 'Archive' }];
     // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features without playing for
     // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
-    if (IS_DEV) items.push({ action: 'sandbox', label: 'Sandbox' });
-    items.push({ action: 'quit', label: 'Quit', danger: true });
+    if (IS_DEV) asideItems.push({ action: 'sandbox', label: 'Sandbox' });
 
-    // THE LEGEND RAIL — the one piece of hardware the POSTER register carries
-    // (approved/frames/frame-title-v2.png; approved/kit-notes.md §7). `.fh-rail` is the kit's own
-    // class and its material is the produced `plate.poster.rail` nine-slice, so this is a rendered
-    // object with thickness and a lit edge rather than a styled div. Decorative: the words in
-    // front of it carry every name and every route.
-    const rail = el('div', 'of-title-rail fh-rail');
-    rail.setAttribute('aria-hidden', 'true');
-    stage.appendChild(rail);
-
+    // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
+    // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
+    // picture it read as a black bar somebody forgot to fill. Every menu item now carries its own
+    // lamp rail, which is the same piece of hardware doing the same job while also saying which
+    // verb is awake. An ornament became an instrument. design/frontend/THE_BAR.md §3.
+    // The POSTER variant: there is no hardware in front of a player looking at a title screen, so
+    // a verb is a word of light rather than a machined plate with a lamp rail. Weight 0.05.
     const list = words(items, {
       ariaLabel: 'Title menu',
+      system: 'light',
       onPick: (action) => this._pick(ctx, action),
     });
+    // Focus is a light source, not a ring: the focused word lights its neighbours and the rest of
+    // the column recedes. This replaces the gold rectangle that read as a browser focus ring.
+    stage.classList.add('dp-attend');
     stage.appendChild(list);
 
-    const byAction = (action) => list.querySelector('[data-action="' + action + '"]');
+    // The quiet line sits under the column, in the same substance one size down, so reference verbs
+    // are reachable without competing with the decision.
+    const aside = words(asideItems, {
+      ariaLabel: 'Reference',
+      system: 'light',
+      row: true,
+      onPick: (action) => this._pick(ctx, action),
+    });
+    aside.classList.add('of-title-aside');
+    stage.appendChild(aside);
+    detachLamp = attachAttentionLamp(stage);
+    // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
+    // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
+    if (arcRail) arcRail.dispose();
+    injectOrreryScreens();
+    rootEl.classList.add('orr-title');
+    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside] });
+
+    const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
     const bNew = byAction('newGame');
     const bLoad = byAction('load');
@@ -325,36 +396,41 @@ export const mainMenuScreen = {
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
-    bLoad.setAttribute('aria-label', coreText('loadGame'));
+    if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
+    if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
     if (bSandbox) bSandbox.classList.add('k-38');
     // The save summary rides Continue's sub line. `.sf-menu-save-summary` / `has-save` are inert
     // hooks the boot and title-continue checks query; kit.css styles the sub line.
-    const saveSummary = bContinue.parentElement.querySelector('.k-word-sub');
+    // The light variant names its sub line dp-lit__note; the bench one names it dp-menu__note.
+    // Query both, so changing a screen's weight never silently drops the save summary.
+    const saveSummary = bContinue.parentElement.querySelector('.dp-lit__note, .dp-menu__note');
     saveSummary.classList.add('sf-menu-save-summary');
 
     // The fine line: "SpaceFace v0.0.0 · " then the Credits word (Task B §1.6). The version text
     // lives in its own span so _loadVersion can rewrite it without touching the word.
-    const version = el('div', 'k-fine');
+    const version = el('footer', 'dp-frame__foot dp-etch');
     version.dataset.role = 'version';
     // The build light: the produced `light.dot.good.on` render, the frame's own corner detail.
     // Decorative — the build string beside it is the information.
-    const buildLight = el('span', 'fh-light');
+    const buildLight = el('span', 'dp-led');
     buildLight.dataset.colour = 'good';
     buildLight.setAttribute('aria-hidden', 'true');
     version.appendChild(buildLight);
-    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    // The full identity stays one hover away for a bug report, off the wall (section 4.15).
+    versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
     version.appendChild(el('span', '', ' · '));
-    const bCredits = el('button', 'k-word k-word--fine', 'Credits');
+    const bCredits = el('button', 'dp-menu__item dp-menu__item--fine', 'Credits');
     bCredits.type = 'button';
     bCredits.dataset.action = 'credits';
     bCredits.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'credits'); });
     version.appendChild(bCredits);
     // PQ-033.03: Achievements rides the same fine line as Credits — a quiet word, not a menu row.
     version.appendChild(el('span', '', ' · '));
-    const bAchievements = el('button', 'k-word k-word--fine', 'Achievements');
+    const bAchievements = el('button', 'dp-menu__item dp-menu__item--fine', 'Achievements');
     bAchievements.type = 'button';
     bAchievements.dataset.action = 'achievements';
     bAchievements.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'achievements'); });
@@ -367,18 +443,8 @@ export const mainMenuScreen = {
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // data-k-ready is the capture seam's "photograph me" signal. With no `stage` on this screen
-    // the authored still IS the picture the title was designed around, so this root raises it when
-    // that still has decoded — and also when it cannot load, because a missing backdrop is the
-    // final picture then, not a pending stage.
-    rootEl.dataset.kReady = '0';
-    const plate = new Image();
-    plate.decoding = 'async';
-    const markReady = () => { rootEl.dataset.kReady = '1'; };
-    plate.onload = markReady;
-    plate.onerror = markReady;
-    plate.src = MENU_BACKDROP_SRC;
-    if (plate.complete && plate.naturalWidth > 0) markReady();
+    // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
+    // unavailable. The still is already in the tree as `.k-world--plate`.
 
     // Continue follows the save store the moment it settles, not the next periodic refresh: the
     // shared-store sync and a completed save both re-read the index.
@@ -450,7 +516,6 @@ export const mainMenuScreen = {
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
-      if (refs.status) refs.status.textContent = 'Checking saves';
       this._syncCurrent();
       return;
     }
@@ -460,42 +525,85 @@ export const mainMenuScreen = {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
-      if (refs.status) refs.status.textContent = 'Save ready';
+      // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow.
+      if (refs.status) refs.status.textContent = coreText('continue') + ' · ' + summary;
+      bContinueRow(refs, true);
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
-      if (refs.status) refs.status.textContent = 'No save';
+      // A dial does not show a dead verb: with no save there is nothing to continue, so the word
+      // leaves the dial (the Continue probes all run with a save present).
+      bContinueRow(refs, false);
     }
+    // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
+    // there is a save to continue; with none it is a dead word at the top of the list, so New Game
+    // takes the lamp. The demo lights the Crucible regardless (ZERO_TO_HERO Phase 5.1). Deciding
+    // this at build time would light a verb that cannot be used.
+    const primaryAction = titlePrimaryAction(IS_DEMO, !!latest);
+    this._setPrimary(
+      primaryAction === 'crucible' ? refs.bCrucible
+        : primaryAction === 'continue' ? refs.bContinue
+          : refs.bNew);
     this._syncCurrent();
   },
 
-  // The default word (Continue when it can load, else New Game) carries aria-current and the
-  // list's single Tab stop; the kit's roving focus takes over once focus is inside the list.
+  /** The one lit verb. Exactly one item carries the primary treatment at any time. */
+  _setPrimary(target) {
+    if (!refs || !refs.root) return;
+    for (const el of refs.root.querySelectorAll('.dp-lit__item--primary')) {
+      el.classList.remove('dp-lit__item--primary');
+    }
+    if (target) target.classList.add('dp-lit__item--primary');
+  },
+
+  // The default word (Continue when it can load, else New Game — always Crucible in the demo)
+  // carries aria-current and the list's single Tab stop; the kit's roving focus takes over once
+  // focus is inside the list.
+  /** The one awake word: the demo's Crucible always; otherwise the word the lamp lit — the
+   *  primary verb — so the Hand cannot wake beside a different word than the lit one. A lit verb
+   *  that is still aria-disabled refuses with a deny ("is initializing"), so pointing at it is
+   *  honest; with no lamp stamped yet the first usable verb is the fallback. */
+  _currentTarget() {
+    if (IS_DEMO) return refs.bCrucible || null;
+    const lit = refs.root && refs.root.querySelector('.dp-lit__item--primary');
+    if (lit) return lit;
+    return refs.buttons.find((b) => !isDisabled(b)) || null;
+  },
+
   _syncCurrent() {
     if (!refs) return;
-    const target = refs.buttons.find((b) => !isDisabled(b)) || null;
+    const target = this._currentTarget();
     for (const b of refs.buttons) {
       const current = b === target;
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       b.tabIndex = current ? 0 : -1;
     }
+    if (arcRail) arcRail.rest();
   },
 
   onShow(ctx) {
     this._render(ctx);
     this._arrived = false;
     this._ctx = ctx;
-    // The still is already on the wall, so the words arrive at once (reduced motion included).
+    // Words stamp after the hull (kit motion). The plate is already up; the live stage may
+    // still be assembling — that is the P17 "menu arrives after the hull" hold, not a blank.
     this._hold();
     this._arrive();
     if (refs) {
-      const target = refs.buttons.find((b) => !isDisabled(b));
+      // Focus the word _syncCurrent lights — in the demo that is the Crucible, not merely the
+      // first usable verb — or the ORRERY Hand wakes on a different word than the primary.
+      const target = this._currentTarget();
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();
     this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
   },
-  onHide() { this._stopIdleAttract(); },
+  onHide() {
+    this._stopIdleAttract();
+    // The lamp holds a ResizeObserver and four listeners on the menu; a screen that hides without
+    // releasing them leaks one set per mount.
+    if (detachLamp) { detachLamp(); detachLamp = null; }
+  },
   refresh(ctx, options = {}) {
     if (options && options.periodic && refs && this._menuSig != null
       && this._menuSig === this._menuInputs(ctx)) return;
@@ -504,6 +612,7 @@ export const mainMenuScreen = {
 
   dispose() {
     this._stopIdleAttract();
+    if (arcRail) { arcRail.dispose(); arcRail = null; }
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;

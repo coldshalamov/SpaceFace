@@ -1,4 +1,4 @@
-import { contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
+import { briefingDiagramHtml, contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
 import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
 // A kit panel (Frontend Task C §1.5): the posted jobs and the player's own missions as rows down
@@ -21,6 +21,7 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import {
+  missionBriefingDiagram,
   missionCargoFootprint,
   missionConsequenceSummary,
   missionPreflight,
@@ -32,6 +33,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
+import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import { objectiveText } from '../../screens/missionLog.js';
 import {
   dressState,
@@ -46,6 +48,12 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
+import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
+import { createCounter, decrypt } from '../../orrery/text.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
+import { attachHoldVerb } from '../../kit/holdVerb.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -113,10 +121,20 @@ export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
   return `${station.dispatchLabel || 'LIVE DISPATCH'} / ${Math.max(0, offerCount | 0)} LIVE / ${sides.join('–')} FRONT ${phase} · ${tension}/100`;
 }
 
+const SECTOR_NAME = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
+
+// A live mission carries destStationId / destSectorId, not a name: resolve the berth, then the
+// sector, before any fallback. (The row used to print the raw sector id, or "Destination".)
 function destName(m) {
   const params = (m && m.params) || {};
-  return m.destinationName || m.destName || params.destinationName || params.destName
-    || (m.local ? 'Local sector' : (m.destSectorId || params.destSectorId || 'Destination'));
+  const named = m.destinationName || m.destName || m.destStationName
+    || params.destinationName || params.destName || params.destStationName;
+  if (named) return named;
+  const stationRec = STATION_DEF.get(m.destStationId || params.destStationId);
+  if (stationRec && stationRec.name) return stationRec.name;
+  if (m.local) return 'Local sector';
+  const sectorId = m.destSectorId || params.destSectorId;
+  return (sectorId && SECTOR_NAME.get(sectorId)) || 'Destination';
 }
 
 function destEntityHtml(m) {
@@ -285,7 +303,7 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
   const title = cleanText(mission && mission.title) || `FINAL DISPOSITION — CHOICE ${filing.choiceId}`;
   const summary = missionDossierSummary(mission) || filing.confirmHint;
   const readiness = ready ? 'Eligibility verified · separate confirmation required' : blocked;
-  return (
+  return bindStationMarkup(
     `<div class="sx-dossier sx-dossier--filing${focus ? ' is-attention' : ''}">` +
       `<p class="k-caps">Final disposition</p>` +
       `<h2 class="k-display k-t-title sx-dossier__title">${escapeHtml(title)}</h2>` +
@@ -309,6 +327,51 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
       }) +
     `</div>`
   );
+}
+
+/**
+ * The consequences as scales of light (ORRERY §3.2: a quantity is an arc or a scale): RISK as a
+ * five-tick ruler with a light cursor at the tier, STANDING as a centred scale with the gain
+ * marked to the right and the loss (red: a loss is the threat) to the left of zero.
+ */
+export function consequenceScalesSvg(m) {
+  const w = 520; const h = 66;
+  const f = (n) => Math.round(n * 100) / 100;
+  const r = Math.min(risk(m), 5);
+  const consequences = missionConsequenceSummary(m);
+  const gain = Math.max(0, Number(consequences.repReward) || 0);
+  const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
+  let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
+  // risk: five stops
+  const rx0 = 92; const rx1 = 272; const ry = 22;
+  out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
+  out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1"/>`;
+  let ticks = '';
+  for (let i = 0; i <= 5; i += 1) { const x = rx0 + ((rx1 - rx0) * i) / 5; ticks += `M ${f(x)} ${ry - 4} L ${f(x)} ${ry + 5} `; }
+  out += `<path class="orr-core orr-ct-scale__tick" d="${ticks}" stroke-width="1"/>`;
+  const rxc = rx0 + ((rx1 - rx0) * r) / 5;
+  out += `<path class="orr-core orr-ct-scale__fill${r >= 3 ? ' is-high' : ''}" d="M ${rx0} ${ry} L ${f(rxc)} ${ry}" stroke-width="3" stroke-linecap="butt"/>`;
+  out += `<path class="orr-bloom orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
+  out += `<path class="orr-core orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
+  out += `<text class="orr-ct-scale__word" x="${rx1 + 12}" y="${ry + 4}">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 18}" text-anchor="start">ROUTINE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx1}" y="${ry + 18}" text-anchor="end">SEVERE</text>`;
+  // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
+  const sy = 52; const sx0 = 92; const sx1 = 272; const mid = (sx0 + sx1) / 2; const span = 10;
+  const xOf = (v) => mid + ((sx1 - sx0) / 2) * Math.max(-1, Math.min(1, v / span));
+  out += `<text class="orr-ct-scale__key" x="0" y="${sy + 4}">STANDING</text>`;
+  out += `<path class="orr-core orr-ct-scale__rule" d="M ${sx0} ${sy} L ${sx1} ${sy}" stroke-width="1"/>`;
+  out += `<path class="orr-core orr-ct-scale__tick" d="M ${mid} ${sy - 5} L ${mid} ${sy + 6}" stroke-width="1.2"/>`;
+  if (gain > 0) out += `<path class="orr-core orr-ct-scale__fill" d="M ${mid} ${sy} L ${f(xOf(gain))} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
+  if (loss > 0) out += `<path class="orr-core orr-ct-scale__loss" d="M ${f(xOf(-loss))} ${sy} L ${mid} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
+  const words = [];
+  if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
+  if (loss > 0) words.push(`<tspan class="orr-ct-scale__lossword">−${loss}</tspan>`);
+  out += `<text class="orr-ct-scale__word" x="${sx1 + 12}" y="${sy + 4}">${words.length ? words.join('<tspan class="orr-ct-scale__sep">  ·  </tspan>') : 'NO CHANGE'}</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 18}" text-anchor="start">ON FAILURE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx1}" y="${sy + 18}" text-anchor="end">ON SUCCESS</text>`;
+  out += `</svg>`;
+  return out;
 }
 
 /** The risk in one sentence: the tier, then what success and failure do to the account. */
@@ -352,17 +415,22 @@ export function missionDossierHtml(m, state, options = {}) {
     ? `Accept ${title} and bind its route. ${readiness.detail}.`
     : `Cannot accept ${title}. ${readiness.detail}.`;
 
-  return contractDossierView({
+  // INF-065: one mission (escort) briefed as a physical situation from its live target,
+  // route, and known hazards, paired with a concrete approach — not another flavor paragraph.
+  const briefing = missionBriefingDiagram(m, state, origin);
+  return bindStationMarkup(contractDossierView({
     typeName: typeLabel(m.type),
     titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
     clientHtml: clientEntityHtml(m),
     reward: reward(m).toLocaleString('en-US'),
     summary: authoredSummary,
     routeHtml: `${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}`,
+    briefingHtml: briefingDiagramHtml(briefing),
     riskHtml: riskSentence(m, consequences, facShort),
     termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
-      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '')
+      // a forfeit is a loss: the one term that carries the threat channel's red tick
+      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : '')
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
       + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
       + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
@@ -372,7 +440,7 @@ export function missionDossierHtml(m, state, options = {}) {
     focusAccept,
     action: { id: mid(m), ready, focus: focusAccept && ready,
       readyLabel: 'Accept', blockedLabel: 'Resolve Readiness', aria: acceptAria, reason: readiness.detail },
-  });
+  }));
 }
 
 function cleanText(value) {
@@ -392,6 +460,15 @@ export function createContractsScreen(ctx) {
   /** @type {null|{ focusMissionId?: string, kind?: string, reason?: string, title?: string, surface?: string }} */
   let attention = null;
   boardEl.setAttribute('role', 'tablist');
+  // ORRERY (design/frontend/ORRERY.md §6 Contracts): the route as a beam on a mini orrery beside the
+  // dossier, the dossier's words resolving on arrival, the reward rolling, and Accept held (a ring
+  // fills) when collateral is at risk. The tab arrives once per show; a selection re-renders quietly.
+  let routeInstrument = null;
+  let holdVerb = null;
+  let holdFired = false;
+  let arriving = false;
+  const stopDecrypt = [];
+  const raf = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame : null;
 
   function dressHangLabels() {
     ensureInteriorStyle();
@@ -473,7 +550,44 @@ export function createContractsScreen(ctx) {
       return;
     }
     const recommended = boardRecommendedOfferId(list, state);
-    boardEl.innerHTML =
+    // ORRERY: the dispatch's choice hangs off the jobs it names, as flagged sub-rows on the same
+    // ladder; only an option that names no posted job keeps its own section under the list.
+    const decisions = presentSurfaceDecisions(state, stationId, 'contracts');
+    const optionsByMission = new Map();
+    const loose = [];
+    for (const decision of decisions) {
+      for (const option of decision.options) {
+        const target = option.effect && option.effect.missionId != null ? String(option.effect.missionId) : null;
+        const entry = { decision, option };
+        if (target && list.some((m) => String(mid(m)) === target)) {
+          if (!optionsByMission.has(target)) optionsByMission.set(target, []);
+          optionsByMission.get(target).push(entry);
+        } else loose.push(entry);
+      }
+    }
+    // A sub-row that would only repeat its job's title carries the dispatch's flag instead, and the
+    // tradeoff is its line; a loose option keeps its own label.
+    // A sub-row is one tick line of facts (the first three of the tradeoff's clauses); the whole
+    // tradeoff stays in the accessible name.
+    const optionHtml = ({ decision, option }, sub, jobTitle = '') => {
+      const repeats = sub && jobTitle && String(option.label || '').trim().toLowerCase() === String(jobTitle).trim().toLowerCase();
+      const facts = sub ? String(option.tradeoff || '').split(' · ').slice(0, 3).join(' · ') : String(option.tradeoff || '');
+      return (
+        `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt${sub ? ' sx-decision__opt--sub' : ''}" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}" aria-label="${escapeHtml(`${option.label}. ${option.tradeoff}`)}">` +
+          `<span class="k-row__name">${repeats ? 'Dispatch' : escapeHtml(option.label)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(facts)}</span>` +
+        `</button>`
+      );
+    };
+    const decisionHtml = loose.length
+      ? decisions.filter((d) => loose.some((e) => e.decision === d)).map((decision) => (
+        `<section class="sx-decision">` +
+          `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+          loose.filter((e) => e.decision === decision).map((e) => optionHtml(e, false)).join('') +
+        `</section>`
+      )).join('')
+      : '';
+    boardEl.innerHTML = decisionHtml +
       `<ul class="k-rows sx-ct__rows">` +
       list.map((m) => {
         const id = String(mid(m));
@@ -494,7 +608,7 @@ export function createContractsScreen(ctx) {
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
           : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
         return (
-          `<li><button type="button" class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+          `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
             `<span class="k-row__name sx-ct-row__title">` +
@@ -502,11 +616,102 @@ export function createContractsScreen(ctx) {
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
-          `</button></li>`
+          `</button>` +
+          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type))).join('') +
+          `</li>`
         );
       }).join('') +
       `</ul>`;
     dressBoard();
+    if (arriving && !reducedMotion()) {
+      const rows = boardEl.querySelectorAll('.sx-ct-row');
+      stagger(rows, { base: 60, step: 34 });
+      for (const row of rows) row.classList.add('orr-rise');
+    }
+  }
+
+  /** Where the docked berth stands, so the route beam starts from the right sector. */
+  function originSectorId(state) {
+    const sid = state && state.ui && state.ui.dockedStationId;
+    return sectorOfStation(sid) || (state && state.world && state.world.currentSectorId) || null;
+  }
+
+  function destSectorIdOf(m) {
+    const params = (m && m.params) || {};
+    return m.destSectorId || params.destSectorId || sectorOfStation(m.destStationId || params.destStationId) || null;
+  }
+
+  /** The ORRERY instruments on a rendered dossier: the route beam, the words that resolve, the
+   *  rolling reward, the hold ring on Accept. Everything here is presentation over the markup the
+   *  pure builder made; tests read that markup, not this. */
+  function composeDossier(m, state) {
+    const dossier = dossierEl.querySelector('.sx-dossier');
+    if (!dossier) return;
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
+    if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
+    // the route orrery beside the reading
+    const routeHost = document.createElement('div');
+    routeHost.className = 'orr-ct-route';
+    routeHost.setAttribute('aria-hidden', 'true');
+    dossier.appendChild(routeHost);
+    routeInstrument = createRouteOrrery(routeHost);
+    routeInstrument.set({
+      origin: originSectorId(state),
+      originName: (ctx.station && ctx.station.name) || 'This station',
+      dest: destSectorIdOf(m),
+      destName: destName(m),
+    });
+    // the consequences as instruments: the risk on a five-tick scale, the standing as a gain and a
+    // loss on one small scale (the loss red: it is the one threat here). The sentence stays for the ear.
+    const risky = dossier.querySelector('.sx-dossier__risk');
+    if (risky) {
+      const scales = document.createElement('div');
+      scales.className = 'orr-ct-scales';
+      scales.setAttribute('aria-hidden', 'true');
+      scales.innerHTML = consequenceScalesSvg(m);
+      risky.insertAdjacentElement('afterend', scales);
+    }
+    // the words resolve; the reward rolls
+    if (!reducedMotion()) {
+      const targets = [
+        dossier.querySelector('.sx-dossier__title .sf-entity-link') || dossier.querySelector('.sx-dossier__title'),
+        dossier.querySelector(':scope > .k-caps'),
+        dossier.querySelector('.k-hero__w'),
+        ...dossier.querySelectorAll('.sx-dossier__terms > li > .k-62'),
+      ].filter(Boolean);
+      targets.forEach((node, i) => {
+        const text = node.textContent;
+        if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 40 + i * 50 }));
+      });
+    }
+    const heroN = dossier.querySelector('.sx-dossier__reward .k-hero__n');
+    if (heroN && !heroN.querySelector('.orr-counter__digit')) {
+      const value = reward(m);
+      const counter = createCounter(heroN);
+      if (raf && !reducedMotion()) { counter.set(0); raf(() => raf(() => counter.set(value))); }
+      else counter.set(value);
+    }
+    // Accept is the tab's Lamp Key. When collateral is at risk it is held: the ring at its side
+    // fills with the Hand, and letting go early empties it.
+    const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
+    const consequences = missionConsequenceSummary(m);
+    if (accept && !accept.disabled && consequences.collateral > 0) {
+      accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'} Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`);
+      holdVerb = attachHoldVerb(accept, { ms: 720, onFire: () => { holdFired = true; accept.classList.remove('is-holding'); acceptMission(accept); holdFired = false; } });
+      dressLampKey(accept, { hold: true, note: 'hold' });
+    } else if (accept) {
+      dressLampKey(accept);
+    }
+    // a short screen takes the smaller key
+    if (accept && typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(max-height:800px)').matches) accept.classList.add('orr-lampkey--small');
+  }
+
+  function feedHold(held) {
+    if (!holdVerb) return;
+    holdVerb.feed(held);
+    const accept = dossierEl.querySelector('.sx-ct-commit[data-hold]');
+    if (accept) accept.classList.toggle('is-holding', !!held);
   }
 
   function renderDossier(state) {
@@ -542,6 +747,7 @@ export function createContractsScreen(ctx) {
       focusAccept,
     });
     dressDossier();
+    composeDossier(m, state);
   }
 
   function renderActive(state) {
@@ -567,7 +773,7 @@ export function createContractsScreen(ctx) {
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
               `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
-              `<button type="button" class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
+              `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
           );
         }).join('') + `</ul>`
@@ -609,6 +815,16 @@ export function createContractsScreen(ctx) {
   }
 
   boardEl.addEventListener('click', (ev) => {
+    const adventure = ev.target.closest('[data-adventure-option]');
+    if (adventure) {
+      const state = ctx.state || {};
+      const chosen = chooseAdventureDecision(state, adventure.getAttribute('data-adventure-id'), adventure.getAttribute('data-adventure-option'), {
+        bus: ctx.bus,
+      });
+      renderAll(state);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      return;
+    }
     const btn = ev.target.closest('[data-mid]');
     if (!btn) return;
     select(btn.getAttribute('data-mid'), false);
@@ -629,12 +845,48 @@ export function createContractsScreen(ctx) {
     select(rows[next].getAttribute('data-mid'), true);
   });
 
+  function acceptMission(acc) {
+    if (!acc || acc.disabled) return;
+    acc.disabled = true;
+    const missionId = acc.getAttribute('data-accept');
+    const state = ctx.state || {};
+    const stationId = state.ui && state.ui.dockedStationId;
+    const shown = presentSurfaceDecisions(state, stationId, 'contracts');
+    const match = shown.find((decision) => decision.options.some((option) => (
+      option.effect && option.effect.missionId === missionId
+    )));
+    if (match && ctx.bus) {
+      const option = match.options.find((row) => row.effect && row.effect.missionId === missionId);
+      const chosen = chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
+      ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+    } else if (ctx.bus) {
+      ctx.bus.emit('ui:acceptMission', { missionId });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    }
+    setTimeout(() => renderAll(state), 60);
+  }
+
+  // A held Accept fires from its ring, never from the tap that started the hold. Pointer, keyboard
+  // and the pad's confirm all feed the same clock; the plain click is swallowed while it is armed.
+  const holdTarget = (ev) => (holdVerb && ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-hold]') : null);
+  el.addEventListener('pointerdown', (ev) => { if (holdTarget(ev) && ev.button === 0) feedHold(true); });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(type, (ev) => { if (holdTarget(ev)) feedHold(false); }, true);
+  }
+  el.addEventListener('keydown', (ev) => {
+    if (!holdTarget(ev) || ev.repeat || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    feedHold(true);
+  });
+  el.addEventListener('keyup', (ev) => { if (holdTarget(ev) && (ev.key === 'Enter' || ev.key === ' ')) feedHold(false); });
+  el.addEventListener('click', (ev) => {
+    if (holdTarget(ev) && !holdFired) { ev.preventDefault(); ev.stopImmediatePropagation(); }
+  }, true);
+
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
     if (acc && !acc.disabled) {
-      acc.disabled = true;
-      if (ctx.bus) { ctx.bus.emit('ui:acceptMission', { missionId: acc.getAttribute('data-accept') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
-      setTimeout(() => renderAll(ctx.state || {}), 60);
+      acceptMission(acc);
       return;
     }
     const trk = ev.target.closest('[data-track]');
@@ -653,7 +905,9 @@ export function createContractsScreen(ctx) {
     onShow(c) {
       const next = c || ctx;
       applyShowOptions(next || {});
+      arriving = true;
       renderAll(next.state || {});
+      arriving = false;
     },
     refresh(c) {
       const next = c || ctx;
@@ -662,6 +916,9 @@ export function createContractsScreen(ctx) {
     },
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
+      if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
     },
   };
 }

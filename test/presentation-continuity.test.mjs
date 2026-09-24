@@ -135,6 +135,23 @@ test('a slow GPU (every draw over 33 ms) still flies smooth at full game speed',
     `a slow draw must not starve the sim (game speed ${(flown.gameSpeed * 100).toFixed(1)} %)`);
 });
 
+test('soft-GPU sustained ~12 fps is a slow frame rate, not a hitch cascade', () => {
+  // Soft-GPU crucible p50 ~83 ms. Four catch-up steps cover 66.7 ms of that debt; the fifth
+  // tick sheds. Treating every 83 ms callback as a hitch (old 4.5-tick gate) resumed only two
+  // ticks and held game speed near 40 %. Lane D shed contract: one hitch ≠ three ticks, and a
+  // steady soft frame rate must not become hitch-capped slow motion.
+  const flown = flyPattern([1000 / 12]);
+  assert.equal(flown.frozenPresents, 0);
+  assert.equal(flown.duplicateMomentPresents, 0);
+  assert.equal(flown.hitchCappedFrameCount, 0, 'sustained ~12 fps must not hitch-cap every frame');
+  assert.ok(flown.gameSpeed > 0.75,
+    `soft-GPU ~12 fps should keep most realtime after one shed tick (game speed ${(flown.gameSpeed * 100).toFixed(1)} %)`);
+  // One shed tick (~16.7 ms) plus pose-span blend can read ~two ticks of travel error; that is
+  // expected debt accounting, not a hitch teleport. A hitch-sized hole would be 50 ms+.
+  assert.ok(flown.worstSnapMs < 40,
+    `shed stretch must stay under a hitch hole (worst snap ${flown.worstSnapMs.toFixed(2)} ms)`);
+});
+
 test('a real hitch pauses the world instead of teleporting the ship, and never freezes a present', () => {
   const flown = flyPattern(Array.from({ length: 60 }, (_, i) => (i === 59 ? 120 : 16.667)));
   assert.equal(flown.frozenPresents, 0);

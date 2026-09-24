@@ -189,11 +189,9 @@ export const presentationOrchestrator = {
       this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
       this.bus.on('mining:seamHit', (payload) => this._onMiningSeamReward(payload || {})),
       // The heat/vent rhythm's presentation half. cueRecipes has declared mining.vent.ready and
-      // mining.heat.overheated, and audioSystem has shipped sfx_vent_chime, since before the rhythm
-      // was restored — but nothing in src/ subscribed to either event, so both recipes and the
-      // sample were unreachable. These two edges are the rhythm's only continuous readout.
+      // audioSystem has shipped sfx_vent_chime. mining:overheated is retired by design — the
+      // gauge pegs without locking the beam, so no overheat edge exists to present.
       this.bus.on('mining:ventReady', (payload) => this._onMiningHeatEdge('mining.vent.ready', 'mining:ventReady', payload || {})),
-      this.bus.on('mining:overheated', (payload) => this._onMiningHeatEdge('mining.heat.overheated', 'mining:overheated', payload || {})),
       this.bus.on('mining:yield', (payload) => this._onMiningYield(payload || {})),
       this.bus.on('asteroid:chunked', (payload) => this._onMiningFracture(payload || {})),
       this.bus.on('mining:richCoreExposed', (payload) => this._onMiningRichCore('mining.rich_core.exposed', 'mining:richCoreExposed', payload || {})),

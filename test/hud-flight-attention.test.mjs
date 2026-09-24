@@ -15,6 +15,9 @@ import {
   markFirstUseHint,
   masslineInstrumentReadout,
   masslineInstrumentVisible,
+  OPENING_INSTRUCTION_WINDOW_S,
+  openingInstructionSolo,
+  openingObjectivePending,
   RECEIPT_MAX,
   receiptLaneRect,
   receiptOverlapsReserved,
@@ -26,6 +29,8 @@ import {
 } from '../src/ui/hudAttention.js';
 import { flightDestinationSurface, presentedEntityAnchorPos, resolveFlightObjectiveCommand, resolveObjectiveHudLayout } from '../src/ui/hud.js';
 import { createToasts } from '../src/ui/toasts.js';
+import { createSectorLawPresenter } from '../src/ui/sectorLawPresenter.js';
+import { DANGER_PRIORITY, VoiceQueue } from '../src/ui/voiceArbiter.js';
 import { createBus } from '../src/core/eventBus.js';
 
 const HUD_SRC = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
@@ -33,6 +38,9 @@ const TOASTS_SRC = readFileSync(new URL('../src/ui/toasts.js', import.meta.url),
 const UIROOT_SRC = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
 const ONBOARDING_SRC = readFileSync(new URL('../src/systems/onboarding.js', import.meta.url), 'utf8');
 const CSS_SRC = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
+const COMMS_SRC = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
+const LAW_SRC = readFileSync(new URL('../src/ui/sectorLawPresenter.js', import.meta.url), 'utf8');
+const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.meta.url), 'utf8');
 
 function installToastDom() {
   const byId = new Map();
@@ -69,6 +77,9 @@ function installToastDom() {
       child.parentNode = null;
       return child;
     }
+    remove() {
+      if (this.parentNode) this.parentNode.removeChild(this);
+    }
     addEventListener() {}
     querySelector() { return null; }
   }
@@ -92,6 +103,71 @@ function installToastDom() {
   return {
     toasts,
     hud,
+    restore() {
+      globalThis.document = previous;
+    },
+  };
+}
+
+// Minimal DOM for the sector-law presenter: element.querySelector resolves data-k stubs so the
+// real showSector/renderIncident paths can paint without a browser.
+function installSectorLawDom() {
+  class FakeClassList {
+    constructor() { this.values = new Set(); }
+    add(...vs) { vs.forEach((v) => this.values.add(v)); }
+    remove(...vs) { vs.forEach((v) => this.values.delete(v)); }
+    contains(v) { return this.values.has(v); }
+  }
+  class FakeElement {
+    constructor(tagName = 'div') {
+      this.tagName = String(tagName).toUpperCase();
+      this.children = [];
+      this.parentNode = null;
+      this.classList = new FakeClassList();
+      this.attributes = new Map();
+      this.style = {};
+      this.dataset = {};
+      this.textContent = '';
+      this.id = '';
+      this.className = '';
+      this.hidden = false;
+    }
+    setAttribute(k, v) { this.attributes.set(k, String(v)); }
+    getAttribute(k) { return this.attributes.has(k) ? this.attributes.get(k) : null; }
+    appendChild(child) {
+      if (child.parentNode) child.parentNode.removeChild(child);
+      child.parentNode = this;
+      this.children.push(child);
+      return child;
+    }
+    prepend(child) { return this.appendChild(child); }
+    removeChild(child) {
+      this.children = this.children.filter((c) => c !== child);
+      child.parentNode = null;
+      return child;
+    }
+    remove() {
+      if (this.parentNode) this.parentNode.removeChild(this);
+    }
+    addEventListener() {}
+    querySelector() { return new FakeElement('span'); }
+  }
+  const byId = new Map();
+  const uiRoot = new FakeElement('div');
+  uiRoot.id = 'ui-root';
+  byId.set('ui-root', uiRoot);
+  const head = new FakeElement('head');
+  const previous = globalThis.document;
+  globalThis.document = {
+    getElementById: (id) => byId.get(id) || null,
+    createElement: (tag) => new FakeElement(tag),
+    querySelector: () => null,
+    head,
+    body: { dataset: {} },
+    activeElement: null,
+  };
+  return {
+    uiRoot,
     restore() {
       globalThis.document = previous;
     },
@@ -317,4 +393,135 @@ test('hud job follows latch, fight, and hurt', () => {
   assert.equal(hudJobFromState(state, null), 'fight');
   state.player.targetId = null;
   assert.equal(hudJobFromState(state, null), 'cruise');
+});
+
+test('the first two minutes keep exactly one instruction on screen', () => {
+  // A fresh game with the staged rail running: the objective owns the whole window.
+  const fresh = (simTime) => ({
+    simTime,
+    onboarding: { active: true, finished: false, startedAt: 0 },
+    nav: { waypoint: null },
+  });
+  assert.equal(openingInstructionSolo(fresh(0)), true);
+  assert.equal(openingInstructionSolo(fresh(OPENING_INSTRUCTION_WINDOW_S - 0.1)), true);
+  // The window ends at exactly two minutes — secondary text surfaces return.
+  assert.equal(openingInstructionSolo(fresh(OPENING_INSTRUCTION_WINDOW_S)), false);
+  assert.equal(openingInstructionSolo(fresh(600)), false);
+  // Player has done the thing and no objective stands: the others may speak again.
+  assert.equal(openingInstructionSolo({
+    simTime: 30,
+    onboarding: { active: false, finished: true, startedAt: 0 },
+    nav: { waypoint: null },
+  }), false);
+  // A standing objective reasserts the rule until it too is done.
+  assert.equal(openingInstructionSolo({
+    simTime: 30,
+    onboarding: { active: false, finished: true, startedAt: 0 },
+    nav: { waypoint: { reason: 'Follow the anomaly', label: 'ANOMALY' } },
+  }), true);
+  // A waypoint with no instruction text is a marker, not an instruction.
+  assert.equal(openingObjectivePending({ nav: { waypoint: { pos: { x: 1, z: 1 } } } }), false);
+  assert.equal(openingObjectivePending({ nav: { waypoint: { label: 'ANOMALY' } } }), true);
+  // Defensive: no clock or no state never suppresses.
+  assert.equal(openingInstructionSolo({}), false);
+  assert.equal(openingInstructionSolo(null), false);
+});
+
+test('the opening window anchors to the sim clock at game start, never wall time', () => {
+  // A Continue mid-window keeps the remainder — the rule survives a save/load.
+  const resumed = {
+    simTime: 100,
+    onboarding: { active: true, finished: false, startedAt: 50 },
+    nav: { waypoint: null },
+  };
+  assert.equal(openingInstructionSolo(resumed), true);
+  resumed.simTime = 200;
+  assert.equal(openingInstructionSolo(resumed), false);
+  // A loaded late save is not a new game — no fresh-opening suppression.
+  assert.equal(openingInstructionSolo({
+    simTime: 500,
+    onboarding: { active: false, finished: true, startedAt: 0 },
+    nav: { waypoint: { reason: 'Deliver ore' } },
+  }), false);
+  // A clock rewound behind its own anchor never opens the window.
+  assert.equal(openingInstructionSolo({
+    simTime: 10,
+    onboarding: { active: false, finished: false, startedAt: 50 },
+    nav: { waypoint: { reason: 'x' } },
+  }), false);
+});
+
+test('the law paragraph retires during the opening while live incidents still surface', () => {
+  const dom = installSectorLawDom();
+  try {
+    const state = {
+      mode: 'flight',
+      ui: {},
+      simTime: 30,
+      playerId: 'p1',
+      entities: new Map(),
+      world: { currentSectorId: 'sector_helios', sectors: {} },
+      onboarding: { active: true, finished: false, startedAt: 0 },
+      nav: { waypoint: null },
+    };
+    const presenter = createSectorLawPresenter({ state, bus: createBus() });
+    assert.equal(presenter.showSector('sector_helios'), false,
+      'the jurisdiction paragraph retires while the opening objective owns the screen');
+    assert.equal(presenter.el.hidden, true);
+    // Danger is not an instruction: a live distress incident still surfaces inside the window.
+    assert.equal(presenter.renderIncident({
+      id: 'inc-1', attackerId: 'npc-9', status: 'distress',
+      cause: 'npc_piracy', factionId: 'faction_scn',
+    }), true, 'a live authority incident outranks the quiet window');
+    assert.equal(presenter.el.hidden, false);
+    presenter.hide();
+    // After two minutes the entry card returns on the next sector handoff.
+    state.simTime = 600;
+    assert.equal(presenter.showSector('sector_helios'), true);
+    assert.equal(presenter.el.hidden, false);
+    presenter.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('the caption and the bypassed comms log line consult the opening rule', () => {
+  // Caption: the HUD asks the rule before painting the event sentence; the aria-live line still
+  // lands because assistive tech is not on screen.
+  assert.match(HUD_SRC, /if \(openingInstructionSolo\(state\)[^}]*?\{\s*caption\.classList\.remove\('show'\)/,
+    'the event caption must retire while the opening objective owns the screen');
+  // Log line: authored scenario dialogue keeps its bypass flag, but the bypass itself yields
+  // during the window so the line is held until the player has done the thing.
+  assert.match(COMMS_SRC, /bypassAttentionGate\)\s*&&\s*!openingInstructionSolo\(state\)/,
+    'the comms bypass must yield to the opening one-instruction rule');
+  assert.match(COMMS_SRC, /attentionGateActive\(\)/,
+    'ordinary chatter still queues behind the existing attention gate');
+  // Law paragraph: the entry card consults the rule; incidents and receipts are untouched.
+  assert.match(LAW_SRC, /function showSector[\s\S]*?if \(openingInstructionSolo\(state\)\) return false;/,
+    'the sector-law entry card must retire while the opening objective owns the screen');
+  assert.match(LAW_SRC, /subscribe\('law:distressRaised', renderIncident\)/,
+    'live incidents keep their own surface');
+});
+
+test('the one-voice floor also keeps the objective solo during the opening', () => {
+  const q = new VoiceQueue();
+  q.enqueue({ channel: 'story', text: 'Traffic Control hails you.', ttl: 30 }, 0);
+  q.enqueue({ channel: 'objective', text: 'Follow the anomaly', ttl: 30 }, 0);
+  const solo = { openingSolo: true };
+  // Inside the window the story line cannot hold the floor — the objective does.
+  assert.equal(q.step(0, solo).channel, 'objective');
+  // A higher-priority story line still cannot cut in — it stale-drops rather than surfacing late.
+  assert.equal(q.step(1000, solo), null);
+  assert.equal(q.active.channel, 'objective');
+  // Danger is not an instruction — it always takes the floor.
+  q.enqueue({ channel: 'alert', text: 'SHIELDS DOWN', priority: DANGER_PRIORITY, ttl: 5 }, 0);
+  assert.equal(q.step(2000, solo).channel, 'alert');
+  // Outside the window the same queue behaves exactly as before: story outranks objective.
+  const open = new VoiceQueue();
+  open.enqueue({ channel: 'story', text: 'Traffic Control hails you.', ttl: 30 }, 0);
+  open.enqueue({ channel: 'objective', text: 'Follow the anomaly', ttl: 30 }, 0);
+  assert.equal(open.step(0, {}).channel, 'story');
+  // The system wrapper derives the policy from live state.
+  assert.match(ARBITER_SRC, /openingSolo:\s*openingInstructionSolo\(this\.state\)/,
+    'the arbiter must derive opening-solo policy from the sim clock');
 });

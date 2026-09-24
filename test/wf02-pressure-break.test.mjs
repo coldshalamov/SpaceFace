@@ -220,7 +220,9 @@ const directive = {};
 
   applyEngagementPosture(entity, null, state);
   assert.equal(entity.data.ai.activity.kind, ActivityKind.ATTACK_RUN, 're-commit hands the authored activity back');
-  assert.equal(entity.data.ai.postureBaseActivity, undefined, 'the posture stash is cleared after re-commit');
+  // Cleared to null rather than deleted (734ac4ac3): the ai record keeps one shape on the per-tick
+  // decision path instead of dropping a property every re-commit.
+  assert.equal(entity.data.ai.postureBaseActivity, null, 'the posture stash is cleared after re-commit');
 
   // A break in flight plus another writer replacing the activity (non-posture reason) must not
   // clobber the stash: re-commit has to hand back the ORIGINAL authored activity.
@@ -231,7 +233,7 @@ const directive = {};
   assert.equal(entity.data.ai.postureBaseActivity, stashed, 'an interloping activity never overwrites the stash');
   assert.equal(entity.data.ai.activity.kind, 'scan_approach', 'the interloping activity is left alone');
   applyEngagementPosture(entity, null, state);
-  assert.equal(entity.data.ai.postureBaseActivity, undefined, 'the stash still clears on re-commit');
+  assert.equal(entity.data.ai.postureBaseActivity, null, 'the stash still clears on re-commit');
   assert.equal(entity.data.ai.activity.kind, 'scan_approach', 'a foreign activity is not replaced by the stash');
 
   const fleeing = {

@@ -128,7 +128,11 @@ export const customsPrompt = {
     this._onResolved = (p) => {
       // PQ-048.06 owns the correlated decision surface. Do not let a real lawful-inspection
       // result clear or replace an unrelated legacy customs panel.
-      if (!(p && p.lawfulInspectionCaseId)) this._dismiss();
+      if (p && p.lawfulInspectionCaseId) return;
+      // INF-079: the visible result of compliance. The engine charges the fine silently;
+      // the panel that offered the decision reports what submission cost.
+      if (p && p.found === true) this._reportBust(p);
+      this._dismiss();
     }; // a generic bust/scan clears the generic panel
     if (this._bus && this._bus.on) {
       this._bus.on('player:scannedByPatrol', this._onScanned);
@@ -157,8 +161,11 @@ export const customsPrompt = {
 
     this._last = { t: now };
     // Additive UI state (NOT in the sim snapshot hash) — readable by dock/HUD screens and tests.
+    // INF-079: stamp the signal tick. The engine resolves every scan synchronously in the
+    // same tick as the signal, so a bribe arriving on a LATER tick is always post-resolution
+    // (an evaded scan the panel outlived) and must be declined, never charged.
     if (!state.ui || typeof state.ui !== 'object') state.ui = {};
-    state.ui.customsPrompt = { ...decision, t: now };
+    state.ui.customsPrompt = { ...decision, t: now, signalTick: state.tick };
 
     // ONE customs hail, through the arbiter — never a raw toast, never two lines at once.
     const helpers = (this._ctx && this._ctx.helpers) || {};
@@ -184,6 +191,19 @@ export const customsPrompt = {
     } else if (actionId === 'bribe') {
       // Route through economy.payBribe (listens at economy.js:293). The fine we pass is the
       // engine's own estimate shape; economy charges round(fine*BRIBE_FRAC). We never write credits.
+      // INF-079: no post-resolution bribe. A human acts ticks after the signal, and the engine
+      // already resolved that tick — a lingering panel means the scan passed with no bust, so
+      // the 30% would buy nothing. Decline it loudly instead of double-charging. Same-tick
+      // callers (tests, deterministic replays) keep today's path.
+      const signalTick = ui.signalTick;
+      const nowTick = this._state && this._state.tick;
+      if (Number.isFinite(signalTick) && Number.isFinite(nowTick) && nowTick > signalTick) {
+        bus.emit('toast', {
+          text: 'THE SCAN PASSED — no fine due; bribe declined.', kind: 'info', ttl: 3,
+        });
+        this._dismiss();
+        return;
+      }
       bus.emit('contraband:bribe', { fine: ui.risk.estFine });
     } else if (actionId === 'run') {
       // Run only avoids the SCAN — not an already-resolved bust. The additive seam lets a future
@@ -198,6 +218,24 @@ export const customsPrompt = {
     if (state && state.ui) delete state.ui.customsPrompt;
     const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
     if (deck) deck.resolveDecision(DECK_ID);
+  },
+
+  // INF-079: the visible result of compliance. Reads the bust payload verbatim — fine,
+  // seized units, faction — and never recomputes (the engine's math stays single-writer).
+  // Standing is named qualitatively: the strike-scaled rep delta is factions' to compute.
+  _reportBust(p) {
+    const units = Array.isArray(p.confiscated)
+      ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
+      : Math.max(0, p.units | 0);
+    const fine = Number.isFinite(p.fine) ? p.fine : null;
+    const seized = units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} seized` : '';
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', {
+        text: `CUSTOMS BUST — ${factionShort(p.factionId)} fined ${fine != null ? fine : '—'} cr${seized}; standing damaged.`,
+        kind: 'warn',
+        ttl: 5,
+      });
+    }
   },
 
   // ── deck decision (the old inline-styled centered panel with inert text verbs is retired) ────
@@ -216,9 +254,9 @@ export const customsPrompt = {
         : 'Stand by for clearance — or break range to skip the scan.',
       deadlineAt: Number(now || (this._state && this._state.simTime) || 0) + (PANEL_TTL_MS / 1000),
       choices: [
-        { id: 'submit', label: 'SUBMIT TO SCAN', title: 'Let the shipped patrolScan encounter resolve.' },
-        { id: 'bribe', label: `BRIBE — ${decision.bribeCost} CR`, title: 'Route through economy.payBribe.' },
-        { id: 'run', label: 'BREAK RANGE', danger: true, title: 'Avoid the scan; the patrol records the attempt.' },
+        { id: 'submit', label: 'SUBMIT TO SCAN', title: 'Close this panel and let the patrol scan resolve. Any fine and seizure are charged by the patrol — submitting here charges nothing.' },
+        { id: 'bribe', label: `BRIBE — ${decision.bribeCost} CR`, title: 'Pay 30% of the projected fine through the patrol. Only works before the scan resolves — afterwards it is declined.' },
+        { id: 'run', label: 'BREAK RANGE', danger: true, title: 'Close this panel and fly out of scan range yourself — this click does not move your ship. The refusal is logged.' },
       ],
       onChoose: (choiceId) => this.choose(choiceId),
       onExpire: () => this._dismiss(),

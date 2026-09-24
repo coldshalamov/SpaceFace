@@ -23,6 +23,7 @@ export const CombatDoctrineId = Object.freeze({
   CAPITAL_BROADSIDE_ALA: 'capital_broadside_ala',
   ESCORT_SCREEN: 'escort_screen',
   SWARM_PACK: 'swarm_pack',
+  PACK_PURSUIT: 'pack_pursuit',
   MINE_LAYER_WAKE: 'mine_layer_wake',
   SHIELD_BREAKER: 'shield_breaker',
 });
@@ -37,6 +38,10 @@ const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
 // Below this speed the target cannot maneuver out of a re-attack: a parked or drifting craft
 // gains nothing from the flyby's long extend leg, so the run wheels straight back into reform.
+// Only a CONTROL-dispatched responder takes that shortcut (securityDispatched). Every other
+// interceptor stays PQ-140.00's positioning problem and extends-and-returns even past a parked
+// player: applied to everyone, the shortcut erased the readable gap between passes whenever the
+// player came to rest, which hands-off assisted flight does by design.
 const INTERCEPTOR_STATIONARY_TARGET_SPEED = 8;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
@@ -70,8 +75,13 @@ const SWARM_REFORM_TICKS = 24;
 // line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
 // return fire then knocks the fragile attacker off aim before its first useful salvo.
 const SWARM_INGRESS_RANGE_WU = 340;
-// Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage. The mine
-// itself is dropped by the tacticalAI verb port (src/ai/mineLayerVerb.js) during 'mine_drop'.
+// Pack pursuit stays inside the fight. No breakaway, no 960 WU egress point.
+const PACK_PRESS_RANGE_WU = 200;
+const PACK_ORBIT_RANGE_WU = 130;
+// Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage.
+// PQ-205.02: the drop line is the pursuit-lane bomb doctrine — npcBombMirror calls
+// bombs.drop / commandDetonate after the wake_mines telegraph. Physical mines still
+// seed from mineLayerVerb during the same phase.
 const MINE_FLANK_RANGE_WU = 340;
 const MINE_DROP_TICKS = 70;
 const MINE_DISENGAGE_TICKS = 45;
@@ -138,7 +148,12 @@ export function selectDoctrineTarget(doctrineId, perception) {
   let bestScore = -Infinity;
   for (const contact of perception.contacts) {
     if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
-    if (contact.alive !== true || contact.valid !== true || contact.visible !== true) continue;
+    // A CONTROL/ambush-dispatched assignment arrives as a reported track — the responder is
+    // ordered onto the offender on the jurisdiction's word, beyond its own sensor reach, so the
+    // doctrine may close on the unseen contact. Ordinary remembered contacts stay excluded; a
+    // stale memory cannot advance a telegraph into attack.
+    if (contact.alive !== true || contact.valid !== true
+      || (contact.visible !== true && contact.dispatchedTarget !== true)) continue;
     if (finite(contact.confidence, 0) < 0.55) continue;
     const score = targetScore(doctrine, contact, ward);
     if (score > bestScore || (score === bestScore && stableId(contact.id) < stableId(best && best.id))) {
@@ -217,6 +232,12 @@ export class CombatDoctrineRuntime {
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
+    // Fodder that was stamped to stay packed never takes the flyby egress, including the
+    // disabled-target and pressure-break hatches that aim a point 960 WU away.
+    if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
+      updatePackPursuit(record, tick, self, target, distance);
+      return snapshot(record, target, directive, factionBehavior, self);
+    }
     // Production supplies this from aiPorts' live combat-runtime query. The contact fallback keeps
     // the pure/worldless doctrine API usable for fixtures and non-production adapters that have no
     // state port; an explicit null is authoritative and must not be replaced by cached perception.
@@ -244,7 +265,7 @@ export class CombatDoctrineRuntime {
       return snapshot(record, target, directive, factionBehavior, self);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
-      updateInterceptor(record, tick, self, target, distance);
+      updateInterceptor(record, tick, self, target, distance, securityDispatched(directive, self));
     } else if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
       updateBrawler(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -351,7 +372,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
   };
 }
 
-function updateInterceptor(record, tick, self, target, distance) {
+function updateInterceptor(record, tick, self, target, distance, dispatched = false) {
   if (record.flightProfile === 'brawler_commit') {
     updateBrawler(record, tick, self, target, distance);
     return;
@@ -365,7 +386,7 @@ function updateInterceptor(record, tick, self, target, distance) {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
     if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
-      if (interceptorTargetStationary(target)) beginReform(record, tick);
+      if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
@@ -620,6 +641,13 @@ function updateCapitalBroadside(record, tick, self, distance) {
     // A new act begins: announce it through the charge telegraph even mid-broadside.
     record.bossStage = stageIndex;
     if (record.phase !== 'broadside_approach') {
+      // An act that opens during the shift beat (a pressure break or disabled-target hatch just
+      // put the hull on its egress point, then damage crossed the act threshold) completes that
+      // shift exactly as its timer exit does: the cycle advances and the egress point is released.
+      // Without this the boss charged and fired while steering for a point 960 WU away, because
+      // a set flightPoint outranks every maneuver in the planner.
+      if (record.phase === 'broadside_shift') record.cycle++;
+      record.flightPoint = null;
       enter(record, 'broadside_charge', tick, stage.cue);
       return;
     }
@@ -648,6 +676,14 @@ function updateCapitalBroadside(record, tick, self, distance) {
  * The light-hull pack identity: short committed passes with a tight extend, so a swarm fight is
  * a rapid sequence of flank→flare→strike→extend beats instead of the raider flyby's long cycles.
  */
+function updatePackPursuit(record, tick, self, target, distance) {
+  if (record.phase !== 'press' && distance <= PACK_PRESS_RANGE_WU) {
+    enter(record, 'press', tick, null);
+  }
+  void self;
+  void target;
+}
+
 function updateSwarmPack(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'ingress' && distance <= SWARM_INGRESS_RANGE_WU) enter(record, 'engine_flare', tick, 'engine_flare');
@@ -753,7 +789,8 @@ function enter(record, phase, tick, telegraphKind) {
     ? Object.freeze({ kind: telegraphKind, durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: tick })
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
-  record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
+    record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
+    || phase === 'press'
     || phase === 'anchor_hold' || phase === 'broadside_fire'
     || phase === 'screen_hold' || phase === 'shield_dart'
     || phase === 'lance' || phase === 'mine_drop';
@@ -809,8 +846,15 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;
     } else if (phase === 'reform') {
-      maneuverKind = ManeuverKind.FORMATION;
-      maneuverTargetId = null;
+      // A CONTROL dispatch has no squad slot to rejoin: its reform beat is a re-commit on the
+      // named offender. Formation-steering it home between passes is the measured stand-off —
+      // pursuers sat 645-724 WU out cycling reform while the offender sat untouched.
+      if (assignedTargetBreak) {
+        maneuverKind = ManeuverKind.INTERCEPT;
+      } else {
+        maneuverKind = ManeuverKind.FORMATION;
+        maneuverTargetId = null;
+      }
     } else if (brawler && phase === 'commit') {
       // Commit is a sticky knife-fight, not a flyby intercept pass. Keep the nose on the target
       // and orbit inside gun range until the authored hold expires.
@@ -853,6 +897,13 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 340;
     }
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.PACK_PURSUIT) {
+    formationLocked = false;
+    faceTarget = true;
+    lateralSign = record.side;
+    maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
+    preferredRange = PACK_ORBIT_RANGE_WU;
+    if (phase === 'press') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
     formationLocked = phase === 'ingress' || phase === 'reform';
     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
@@ -886,12 +937,13 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       faceTarget = true;
       preferredRange = 300;
     } else if (phase === 'mine_drop') {
-      // The drop line: keep the nose off the target so the hull flies its wake PAST the player;
-      // the mine verb releases behind the hull along its own motion.
+      // The drop line: keep the nose off the target so the hull flies its wake PAST the player.
+      // NPC bombs release through bombs.drop (npcBombMirror + action_drop_bomb); commandDetonate
+      // commits the fuze after arming. INF-030 / PQ-205.02.
       maneuverKind = ManeuverKind.INTERCEPT;
       faceTarget = false;
       preferredRange = 340;
-      allowedActionId = 'action_burst';
+      allowedActionId = 'action_drop_bomb';
     } else {
       maneuverKind = ManeuverKind.INTERCEPT;
       preferredRange = 300;
@@ -1058,7 +1110,7 @@ function targetScore(doctrineId, contact, ward = null) {
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
   }
-  if (doctrineId === CombatDoctrineId.SWARM_PACK) {
+  if (doctrineId === CombatDoctrineId.PACK_PURSUIT || doctrineId === CombatDoctrineId.SWARM_PACK) {
     // The pack votes for the closest soft thing: mobility over mass, so passes converge on one
     // hull instead of scattering across the formation.
     return threat * 5 + bandScore(contact.mobilityBand, ['high', 'medium', 'low']) * 3;
@@ -1160,9 +1212,22 @@ function flightProfileFor(doctrineId, self) {
   // The identity doctrines reuse published flight profiles: their motion vocabulary (a close
   // pass, a standoff wake line, a hit-and-run pass) is already expressed by the planner through
   // maneuverKind + preferredRange, and downstream consumers only know these profile strings.
+  if (doctrineId === CombatDoctrineId.PACK_PURSUIT) return 'pack_pursuit';
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   return 'ranged_standoff';
+}
+
+// A CONTROL dispatch names its offender twice: doctrine.js stamps the squad directive's formation
+// with breakReason 'security_response_target', and the member's own activity is an attack_run
+// whose reason is 'security_response:<incident>'. Either is enough; the activity survives an
+// Enemy Mind formation rewrite that replaces the break reason.
+function securityDispatched(directive, self) {
+  const formation = directive && directive.formation;
+  if (formation && formation.breakReason === 'security_response_target') return true;
+  const activity = self && self.activity;
+  return !!(activity && activity.kind === 'attack_run' && activity.targetId != null
+    && String(activity.reason || '').startsWith('security_response:'));
 }
 
 function interceptorTargetStationary(target) {

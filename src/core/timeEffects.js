@@ -117,6 +117,14 @@ export function createTimeEffects(state) {
     getEffectiveScale() {
       return applyMinimum();
     },
+
+    // Diagnostic surface for the runtime witness / soak probes: a scale-0 freeze is only
+    // actionable if the caller can see which source still holds its request.
+    describeRequests() {
+      const out = {};
+      requests.forEach((request, source) => { out[source] = { ...request }; });
+      return out;
+    },
   };
 
   SERVICE_BY_STATE.set(state, service);

@@ -259,27 +259,36 @@ try {
   await page.mouse.move(5, 5);
 
   // ---- first-dock handoff (the opening docked route guides a new player) ----
+  // Onboarding is a lamp on the next thing to do (stationApp.js renderHandoff): ONE line naming the
+  // first step not yet done, its destination lit on the rail, and a dismiss. (It was a strip of three
+  // step chips until 2026-09-22.)
   const handoff = await page.evaluate(() => {
     const strip = document.querySelector('[data-screen="station"] .sxb-handoff:not([hidden])');
+    const next = strip && strip.querySelector('.sxb-next');
+    const lit = [...document.querySelectorAll('[data-screen="station"] .sx-dock [data-dp-next]')].map((t) => t.getAttribute('data-nav'));
     return {
       visible: !!strip,
       text: strip ? (strip.textContent || '').replace(/\s+/g, ' ').trim() : '',
-      steps: [...document.querySelectorAll('[data-screen="station"] .sxb-hstep')].map((b) => ({
-        target: b.getAttribute('data-handoff'),
-        act: b.getAttribute('data-handoff-act'),
-        label: b.getAttribute('aria-label'),
-      })),
+      next: next ? {
+        target: next.getAttribute('data-handoff'),
+        act: next.getAttribute('data-handoff-act'),
+        label: next.getAttribute('aria-label'),
+      } : null,
+      lit,
+      dismiss: !!(strip && strip.querySelector('[data-handoff-dismiss]')),
     };
   });
-  assert.equal(handoff.visible, true, 'first dock should show the handoff guidance strip');
-  assert.ok(handoff.steps.length >= 3, 'first-dock handoff should expose cargo, jobs and launch steps: ' + JSON.stringify(handoff.steps));
-  assert.ok(handoff.steps.every((s) => s.label), 'handoff steps need accessible labels: ' + JSON.stringify(handoff.steps));
-  assert.ok(handoff.steps.every((s) => DESTINATIONS.includes(s.target) || s.act),
-    'handoff steps must route to real destinations or a named verb: ' + JSON.stringify(handoff.steps));
-  assert.ok(handoff.steps.some((s) => s.target === 'contracts'), 'handoff should route the jobs step to Contracts');
-
-  // handoff steps actually navigate
-  await clickAndExpectNav(page, '[data-screen="station"] .sxb-hstep[data-handoff="contracts"]', 'contracts');
+  assert.equal(handoff.visible, true, 'first dock should show the handoff guidance');
+  assert.ok(handoff.next, 'first-dock handoff should name the next step: ' + JSON.stringify(handoff));
+  assert.ok(handoff.next.label, 'the next step needs an accessible label: ' + JSON.stringify(handoff.next));
+  assert.ok(DESTINATIONS.includes(handoff.next.target) || handoff.next.act,
+    'the next step must route to a real destination or a named verb: ' + JSON.stringify(handoff.next));
+  assert.equal(handoff.dismiss, true, 'the first-dock guidance should be dismissable');
+  if (handoff.next.target) {
+    assert.deepEqual(handoff.lit, [handoff.next.target], 'the next step destination should be the one lit on the rail: ' + JSON.stringify(handoff));
+    // the next step actually navigates
+    await clickAndExpectNav(page, `[data-screen="station"] .sxb-next[data-handoff="${handoff.next.target}"]`, handoff.next.target);
+  }
 
   // ---- keyboard: roving tabindex + arrows/Home/End, Enter/Space activate ----
   await focusNav(page, 'market');
@@ -295,7 +304,9 @@ try {
 
   // ---- mini-game depth: object focus and task-preserving cross-system handoffs ----
   await clickAndExpectNav(page, '[data-screen="station"] .sx-tile[data-nav="shipworks"]', 'shipworks');
-  await page.waitForSelector('[data-screen="station"] [data-spatial-slot]', { timeout: 15000 });
+  // a hardpoint is a zero-size mount anchor; its callout card is the box (calloutLayout.js), so wait
+  // for the mount to exist, not for the anchor itself to have an area
+  await page.waitForSelector('[data-screen="station"] [data-spatial-slot]', { state: 'attached', timeout: 15000 });
   await page.locator('[data-screen="station"] [data-spatial-slot]').first().focus();
   await page.keyboard.press('Enter');
   await waitForVisible(page, '[data-screen="station"] .sx-sw__chooser.is-open', 5000, 'anchored compatible-module tray');

@@ -212,7 +212,9 @@ test('save-style round trip rebuilds an anchor field from the hull record, not s
     assert.ok(anchor, 'mid-encounter anchor exists');
     anchor.flags.persistent = true;
     const data = h.saveSys.serializeData();
-    assert.equal(Object.hasOwn(data, 'fields'), false, 'field runtime is not serialized');
+    // Live emitter runtime is not serialized — pending setups may travel in data.fields
+    // (b64a8e028), but an active anchor field still rebuilds from the hull record.
+    assert.deepEqual(Object.keys(data.fields?.deployed ?? {}), [], 'live field runtime is not serialized');
     const savedAnchor = data.entities.persistent.find((e) => e.data?.lootTableId === 'field_anchor_controller');
     assert.ok(savedAnchor?.data?.fieldAnchor, 'hull record carries fieldAnchor through save data');
 

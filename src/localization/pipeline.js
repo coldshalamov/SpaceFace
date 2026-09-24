@@ -188,6 +188,24 @@ const PHRASES = Object.freeze({
     'Pseudo-locale (Layoutprüfung)',
     'Pseudo-locale (checagem de layout)',
   ),
+  'Contract 47-A remains open': L(
+    'El contrato 47-A sigue abierto',
+    'Le contrat 47-A reste ouvert',
+    'Vertrag 47-A bleibt offen',
+    'O contrato 47-A continua aberto',
+  ),
+  'Contract 47-A — Open / Payment Pending': L(
+    'Contrato 47-A — Abierto / Pago pendiente',
+    'Contrat 47-A — Ouvert / Paiement en attente',
+    'Vertrag 47-A — Offen / Zahlung ausstehend',
+    'Contrato 47-A — Aberto / Pagamento pendente',
+  ),
+  'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.': L(
+    'Contrato 47-A: tome muestras de la discrepancia de masa de 12.4t y atraque en Helios. Pago retenido. Estado pendiente.',
+    'Contrat 47-A : échantillonnez l’écart de masse de 12.4t, puis amarrez à Helios. Paiement retenu. Statut en attente.',
+    'Vertrag 47-A: Beproben Sie die 12.4t-Massendiskrepanz und docken Sie bei Helios an. Zahlung zurückbehalten. Status ausstehend.',
+    'Contrato 47-A: amostre a discrepância de massa de 12.4t e atraque em Helios. Pagamento retido. Status pendente.',
+  ),
 });
 
 const GLOSSARY = Object.freeze({

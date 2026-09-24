@@ -63,6 +63,7 @@ import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
+import { createDiscoveryPlate } from './discoveryPlate.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
@@ -100,6 +101,9 @@ const SCREEN_MODULES = [
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
   { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
   { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
+  // DEMO END (ZERO_TO_HERO Phase 5.5): the once-per-save close card; pushed by onboarding's
+  // fitted-undock trigger, never by menu navigation.
+  { path: './screens/demoEnd.js', load: () => import('./screens/demoEnd.js'), name: 'demoEndScreen' },
   // CRUCIBLE (PQ-133 §12): the Survival door, its seeded rearm draft, and the ten-wave refit.
   // Both draft surfaces live in one module, so two entries load the same chunk by export name.
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
@@ -128,7 +132,7 @@ const SCREEN_MODULES = [
 const BOOT_SCREEN_EXPORTS = new Set([
   'mainMenuScreen', 'motionAskScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
   'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
-  'crucibleScreen', 'crucibleResultsScreen',
+  'crucibleScreen', 'crucibleResultsScreen', 'demoEndScreen',
 ]);
 
 function yieldPresentationFrame() {
@@ -299,7 +303,16 @@ function saveSlotLabel(slot) {
   return 'Slot ' + id;
 }
 
+function skippedNewerNotice(skippedNewer) {
+  if (!skippedNewer || !skippedNewer.slot) return '';
+  return ` Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — not loaded.`;
+}
+
 function saveErrorText(payload = {}) {
+  return saveErrorReasonText(payload) + skippedNewerNotice(payload.skippedNewer);
+}
+
+function saveErrorReasonText(payload = {}) {
   const slot = saveSlotLabel(payload.slot);
   switch (payload.reason) {
     case 'no_player': return 'Start or load a game before saving';
@@ -345,12 +358,16 @@ function wireSaveFeedback(bus) {
       ttl: (slot === 'auto' || slot === 'autosave') ? 1400 : 2200,
     });
   });
-  bus.on('save:loaded', ({ slot, visualGatePending, recovered } = {}) => {
+  bus.on('save:loaded', ({ slot, visualGatePending, recovered, skippedNewer } = {}) => {
     if (recovered) return;
+    // INF-091: when Continue resolves past a dead newer slot, the receipt says so out loud.
+    const skip = skippedNewer && skippedNewer.slot
+      ? `. Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — loaded the newest playable instead.`
+      : '';
     bus.emit('toast', {
-      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot),
+      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot) + skip,
       kind: visualGatePending ? 'info' : 'good',
-      ttl: visualGatePending ? 2200 : 2400,
+      ttl: skip ? 3600 : (visualGatePending ? 2200 : 2400),
     });
   });
   bus.on('save:recovered', ({ slot } = {}) => {
@@ -412,12 +429,22 @@ export const ui = {
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
+    // Feature 20: first-discovery glass plate (POI / unique wreck / flagship ace receipts).
+    this.discoveryPlate = createDiscoveryPlate(ctx);
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
-    this.bus.on('save:store-synced', () => {
+    // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
+    // which store is durable, and a later landed write clears the warning. Toasts only; no
+    // duplicate save and no transition rides on this path.
+    this.bus.on('save:store-synced', (payload = {}) => {
       if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+      }
+      if (payload.mirrorRecovered) {
+        this.bus.emit('toast', { text: 'Shared save store reconnected — mirroring resumed.', kind: 'good', ttl: 2600 });
+      } else if (payload.ok === false && payload.mirror === 'shared') {
+        this.bus.emit('toast', { text: 'Shared save store unreachable — saves stay on this device.', kind: 'warn', ttl: 3600 });
       }
     });
 
@@ -941,6 +968,7 @@ export const ui = {
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
+    this.bus.on('ui:clearTarget', () => clearCombatTarget(this.state, this.bus));
     // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
     // current target. Reachable via the target panel component chip (DOM); a keyboard binding is a
     // pending input.js shared-change request (see REPORT). Selection is transient on state.ui.
@@ -1330,6 +1358,7 @@ export const ui = {
       }
       if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
+      if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
@@ -1415,7 +1444,7 @@ function cycleTarget(state, dir, bus) {
   } else {
     for (const e of state.entityList || []) consider(e);
   }
-  contacts.sort((a, b) => a.d - b.d);
+  contacts.sort((a, b) => a.d - b.d || String(a.e.id).localeCompare(String(b.e.id)));
   if (!contacts.length) {
     state.player.targetId = null;
     if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
@@ -1423,10 +1452,27 @@ function cycleTarget(state, dir, bus) {
   }
   const ids = contacts.map((c) => c.e.id);
   const idx = ids.indexOf(state.player.targetId);
-  const nextIdx = idx < 0 ? 0 : (idx + dir + ids.length) % ids.length;
+  // Free aim is an explicit slot after the last contact. It must stay off until the next Tab;
+  // otherwise the automatic nearest-hostile refresh would immediately undo the release.
+  if (idx >= 0 && ((dir > 0 && idx === ids.length - 1) || (dir < 0 && idx === 0))) {
+    clearCombatTarget(state, bus);
+    return;
+  }
+  const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
   const target = contacts[nextIdx].e;
   state.player.targetId = target.id;
+  if (state.input) state.input.targetAssistDisabled = false;
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
+}
+
+function clearCombatTarget(state, bus) {
+  if (!state?.player) return;
+  state.player.targetId = null;
+  if (state.input) {
+    state.input.targetAssistDisabled = true;
+    if (state.input.autoAim) state.input.autoAim = null;
+  }
+  if (bus) bus.emit('toast', { text: 'Free aim · Tab to lock', kind: 'info', ttl: 2 });
 }
 
 // PQ-015: sub-select one component (combat subsystem / salvage weak-point) on the current target and
@@ -1500,6 +1546,7 @@ function isDeliberateNonHostilePick(player, state, entity) {
 }
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
+  if (state.input?.targetAssistDisabled === true) return;
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;
@@ -1576,7 +1623,7 @@ export function destroyedLockToast(state, payload) {
   return { text: 'TARGET DESTROYED · ' + targetLabel(entity), kind: 'good', ttl: 2.5 };
 }
 
-export { cycleTarget, targetNearestHostileToPlayer };
+export { cycleTarget, clearCombatTarget, targetNearestHostileToPlayer };
 
 function targetLabel(e) {
   if (!e) return 'Contact';

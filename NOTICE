@@ -211,3 +211,24 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+======== Added 2026-09-22 ========
+
+npm dependencies @elemaudio/web-renderer 4.0.3 (MIT, Nick Thompson) and
+three-mesh-bvh 0.9.15 (MIT, Garrett Johnson) are on the credits screen via
+src/data/credits.js. Their license texts ship in node_modules and in that
+generated file.
+
+FidelityFX Contrast Adaptive Sharpening, MIT, Copyright Advanced Micro
+Devices, Inc. Vendored at vendor/fidelityfx-cas/ (ffx_a.h, ffx_cas.h, LICENSE).
+
+CC0 reference, not runtime, assets/reference/cc0/: Poly Haven
+industrial_workshop_foundry (2K HDR) and rusty_painted_metal (1K);
+ambientCG Rubber004 and Tiles132C (1K); Kenney sci-fi, impact, and interface
+sound packs (License.txt in each Kenney folder). Provenance is
+assets/reference/cc0/PROVENANCE.md.
+
+CC0 runtime, assets/background/env/: Poly Haven industrial_workshop_foundry
+(2K HDR), promoted from the reference copy above. Image-based light input only
+— the visible sky stays the sector plate. Provenance is
+assets/background/env/PROVENANCE.md.

@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "39b7cb0e139cba757ece81820f8357bf0f7c5e57e316604f366f21c66f91da7b",
+  "contentHash": "0aac88434ebecfdc5ac4227dc7d710b874f4395f7442f5407c2d62cca2cda6ff",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2250,8 +2250,8 @@
       "uri": "bastion_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 179339,
-      "sha256": "e6f56006ab9800ae747bcaae8835959c222e821a4d92afd9575cdbf890dd3a07",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
@@ -3142,7 +3142,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
-  "runtimeHash": "d34580b57212718456303c8d2fb7df8686fd9f87ca49e32097aaedc5bbb31318",
+  "runtimeHash": "65c5a117bf6b75de50192bb0ade6c1d00d1c54e57a742dd2563ca01923101a9f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

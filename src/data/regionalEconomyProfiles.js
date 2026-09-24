@@ -75,6 +75,9 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     produces: [
       { commodityId: 'cmdty_food', weight: 0.95 },
       { commodityId: 'cmdty_luxury_goods', weight: 0.70 },
+      // VERB-09: the capital's military secondary role makes it a standing seller of impulse
+      // charges, so a new pilot can restock the combat verb at the starter station.
+      { commodityId: 'cmdty_impulse_charge', weight: 0.60 },
       { commodityId: 'cmdty_art', weight: 0.55 },
     ],
     consumes: [

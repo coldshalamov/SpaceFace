@@ -22,7 +22,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SAMPLE_MS = Math.max(10_000, Number(process.env.SPACEFACE_HIT_ANSWER_MS || 30_000));
 const HEADLESS = process.argv.includes('--headless');
 const MAX_ANSWER_TICKS = 6; // 100 ms at 60 Hz
-const DEFAULT_KIT = ['wpn_autocannon_m', 'wpn_concussion_cannon_m'];
+// The audited weapons are the fitted guns of CRUCIBLE_DEFAULT_STARTER_ID (ricochet_runner), not a
+// frozen list — the starter loadout moved to bank_stream when the ricochet kit became the default.
+const DEFAULT_KIT = ['wpn_bank_stream_m', 'wpn_concussion_cannon_m'];
 const { chromium } = await loadPlaywright();
 
 function freePort() {

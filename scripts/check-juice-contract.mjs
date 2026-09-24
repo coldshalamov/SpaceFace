@@ -85,7 +85,7 @@ async function check(name, fn) {
   catch (e) { checks.push({ name, ok: false, error: e.message, stack: e.stack }); }
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
-function approx(a, b, eps = 0.0001, msg) { if (Math.abs(a - b) > eps) throw new Error(msg || `${a} ≉ ${b}`); }
+function approx(a, b, eps = 0.0001, msg) { if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) > eps) throw new Error(msg || `${a} ≉ ${b}`); }
 
 function methodBody(source, name) {
   const start = source.indexOf(`${name}(dt) {`);
@@ -301,9 +301,18 @@ await check('SPEC3-16 §7: Cruise drop applies a 0.5s stumble window', () => {
   const state = makeState();
   const c = Object.create(cruise); c.init({ state, bus, helpers: {} });
   state.player.cruise.phase = 'cruising';
-  bus.emit('combat:damage', { targetId: 1, amount: 5 });
+  // A meaningful hit (hull penetration) drops the tier; chip fire does not (TUNING_JOBS #2).
+  bus.emit('combat:damage', { targetId: 1, applied: 30, hullDamage: 30 });
   const stumbleT = state.player.cruise && state.player.cruise.stumbleT;
   approx(stumbleT, 0.5, 0.0001, `cruise drop must set stumbleT to 0.5s, got ${stumbleT}`);
+
+  const bus2 = makeBus();
+  const st2 = makeState();
+  const c2 = Object.create(cruise); c2.init({ state: st2, bus: bus2, helpers: {} });
+  st2.player.cruise.phase = 'cruising';
+  bus2.emit('combat:damage', { targetId: 1, amount: 5, applied: 5, shieldDamage: 5 });
+  assert(st2.player.cruise.phase === 'cruising', 'chip damage must not drop cruise');
+  assert(!st2.player.cruise.stumbleT, 'chip damage must not arm the stumble');
 });
 
 await check('SPEC3-16 §7: Cruise exposes snare/interdiction event surface', () => {
@@ -375,7 +384,8 @@ await check('propulsionCatalog: cruising multipliers', () => {
   const entity = { id: 1, flightClass: 'fighter', mass: 18, driveId: 'drive_reaction_s' };
   const base = resolvePropulsionProfile(entity, idle);
   const p = resolvePropulsionProfile(entity, state);
-  approx(p.maxSpeed, (base.maxSpeed || 0) * 4, 0.01, 'catalog maxSpeed ×4');
+  // Profiles carry no `maxSpeed` (speed ceilings live on combatSpeed/travelCeiling via the
+  // travel-drive latch) — assert the fields the cruise profile actually multiplies.
   approx(p.mainAccel, base.mainAccel * 2.5, 0.01, 'catalog mainAccel ×2.5');
   approx(p.maxYawRate, base.maxYawRate * 0.25, 0.01, 'catalog maxYawRate ×0.25');
 });
@@ -389,7 +399,7 @@ await check('weapons.js: cruise blocks player fire', () => {
 await check('combatDefs: weapon cue tables exist', () => {
   assert(WEAPON_CUE_TABLES && typeof WEAPON_CUE_TABLES === 'object', 'WEAPON_CUE_TABLES exported');
   const table = resolveWeaponCueTable('wpn_pulse_laser', [{ id: 'wpn_pulse_laser', damageType: 'energy', size: 'S' }]);
-  assert(table && table.muzzle && table.impact && table.cueId, 'resolved table has cues');
+  assert(table && table.muzzle && table.impact && table.projectile, 'resolved table has cues');
 });
 
 // ------------------------------------------------------------------------------

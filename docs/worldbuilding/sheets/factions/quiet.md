@@ -37,16 +37,61 @@ canon_refs:
   - ../../vibe/vibe-04-the-pit.md#the-debt-mechanism-atmo-debt
 appears_in_chapters: [B1, B4, B7]   # Choice B "Same Silence" becomes The Quiet
 register_rule: |
-  Leftover terse. One leftover fragment. No leftover explanation.
+  Terse. One fragment, no explanation. Fragments, not sentences. Never
+  greet, never explain, never threaten twice. The count is always running.
+  Silence is the voice; words are the exception.
 register_tell: |
   Seen.
+  Quiet
+  Ghost
+  Forty-two
+  one less
+  not here
+  say nothing
+  no names
+  no chain
+  wrong route
+  no repeat
+  no manifest
+  The hold. Now.
+  or nothing
+  no more words
+  done talking
+  then this
+  your face
+  drop weight
+  doors
+  you're logged
+  loud ones
+  talk too much
+  others come
+  not alone
+  wait for them
+  predictable
+  see you
+  no wave
+  stays the same
+  close the channel
+  dark now
 register_forbidden: |
-  Leftover greetings, leftover explanations, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover Clause.
+  Ref 44-C
+  clause
+  variance
+  weigh-slip
+  reweigh
+  pattern
+  invoice
+  liturgy
+  syndicate
+  ascension
+  accord
 register_example: |
   Seen.
 register_example_cite: src/data/barks.js#faction_quiet.scan[0]
 voice_direction: |
-  Directed leftover synthetic whisper. Almost leftover no sustain. No leftover recorded actor.
+  Directed synthetic whisper (PQ-158.04 bark_quiet: f0 125 Hz, rate 0.78x,
+  bandpass 360-1800 Hz). Near-whisper, slowest rate in the set, no sustain;
+  the fragment ends before it echoes. No recorded actor.
 ```
 
 **Signature faction graffiti:** *The walls were never the real prison.*

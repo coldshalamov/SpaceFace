@@ -87,6 +87,20 @@ freezes; verb sets repeat; encounters stop.
 8. **Ambient life is silent.** `bark:shown`: 0 events in 10 hours (every session), while comms popups
    run ~50/hour. The "people who remember" layer — aces, rivals, radio — never reached a single
    session, and named-captain content (3 entries in data) never fired.
+
+   > **Correction (PQ-207.02, audio-bus census):** `bark:shown` is a phantom event name — nothing in
+   > the tree emits it, so the zero proved only that the census listened on the wrong seam. Reading
+   > the same session JSONs on the real seams: `barkDirector:voice` (queue admission; audioSystem
+   > plays its squelch on this receipt) fired 93 / 31 / 32 times in hunter-s4242, hunter-s8008, and
+   > improviser-s4242, and `voice:surface{channel:'bark'}` — the arbiter actually taking the floor —
+   > fired 45 / 36 / 58 times. **Every session that had the layer registered measured barks (3 of
+   > 3).** The three silent sessions (prospector ×2, improviser-s8008) ran a harness that predates
+   > the bark layer — `runMetadata.systems` lists no `barkDirector`/`voiceArbiter` — so they cannot
+   > speak to the question either way. The band radio's `band:*` silence is a different fact: the
+   > tuner is opt-in (Shift+O / HUD chip → `band:cycle`) and no scripted pilot ever invoked it —
+   > never switched on, not unwired. `bandRadio` was also missing from the harness system list;
+   > it is registered now, and the ledger counts `barksSurfaced`/`bandLinesSurfaced`/`bandTunes`
+   > so future batteries measure the real seams.
 9. **Decisions/hour sits at or below the bar even measured generously.** Hunter 1.1–1.6/h against the
    ≥6 bar (PQ-177.05). The improviser posts 107/h but 99% are the same latch decision inside a
    degenerate loop — volume without viability. The prospector's honest 5.7/h is the closest any
@@ -114,8 +128,9 @@ freezes; verb sets repeat; encounters stop.
   correct; raw events confirm player shots land — 1072 shots, kills credited via `killerId`).
 - Hour-10 rows in the hourly tables are partial-bucket artifacts (the bucket opens at h10.0 as the
   session ends); ignore the zeros there.
-- Bark/radio capture depends on events named `bark:shown`/`band:*` — silence here is "no such event
-  fired," which is itself the finding, but a browser-side census should double-check the audio bus.
+- Bark/radio capture depended on events named `bark:shown`/`band:*` — corrected by PQ-207.02: the
+  shown seam is `voice:surface` by channel, the tuner invocation seam is `band:tune`/`band:cycle`,
+  and the ledger now counts all three per hour.
 - Policies are simple heuristics by design. A stronger pilot would find *more* to do, not less; the
   zero-encounter hours 4–10 would need the world to change, not the policy.
 

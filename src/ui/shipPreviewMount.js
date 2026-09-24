@@ -858,6 +858,113 @@ export function createShipPreviewMount(canvas, opts) {
     return warmupPromise;
   }
 
+  // ---- feature 15: exploded-view bay highlight --------------------------------------
+  // Selecting a slot in the refit/workbench screen eases the hull plate nearest that bay's
+  // authored anchor up off the hull and pins a cyan glow inside the opened space. Purely
+  // presentational: the lifted mesh returns to rest on clear, and everything parents to the
+  // preview root so the highlight rides the turntable.
+  let explodedPoint = null;   // ship-local {x,y,z} of the selected bay anchor
+  let explodedAmount = 0;     // eased 0..1
+  let explodedMesh = null;    // the lifted plate
+  let explodedRestY = 0;
+  let explodedLift = 1.6;     // wu — resolved from hull bounds at selection time
+  let explodedGlowR = 3;
+  let explodedGlow = null;
+  let explodedGlowMat = null;
+  let explodedLight = null;
+  let explodedPulse = 0;
+  const explodedTmpV = new THREE.Vector3();
+  const explodedTmpP = new THREE.Vector3();
+
+  function explodedSettling() {
+    return explodedPoint !== null || explodedAmount > 0.001;
+  }
+
+  function clearExploded() {
+    explodedPoint = null;
+    explodedAmount = 0;
+    if (explodedMesh) { explodedMesh.position.y = explodedRestY; explodedMesh = null; }
+    if (explodedGlow) { explodedGlow.visible = false; explodedGlow.removeFromParent(); }
+    if (explodedLight) { explodedLight.intensity = 0; explodedLight.removeFromParent(); }
+  }
+
+  function setExplodedFocus(localPos) {
+    if (explodedMesh) { explodedMesh.position.y = explodedRestY; explodedMesh = null; }
+    explodedPoint = localPos && Number.isFinite(Number(localPos.x))
+      ? { x: Number(localPos.x), y: Number(localPos.y) || 0, z: Number(localPos.z) || 0 }
+      : null;
+    if (explodedPoint && current) {
+      current.updateWorldMatrix(true, true);
+      explodedTmpP.set(explodedPoint.x, explodedPoint.y, explodedPoint.z);
+      let best = null;
+      let bestD = Infinity;
+      current.traverse((o) => {
+        if (!o.isMesh || isPreviewOnlySurface(o)) return;
+        o.getWorldPosition(explodedTmpV);
+        current.worldToLocal(explodedTmpV);
+        const d = explodedTmpV.distanceToSquared(explodedTmpP);
+        if (d < bestD) { bestD = d; best = o; }
+      });
+      if (best) {
+        explodedMesh = best;
+        explodedRestY = best.position.y;
+        const box = new THREE.Box3().setFromObject(current);
+        const span = box.isEmpty() ? 8
+          : Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+        explodedLift = Math.max(0.7, Math.min(4, span * 0.055));
+        explodedGlowR = Math.max(1.2, Math.min(6, span * 0.075));
+        if (!explodedGlow) {
+          const geo = new THREE.RingGeometry(0.55, 0.8, 28);
+          geo.rotateX(-Math.PI / 2);
+          explodedGlowMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x46e6ff),
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            toneMapped: false,
+          });
+          explodedGlow = new THREE.Mesh(geo, explodedGlowMat);
+          explodedGlow.name = 'sf-exploded-bay-glow';
+          explodedGlow.visible = false;
+          explodedLight = new THREE.PointLight(0x35d5ff, 0, 60, 1.8);
+        }
+        current.add(explodedGlow);
+        current.add(explodedLight);
+      }
+    }
+    renderNow();
+    if (explodedSettling()) requestLoop();
+  }
+
+  function tickExploded() {
+    if (!explodedGlow && !explodedMesh && explodedAmount <= 0.001) return;
+    const target = explodedPoint ? 1 : 0;
+    explodedAmount += (target - explodedAmount) * 0.16;
+    if (Math.abs(target - explodedAmount) < 0.005) explodedAmount = target;
+    explodedPulse += 0.11;
+    if (explodedMesh) explodedMesh.position.y = explodedRestY + explodedAmount * explodedLift;
+    if (explodedGlow) {
+      const on = explodedAmount > 0.02 && !!explodedPoint;
+      explodedGlow.visible = on;
+      if (on) {
+        explodedGlow.position.set(
+          explodedPoint.x,
+          explodedPoint.y + explodedAmount * explodedLift + 0.25,
+          explodedPoint.z,
+        );
+        explodedGlowMat.opacity = 0.8 * explodedAmount;
+        const s = explodedGlowR * (1 + 0.1 * Math.sin(explodedPulse));
+        explodedGlow.scale.setScalar(s);
+        explodedLight.position.copy(explodedGlow.position);
+        explodedLight.intensity = 2.2 * explodedAmount;
+      } else if (explodedLight) {
+        explodedLight.intensity = 0;
+      }
+    }
+  }
+
   function renderNow() {
     if (disposed) return;
     resize();
@@ -865,6 +972,7 @@ export function createShipPreviewMount(canvas, opts) {
       yaw += 0.012;
       current.rotation.y = yaw;
     }
+    tickExploded();
     renderer.render(scene, cam);
     const defId = current && current.userData && current.userData.previewDefId;
     if (defId && defId !== renderedDefId) {
@@ -883,7 +991,8 @@ export function createShipPreviewMount(canvas, opts) {
     if (disposed) return;
     if (!active) return;
     renderNow();
-    requestLoop();
+    // The turntable and the exploded-view ease both need frames; a static preview sleeps.
+    if (rotating || explodedSettling()) requestLoop();
   }
 
   /**
@@ -1042,6 +1151,8 @@ export function createShipPreviewMount(canvas, opts) {
     const priorYaw = yaw;
     const priorZoom = zoom;
     if (current) {
+      // A cached hull must not carry a stale glow child or a lifted plate into the next show.
+      clearExploded();
       scene.remove(current);
       current = null;
     }
@@ -1152,6 +1263,14 @@ export function createShipPreviewMount(canvas, opts) {
     try {
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
       dockBlueprint = null;
+      clearExploded();
+      if (explodedGlow) {
+        explodedGlow.geometry.dispose();
+        if (explodedGlowMat) explodedGlowMat.dispose();
+        explodedGlow = null;
+        explodedGlowMat = null;
+        explodedLight = null;
+      }
       if (current) { scene.remove(current); current = null; }
       for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
       meshCache.clear();
@@ -1192,5 +1311,6 @@ export function createShipPreviewMount(canvas, opts) {
   return {
     show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
     warmAssets, resize, frame, dispose, projectLocalPoint, getDefId, getAssetState, getVisualDiagnostics,
+    setExplodedFocus,
   };
 }

@@ -12,7 +12,7 @@ import {
   sumFittedModuleMod,
 } from '../src/core/fittedModules.js';
 import { MODULES } from '../src/data/modules.js';
-import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { fittingsFromDefaultModules, getDerivedStats, resetDerivedStatsCache } from '../src/systems/ships.js';
 import {
   CHOIR_BELL_KNOCKBACK_SPEED,
   KNITBOTS_OOC_DELAY_S,
@@ -517,6 +517,8 @@ test('Repair Nanobots fail closed for malformed authored repair values', () => {
   try {
     for (const malformedValue of [Number.NaN, Infinity, 0, -1, '4']) {
       repairNanobots.mods = { ...originalMods, hullRepairOOC: malformedValue };
+      // getDerivedStats memoizes on composition, not catalog contents (INF-097).
+      resetDerivedStatsCache();
       const t = bootRepairAbilities(['mod_repair_nanobots_m']);
       try {
         t.player.hull = 50;
@@ -529,6 +531,7 @@ test('Repair Nanobots fail closed for malformed authored repair values', () => {
     }
   } finally {
     repairNanobots.mods = originalMods;
+    resetDerivedStatsCache();
   }
 });
 

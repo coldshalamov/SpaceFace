@@ -14,7 +14,7 @@ import { ships } from '../src/systems/ships.js';
 import { economy } from '../src/systems/economy.js';
 import { save } from '../src/save/saveSystem.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
-import { refitRowLines } from '../src/ui/screens/crucibleDraft.js';
+import { refitFootLines, refitRowLines } from '../src/ui/screens/crucibleDraft.js';
 
 const ARENA = 'helios_core';
 const SEED = 7;
@@ -320,4 +320,36 @@ test('the modifier record stays a note: no live reference into fittings, no stat
   for (const value of Object.values(record)) {
     assert.notEqual(typeof value, 'function');
   }
+});
+
+test('each refit key says what it does: the last Gauntlet refit is a win, not a launch', () => {
+  // Wave 30 of the scored arc: closing the refit is VICTORY (survivalRun._refitNext), so the close
+  // key may not promise a round, Continue is the only way on, and Extract is not a third way out.
+  const last = refitFootLines({ kind: 'survival', phase: 'refit', ruleset: 'scored', wave: 30, score: 4820, credits: 240 });
+  assert.equal(last.primary, 'Take the win');
+  assert.equal(last.finishes, true);
+  assert.match(last.primaryNote, /Ends the run/);
+  assert.equal(last.cont, 'Keep going — endless waves');
+  assert.match(last.contNote, /Wave 31/);
+  assert.equal(last.extract, '');
+
+  // A mid-arc refit launches the next wave and offers Extract with its settlement; no Continue.
+  const mid = refitFootLines({ kind: 'survival', phase: 'refit', ruleset: 'scored', wave: 10, score: 1250, credits: 340 });
+  assert.equal(mid.primary, 'Launch wave 11');
+  assert.equal(mid.cont, '');
+  assert.equal(mid.extract, 'Extract — end the run here');
+  assert.match(mid.extractNote, /1250/);
+  assert.match(mid.primaryNote, /wave 11/);
+
+  // Swarm counts rounds and never offers Continue (it is already unbounded).
+  const swarm = refitFootLines({ kind: 'survival', phase: 'refit', ruleset: 'swarm', wave: 10, score: 3040, credits: 212 });
+  assert.equal(swarm.primary, 'Launch round 11');
+  assert.equal(swarm.cont, '');
+  assert.match(swarm.extractNote, /round 10/);
+
+  // Opened from the swarm armory over an open draft, the only key goes back to it.
+  const armory = refitFootLines({ kind: 'survival', phase: 'draft', ruleset: 'swarm', wave: 3 });
+  assert.equal(armory.primary, 'Back to armory');
+  assert.equal(armory.extract, '');
+  assert.equal(armory.cont, '');
 });

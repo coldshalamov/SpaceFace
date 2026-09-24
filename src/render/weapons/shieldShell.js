@@ -151,11 +151,24 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float d = 1.0 - clamp(dot(N, dir), -1.0, 1.0);
     float ringR = 0.035 + age * 0.62;
     float ringW = 0.030 + age * 0.085;
+    // HEXAGONAL FACETING. The stress front travels further along six lattice directions, so the
+    // ripple expands as a hexagonal energy cell anchored at the strike — the directional grid
+    // read — instead of a smooth circle. Azimuth around the impact axis needs a stable tangent
+    // frame; the degenerate pole case falls back to the X axis.
+    vec3 hexAxis = abs(dir.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 hexT1 = normalize(cross(dir, hexAxis));
+    vec3 hexT2 = cross(dir, hexT1);
+    float hexAz = atan(dot(N, hexT2), dot(N, hexT1));
+    float hexMod = 0.86 + 0.14 * cos(6.0 * hexAz);
     // The travelling wave gathers along manufactured panel directions. This gives
     // each hit a scalloped liquid-glass edge instead of another perfect neon circle.
     float scallop = 1.0 + 0.16 * sin(N.x * 21.0 + N.z * 13.0) * sin(N.y * 17.0 - N.z * 9.0);
-    float s = (d - ringR * scallop) / ringW;
+    float s = (d - ringR * scallop * hexMod) / ringW;
     float ring = exp(-s * s) * w * (0.35 + 0.65 * w);
+    // Trailing inner cell: a fainter hex echo at 60% of the front's reach — the lattice charging
+    // behind the wavefront. Same facet modulation, tighter band, so the grid read survives bloom.
+    float s2 = (d - ringR * scallop * hexMod * 0.62) / (ringW * 0.55);
+    ring += exp(-s2 * s2) * w * (0.30 + 0.40 * w);
     float core = exp(-d / (0.016 + age * 0.020)) * w * w;
     return vec2(core, ring);
   }

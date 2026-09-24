@@ -5,7 +5,12 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { shouldAutoTriggerAuthoredUpgrade } from '../src/render/partsLibrary.js';
-import { isEntityAuthoredUpgradeRelevant, isEntityRenderRelevant } from '../src/render/renderer.js';
+import {
+  holdFirstFlightStreaming,
+  isEntityAuthoredUpgradeRelevant,
+  isEntityMeshExpected,
+  isEntityRenderRelevant,
+} from '../src/render/renderer.js';
 import {
   admissionAnchorPos,
   authoredPrefetchRadius,
@@ -117,6 +122,48 @@ test('decode runway sees an inbound far hull and can request promote', () => {
   const live = state.entities.get(rec.id);
   assert.ok(live && live.alive !== false);
   assert.equal(resolveWorldPresentationEntity(state, rec.id), live);
+});
+
+test('mesh collect surfaces a far hull on the decode runway before its build horizon', () => {
+  const { state, player } = boot();
+  player.vel = { x: 0, z: 0 };
+  // ~7 s to the glass at 160 WU/s — outside the 5.5 s promote horizon a boundary
+  // build waits for, inside the decode runway the authored prefetch rides.
+  const inbound = insertFarActor(state, {
+    id: 601,
+    type: 'ship',
+    pos: { x: 1400, z: 0 },
+    vel: { x: -160, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  const receding = insertFarActor(state, {
+    id: 602,
+    type: 'ship',
+    pos: { x: -1400, z: 0 },
+    vel: { x: -160, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  const collected = collectMeshPresentationEntities(state);
+  assert.ok(collected.some((row) => row.id === inbound.id),
+    'a hull closing inside the decode runway must reach the prefetch kick');
+  assert.ok(!collected.some((row) => row.id === receding.id),
+    'a hull receding at the same range must not be collected');
+  assert.equal(isEntityRenderRelevant(inbound, state), false,
+    'the boundary build still waits for the tighter promote horizon');
 });
 
 test('a mesh already on the lip is kept when the live body is shelved', () => {
@@ -458,4 +505,96 @@ test('mesh collect leans forward on approach vectors only', () => {
     'a closing far row beyond the static radius still enters the presentation set');
   assert.ok(!rows.some((row) => row.id === 605),
     'a row falling behind the direction of flight stays uncollected');
+});
+
+test('first-flight hold still owes a mesh to an inbound prefetch contact', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const inbound = {
+    id: 88, type: 'ship', alive: true,
+    pos: { x: 400, z: 0 }, vel: { x: -200, z: 0 }, radius: 8, data: {},
+  };
+  const parkedFar = {
+    id: 89, type: 'ship', alive: true,
+    pos: { x: 800, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    activity: { presentationTier: 'R1_RUNWAY' }, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player], [88, inbound], [89, parkedFar]]),
+    entityList: [player, inbound, parkedFar],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      firstFlightResidencyHoldUntil: 20,
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set([89]),
+      },
+    },
+  };
+  assert.equal(holdFirstFlightStreaming(state), true);
+  assert.equal(isEntityMeshExpected(inbound, state), true,
+    'TABLE_RESIDENCY_PREFETCH_SECONDS approach must build under the hold');
+  assert.equal(isEntityMeshExpected(parkedFar, state), false,
+    'a parked far runway row stays deferred — no whole-tier thrash');
+});
+
+test('first-flight hold admits static ledger rocks on player-vel collect horizon', () => {
+  // Soft-GPU crucible leftover: parked field rocks in the collect-not-prefetch band
+  // sat listed under the hold and dumped as mesh builds at +20 s release. Player-vel
+  // projection already feeds timeToEnterRadiusSeconds; ledger rows must use the same
+  // TABLE_COLLECT_HORIZON_SECONDS the presentation collect uses — not the tighter
+  // ship prefetch window.
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const approachRock = {
+    id: 201, type: 'asteroid', alive: true, fieldResident: true, liveEntityId: null,
+    pos: { x: 560, z: 0 }, vel: { x: 0, z: 0 }, radius: 20,
+    data: { typeId: 'ast_common_rock' },
+  };
+  const sideRock = {
+    id: 202, type: 'asteroid', alive: true, fieldResident: true, liveEntityId: null,
+    pos: { x: 0, z: 560 }, vel: { x: 0, z: 0 }, radius: 20,
+    data: { typeId: 'ast_common_rock' },
+  };
+  const parkedShip = {
+    id: 203, type: 'ship', alive: true,
+    pos: { x: 560, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player]]),
+    entityList: [player],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      firstFlightResidencyHoldUntil: 20,
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  assert.equal(holdFirstFlightStreaming(state), true);
+  assert.equal(isEntityMeshExpected(approachRock, state), true,
+    'static rock on player approach inside collect horizon builds under the hold');
+  assert.equal(isEntityMeshExpected(sideRock, state), false,
+    'static rock off the velocity vector stays deferred — no side-disc thrash');
+  assert.equal(isEntityMeshExpected(parkedShip, state), false,
+    'non-ledger hulls keep the tighter prefetch window under the hold');
 });

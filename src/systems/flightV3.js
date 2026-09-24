@@ -31,6 +31,7 @@ import {
   resolveCollisionProxyManifest,
   resolveCorridorAxisWorld,
 } from '../data/collisionProxyManifests.js';
+import { entityNeedsFlightStep } from '../world/activityRuntime.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -206,6 +207,8 @@ export const flightV3 = {
     for (const entity of flightCraftCandidates(state)) {
       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+      // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
+      if (!entityNeedsFlightStep(entity)) continue;
       if (!npcFlightNeedsCommand(entity)) continue;
       const intent = entity.data && entity.data.intent;
       if (intent) this._stepCraft(entity, intent, dt, state, false);
@@ -785,10 +788,42 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     const pace = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, trafficHold - 30)));
     if (pace < desiredSpeed) desiredSpeed = pace;
   }
-  const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
+  // Plan the stop against TOTAL speed, not only the radial component. Earned momentum on a
+  // tangential, outbound, or avoidance-aligned vector needs the same room to shed as inbound
+  // speed — a closing-only estimate reads ~0 on those vectors, so a hull expelled or slung at
+  // burn speed could orbit the destination at full momentum without ever tripping the brake
+  // (the release-soak 3857 WU/s dock miss).
+  const stoppingDistance = (speed * speed) / (2 * brakeAccel);
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
-  const terminalBrake = closingSpeed > 4 && (
-    dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
+  // The speed gate is on TOTAL speed: a hull with nothing to shed (parked or settle-slow inside
+  // the arrival margin) must release the brake and creep to the arrival radius, while any fast
+  // vector — inbound, tangential, outbound, or avoidance-aligned — counts down the same room.
+  const approachMargin = arrivalRadius + 45 + lateralSpeed * 1.4;
+  // Settle latch: once a braked approach has shed to creep speed inside the margin, damped
+  // throttle alone carries the hull to the arrival radius. Without it the speed>4 edge pulses
+  // brake on/off at ~20 Hz — counter-thrust slams under the floor in a tick, forward thrust
+  // rebuilds past it in two — flickering status and inputs for the last ~60 WU. The re-engage
+  // floor must track the plan, not exceed it: desiredSpeed*1.4 can rise above the hull's own
+  // speed (91 desired at 143 WU out -> a 127 floor), which would license an unbraked cruise
+  // inside the margin forever — the soak's 82 WU/s orbit. The floor stays bounded by the
+  // plan and by 30, so a genuinely fast vector always re-opens the stop.
+  // Arm on the brake's own release edge (speed at/under the unlatched floor of 4): the tick
+  // after a brake burst dips under 4 still carries status 'braking' from last tick, so the
+  // latch catches every settle — a ≤2.5 threshold sat below the release edge and could only
+  // arm when an outside force (capture assist, contact) drove speed deeper, which left most
+  // approaches unlatched and flapping at the floor-4 release edge forever.
+  if (autopilot.status === 'braking' && speed <= 4 && dist <= approachMargin) {
+    autopilot.brakeSettled = true;
+  }
+  if (autopilot.brakeSettled && dist > approachMargin * 1.6) autopilot.brakeSettled = false;
+  const brakeFloor = autopilot.brakeSettled ? Math.min(30, Math.max(6, desiredSpeed)) : 4;
+  // While latched the engage edge carries a 3 wu/s deadband: desiredSpeed itself jitters at
+  // stage boundaries (the resolved aim can hop between corridor points), so a hull parked at
+  // plan speed would otherwise flick the brake flag on a 0.2 wu/s overshoot. The governed
+  // settle creep (~0.8 * floor) always parks inside the (floor-3, floor+3) band.
+  const engageEdge = autopilot.brakeSettled ? brakeFloor + 3 : brakeFloor;
+  const terminalBrake = speed > engageEdge && (
+    dist <= stoppingDistance + approachMargin ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
   );
   // Obstacle avoidance can ask a fast Newtonian hull to make a large heading change. Once the
@@ -811,7 +846,14 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     && speed > positive(target.dockSpeedGate, 12);
   const trafficBrake = trafficHold != null && speed > 20 && closingSpeed > 4
     && trafficHold <= stoppingDistance + 45;
-  const shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake || trafficBrake;
+  let shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake || trafficBrake;
+  // Settled hysteresis: once any clause opens the brake on a latched hull, hold it until
+  // speed falls under floor-3, then release into the governed-under-floor creep band.
+  if (!shouldBrake && autopilot.brakeSettled && autopilot.brakeHold === true
+    && speed > brakeFloor - 3) {
+    shouldBrake = true;
+  }
+  autopilot.brakeHold = autopilot.brakeSettled === true && shouldBrake;
 
   let throttle = 0;
   let strafe = 0;
@@ -829,10 +871,36 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     const facingDot = Math.cos(turnError);
     throttle = facingDot > -0.25 ? clamp(0.35 + facingDot * 0.78, -1, 1) : 0;
     strafe = clamp((guidance.x * rightX + guidance.z * rightZ) * 0.72, -1, 1);
+    // A settled hull creeps on a governed speed *under* its re-engage floor so the brake
+    // never duty-cycles: the kernel caps assisted speed at commandFraction * combatSpeed,
+    // so the command vector is scaled to ~0.8 * brakeFloor / combatSpeed. A flat damp
+    // leaves creep governed above the floor (0.3 * 195 ~ 59 > 30) and the latch's own
+    // edge would flicker brake on/off for the whole margin transit.
+    if (autopilot.brakeSettled) {
+      const combatSpeed = positive(profile.combatSpeed, 150);
+      const settleFraction = Math.min(0.3, (brakeFloor * 0.8) / combatSpeed);
+      const commanded = Math.hypot(Math.max(0, throttle), strafe);
+      if (commanded > settleFraction) {
+        const k = settleFraction / commanded;
+        throttle = clamp(throttle * k, -1, 1);
+        strafe = clamp(strafe * k, -1, 1);
+      }
+    }
     const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
+    // A hull whose catalog profile carries no authored maxSpeed (the reaction family) read this
+    // gate as speed < 120*1.85 — a hair under its own governed cruise equilibrium — so the boost
+    // latch could never engage and an exiled hull limped home at ~223 WU/s. Gate on the speed
+    // the profile can actually hold under boost, still bounded by the approach plan so the burn
+    // cannot outrun the remaining stopping distance. The fallbacks mirror the kernel's governed
+    // caps: reaction boost is combatSpeed*(boostSpeedMult||1.55); a profile that resolves down
+    // to bare maxSpeed boosts to the gravimetric boostMaxSpeed||maxSpeed envelope, not a
+    // multiplied ceiling the kernel never honors.
+    const boostSpeedCeiling = positive(profile.boostMaxSpeed, 0)
+      || positive(profile.combatSpeed, 0) * positive(profile.boostSpeedMult, 1.55)
+      || positive(profile.maxSpeed, 150);
     boost = cruiseClear &&
       dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) &&
-      speed < positive(profile.maxSpeed, 120) * 1.85;
+      speed < Math.min(desiredSpeed, boostSpeedCeiling);
   }
 
   const nextInput = {
@@ -852,6 +920,7 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     braking: brake,
     captureBraking: headingCapture,
     avoiding: guidance.avoiding,
+    settled: autopilot.brakeSettled === true,
     target,
     status,
     turnError,
@@ -885,7 +954,12 @@ function syncAutopilotInput(state, input, telemetry) {
 function stopAutopilot(host, state, reason) {
   const nav = state && state.nav;
   const autopilot = nav && nav.autopilot;
-  if (!autopilot || autopilot.active !== true) return;
+  if (!autopilot) return;
+  // Clear the latch even on externally-killed objects (active already false) — a stale
+  // latch is latent-only today but never meaningful once autopilot is off.
+  autopilot.brakeSettled = false;
+  autopilot.brakeHold = false;
+  if (autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
   autopilot.status = reason || 'idle';
@@ -1245,11 +1319,16 @@ function assignPropulsionRuntime(entity, runtime, boost) {
 }
 
 function assignFlightFrame(entity, result, mode) {
-  const frame = entity._flightFrame || (entity._flightFrame = {});
-  Object.assign(frame, result.telemetry);
+  // Attach kernel telemetry by reference. Object.assign into a retained frame copied ~15 keys
+  // every craft step and left stale optional keys (travelDrive/vectoring) when the kernel omitted
+  // them. Telemetry is freshly allocated in makeResult and discarded after this call; the player
+  // path mutates the same object for autopilot/orbitAssist. Consumers re-read entity._flightFrame
+  // each frame — they do not retain identity across ticks.
+  const frame = result.telemetry || {};
   frame.mode = mode;
   frame.driveId = result.driveId;
   frame.family = result.family;
+  entity._flightFrame = frame;
   return frame;
 }
 

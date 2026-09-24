@@ -136,19 +136,55 @@ function settleIndustrialSurfacing(payload, options) {
   }
 }
 
+/**
+ * Resolving marker — the only drawable a pending authored ship ever shows. One shared geometry
+ * and one shared material across every substrate: it must never pay the bloomScene compile
+ * brick the authored-pending gate exists to avoid, so it uses the already-warm Standard family.
+ * The shape is deliberately abstract (a dim translucent dart scaled to the entity radius) — it
+ * says "a contact is resolving here" without impersonating any ship identity, which is the
+ * contract the fail-closed authored boundary protects.
+ */
+const RESOLVING_MARKER_GEOMETRY = new THREE.OctahedronGeometry(1, 0);
+RESOLVING_MARKER_GEOMETRY.userData.spacefaceSharedAsset = true;
+const RESOLVING_MARKER_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0x39496b,
+  emissive: 0x2b4a72,
+  emissiveIntensity: 0.6,
+  roughness: 0.9,
+  metalness: 0.05,
+  transparent: true,
+  opacity: 0.5,
+  depthWrite: false,
+});
+RESOLVING_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
+
+function resolvingMarkerFor(entity) {
+  const marker = new THREE.Mesh(RESOLVING_MARKER_GEOMETRY, RESOLVING_MARKER_MATERIAL);
+  marker.name = 'AuthoredResolvingMarker';
+  const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+  marker.scale.set(r * 1.7, r * 0.3, r * 0.85);
+  marker.userData.spacefaceSharedAsset = true;
+  marker.userData.authoredResolvingMarker = true;
+  return marker;
+}
+
 function directAuthoredAdmissionSubstrate(entity) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
   root.userData.kind = 'ship';
   root.userData.authoredAdmissionSubstrate = true;
-  root.userData.authoredAdmissionTemporaryDrawables = 0;
+  const marker = resolvingMarkerFor(entity);
+  root.add(marker);
+  root.userData.resolvingMarker = marker;
+  root.userData.authoredResolvingMarker = true;
+  root.userData.authoredAdmissionTemporaryDrawables = 1;
   root.userData.shipConstruction = 'authored-direct';
   root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
     gracefulFallback: false,
-    temporaryDrawables: 0,
+    temporaryDrawables: 1,
   };
   return root;
 }

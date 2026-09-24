@@ -4,8 +4,10 @@
    multi-stage missile lock convergence, and G-LOC tunnel vision.
    ========================================================================== */
 
-/* --- Hardware Acceleration & Compositor Layers --- */
-#hud,
+/* --- Hardware Acceleration & Compositor Layers ---
+   #hud only transforms during the 180ms .sf-hud--glitch jitter, so the fullscreen layer carries
+   will-change only while that class is on; the small combat marks keep it permanently. */
+#hud.sf-hud--glitch,
 #aim-reticle,
 .sf-lockdiamond,
 .sf-target-arcs,
@@ -80,6 +82,8 @@
 
 /* --- G-LOC Tunnel Vision Vignette --- */
 .sf-gloc-vignette {
+  /* Sleeps out of the compositor tree until the first fade-in; hud.js drives display block/none. */
+  display: none;
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -93,7 +97,6 @@
     rgba(0, 0, 0, 0.98) 100%
   );
   transition: opacity 0.12s linear;
-  will-change: opacity;
 }
 
 /* --- Multi-Stage Missile Lock Convergence (dp-bracket motion: breathe at idle, snap on latch) --- */
@@ -250,7 +253,7 @@
     display: none !important;
   }
   .sf-gloc-vignette {
-    display: none !important;
+    transition: none !important;
   }
   .sf-lockring.sf-lockring--latch {
     animation: none !important;
@@ -292,6 +295,7 @@ html.sf-reduce-flash .sf-hud-glitch-overlay {
   display: none !important;
 }
 
-html.sf-reduce-motion .sf-gloc-vignette {
-  display: none !important;
+html.sf-reduce-motion .sf-gloc-vignette,
+html.sf-reduce-flash .sf-gloc-vignette {
+  transition: none !important;
 }

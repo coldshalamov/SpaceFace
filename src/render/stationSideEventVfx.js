@@ -49,11 +49,22 @@ const CARGO_TRACTOR = Object.freeze({
   defaultDurationS: 40,
 });
 
+const SENSOR_SWEEP = Object.freeze({
+  id: 'sensor_sweep',
+  silhouette: 'boom-and-return-arc',
+  trajectory: 'dish-sweep',
+  accent: 'telemetry-return-row',
+  cadenceHz: 5,
+  reducedCadenceHz: 2,
+  defaultDurationS: 70,
+});
+
 export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
   hauler_dock: HAULER_DOCK,
   patrol_launch: PATROL_LAUNCH,
   repair_drone: REPAIR_DRONE,
   cargo_tractor: CARGO_TRACTOR,
+  sensor_sweep: SENSOR_SWEEP,
 });
 
 export function resolveStationSideEventVfxProfile(kind) {
@@ -148,6 +159,17 @@ export function writeStationSideEventVfxFrame(
     frame.z = cz + Math.sin(angle) * radius;
     writeDirection(frame, -Math.sin(angle), Math.cos(angle));
     frame.progress = progress;
+  } else if (profile.trajectory === 'dish-sweep') {
+    // A slow calibration pendulum over the near-field arc: the boom swings out and back around the
+    // station, distinct from the drone's fast full crawl and the tractor's docking orbit.
+    const radius = Math.max(4, Math.hypot(fx - cx, fz - cz));
+    const cycle = reducedMotion ? 0 : Math.sin((elapsed / 22) * TAU);
+    const angle = baseBearing + cycle * 0.30;
+    frame.x = cx + Math.cos(angle) * radius;
+    frame.z = cz + Math.sin(angle) * radius;
+    const travelSign = reducedMotion || Math.cos((elapsed / 22) * TAU) >= 0 ? 1 : -1;
+    writeDirection(frame, -Math.sin(angle) * travelSign, Math.cos(angle) * travelSign);
+    frame.progress = (cycle + 1) * 0.5;
   } else {
     frame.x = fx + (tx - fx) * progress;
     frame.z = fz + (tz - fz) * progress;

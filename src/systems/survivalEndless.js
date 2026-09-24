@@ -1,6 +1,7 @@
 // Endless continuation helpers (PQ-133.10b).
 // Ruleset-only: never adds keys to run state. Changing run.ruleset to 'endless'
-// during the wave-30 refit is the explicit continue choice (no UI).
+// during the wave-30 refit is the explicit continue choice. The refit screen
+// offers it beside Extract. Swarm never uses it; Swarm is already unbounded.
 
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { SURVIVAL_ENDLESS_START_WAVE, SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
@@ -15,12 +16,19 @@ export function isEndlessRuleset(ruleset) {
  * Opt in to unbounded waves from the wave-30 refit. Returns false if the run
  * is not in that window. Does not add run keys; ruleset is the existing field.
  */
-export function continueSurvivalEndless(state) {
+export function canContinueSurvivalEndless(state) {
   const run = state && state.run;
   if (!run || typeof run !== 'object' || Array.isArray(run)) return false;
   if (run.kind !== 'survival') return false;
   if (run.phase !== 'refit') return false;
+  if (run.ruleset !== 'scored') return false;
   if (!Number.isInteger(run.wave) || run.wave < SURVIVAL_ARC_LENGTH) return false;
+  return true;
+}
+
+export function continueSurvivalEndless(state) {
+  const run = state && state.run;
+  if (!canContinueSurvivalEndless(state)) return false;
   run.ruleset = 'endless';
   return true;
 }

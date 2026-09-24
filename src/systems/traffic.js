@@ -21,7 +21,8 @@
 //     never touches player state. Economy impact is via the event bus.
 
 import { isRunSealed } from '../core/runSeal.js';
-import { shouldAmbientHaulerPlan, shouldRunOnTick, takeNearWorkSlice } from '../core/activityScheduler.js';
+import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
+import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   ensureActivityClassified,
@@ -232,7 +233,7 @@ const CIVILIAN_VIOLENCE_RADIUS_WU = 300;
 const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLENCE_RADIUS_WU;
 const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
-const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist']);
+const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist', 'rescue']);
 const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor']);
 const CIVILIAN_HAULER_DUMP_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
 const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
@@ -387,6 +388,14 @@ function occupationalJobKind(role) {
 // not a new write seam — runtime ownership of role resolution is unchanged.
 export { TRAFFIC_ROLES };
 
+/** WORLD-20 — the memorial sightseer stands on the zone center, inside its radius. */
+export const HELIOS_MEMORIAL_TOURIST = Object.freeze({
+  sectorId: 'sector_helios_prime',
+  zoneId: 'zone_helios_memorial',
+  role: 'tourist',
+  pos: Object.freeze({ x: 1680, z: -820 }),
+});
+
 
 
 function trafficHeaveToComplies(role, entity) {
@@ -421,6 +430,13 @@ const CERES_PRIMARY_ACTION_BY_JOB_KIND = Object.freeze({
 const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
   action: 'unload', phase: NPC_JOB_PHASE.UNLOAD, intentField: 'destination',
 });
+
+// Ambient-plan gate periods, locked to shouldAmbientHaulerPlan's defaults: trafficPlanOpts never
+// passes activePeriodTicks/sleepPeriodTicks/nearPeriodTicks, so the scheduler's own fallbacks
+// (max(2,…)=2 / max(8,…)=8 / max(2,…)=2) are the constants the call site always produces.
+const AMBIENT_ACTIVE_PERIOD = 2;
+const AMBIENT_SLEEP_PERIOD = 8;
+const AMBIENT_NEAR_PERIOD = 2;
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
 // Nine catalog microevents form ONE authored causal story in the Ceres reference sector (the
@@ -1233,6 +1249,9 @@ export const traffic = {
     this._pendingJobActionIds = new Set();
     this._pendingMinerWorkIds = new Set();
     this._pendingArrivalIds = new Set();
+    // owner -> cached {near,sleep,active} FNV phases for the ambient-plan gate. Entity objects are
+    // stable across ticks; a rebuilt entity (load/restore) re-keys naturally through the WeakMap.
+    this._ambientPhaseCache = new WeakMap();
     this._pendingJobActionTokens = new Map();
     this._pendingMinerWorkTokens = new Map();
     this._pendingArrivalTokens = new Map();
@@ -1283,6 +1302,7 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
@@ -2910,6 +2930,8 @@ export const traffic = {
     entity.data.hitchable = true;
     entity.data.trafficLabel = `HELIOS CIVIC LINER · ${status} · ${route}`;
     entity.data.scanLabel = `${entity.data.trafficLabel} · HITCHABLE`;
+    if (!entity.data.name) entity.data.name = 'Helios Civic Liner';
+    if (!entity.data.callsign) entity.data.callsign = 'HELIOS-LINE';
     rec.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     rec.itinerary = itinerary;
   },
@@ -3314,6 +3336,7 @@ export const traffic = {
     this._ensureHeliosArclightFixture(sectorId, sector, stations, list);
     this._ensureHeliosTankerFixture(sectorId, sector, stations, list);
     this._ensureHeliosCustomsFixture(sectorId, sector, stations, list);
+    this._ensureHeliosMemorialTourist(sectorId, sector, stations, list);
     // Already have a live named contact? (The courier's dedicated fixture slot does not count.)
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
@@ -3610,6 +3633,48 @@ export const traffic = {
   },
 
   /**
+   * WORLD-20 — one sightseer lives inside the Helios memorial. Not a hostile, and not a
+   * change to the ambient role mix (that weight stays zero unless the sector is scenic).
+   */
+  _ensureHeliosMemorialTourist(sectorId, sector, stations, list) {
+    if (sectorId !== HELIOS_MEMORIAL_TOURIST.sectorId) return;
+    for (const rec of list) {
+      if (rec && rec.role === 'tourist') return;
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (entity && entity.alive !== false && entity.data && entity.data.trafficRole === 'tourist') return;
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const def = TRAFFIC_ROLES.tourist;
+    const pos = { x: HELIOS_MEMORIAL_TOURIST.pos.x, z: HELIOS_MEMORIAL_TOURIST.pos.z };
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: (sector && sector.factionId) || 'faction_scn',
+      pos,
+      ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'tourist', def, 4242);
+    ent.data.trafficRole = 'tourist';
+    ent.data.tourist = true;
+    ent.data.trafficLabel = def.label;
+    ent.pos = pos;
+    if (!this._active) this._active = [];
+    this._active.push(ent.id);
+    const station = (stations && stations[0]) || null;
+    list.push({
+      id: ent.id,
+      role: 'tourist',
+      targetId: station && station.id,
+      waitT: 0,
+      nextTradeT: 8,
+      orbitPhase: 0,
+      dockSeq: 0,
+      manifest: null,
+    });
+  },
+
+  /**
    * Stamp homeSectorId + stable worldRecordId before first demotion so capture/kill never
    * attaches homeless freighters to the wrong sector bag.
    */
@@ -3872,6 +3937,65 @@ export const traffic = {
     this._active = aliveIds;
   },
 
+  // Allocation-free mirror of shouldAmbientHaulerPlan -> shouldOwnerThink from
+  // core/activityScheduler.js, which is outside this task's edit scope. Same reads, same branch
+  // order, same result; the only differences are that the {…options} spread and the
+  // `${tag}:${id}` key string are replaced by cached per-owner FNV phases. trafficPlanOpts never
+  // sets ownerKey/activePeriodTicks/sleepPeriodTicks/nearPeriodTicks, so the scheduler's own
+  // defaults (anon / 2 / 8 / 2) are the constants mirrored above.
+  _ambientPlanGate(tick, owner, options) {
+    const ai = ownerAiRecord(owner);
+    const team = ownerTeamId(owner);
+    const combat = ai && ai.combatant === true;
+    const hostile = !!(team != null && options.playerTeam != null
+      && team !== options.playerTeam
+      && ai && ai.passive !== true);
+    if (combat || hostile) return true;
+    const activity = owner && owner.activity;
+    const tier = activity && activity.simTier;
+    if (tier === SIM_TIER.S2_ABSTRACT || tier === SIM_TIER.S3_DORMANT || tier === SIM_TIER.S4_AGGREGATE) {
+      if (!(activity && activity.pinnedExact)) return false;
+    }
+    if (tier === SIM_TIER.S1_NEAR && !(activity && activity.pinnedExact)) {
+      return this._ambientPhaseRun(tick, owner, 'near');
+    }
+    if (!isActiveOwner(owner, options)) {
+      return this._ambientPhaseRun(tick, owner, 'sleep');
+    }
+    return this._ambientPhaseRun(tick, owner, 'active');
+  },
+
+  _ambientPhaseRun(tick, owner, tag) {
+    const period = tag === 'sleep' ? AMBIENT_SLEEP_PERIOD
+      : tag === 'near' ? AMBIENT_NEAR_PERIOD
+      : AMBIENT_ACTIVE_PERIOD;
+    // Identical to shouldRunOnTick: ((t % period) + period) % period === ownerPhase(key, period).
+    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
+    return ((t % period) + period) % period === this._ambientPhase(owner, tag);
+  },
+
+  _ambientPhase(owner, tag) {
+    const period = tag === 'sleep' ? AMBIENT_SLEEP_PERIOD
+      : tag === 'near' ? AMBIENT_NEAR_PERIOD
+      : AMBIENT_ACTIVE_PERIOD;
+    if (!owner || typeof owner !== 'object') {
+      // Original key is `owner && (...)`: a falsy owner IS the key (null -> ''), not 'anon'.
+      return hashOwnerKey(owner) % period;
+    }
+    let rec = this._ambientPhaseCache.get(owner);
+    if (!rec || rec.id !== owner.id) {
+      const suffix = owner.id != null ? owner.id : 'anon';
+      rec = {
+        id: owner.id,
+        near: hashOwnerKey(`near:${suffix}`) % AMBIENT_NEAR_PERIOD,
+        sleep: hashOwnerKey(`sleep:${suffix}`) % AMBIENT_SLEEP_PERIOD,
+        active: hashOwnerKey(`active:${suffix}`) % AMBIENT_ACTIVE_PERIOD,
+      };
+      this._ambientPhaseCache.set(owner, rec);
+    }
+    return rec[tag];
+  },
+
   update(dt, state) {
     if (state.mode !== 'flight') return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
@@ -3954,12 +4078,15 @@ export const traffic = {
     const worldRecordIndex = anyWorldSiteRoute
       ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
       : null;
-    const trafficPlanOpts = {
-      playerId: state.playerId,
-      playerTeam: player && player.team,
-      authorityRadius: tableSimAuthorityWuFromState(state),
-      origin: player && player.pos,
-    };
+    // Retained per-tick options record: _ambientPlanGate reads playerId/playerTeam/
+    // authorityRadius/origin synchronously, so the same object is rewritten each update.
+    const trafficPlanOpts = this._trafficPlanOpts || (this._trafficPlanOpts = {
+      playerId: null, playerTeam: null, authorityRadius: 0, origin: null,
+    });
+    trafficPlanOpts.playerId = state.playerId;
+    trafficPlanOpts.playerTeam = player && player.team;
+    trafficPlanOpts.authorityRadius = tableSimAuthorityWuFromState(state);
+    trafficPlanOpts.origin = player && player.pos;
     const inCeres = state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID;
     const trafficUrgent = this._trafficTokenUrgent || (this._trafficTokenUrgent = []);
     const trafficRest = this._trafficTokenRest || (this._trafficTokenRest = []);
@@ -4038,8 +4165,10 @@ export const traffic = {
       if (role.orbits) { this._stepOrbit(e, rec, stations, dt); this._syncTrafficRecordToData(e, rec); continue; }       // patrol
       if (role.flees) { this._stepFlee(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; }       // pirate/raider
       if (role.loiters || rec.role === 'tourist') { this._stepTourist(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; } // tourist
+      if (rec.role === 'rescue') { if (this._stepRescue(e, rec, stations, state, dt)) { this._syncTrafficRecordToData(e, rec); continue; } } // rescue craft responding to distress/survivor
       // Miners/escorts/haulers keep last intent on skipped ticks. Hostiles still plan every tick.
-      if (!shouldAmbientHaulerPlan(state.tick, e, trafficPlanOpts)) continue;
+      // _ambientPlanGate is the allocation-free mirror of shouldAmbientHaulerPlan (above).
+      if (!this._ambientPlanGate(state.tick, e, trafficPlanOpts)) continue;
       if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; } // miner
       if (role.escorts) { this._stepEscort(e, rec, list, state); this._syncTrafficRecordToData(e, rec); continue; }       // convoy escort
       if (rec.role === 'tug') { if (this._stepTug(e, rec, stations, state, dt)) { this._syncTrafficRecordToData(e, rec); continue; } } // tug assisting disabled ship
@@ -4972,6 +5101,225 @@ export const traffic = {
     return true;
   },
 
+  _onSurvivorPodRescued(payload) {
+    const p = payload || {};
+    const rescuerId = p.rescueHullId;
+    if (rescuerId == null) return;
+    const rec = this.state.traffic && this.state.traffic.freighters &&
+      this.state.traffic.freighters.find((f) => f && f.id === rescuerId);
+    if (!rec) return;
+    rec.carryingSurvivor = true;
+    rec.rescueTargetId = null;
+    rec.rescueTargetType = null;
+    rec.civilianReaction = 'transporting_survivor';
+    const stations = this._sectorStations();
+    const nearest = this._pickStation(stations);
+    if (nearest) rec.targetId = nearest.id;
+  },
+
+  _findNearbyRescueTarget(state, rescuer, maxRadius = 2500) {
+    if (!state || !rescuer || !rescuer.pos) return null;
+    const maxR2 = maxRadius * maxRadius;
+
+    // 1. Scan for unattended survivor pods
+    let bestPod = null;
+    let bestPodD2 = maxR2;
+    const checkPod = (candidate) => {
+      if (!candidate || candidate.alive === false || candidate.id === rescuer.id) return;
+      if (!candidate.pos) return;
+      const data = candidate.data || {};
+      const isPod = candidate.type === 'payload' && (data.payloadType === 'survivor_pod' || data.tetherRole === 'survivor_pod');
+      if (!isPod) return;
+      const dx = candidate.pos.x - rescuer.pos.x;
+      const dz = candidate.pos.z - rescuer.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= maxR2 && d2 < bestPodD2) {
+        bestPodD2 = d2;
+        bestPod = candidate;
+      }
+    };
+    if (state.entities && typeof state.entities.forEach === 'function') {
+      state.entities.forEach(checkPod);
+    }
+    if (bestPod) {
+      return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };
+    }
+
+    // 2. Scan for recent distress call
+    const call = state.traffic && state.traffic.lastDistressCall;
+    if (call && call.pos && Number.isFinite(call.simTime)) {
+      const age = (state.simTime || 0) - call.simTime;
+      if (age >= 0 && age < 45) {
+        const dx = call.pos.x - rescuer.pos.x;
+        const dz = call.pos.z - rescuer.pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 <= maxR2) {
+          return { kind: 'distress', pos: { x: call.pos.x, z: call.pos.z }, callerId: call.callerId };
+        }
+      }
+    }
+
+    // 3. Scan for nearby disabled ship needing assistance
+    const disabled = this._findNearbyDisabledShip(state, rescuer, 1800);
+    if (disabled && disabled.pos) {
+      return { kind: 'disabled', entity: disabled, pos: { x: disabled.pos.x, z: disabled.pos.z } };
+    }
+
+    return null;
+  },
+
+  _stepRescue(e, rec, stations, state, dt) {
+    if (!e || !e.pos || !rec) return false;
+
+    // Phase 1: Carrying survivor to station
+    if (rec.carryingSurvivor) {
+      let target = state.entities && state.entities.get ? state.entities.get(rec.targetId) : null;
+      if (!target || !target.alive || !target.pos) {
+        target = this._pickStation(stations);
+        rec.targetId = target ? target.id : null;
+      }
+      if (!target || !target.pos) return false;
+
+      const dx = target.pos.x - e.pos.x;
+      const dz = target.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const aimAngle = Math.atan2(dz, dx);
+
+      if (dist < DOCK_RANGE) {
+        // Arrived at station — survivor delivered
+        rec.carryingSurvivor = false;
+        rec.rescueTargetId = null;
+        rec.rescueTargetType = null;
+        rec.civilianReaction = null;
+        rec.waitT = 3.0;
+        setIntent(e, 0, 0, false, true, null, aimAngle);
+        if (e.data && e.data.intent) e.data.intent.brake = true;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('survivorPod:delivered', {
+            rescueHullId: e.id,
+            stationId: target.id,
+            simTime: state.simTime || 0,
+          });
+          this.bus.emit('comms:message', {
+            sender: (e.data && e.data.trafficLabel) || 'Rescue Craft',
+            channel: 'emergency',
+            text: `Survivor delivered safely to ${target.name || 'station'} medical facility. Resuming patrol.`,
+            callerId: e.id,
+            pos: { x: e.pos.x, z: e.pos.z },
+          });
+        }
+        return true;
+      }
+
+      rec.civilianReaction = 'transporting_survivor';
+      setIntent(e, 0, 1, false, false, null, aimAngle);
+      return true;
+    }
+
+    // Phase 2: Active target tracking
+    let targetObj = null;
+    if (rec.rescueTargetType === 'pod' && rec.rescueTargetId != null) {
+      const candidate = state.entities && state.entities.get ? state.entities.get(rec.rescueTargetId) : null;
+      if (candidate && candidate.alive !== false && candidate.pos) {
+        targetObj = { kind: 'pod', entity: candidate, pos: candidate.pos };
+      } else {
+        rec.rescueTargetId = null;
+        rec.rescueTargetType = null;
+      }
+    } else if (rec.rescueTargetType === 'distress' && rec.rescueTargetPos) {
+      const call = state.traffic && state.traffic.lastDistressCall;
+      const age = (state.simTime || 0) - (call ? call.simTime : 0);
+      if (call && age < 45) {
+        targetObj = { kind: 'distress', pos: rec.rescueTargetPos };
+      } else {
+        rec.rescueTargetPos = null;
+        rec.rescueTargetType = null;
+      }
+    } else if (rec.rescueTargetType === 'disabled' && rec.rescueTargetId != null) {
+      const candidate = state.entities && state.entities.get ? state.entities.get(rec.rescueTargetId) : null;
+      if (candidate && candidate.alive !== false && isShipDisabled(candidate, state)) {
+        targetObj = { kind: 'disabled', entity: candidate, pos: candidate.pos };
+      } else {
+        rec.rescueTargetId = null;
+        rec.rescueTargetType = null;
+      }
+    }
+
+    // Phase 3: Find target if none active
+    if (!targetObj) {
+      const found = this._findNearbyRescueTarget(state, e, 2500);
+      if (found) {
+        targetObj = found;
+        rec.rescueTargetType = found.kind;
+        if (found.kind === 'pod') {
+          rec.rescueTargetId = found.entity.id;
+        } else if (found.kind === 'distress') {
+          rec.rescueTargetPos = found.pos;
+        } else if (found.kind === 'disabled') {
+          rec.rescueTargetId = found.entity.id;
+        }
+      }
+    }
+
+    // Phase 4: Execute target approach
+    if (targetObj && targetObj.pos) {
+      const dx = targetObj.pos.x - e.pos.x;
+      const dz = targetObj.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const aimAngle = Math.atan2(dz, dx);
+
+      if (targetObj.kind === 'pod') {
+        rec.civilianReaction = 'responding_survivor';
+        if (dist <= 25) {
+          // Within rescue claim radius
+          setIntent(e, 0, 0, false, true, null, aimAngle);
+          if (e.data && e.data.intent) e.data.intent.brake = true;
+        } else {
+          setIntent(e, 0, 1, false, false, null, aimAngle);
+        }
+        return true;
+      }
+
+      if (targetObj.kind === 'distress') {
+        rec.civilianReaction = 'responding_distress';
+        if (dist < 80) {
+          // Reached distress scene — check if any pods appeared
+          const nearbyPod = this._findNearbyRescueTarget(state, e, 400);
+          if (nearbyPod && nearbyPod.kind === 'pod') {
+            rec.rescueTargetType = 'pod';
+            rec.rescueTargetId = nearbyPod.entity.id;
+            rec.rescueTargetPos = null;
+          } else {
+            // Scene cleared
+            rec.rescueTargetType = null;
+            rec.rescueTargetPos = null;
+            rec.civilianReaction = null;
+            return false;
+          }
+        } else {
+          setIntent(e, 0, 1, false, false, null, aimAngle);
+        }
+        return true;
+      }
+
+      if (targetObj.kind === 'disabled') {
+        rec.civilianReaction = 'responding_disabled';
+        if (dist < 60) {
+          rec.civilianReaction = 'standby_disabled';
+          setIntent(e, 0, 0, false, true, null, aimAngle);
+          if (e.data && e.data.intent) e.data.intent.brake = true;
+        } else {
+          setIntent(e, 0, 0.9, false, false, null, aimAngle);
+        }
+        return true;
+      }
+    }
+
+    // No rescue task active — fall back to standard route
+    rec.civilianReaction = null;
+    return false;
+  },
+
   _syncTrafficRecordToData(e, rec) {
     if (!e || !e.data || !rec) return;
     const d = e.data;
@@ -4981,6 +5329,9 @@ export const traffic = {
     d.assistingShipId = rec.assistingShipId || null;
     d.cargoDumped = !!rec.cargoDumped;
     d.civilianReaction = rec.civilianReaction || null;
+    d.carryingSurvivor = !!rec.carryingSurvivor;
+    d.rescueTargetId = rec.rescueTargetId || null;
+    d.rescueTargetType = rec.rescueTargetType || null;
   },
 
   _resolveAsteroid(state, id) {

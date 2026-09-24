@@ -1,5 +1,6 @@
 import { escapeMarkup } from '../views/identity.js';
 import { stationIcon } from './stationArt.js';
+import { stationControlAttrs } from './stationBindingMap.js';
 // Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
@@ -14,7 +15,7 @@ function tileHtml(item, kind) {
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
   return (
-    `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+    `<li><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
       `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +
@@ -106,8 +107,12 @@ export function createCommandDock(cfg) {
   function applyPointerField(clientX) {
     fieldFrame = 0;
     if (!allowMotion() || (motionQuery && motionQuery.matches)) { resetField(); return; }
-    const radius = Math.max(112, Math.min(176, el.getBoundingClientRect().width * 0.13));
     const bounds = tiles.map(tile => tile.getBoundingClientRect());
+    // The field reaches about one and a half stations either side, however far apart the rail
+    // spaces them, so a neighbour always answers and the far end of the rail never does.
+    const centres = bounds.map((r) => r.left + r.width / 2);
+    const pitch = centres.length > 1 ? (centres[centres.length - 1] - centres[0]) / (centres.length - 1) : 112;
+    const radius = Math.max(112, Math.min(210, pitch * 1.45));
     for (let i = 0; i < tiles.length; i++) {
       const tile = tiles[i], rect = bounds[i];
       const distance = Math.abs(clientX - (rect.left + rect.width / 2));

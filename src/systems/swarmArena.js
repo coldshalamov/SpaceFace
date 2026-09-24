@@ -37,6 +37,7 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { mulberry32 } from '../core/rng.js';
+import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
 import {
@@ -54,6 +55,7 @@ import {
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
+import { compileSwarmOptic } from '../data/opticStructures.js';
 import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
@@ -61,6 +63,10 @@ import { STORM_ARENA_ID } from './stormLatticeArena.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
+/** Optic lattices are a rigid stamp, not debris. Census must not release them as leftover cover. */
+export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
+/** Restamp only after the fight has left the lattice. Closer than this, the same rocks stay. */
+const SWARM_OPTIC_RESTAMP = 520;
 
 /**
  * How many monoliths the fight should be able to see. Tuned against the chase bubble: the visible
@@ -401,6 +407,8 @@ export const swarmArena = {
     this.registry = ctx.registry || null;
     this._unsubs = [];
     this._ids = [];
+    this._opticIds = [];
+    this._opticAnchor = null;
     this._wellIds = [];
     this._pressureAlive = null;
     this._pressureWave = 0;
@@ -431,6 +439,8 @@ export const swarmArena = {
 
   newGame() {
     this._ids = [];
+    this._opticIds = [];
+    this._opticAnchor = null;
     this._lastTerrainAnchor = null;
     this._nextTerrainCheck = 0;
     this._terrainRetry = false;
@@ -604,6 +614,7 @@ export const swarmArena = {
     const state = this.state;
     const helpers = this.helpers;
     if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    this._syncOpticLattice(run);
     const anchor = playerAnchor(state);
     this._lastTerrainAnchor = anchor;
     const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
@@ -692,7 +703,7 @@ export const swarmArena = {
         hull: oreHP,
         hullMax: oreHP,
         collides: true,
-        data: {
+        data: withBankStone({
           typeId: TYPE_ID,
           tier: 0,
           tierCap: 0,
@@ -707,7 +718,7 @@ export const swarmArena = {
           terrainAnchorEncounterIds: [],
           despawnAt: now + SWARM_DEBRIS_TTL_S,
           ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}),
-        },
+        }),
       });
       const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
       if (id != null) spawnedIds.push(id);
@@ -757,9 +768,87 @@ export const swarmArena = {
   },
 
   /** Hand the field back to the engine's ordinary despawn sweep. Never deletes entities directly. */
+  /**
+   * One lattice per fight, player-relative. It stays put while the player is still in it.
+   * After the fight drifts past SWARM_OPTIC_RESTAMP, the old stamp is released and a new
+   * one is built on the same recipe so the room follows without stretching the grid.
+   */
+  _syncOpticLattice(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const anchor = playerAnchor(state);
+    const ids = this._opticIds || [];
+    if (ids.length && this._opticAnchor) {
+      const drifted = Math.hypot(anchor.x - this._opticAnchor.x, anchor.z - this._opticAnchor.z);
+      if (drifted < SWARM_OPTIC_RESTAMP) return;
+      this._releaseOpticIds();
+    } else if (ids.length) {
+      return;
+    }
+    const layout = compileSwarmOptic(run && run.arenaId);
+    if (!layout || !layout.bodies || !layout.bodies.length) return;
+    const spawned = [];
+    for (let i = 0; i < layout.bodies.length; i++) {
+      const body = layout.bodies[i];
+      const ent = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: {
+          x: anchor.x + layout.origin.x + body.x,
+          z: anchor.z + layout.origin.z + body.z,
+        },
+        vel: { x: 0, z: 0 },
+        radius: body.radius,
+        physicsBody: { radius: body.radius },
+        mass: 200 + body.radius * 40,
+        angVel: 0,
+        hull: 1e6,
+        hullMax: 1e6,
+        collides: true,
+        data: {
+          typeId: body.typeId,
+          tint: body.tint,
+          opticMaterial: body.material,
+          opticStructureId: layout.id,
+          opticCell: `${body.ix},${body.iz}`,
+          surfaceMaterial: body.surfaceMaterial,
+          size: body.radius,
+          [SWARM_OPTIC_TAG]: true,
+        },
+      });
+      if (ent && ent.id != null) spawned.push(ent.id);
+    }
+    this._opticIds = spawned;
+    this._opticAnchor = {
+      x: anchor.x + layout.origin.x,
+      z: anchor.z + layout.origin.z,
+    };
+    if (spawned.length) {
+      this._emit('swarmArena:optic', { arenaId: run.arenaId, id: layout.id, count: spawned.length });
+    }
+  },
+
+  _releaseOpticIds() {
+    const state = this.state;
+    const ids = this._opticIds || [];
+    this._opticIds = [];
+    this._opticAnchor = null;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    for (let i = 0; i < ids.length; i++) {
+      const entity = state.entities.get(ids[i]);
+      if (!entity || !entity.data) continue;
+      entity.data.despawnAt = Math.min(
+        Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+        now + SWARM_DEBRIS_RELEASE_S,
+      );
+    }
+  },
+
   _release(reason) {
     this._restoreCapacity();
     this._releaseWells();
+    this._releaseOpticIds();
     const state = this.state;
     const ids = this._ids || [];
     this._ids = [];

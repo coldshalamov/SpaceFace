@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-20",
+  "updatedAt": "2026-09-22",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -1364,7 +1364,7 @@
           "leafId": "PQ-022.exterior-relay-collar",
           "requiredAcceptance": "route_accepted",
           "receipt": "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md",
-          "receiptBlob": null
+          "receiptBlob": "c299d1068d930dbcba08370f11b2c37a61ba0994"
         }
       ],
       "mutexes": [
@@ -6336,7 +6336,7 @@
       "priority": 72,
       "title": "The witness has a choice",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "world-reaction"
@@ -6351,7 +6351,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-138.00-REPORT.md"
       ],
-      "brief": "IMPLEMENTED (still): B10a met on the live route (choice at +1.63 s, one holds, two chase) but the chasers were reserves spawned on a 2000 WU ring and never reached the camera. 2026-09-12 orchestrator fix landed (720604678): reserves launch from the jurisdiction station dock ring, live responders are MISSION_CRITICAL pins (never shelved), the holder SCAN_APPROACHes the wreck; a reserve pursuer is on camera at +10.8 s in the favourable staging. Still open (receipt follow-up): pursuers stand off at 650-700 WU under the challenge doctrine; the holder cannot catch a wreck carrying cruise momentum. IMPLEMENTED 2026-09-04: lawSecurity consumes the live wreck and survivor-pod events, then deterministically assigns one responder to LOITER defensively at the victim anchor while the others pursue. Real-path seeds 4242 and 8008 split in 1.2 s with one material choice event; headed shipping capture remains open. See receipt."
+      "brief": "DONE 2026-09-21: B10a met on the live route (seed 4242, headed-path capture). Choice at +1.2 s; a capability-aware holder intercepts the drifting wreck and holds 24-31 WU on it (orbits ~80 WU when the body is slow); both chasers converge through flyby phases (614->115, 628->175 WU). Fixed en route: holder pick respects the hull intercept envelope vs wreck momentum; SCAN_APPROACH carries targetId+breakFormation; LOITER-with-body orbits the live wreck not the squad slot; reform re-commits dispatched pursuers instead of flying home; security_response runs skip the egress-posture rewrite; reported (unseen) dispatch tracks are maneuverable doctrine targets. IMPLEMENTED 2026-09-04: lawSecurity consumes the live wreck and survivor-pod events, then deterministically assigns one responder to hold the victim anchor while the others pursue. See receipt."
     },
     {
       "id": "PQ-138.01",
@@ -9934,7 +9934,7 @@
       "priority": 196,
       "title": "Interesting decisions per hour",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-173.01",
         "PQ-138.00",
@@ -9960,8 +9960,11 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Telemetry counts decisions with ≥ 2 viable options and a visible tradeoff; the bar is ≥ 6 per hour in adventure. DONE WHEN: Metric printed by the fun-loop measurer; ≥ 6 on the reference route."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/fun-loop/PQ-177-05-REPORT.md",
+        "design/program/roadmap/receipts/fun-loop/2026-09-22-adventure-summary.md"
+      ],
+      "brief": "DONE 2026-09-22: station contract and market surfaces present decision records (>=2 viable options, each naming its tradeoff) resolved through the economy/mission owners; HUD echoes the open decision. measure-fun-loop --adventure plays the fixed reference corridor (seed 4242) and prints interestingDecisionsPerHour 9.0 against the >=6/hour bar; check:adventure-decisions pins it."
     },
     {
       "id": "PQ-177.06",
@@ -10030,7 +10033,7 @@
       "priority": 199,
       "title": "The beat standard",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.00"
       ],
@@ -10051,8 +10054,11 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "A written standard and a template: canon sheet, register sheet, set-piece script (place, actors, headline verb, twist, two solutions, the frame that proves it), bark rules (one line, one consequence), voice direction notes; a validator checks the template. DONE WHEN: Standard committed; the 47-A opener re-expressed in the template without loss."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-178.00-CLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: beat standard and template committed; the 47-A opener is re-expressed without collapsing to B0 mine-and-dock; the validator rejects an undeclared reply list or stick-lock."
     },
     {
       "id": "PQ-178.01",
@@ -10060,7 +10066,7 @@
       "priority": 200,
       "title": "Beats 1–3 re-cut in the standard",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.01",
         "PQ-152.00"
@@ -10082,8 +10088,11 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "The wrecking-ball contract, pod rescue under fire, the long tow — written, staged, seeded, captured (PQ-152). DONE WHEN: Three beats at 47-A density; owner verdict per beat."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-178.01-CLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: beats 1-3 re-cut as beatStandard v1 sheets (knock/pull/tow, two live leftover solutions each, seed 3200); the 2026-09-09 honesty review's one red — sling_in sold as the stale 700 WU berth — was corrected to the dest-dock gate in 201fa3fbb and the BEAT-STANDARD table fixed here. Validator 5/5, test 4/4, narrative/receipts checks green. Live settle stays PQ-032.00; headed capture peeled per the standard."
     },
     {
       "id": "PQ-178.02",
@@ -10091,7 +10100,7 @@
       "priority": 201,
       "title": "Registers and voice",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-158.04",
         "PQ-152.00"
@@ -10113,8 +10122,10 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "Eight faction registers as writing rules with examples; the synthetic-voice direction sheet per register (PQ-158.04). DONE WHEN: A blind reader assigns a bark to its faction 7 of 8 times."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-22: eight faction registers as writing rules with cited examples and PQ-158.04 voice direction; blind reader assigns 8 fresh rule-obedient barks 8/8 (seed 17802, none wrong), live corpus 243/266 with zero misassigned."
     },
     {
       "id": "PQ-178.03",
@@ -10122,7 +10133,7 @@
       "priority": 202,
       "title": "The story ledger",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.00"
       ],
@@ -10143,8 +10154,10 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "The session and the campaign read back as 'I was doing X, then Y, so I Z', from receipts, with the mechanic's voice at the berth. DONE WHEN: Blind reader retells the campaign so far from the ledger alone."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-22: berth mechanic retells campaign receipts in order. Seed 17803, 7/7 clauses, 0 dropped. Empty berth stays silent."
     },
     {
       "id": "PQ-032.00",
@@ -10276,7 +10289,7 @@
       "priority": 207,
       "title": "Three physical procedural types",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10300,8 +10313,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "tow_recovery, demolition, rescue_under_fire join the OFFER_MIX with station-type weights. DONE WHEN: Each appears on boards on the route; each completes in a scenario by two methods."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152.00-RECLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: tow_recovery, demolition, rescue_under_fire in the catalog and OFFER_MIX with station-type weights; seed 15200 posts all three on route boards; each completes by two physical methods (5/5). Heartbeat civilian-hub weights stand; two stale zero-pins updated with reason."
     },
     {
       "id": "PQ-152.01",
@@ -10309,7 +10325,7 @@
       "priority": 208,
       "title": "Ten authored set pieces",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10333,8 +10349,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. DONE WHEN: Ten playable on the route; owner verdict per piece."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: eleven authored physical-verb set pieces post on route boards (INF-082 added the Frame Coupler heavy_tow as a legitimate 11th), each with actors, a place, a twist clause and two reachable methods; seed 15210 proves boards + both-method completions (3/3). heist stays last. Integration repaired a dead mining:overheated clause and a brief-truncation path that could hide clause text."
     },
     {
       "id": "PQ-152.02",
@@ -10342,7 +10361,7 @@
       "priority": 209,
       "title": "The capital boss",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10366,8 +10385,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. DONE WHEN: Killable by physics alone in a scenario; the tumble law applies to its sub-systems."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: capital_boss is its own type and encounter (three authored capitals); Coalition posts 'Throw the capital down' — seed 15220 proves a physics-only kill, subsystems (thrusters/turrets/bays) disabled by thrown mass, tumble applies, guns slower, no immunity phases (3/3)."
     },
     {
       "id": "PQ-152.03",
@@ -10375,7 +10397,7 @@
       "priority": 210,
       "title": "Clauses that twist",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10399,8 +10421,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). DONE WHEN: ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.03-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: five twist clauses (escort_turns, cargo_volatile, buyer_is_the_law, wreck_wakes, pods_are_bait) stamp from their own seed stream and each mutates into a live successor on the PQ-138.04 seam — no Mission FAILED toast; seed 15230 boards carry all five, Helios none (8/8)."
     },
     {
       "id": "PQ-034.native-closure",
@@ -10761,7 +10786,7 @@
       "priority": 221,
       "title": "Upgrade and blob-bind the relay-collar receipt",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.relay-reauthor-review",
         "PQ-022.h3-performance"
@@ -10776,9 +10801,12 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-exterior-relay-collar-REPORT.md"
+      ],
       "brief": "Upgrade the exact leaf to route_accepted and bind its Git blob into PQ-024.",
-      "blocker": null
+      "blocker": null,
+      "partialIntegration": "2026-09-23 leaf upgraded to route_accepted on the committed re-author chain (reauthor e69af0ef, H1 780b77b3, KEEP review 780b77b3, h2 verdict 5dcfb786); upgraded receipt blob c299d106 bound into PQ-024.evidenceDependencies."
     },
     {
       "id": "PQ-022.promote-corridor-assets",
@@ -10786,7 +10814,7 @@
       "priority": 222,
       "title": "Issue the corridor-required-assets milestone receipt",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition",
         "PQ-022.h3-performance"
@@ -10802,9 +10830,12 @@
         "npm run check:pq022:corridor-assets",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-corridor-required-assets-REPORT.md"
+      ],
       "brief": "Convert the scoping report plus accepted leaf evidence into the missing milestone_accepted receipt for PQ-025.",
-      "blocker": null
+      "blocker": null,
+      "partialIntegration": "2026-09-23 milestone_accepted receipt issued for PQ-022.gold-corridor-required-assets; six stale expected-gap entries cleared (catcher/fence artifacts + wasp LOD release rows since landed); gate PASS with 2 named non-blocking wasp source-manifest gaps."
     },
     {
       "id": "PQ-022.heist-receivers-promote",
@@ -12793,7 +12824,7 @@
       "priority": 288,
       "title": "The repetition meter",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -12812,8 +12843,11 @@
         "npm run check:baseline",
         "npm run check:sim:long"
       ],
-      "receiptRefs": [],
-      "brief": "Telemetry counts shapes per hour; a check fails when any shape exceeds its budget over a 10-hour sim. DONE WHEN: `check:content:repetition` green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-171.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: encounter-shape meter records grammar keys (situation×place×twist×actor) on state.encounterShapeMeter at script fire, no per-tick allocation; check:content:repetition walks 10h of the Ceres planner on seed 17101 and fails over 4/h — green (170 beats, 16 shapes, hottest 3.40/h; 5/5 test)."
     },
     {
       "id": "PQ-162.00",
@@ -16472,7 +16506,7 @@
       "priority": 417,
       "title": "Every mention is a door",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-162.00",
         "PQ-180.00"
@@ -16493,7 +16527,9 @@
         "npm run check:entity-links",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-183.00-REPORT.md"
+      ],
       "brief": "Entity links adopted on every surface in the manifest, including the station and legacy modules; the check fails an unlinked entity name. DONE WHEN: `check:entity-links` covers ≥ 30 surfaces with zero unlinked mentions."
     },
     {
@@ -17558,8 +17594,10 @@
         "npm run check:all",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
-      "brief": "Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. DONE WHEN: Floors green on min-spec; soak logs attached."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-033.02-REPORT.md"
+      ],
+      "brief": "Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. DONE WHEN: Floors green on min-spec; soak logs attached. ACCEPTANCE PAIR LANDED 2026-09-23 (devin): frozen private candidate 61f1a7654, sequential on one worktree, worktree stable pass both hosts — browser 306 cycles/120.7 min, Electron 359 cycles/120.9 min, zero route failures (one absorbed cycle retry browser-side), context-loss recovery verified both. Soak/route contract GREEN; every floor honestly RED on the contended host (median 33.4/50.1 ms vs 16.7; gameplay hitches 8.20/13.98 per min vs 1; boot 54.1/30.7 s vs 10; heap 121.7/119.8 MB per 30 min vs 30; renderer resources grew; warnings 89/302). externalScheduling owned 76%+ of hitches — a quiet reference host is required before timing floors mean anything; heap/residency slope and the warning classes are real product work. Leaf stays open on DONE-WHEN."
     },
     {
       "id": "PQ-033.03",
@@ -19279,7 +19317,7 @@
       "priority": 9830,
       "title": "Dreadnought 2v2 ~12 s resolution investigation",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19289,7 +19327,9 @@
       "checks": [
         "node --test test/combat-ecology-roles.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-206.00-REPORT.md"
+      ],
       "brief": "Find what kills the capital in the ~12 s wing cell (non-pilot-DPS), decide authored gank versus bug, and pin it with a fixed-seed scenario. Stat owners are combat.js/missions.js."
     },
     {
@@ -19360,7 +19400,7 @@
       "priority": 9840,
       "title": "Mechanic berth per-refresh ledger cost",
       "kind": "performance",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19368,7 +19408,9 @@
         "src/ui/dockArrival.js"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-207.00-REPORT.md"
+      ],
       "brief": "Measurement and removal of the per-18-frame buildShipLedger call the mechanic rap line added on the common clean-hull path; the repo has a known GC-churn hitch history."
     },
     {
@@ -19377,7 +19419,7 @@
       "priority": 9841,
       "title": "Mechanic berth double speaker and crowding",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19386,7 +19428,9 @@
         "styles/orbital.css"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-207.01-REPORT.md"
+      ],
       "brief": "Decide and land whether one Mechanic should carry both the ledger and hull articles in one header, and whether the third article crowds the narrow-breakpoint stage."
     },
     {
@@ -19395,7 +19439,7 @@
       "priority": 9842,
       "title": "Bark/radio online census on the live route",
       "kind": "acceptance_review",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "browser-gpu"
@@ -19407,7 +19451,9 @@
       "checks": [
         "node --test test/pq-150-02-radio.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-207.02-REPORT.md"
+      ],
       "brief": "Explain bark:shown 0 across ten live hours while comms popups run ~50/hour, then either wire the layer or correct the compass finding on the audio bus."
     },
     {
@@ -19434,7 +19480,7 @@
       "priority": 9850,
       "title": "Progression verb drift guard",
       "kind": "program_control",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19444,7 +19490,9 @@
       "checks": [
         "npm run check:progression:verbs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-208.00-REPORT.md"
+      ],
       "brief": "Extend the existing audit so a declared verb key with no implemented capability fails, rather than silently classifying as a verb."
     },
     {
@@ -19531,7 +19579,7 @@
       "priority": 339,
       "title": "Crucible roster prewarm: no wave freezes the fight",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19544,7 +19592,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.00-REPORT.md"
+      ],
       "brief": "Measured 2026-09-20 on the owner's Intel iGPU, Crucible seed 4242 default kit. First reading (host 50 % busy): 21 freezes over 100 ms in 30 s, worst 250 ms, made of 15-20 ms of game work plus 120-146 ms of pipeline admission. The loop's compile drain was then budgeted against what truly remains of the callback (sim included) instead of the present alone; two consecutive runs at 32 % host read 57-58 fps with ONE freeze over 100 ms. That one is reproducible: about 22 s into the seed, a 22-26 ms sim frame (a wave spawning) followed by 183-200 ms outside the game's callback - the driver linking and uploading hull types the GPU has never drawn. PQ-129.05 warms hulls on approach; a wave has no approach. First print wave-start times beside freeze times in the probe to prove causality. Then at run launch, behind the loading shell, route one REAL exemplar of every hull, projectile and VFX family the ruleset can spawn through the production admission path (real authored material - synthetic stand-ins never converge, measured 2026-08-28), and admit each next round's additions in the shop. Exit is a count: zero program links and zero first-draw uploads during a round; zero frames over 100 ms per 30 s. Never spawn sim entities to warm; never cut quality."
     },
     {
@@ -19553,7 +19603,7 @@
       "priority": 340,
       "title": "A fight fits the frame: 60 fps with ten hostiles",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19565,7 +19615,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.01-REPORT.md"
+      ],
       "brief": "Crucible fight on the owner's iGPU: typical callback 9.3-9.6 ms at 32 % host load (sim 3.5, render 4.5, ui 0.8, vfx 0.6) but 13.2 ms at 50 % host load, where 11.7 % of frames ran over 33 ms. The owner's machine is rarely quiet, so the bar is set at the busy reading. Take a CPU profile of probe:smooth-flight:crucible and name the top three owners before editing. Unverified suspects: 22 point lights permanently enabled at intensity 0 and baked into every lit program; HUD DOM writes every frame instead of on change (ui peaks of 5-8 ms on the worst frames); per-tick allocation in flight and AI; wave-spawn sim frames of 22-26 ms. One change at a time, same probe before and after, keep only what moves the number. Report the whole-machine CPU line with every number."
     },
     {
@@ -19574,7 +19626,7 @@
       "priority": 341,
       "title": "The first 20 seconds of flight are as smooth as minute two",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19585,8 +19637,10 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
-      "brief": "probe:smooth-flight with no settle on the owner's iGPU: 36 fps, 25 % of frames over 33 ms, 7 % over 50 ms in the first 20 s; settled flight on the same run is a locked 60.0 with zero long frames. The opening admission still leaks into flight. Attribute with the probe's per-freeze table (admission vs render vs sim), then move or finish that work behind the loading shell. Exit: first-20 s frames over 33 ms <= 5 %."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.02-REPORT.md"
+      ],
+      "brief": "Landed 2026-09-20: opening no-settle frames over 33 ms 93 % -> 17.5 % on the shared host (busy-reading settled reference 18.2 % — parity at the bar .01 set). The leak is closed: the first-draw gate now counts the raw ambient pipeline queue and pumps drainPendingPipelineAdmissions while it holds, so admissions queued at flight read 0 (was 27 draining one-per-presented-frame at up to ~78 ms); the first-playable latch re-arms after a bounded grace window when the armed afterBrowserPaint chain drops its callback (a proven permanent wedge); the opening-picture failsafe extends to the missing-resource refuse so one stale required texture cannot black-screen boot forever. Residual vs clean-host settled (1.9 %): scripted onboarding tableau spawn beats pay sim spawnEntity + builds + paced compiles inside the window — same class the crucible check itself pays on content arrival (29.8 %); the only removal machinery (roster prewarm) is measured-regressive per the .00 receipt."
     },
     {
       "id": "PQ-210.03",
@@ -19594,7 +19648,7 @@
       "priority": 342,
       "title": "Nothing on the live screen unloads or waits",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19605,7 +19659,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.03-REPORT.md"
+      ],
       "brief": "Landed 2026-09-20: residency honours the live glass, evict >= prefetch, on-screen rows exempt from the first-flight hold, retired rock batches rebuild. Remaining: add a live onGlassDisposals counter in reconcileMeshResidency (mesh disposed while entityIsOnReadableGlass) and hold it at 0; entityMeshVisibility hides geometryPending roots BEFORE the onLiveGlass override, so an on-screen root waits on a one-at-a-time drain - bound that wait to 0.25 s; appendNearbyLedgerRows collects around the player while the keep radius is centred on the camera look-at (up to 400 WU apart) - give them one origin."
     },
     {
@@ -19614,7 +19670,7 @@
       "priority": 343,
       "title": "Every hit answers on four channels, with sound",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19626,7 +19682,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.04-REPORT.md"
+      ],
       "brief": "The owner judged combat limp with effects silently stripped (fixed 2026-09-20) and with audio muted by default (still true: AUDIO_DEFAULT_MUTE_VERSION). With effects Full, audit each default-kit weapon on Crucible seed 4242: hit-stop, event light, moved mass, and a sound inside 100 ms of contact. Land PQ-158.06 minimal action audio as on-by-default for the demo. Small visible win: weaponDischargePool writes descriptor[16] = 0, so every muzzle discharge has zero flow and is a static shape in an envelope. Never answer limp with more particles or shake."
     },
     {
@@ -19635,7 +19693,7 @@
       "priority": 344,
       "title": "The demo HUD reads as hardware, not a web page",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19646,7 +19704,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.05-REPORT.md"
+      ],
       "brief": "Owner 2026-09-20: the HUD and gameplay visuals are a bit cheap and css-looking like a cheap web game. Scope for the demo is three surfaces only - flight HUD, Crucible HUD, results screen - under PQ-194 Field Hardware. The flight deckplate was judged 4/10 by two critics on 2026-09-18 (needs a structural cluster and a threat channel). Prove on live ui-bench --shot= stills, never mockups. Note uncommitted deckplate work from another lane in src/ui/deckplate and styles: inspect and continue it, do not restart it."
     },
     {
@@ -19655,7 +19715,7 @@
       "priority": 345,
       "title": "A quiet machine: long harnesses yield to the game",
       "kind": "program_control",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19665,7 +19725,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.06-REPORT.md"
+      ],
       "brief": "On 2026-09-20 two 10-hour playthrough runs from another lane each pinned a core on the owner's play machine (CPU and iGPU share one power budget); the same build read 59 fps clean and 40 fps with a freeze a second, minutes apart. run-actual-game-playthrough now sets PRIORITY_LOW. Do the same in every harness that can run over two minutes (bench runners, soaks, batteries) and write the rule into docs/AGENT_OPERATIONS.md: background compute on the play machine always runs at the lowest OS priority."
     },
     {
@@ -19674,7 +19736,7 @@
       "priority": 346,
       "title": "Ask once about motion, never assume",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19684,7 +19746,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.07-REPORT.md"
+      ],
       "brief": "Motion effects default to Full since 2026-09-20 because the silent OS-following default stripped combat feel from anyone with Windows Animation effects off. Close the other side: on first boot, when the OS reduced-motion hint is set and the profile has never been asked, show one plain choice - Full or Reduce - and store it. Nothing follows the OS without being asked; the explicit System option stays in Access."
     },
     {
@@ -19707,8 +19771,10 @@
         "design/program/DEMO_READINESS_2026-09-20.md"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.08-REPORT.md"
+      ],
+      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. QUIET-WINDOW SESSION 2026-09-22 + REVIEW ROUND (NOT SIGNED — leaf stays open; the remaining gate is the quiet-window timing numbers, nothing else). (1) Crucible smooth-flight: seven attempts recorded — structural gates green x7 (0 presents redrawing an old moment, +0 program links, +0 full uploads, wave arrival COVERED at every load), best timing 0 frames over 100 ms worst 83 ms at 48% host CPU, but no 30 s sample landed inside the 32-38% acceptance band (host re-saturated inside the ~160-175 s cook every time). THIS IS THE OPEN GATE. (2) Input-to-photon: the morning witness read 'unavailable' (120 s flight wait vs the .00 cook) — driver fixed same day (162bab6ee, wait -> 300 s) and post-fix runs MEASURE: n=1 p50 53.7 ms @63% CPU, then n=1 p50 86.5 ms @85% CPU — contention-bound, over the 50 ms letter under load; a quiet-window sample is owed. (3) solid-world: onGlassDisposals=0 both phases (gate holds); pending-latency starved (0.991 s with maxRafGap 2013 ms — starvation signature, not a clean red); re-fire in the quiet window. (4) CLOSED — was mislabeled a blocker in an earlier revision of this brief: the 11:02 chooser non-open was a real but GEOMETRIC defect (first hardpoint row slid under the opaque berth header; elementFromPoint returned the header, so the raw click never reached the button), fixed in styles/station.css 1a15f44fb (11:10:57). Post-fix: probe-shipworks-chooser.mjs passes the full gated path and check-m3-player-facing-public-route.mjs --demo-opening PASSES (exit 0, evidence.json primaryAcceptance true, all five checks incl. the Outfitting hover preview; verified 11:52 and again 12:09). NOT a chooser-logic defect — do not chase one; no src/ui/station/ file changed in the fix. (5) check:playable: the morning BOOT failures were a foreign audio lane's mid-write syntax errors; the lane landed (11:35-38) and the check now passes — BOOT 13.2 s at ~85% load (over the 10 s letter under load; quiet-boot number owed). Standing non-bar findings unchanged: physics-kill <=60 s AT RISK seed-dependent; launch-to-flight ~170 s vs the 10-second letter (owner product call). Receipt: design/program/roadmap/receipts/PQ-210.08-REPORT.md."
     }
   ]
 }

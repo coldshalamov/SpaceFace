@@ -13,6 +13,7 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
@@ -218,6 +219,8 @@ export const tetherGameplay = {
     this._insideTetherUpdate = true;
     try { this._updateTetherGameplay(dt, state); }
     finally { this._insideTetherUpdate = false; }
+    // The line's own phase was just mirrored. Hull climbs only while that line is taut.
+    if (state && state.mode === 'flight') stepLatchRepair(state, dt);
   },
 
   _updateTetherGameplay(dt, state) {
@@ -1114,7 +1117,9 @@ export const tetherGameplay = {
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
     if (reason === 'tether_cut') {
       this.bus.emit('tether:released', { targetId });
-      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+      // A cut that lands through reconcile (e.g. the self-sling manual cut) is still the
+      // player's deliberate release — the apex read applies to it.
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId, { deliberate: true }));
     } else {
       this.bus.emit('tether:broke', { targetId });
       this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
@@ -1690,7 +1695,9 @@ export const tetherGameplay = {
     if (!this._active) return false;
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
-    const releaseRating = rateRelease(state, targetId);
+    const releaseRating = rateRelease(state, targetId, { deliberate: true });
+    const tangentRelease = assessTangentRelease(state, targetId);
+    if (tangentRelease) cutPayload.tangentRelease = tangentRelease;
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) {
       this._pendingCut = null;
@@ -2398,7 +2405,7 @@ function statusForReason(reason) {
 }
 
 function validateAcquisitionTarget(host, player, target, def, state) {
-  if (!isAttachable(target, player && player.id)) return 'target-lost';
+  if (!isAttachable(target, player && player.id, state)) return 'target-lost';
   const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
@@ -2434,23 +2441,18 @@ function masslineObstructed(host, state, player, target) {
 // CONTRACT — cursor proximity is opt-in player intent, never reticle state — and the precision-pick
 // profile puts 0.34 on the cursor axis, enough to decide the pick on its own.
 //
-// combat/autoTargetMode.tickAutoTarget OVERWRITES state.input.aimWorld with the weapon lead point
-// for the whole time auto-target is held (autoTargetMode.js:146-149), and stamps state.input.autoAim
-// as the provenance marker for exactly that write — the same marker weapons.js:167 already reads to
-// re-solve per mount, and which is cleared the moment auto-target stops driving the aim. Without
-// this gate, holding auto-target silently steered Massline acquisition onto whatever the guns had
-// locked: measured on a two-anchor scene, steering intent selected the turn-side rock under
-// 'massive-anchor-sling' with cursor 0.000, and holding auto-target on the OTHER rock flipped the
-// context to 'precision-pick' with cursor 1.000 and moved the selection onto the gun target.
-// Fail closed: while the aim point belongs to the guns, the cursor axis contributes nothing at all
-// and steering intent decides, which is the contract's own answer.
+// G draw mode writes a weapon lead point into aimWorld and marks it with autoAim. It must not
+// turn that gun solution into a Massline cursor paint. Ordinary Tab assist leaves aimWorld at
+// the physical cursor, so its autoAim marker does not suppress manual Massline aim.
 function weaponSynthesisedAim(state) {
   const marker = state && state.input && state.input.autoAim;
   return !!(marker && typeof marker === 'object' && marker.targetId != null);
 }
 
 function acquisitionCursorActive(state) {
-  if (weaponSynthesisedAim(state)) return false;
+  // Ordinary Tab combat assist leaves aimWorld at the physical cursor. Only G's draw mode
+  // synthesizes that coordinate from the gun lead and must be excluded from latch intent.
+  if (state?.input?.autoFire && weaponSynthesisedAim(state)) return false;
   const input = state && state.input;
   if (!input) return false;
   // Live input stamps this every tick for pointer, gamepad, and touch aim. An explicit false (or a
@@ -2465,9 +2467,15 @@ function acquisitionCursorActive(state) {
 
 function preciseCursorScore(entity, aim) {
   if (!entity || !entity.pos || !aim) return 0;
-  const miss = Math.max(0,
-    Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, finite(entity.radius)));
-  return clamp01(1 - miss / CURSOR_LATCH_GRACE);
+  const centerDistance = Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z);
+  const radius = Math.max(0, finite(entity.radius));
+  const surfaceMiss = Math.max(0, centerDistance - radius);
+  // A large asteroid used to earn a perfect 1 everywhere inside its radius. That made it tie
+  // with a small ship directly under the reticle, then size/context could steal the latch.
+  // Surface grace still helps acquire large bodies, but the closest center breaks overlap.
+  const surfaceScore = clamp01(1 - surfaceMiss / CURSOR_LATCH_GRACE);
+  const centerPenalty = 0.35 * clamp01(centerDistance / (radius + CURSOR_LATCH_GRACE));
+  return clamp01(surfaceScore * (1 - centerPenalty));
 }
 
 function masslineRouteTargetId(state) {
@@ -2584,6 +2592,34 @@ export function computeTetherLoad(phase, strain) {
   return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
 }
 
+// A taut release at the tangent is a swing let go while the line is actually tight and the
+// relative motion is around the anchor, not a radial tow. masslineThrow spends that release
+// on a meeting; this function only names the release.
+export const TANGENT_RELEASE_MIN_TANGENCY = 0.85;
+export const TANGENT_RELEASE_MIN_SPEED = 25;
+
+export function assessTangentRelease(state, targetId) {
+  const tether = state && state.player && state.player.tether;
+  const phase = tether && tether.phase;
+  if (!TETHER_TAUT_PHASES.has(phase)) return null;
+  const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  const payload = state && state.entities && state.entities.get && state.entities.get(targetId);
+  if (!owner || !payload) return null;
+  const pair = readCadencePair(owner, payload, finite(tether.restLength));
+  if (!pair.valid) return null;
+  if (pair.tangency < TANGENT_RELEASE_MIN_TANGENCY) return null;
+  if (Math.abs(pair.tangentialSpeed) < TANGENT_RELEASE_MIN_SPEED) return null;
+  return Object.freeze({
+    taut: true,
+    phase: String(phase),
+    tangency: pair.tangency,
+    tangentialSpeed: pair.tangentialSpeed,
+    radialSpeed: pair.radialSpeed,
+    ownerId: owner.id,
+    payloadId: payload.id,
+  });
+}
+
 // CADENCE release rating reads the current pair, before cut authority clears its mirror.
 // Technique is tangency and earned relative speed; the physical break rating remains telemetry.
 // No claim about hitting a victim is made here: the throw forecast owns that separate question.
@@ -2597,7 +2633,15 @@ export function computeTetherLoad(phase, strain) {
 // caption for every clean release were silently dropped at every distance. That is the bug
 // scripts/check-massline-release-feedback.mjs caught: the "no double-toast" assertion was counting
 // ZERO. Grammar rule 2: if the player cannot see it, it does not exist.
-export function rateRelease(state, targetId) {
+// SLINGSHOT APEX (the "you nailed that" read): a deliberate cut let go at the crest of the swing.
+// The gate is deliberately strict — a clean-class release AND current omega still within reach of
+// the best the swing ever produced, on a swing that was real to begin with. A break, a target
+// loss, or a casual release never qualifies: emitters mark deliberate releases only.
+export const APEX_RELEASE_MIN_SCORE = 0.65;        // 'clean' or better technique
+export const APEX_RELEASE_MIN_OMEGA = 0.45;        // rad/s — the swing itself has to be a swing
+export const APEX_RELEASE_OMEGA_RATIO = 0.88;      // release inside 12% of the observed crest
+
+export function rateRelease(state, targetId, opts) {
   const telemetry = state && state.player && state.player.masslineTelemetry;
   const tether = state && state.player && state.player.tether;
   const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
@@ -2605,6 +2649,8 @@ export function rateRelease(state, targetId) {
   const restLength = finite(tether && tether.restLength, finite(telemetry && telemetry.restLength));
   const pair = readCadencePair(owner, payload, restLength);
   const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
+  const apexOmega = finite(telemetry && telemetry.maxAngularSpeedSinceLatch);
+  const omegaNow = Math.abs(finite(pair.omega));
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
     ...rating, scoringVersion: 'cadence.v1', observedTick: state && state.tick,
@@ -2614,7 +2660,14 @@ export function rateRelease(state, targetId) {
     playerSpeed: Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z)),
     maxStrainSinceLatch: finite(telemetry && telemetry.maxStrainSinceLatch),
     maxTangentialSpeedSinceLatch: finite(telemetry && telemetry.maxTangentialSpeedSinceLatch),
-    maxAngularSpeedSinceLatch: finite(telemetry && telemetry.maxAngularSpeedSinceLatch),
+    maxAngularSpeedSinceLatch: apexOmega,
+    // True only on a deliberate cut released at the crest of a real swing. Breaks and target
+    // loss emit this rating too; they are never an apex.
+    releasedAtApex: !!(opts && opts.deliberate === true)
+      && pair.valid === true
+      && rating.releaseScore >= APEX_RELEASE_MIN_SCORE
+      && apexOmega >= APEX_RELEASE_MIN_OMEGA
+      && omegaNow >= apexOmega * APEX_RELEASE_OMEGA_RATIO,
   };
 }
 
@@ -2639,9 +2692,24 @@ function aimWorldFor(player, state, range) {
 
 // Massline is a physical command, not a catalog verb. New world-object types do not need a
 // separate eligibility-list edit before a player can deliberately attach to them.
-export function isAttachable(entity, playerId) {
-  if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
+/** VERB-12 — a wreck made in this swarm round can be roped before the shop. */
+export function survivalRoundWreckLatchLegal(entity, state) {
+  if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) return false;
+  const data = entity.data || {};
+  if (data.runCohort !== 'survival') return false;
+  const run = state && state.run;
+  if (run && (run.phase === 'shop' || run.phase === 'inactive')) return false;
+  const wave = data.runWave;
+  const current = run && (run.wave != null ? run.wave : run.waveIndex);
+  if (wave != null && current != null && Number(wave) !== Number(current)) return false;
+  return Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+}
+
+export function isAttachable(entity, playerId, state) {
+  if (!entity || !entity.pos || entity.id === playerId) return false;
   if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  if (survivalRoundWreckLatchLegal(entity, state)) return true;
+  if (!entity.alive) return false;
   if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return false;
   const explicitlyTetherable = entity.data?.masslineTetherable === true
     || entity.flags?.masslineTetherable === true;

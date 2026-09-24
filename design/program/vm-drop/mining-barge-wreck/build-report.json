@@ -1,0 +1,61 @@
+{
+  "asset": "wreck_mining_barge",
+  "family": "mining_barge",
+  "kind": "primary",
+  "state": "cooling",
+  "was": "Asteroid extraction platform: cutter boom, ore bins, working-face asymmetry.",
+  "reads": "Enormous cutter head on a sheared boom stump; ore-bin rhythm; starboard working apron.",
+  "howItDied": "Boom root sheared; the cutter head is the heavy thing that stayed.",
+  "grammar": "freighter-variant / boom-root truss break",
+  "glb": "wreck_mining_barge.glb",
+  "sha256": "acc90275cc696f44b738f256a31f27700e7a61d3f950cd9c4c0f64b33fa4442c",
+  "triangles": 2160,
+  "envelopeMinM": [
+    -73.383,
+    -31.5,
+    -15.769
+  ],
+  "envelopeMaxM": [
+    73.383,
+    31.5,
+    15.769
+  ],
+  "sizeM": [
+    146.766,
+    63.0,
+    31.537
+  ],
+  "sizeMaxM": 146.766,
+  "shipFrameOriginM": [
+    -0.88,
+    -0.0,
+    -11.57
+  ],
+  "sockets": [
+    "INTERACTION_BinGap",
+    "SOCKET_BlackBox",
+    "SOCKET_Hazard_Break",
+    "SOCKET_Hazard_Core",
+    "SOCKET_Salvage_Cutter",
+    "SOCKET_Salvage_Drive",
+    "SOCKET_Salvage_Ore"
+  ],
+  "socketFailures": [],
+  "gaps": [
+    {
+      "name": "INTERACTION_BinGap",
+      "atM": [
+        0.12,
+        0.0,
+        2.43
+      ],
+      "clearRadiusM": 23.88,
+      "clearSpanM": 47.76,
+      "playerHullM": 28.0,
+      "requiredRadiusM": 20.0,
+      "pass": true
+    }
+  ],
+  "blender": "4.5.14 LTS",
+  "note": "Outbox only. Does not modify wreck_aftermath_pack."
+}

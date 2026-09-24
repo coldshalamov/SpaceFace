@@ -2,7 +2,7 @@
 // Headed or headless Playwright tool to capture a full WebGL frame using Spector.js.
 // Outputs .devshots/spector/spector-capture.json and an analyzed summary report.
 
-import { createServer } from 'node:http';
+import { createServer, get as httpRequestGet } from 'node:http';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -28,7 +28,7 @@ async function isServerRunning(port) {
 }
 
 function httpGet(url, cb) {
-  import('node:http').then(({ get }) => get(url, cb));
+  return httpRequestGet(url, cb);
 }
 
 async function ensureLocalServer() {
@@ -139,12 +139,12 @@ async function main() {
     if (ROUTE === 'flight') {
       console.log('[perf:spector] Starting flight scene...');
       await page.evaluate(() => {
-        if (window.SF.helpers && typeof window.SF.helpers.startNewGame === 'function') {
-          window.SF.helpers.startNewGame({ seed: 47 });
+        if (window.SF.bus && typeof window.SF.bus.emit === 'function') {
+          window.SF.bus.emit('game:new', { seed: 47 });
         }
       });
-      // Wait for flight mode
-      await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 15_000 });
+      // Wait for flight mode — authored-visual readiness can take a while on software WebGL.
+      await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 180_000, polling: 500 });
       // Let flight run for 3 seconds so models and particles are populated
       await page.waitForTimeout(3000);
     } else {

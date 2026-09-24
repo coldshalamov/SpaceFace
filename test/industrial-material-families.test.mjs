@@ -224,6 +224,47 @@ test('no family exceeds the existing reflection ceiling — this redistributes, 
     'lacquer is a coating, exposed working edges are metal');
 });
 
+// AQ-SURFACE: the three substances read as different materials, each graded from its own scan —
+// Rubber004 seal (mean 0.59), rusty_painted_metal coating (0.75-1.00), Tiles132C unglazed
+// refractory (~0.8-1.0). The bands must not collapse into each other or invert.
+test('seal, paint, and ceramic occupy three distinct scan-graded roughness bands', () => {
+  const { matte_seal, painted_shell, painted_shell_worn, thermal_ceramic } = MATERIAL_FAMILIES;
+  assert.ok(matte_seal.roughness < painted_shell.roughness,
+    'satin seal must read below the coating');
+  assert.ok(painted_shell.roughness < painted_shell_worn.roughness,
+    'intact coating must read below the worn coating');
+  assert.ok(painted_shell_worn.roughness < thermal_ceramic.roughness,
+    'worn coating must read below the refractory liner');
+  // Every adjacent band keeps a camera-visible gap (~0.07+) — not a hair-splitting tune.
+  assert.ok(painted_shell.roughness - matte_seal.roughness >= 0.07);
+  assert.ok(thermal_ceramic.roughness - painted_shell_worn.roughness >= 0.15);
+});
+
+// TOOL-06: refractory ceramic stays matte next to painted metal. The Tiles132C scan's unglazed
+// tile fraction reads ~0.8-1.0 rough; thermal_ceramic's multiplier must stay clearly above the
+// satin painted_shell family so liner and lacquer never share a response.
+test('thermal_ceramic stays matte next to painted_shell', () => {
+  const { thermal_ceramic, painted_shell } = MATERIAL_FAMILIES;
+  assert.ok(thermal_ceramic.roughness > painted_shell.roughness,
+    `ceramic ${thermal_ceramic.roughness} must out-rough the paint ${painted_shell.roughness}`);
+  assert.ok(thermal_ceramic.roughness >= 0.9,
+    `ceramic ${thermal_ceramic.roughness} fell below the unglazed-tile matte band`);
+});
+
+// TOOL-05: the seal reads in the direction the Rubber004 scan actually is. The scan measures
+// mean roughness 0.59 (range 0.40-0.82) — a satin elastomer. The family multiplier lands a
+// typical seal (base roughness ~0.9-1.0) inside that envelope; dead-matte (>=1.0) reads drier
+// than the material ever does.
+test('matte_seal sits inside the Rubber004 roughness envelope, not dead-matte', () => {
+  const seal = MATERIAL_FAMILIES.matte_seal;
+  assert.ok(seal.roughness >= 0.50 && seal.roughness <= 0.80,
+    `seal multiplier ${seal.roughness} outside the Rubber004 envelope (0.40-0.82 scan, mean 0.59)`);
+  assert.ok(seal.roughness < 1.0, 'a multiplier at or above 1 reads drier than the scan');
+  // The seal stays an elastomer, not a metal — only the roughness direction moved.
+  assert.ok(seal.metalness <= 0.3);
+  assert.equal('color' in seal, false, 'the seal keeps the painted family color — no family tint');
+});
+
 // ----------------------------------------------------------------------------- state / attention
 
 test('emission is never invented for a surface the author left dark', () => {

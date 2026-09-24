@@ -1,6 +1,6 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
-import { allocateEntityId, makeEntity, worldLedgerHoldsId } from './entity.js';
+import { allocateEntityId, makeEntity, worldLedgerHoldsId, clearEntityRuntime } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
@@ -256,6 +256,7 @@ export const core = {
     const e = list[i];
     if (!e) return false;
     e.alive = false;
+    clearEntityRuntime(e);
     this._publishPresentation?.('recordDestroy', e);
     markDirty(state, e.id, DIRTY.MEMBERSHIP);
     removeEntityIndex(state.entityIndex, e);
@@ -594,7 +595,9 @@ function appendEntityIndex(index, e) {
       index.charges.push(e);
       break;
     case 'bomb':
-      // Drift bombs (src/systems/bombs.js): logical fuze entities — not shootable, not colliders.
+      // Drift bombs: kinematic fuze entities. Collidable for projectile sweeps (PQ-205.02)
+      // while physicsBody stays false — bombs own their pose. Not a combat damageable;
+      // projectile:hit is retired by the bombs owner exactly once.
       index.bombs.push(e);
       break;
     case 'massSeed':
@@ -723,6 +726,10 @@ function isMovableEntity(e) {
     // point. Movable membership puts it in the incremental dynamic layer (rehash follows pos) and
     // earns prevPos snapshots so renderer interpolation doesn't judder the travel animation.
     case 'massSeed':
+      return true;
+    // PQ-205.02: kinematic drift bombs participate in the spatial-dynamic layer so the
+    // projectile-sweep hash follows the capsule. Pose is still bomb-owned (physicsBody:false).
+    case 'bomb':
       return true;
     default:
       return false;

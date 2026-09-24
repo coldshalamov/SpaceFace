@@ -601,7 +601,9 @@ export function mergeStaticByMaterial(parent, keepSeparate) {
     merged.name = `${parent.name || 'Ship'}_Static_${(meshes[0].material.name || meshes[0].material.uuid.slice(0, 8))}`;
     for (const mesh of meshes) {
       parent.remove(mesh);
-      mesh.geometry.dispose();
+      if (!(mesh.geometry.userData && mesh.geometry.userData.spacefaceSharedAsset)) {
+        mesh.geometry.dispose();
+      }
     }
     parent.add(merged);
   }
@@ -642,7 +644,7 @@ export function buildDrive(parent, opts) {
 // drive micro-motion, and readable damage. Call ONCE at the end of a builder, after all geometry is
 // placed but BEFORE returning. options:
 //   root, hull          — the two-layer group (outer + bankable hull), matches the Kestrel
-//   decals              — array of decal meshes to drop at LOD1+ (the expensive per-ship detail)
+//   decals              — canvas marks kept through the readable LOD1 band, dropped at LOD2
 //   driveParts          — { fan, driveCore, plume, plumeMat, basePlumeOpacity, flicker } from buildDrive
 //   damageParts         — { navLights[], driveCore, plume, secondary[], armor?, sensorSlits? }
 //   navLightBase        — snapshot of nav-light emissive intensities (for damage restore)
@@ -660,13 +662,14 @@ export function finalizeShip(options) {
     hull.scale.setScalar(entity.radius / designRadius);
   }
 
-  // ---- LOD reaction: drop decals at LOD1+ (they're illegible <300px and cost a texture each).
-  //      Silhouette, sockets, drive, damage state are all preserved — only flourishes drop.
+  // ---- LOD reaction: keep decals through LOD1. That band is still a readable contact
+  //      (lod.js LOD1_BELOW). Drop them only at LOD2, where the hull is a distant speck.
+  //      Silhouette, sockets, drive, and damage state stay at every level.
   let lastLod = 'lod0';
   root.userData.updateLod = function updateLod(level) {
     if (level === lastLod) return;
     lastLod = level;
-    const showDecals = level === 'lod0';
+    const showDecals = level !== 'lod2';
     for (const d of decals) {
       if (d) d.visible = showDecals;
     }

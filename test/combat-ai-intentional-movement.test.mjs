@@ -67,6 +67,82 @@ test('targeted TRANSIT breaks squad spacing and seeks contact for physical recov
   assert.match(maneuver.reason, /freight_pod_recovery/);
 });
 
+test('witness SCAN_APPROACH intercepts the hold body and breaks the squad bound', () => {
+  const maneuver = movementForActivity({
+    kind: ManeuverKind.FORMATION,
+    targetId: 99,
+    formationSlot: { x: 0, z: 0 },
+    formationBound: 170,
+    breakFormation: false,
+    reason: 'stale_formation',
+  }, normalizeActivity({
+    kind: ActivityKind.SCAN_APPROACH,
+    reason: 'security_witness:hold:approach:law:1',
+    anchor: { x: 300, z: 0 },
+    preferredRange: 60,
+    targetId: 7,
+    startedTick: 60,
+  }), {
+    objective: { kind: ObjectiveKind.HOLD, targetId: null, reason: 'witness_hold' },
+    formation: { slot: { x: 0, z: 0 }, bound: 170, breakFormation: false },
+  });
+
+  assert.equal(maneuver.kind, ManeuverKind.INTERCEPT);
+  assert.equal(maneuver.targetId, 7, 'the approach must aim at the hold body, not the combat selection');
+  assert.equal(maneuver.breakFormation, true, 'the squad bound must not veto the approach');
+});
+
+test('witness LOITER orbits the hold body instead of steering to the squad slot', () => {
+  const anchor = { x: 300, z: 40 };
+  const maneuver = movementForActivity({
+    kind: ManeuverKind.FORMATION,
+    targetId: null,
+    formationSlot: { x: -800, z: -200 },
+    formationBound: 170,
+    breakFormation: false,
+    reason: 'stale_formation',
+  }, normalizeActivity({
+    kind: ActivityKind.LOITER,
+    reason: 'security_witness:hold:law:1',
+    anchor,
+    preferredRange: 70,
+    targetId: 7,
+    startedTick: 60,
+  }), {
+    objective: { kind: ObjectiveKind.HOLD, targetId: null, reason: 'witness_hold' },
+    formation: { slot: { x: -800, z: -200 }, bound: 170, breakFormation: false },
+  });
+
+  assert.equal(maneuver.kind, ManeuverKind.ORBIT);
+  assert.equal(maneuver.targetId, 7);
+  assert.equal(maneuver.breakFormation, true);
+  assert.deepEqual(maneuver.orbitCenter, anchor, 'the live-tracked body anchor is the orbit fallback');
+  assert.equal(maneuver.preferredRange, 70);
+});
+
+test('untargeted LOITER still holds in place for ambient presence', () => {
+  const maneuver = movementForActivity({
+    kind: ManeuverKind.FORMATION,
+    targetId: null,
+    formationSlot: { x: 100, z: 0 },
+    formationBound: 170,
+    breakFormation: false,
+    reason: 'presence',
+  }, normalizeActivity({
+    kind: ActivityKind.LOITER,
+    reason: 'k1_nonhostile_presence',
+    anchor: { x: 500, z: 0 },
+    startedTick: 10,
+  }), {
+    objective: { kind: ObjectiveKind.HOLD, targetId: null, reason: 'hold' },
+    formation: { slot: { x: 100, z: 0 }, bound: 170, breakFormation: false },
+  });
+
+  assert.equal(maneuver.kind, ManeuverKind.HOLD);
+  assert.equal(maneuver.targetId, null);
+  assert.equal(maneuver.breakFormation, false);
+});
+
 test('untargeted TRANSIT keeps formation travel for ordinary lane traffic', () => {
   const maneuver = movementForActivity({
     kind: ManeuverKind.HOLD,

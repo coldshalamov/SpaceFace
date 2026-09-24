@@ -1,6 +1,9 @@
 #!/usr/bin/env node
-// ui-look.mjs — LOOK at a screen the cheap way: open it directly, try every control, report what
-// each one DID, and keep a picture whenever the surface visibly changed.
+// ui-look.mjs — the live route, for a screen the bench cannot mount.
+//
+// Frontend iteration shoots the bench first (docs/UI_VISUAL_ITERATION.md):
+//   node scripts/ui-bench.mjs --shot=pause --walk
+// That does not boot the game. This script does. Use it when the bench prints NOT MOUNTABLE.
 //
 // Why this exists (docs/UI_VISUAL_ITERATION.md): the failure this repo keeps having is not a
 // missing check, it is agents restyling a screen they never actually looked at — because looking

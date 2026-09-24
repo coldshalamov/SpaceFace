@@ -73,8 +73,9 @@ function expectedDrawBuffer(video, {
 // A deliberately DOWN-SCALED video profile, not the shipped default. It exists so the draw-buffer
 // formula tests below exercise a non-unit renderScale and a shadows-off starting point, and so
 // MAX_VIDEO stays genuinely distinct from it. The shipped defaults are asserted separately against
-// gameState.js source (they are renderScale 1.0 / shadows true since the measured A/B showed full
-// resolution and shadows are free on the 60fps target hardware).
+// gameState.js source (renderScale 1.0 since the measured A/B showed full resolution is free on the
+// 60fps target hardware; shadows OFF since the 2026-09-21 owner ruling — the map read as crawling
+// clumps, so the pass is now an opt-in).
 const SCALED_VIDEO = Object.freeze({
   renderScale: 0.85,
   pixelRatioCap: 2,
@@ -255,7 +256,7 @@ test('default video defaults include pixelRatioCap, renderScale, shadows', () =>
   // 20s warmup so authored admission had settled): p95 16.80ms both, max 17.20ms vs 17.00ms. The
   // frame is vsync-locked with headroom, so sub-native resolution bought nothing.
   assert.match(gameStateSource, /renderScale:\s*1\.0/, 'default renderScale is 1.0 (native)');
-  assert.match(gameStateSource, /shadows:\s*true/, 'default shadows is on');
+  assert.match(gameStateSource, /shadows:\s*false/, 'default shadows is off (opt-in sun depth pass)');
 });
 
 test('applyRendererSize formula: boot defaults vs max vs restore (devicePR=2)', () => {

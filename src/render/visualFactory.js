@@ -17,7 +17,7 @@
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_UV_TRANSFORMS,
@@ -41,7 +41,7 @@ import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
-import { COMMODITIES } from '../data/commodities.js';
+import { commodityPresentationFor } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -49,6 +49,19 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import {
+  admissionOwnerInactive,
+  authoredAdmissionRetriableStatus,
+  AUTHORED_ADMISSION_RETRY_MAX,
+  authoredReadmissionStatus,
+  boundaryLiveEntity,
+  markAuthoredBoundaryForReadmission,
+  prepareAuthoredVisualPipelines,
+  releaseBoundaryResidency,
+  residencyOptionsForBoundary,
+  waitForOpeningGraphPublicationRelease,
+  wholeShipVisualForEntity,
+} from './partsLibrary.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
@@ -59,7 +72,6 @@ import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
-const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_PERSONALITY = new Map(FACTION_META.map((f) => [f.id, f.personality]));
 
 // Player cyan / hostile red; otherwise the faction palette (else a neutral fallback).
@@ -336,14 +348,21 @@ export function mergeRigidOpaqueAcrossRoot(root) {
       sourceMeshes += rec.meshes.length;
     } catch (_) {
       if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
-      if (mergedMesh && mergedMesh.geometry) mergedMesh.geometry.dispose();
+      if (mergedMesh && mergedMesh.geometry
+        && !(mergedMesh.geometry.userData && mergedMesh.geometry.userData.spacefaceSharedAsset)) {
+        mergedMesh.geometry.dispose();
+      }
     }
   }
   return { groups: groups.size, mergedMeshes, sourceMeshes };
 }
 
-function freezeStaticPresentation(root) {
-  freezeStaticChildMatrices(optimizeStaticBatchesForRoot(root));
+function freezeStaticPresentation(root, options = {}) {
+  // merge:false keeps every child on its shared cached geometry. The per-entity merge produces a
+  // unique sf-static-merge buffer per build, which a mid-round spawn then pays as a first-draw
+  // upload inside the fight; shared children upload once at warm time and never again.
+  if (options.merge !== false) optimizeStaticBatchesForRoot(root);
+  freezeStaticChildMatrices(root);
   return root;
 }
 
@@ -395,7 +414,10 @@ function optimizeStaticBatches(root) {
       for (const mesh of rec.meshes) rec.parent.remove(mesh);
     } catch (_) {
       if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
-      if (mergedMesh && mergedMesh.geometry) mergedMesh.geometry.dispose();
+      if (mergedMesh && mergedMesh.geometry
+        && !(mergedMesh.geometry.userData && mergedMesh.geometry.userData.spacefaceSharedAsset)) {
+        mergedMesh.geometry.dispose();
+      }
     }
   }
 
@@ -413,6 +435,23 @@ function isBatchCandidate(obj) {
   return true;
 }
 
+// The merged sf-static-merge output is byte-identical across same-spec builds (source geometries
+// are getGeometry-cached and subtree transforms are deterministic), so key it by content and share
+// one BufferGeometry: the warm compose uploads it once and later same-spec entities draw resident
+// buffers instead of paying a first-draw upload mid-round.
+const _staticMergeGeometryCache = new Map();
+const STATIC_MERGE_CACHE_LIMIT = 128;
+
+function rememberStaticMergeGeometry(signature, geometry) {
+  const userData = geometry.userData || (geometry.userData = {});
+  userData.spacefaceSharedAsset = true;
+  if (_staticMergeGeometryCache.has(signature)) return;
+  if (_staticMergeGeometryCache.size >= STATIC_MERGE_CACHE_LIMIT) {
+    _staticMergeGeometryCache.delete(_staticMergeGeometryCache.keys().next().value);
+  }
+  _staticMergeGeometryCache.set(signature, geometry);
+}
+
 function mergeMeshGeometries(rec) {
   const first = rec.meshes[0].geometry;
   const attrNames = Object.keys(first.attributes).sort();
@@ -420,11 +459,28 @@ function mergeMeshGeometries(rec) {
     const attr = first.getAttribute(name);
     return { name, itemSize: attr.itemSize, normalized: attr.normalized, Ctor: attr.array.constructor };
   });
+
+  // Signature pass: the merged bytes are a pure function of each source geometry plus its
+  // parent-relative transform. Identical builds therefore share the cached merge.
+  _batchInv.copy(rec.parent.matrixWorld).invert();
+  const sigParts = [first.uuid, String(rec.meshes.length)];
+  for (const mesh of rec.meshes) {
+    _batchLocal.multiplyMatrices(_batchInv, mesh.matrixWorld);
+    sigParts.push(mesh.geometry.uuid);
+    sigParts.push(Array.prototype.join.call(_batchLocal.elements, ','));
+  }
+  const signature = sigParts.join('|');
+  const cached = _staticMergeGeometryCache.get(signature);
+  if (cached) {
+    _staticMergeGeometryCache.delete(signature);
+    _staticMergeGeometryCache.set(signature, cached);
+    return cached;
+  }
+
   const arrays = new Map();
   for (const def of attrDefs) arrays.set(def.name, new def.Ctor(rec.vertexCount * def.itemSize));
 
   let write = 0;
-  _batchInv.copy(rec.parent.matrixWorld).invert();
   for (const mesh of rec.meshes) {
     const g = mesh.geometry;
     const index = g.index;
@@ -458,6 +514,7 @@ function mergeMeshGeometries(rec) {
   }
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
+  rememberStaticMergeGeometry(signature, geometry);
   return geometry;
 }
 
@@ -2146,14 +2203,20 @@ function configureCommonRockPbr(material) {
  * The bare material is keyed apart and tagged, and `upgradeBareRockMaterials` re-skins every live
  * rock the moment the library publishes.
  */
-function astMaterial(typeId, def, tint) {
+function astMaterial(typeId, def, tint, variantIdx = 0) {
   const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
   const bare = wantsCommonSurface && !commonSurfaceReady;
-  const key = `astmat:${typeId}:${tint || 'def'}${bare ? ':bare' : ''}`;
+  // PIC-02: each displacement variant answers the shared maps with its own tint/ORM response so
+  // the five pooled chunks are not one texture painted five times. The library spec owns the
+  // numbers; this key keeps one cached material per variant.
+  const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
+  const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2192,10 +2255,12 @@ function astMaterial(typeId, def, tint) {
       color,
       map: commonSurface && commonSurface.baseColor || null,
       normalMap: commonSurface && commonSurface.normal || null,
-      normalScale: commonSurface ? new THREE.Vector2(0.72, 0.72) : new THREE.Vector2(1, 1),
+      normalScale: commonSurface
+        ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
+        : new THREE.Vector2(1, 1),
       aoMap: commonSurface && commonSurface.orm || null,
-      aoMapIntensity: commonSurface ? 0.78 : 1,
-      roughness: commonSurface ? 1 : def.rough,
+      aoMapIntensity: commonSurface ? variantSpec.aoIntensity : 1,
+      roughness: commonSurface ? variantSpec.roughness : def.rough,
       metalness: commonSurface ? 1 : def.metal,
       roughnessMap: commonSurface && commonSurface.orm
         || (def.variant === 'crystal' ? null : rough),
@@ -2205,7 +2270,10 @@ function astMaterial(typeId, def, tint) {
       flatShading: def.flat,
     });
     if (bare) {
-      material.userData = { ...(material.userData || {}), spacefaceBareRock: { typeId, tint: tint == null ? null : tint } };
+      material.userData = {
+        ...(material.userData || {}),
+        spacefaceBareRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
+      };
     }
     return commonSurface
       ? configureCommonRockPbr(material)
@@ -2226,7 +2294,7 @@ export function upgradeBareRockMaterials(root) {
     if (!tag) return;
     const typeId = canonicalAstTypeId(tag.typeId);
     const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
-    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint);
+    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
     if (next && next !== node.material) {
       node.material = next;
       count += 1;
@@ -2242,7 +2310,7 @@ function buildAsteroid(e) {
   const tint = e.data && e.data.tint; // optional sector tint override
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type
   const geo = astDisplacedGeometry(typeId, def, variantIdx);
-  const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint));
+  const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint, variantIdx));
   mesh.scale.setScalar(R);
   // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
   // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
@@ -2393,6 +2461,68 @@ function structureVisualRadius(e, fallback = 40) {
   return fallback;
 }
 
+// Aperture lensing (feature 19): a shader disc laid a hair ahead of the event-horizon gradient.
+// Concentric interference bands shear into a slow spiral — the "gravitational lensing" read —
+// without spending a framebuffer refraction pass. infrastructureMotion feeds it simTime and a
+// counter-rotation against the portal so the two layers parallax.
+const GATE_LENS_VERTEX = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const GATE_LENS_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorA;      // bright lensing tone
+  uniform vec3 uColorB;      // deep throat tone
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+    // Spiral shear tightens toward the rim so the bands bend like a lensed accretion face.
+    float warp = theta + (1.0 - r) * 2.6 + uTime * 0.45;
+    float rings = sin(r * 34.0 - uTime * 2.4 + sin(warp * 3.0) * 0.8);
+    float band = smoothstep(0.55, 1.0, rings);
+    float counter = smoothstep(0.7, 1.0, sin(r * 17.0 + uTime * 1.3 - warp));
+    // A photon ring near r=0.7 anchors the read; the throat stays dark and the rim feathers out.
+    float photon = exp(-pow((r - 0.72) * 6.0, 2.0));
+    float rimFade = smoothstep(1.0, 0.86, r);
+    float coreDark = smoothstep(0.10, 0.42, r);
+    float a = (band * 0.5 + counter * 0.3 + photon * 0.45) * rimFade * coreDark;
+    vec3 col = mix(uColorB, uColorA, band) + uColorA * photon * 0.6;
+    gl_FragColor = vec4(col * uIntensity, a * uIntensity * 0.42);
+  }
+`;
+
+function gateLensMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:lens:wh' : 'gate:lens', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GateLensWormhole' : 'GateLens',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorA: { value: new THREE.Color(isWormhole ? '#c070ff' : '#39d0ff') },
+        uColorB: { value: new THREE.Color(isWormhole ? '#4a1a6a' : '#0e3a66') },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_LENS_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2463,6 +2593,16 @@ function buildGate(e, pal) {
   portal.scale.setScalar(R);
   orient.add(portal);
 
+  // LENSING disc — shimmering interference bands a hair ahead of the event horizon. The mesh
+  // counter-rotates against the portal in infrastructureMotion so the layers parallax.
+  const lens = new THREE.Mesh(
+    getGeometry('gate:lens', () => new THREE.CircleGeometry(0.72, 40)),
+    gateLensMaterial(isWormhole),
+  );
+  lens.scale.setScalar(R);
+  lens.position.z = R * 0.02;
+  orient.add(lens);
+
   // FOUR CARDINAL PYLONS — strut boxes anchoring the ring, "chunked-on" structure.
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4; // diagonals look heavier than cardinals
@@ -2518,6 +2658,7 @@ function buildGate(e, pal) {
   g.userData.innerRing = innerRing;
   g.userData.portal = portal;
   g.userData.hubGlow = hubGlow;
+  g.userData.lensMesh = lens;
   return g;
 }
 
@@ -2685,19 +2826,8 @@ function applyStructureProfile(g, pal, R, seed) {
 function commodityColor(e) {
   const d = e.data || {};
   if (d.kind === 'credits' || d.kind === 'credit_chip') return '#ffcc44';
+  if (d.commodityId) return commodityPresentationFor(d.commodityId).color;
   if (d.kind === 'module' || d.kind === 'cargo') return '#9b6cff';
-  const cm = d.commodityId && CMDTY_BY_ID.get(d.commodityId);
-  if (cm) {
-    switch (cm.category) {
-      case 'raw ore': return '#c89a6a';
-      case 'gas': return '#7fe0c0';
-      case 'crystal': return '#b878ff';
-      case 'exotic': return '#ff70d0';
-      case 'refined': return '#bcd0e0';
-      case 'salvage': return '#9aa0a8';
-      default: return '#9fd8a0';
-    }
-  }
   return '#7af7d0';
 }
 
@@ -2928,7 +3058,27 @@ function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
 }
 
+// A kill wreck is the ship you killed, not generic debris (CV-SO): the marker carries the
+// same visual-identity fields the victim's own admission read, so this resolves through the
+// same wholeship selector — hostile-family, silhouette, and faction-kit files included.
+// Files without a packaged-live pilot resolve null inside the selector and fall back to the
+// aftermath piece below.
+function hulkPackagedFileForEntity(e) {
+  const data = e && e.data || {};
+  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
+    ? data.hulkVisual
+    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
+  if (!visual) return null;
+  const selection = wholeShipVisualForEntity(
+    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
+    { requiredWholeShip: true },
+  );
+  return selection && selection.file || null;
+}
+
 function wreckPackagedFile(e) {
+  const hulkFile = hulkPackagedFileForEntity(e);
+  if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
   const data = e && e.data || {};
   if (identity.hazardous) return 'places/place_aftermath_aft_engine_section.glb';
@@ -2936,6 +3086,220 @@ function wreckPackagedFile(e) {
     return 'places/place_aftermath_wreck_corvette_turret.glb';
   }
   return WRECK_PACKAGED_FILES[hashId(e && e.id) % WRECK_PACKAGED_FILES.length];
+}
+
+/**
+ * PQ-210.00 — hidden exemplar specs covering every packaged body a mid-round kill can land.
+ * wreckPackagedFile picks across WRECK_PACKAGED_FILES by hashId(id), so the exemplar ids scan
+ * the prefix until every residue class is represented; the hazardous identity resolves to index
+ * 0 of the same table, and the military class resolves to the corvette turret explicitly. These
+ * are admission subjects only — never registered as entities.
+ */
+export function wreckVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:wreck:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:wreck:');
+  const specs = [];
+  const covered = new Set();
+  for (let i = 0; covered.size < WRECK_PACKAGED_FILES.length && i < 64; i += 1) {
+    const id = `${prefix}${i}`;
+    const variant = hashId(id) % WRECK_PACKAGED_FILES.length;
+    if (covered.has(variant)) continue;
+    covered.add(variant);
+    specs.push({
+      id,
+      type: 'wreck',
+      pos: { x: 0, y: 0, z: 0 },
+      radius: 12,
+      alive: true,
+      data: { wreckClass: 'battlefield', parentType: 'ship' },
+    });
+  }
+  specs.push({
+    id: `${prefix}military`,
+    type: 'wreck',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 14,
+    alive: true,
+    data: { wreckClass: 'military', parentType: 'military' },
+  });
+  // A kill on a reactor-hulled ship mints an unstable_reactor_wreck — the glowing core is a
+  // separate emissive material family the plain battlefield/military exemplars never build,
+  // so its first draw linked inside the round (the +19.9 s Group:wreck draw-time link).
+  specs.push({
+    id: `${prefix}reactor`,
+    type: 'wreck',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 14,
+    alive: true,
+    data: { wreckClass: 'battlefield', parentType: 'reactor' },
+  });
+  return specs;
+}
+
+/**
+ * One wreck exemplar per roster ship, carrying the same visual-identity surface the kill
+ * marker stamps (hulkVisual + hulkFactionId). The dead-hulk attach decodes the victim's file
+ * under the 'place' slot — a second blueprint the live hull's 'hull' decode never produces —
+ * so without these the first mid-round kill decodes, instantiates and links the hulk inside
+ * the fight. Admission subjects only — never registered with the sim.
+ */
+export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:hulk:') {
+  const prefix = String(idPrefix || 'crucible-warm:hulk:');
+  const specs = [];
+  const coveredFiles = new Set();
+  for (const ship of shipSpecs || []) {
+    const data = ship && ship.data || {};
+    const visual = {};
+    let any = false;
+    for (const field of ['defId', 'lootTableId', 'silhouette', 'assetRef', 'trafficRole']) {
+      if (data[field]) { visual[field] = data[field]; any = true; }
+    }
+    if (!any) continue;
+    const spec = {
+      id: `${prefix}${ship.id || specs.length}`,
+      type: 'wreck',
+      pos: { x: 0, y: 0, z: 0 },
+      radius: Number.isFinite(ship.radius) ? ship.radius : 10,
+      alive: true,
+      data: {
+        wreckClass: 'battlefield',
+        parentType: 'ship',
+        hulkOfDefId: data.defId || null,
+        hulkVisual: visual,
+        hulkFactionId: ship.factionId || null,
+      },
+    };
+    // Several roster ships resolve the same hulk file (wasp_swarmer/choir_zealot both draw
+    // ashline_dart) — one exemplar per resolved file, not per ship, or the warm decodes and
+    // instantiates the same blueprint half a dozen times.
+    const file = hulkPackagedFileForEntity(spec);
+    if (!file || coveredFiles.has(file)) continue;
+    coveredFiles.add(file);
+    specs.push(spec);
+  }
+  return specs;
+}
+
+/**
+ * PQ-210.00 — one real buildAsteroid root per canonical type. Sector field records promote into
+ * entities by approach, so the first rock of a type the ruleset can spawn must not compose its
+ * leaf/detail materials inside the round. Variant detail layouts are id-seeded, but every
+ * material is shared-cache — one exemplar per type covers all variants' programs.
+ */
+export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:asteroid:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:asteroid:');
+  return Object.keys(AST_TYPE).map((typeId) => ({
+    id: `${prefix}${typeId}`,
+    type: 'asteroid',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 12,
+    alive: true,
+    data: { typeId },
+  }));
+}
+
+/**
+ * The shared leaf pair (displaced geometry + surface material) for one asteroid type and
+ * displacement variant — the exact cached objects buildAsteroid hands to the live leaf mesh.
+ * The pool warm binds these so a pre-created chunk is byte-identical to what real rocks
+ * register with; tint only repaints the material color uniform, so untinted covers it.
+ */
+export function asteroidLeafResources(typeId, variantIdx) {
+  const canonical = canonicalAstTypeId(typeId);
+  const def = AST_TYPE[canonical] || AST_TYPE.ast_common_rock;
+  const variant = Math.abs(variantIdx | 0) % 5;
+  return {
+    typeId: canonical,
+    variant,
+    geometry: astDisplacedGeometry(canonical, def, variant),
+    material: astMaterial(canonical, def, null, variant),
+  };
+}
+
+/**
+ * One leaf mesh per (canonical type, displacement variant) — 6 types × 5 variants. The exemplar
+ * builds above only touch the hashId-picked variant; a rock of another variant promoted
+ * mid-round draws a sibling geometry whose buffers would upload on first draw. Mounting every
+ * leaf pair here lets one compile+touch pass upload them all behind the shell.
+ */
+export function buildAsteroidLeafWarmGroup() {
+  const root = new THREE.Group();
+  root.name = 'SF_AsteroidLeafPrewarm';
+  for (const typeId of Object.keys(AST_TYPE)) {
+    for (let variant = 0; variant < 5; variant++) {
+      const res = asteroidLeafResources(typeId, variant);
+      const mesh = new THREE.Mesh(res.geometry, res.material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.rosterPrewarmLeaf = `asteroid:${res.typeId}:${variant}`;
+      root.add(mesh);
+    }
+    // Leaf pairs alone never mount the variant extras — crystal shards, the translucent gas
+    // hull, ore veins — which are their own shared material families a mid-round rock of that
+    // type draws live (the residual Asteroid_* color link at +21 s of seed 4242). One real
+    // buildAsteroid root per type links them behind the shell; every extra is shared-cache, so
+    // a single exemplar covers every variant of the type.
+    const exemplar = buildAsteroid({
+      id: `leafwarm:${typeId}`, type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+      radius: 12, alive: true, data: { typeId },
+    });
+    if (exemplar) {
+      exemplar.userData.rosterPrewarmLeaf = `asteroid:${typeId}:full`;
+      root.add(exemplar);
+    }
+  }
+  return root;
+}
+
+/**
+ * PQ-210.00 — the fight mints entities that are not roster hulls: the jackal doctrine drops mines,
+ * deploy weapons can field vector mines, and kills drop loot pickups. One exemplar per material
+ * set covers the class — the commodity gem is a single feature-identical program family across
+ * colors, while credit chips and custody pods build different material sets and get their own.
+ * These are admission subjects only — never registered as entities.
+ */
+export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm:spawnable:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:spawnable:');
+  const base = () => ({
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+  });
+  return [
+    { ...base(), id: `${prefix}mine`, type: 'mine', radius: 6, data: { kind: 'mine' } },
+    { ...base(), id: `${prefix}vectormine`, type: 'vectormine', radius: 1.6, data: { kind: 'vector_mine' } },
+    { ...base(), id: `${prefix}pickup:gem`, type: 'pickup', radius: 2.2, data: { kind: 'commodity' } },
+    { ...base(), id: `${prefix}pickup:credit`, type: 'pickup', radius: 2.2, data: { kind: 'credit_chip' } },
+    { ...base(), id: `${prefix}pickup:pod`, type: 'pickup', radius: 2.2, data: { freightCustodyPod: true } },
+    // POI/lane beacons clone their lens material per entity — without an exemplar the clone's
+    // program family is novel the first time a beacon mounts inside a live round.
+    { ...base(), id: `${prefix}beacon`, type: 'beacon', radius: 10, data: {} },
+    { ...base(), id: `${prefix}beacon:dead`, type: 'beacon', radius: 10, data: { laneBeaconDead: true } },
+    // Scripted-intro species the entity-driven cook never sees: the rescue cast's scout is a
+    // drone, the grab pod a payload, the run beacon a rescueExit beacon — each mounts the same
+    // procedural + packaged-body families a live spawn draws. The data flags are exactly the
+    // ones packagedPropSpec reads, so these exemplars carry the live requestAuthoredUpgrade
+    // hook and admit their authored body through the production lane.
+    { ...base(), id: `${prefix}beacon:rescue`, type: 'beacon', radius: 60,
+      data: { rescueExit: true } },
+    { ...base(), id: `${prefix}drone`, type: 'drone', radius: 8, team: 1,
+      factionId: 'faction_scn', data: {} },
+    { ...base(), id: `${prefix}payload`, type: 'payload', radius: 8, data: {} },
+    { ...base(), id: `${prefix}payload:rescue`, type: 'payload', radius: 8,
+      data: { tetherPayload: true, distressBeacon: true, rescuePriority: true } },
+    // Lane traffic haulers bypass the authored path entirely (`case 'freighter'` builds the
+    // procedural mule directly — cockpit-glass clearcoat, tinted hull, glow trims). A hauler
+    // that mounts on the residency-hold release otherwise links that whole family in-flight.
+    // One exemplar per bounded layout variant: laneTrafficVisualEntity quantizes the seeded
+    // scatter to LANE_FREIGHTER_VARIANTS, so warming all eight covers every live hauler's
+    // merged buffers (see laneTrafficVisualEntity for the sharing contract).
+    ...Array.from({ length: LANE_FREIGHTER_VARIANTS }, (_, variant) => ({
+      ...base(), id: `${prefix}freighter:${variant}`, type: 'freighter', radius: 12,
+      data: { laneVariant: variant },
+    })),
+  ];
 }
 
 function isLod0Primitive(primitive) {
@@ -2946,11 +3310,14 @@ function isLod0Primitive(primitive) {
   return true;
 }
 
-function instantiatePackagedPrimitives(record, parent) {
+export function instantiatePackagedPrimitives(record, parent, options = {}) {
+  // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
+  // non-lod0 tag themselves, and filtering them would warm an empty holder.
+  const includeAllLods = options && options.includeAllLods === true;
   const tmp = new THREE.Matrix4();
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
-    if (!isLod0Primitive(primitive)) continue;
+    if (!includeAllLods && !isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
     mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
@@ -2963,7 +3330,7 @@ function instantiatePackagedPrimitives(record, parent) {
   }
 }
 
-function fitPackagedGroup(group, targetRadius) {
+export function fitPackagedGroup(group, targetRadius) {
   if (!group) return;
   group.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(group);
@@ -2978,15 +3345,131 @@ function fitPackagedGroup(group, targetRadius) {
 
 function hideProceduralChildren(root) {
   for (const child of root.children) {
+    // An earlier admitted packaged body stays mounted across re-admissions — only the
+    // procedural substrate layers toggle.
+    if (child.userData && child.userData.packagedAuthoredBody === true) continue;
     child.visible = false;
     child.userData = child.userData || {};
     child.userData.authoredReadableFallbackLayer = true;
   }
 }
 
+/**
+ * Terminal failure of an OPTIONAL packaged body (wreck / drone — never a required-authored hull):
+ * bring the hidden procedural children back as the same-semantic fallback instead of leaving the
+ * entity permanently invisible. Verdicts still inside the bounded retry budget stay 'unavailable'
+ * so the renderer's retryFailedAuthoredAdmission poll can re-arm the admission — the flag that
+ * poll reads (`authoredReadableFallbackRetained`) is only set once the fallback is truly on
+ * screen, which is also what keeps a late retry from popping a second identity over it.
+ */
+function restorePackagedBodyFallback(root, reason) {
+  const data = root.userData;
+  const attempts = data.authoredAdmissionRetryCount || 0;
+  if (authoredAdmissionRetriableStatus(data.authoredAssetState)
+      && attempts < AUTHORED_ADMISSION_RETRY_MAX) {
+    return false;
+  }
+  for (const child of root.children) {
+    if (child.userData && child.userData.authoredReadableFallbackLayer === true) {
+      child.visible = true;
+    }
+  }
+  data.authoredReadableFallbackRetained = true;
+  data.authoredAssetState = 'same-semantic-fallback';
+  data.authoredVisualRoot = 'procedural-packaged-body-fallback';
+  data.authoredFallbackReason = reason;
+  data.renderContract = {
+    ...(data.renderContract || {}),
+    assetBoundary: 'same-semantic packaged-body fallback',
+    gracefulFallback: true,
+  };
+  return true;
+}
+
+// Dead-hulk presentation: the victim's own authored hull with every light out. Shared
+// authored materials feed live ships, so each mesh gets a clone — killed emissive, darkened
+// and roughened body paint. Additive sheets are pure glow (engine throats, nav bloom): a dead
+// hull emits nothing, so those meshes hide outright instead of cloning dark.
+const HULK_COLOR_SCALE = 0.42;
+const HULK_ENVMAP_SCALE = 0.3;
+const HULK_MIN_ROUGHNESS = 0.92;
+// A fresh kill is still hot: the clones carry the same ember hue as the hot-vein language
+// (VEIN_EMBER in asteroidMotionPresentation.js) and cool to zero over a few seconds of sim
+// time. Emissive colour + intensity are uniforms — fading them never re-keys a program.
+export const HULK_EMBER_COLOR = 0xff9a3c;
+export const HULK_EMBER_SECONDS = 6;
+export const HULK_EMBER_PEAK = 1.5;
+
+export function hulkEmberIntensityAt(ageS) {
+  const age = Number(ageS);
+  if (!Number.isFinite(age) || age <= 0) return HULK_EMBER_PEAK;
+  if (age >= HULK_EMBER_SECONDS) return 0;
+  const left = 1 - age / HULK_EMBER_SECONDS;
+  return HULK_EMBER_PEAK * left * left;
+}
+
+export function updateHulkEmber(ember, simTime) {
+  if (!ember || !ember.mats) return;
+  const intensity = hulkEmberIntensityAt((Number(simTime) || 0) - (Number(ember.killedAt) || 0));
+  for (const m of ember.mats) {
+    if (m) m.emissiveIntensity = intensity;
+  }
+}
+
+export function deadenPackagedHulk(group) {
+  const clones = new Map();
+  if (group && typeof group.traverse === 'function') {
+    group.traverse((node) => {
+      if (!node || !node.isMesh) return;
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
+        node.visible = false;
+        return;
+      }
+      const dead = mats.map((m) => {
+        if (!m) return m;
+        let clone = clones.get(m);
+        if (!clone) {
+          clone = m.clone();
+          // Material.clone() drops own-property shader patches — without these the dead
+          // material keys a fresh program and links it at the kill moment (the +4
+          // wreck_PackagedBody links). The dead state only moves uniforms, so the clone
+          // should share the live hull's already-linked program.
+          clone.onBeforeCompile = m.onBeforeCompile;
+          clone.customProgramCacheKey = m.customProgramCacheKey;
+          if (clone.color && typeof clone.color.multiplyScalar === 'function') {
+            clone.color.multiplyScalar(HULK_COLOR_SCALE);
+          }
+          // Ember hue at zero intensity: dark now, hot later only through emissiveIntensity.
+          if (clone.emissive && typeof clone.emissive.setHex === 'function') {
+            clone.emissive.setHex(HULK_EMBER_COLOR);
+          }
+          clone.emissiveIntensity = 0;
+          if ('envMapIntensity' in clone) {
+            clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
+          }
+          if ('roughness' in clone && Number.isFinite(clone.roughness)) {
+            clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
+          }
+          clone.needsUpdate = true;
+          clones.set(m, clone);
+        }
+        return clone;
+      });
+      node.material = Array.isArray(node.material) ? dead : dead[0];
+      node.userData.hulkDeadBody = true;
+    });
+    group.userData.hulkDeadBody = true;
+  }
+  return [...clones.values()];
+}
+
 function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
+  // The packaged file IS the victim's own hull only when the hulk selector chose it —
+  // a wreck that fell back to a generic aftermath piece must not be dead-stated.
+  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
   hideProceduralChildren(root);
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
@@ -2997,41 +3480,114 @@ function attachPackagedBody(root, relativeFile, entity) {
     gracefulFallback: false,
   };
   const start = (renderer, scene, requestOptions = {}) => {
+    const state = root.userData.authoredAssetState;
     const existing = root.userData.authoredUpgradePromise;
     // An orphaned admission settles its promise while the kept boundary stays mounted —
     // honouring it would suppress the restored owner's re-admission forever.
-    if (existing && root.userData.authoredAssetState !== 'orphaned-before-swap') return existing;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer) return null;
-    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    if (state === 'authored') return Promise.resolve(true);
     root.userData.authoredAssetState = 'loading';
-    const completion = loadAuthoredPart(url, {
+    const liveEntity = boundaryLiveEntity(root, entity);
+    const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
+      ? requestOptions.loadAuthoredPart
+      : loadAuthoredPart;
+    const admissionOptions = () => ({
+      ...residencyOptionsForBoundary(liveEntity, root, renderer),
+      ...requestOptions,
+    });
+    // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
+    // is compiled and its buffers uploaded while still detached, and publication waits on the
+    // opening-graph release. Attaching straight to the live root linked the packaged materials
+    // inside the first bloomScene draw — a hitch at the exact kill moment — and left the
+    // pending wreck drawing nothing while 'awaiting-authored-admission'.
+    const completion = loadPart(url, {
       renderer,
       slot: 'place',
       optional: true,
       ...requestOptions,
-    }).then((record) => {
+    }).then(async (record) => {
       if (!record || !root.parent) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+        if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
         return false;
       }
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
+      packaged.userData.packagedAuthoredBody = true;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
+      }
+      if (deadHulk) {
+        const emberMats = deadenPackagedHulk(packaged);
+        packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
+        if (emberMats.length) {
+          root.userData.hulkEmber = {
+            mats: emberMats,
+            killedAt: Number(entity && entity.data && entity.data.killedAt) || 0,
+          };
+        }
       }
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);
+      root.userData.authoredAssetState = 'compiling-pipelines';
+      try {
+        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+      } catch (error) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed');
+        // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
+        // visual to publish — a breadcrumb, not a composition defect.
+        const causes = error && Array.isArray(error.errors) && error.errors.length
+          ? error.errors
+          : [error];
+        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+          || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
+        if (ownerInactive) {
+          if (root.parent) {
+            markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
+          } else {
+            root.userData.authoredAssetState = 'unavailable';
+          }
+        } else {
+          root.userData.authoredAssetState = 'unavailable';
+          restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
+          console.warn('[visualFactory] packaged body pipeline admission failed', error);
+        }
+        return false;
+      }
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      const publicationWait = waitForOpeningGraphPublicationRelease();
+      if (publicationWait) await publicationWait;
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
+      // procedural children while this admission was mid-flight.
+      hideProceduralChildren(root);
       root.add(packaged);
       canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
+      root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
-    }).catch(() => {
-      root.userData.authoredAssetState = 'unavailable';
+    }).catch((error) => {
+      if (root.parent && admissionOwnerInactive(null, entity, error)) {
+        markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
+      } else {
+        root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-load-error');
+      }
       return false;
     });
     root.userData.authoredUpgradePromise = completion;
@@ -3751,7 +4307,7 @@ const BOMB_ACCENTS = Object.freeze({
 //   anchor      dense box slug + collar rings + pylons    — the ballast
 function buildBomb(e) {
   const payloadId = String(e && e.data && e.data.bombId || 'bomb_frag');
-  const R = Math.max(0.6, Number(e && e.radius) || 1.4);
+  const R = Math.max(0.6, Number(e && e.data && e.data.visualRadius) || 1.4);
   const g = new THREE.Group();
 
   const shell = getMaterial('bomb:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
@@ -4148,10 +4704,22 @@ function buildBeacon(e) {
 // fittings, so it cannot ride the ship path raw — a default kestrel in player cyan would read as a
 // friendly fighter. Wrap it as a neutral-team Mule hauler: the same silhouette the manufactured
 // routes are described by, in a neutral gray instead of the player's palette.
+//
+// The build seeds its deck-scatter/paint layout with hashId(id) — unbounded per entity, so every
+// hauler's merged static-batch geometry is byte-unique and a mid-round spawn owes a first-draw
+// upload inside the fight. Bound the layout identity to LANE_FREIGHTER_VARIANTS instead: the warm
+// exemplar set builds every variant, each variant's merged buffers are shared+cached, and a live
+// hauler's first draw is all resident memory. Variety stays visible (8 distinct layouts), just
+// finite — the same contract the asteroid field already keeps (5 displacement variants/rock type).
+const LANE_FREIGHTER_VARIANTS = 8;
 function laneTrafficVisualEntity(e) {
   const data = (e && e.data) || {};
+  const variant = Number.isFinite(Number(data.laneVariant))
+    ? Math.abs(data.laneVariant | 0) % LANE_FREIGHTER_VARIANTS
+    : hashId(e && e.id) % LANE_FREIGHTER_VARIANTS;
   return {
     ...e,
+    id: `lane-freighter-variant:${variant}`,
     team: 2,
     data: { ...data, defId: data.defId || 'ship_mule' },
   };
@@ -4160,11 +4728,18 @@ function laneTrafficVisualEntity(e) {
 function buildPayload(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
-  const shell = getMaterial('payload:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x46515a, roughness: 0.64, metalness: 0.58,
+  const presentation = e && e.data && e.data.commodityId
+    ? commodityPresentationFor(e.data.commodityId)
+    : null;
+  const shellKey = presentation ? `payload:shell:${presentation.id}` : 'payload:shell';
+  const bandKey = presentation ? `payload:band:${presentation.id}` : 'payload:band';
+  const shell = getMaterial(shellKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: presentation ? new THREE.Color(presentation.color).multiplyScalar(0.45) : 0x46515a,
+    roughness: 0.64, metalness: 0.58,
   }), SHARED_MATERIAL_ROLE.HULL));
-  const band = getMaterial('payload:band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0xd7862c, roughness: 0.5, metalness: 0.34,
+  const band = getMaterial(bandKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: presentation ? presentation.color : 0xd7862c,
+    roughness: 0.5, metalness: 0.34,
   }), SHARED_MATERIAL_ROLE.HULL));
   const body = new THREE.Mesh(
     getGeometry('payload:body', () => new THREE.CylinderGeometry(0.42, 0.48, 1.25, 10).rotateZ(Math.PI / 2)),
@@ -4192,6 +4767,10 @@ function buildPayload(e) {
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
   g.userData.animated = true;
+  if (presentation) {
+    g.userData.commodityPresentationId = presentation.id;
+    g.userData.commodityPresentationColor = presentation.color;
+  }
   return g;
 }
 
@@ -4229,7 +4808,7 @@ export function createVisualFactory() {
         if (!e) return null;
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
-          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e)));
+          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
@@ -4241,7 +4820,7 @@ export function createVisualFactory() {
           case 'bomb': return stampBuiltVisual(buildBomb(e));
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
-          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e));
+          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);

@@ -26,6 +26,8 @@
 // optionally intercepts the legacy "toast" event so old emitters still route through the arbiter,
 // WITHOUT double-surfacing (a flag marks arbiter-originated toasts as pass-through).
 
+import { openingInstructionSolo } from './hudAttention.js';
+
 // Default priority per channel — higher wins the floor.
 //
 // Ordering law (spec2/00 §2 pillar 3 / SPEC3-F10 §40): danger > tutorial > objective > comms >
@@ -76,8 +78,13 @@ export function isDangerVoice(entry) {
 /** Whether an entry may hold the transient floor under the current presentation policy. */
 function canHoldFloor(entry, policy = {}) {
   if (!entry) return false;
-  if (!policy.tutorialProtect) return true;
-  return entry.channel === 'tutorial' || isDangerVoice(entry);
+  if (isDangerVoice(entry)) return true;
+  if (policy.tutorialProtect) return entry.channel === 'tutorial';
+  // Opening one-instruction rule (hudAttention): inside the first two minutes with an objective
+  // pending, the floor holds only the instruction channels — every other sentence retires until
+  // the player has done the thing.
+  if (policy.openingSolo) return entry.channel === 'tutorial' || entry.channel === 'objective';
+  return true;
 }
 
 /**
@@ -345,7 +352,10 @@ export const voiceArbiter = {
   },
 
   _policy() {
-    return { tutorialProtect: isOnboardingTeaching(this.state) };
+    return {
+      tutorialProtect: isOnboardingTeaching(this.state),
+      openingSolo: openingInstructionSolo(this.state),
+    };
   },
 
   // Shared presentation path for update() and dismiss() so clear/surface stay one floor.

@@ -67,7 +67,7 @@ const CORE_SECTORS = [
         center: { x: 720, z: -260 }, clusterRadius: 380, count: 42,
       },
       {
-        id: 'f_helios_outer', type: 'ast_common_rock', countWeight: 0.7,
+        id: 'f_helios_outer', type: 'ast_metallic', countWeight: 0.7,
         center: { x: -900, z: 640 }, clusterRadius: 320, count: 28,
       },
     ],
@@ -85,16 +85,43 @@ const CORE_SECTORS = [
           body: "Twenty-four candles burn around a deliberately dark twenty-fifth plinth. Its black-box record carries one telemetry smear on the Pit convoy's final course.",
         },
       },
-      { id: 'poi_helios_yard', type: 'derelict', name: 'Outer Yard Derelict' },
+      {
+        id: 'poi_helios_yard',
+        type: 'derelict',
+        name: 'Outer Yard Derelict',
+        discoveryPlate: {
+          title: 'Outer Yard Decommission Frame',
+          body: 'The stripped structural rib of an early transport berth, towed into the outer debris cluster when Helios Station expanded. Cold welds and cutting torch scars mark where the modular gantry was salvaged.',
+        },
+      },
       // Lane furniture (design/fiction/LANE_FURNITURE.md). Deliberately placed ON the corridor a
       // new pilot actually flies — spawn, tutorial beacon, starter seam — because the camera can
       // only see ~50 world units of ground plane and clutter parked anywhere else is radar content.
       { id: 'poi_helios_lane_pin', type: 'beacon', name: 'Corridor Pin 44-C' },
       { id: 'poi_helios_tally', type: 'beacon', name: 'Helios Weigh-Point' },
       { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim' },
-      { id: 'poi_helios_locker', type: 'derelict', name: 'Bonded Cold Locker' },
+      {
+        id: 'poi_helios_locker',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'Bonded Cold Locker',
+        discoveryPlate: {
+          title: 'Bonded Cold Locker',
+          body: 'A pressurized ore-sample locker anchored to the starter seam bedrock. Heavy Concord inspection seals from the initial Helios survey remain intact over an untouched specimen compartment.',
+        },
+      },
       { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
       { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
+      {
+        // The chart names the real wreck, not a second derelict prop: the unique-wreck
+        // program owns the body (rumor -> bearing ring -> fixed position), so this row
+        // carries no pos and runtimeOwner keeps _spawnPOIs from minting a decoy beside it.
+        id: 'poi_helios_choir_tender',
+        type: 'wreck',
+        name: 'Relief-Freighter Choir-Tender',
+        uniqueWreckId: 'wreck_choir_tender',
+        runtimeOwner: 'uniqueWrecks',
+      },
     ],
   },
   {
@@ -170,14 +197,15 @@ const CORE_SECTORS = [
     stations: [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
         chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
-      { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel'] },
+      { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'],
+        chartNote: 'Pumps for the slag crews, and a posted board. The Choir posts shift work in verses.' },
     ],
     fields: [
       { id: 'f_vesta_1', type: 'ast_metallic',    countWeight: 1.0 },
       { id: 'f_vesta_2', type: 'ast_metallic',    countWeight: 1.0 },
       { id: 'f_vesta_3', type: 'ast_crystalline', countWeight: 0.6 },
     ],
-    hazards: [ { type: 'radiation', center: { x: -800, z: 500 }, radius: 600, intensity: 0.4 } ],
+    hazards: [ { type: 'radiation', center: { x: -540, z: -480 }, radius: 600, intensity: 0.4 } ],
     pois: [
       { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' },
       {
@@ -329,7 +357,9 @@ const CORE_SECTORS = [
     id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08, charted: false,
     factionId: 'faction_reach', position: { x: -7, y: 8 }, worldRadius: 5000,
     palette: SECTOR_PALETTE_CLASSES.fringe,
-    trafficPerMin: 0, enemyDensity: 0.70, enemyLevel: [7, 11],
+    // WORLD-07 — the Bazaar is the Reach's market stop, not hollow frontier: a light apron of
+    // haulers/smugglers/couriers clusters near station_sker. enemyDensity stays authored.
+    trafficPerMin: 9, enemyDensity: 0.70, enemyLevel: [7, 11],
     neighbors: ['sector_pallas_drift', 'sector_veil_nebula'],
     stations: [
       { id: 'station_sker', name: 'Sker Bazaar', type: 'blackmarket', factionId: 'faction_reach', size: 'M', services: ['black_market','repair','refuel','missions'], repGated: true,

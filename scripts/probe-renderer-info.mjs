@@ -2,7 +2,7 @@
 // Headed or headless Playwright probe for Three.js renderer.info telemetry.
 // Measures draw calls, triangles, geometry/texture allocation stability, and mid-flight shader compilations.
 
-import { createServer } from 'node:http';
+import { createServer, get as httpRequestGet } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ async function isServerRunning(port) {
 }
 
 function httpGet(url, cb) {
-  import('node:http').then(({ get }) => get(url, cb));
+  return httpRequestGet(url, cb);
 }
 
 async function ensureLocalServer() {
@@ -90,16 +90,25 @@ async function main() {
 
     await page.waitForSelector('#gl-canvas', { timeout: 15_000 });
     console.log('[perf:renderer-info] Waiting for SpaceFace boot...');
-    await page.waitForFunction(() => window.SF && window.SF.state, { timeout: 20_000 });
+    await page.waitForFunction(() => window.SF && window.SF.state, null, { timeout: 20_000 });
 
     console.log('[perf:renderer-info] Starting flight...');
     await page.evaluate(() => {
-      if (window.SF.helpers && typeof window.SF.helpers.startNewGame === 'function') {
-        window.SF.helpers.startNewGame({ seed: 47 });
+      if (window.SF.bus && typeof window.SF.bus.emit === 'function') {
+        window.SF.bus.emit('game:new', { seed: 47 });
       }
     });
 
-    await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 15_000 });
+    // Authored-visual readiness can take well over a minute on software/integrated WebGL.
+    // Playwright's signature is waitForFunction(pageFunction, arg, options) — passing the
+    // options object as `arg` silently drops the timeout and falls back to the 30 s default.
+    await page.waitForFunction(
+      () => window.SF.state && (window.SF.state.mode === 'flight' || window.SF.state.mode === 'gameover'),
+      null,
+      { timeout: 180_000, polling: 500 },
+    );
+    const mode = await page.evaluate(() => window.SF.state.mode);
+    if (mode !== 'flight') throw new Error(`New game did not reach flight (mode=${mode})`);
 
     // Enable renderer info monitor
     await page.evaluate(() => {

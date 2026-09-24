@@ -35,8 +35,9 @@ export function createSignalTableaux(host) {
   // never a per-act rainbow. Lighting shades are compiled once into 48 bins.
   const materialRGB = [[27,40,43],[56,75,76],[133,161,155],[167,118,79],[97,165,164],[6,12,15],[0,0,0],[96,87,79]];
   const shades = materialRGB.map((rgb,m) => Array.from({length:48},(_,i) => {
-    const q = i/47, k = m===6 ? 0 : .35+q*1.12;
-    return `rgb(${Math.round(rgb[0]*k)},${Math.round(rgb[1]*k)},${Math.round(rgb[2]*k)})`;
+    // Steeper than a linear ramp so shadowed facets stay dark and lit metal separates.
+    const q = i/47, k = m===6 ? 0 : .20+Math.pow(q,.85)*1.35;
+    return `rgb(${Math.round(clamp(rgb[0]*k,0,255))},${Math.round(clamp(rgb[1]*k,0,255))},${Math.round(clamp(rgb[2]*k,0,255))})`;
   }));
   const tracks=[];
   let object=0,group=0,totalPoints=0;
@@ -396,11 +397,16 @@ export function createSignalTableaux(host) {
     cam.zoom=1.02+.075*Math.sin(qt(t,.017)+2.2);
     cam.roll=.016*Math.sin(qt(t,.013)+.9);
   }
-  function paint(target,w,h,a,state){
+  function paint(target,w,h,a,state,emitter){
     evalCamera(state.time,state.reduced);
     const l=layout(w,h,a);
     target.setTransform(1,0,0,1,0,0);
-    target.fillStyle='#04080b';target.fillRect(0,0,w,h);
+    target.globalAlpha=1;target.globalCompositeOperation='source-over';
+    // The GPU path wants an emitter: ink where the sculptures are, alpha 0
+    // everywhere else, so the feedback field can live in the gaps. An opaque
+    // plate made the history matte the whole frame and wiped the trail.
+    if(emitter)target.clearRect(0,0,w,h);
+    else{target.fillStyle='#04080b';target.fillRect(0,0,w,h);}
     target.setTransform(l[0],0,0,l[1],l[2],l[3]);
     if(cam.roll)target.rotate(cam.roll);
     target.lineJoin='bevel';target.lineCap='round';
@@ -421,20 +427,10 @@ export function createSignalTableaux(host) {
     target.globalCompositeOperation='screen';
     for(let n=0;n<order.length;n++){const k=order[n],p=tracks[k];if(p.face||p.object===4||!p.emission||alphas[k]<.1||k%3)continue;target.globalAlpha=alphas[k]*.14;target.strokeStyle=shades[3][28];target.lineWidth=widths[k]*.74;trace(target,p);target.stroke();}
     target.setTransform(1,0,0,1,0,0);target.globalAlpha=1;target.globalCompositeOperation='source-over';
-    // ── optical grade: halo, vignette, travelling sheen, film grain ──────
-    // Halo: a softened additive copy of the frame; near object edges it reads
-    // as glow and light-wrap instead of a blurred postage stamp.
-    target.save();
-    target.globalAlpha=.20;target.globalCompositeOperation='screen';
-    if('filter' in target)target.filter='blur(7px) saturate(118%)';
-    target.drawImage(target.canvas,0,0);
-    target.restore();
-    // Edge-attached second pass: crisp frame under its own blur.
-    target.save();
-    target.globalAlpha=.09;target.globalCompositeOperation='screen';
-    if('filter' in target)target.filter='blur(2px)';
-    target.drawImage(target.canvas,0,0);
-    target.restore();
+    // Glow, grain and the vignette belong to the display pass. Baking two
+    // full-frame blurs into the 30 Hz upload both smeared the sculptures and
+    // stalled the worker that is also driving WebGL.
+    if(state.reduced||emitter)return;
     // Vignette, rebuilt on size change only.
     if(!paint._vig&&paint._vigTried!==w*4096+h){paint._vigTried=w*4096+h;
       const v=makeCanvas(Math.max(2,w),Math.max(2,h));
@@ -480,7 +476,7 @@ export function createSignalTableaux(host) {
   function render(options=renderOptions){
     const w=clamp(Math.round(Number(options.width)||960),2,1440),h=clamp(Math.round(Number(options.height)||540),2,900);
     const a=Number.isFinite(options.aspect)&&options.aspect>0?options.aspect:w/h;
-    const c=getCanvas(w,h);if(!c)return null;aspect=a;paint(ctx,w,h,a,sample(options.time,options.act,!!options.reduced));return c;
+    const c=getCanvas(w,h);if(!c)return null;aspect=a;paint(ctx,w,h,a,sample(options.time,options.act,!!options.reduced),!!options.emitter);return c;
   }
   function emit(time,act,reduced,draw){const f=sample(time,act,reduced);for(let n=0;n<order.length;n++){const k=order[n],p=tracks[k];draw.begin(p,shades,alphas[k]);for(let j=0;j<p.count;j++)draw.point(positions[p.offset+j*2],positions[p.offset+j*2+1],j===0);draw.end(p,shades,alphas[k]);}return f;}
   function injectFallback(lum,tint,sw,sh,a,time,act,reduced){
@@ -502,7 +498,7 @@ export function createSignalTableaux(host) {
     if(!historyA){historyA=makeCanvas(rw,rh);historyB=makeCanvas(rw,rh);if(!historyA||!historyB)return false;ha=historyA.getContext('2d');hb=historyB.getContext('2d');if(!ha||!hb)return false;}
     const reset=rw!==historyW||rh!==historyH||time<historyTime||reduced!==historyReduced;
     if(rw!==historyW||rh!==historyH){historyA.width=historyB.width=rw;historyA.height=historyB.height=rh;historyW=rw;historyH=rh;}
-    Object.assign(renderOptions,{width:rw,height:rh,aspect:w/h,time,act,reduced});const source=render(renderOptions);if(!source)return false;
+    Object.assign(renderOptions,{width:rw,height:rh,aspect:w/h,time,act,reduced,emitter:false});const source=render(renderOptions);if(!source)return false;
     hb.setTransform(1,0,0,1,0,0);hb.clearRect(0,0,rw,rh);
     if(!reset&&!reduced){
       const step=clamp(dt*60,0,3),angle=.0015*step*Math.sin(time*.09),s=1+.0007*step,c=Math.cos(angle)*s,sn=Math.sin(angle)*s;
@@ -526,7 +522,7 @@ export function createSignalTableaux(host) {
     gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,texture);
     const scale=Math.min(1,1280/Math.max(2,w),800/Math.max(2,h)),tw=Math.max(2,Math.round(w*scale)),th=Math.max(2,Math.round(h*scale));
     const resized=tw!==textureW||th!==textureH,due=resized||reduced!==lastGpuReduced||(!reduced&&(time<lastUpload||time-lastUpload>=1/30-1e-6));let enabled=textureW>0;
-    try{if(due){Object.assign(renderOptions,{time,act,width:tw,height:th,aspect:w/h,reduced});const image=render(renderOptions);if(image){
+    try{if(due){Object.assign(renderOptions,{time,act,width:tw,height:th,aspect:w/h,reduced,emitter:true});const image=render(renderOptions);if(image){
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
       if(resized)gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,image);
       textureW=tw;textureH=th;lastUpload=time;lastGpuReduced=reduced;uploads++;enabled=true;

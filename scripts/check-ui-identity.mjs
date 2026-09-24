@@ -28,7 +28,9 @@ const checks = [
       'sf-overview',
       'createTargetPanel(ctx)',
       'sf-target-arcs',
-      'formatDestinationLine',
+      // f0480ee6f moved the destination painter from hudAttention's formatDestinationLine to
+      // flightDestinationSurface (one destination line: where, then the readings).
+      'flightDestinationSurface(state, command)',
     ],
     forbids: [
       'SHIP CONDITION',

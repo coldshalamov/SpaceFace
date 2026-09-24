@@ -24,7 +24,11 @@ import {
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
+import { createWaveform } from '../../orrery/waveform.js';
+import { typewriter, decrypt } from '../../orrery/text.js';
+import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import {
@@ -49,6 +53,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const STYLE_ID = 'sf-station-bar-fh';
 function ensureBarStyle() {
@@ -98,7 +103,7 @@ export function openTethysRumorGuidanceMap(ctx, stationId) {
 
 /** An offer's one verb as a primary word (the `sx-btn-primary` of old, in kit clothes). */
 function offerWord(attrs, label) {
-  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
+  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" ${stationControlAttrs('offer')} class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
 }
 
 export function createBarScreen(ctx) {
@@ -112,6 +117,12 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let saidText = null;   // what the selected contact just said
+  // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
+  // spoken with a Waveform breathing under the name, the words resolving on arrival.
+  let wave = null;
+  let spokenText = null;   // the line the waveform has already voiced
+  let stopType = null;
+  const stopDecrypt = [];
   let pendingMissionOffer = null;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
@@ -231,7 +242,7 @@ export function createBarScreen(ctx) {
     const offer = pendingFrontierRumorOffer;
     if (!offer) return '';
     return `<section class="sx-bar-offer" aria-label="Frontier rumor card">` +
-      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${escapeHtml(offer.sectorName)} search area · ${fmt(offer.price)} cr.</p>` +
+      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${entitySpanHtml('sector:' + offer.sectorId, escapeHtml(offer.sectorName))} search area · ${fmt(offer.price)} cr.</p>` +
       `<p class="k-sentence sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
       offerWord(`data-buy-frontier-rumor="${escapeHtml(offer.id)}"`, `Buy rumor card · ${fmt(offer.price)} cr`) +
     `</section>`;
@@ -278,8 +289,9 @@ export function createBarScreen(ctx) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'k-word k-word--emph k-word--primary sx-bar-offer__verb';
+    markStationControl(button, 'open-wreck-map');
     button.setAttribute('data-open-vonn-freight-loss-map', '');
-    button.textContent = 'Open Sker-Run wreck map';
+    button.textContent = stationControlLabel('open-wreck-map');
     button.setAttribute('aria-label', 'Open the system map at the verified Sker-Run freight wreck.');
     item.append(button);
     foot.append(item);
@@ -302,7 +314,7 @@ export function createBarScreen(ctx) {
       list.map((c) => {
         const on = c.id === selectedId;
         return (
-          `<li><button type="button" class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
+          `<li><button type="button" ${stationControlAttrs('contact')} class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
             `${escapeHtml(c.name || 'Contact')}` +
             `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))}</span>` +
           `</button></li>`
@@ -340,7 +352,7 @@ export function createBarScreen(ctx) {
         `</p>` +
         `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
           (choices.length
-            ? choices.map((ch) => `<li><button type="button" class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
+            ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
         `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
@@ -348,8 +360,35 @@ export function createBarScreen(ctx) {
     appendVonnFreightLossMapOffer(state, c);
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 240 }); } catch (_) {} }
+    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 640, eager: true }); } catch (_) {} }
     dressStage();
+    composeStage(c);
+  }
+
+  /** The waveform under the name; a fresh line is typed while the bars speak; labels resolve. */
+  function composeStage(c) {
+    if (wave) { wave.dispose(); wave = null; }
+    if (stopType) { stopType(); stopType = null; }
+    for (const stop of stopDecrypt.splice(0)) stop();
+    const idEl = stageEl.querySelector('.sx-talk__id');
+    const nameEl = stageEl.querySelector('.sx-talk__name');
+    if (idEl && nameEl) {
+      const host = document.createElement('div');
+      host.className = 'orr-bar-wave';
+      nameEl.insertAdjacentElement('afterend', host);
+      wave = createWaveform(host, { bars: 30 });
+    }
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+      spokenText = saidText;
+      const text = reply.textContent;
+      const ms = Math.min(6000, 300 + text.length * 22);
+      if (wave) wave.speak(ms);
+      stopType = typewriter(reply, text, { cps: 46, onDone: () => { if (wave) wave.idle(); stopType = null; } });
+    } else if (!saidText) spokenText = null;
+    if (reducedMotion()) return;
+    const targets = [...stageEl.querySelectorAll('.sx-talk__role, .sx-choice')].filter(Boolean);
+    targets.forEach((node, i) => { const text = node.textContent; if (text) stopDecrypt.push(decrypt(node, text, { duration: 220, delay: 40 + i * 40 })); });
   }
 
   // ---------- leads: intel + survey + board jobs ----------
@@ -371,16 +410,16 @@ export function createBarScreen(ctx) {
 
     const surveyRow = survey
       ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
-          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
             `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
-          `<button type="button" class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>Buy · ${fmt(survey.price)} cr</button>` +
+          `<button type="button" ${stationControlAttrs('buy-survey')} class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>${stationControlLabel('buy-survey')} · ${fmt(survey.price)} cr</button>` +
         `</li>`
       : '';
 
     const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
-        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${mid(m) ? entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract')) : escapeHtml(m.title || 'Contract')}</span>` +
           `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
-        `<button type="button" class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
+        `<button type="button" ${stationControlAttrs('inspect-lead')} class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">${stationControlLabel('inspect-lead')}</button>` +
       `</li>`).join('');
 
     leadsEl.innerHTML =
@@ -388,7 +427,7 @@ export function createBarScreen(ctx) {
       (surveyRow || leadRows
         ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" class="k-word k-word--fine sx-bar__log" data-log>Open the board</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}</button></li></ul>` +
       `<p class="k-caps sx-intel__head">Intel</p>` +
       intelHtml;
     dressLeads();
@@ -502,6 +541,7 @@ export function createBarScreen(ctx) {
       emitBarContactChoice(ctx.bus, {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
+        role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
@@ -551,6 +591,11 @@ export function createBarScreen(ctx) {
     el,
     onShow(c) { renderAll((c || ctx).state || {}); },
     refresh(c) { renderAll((c || ctx).state || {}); },
-    dispose() { pinnedContact = null; },
+    dispose() {
+      pinnedContact = null;
+      if (wave) { wave.dispose(); wave = null; }
+      if (stopType) { stopType(); stopType = null; }
+      for (const stop of stopDecrypt.splice(0)) stop();
+    },
   };
 }

@@ -350,3 +350,47 @@ test('PresentationJournal terminal close drains retained records and rejects eve
   assert.equal(rebuilding.needsRebuild(), false);
   assert.equal(rebuilding.getDiagnostics().rebuildRequired, false);
 });
+
+test('PresentationJournal coalesces cross-tick transforms while the prior record is retained', () => {
+  const journal = createPresentationJournal(32);
+  const ship = { id: 7, type: 'ship', pos: { x: 1, y: 0, z: 2 }, rot: 0 };
+  assert.equal(journal.recordSpawn(1, ship), 1);
+  const first = journal.recordTransform(2, ship);
+  assert.equal(first, 2);
+  ship.pos = { x: 4, y: 0, z: 6 };
+  ship.rot = 0.5;
+  // Later tick, prior still retained → same sequence, not a new append.
+  assert.equal(journal.recordTransform(5, ship), first);
+  const scratch = createPresentationJournalRecord();
+  assert.equal(journal.copySequence(first, scratch), true);
+  assert.equal(scratch.tick, 5);
+  assert.equal(scratch.x, 4);
+  assert.equal(scratch.z, 6);
+  assert.equal(scratch.rot, 0.5);
+  assert.equal(journal.getDiagnostics().transformCoalesceCount, 1);
+  assert.equal(journal.getDiagnostics().transformCount, 1);
+  assert.equal(journal.getWriteSequence(), 2);
+});
+
+test('PresentationJournal cross-tick coalesce microbench stays under append-heavy baseline', () => {
+  const journal = createPresentationJournal(4096);
+  const entities = [];
+  for (let id = 1; id <= 64; id++) {
+    const e = { id, type: 'ship', pos: { x: id, y: 0, z: 0 }, rot: 0, prevPos: { x: id, y: 0, z: 0 }, prevRot: 0 };
+    entities.push(e);
+    journal.recordSpawn(0, e);
+  }
+  const ticks = 120;
+  for (let tick = 1; tick <= ticks; tick++) {
+    for (const e of entities) {
+      e.prevPos.x = e.pos.x;
+      e.pos.x += 0.1;
+      journal.recordTransformIfChanged(tick, e);
+    }
+  }
+  const diag = journal.getDiagnostics();
+  // One transform per entity retained (cross-tick coalesce), not ticks*entities.
+  assert.equal(diag.transformCount, entities.length);
+  assert.ok(diag.transformCoalesceCount >= entities.length * (ticks - 1));
+  assert.equal(journal.getPendingCount(), entities.length + entities.length); // spawns + transforms
+});
