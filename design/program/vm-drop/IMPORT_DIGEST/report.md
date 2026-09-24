@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bf (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24bg (post-import hillclimb)
 
 Master tip: **`273f8bad7`** (fetched; unchanged from #94).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924i` on `origin/master` @ `273f8bad7`;
-through #97 @ `d29c7dbd7`; +#98–#99 measured on stacked tip @ `923777bd1`. Profile
+through #99 @ `923777bd1`; +#100 measured on stacked tip @ `fd7a2e4f5`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -86,6 +86,7 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 97 | `weapon-ribbon-quiet-live-skip` |
 | 98 | `rcs-impulse-quiet-empty-skip` |
 | 99 | `weapon-light-quiet-live-skip` |
+| 100 | `continuous-plume-fleet-quiet-asleep` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -140,13 +141,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), spaceBg (hold), feel speed-lines / hot plasma residual
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), spaceBg (hold), feel speed-lines / hot plasma residual (volumetric/retro held)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -155,6 +156,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 100 | `continuous-plume-fleet-quiet-asleep` | Portable quiet `FamilyProductionFleet.endFrame` when all 6 families already asleep **~3.1×** median (200k; floor minSpeedup ≥2.18× across rebenches). Secondary ContinuousPlume update quiet-empty **~2.0×** (floor ≥1.68×). Focused thruster propulsion-family 68/68 + rcs/buffer/plume/plasma/vocabulary 98/98. Soft-GPU fps not claimed. |
 | 98 | `rcs-impulse-quiet-empty-skip` | Portable quiet `RcsImpulseSystem.update` when already empty **~2.7×** median (80k; floor minSpeedup ≥1.95×; rebench floor ≥2.52×). Focused rcs+thruster+propulsion+buffer+weapon-vfx 98/98. Soft-GPU fps not claimed. |
 | 99 | `weapon-light-quiet-live-skip` | Portable quiet `WeaponLightPool.update` when live===0 **~1.60×** median (CAP 2 × 400k; floor minSpeedup ≥1.46×). Focused 98/98. Soft-GPU fps not claimed. Absolute CAP=2 cost is small; clear portable ratio on named residual. |
 | 95 | `hull-scorch-quiet-live-skip` | Portable quiet `HullScorchPool.update` when live===0 **~5.3×** median (32 slots × 200k; floor minSpeedup ≥5.32×). Focused weapon-vfx+well+impact+ribbon 54/54. Soft-GPU fps not claimed. |
@@ -167,13 +169,8 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
-| RcsImpulseSystem quiet-empty skip (capacity slot-zero + eventLights + layer batch publish) | **shipped #98 ~2.7×** (floor ≥1.95×) |
-| WeaponLightPool quiet live===0 skip (CAP 2 intensity walk) | **shipped #99 ~1.60×** (floor ≥1.46×) |
-| VolumetricPlume already-dark reset skip | **hold ~1.42×** (under bar) |
-| PlayerRetroVolume already-dark reset skip | **hold ~1.44×** (under bar) |
-| Combined volumetric+retro cold reset skip | **hold ~1.48×** (under bar) |
-| EnergyBoltPool quiet empty commit skip | **hold ~1.41×** (under bar) |
-| (held poles not casually retried — see SKIP / hold) | — |
+| FamilyProductionFleet quiet-asleep skip (6 families × 5 layers re-zero) + ContinuousPlume quiet-empty | **shipped #100 ~3.1×** (floor ≥2.18×; secondary ~2.0×) |
+| (held poles not casually retried — volumetric/retro/energy-bolt / prior holds) | — |
 
 ## Rock audit (unchanged)
 
@@ -181,7 +178,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100
    (syncEntityViews residual closures / ordnance / microMotion; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg / feel
