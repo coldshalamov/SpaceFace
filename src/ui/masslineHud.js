@@ -268,6 +268,13 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview.ml2-preview-invalid { border-style:dashed; color:#ffd08a; }
 #sf-ml2 .ml2-preview.ml2-preview-offscreen { border-style:dashed; }
 @keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
+/* §22 F1 — the release ghost: a thin predicted arc of the payload's own post-release path,
+   drawn from the same solution the diamond reads. Cooler and thinner than the intercept mark —
+   it is the future, not the target — and it warms to the same amber when the window opens. */
+#sf-ml2 svg.ml2-ghost { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+#sf-ml2 .ml2-ghost-path { fill:none; stroke:rgba(140,190,235,0.5); stroke-width:1.4;
+  stroke-dasharray:3 7; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+#sf-ml2 svg.ml2-ghost.ml2-hot .ml2-ghost-path { stroke:rgba(255,217,140,0.85); }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
@@ -325,6 +332,7 @@ export const MASSLINE_HUD_CSS = `
 @media (forced-colors: active) {
   #sf-ml2 .ml2-preview { color:CanvasText; background:Canvas; border-color:CanvasText; forced-color-adjust:auto; }
   #sf-ml2 .ml2-preview-line { stroke:CanvasText; }
+  #sf-ml2 .ml2-ghost-path { stroke:CanvasText; }
   #sf-ml2 .ml2-preview-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
   #sf-ml2 .ml2-preview-mark i { border-color:CanvasText; box-shadow:none; }
   #sf-ml2 .ml2-mark { color:CanvasText; forced-color-adjust:auto; filter:none; }
@@ -454,6 +462,17 @@ function throwPayloadRadius(throwState, state) {
 }
 
 const COLLATERAL_SPOTS = [];
+// §22 F1 — the release ghost decimates a long projected path to a bounded polyline and always
+// keeps the final point so the arc reaches the predicted contact, not a decimated shortfall.
+const GHOST_MAX_POINTS = 48;
+const GHOST_FALLBACK_POINTS = [null, null];
+
+function ghostScreenPoint(w2s, p) {
+  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return null;
+  const s = projectWorld(w2s, p.x, p.z);
+  if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) return null;
+  return `${Math.round(s.x * 10) / 10} ${Math.round(s.y * 10) / 10}`;
+}
 
 function throwCollateralSpots(state, throwState) {
   const spots = COLLATERAL_SPOTS;
@@ -563,6 +582,10 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = !!solution.degraded;
   fields[index++] = Math.round((Number(solution.turnRate) || 0) * 20) / 20;
   fields[index++] = !!(selfSolution && selfSolution.degraded);
+  // §22 F1: the release ghost repaints with every fresh prediction sample — sampleTick rolls
+  // when `predicted`/`projectedPath` change even if the scalars above happen to hold.
+  fields[index++] = solution.sampleTick;
+  fields[index++] = selfSolution.sampleTick;
   const cadenceWindow = solution.window;
   fields[index++] = !!cadenceWindow && !!cadenceWindow.reliable;
   fields[index++] = cadenceWindow && cadenceWindow.enterS;
@@ -1025,12 +1048,17 @@ export const masslineHud = {
     const solution = throwState && throwState.armed ? throwState.solution : null;
     if (!solution || !solution.valid || meetingDiamondHidden(throwState, state)) {
       setStyle(dom.throwEl, 'display', 'none');
+      if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
       return;
     }
     // Place the diamond on the intercept ray at either the aim entity or a fixed reach — the
     // POSITION names the consequence ("the rock goes THERE"), the COLOR names the timing.
     const mark = resolveThrowMarkWorldPoint(throwState, state);
-    if (!mark) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    if (!mark) {
+      setStyle(dom.throwEl, 'display', 'none');
+      if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
+      return;
+    }
     const proj = projectWorld(w2s, mark.x, mark.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
@@ -1039,7 +1067,11 @@ export const masslineHud = {
       onSolution: solution.onSolution,
       targetKind: mark.targetKind,
     });
-    if (!cue.visible) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    if (!cue.visible) {
+      setStyle(dom.throwEl, 'display', 'none');
+      if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
+      return;
+    }
     setStyle(dom.throwEl, 'display', 'block');
     setStyle(dom.throwEl, 'transform', `translate3d(${cue.x}px, ${cue.y}px, 0)`);
     // INF-016: degraded confidence is its own mark — dashed, never hot, labelled STALE.
@@ -1050,6 +1082,10 @@ export const masslineHud = {
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
+    // §22 F1 — the release ghost: the payload's predicted post-release path, read-only off the
+    // same mirrored solution the diamond and the cadence readout consume. A stale/degraded
+    // solution promises nothing, so it paints no path.
+    this._updateThrowGhost(dom, solution, throwPayloadPoint(throwState, state), w2s, hot);
     // INF-078: one advisory collateral cue. A known protected body inside the predicted
     // corridor is NAMED, never vetoed: this only extends the caption, release authority
     // and law adjudication are untouched. Stale/degraded solutions and unknown bodies
@@ -1074,13 +1110,68 @@ export const masslineHud = {
     }
   },
 
+  // §22 F1 — the release ghost. The field-aware solution already carries its own
+  // `projectedPath` (the semi-implicit integration the throw will fly); the constant-velocity
+  // model carries only `predicted`, so its ghost is the straight segment payload -> intercept.
+  // Both read the mirrored solution — no second predictor, no steering. Stale or degraded
+  // solutions paint nothing: a prediction that cannot be trusted must not draw one.
+  _updateThrowGhost(dom, solution, from, w2s, hot) {
+    const svg = dom.ghostSvg;
+    if (!svg) return;
+    const stale = solution.degraded === true || solution.decisionStale === true;
+    let points = null;
+    const projected = solution.projectedPath;
+    if (Array.isArray(projected) && projected.length >= 2) {
+      points = projected;
+    } else {
+      const predicted = solution.predicted;
+      if (from && Number.isFinite(from.x) && Number.isFinite(from.z)
+          && predicted && Number.isFinite(predicted.x) && Number.isFinite(predicted.z)) {
+        points = GHOST_FALLBACK_POINTS;
+        points[0] = from;
+        points[1] = predicted;
+      }
+    }
+    if (stale || !points) { setStyle(svg, 'display', 'none'); return; }
+    const stride = Math.max(1, Math.ceil(points.length / GHOST_MAX_POINTS));
+    const last = points.length - 1;
+    let d = '';
+    let count = 0;
+    for (let i = 0; i < last; i += stride) {
+      const seg = ghostScreenPoint(w2s, points[i]);
+      if (!seg) continue;
+      d += `${count === 0 ? 'M' : 'L'}${seg}`;
+      count += 1;
+    }
+    // The final predicted point always lands so the arc reaches the contact the diamond names.
+    const tip = ghostScreenPoint(w2s, points[last]);
+    if (tip) {
+      d += `${count === 0 ? 'M' : 'L'}${tip}`;
+      count += 1;
+    }
+    if (count < 2) { setStyle(svg, 'display', 'none'); return; }
+    if (dom.ghostD !== d) {
+      dom.ghostD = d;
+      dom.ghostPath.setAttribute('d', d);
+    }
+    setClass(svg, 'ml2-hot', !!hot);
+    setStyle(svg, 'display', 'block');
+  },
+
   _updateSelfMark(dom, throwState, state, w2s) {
     const playerMoves = meetingDiamondHidden(throwState, state);
-    const self = throwState && (playerMoves || !throwState.armed) ? throwState.selfSolution : null;
-    if (!self) { setStyle(dom.selfEl, 'display', 'none'); return; }
+    const selfDomain = playerMoves || !throwState || !throwState.armed;
+    const self = throwState && selfDomain ? throwState.selfSolution : null;
+    // Only the self domain owns the ghost here — when the armed throw's diamond is up, the
+    // throw path painted it in _updateThrowMark and this mark must leave it alone.
+    const hideSelf = () => {
+      setStyle(dom.selfEl, 'display', 'none');
+      if (selfDomain && dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
+    };
+    if (!self) { hideSelf(); return; }
     const target = self.targetId != null ? state.entities.get(self.targetId) : null;
     const targetPos = target && target.pos ? target.pos : self.targetPos;
-    if (!targetPos) { setStyle(dom.selfEl, 'display', 'none'); return; }
+    if (!targetPos) { hideSelf(); return; }
     const proj = projectWorld(w2s, targetPos.x, targetPos.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
@@ -1089,7 +1180,7 @@ export const masslineHud = {
       onSolution: self.onSolution,
       targetKind: self.targetKind,
     });
-    if (!cue.visible) { setStyle(dom.selfEl, 'display', 'none'); return; }
+    if (!cue.visible) { hideSelf(); return; }
     setStyle(dom.selfEl, 'display', 'block');
     setStyle(dom.selfEl, 'transform', `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`);
     // INF-016: the self-sling cue degrades exactly like the throw diamond.
@@ -1099,6 +1190,12 @@ export const masslineHud = {
     setClass(dom.selfEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
     applyCueState(dom.selfEl, dom.selfLabel, cue);
+    // The self-sling is a throw whose payload is the player — the same ghost reads the same
+    // mirrored fields, from the player's own position rather than the tethered anchor's.
+    const selfFrom = state.entities && state.entities.get
+      ? state.entities.get(state.playerId) : null;
+    this._updateThrowGhost(dom, self, selfFrom && selfFrom.pos, w2s,
+      !!self.onSolution && !degradedSelf);
     if (degradedSelf) {
       if (dom.selfLabel && dom.selfLabel.textContent !== 'STALE') dom.selfLabel.textContent = 'STALE';
       setAttr(dom.selfEl, 'aria-label', 'Massline self-sling intercept degraded, target turning');
@@ -1182,6 +1279,7 @@ export const masslineHud = {
     // previously hidden tree even when the underlying values happen to be unchanged.
     clearHudSignature(this.state, 'masslineHud');
     setStyle(dom.throwEl, 'display', 'none');
+    if (dom.ghostSvg) setStyle(dom.ghostSvg, 'display', 'none');
     setStyle(dom.selfEl, 'display', 'none');
     setStyle(dom.ringSvg, 'display', 'none');
     this._hideAcquisitionPreview(dom);
@@ -1251,6 +1349,17 @@ export const masslineHud = {
     previewEl.setAttribute('aria-live', 'polite');
     previewEl.setAttribute('aria-atomic', 'true');
     root.appendChild(previewEl);
+
+    // Release ghost (§22 F1): the predicted arc rides the same fullscreen-SVG pattern as the
+    // preview link and sits UNDER the intercept diamond it predicts toward.
+    const ghostSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ghostSvg.setAttribute('class', 'ml2-ghost');
+    ghostSvg.style.display = 'none';
+    ghostSvg.setAttribute('aria-hidden', 'true');
+    const ghostPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    ghostPath.setAttribute('class', 'ml2-ghost-path');
+    ghostSvg.appendChild(ghostPath);
+    root.appendChild(ghostSvg);
 
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
@@ -1334,7 +1443,9 @@ export const masslineHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
+      root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
+      ghostSvg, ghostPath, ghostD: null,
+      throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
       strainPill: strain.pill, strainFill: strain.bar,
     };

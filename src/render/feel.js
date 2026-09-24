@@ -1476,6 +1476,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     context.motionReduce = mr;
     context.mode = state.mode;
     context.momentum = Number.isFinite(momentum) ? Math.max(0, momentum) : 0;
+    // The kick reads the same pre-solve axis hitstop/trauma do: the receipt's dp is the
+    // solver-capped share — a 150 WU/s ram and a 40 WU/s nudge carry the same number — so it
+    // scales onto the presented speed before the momentum table maps it.
+    if (deltaV > 0 && presentedDeltaV > deltaV && context.momentum > 0) {
+      context.momentum *= Math.min(8, presentedDeltaV / deltaV);
+    }
     context.kickDirX = kickDirX;
     context.kickDirZ = kickDirZ;
     const result = resolveCollisionFeel(p, context, this._collisionFeelScratch);
