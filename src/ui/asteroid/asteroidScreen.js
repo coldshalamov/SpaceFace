@@ -2108,10 +2108,6 @@ export const asteroidScreen = {
       });
       box.appendChild(closeBtn);
       modal.appendChild(box);
-      const focusStyle = document.createElement('style');
-      focusStyle.textContent = '.ast-summary-box .fh-key:focus-visible{outline:2px solid var(--dp-lamp) !important;outline-offset:3px}'
-        + '.ast-summary-box .fh-key:is(:hover,:focus-visible,:active){color:#1a1206;translate:none;box-shadow:none;filter:none}';
-      modal.appendChild(focusStyle);
       root.appendChild(modal);
       setTimeout(() => {
         modal.classList.add('active');
