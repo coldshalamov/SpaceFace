@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ao (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ap (post-import hillclimb)
 
 Master tip: **`7850b341e`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` through #75 @ `33401ba50`; +#76 measured on
-stacked tip @ `f265f0ecb`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` through #76 @ `f265f0ecb`; +#77 measured on
+stacked tip @ `ccc73ef75`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -63,6 +63,7 @@ stacked tip @ `f265f0ecb`. Fresh profile `settled-45s-stacked-20260924ac`
 | 74 | `presentation-query-zero-dirty-retain` |
 | 75 | `snapshot-fence-dirty-slot-list` |
 | 76 | `presentation-world-unchanged-refresh-skip` |
+| 77 | `presentation-query-retain-pos-quantize` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -84,7 +85,7 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **moving chase lookAt (informational ~1.00× — retain rarely hits)**;
 **moving clearance floor retain (~0.85× — hold)**;
 **under-roof clearance stamp-check retain (~1.33× — hold; off-roof is #73 KPI)**;
-**moving presentation-query retain (~0.99× — bounds change)**;
+**moving presentation-query retain without quantize (~0.99× — bounds change; superseded by #77)**;
 **Direct Matrix4 lookAt (moving) ~1.43× median / floor ~1.16× — hold (reconfirmed)**;
 **resolvePins context-only rock trailing-scan skip ~1.09× — hold (reconfirmed rock-resolvePins)**;
 **classify incremental skip currentEntityIds ~1.17× fair visit — under bar / hold**.
@@ -101,15 +102,15 @@ native GL / bloom admission owners ignored for portable ranking.
 |---:|---|---|
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
-| 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76 |
+| 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61 |
 
-### Notable callees (post-#76)
+### Notable callees (post-#77)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76**), camera.follow (**#63+#65+#73** clearance, **#71** framing trust, **#72** lookAt retain), packPresentationWorldToFence (**#68+#75**), spaceBackground (hold)
-- syncEntityViews → presentationQueries.query (**#74**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), applySnapshotPose
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77**), camera.follow (**#63+#65+#73** clearance, **#71** framing trust, **#72** lookAt retain), packPresentationWorldToFence (**#68+#75**), spaceBackground (hold)
+- syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
 
@@ -117,13 +118,14 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 77 | `presentation-query-retain-pos-quantize` | Portable quiet chase-drift `presentationQueries.query` **~3.05×** median (20k; floor minSpeedup ≥2.83×). Focused presentation suites 26/26. Soft-GPU fps not claimed. |
 | 76 | `presentation-world-unchanged-refresh-skip` | Portable quiet `refreshVisibleEntity` **~1.60×** median (8k; floor minSpeedup ≥1.51×). Focused presentation suites 24/24. Soft-GPU fps not claimed. |
-| 75 | `snapshot-fence-dirty-slot-list` | Portable quiet dirty>0 `packPresentationWorldToFence` **~2.01×** median (12k; floor minSpeedup ≥1.76×). Focused fence/presentation suites 33/33. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
+| presentation-query retain-key 0.25 WU pos quantize (quiet chase drift) | **shipped #77 ~3.05×** |
 | refreshVisibleEntity unchanged early-out (+ writePoseScalars identical skip) | **shipped #76 ~1.60×** |
 | Direct Matrix4 lookAt without updateWorldMatrix (moving) | ~1.43× median / floor ~1.16× — **hold** (reconfirmed prior ~1.19×) |
 | resolvePins context-only skip of trailing entity.data scan (rocks) | ~1.09× — **hold** (reconfirmed rock-resolvePins) |
@@ -136,7 +138,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | settled lookAt retain | **shipped #72 ~2.14×** |
 | settled off-roof clearance floor retain | **shipped #73 ~2.07×** |
 | clearance floor retain with per-mesh stamp-check under-roof | ~1.33× — hold |
-| moving clearance / presentation-query retain | informational under bar — hold |
+| moving clearance / presentation-query retain (no quantize) | informational under bar — hold; **#77 supersedes moving query retain** |
 | lifetimeSweep dirty-publish / pose-publish-list | prior drop / ~1.00× |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state / midflight-wave-hull-decode / syncCombatantBounds | Holds — not retried |
@@ -147,13 +149,13 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77
    (syncEntityViews residual closures / ordnance / microMotion; under-roof
    clearance stamp-check path; moving lookAt still full Three cost).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70
    (preStep residual / lifetimeSweep residual / tacticalAI residual).
-4. syncEntityViews residual after #15+#44+#57+#74+#76 (ordnance / query miss path /
+4. syncEntityViews residual after #15+#44+#57+#74+#76+#77 (ordnance / query miss path /
    residual microMotion / applySnapshotPose).
 5. Soft-GPU fps is not a KPI.

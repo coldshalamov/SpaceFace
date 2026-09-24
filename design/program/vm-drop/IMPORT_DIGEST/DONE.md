@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924ao
+# DONE — IMPORT_DIGEST 20260924ap
 
-Post-#75 hillclimb on Quiet Grok Bot VM. Shipped **#76
-`presentation-world-unchanged-refresh-skip`** (~1.60× median refreshVisibleEntity;
-floor ≥1.51×). Soft-GPU fps not a KPI. Master tip unchanged at `7850b341e`.
-Scratch `vm-work/hillclimb-20260924h` @ `f265f0ecb`.
+Post-#76 hillclimb on Quiet Grok Bot VM. Shipped **#77
+`presentation-query-retain-pos-quantize`** (~3.05× median presentationQueries.query
+under quiet chase drift; floor ≥2.83×). Soft-GPU fps not a KPI. Master tip unchanged
+at `7850b341e`. Scratch `vm-work/hillclimb-20260924h` @ `ccc73ef75`.
