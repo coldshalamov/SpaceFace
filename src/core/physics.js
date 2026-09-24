@@ -31,6 +31,10 @@ import {
   isCorridorSector,
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
+import { SpatialHash } from './spatialHash.js';
+import { projectileTravelLimit } from '../combat/projectileFlight.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -666,8 +670,13 @@ export const physics = {
 
   sweepProjectiles(dt, state) {
     const out = this._scratch;
-    const useHash = hasActiveSpatialHash(state.spatialHash);
+    const wake = this._projectileWake || (this._projectileWake = []);
+    wake.length = 0;
+    this._syncProjectileBroadphase(state);
+    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
+    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
@@ -678,11 +687,17 @@ export const physics = {
       }
       const end = limit;
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
-      if (useHash) {
-        const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
+      const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
+      const mx = (start.x + end.x) * 0.5;
+      const mz = (start.z + end.z) * 0.5;
+      if (useBroadphase) {
+        // Every live collider, not only the glass-pinned physics set. A round that
+        // has left the frame still has to hit the hull it was aimed at.
         out.length = 0;
-        const mx = (start.x + end.x) * 0.5;
-        const mz = (start.z + end.z) * 0.5;
+        this._projectileBroadphase.queryRadius(mx, mz, sweepRadius, out);
+        candidates = out;
+      } else if (useHash) {
+        out.length = 0;
         if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
           state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius, out);
         } else {
@@ -690,22 +705,10 @@ export const physics = {
         }
         candidates = out;
       }
-      let bestTarget = null;
-      const hit = this._segmentHitScratch;
-      const bestHit = this._bestSegmentHitScratch;
-      for (const tgt of candidates) {
-        if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
-        if (proj.ownerId === tgt.id) continue;
-        // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
-        // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
-        if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
-        if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
-        if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
-        if (!bestTarget || hit.t < bestHit.t) {
-          bestTarget = tgt;
-          copySegmentHit(bestHit, hit);
-        }
-      }
+      extra.length = 0;
+      this._admitProjectileSweepBodies(state, proj, start, end, extra);
+      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null);
+      bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget);
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
@@ -715,11 +718,110 @@ export const physics = {
         }
         continue;
       }
+      const bestHit = this._bestSegmentHitScratch;
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
+    }
+  },
+
+  _syncProjectileBroadphase(state) {
+    const index = state && state.entityIndex;
+    const ready = !!(index && index.__spacefaceEntityIndexV1
+      && Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics));
+    this._projectileBroadphaseReady = ready;
+    if (!ready) return;
+    if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
+    this._projectileBroadphase.rebuildLayers(
+      index.spatialStatics,
+      index.spatialDynamics,
+      index.spatialStaticVersion || 0,
+    );
+  },
+
+  _bestProjectileTarget(proj, start, end, list, bestTarget) {
+    if (!list || list.length === 0) return bestTarget;
+    const hit = this._segmentHitScratch;
+    const bestHit = this._bestSegmentHitScratch;
+    for (let i = 0; i < list.length; i++) {
+      const tgt = list[i];
+      if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
+      if (proj.ownerId === tgt.id) continue;
+      // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
+      // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
+      if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
+      if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
+      if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
+      if (!bestTarget || hit.t < bestHit.t) {
+        bestTarget = tgt;
+        copySegmentHit(bestHit, hit);
+      }
+    }
+    return bestTarget;
+  },
+
+  /**
+   * Field rocks and shelved far actors are not combat bodies until something
+   * touches them. A projectile segment is that touch: promote the body this
+   * tick so the same sweep can hit it, on the glass or past it.
+   */
+  _admitProjectileSweepBodies(state, proj, start, end, into) {
+    const wake = this._projectileWake || (this._projectileWake = []);
+    const radius = proj.radius || 0;
+    for (let i = 0; i < wake.length; i++) {
+      const entity = wake[i];
+      if (!entity || entity.alive === false) continue;
+      into.push(entity);
+    }
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const reach = Math.hypot(dx, dz) * 0.5 + radius + 120;
+    if (!(reach > 0)) return;
+    const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
+    center.x = (start.x + end.x) * 0.5;
+    center.z = (start.z + end.z) * 0.5;
+    const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
+    const hit = this._segmentHitScratch;
+    const rocks = queryAsteroidField(
+      state,
+      center,
+      reach,
+      this._fieldQueryScratch || (this._fieldQueryScratch = []),
+    );
+    ids.length = 0;
+    for (let i = 0; i < rocks.length; i++) {
+      const rec = rocks[i];
+      if (!rec || rec.alive === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    const helpers = this.helpers;
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteAsteroidFieldRock(state, ids[i], helpers, 'projectile');
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
+    }
+    const actors = queryFarActors(
+      state,
+      center,
+      reach,
+      this._farQueryScratch || (this._farQueryScratch = []),
+    );
+    ids.length = 0;
+    for (let i = 0; i < actors.length; i++) {
+      const rec = actors[i];
+      if (!rec || rec.alive === false || rec.collides === false || !rec.pos) continue;
+      if (!segmentCircleHitInto(hit, start, end, rec.pos, radius + (rec.radius || 0))) continue;
+      ids.push(rec.id);
+    }
+    for (let i = 0; i < ids.length; i++) {
+      const entity = promoteFarActor(state, ids[i], helpers);
+      if (!entity || entity.alive === false) continue;
+      wake.push(entity);
+      into.push(entity);
     }
   },
 
@@ -1475,7 +1577,7 @@ function segmentDirection(start, end) {
 function projectileSweepLimitInto(out, projectile, start, end) {
   const data = projectile && projectile.data || {};
   const origin = data.spawnPos || data.origin || null;
-  const maxDistance = Number(data.maxDistance);
+  const maxDistance = projectileTravelLimit(data);
   if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
     out.x = end.x;
     out.z = end.z;

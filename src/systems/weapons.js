@@ -32,6 +32,7 @@ import {
   mergeWeaponView,
 } from '../combat/attackSpec.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
 import {
   fillInertialShuntImpulses,
   hullCarriesInertialShunt,
@@ -54,9 +55,20 @@ import {
   collectAttackCandidates,
   resolveLiveAttackHit,
 } from '../combat/attackHit.js';
+import {
+  opticBookFor,
+  opticChildSpec,
+  opticFamilyIdOf,
+  settleOpticContact,
+} from '../combat/opticField.js';
 import { registerStuntImpulseObserver } from '../combat/stuntEvidence.js';
 import { observeProjectileEmission, observeProjectileRedirect, prepareProjectileContact,
   observeProjectileDamage, observeProjectileDeath, sampleProjectileEvidence } from '../combat/stuntProjectileEvidence.js';
+import {
+  projectileContinuationPlan,
+  projectileFlightPlan,
+  reserveProjectileCapacity,
+} from '../combat/projectileFlight.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -215,6 +227,10 @@ export const weapons = {
 
     on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
     on('projectile:hit', (payload) => {
+      if (handleOpticProjectileHit(this, payload)) {
+        prepareProjectileContact(this.state, payload);
+        return;
+      }
       prepareProjectileContact(this.state,payload);
       const planted = tryPlantMomentumSinkFromHit(this.state, payload, this._entityGetter);
       if (planted && this.bus) {
@@ -245,6 +261,7 @@ export const weapons = {
       handlePayloadSectorTransition(this.state, this.helpers);
       clearAllMomentumSinkPlants(this.state);
       if (this._shuntCooldown) this._shuntCooldown.clear();
+      if (this._opticFamilies) this._opticFamilies.clear();
     });
     this._playerIncomingLock = false;
     on('game:new', () => { this._playerIncomingLock = false; });
@@ -663,6 +680,10 @@ export const weapons = {
     if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
+      if (def.emergentPrimitive) {
+        capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
+        continue;
+      }
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       // DEPLOY verb (SF-10 vector mine): a third fire path alongside projectile + beam. It lobs a
       // deployable that later detonates into a radial impulse; the weapon spends cap/heat here.
@@ -677,6 +698,30 @@ export const weapons = {
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
     if (typeof e.cap === 'number') e.cap = capLeft;
+  },
+
+  // Emergent primitives spend no capacitor and no heat, so they cannot vent-lock or starve
+  // the ship's baseline guns. Cycle rate is the only spacing, and it lives on this mount.
+  _serviceEmergent(e, w, def, firing, capLeft, state, aimAngle) {
+    const aim = Number.isFinite(aimAngle) ? aimAngle : e.rot;
+    const sustained = !!(def.continuous || def.emergentPrimitive === 'thermal');
+    if (!firing) {
+      if (sustained) clearEmergentRay(state, e.id);
+      return capLeft;
+    }
+    if (sustained) {
+      setEmergentRay(state, e, def, aim);
+      return capLeft;
+    }
+    if ((w._cooldown || 0) > 0) return capLeft;
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = rof > 0 ? 1 / rof : 0.2;
+    launchEmergent(state, e, def, aim);
+    const origin = this._muzzle ? this._muzzle(e, w, aim) : { x: e.pos.x, z: e.pos.z };
+    this.bus.emit('combat:fire', {
+      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir: aim,
+    });
+    return capLeft;
   },
 
   // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
@@ -980,10 +1025,12 @@ export const weapons = {
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
       : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
 
-    // time-to-live is a backup cleanup only; physics enforces maxDistance spatially before hit
-    // resolution, so inherited ship speed cannot turn a stray shot into a far-off friendly-fire hit.
+    // Engagement range stays on maxDistance for AI, locks, and the targeting computer.
+    // The body itself keeps a long flight budget so a shot can leave the frame, hit,
+    // or bounce, and come back. The clock and the live cap are what retire it.
     const worldSpeed = Math.hypot(vel.x, vel.z);
-    const ttl = Math.max(0.25, range / Math.max(1, worldSpeed));
+    const flight = projectileFlightPlan(range, worldSpeed);
+    const ttl = flight.ttl;
 
     const payloadScale = opts && Number.isFinite(opts.payloadScale) ? opts.payloadScale : 1;
     const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale;
@@ -997,6 +1044,7 @@ export const weapons = {
       kind: isMissile ? 'missile' : 'bullet',
       spawnPos: { x: muzzle.x, z: muzzle.z },
       maxDistance: range,
+      flightDistance: flight.flightDistance,
     };
     if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
     if (opts && opts.spec) {
@@ -1026,6 +1074,7 @@ export const weapons = {
       if (splashDmg != null) data.splashDmg = splashDmg;
     }
 
+    reserveProjectileCapacity(state, 1);
     const spawned = this.helpers.spawnEntity({
       type: 'projectile',
       pos: muzzle,
@@ -1615,6 +1664,48 @@ function findLiveAttackProjectile(state, live, payload) {
   return best;
 }
 
+function handleOpticProjectileHit(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload || payload.projectileId == null || payload.targetId == null) return false;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return false;
+  const projectile = entities.get(payload.projectileId);
+  const target = entities.get(payload.targetId);
+  if (!projectile || projectile.type !== 'projectile' || !target) return false;
+  if (!host._opticFamilies) host._opticFamilies = new Map();
+  const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(projectile));
+  const plan = settleOpticContact(projectile, target, payload, book);
+  if (!plan) return false;
+  // Zero the hit before combat's projectile:hit listener (registered after weapons) routes damage.
+  suppressHitPayload(payload);
+  // Prism/absorb consume the bolt: drop traited live state so splinters never inherit a parent
+  // AttackSpec resolve. Reflect keeps the same body — leave _attackLive for a later non-optic hit.
+  if (plan.kind !== 'reflect' && host._attackLive) host._attackLive.delete(projectile.id);
+  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
+    const rays = plan.rays || [];
+    for (let i = 0; i < rays.length; i++) {
+      reserveProjectileCapacity(host.state, 1);
+      host.helpers.spawnEntity(opticChildSpec(projectile, rays[i]));
+    }
+  }
+  if (host.bus) {
+    const pos = payload.pos && Number.isFinite(payload.pos.x)
+      ? { x: payload.pos.x, z: payload.pos.z }
+      : (target.pos ? { x: target.pos.x, z: target.pos.z } : null);
+    host.bus.emit('optic:contact', {
+      kind: plan.kind,
+      reason: plan.reason,
+      materialId: plan.materialId,
+      projectileId: projectile.id,
+      targetId: target.id,
+      ownerId: projectile.ownerId == null ? null : projectile.ownerId,
+      pos,
+      rays: plan.rays ? plan.rays.length : 0,
+    });
+  }
+  return true;
+}
+
 function suppressHitPayload(payload) {
   if (!payload) return;
   payload.damage = 0;
@@ -1682,6 +1773,11 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
     const scale = Number.isFinite(child.payloadScale) ? child.payloadScale : 0.55;
     const dir = heading + splitFanRad(i, count);
     const vel = { x: Math.cos(dir) * speed, z: Math.sin(dir) * speed };
+    const continued = projectileContinuationPlan(parent.data, pos, speed);
+    const data = cloneProjectileDataScaled(parent.data, scale);
+    data.spawnPos = continued.spawnPos;
+    data.flightDistance = continued.flightDistance;
+    reserveProjectileCapacity(host.state, 1);
     const spawned = helpers.spawnEntity({
       type: 'projectile',
       pos: { x: pos.x, z: pos.z },
@@ -1692,9 +1788,9 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
       team: parent.team,
       ownerId: parent.ownerId,
       factionId: parent.factionId,
-      ttl: parent.ttl,
+      ttl: continued.ttl,
       collides: true,
-      data: cloneProjectileDataScaled(parent.data, scale),
+      data,
     });
     if (!spawned) continue;
     nudgeSpawnedAlongVelocity(spawned);

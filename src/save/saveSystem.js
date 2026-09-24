@@ -23,7 +23,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
-import { clearEntityRuntime } from '../core/entity.js';
+import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -775,7 +775,12 @@ export const save = {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
-      if (!isPlayer && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
+      // Live projectiles ride the persistent list without being flagged persistent: the
+      // ballistic flight budget keeps a round collidable for many seconds, so a save/continue
+      // that dropped every in-flight shot would silently lose real combat state. Restore keeps
+      // their finite ttl and leaves them transient.
+      const liveProjectile = e.type === 'projectile';
+      if (!isPlayer && !liveProjectile && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {
@@ -804,7 +809,8 @@ export const save = {
 
   _hasPlayerEntity() {
     const state = this.state;
-    return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+    return !!(state && state.playerId != null && state.entities
+      && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
   },
 
   /**
@@ -3477,9 +3483,30 @@ export const save = {
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
-      delete spec.id; delete spec._isPlayer;
-      if (spec.type !== 'projectile' && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
-      spec.flags = Object.assign({}, spec.flags, { persistent: true, noInterp: true });
+      delete spec._isPlayer;
+      // Reclaim the saved id when it is still free. entityList order at save time is not id
+      // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
+      // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
+      // treats a positive spec.id as a reservation and falls back when it is taken.
+      if (!(Number.isSafeInteger(spec.id) && spec.id > 0
+          && !(state.entities && state.entities.has(spec.id))
+          && !worldLedgerHoldsId(state.world, spec.id))) {
+        delete spec.id;
+      }
+      const isProjectile = spec.type === 'projectile';
+      if (!isProjectile && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
+      // A restored round stays transient: it must not survive sector regeneration outlive its
+      // clock, and a repeat save re-admits it through the same live-projectile clause.
+      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile, noInterp: true });
+      if (isProjectile && entityIdRemap) {
+        const mappedOwner = spec.ownerId != null ? entityIdRemap.get(String(spec.ownerId)) : null;
+        if (mappedOwner != null) spec.ownerId = mappedOwner;
+        const target = spec.data && spec.data.targetId;
+        if (target != null) {
+          const mappedTarget = entityIdRemap.get(String(target));
+          if (mappedTarget != null) spec.data.targetId = mappedTarget;
+        }
+      }
       const savedActivity = spec.activity;
       delete spec.activity;
       const e = this.helpers.spawnEntity(spec);

@@ -15,6 +15,7 @@ import { canAct } from './attackLineage.js';
 import { tryPierce, tryChain, trySplit } from './attackPropagation.js';
 import { resolvePayload } from './attackPayload.js';
 import { resolveRicochet } from './surfaceReflection.js';
+import { refreshFlightAfterBounce } from './projectileFlight.js';
 
 const CONTINUE_ARMED = new WeakSet();
 const CONTINUE_NEXT = new WeakSet();
@@ -144,6 +145,10 @@ export function resolveLiveAttackHit(input = {}) {
     });
     if (bounced.ok) {
       requestAttackContinue(projectile);
+      const owner = input.state && input.state.entities && projectile.ownerId != null
+        ? input.state.entities.get(projectile.ownerId)
+        : null;
+      refreshFlightAfterBounce(projectile, owner && owner.pos);
       nudgeAlongVelocity(projectile);
       return {
         ok: true,

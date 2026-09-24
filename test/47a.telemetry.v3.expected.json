@@ -54,21 +54,21 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 8,
-    "combat:damage": 8,
+    "projectile:hit": 17,
+    "combat:damage": 17,
     "economy:tick": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
-    "presentation:vfxCue": 4,
-    "presentation:audioCue": 4,
+    "presentation:vfxCue": 5,
+    "presentation:audioCue": 5,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 12,
-    "presentation:cue": 12,
-    "audio:cue": 5
+    "presentation:cueApplied": 22,
+    "presentation:cue": 22,
+    "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad",
+    "authoritativeHash": "80b332c7bc8f176c3737a685f7ea6538c9e045bfd5e82e1bb53d48c35ea2e9ab",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -182,6 +182,13 @@
     "Evidence: node scripts/sim-golden-diff.mjs --flight-system v3 --ref e973dc86b: VERDICT CONTENT_ONLY, the same 12,179-field breakdown as the legacy envelope.",
     "12,156 $.economy, 20 $.missions procedural pricing, 3 added $.story ambient-finale fields. ZERO motion fields changed and every phase0ObservedTraceCount is unchanged.",
     "Recorded against a clean git-archive export of HEAD 11b64303f; the uncommitted capital-boss/finale lane moves this hash and re-records when it lands.",
-    "Provenance: sim-golden-diff's default --ref crashes on the broken 000b6ff05..dcb805e49^ trees (missing src/data/encounters/mega-heist.js until dcb805e49); pass --ref explicitly. Repeat-20 and reload@600 are deterministic."
+    "Provenance: sim-golden-diff's default --ref crashes on the broken 000b6ff05..dcb805e49^ trees (missing src/data/encounters/mega-heist.js until dcb805e49); pass --ref explicitly. Repeat-20 and reload@600 are deterministic.",
+    "2026-09-22 deliberate re-record over eaa817447..worktree, same window and causes as the legacy envelope. Prior authoritativeHash was 5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad.",
+    "sim-golden-diff --flight-system v3 --ref eaa817447 reproduces the prior hash exactly; the previous envelope was correct and the harness is deterministic.",
+    "Evidence: VERDICT CONTENT_ONLY, 32 snapshot fields moved (24 $.entities[], 4 $.economy, 3 $.story, 1 $.player). ZERO entity pos/vel/rot/angVel/prevPos fields changed after 720 ticks.",
+    "Trace counts moved with the intended projectile-flight outcome: projectile:hit 8->17 and combat:damage 8->17 — the retargeted proof-dummy shots now live long enough to land.",
+    "entities[2].shield 78->0 and hull 150->128.8 from the extra hits; presentation:cue/cueApplied 12->22, vfxCue/audioCue 4->5, audio:cue 5->6 follow. combat:fire still 17.",
+    "Same companion save fix as the legacy envelope: live projectiles persist through save/load (transient restore, finite ttl, remapped ownerId/targetId) and restored actors reclaim saved ids.",
+    "Repeat-20 and reload@60 are deterministic. Recorded against the working tree; constituent lanes may land in separate commits."
   ]
 }

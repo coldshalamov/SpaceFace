@@ -17,6 +17,7 @@ import {
   tableLookAtDelta,
   tableVfxDrawWuFromState,
 } from '../tabletopPolicy.js';
+import { projectileOnReadableFrame } from '../../combat/projectileFlight.js';
 import {
   FLIGHT_MODE,
   WEAPON_SOCKET_NAME,
@@ -368,10 +369,8 @@ export class WeaponVfxPresenter {
     _seen.clear();
     const camPos = camera && camera.position;
     const state = this.state;
-    const playerId = state && state.playerId;
-    const targetId = state && state.player && state.player.targetId;
     const player = state && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(playerId)
+      ? state.entities.get(state.playerId)
       : null;
     const ribbonDrawWu = tableVfxDrawWuFromState(state);
     for (let i = 0; i < entities.length; i++) {
@@ -388,21 +387,23 @@ export class WeaponVfxPresenter {
         this._prevLocal,
       );
       const y = 0.32;
+      // The frame is the only place a round is drawn. Player fire, the current
+      // target, and a stray all use the same test: on the glass (plus a short
+      // dash pad) it is drawn, off the glass the body keeps simulating and the
+      // picture does not. A round that bounces back is drawn again when it
+      // re-enters; the ribbon is spawned fresh at that moment.
+      _ribbonWorld.x = currX;
+      _ribbonWorld.z = currZ;
+      const onFrame = projectileOnReadableFrame(
+        state,
+        _ribbonWorld,
+        player && player.pos,
+        ribbonDrawWu,
+        _ribbonLookAt,
+      );
       if (recipeUsesRibbonWake(recipe)) {
         _seen.add(entity.id);
-        // Projectiles inherit PQ-126 ribbon priority from their owner: the player and current
-        // target stay full even off-table. Every other wake follows the live look-at envelope.
-        const priorityRibbon = (
-          (playerId != null && (entity.id === playerId || entity.ownerId === playerId))
-          || (targetId != null && (entity.id === targetId || entity.ownerId === targetId))
-        );
-        _ribbonWorld.x = currX;
-        _ribbonWorld.z = currZ;
-        const look = tableLookAtDelta(state, player && player.pos, _ribbonWorld, _ribbonLookAt);
-        const ribbonOnTable = priorityRibbon
-          || !player
-          || shouldDrawTableVfx(look.x, look.z, ribbonDrawWu);
-        if (ribbonOnTable) {
+        if (onFrame) {
           if (!this.ribbons.byEntity.has(entity.id)) {
             flightColorsForEntity(recipe, entity, this._flightColors);
             const ribbon = this._ribbonSpec;
@@ -424,14 +425,7 @@ export class WeaponVfxPresenter {
         }
       }
       if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD) continue;
-      const priorityBolt = (
-        (playerId != null && (entity.id === playerId || entity.ownerId === playerId))
-        || (targetId != null && (entity.id === targetId || entity.ownerId === targetId))
-      );
-      _ribbonWorld.x = currX;
-      _ribbonWorld.z = currZ;
-      const boltLook = tableLookAtDelta(state, player && player.pos, _ribbonWorld, _ribbonLookAt);
-      if (!priorityBolt && player && !shouldDrawTableVfx(boltLook.x, boltLook.z, ribbonDrawWu)) continue;
+      if (!onFrame) continue;
       const rawVx = entity.vel && Number(entity.vel.x);
       const rawVz = entity.vel && Number(entity.vel.z);
       let vx = Number.isFinite(rawVx) ? rawVx : 0;

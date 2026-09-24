@@ -4,10 +4,12 @@
 
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
+import { EMERGENT_WEAPON_DEFS } from '../src/data/emergentPrimitives.js';
 import test from 'node:test';
 import * as THREE from 'three';
 
 import { WEAPONS } from '../src/data/weapons.js';
+import { projectileFlightPlan } from '../src/combat/projectileFlight.js';
 import {
   clampFocusToPlayerSafeRect,
   COMPOSITION_ZOOM_MAX,
@@ -109,10 +111,10 @@ test('A5: small and medium projectile shots stay visible for at least 0.7 second
       assert.ok(w.range <= 300, `Beam ${w.id} range (${w.range}) must be within combat frame`);
       continue;
     }
-    const timeToExit = w.range / w.projSpeed;
+    const flight = projectileFlightPlan(w.range, w.projSpeed);
     assert.ok(
-      timeToExit >= 0.700 - 1e-6,
-      `Weapon ${w.id} (${w.size}) time-to-exit (${timeToExit.toFixed(3)}s) must be >= 0.7s (range: ${w.range}, speed: ${w.projSpeed})`
+      flight.seconds >= 0.700 - 1e-6,
+      `Weapon ${w.id} (${w.size}) flight (${flight.seconds.toFixed(3)}s) must be >= 0.7s (range: ${w.range}, speed: ${w.projSpeed})`
     );
 
     if (w.deployKind) {
@@ -128,7 +130,7 @@ test('A5: capital, torpedo, and railgun are untouched', () => {
   const headRaw = execSync('git show HEAD:src/data/weapons.js', { encoding: 'utf8' });
   const matchHead = headRaw.match(/const SHIPPED_WEAPONS = (\[[\s\S]*?\]);\s*\/\//);
   assert.ok(matchHead, 'Must parse HEAD SHIPPED_WEAPONS');
-  const headWeapons = eval(matchHead[1]);
+  const headWeapons = new Function('EMERGENT_WEAPON_DEFS', `return ${matchHead[1]}`)(EMERGENT_WEAPON_DEFS);
 
   const preservedIds = [
     'wpn_railgun_m',
@@ -150,7 +152,7 @@ test('A5: capital, torpedo, and railgun are untouched', () => {
 test('A5: damage, rate of fire, impulse, and other invariants byte-compare equal', () => {
   const headRaw = execSync('git show HEAD:src/data/weapons.js', { encoding: 'utf8' });
   const matchHead = headRaw.match(/const SHIPPED_WEAPONS = (\[[\s\S]*?\]);\s*\/\//);
-  const headWeapons = eval(matchHead[1]);
+  const headWeapons = new Function('EMERGENT_WEAPON_DEFS', `return ${matchHead[1]}`)(EMERGENT_WEAPON_DEFS);
 
   const invariantFields = [
     'id', 'baseId', 'name', 'slotType', 'size', 'tier', 'mass', 'price', 'requiresTech',
@@ -303,8 +305,9 @@ for (const seed of SEEDS) {
     const smWeapons = WEAPONS.filter(
       (w) =>
         (w.size === 'S' || w.size === 'M') &&
-        w.projSpeed !== Infinity &&
+        Number.isFinite(w.projSpeed) && w.projSpeed > 1 &&
         !w.deployKind &&
+        !w.emergentPrimitive &&
         w.id !== 'wpn_railgun_m'
     );
 
