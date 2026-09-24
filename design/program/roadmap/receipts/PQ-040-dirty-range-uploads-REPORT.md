@@ -888,16 +888,27 @@ tier1 `bufferUploadBytes` against owner accounting: the ranged window
 ~5.1 MB/s — while the full-span window (≈7.4 s) carried ~10.8 MB —
 ~1.5 MB/s under hotter combat. Ambient upload traffic decays over
 session time; the first window always inherits the post-route tail.
-`waitForPerformanceScenarioReady` therefore now also requires the
-driver-visible upload rate under 3 MB/s sustained for 1.5 s before a
-variant may open its window (symmetric for both variants; engages only
-when tier-1 counters are enabled; bounded by the same
-`SF_SCENARIO_READY_TIMEOUT_MS` host budget). With ambient at the
-steady floor the ranged ratio lands ~11 vs full's ~26 — the gate
-removes the tail that made the metric a lottery. Restore-wait default
-bound also moved 30 s → the shared `scenarioReadyTimeoutMs()` default
-(120 s): the starvation it guards against is the same host-speed class
-as the ready waits.
+`waitForPerformanceScenarioReady` therefore now also requires
+driver-visible upload quiescence before a variant may open its window
+(symmetric for both variants; engages only when tier-1 counters are
+enabled; bounded by the same `SF_SCENARIO_READY_TIMEOUT_MS` host
+budget). Restore-wait default bound also moved 30 s → the shared
+`scenarioReadyTimeoutMs()` default (120 s): the starvation it guards
+against is the same host-speed class as the ready waits.
+
+**Gate calibration, two iterations.** First cut (3 MB/s absolute
+floor) starved twice with the observed steady ambient at 3.25 and
+3.95 MB/s — this host's combat floor sits just above 3 MB. The
+comparator bound computed from measured window shapes: symmetric
+ambient up to ~9.9 MB/s still passes (both windows carry it equally);
+the killer is *asymmetry* — a tail that decays between the windows.
+The gate now passes on either of: rate ≤ 4 MB/s, or a rate stable
+within [0.92×, 1.2×] of the trailing ~8 s mean under an 8 MB/s
+ceiling, sustained 1.5 s. A falling tail fails the low band; a steady
+hot host passes; ambient above 8 MB/s is unwinnable anyway and the
+gate says so rather than burning the window. Starve paths now log the
+last-observed rate — the calibration data above came from exactly
+those messages.
 
 **GPU bricks are a real product gap, not scenario noise.** The shared
 material (`SF_Shared_mechanical_dark` etc.) keeps a warm *canvas*
@@ -917,6 +928,59 @@ Review-surface repairs: a stale source pin in
 regex) was updated to the deliberate `immediate: true` contract — it
 gates two other manifests' fast gates; the quiet gate gained a source
 pin and `uploadQuiet` fields in the readiness receipt.
+
+**Starve forensics, fourth pass (2026-09-24 late).** Both waits now
+record the exact held sub-condition each poll, so a timeout names its
+blocker instead of reporting a bare 600 s. The ready wait reports
+`heldAt` ∈ {snapshotMatch, shipsInjected, meshesPresent,
+authoredAdmission, worldCounts/Slots, admissionDrained, uploadQuiet}
+plus queue depth, active/running admission jobs (key, assets,
+elapsed), sim clock, and live time-scale requests. The restore wait
+reports per-id presence ({inEntities, inMeshes, slot, ledger
+membership}) plus tick/simTime deltas between polls — a frozen clock
+shows as `tickDelta:0`.
+
+What the forensics found and fixed:
+
+- **Injected ships outrun their own admission.** `spawnFleet` gives
+  combat/transparent ships `intent:{thrust:1,boost:true}`; the pose
+  hold zeroed velocity once at arm, but the intent re-accelerates
+  every tick. Under a slow host the ships crossed the render glass
+  (~1,300 WU out) before their mesh build ran —
+  `isEntityRenderRelevant` refuses the mesh, `meshesPresent` can
+  never converge. The pose hold now pins each live injected ship (and
+  the player — same one-shot-velocity hole, observed 1,200 WU drift)
+  to its arm-time position for the life of the scenario; cleared at
+  restore and asserted by `activityStopped`.
+- **Restore starvation had a second phase.** Entity removal is
+  immediate (no tick), but `entity:destroyed` is `bus.queue`d and only
+  flushed inside `lifetimeSweep` — the mesh/slot release therefore
+  still needs a live sim. A starved run recorded `inEntities:false`
+  with `inMeshes:true, slot:bound` for the full wait while
+  `timeScale:0`/`tickDelta:0` — a scale-0 request held the clock and
+  every queued destroy sat unflushed. `timeScaleRequests` is now in
+  the starve record to name the holder when it recurs.
+- **The remaining ready-wait blocker is one ambient job, not the
+  scenario.** Two consecutive starves named `critical-hub:2`
+  (`place_station_trade_hub.glb`, 82 MB) in-flight for 371–415 s —
+  the hull-first admission gate correctly holds scenario ship
+  admission behind it, and `admissionDrained` correctly refuses to
+  open a window while its GPU work could land mid-measurement. The
+  job has no timeout/retry; whether it is wedged or merely
+  contention-slow is a render-side question — logged as demo defect
+  D38. On a quiet host this leg completes in <60 s (the 18:44
+  diagnostic ran route+scenario+restore end-to-end in ~3.5 min).
+
+```yaml
+unit: PQ-040.native-acceptance (browser leg, fourth diagnostic series)
+candidateHead: 22cf0d8be
+runs: >-
+  three 300 s diagnostics starved the ready wait; forensics fixed
+  ship/player pose drift (meshesPresent now passes), leaving
+  authoredAdmission held behind the ambient critical-hub job under
+  host contention; restore proved ok=true when the clock stays live
+numericAcceptance: unproven
+```
 
 ```yaml
 unit: PQ-040.native-acceptance (browser leg, third completed run)
