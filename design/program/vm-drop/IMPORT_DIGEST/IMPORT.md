@@ -1,4 +1,4 @@
-# IMPORT — IMPORT_DIGEST 20260924dd
+# IMPORT — digest 20260924de
 
-Digest only. Apply package folders in numeric order; this file does not
-carry patches. Latest ship: **#144 weapons-npc-quiet-latch**.
+Read `report.md` for the full stack + hold table after #145
+(customs-cones-empty-quiet-latch).

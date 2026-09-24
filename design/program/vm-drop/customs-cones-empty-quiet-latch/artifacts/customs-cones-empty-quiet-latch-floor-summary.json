@@ -1,0 +1,58 @@
+{
+  "name": "customs-cones-empty-quiet-latch",
+  "packageRuns": 5,
+  "medians": [
+    3.59455441482882,
+    3.3679682215802114,
+    3.340511079102879,
+    3.4932362275318365,
+    3.624201689899603
+  ],
+  "mins": [
+    3.4390691857189557,
+    3.0346228026489013,
+    3.202396509675468,
+    3.379860335286084,
+    3.3315816751122034
+  ],
+  "floorMinSpeedup": 3.0346228026489013,
+  "medianOfMedians": 3.4932362275318365,
+  "dirtyWakeOk": true,
+  "runs": [
+    {
+      "i": 1,
+      "medianSpeedup": 3.59455441482882,
+      "minSpeedup": 3.4390691857189557,
+      "maxSpeedup": 3.698330047796913,
+      "dirtyWakeOk": true
+    },
+    {
+      "i": 2,
+      "medianSpeedup": 3.3679682215802114,
+      "minSpeedup": 3.0346228026489013,
+      "maxSpeedup": 3.586870360769982,
+      "dirtyWakeOk": true
+    },
+    {
+      "i": 3,
+      "medianSpeedup": 3.340511079102879,
+      "minSpeedup": 3.202396509675468,
+      "maxSpeedup": 3.387793562270977,
+      "dirtyWakeOk": true
+    },
+    {
+      "i": 4,
+      "medianSpeedup": 3.4932362275318365,
+      "minSpeedup": 3.379860335286084,
+      "maxSpeedup": 3.759339167513243,
+      "dirtyWakeOk": true
+    },
+    {
+      "i": 5,
+      "medianSpeedup": 3.624201689899603,
+      "minSpeedup": 3.3315816751122034,
+      "maxSpeedup": 3.7064328059593854,
+      "dirtyWakeOk": true
+    }
+  ]
+}
