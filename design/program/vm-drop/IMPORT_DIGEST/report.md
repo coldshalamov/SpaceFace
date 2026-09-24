@@ -1,11 +1,12 @@
-# IMPORT_DIGEST report — 2026-09-24ac (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ad (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #63; +#64 measured on
-stacked tip @ `e1b3f26a3`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #64; +#65 measured on
+stacked tip @ `31e445654`. Fresh profile `settled-45s-stacked-20260924ac`
+(Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
 
@@ -50,6 +51,7 @@ stacked tip @ `e1b3f26a3`.
 | 62 | `classify-physics-partition-cache` |
 | 63 | `camera-clearance-asteroid-span-reject` |
 | 64 | `classify-normalize-pins-small-n` |
+| 65 | `camera-clearance-never-roof-exclude` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -67,24 +69,24 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
-Tool cite: fresh `settled-45s-stacked-20260924w` (Picture ON, soft-GPU; post-#57
-stack @ `8b280fb14` before #58). Idle **62.4%**. Long tasks **17**. Soft-GPU /
+Tool cite: fresh `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip
+through #64 @ `e1b3f26a3`). Idle **65.2%**. Long tasks **17**. Soft-GPU /
 native GL / bloom admission owners ignored for portable ranking.
 
 ### Top portable src/ self (aggregated) — climb targets
 
 | samples | owner | notes |
 |---:|---|---|
-| 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
-| 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
-| 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57+#63 |
-| 181 | `syncEntityViews` | residual after #15+#44+#57 |
-| 153 | `hud.frame` | radar.draw + setLagTranslate |
-| 45 | `selectClassifyEntities` | residual after #60 |
+| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61 |
+| 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
+| 202 | `syncEntityViews` | residual after #15+#44+#57 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65 |
+| 132 | `hud.frame` | radar.draw + setLagTranslate |
+| 111 | `preStep` | residual after #56+#59+#61 |
 
 ### Notable callees (post-#57 / pre-#60)
 
-- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63** clearance), packPresentationWorldToFence, spaceBackground (hold)
+- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance), packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**)
@@ -93,7 +95,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 64 | `classify-normalize-pins-small-n` | Portable quiet `normalizePinReasons` 0–2 pin fast path **~1.92×** median (200-entity Ceres mix × 50k visits; floor minSpeedup ≥1.91× / five isolated pairs; admit parity). Focused suites 35/35 scratch. |
+| 65 | `camera-clearance-never-roof-exclude` | Portable quiet clearance never-roof structural exclude **~1.78×** median (60-rock Ceres × 20k floor; floor minSpeedup ≥1.60× / five isolated pairs; capital/station parity). Focused suites 68/68. |
 
 ## Scour attempts / misses
 
@@ -105,6 +107,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | resolvePins rockBody skip + normalize | prior under bar — not retried |
 | bitfield materialize pins | prior miss — not retried (distinct from #64) |
 | normalizePinReasons small-n (n<=2) fast path | **shipped #64 ~1.92×** |
+| clearance never-roof structural exclude (after #63) | **shipped #65 ~1.78×** |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -116,12 +119,12 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63 (syncEntityViews /
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65 (syncEntityViews /
    packFence / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61 (preStep residual /
-   lifetimeSweep residual / tacticalAI).
+   lifetimeSweep residual / tacticalAI / ai.stack liveFramesFor).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.
