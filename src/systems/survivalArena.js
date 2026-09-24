@@ -245,6 +245,7 @@ export function planArenaInstall({
   seed = 1,
   anchor = null,
   laneGate = 'front',
+  bossRoom = null,
 } = {}) {
   const at = {
     x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
@@ -266,24 +267,24 @@ export function planArenaInstall({
   const out = { phase, note: '', fields: [], mines: [], cover: false };
 
   if (arenaId === LAGRANGE_ARENA_ID) {
-    return finalizeInstall(planLagrangeInstall({
+    return decorateBossRoom(finalizeInstall(planLagrangeInstall({
       arenaPhase: phase, at, lane, across, lean, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === CINDER_ARENA_ID) {
-    return finalizeInstall(planCinderInstall({
+    return decorateBossRoom(finalizeInstall(planCinderInstall({
       arenaPhase: phase, at, lane, across, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === CRYO_ARENA_ID) {
-    return finalizeInstall(planCryoInstall({
+    return decorateBossRoom(finalizeInstall(planCryoInstall({
       arenaPhase: phase, at, lane, across, spin,
-    }));
+    })), bossRoom);
   }
   if (arenaId === STORM_ARENA_ID) {
-    return finalizeInstall(planStormInstall({
+    return decorateBossRoom(finalizeInstall(planStormInstall({
       arenaPhase: phase, at, lane, across, spin, simTime: 0,
-    }));
+    })), bossRoom);
   }
 
   switch (phase) {
@@ -388,6 +389,42 @@ export function planArenaInstall({
     // flank, a mined ring at knife range and cover to break line of sight. The loudest room, still
     // inside the two-slot budget.
     case 'boss': {
+      if (bossRoom === 'wing_bank') {
+        out.note = 'bank stone on the wing\'s bearing — one bank catches them';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, 180),
+          radius: 280,
+          strength: 70,
+          falloff: 1.2,
+        });
+        break;
+      }
+      if (bossRoom === 'screen_wall') {
+        out.note = 'a screen wall between you and the brawlers — shove it';
+        out.cover = true;
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lane, 150),
+          radius: 220,
+          strength: 160,
+          falloff: 1.3,
+        });
+        break;
+      }
+      if (bossRoom === 'hold_close') {
+        out.note = 'the room holds you; close on the ghosts';
+        out.fields.push({
+          kind: 'well',
+          center: { x: at.x, z: at.z },
+          radius: 340,
+          strength: 90,
+          damping: 1.8,
+          falloff: 1.15,
+        });
+        break;
+      }
       out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
       out.cover = true;
       out.fields.push({
@@ -418,7 +455,13 @@ export function planArenaInstall({
       return empty;
   }
 
-  return finalizeInstall(out);
+  return decorateBossRoom(finalizeInstall(out), bossRoom);
+}
+
+function decorateBossRoom(install, bossRoom) {
+  if (!install || !bossRoom) return install;
+  if (bossRoom === 'wing_bank') install.cover = true;
+  return install;
 }
 
 /** Copied verbatim from survivalWave.js:25-33 — the same "is this a live Survival run" question. */
@@ -737,6 +780,7 @@ export const survivalArena = {
       seed,
       anchor: playerAnchor(state),
       laneGate: dominantGate(plan),
+      bossRoom: plan.swarm && plan.swarm.bossRoom ? plan.swarm.bossRoom : null,
     });
 
     this._wave = wave;

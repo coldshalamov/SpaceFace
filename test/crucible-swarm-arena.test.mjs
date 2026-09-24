@@ -19,8 +19,10 @@ import {
   SWARM_DEBRIS_TARGET,
   SWARM_WRECK_KEEP,
   planSwarmDebris,
+  SWARM_OPTIC_TAG,
   swarmArena,
 } from '../src/systems/swarmArena.js';
+import { compileSwarmOptic } from '../src/data/opticStructures.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
@@ -336,6 +338,28 @@ test('placement is deterministic and takes no RNG but the one it is handed', () 
   assert.deepEqual(a, b);
   const c = planSwarmDebris({ ...args, rng: mulberry32(8) });
   assert.notDeepEqual(c, a);
+});
+
+test('wave 1 stamps the Helios fuse once, and ending the run releases it', () => {
+  const h = boot();
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  const optic = h.state.entityList.filter((entity) => entity.data && entity.data[SWARM_OPTIC_TAG]);
+  const layout = compileSwarmOptic(ARENA);
+  assert.equal(optic.length, layout.bodies.length);
+  assert.ok(optic.some((entity) => entity.data.opticMaterial === 'diamond'));
+  assert.ok(optic.some((entity) => entity.data.opticMaterial === 'stone'));
+  for (const entity of optic) {
+    const d = Math.hypot(entity.pos.x - h.player.pos.x, entity.pos.z - h.player.pos.z);
+    assert.ok(d >= SWARM_DEBRIS_SAFE_RADIUS, `optic rock at ${d.toFixed(0)}`);
+    assert.equal(entity.data.swarmArenaDebris, undefined);
+  }
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  const again = h.state.entityList.filter((entity) => entity.data && entity.data[SWARM_OPTIC_TAG] && !Number.isFinite(entity.data.despawnAt));
+  assert.equal(again.length, layout.bodies.length);
+  h.bus.emit('run:ended', { outcome: 'defeat' });
+  for (const entity of optic) {
+    assert.ok(Number.isFinite(entity.data.despawnAt));
+  }
 });
 
 test('the run ending hands the whole field back to the engine sweep', () => {

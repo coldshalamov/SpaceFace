@@ -13,7 +13,8 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../data/combatLabSetups.js';
 import { applyWeaponsColdLoadout } from '../systems/survivalMutators.js';
 import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxSetup.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
-import { normalizeBestLine } from '../systems/survivalRecords.js';
+import { loadCrucibleMeta, normalizeBestLine } from '../systems/survivalRecords.js';
+import { isModeAvailable } from '../systems/survivalUnlocks.js';
 
 /** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
@@ -34,7 +35,7 @@ export function crucibleStarterIdForSetup(setup) {
     && entry.loadout.every(slot => loadout.some(actual => actual?.slotIndex === slot.slotIndex && actual?.defId === slot.defId)));
   return match?.id || CRUCIBLE_DEFAULT_STARTER_ID;
 }
-export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored']);
+export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit']);
 
 export function normalizeCrucibleRuleset(ruleset) {
   return CRUCIBLE_RULESETS.includes(ruleset) ? ruleset : CRUCIBLE_DEFAULT_RULESET;
@@ -93,7 +94,14 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET) 
  */
 export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
   if (!setup) return false;
-  const resolved = normalizeCrucibleRuleset(ruleset);
+  const requested = normalizeCrucibleRuleset(ruleset);
+  let profile = null;
+  if (requested === 'boss_circuit') {
+    try { profile = loadCrucibleMeta(); } catch { profile = null; }
+  }
+  const resolved = requested === 'boss_circuit' && !isModeAvailable(profile, 'boss_circuit')
+    ? CRUCIBLE_DEFAULT_RULESET
+    : requested;
   const dailyDateKey = typeof setup.dailyDateKey === 'string' && setup.dailyDateKey
     ? setup.dailyDateKey
     : null;

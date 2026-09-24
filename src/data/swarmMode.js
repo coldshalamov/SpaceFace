@@ -289,6 +289,19 @@ export const SWARM_ROSTER = Object.freeze([
 
 export const SWARM_BOSS_ENEMY_ID = 'dreadnought_boss';
 
+/** Mass fodder that stays packed inside a swarm. Adventure keeps the enemy def's own doctrine. */
+export const SWARM_PACK_PURSUIT_IDS = Object.freeze(['wasp_swarmer', 'choir_zealot']);
+
+/**
+ * Doctrine stamp for one swarm spawn. Null means "leave the enemy def alone".
+ * Champion corsairs commit together so one bank can catch the wing. Mass lights pursue.
+ */
+export function swarmDoctrineStamp(enemyId, { swarm = false, champion = false } = {}) {
+  if (swarm && SWARM_PACK_PURSUIT_IDS.includes(enemyId)) return 'pack_pursuit';
+  if (swarm && champion && enemyId === 'corsair_raider') return 'brawler_commit';
+  return null;
+}
+
 /**
  * WHAT SHOWS UP ON A TENTH WAVE.
  *
@@ -309,34 +322,49 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'iron_maw',
     label: "Dreadnought 'Iron Maw'",
-    line: 'A capital hull is on the field.',
+    line: 'A capital hull is on the field. Throw the pack into the flank berm.',
+    room: 'flank_berm',
     packages: [{ enemyId: 'dreadnought_boss', count: 1, role: 'elite' }],
   },
   {
     id: 'corsair_wing',
     label: 'Corsair Wing',
-    line: 'Three raider aces, flying as one.',
-    packages: [{ enemyId: 'corsair_raider', count: 3, role: 'elite' }],
+    line: 'Three raider aces, flying as one. One bank catches the wing.',
+    room: 'wing_bank',
+    packages: [{ enemyId: 'corsair_raider', count: 3, role: 'elite', sameGate: true }],
   },
   {
     id: 'the_anvil',
     label: 'The Anvil',
-    line: 'Two brawlers behind a screen that eats ordnance.',
+    line: 'Shove the screen. The brawlers are what it was covering.',
+    room: 'screen_wall',
     packages: [
-      { enemyId: 'bruiser_brawler', count: 2, role: 'anchor' },
-      { enemyId: 'pd_screen_escort', count: 2, role: 'support' },
+      { enemyId: 'pd_screen_escort', count: 2, role: 'support', gateBias: 'near' },
+      { enemyId: 'bruiser_brawler', count: 2, role: 'anchor', gateBias: 'far', distance: 240 },
     ],
   },
   {
     id: 'quiet_choir',
     label: 'The Quiet Choir',
-    line: 'Three ghosts at range, and something holding you still.',
+    line: 'Close while the anchor holds you. The ghosts do not chase.',
+    room: 'hold_close',
     packages: [
-      { enemyId: 'quiet_ghost', count: 3, role: 'reach' },
-      { enemyId: 'field_anchor_controller', count: 1, role: 'anchor' },
+      { enemyId: 'quiet_ghost', count: 3, role: 'reach', gateBias: 'far', distance: 280 },
+      { enemyId: 'field_anchor_controller', count: 1, role: 'anchor', gateBias: 'near' },
     ],
   },
 ]);
+
+const BOSS_ROOM_NOTES = Object.freeze({
+  flank_berm: 'a flank berm — throw the swarm into it',
+  wing_bank: 'bank stone on the wing\'s bearing',
+  screen_wall: 'a screen wall between you and the brawlers',
+  hold_close: 'the room holds you; close on the ghosts',
+});
+
+export function bossRoomNote(room) {
+  return BOSS_ROOM_NOTES[room] || null;
+}
 
 /** Which champion a boss wave fields. Non-boss waves have none. */
 export function swarmBossFor(wave) {
@@ -567,16 +595,25 @@ export function swarmOpeningPackages(wave, rng) {
   if (boss) {
     // Every champion body carries `champion: true` all the way into the schedule, so the wave owner
     // can owe a WING as easily as it owes one Dreadnought without knowing any enemy ids.
+    const wingGate = swarmGateFor(w, 0);
     boss.packages.forEach((pkg, index) => {
+      const gateGroup = pkg.sameGate
+        ? wingGate
+        : pkg.gateBias === 'near'
+          ? swarmGateFor(w, 0)
+          : pkg.gateBias === 'far'
+            ? swarmGateFor(w, 4)
+            : swarmGateFor(w, index);
       packages.push({
         atTick: 0,
-        gateGroup: swarmGateFor(w, index),
+        gateGroup,
         role: pkg.role,
         enemyId: pkg.enemyId,
         count: pkg.count,
         batchSize: pkg.count,
         batchGapTicks: 0,
         champion: true,
+        ...(Number.isFinite(pkg.distance) ? { distance: pkg.distance } : {}),
       });
     });
   }
@@ -644,6 +681,7 @@ export function swarmPlanBlock(wave) {
     bossId: boss ? boss.id : null,
     bossLabel: boss ? boss.label : null,
     bossLine: boss ? boss.line : null,
+    bossRoom: boss ? boss.room : null,
     draftAfter: isSwarmDraftWave(w),
     refitAfter: isSwarmRefitWave(w),
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,

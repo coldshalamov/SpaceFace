@@ -67,6 +67,33 @@ test('a hunter chasing an NPC quarry stays scanner-neutral; hunting the player f
   }
 });
 
+test('a hunter trick reaching its activation window emits trickActivated', () => {
+  const { state, bus, system } = bootHunt();
+  try {
+    const hunter = place(state, makeBountyHunterSpec({
+      contractId: 'c-trick',
+      contractTargetId: state.playerId,
+      trick: 'mine-dropper',
+      pos: { x: 40, z: 0 },
+    }), 41);
+    const seen = [];
+    bus.on('bountyHunt:trickActivated', (p) => seen.push(p));
+
+    system.update(1 / 60, state);
+    assert.equal(hunter.data.bountyHunt.trickState.phase, 'telegraphing');
+
+    state.simTime += 3;
+    system.update(1 / 60, state);
+    assert.equal(hunter.data.bountyHunt.trickState.phase, 'cooldown');
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].trickId, 'mine-dropper');
+    assert.equal(seen[0].entityId, 41);
+  } finally {
+    system.destroy?.();
+    bus.clear();
+  }
+});
+
 test('the player killing the quarry records a helped-hunter outcome', () => {
   const { state, bus, system } = bootHunt();
   try {

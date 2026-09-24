@@ -306,12 +306,14 @@ export const survivalWave = {
         level,
         count,
         gateGroup: entry.gateGroup,
-        distance: this._spawnDistance,
         seed,
         wave: this._wave,
         packageIndex: Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0,
         batchIndex: item.index,
         role: entry.role,
+        swarm: !!this._swarm,
+        champion: entry.champion === true,
+        distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
       });
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
@@ -403,6 +405,8 @@ export const survivalWave = {
       packageIndex: 64,
       batchIndex: index,
       role: archetype.role,
+      swarm: true,
+      champion: false,
     });
     this._requestedTotal += receipt.requested;
     this._admittedTotal += receipt.admitted;
