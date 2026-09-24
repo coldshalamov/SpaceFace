@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ba (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24bb (post-import hillclimb)
 
-Master tip: **`273f8bad7`** (fetched; unchanged from #87).
+Master tip: **`273f8bad7`** (fetched; unchanged from #88).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924i` on `origin/master` @ `273f8bad7`;
-through #87 @ `b732fc4c4`; +#88 measured on stacked tip @ `c8302a279`. Profile
+through #88 @ `c8302a279`; +#89 measured on stacked tip @ `d8c2134b9`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -75,6 +75,7 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 86 | `combat-actions-advance-quiet-skip` |
 | 87 | `combat-postphysics-quiet-skip` |
 | 88 | `lifetime-corpse-lane-compact` |
+| 89 | `arcade-structural-fx-quiet-live-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -104,7 +105,11 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **noteRealtimeShadowCasterPose bit-identical early-out ~0.87× — hold (superseded by #81)**;
 **applySnapshotPose identical-write skip ~0.85× — hold**;
 **clearance floor retain with capital-rock movers (~1.26× median with PIC-07 stamp safety — under bar / hold)**;
-**authored-instance static submission reuse after #53 (~1.25–1.31× @ 0.05 WU — under bar / hold)**.
+**authored-instance static submission reuse after #53 (~1.25–1.31× @ 0.05 WU — under bar / hold)**;
+**makeResult retained scratch (~0.17× — regress / hold)**;
+**coolRuntime→stepPropulsion alone (~1.07× — reconfirm flight-propulsion-scratch hold)**;
+**packCombatTable single-dirty (~1.42× — under bar / hold)**;
+**weapons cool-weapon skip (~1.29× — under bar / hold)**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -119,13 +124,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
 ### Notable callees (post-#85)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), spaceBg (hold)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89** quiet live===0), spaceBg (hold)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -134,6 +139,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 89 | `arcade-structural-fx-quiet-live-skip` | Portable quiet `ArcadeStructuralFx` / `StructuralPool.update` when live===0 **~17.3×** median (272 slots × 100k; pool + composite idle gates; floor minSpeedup ≥14.8×). Focused vfx+impact+transients 33/33. Soft-GPU fps not claimed. |
 | 88 | `lifetime-corpse-lane-compact` | Portable quiet `lifetimeSweep` corpse compact after #87 **~5.53×** median (320 asteroids + 48 movables × 60k; typed death lanes; MEMBERSHIP fail-open full walk; floor minSpeedup ≥5.20×). Focused core+far+mining+fields suites 55/55. Soft-GPU fps not claimed. |
 | 87 | `combat-postphysics-quiet-skip` | Portable quiet `postPhysics` residual after #86 **~3.28×** median (48 combatants × 80k; empty byId + roster-stable ensure skip; floor minSpeedup ≥2.91×). Focused combat+attachment suites 75/75. Soft-GPU fps not claimed. |
 | 86 | `combat-actions-advance-quiet-skip` | Portable quiet `actions.advance` empty path **~2.37×** median (empty requests+active × 800k; floor minSpeedup ≥1.71×). Focused combat+doctrines suites 71/71. Soft-GPU fps not claimed. |
@@ -147,6 +153,15 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | Attempt | Result |
 |---|---|
+| ArcadeStructuralFx / StructuralPool quiet live===0 skip (272-slot capacity walk) | **shipped #89 ~17.3×** |
+| shield-bubble quiet skip (dead flash / hidden) | ~0.96× — drop |
+| coolRuntime scratch alone → full stepPropulsion | ~1.07× median / floor ~0.92× — **reconfirm propulsion hold** |
+| normalizeRuntime schema+family trust | fair ~1.45× / integrated stepPropulsion ~1.02× — under bar |
+| packCombatTable single-dirty pose skip collectDirtyIds | fair ~1.42× / floor ~1.28× — under bar |
+| drawTrail stroke batch (uniform alpha) | ~3.8× mock but **picture change** — not shippable under Picture ON |
+| imminentCollision player-kin once-per-classify | fair ~1.22× — under bar (new angle vs held reach early-out) |
+| weapons._tickWeapons cool-weapon skip | ~1.29× — under bar |
+| makeResult retained scratch + optional-key clear | ~0.17× — **regress** (V8 prefers fresh alloc) |
 | lifetimeSweep typed-lane corpse compact (quiet skip asteroid fat list; MEMBERSHIP fail-open) | **shipped #88 ~5.53×** |
 | classify rock visit residual (context-only resolvePins + precomputed player approach) | ~1.09× — **hold** (matches prior resolvePins context-only) |
 | combat postPhysics empty-byId attachment skip + roster-stable ensure skip | **shipped #87 ~3.28×** |
@@ -187,10 +202,11 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89
    (syncEntityViews residual closures / ordnance / microMotion; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
-   retain held ~1.26×; applySnapshotPose identical-write held; spaceBg steady-state held).
+   retain held ~1.26×; applySnapshotPose identical-write held; spaceBg / plasmaStream
+   / feel speed-lines residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual; rock visit context-only held ~1.09×).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88

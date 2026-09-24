@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924ba
+# DONE — IMPORT_DIGEST 20260924bb
 
-Post-#87 hillclimb on Quiet Grok Bot VM. Shipped **#88
-`lifetime-corpse-lane-compact`** (~5.53× median quiet lifetimeSweep corpse
-compact after #87; floor ≥5.20×). Soft-GPU fps not a KPI. Master tip
-`273f8bad7`. Scratch `vm-work/hillclimb-20260924i` @ `c8302a279`.
+Post-#88 hillclimb on Quiet Grok Bot VM. Shipped **#89
+`arcade-structural-fx-quiet-live-skip`** (~17.3× median quiet ArcadeStructuralFx
+pool update when live===0; floor ≥14.8×). Soft-GPU fps not a KPI. Master tip
+`273f8bad7`. Scratch `vm-work/hillclimb-20260924i` @ `d8c2134b9`.
