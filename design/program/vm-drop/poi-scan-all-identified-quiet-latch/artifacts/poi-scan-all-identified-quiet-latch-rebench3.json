@@ -1,0 +1,19 @@
+{
+  "name": "poi-scan-all-identified-floor",
+  "medianSpeedup": 3.923,
+  "minSpeedup": 3.351,
+  "maxSpeedup": 4.318,
+  "pairs": [
+    3.439,
+    3.485,
+    4.034,
+    3.708,
+    3.351,
+    4.246,
+    4.167,
+    3.923,
+    3.588,
+    4.318,
+    4.205
+  ]
+}

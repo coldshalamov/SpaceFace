@@ -1,8 +1,8 @@
-# DONE — IMPORT_DIGEST 20260924cq
+# DONE — IMPORT_DIGEST 20260924cr
 
-Post-#134 hillclimb on Quiet Grok Bot VM. **Shipped #135
-`asteroid-field-interact-still-quiet-latch`** (~13.5–14.0× median / floor ≥7.2×).
-Soft-GPU fps not a KPI. Master tip `8ebdf5537`. Scratch
-`vm-work/hillclimb-20260924k` @ `929ae1949` (worktree
+Post-#135 hillclimb on Quiet Grok Bot VM. Restacked onto master `4b28a8323`.
+**Shipped #136 `poi-scan-all-identified-quiet-latch`** (~3.9–4.2× isolated
+median / floor ≥3.26×). Soft-GPU fps not a KPI. Scratch
+`vm-work/hillclimb-20260924k` @ `348695004` (worktree
 `/workspace/spaceface-scratch/hillclimb-20260924h`). Bias remains classifyWorld
 residual / registry.step / syncEntityViews.

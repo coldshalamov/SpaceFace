@@ -1,7 +1,8 @@
-# IMPORT — DIGEST 20260924cq
+# IMPORT — DIGEST 20260924cr
 
 Owner applies vm-drop packages in numeric order. This digest tip records
-hillclimb through **#135 `asteroid-field-interact-still-quiet-latch`** (after #134
-decode-runway-empty-far-quiet-latch / digest 20260924cp).
+hillclimb through **#136 `poi-scan-all-identified-quiet-latch`** (after #135
+asteroid-field-interact-still-quiet-latch / digest 20260924cq). Stack base
+`origin/master` @ `4b28a8323`.
 
 See `report.md` for stack, holds, and next poles.

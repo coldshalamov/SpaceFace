@@ -1,0 +1,51 @@
+{
+  "name": "poi-scan-all-identified-package-floor",
+  "runs": [
+    {
+      "medianSpeedup": 4.205,
+      "minSpeedup": 3.741,
+      "maxSpeedup": 5.927
+    },
+    {
+      "medianSpeedup": 4.062,
+      "minSpeedup": 3.42,
+      "maxSpeedup": 4.368
+    },
+    {
+      "medianSpeedup": 3.923,
+      "minSpeedup": 3.351,
+      "maxSpeedup": 4.318
+    },
+    {
+      "medianSpeedup": 4.114,
+      "minSpeedup": 3.265,
+      "maxSpeedup": 4.853
+    },
+    {
+      "medianSpeedup": 4.019,
+      "minSpeedup": 3.575,
+      "maxSpeedup": 4.45
+    }
+  ],
+  "medianOfMedians": 4.062,
+  "floorMinAcrossRuns": 3.265,
+  "primaryInProcess": {
+    "name": "poi-scan-all-identified",
+    "medianSpeedup": 15.142,
+    "minSpeedup": 3.756,
+    "maxSpeedup": 16.518,
+    "pairs": [
+      3.756,
+      12.625,
+      15.266,
+      16.518,
+      15.19,
+      14.913,
+      15.142,
+      15.577,
+      14.938,
+      14.87,
+      15.31
+    ]
+  }
+}
