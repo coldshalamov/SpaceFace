@@ -1,0 +1,67 @@
+{
+  "label": "particles-idle-commit-skip",
+  "primary": "quiet-particles-idle-commit-skip",
+  "iters": 200000,
+  "bindings": 7,
+  "pairs": [
+    {
+      "beforeMs": 5.053,
+      "afterMs": 2.294,
+      "speedup": 2.202
+    },
+    {
+      "beforeMs": 4.811,
+      "afterMs": 2.156,
+      "speedup": 2.231
+    },
+    {
+      "beforeMs": 4.869,
+      "afterMs": 2.155,
+      "speedup": 2.26
+    },
+    {
+      "beforeMs": 5.186,
+      "afterMs": 2.282,
+      "speedup": 2.273
+    },
+    {
+      "beforeMs": 4.741,
+      "afterMs": 2.06,
+      "speedup": 2.302
+    },
+    {
+      "beforeMs": 5.065,
+      "afterMs": 2.192,
+      "speedup": 2.311
+    },
+    {
+      "beforeMs": 5.165,
+      "afterMs": 2.186,
+      "speedup": 2.362
+    },
+    {
+      "beforeMs": 4.885,
+      "afterMs": 1.944,
+      "speedup": 2.512
+    },
+    {
+      "beforeMs": 4.971,
+      "afterMs": 1.965,
+      "speedup": 2.53
+    },
+    {
+      "beforeMs": 5.402,
+      "afterMs": 2.013,
+      "speedup": 2.684
+    },
+    {
+      "beforeMs": 6.815,
+      "afterMs": 2.05,
+      "speedup": 3.324
+    }
+  ],
+  "medianSpeedup": 2.311,
+  "minSpeedup": 2.202,
+  "maxSpeedup": 3.324,
+  "note": "Picture unchanged: mesh.count already 0 after first idle commit."
+}
