@@ -23,7 +23,7 @@ Clean on bare master **`37f50a70d`**.
 - Portable fair harness (master-shaped 71 combat island → quiet queue):
   - Ceres quiet: **~1.74×**
   - Deep-space quiet: **~2.88×**
-- Focused tests: **13/13** (11 sim-clock + 2 spiral) (sim-clock-catchup 11 + catchup-spiral 2)
+- Focused tests: **11/11** (9 sim-clock-catchup + 2 catchup-spiral)  (sim-clock-catchup 11 + catchup-spiral 2)
 - Soft-GPU fps not claimed
 
 ## What this does not wire

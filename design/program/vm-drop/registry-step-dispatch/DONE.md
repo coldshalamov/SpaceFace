@@ -24,7 +24,7 @@ Soft-GPU fps not claimed. Hitch/worst not claimed this pass (portable dispatcher
 
 ### Focused tests
 
-`sim-clock-catchup` + `catchup-spiral` → **13/13** (11 sim-clock + 2 spiral).
+`sim-clock-catchup` + `catchup-spiral` → **11/11** (9 sim-clock-catchup + 2 catchup-spiral) .
 
 GPU tier: **software**. Owner iGPU fps not claimed.
 

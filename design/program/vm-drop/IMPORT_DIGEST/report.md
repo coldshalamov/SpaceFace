@@ -31,7 +31,7 @@ Accounted pending digest packages conceptually — do not re-cut those poles.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 39 | `registry-step-dispatch` | Quiet dispatch **~1.74×** (Ceres) / **~2.88×** (deep); 13/13 clock tests |
+| 39 | `registry-step-dispatch` | Quiet dispatch **~1.74×** (Ceres) / **~2.88×** (deep); 11/11 clock tests |
 
 ## Still import — applies cleanly on `37f50a70d`
 
