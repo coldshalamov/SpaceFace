@@ -828,42 +828,74 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     const sf = window.SF;
     const state = sf?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
-    if (!state || snapshot?.id !== expectedId) return false;
+    // Every poll records which sub-conditions hold so a starvation timeout names the blocker
+    // (authored admission vs presentation-world bookkeeping vs upload quiescence).
+    const detail = { scenarioId: expectedId };
+    const fail = (key, extra) => {
+      detail.heldAt = key;
+      if (extra) Object.assign(detail, extra);
+      window.__SF_SCENARIO_READY_LAST__ = detail;
+      return false;
+    };
+    if (!state || snapshot?.id !== expectedId) return fail('snapshotMatch');
     const shipIds = snapshot.liveInjectedIds.filter((id) => state.entities.get(id)?.type === 'ship');
-    if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) return false;
-    for (const id of shipIds) {
-      const entity = state.entities.get(id);
-      if (!entity?.mesh) return false;
-      if (entity.mesh.userData?.authoredAssetState !== 'authored') return false;
+    if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) {
+      return fail('shipsInjected');
+    }
+    const unmeshed = shipIds.filter((id) => !state.entities.get(id)?.mesh);
+    if (unmeshed.length) return fail('meshesPresent', { unmeshed: unmeshed.slice(0, 8) });
+    const unauthored = shipIds.filter((id) => state.entities.get(id)?.mesh?.userData?.authoredAssetState !== 'authored');
+    if (unauthored.length) {
+      return fail('authoredAdmission', {
+        unauthored: unauthored.slice(0, 8).map((id) => ({
+          id,
+          authoredAssetState: state.entities.get(id)?.mesh?.userData?.authoredAssetState || null,
+        })),
+      });
     }
     const renderSystem = sf.registry?.get?.('render');
     const world = renderSystem?._presentationWorld;
     if (snapshot.presentationWorldMode) {
-      if (!world) return false;
+      if (!world) return fail('worldPresent');
       if (snapshot.presentationWorldMode === 'rebase') {
-        if (renderSystem?._frameMembrane?.seq !== state.world?.frameOriginSeq) return false;
+        if (renderSystem?._frameMembrane?.seq !== state.world?.frameOriginSeq) return fail('membraneSeq');
       } else {
         const targetActive = snapshot.presentationTargetActive || snapshot.presentationBaseline.active;
-        if (world.activeCount !== targetActive) return false;
-        if (world.boundCount !== targetActive) return false;
-        if (renderSystem._meshes.size !== targetActive) return false;
-        for (const id of shipIds) {
+        if (!(world.activeCount === targetActive && world.boundCount === targetActive
+            && renderSystem._meshes.size === targetActive)) {
+          return fail('worldCounts', {
+            targetActive,
+            activeCount: world.activeCount,
+            boundCount: world.boundCount,
+            meshesSize: renderSystem._meshes.size,
+          });
+        }
+        const unslotted = shipIds.filter((id) => {
           const slot = world.getSlotForEntityId(id);
-          if (slot < 0 || world.meshRefs[slot] !== state.entities.get(id)?.mesh) return false;
-        }
-        for (const id of snapshot.retiredInjectedIds) {
-          if (world.getSlotForEntityId(id) >= 0) return false;
-        }
+          return slot < 0 || world.meshRefs[slot] !== state.entities.get(id)?.mesh;
+        });
+        if (unslotted.length) return fail('worldSlots', { unslotted: unslotted.slice(0, 8) });
+        const staleRetired = snapshot.retiredInjectedIds.filter((id) => world.getSlotForEntityId(id) >= 0);
+        if (staleRetired.length) return fail('worldRetiredSlots', { staleRetired: staleRetired.slice(0, 8) });
       }
     }
     const queueRemaining = Array.isArray(renderSystem?._meshBuildQueue)
       ? Math.max(0, renderSystem._meshBuildQueue.length - (renderSystem._meshBuildQueueHead || 0))
       : 0;
     const upgrades = state.render?.scene?.userData?.authoredUpgradeDiagnostics;
-    if (!(queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0)) return false;
+    if (!(queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0)) {
+      return fail('admissionDrained', {
+        queueRemaining,
+        meshReconcileDirty: renderSystem?._meshReconcileDirty === true,
+        activeJobs: Number(upgrades?.activeJobs || 0),
+      });
+    }
 
     const perfApi = window.__SPACEFACE_PERF__;
-    if (typeof perfApi?.getCounterSnapshot !== 'function' || perfApi?.tier1?.isEnabled?.() !== true) return true;
+    if (typeof perfApi?.getCounterSnapshot !== 'function' || perfApi?.tier1?.isEnabled?.() !== true) {
+      window.__SF_SCENARIO_READY_LAST__ = detail;
+      return true;
+    }
     const tag = `${expectedId}:${snapshot.resourceStartTime}`;
     const quiet = window.__SF_SCENARIO_UPLOAD_QUIET__?.tag === tag
       ? window.__SF_SCENARIO_UPLOAD_QUIET__
@@ -873,7 +905,7 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     // for a multi-second rate window, so most polls skip the snapshot entirely.
     if (quiet.lastAt == null || now - quiet.lastAt >= 100) {
       const uploadBytes = perfApi.getCounterSnapshot().totals?.bufferUploadBytes;
-      if (!Number.isFinite(uploadBytes)) return true;
+      if (!Number.isFinite(uploadBytes)) { window.__SF_SCENARIO_READY_LAST__ = detail; return true; }
       quiet.samples.push({ at: now, bytes: uploadBytes });
       quiet.lastAt = now;
       while (quiet.samples.length > 2 && now - quiet.samples[0].at > 8_000) quiet.samples.shift();
@@ -893,6 +925,11 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     if (quietNow) {
       if (quiet.since == null) quiet.since = now;
     } else quiet.since = null;
+    detail.heldAt = quiet.since == null ? 'uploadQuiet' : null;
+    detail.shortRateBytesPerSec = shortRate;
+    detail.longRateBytesPerSec = longRate;
+    detail.quietForMs = quiet.since == null ? 0 : now - quiet.since;
+    window.__SF_SCENARIO_READY_LAST__ = detail;
     return quiet.since != null && now - quiet.since >= uploadQuietRequiredMs;
   }, {
     expectedId: scenarioId,
@@ -902,22 +939,9 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     uploadQuietStableMax: UPLOAD_QUIET_STABLE_MAX,
     uploadQuietRequiredMs: UPLOAD_QUIET_REQUIRED_MS,
   }, { timeout: timeoutMs }).catch(async (error) => {
-    const quiet = await page.evaluate(() => {
-      const q = window.__SF_SCENARIO_UPLOAD_QUIET__;
-      if (!q) return null;
-      const first = q.samples?.[0];
-      const last = q.samples?.[q.samples.length - 1];
-      return {
-        tag: q.tag,
-        sampleCount: q.samples?.length || 0,
-        lastRateBytesPerSec: first && last && last.at > first.at
-          ? (last.bytes - first.bytes) / ((last.at - first.at) / 1_000)
-          : null,
-        quietForMs: q.since != null && last ? last.at - q.since : null,
-      };
-    }).catch(() => null);
-    log(`[scenario] ready wait starved for ${scenarioId}: ${JSON.stringify({ ...quiet, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })}`);
-    throw new Error(`scenario ready wait starved for ${scenarioId}: ${JSON.stringify({ ...quiet, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })} — ${error?.message || error}`);
+    const last = await page.evaluate(() => window.__SF_SCENARIO_READY_LAST__ || null).catch(() => null);
+    log(`[scenario] ready wait starved for ${scenarioId}: ${JSON.stringify({ ...last, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })}`);
+    throw new Error(`scenario ready wait starved for ${scenarioId}: ${JSON.stringify({ ...last, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })} — ${error?.message || error}`);
   });
   return page.evaluate((expectedId) => {
     const state = window.SF?.state;

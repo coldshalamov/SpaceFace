@@ -110,9 +110,7 @@ test('presentation-world scenarios use live owner journals and restore temporary
   assert.match(source, /timeScalePreserved: state\?\.timeScale === snapshot\.timeScale/);
   assert.match(source, /presentationSpawnCount = baseline \* 4[\s\S]*presentationTargetActive = baseline \* 5/);
   assert.match(source, /const targetActive = snapshot\.presentationTargetActive \|\| snapshot\.presentationBaseline\.active/);
-  assert.match(source, /world\.activeCount !== targetActive/);
-  assert.match(source, /world\.boundCount !== targetActive/);
-  assert.match(source, /renderSystem\._meshes\.size !== targetActive/);
+  assert.match(source, /world\.activeCount === targetActive[\s\S]*world\.boundCount === targetActive[\s\S]*renderSystem\._meshes\.size === targetActive/);
   assert.match(source, /Object\.getOwnPropertyDescriptor\(render, 'syncEntityViews'\)/);
   assert.match(source, /retainedEntityViewSync[\s\S]*retainedHlod[\s\S]*restoreAdapterAuthority/);
   assert.match(source, /injectFailureOnce/);
@@ -139,7 +137,7 @@ test('presentation-world scenarios use live owner journals and restore temporary
 test('scenario readiness requires driver-visible upload quiescence only when counters are live', async () => {
   const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
   // The gate must never gate an uninstrumented session: no counter, no wait.
-  assert.match(source, /perfApi\?\.tier1\?\.isEnabled\?\.\(\) !== true\) return true/);
+  assert.match(source, /perfApi\?\.tier1\?\.isEnabled\?\.\(\) !== true[\s\S]{0,120}return true/);
   // The rate is read from the same tier-1 counter the comparator debits.
   assert.match(source, /getCounterSnapshot\(\)\.totals\?\.bufferUploadBytes/);
   // Quiet must be sustained, not instantaneous — a single sub-floor poll cannot open the window.
