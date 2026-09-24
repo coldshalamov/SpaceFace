@@ -5514,7 +5514,7 @@ export function createHud(ctx, alerts) {
     // their edges, so an arrow that would sit on one steps just inboard of it.
     let edgeX = edgePlacement.x;
     let edgeY = edgePlacement.y;
-    const obstacles = objectiveEdgeObstacles(performance.now());
+    const obstacles = objectiveEdgeObstacles();
     const leftBox = obstacles.left;
     const rightBox = obstacles.right;
     const orreryBox = obstacles.orrery;
@@ -5538,22 +5538,36 @@ export function createHud(ctx, alerts) {
     setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
   }
 
-  // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
-  // rides an edge — one layout read, never per frame.
-  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null, orrery: null };
+  // Plate boxes for the objective edge arrow. Layout is stable across settled flight; only
+  // refresh on first edge use, resize, or an explicit HUD layout bump — never a 500 ms timer
+  // (that forced sync layout on soft-GPU every half-second while the arrow rode an edge).
+  const objectiveEdgeBoxes = {
+    stale: true,
+    left: null,
+    right: null,
+    orrery: null,
+    orreryEl: null,
+  };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
     const box = el.getBoundingClientRect();
     return box && box.width > 0 && box.height > 0 ? box : null;
   }
-  function objectiveEdgeObstacles(nowMs) {
-    if (nowMs - objectiveEdgeBoxes.at > 500) {
-      objectiveEdgeBoxes.at = nowMs;
-      // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
-      objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
-      objectiveEdgeBoxes.right = plateBox(rightDock);
-      objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryCluster.host.querySelector('.orr-cluster')) : null;
-    }
+  function invalidateObjectiveEdgeBoxes() {
+    objectiveEdgeBoxes.stale = true;
+  }
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
+  }
+  function objectiveEdgeObstacles() {
+    if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
+    objectiveEdgeBoxes.stale = false;
+    // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
+    objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
+    objectiveEdgeBoxes.right = plateBox(rightDock);
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
     return objectiveEdgeBoxes;
   }
 
