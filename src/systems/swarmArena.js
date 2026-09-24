@@ -489,6 +489,8 @@ export const swarmArena = {
     this._cullWrecks();
     this._topUp(run, wave);
     this._installSlalomWells(run);
+    const lesson = payload && payload.plan && payload.plan.openingLesson;
+    if (lesson && wave <= 1) this._installOpeningLesson(lesson);
   },
 
   _onWaveStarted() {
@@ -739,6 +741,79 @@ export const swarmArena = {
       : null;
   },
 
+  _installOpeningLesson(lesson) {
+    if (!lesson) return;
+    const anchor = playerAnchor(this.state);
+    const rock = lesson.rock || {};
+    const radius = Number.isFinite(rock.radius) ? rock.radius : 6;
+    const helpers = this.helpers;
+    const existingRock = this._lessonRockId != null && this.state && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this._lessonRockId)
+      : null;
+    const rockLive = !!(existingRock && existingRock.alive !== false);
+    if (!rockLive && helpers && typeof helpers.spawnEntity === 'function') {
+      const size = radius;
+      const oreHP = Math.round(360 + size * 14);
+      const spawned = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: {
+          x: anchor.x + (Number.isFinite(rock.x) ? rock.x : 78),
+          z: anchor.z + (Number.isFinite(rock.z) ? rock.z : 16),
+        },
+        vel: { x: 0, z: 0 },
+        radius: size,
+        physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
+        // Light enough to be the body that moves. Debris mass would make an immovable wall.
+        mass: 220,
+        angVel: 0,
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        data: withBankStone({
+          typeId: TYPE_ID,
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU: Math.round(6 + size * 0.4),
+          size,
+          [SWARM_DEBRIS_TAG]: true,
+          terrainAnchor: true,
+          terrainAnchorEncounterIds: [],
+          openingLesson: true,
+          // defaultDynamic only promotes asteroids that carry this flag, so the rope can throw it.
+          tetherPayload: true,
+        }),
+      });
+      const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+      if (id != null) {
+        this._lessonRockId = id;
+        this._ids = this._ids.concat(id);
+      }
+    }
+    const well = lesson.well || {};
+    const system = this._fieldsSystem();
+    if (system && typeof system.registerEnvironmental === 'function'
+      && !(this._wellIds || []).includes('swarm-opening-lesson-well')) {
+      const id = 'swarm-opening-lesson-well';
+      const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+      const record = system.registerEnvironmental({
+        id,
+        kind: 'well',
+        center: {
+          x: anchor.x + (Number.isFinite(well.x) ? well.x : -24),
+          z: anchor.z + (Number.isFinite(well.z) ? well.z : 108),
+        },
+        radius: Number.isFinite(well.radius) ? well.radius : 96,
+        strength: Number.isFinite(well.strength) ? well.strength : 90,
+        falloff: Number.isFinite(well.falloff) ? well.falloff : 1.35,
+        createdAt,
+      });
+      if (record != null) this._wellIds = this._wellIds.concat(id);
+    }
+  },
+
   _installSlalomWells(run) {
     this._releaseWells();
     if (!runHasMutator(run, 'gravity_slalom')) return;
@@ -846,6 +921,7 @@ export const swarmArena = {
   },
 
   _release(reason) {
+    this._lessonRockId = null;
     this._restoreCapacity();
     this._releaseWells();
     this._releaseOpticIds();

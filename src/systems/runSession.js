@@ -88,6 +88,7 @@ export const runSession = {
       ruleset: next.ruleset,
       seed: next.seed,
       phase: next.phase,
+      openingLesson: request && request.openingLesson === true,
     });
   },
 

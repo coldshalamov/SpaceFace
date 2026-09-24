@@ -356,6 +356,8 @@ export const survivalWave = {
    */
   _reinforceSwarm(run, opts = {}) {
     if (!this._swarm || !this._plan) return;
+    const lesson = this._plan.openingLesson;
+    if (lesson && Number.isFinite(lesson.holdTicks) && this._cursor < lesson.holdTicks) return;
     const emergencyOnly = opts.emergencyOnly === true;
     if (!emergencyOnly && (this._cleared || !this._active)) return;
     if (!emergencyOnly && this._cursor < 0) return;
