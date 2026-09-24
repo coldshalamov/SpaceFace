@@ -1,0 +1,228 @@
+{
+  "primary": {
+    "medianSpeedup": 2.828,
+    "minSpeedup": 2.348,
+    "maxSpeedup": 3.131,
+    "pairs": [
+      2.348,
+      3.131,
+      2.899,
+      3.09,
+      2.742,
+      2.844,
+      2.828,
+      2.676,
+      2.551,
+      2.516,
+      2.926
+    ],
+    "lastModes": [
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch"
+    ],
+    "earlyEnabled": true,
+    "iters": 20000,
+    "rocks": 48,
+    "runs": 11
+  },
+  "wake": {
+    "latchedMode": "early-quiet-latch",
+    "afterMoveMode": "incremental",
+    "beforeMem": "early-quiet-latch",
+    "afterMem": "incremental",
+    "beforeMine": "early-quiet-latch",
+    "afterMine": "incremental",
+    "dirtyWakeOk": true
+  },
+  "floors": [
+    {
+      "medianSpeedup": 2.869,
+      "minSpeedup": 2.423,
+      "maxSpeedup": 4.965,
+      "pairs": [
+        2.423,
+        4.965,
+        3.143,
+        2.869,
+        3.046,
+        2.844,
+        2.794,
+        2.458,
+        3.34,
+        3.411,
+        2.472
+      ],
+      "lastModes": [
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch"
+      ],
+      "earlyEnabled": true,
+      "iters": 20000,
+      "rocks": 48,
+      "runs": 11
+    },
+    {
+      "medianSpeedup": 2.777,
+      "minSpeedup": 2.312,
+      "maxSpeedup": 3.48,
+      "pairs": [
+        2.562,
+        3.48,
+        2.892,
+        2.831,
+        2.894,
+        2.706,
+        2.777,
+        2.83,
+        2.7,
+        2.733,
+        2.312
+      ],
+      "lastModes": [
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch"
+      ],
+      "earlyEnabled": true,
+      "iters": 20000,
+      "rocks": 48,
+      "runs": 11
+    },
+    {
+      "medianSpeedup": 2.846,
+      "minSpeedup": 2.489,
+      "maxSpeedup": 3.48,
+      "pairs": [
+        2.489,
+        3.48,
+        2.863,
+        2.846,
+        2.889,
+        2.965,
+        2.783,
+        2.846,
+        2.743,
+        2.844,
+        2.886
+      ],
+      "lastModes": [
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch"
+      ],
+      "earlyEnabled": true,
+      "iters": 20000,
+      "rocks": 48,
+      "runs": 11
+    },
+    {
+      "medianSpeedup": 2.856,
+      "minSpeedup": 2.46,
+      "maxSpeedup": 3.549,
+      "pairs": [
+        2.46,
+        3.549,
+        2.88,
+        2.803,
+        2.653,
+        3.164,
+        2.87,
+        2.615,
+        3.249,
+        2.856,
+        2.519
+      ],
+      "lastModes": [
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch"
+      ],
+      "earlyEnabled": true,
+      "iters": 20000,
+      "rocks": 48,
+      "runs": 11
+    },
+    {
+      "medianSpeedup": 2.823,
+      "minSpeedup": 2.417,
+      "maxSpeedup": 3.455,
+      "pairs": [
+        2.417,
+        3.455,
+        2.899,
+        2.86,
+        2.769,
+        2.738,
+        2.825,
+        2.687,
+        2.895,
+        2.823,
+        2.549
+      ],
+      "lastModes": [
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch",
+        "early-quiet-latch"
+      ],
+      "earlyEnabled": true,
+      "iters": 20000,
+      "rocks": 48,
+      "runs": 11
+    }
+  ],
+  "packageMedianRange": [
+    2.777,
+    2.869
+  ],
+  "packageFloorMin": 2.312
+}

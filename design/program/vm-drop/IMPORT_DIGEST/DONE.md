@@ -1,6 +1,5 @@
-# DONE — IMPORT_DIGEST 20260924ct
+# DONE — IMPORT_DIGEST 20260924cu
 
-Shipped **#137 docking-corridor-far-quiet-latch** (~18× median, floor ≥7.25×,
-74/74 focused). Prior #137 miss (asteroid-field empty floor ~1.22×) remains
-held; this digest id supersedes 20260924cs as the tip. Master still
+Shipped **#138 classify-early-quiet-latch** (~2.8× median, floor ≥2.31×,
+96/96 focused). Digests 20260924ct (#137) superseded as tip. Master still
 `4b28a8323`. Soft-GPU fps not claimed.
