@@ -35,9 +35,26 @@ export function createActionService(context, attachments, routeDamage) {
     return { ok: true, requestId: queued.id, request: queued };
   }
 
+  // Quiet combat dominates prePhysics: empty requests + empty activeByActor still paid
+  // processRequests (fresh due/future arrays + requests rebind) and Object.keys().sort()
+  // every tick. for-in emptiness is O(1) on {}.
+  function hasActiveActionKeys(active) {
+    if (!active) return false;
+    for (const _ in active) return true;
+    return false;
+  }
+
+  const dueScratch = [];
+  const futureScratch = [];
+
   function advance() {
-    processRequests();
+    const requests = state.combat.actions.requests;
     const active = state.combat.actions.activeByActor;
+    // Quiet empty path: no queued requests and no active instances → return.
+    if ((!requests || requests.length === 0) && !hasActiveActionKeys(active)) return;
+    if (requests && requests.length > 0) processRequests();
+    // processRequests may have started instances; re-check before Object.keys.sort.
+    if (!hasActiveActionKeys(active)) return;
     for (const key of Object.keys(active).sort(compareEntityKeys)) {
       const instance = active[key];
       if (instance) tickAction(instance, key);
@@ -45,14 +62,28 @@ export function createActionService(context, attachments, routeDamage) {
   }
 
   function processRequests() {
-    const due = [];
-    const future = [];
-    for (const request of state.combat.actions.requests) {
-      if (request.notBeforeTick <= state.tick) due.push(request); else future.push(request);
+    const requests = state.combat.actions.requests;
+    const due = dueScratch;
+    const future = futureScratch;
+    due.length = 0;
+    future.length = 0;
+    for (let i = 0; i < requests.length; i++) {
+      const request = requests[i];
+      if (request.notBeforeTick <= state.tick) due.push(request);
+      else future.push(request);
     }
-    state.combat.actions.requests = future;
+    // Prefer in-place retain when every request is still future (common notBefore defer).
+    if (future.length === requests.length) {
+      // nothing due — keep the same array identity
+    } else if (future.length === 0) {
+      requests.length = 0;
+    } else {
+      requests.length = 0;
+      for (let i = 0; i < future.length; i++) requests.push(future[i]);
+    }
+    if (due.length === 0) return;
     due.sort((a, b) => a.seq - b.seq);
-    for (const request of due) processRequest(request);
+    for (let i = 0; i < due.length; i++) processRequest(due[i]);
   }
 
   function processRequest(request) {
