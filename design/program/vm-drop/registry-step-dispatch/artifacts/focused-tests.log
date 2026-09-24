@@ -1,0 +1,75 @@
+TAP version 13
+# Subtest: clock membership: table / near / calendar / glass
+ok 1 - clock membership: table / near / calendar / glass
+  ---
+  duration_ms: 1.287071
+  ...
+# Subtest: selected AI backends retain their slot clock on catch-up steps
+ok 2 - selected AI backends retain their slot clock on catch-up steps
+  ---
+  duration_ms: 4.450566
+  ...
+# Subtest: createSimulation extra catch-up steps invoke table only
+ok 3 - createSimulation extra catch-up steps invoke table only
+  ---
+  duration_ms: 0.648674
+  ...
+# Subtest: createSimulation calendar owners run at 2 Hz, not every tick
+ok 4 - createSimulation calendar owners run at 2 Hz, not every tick
+  ---
+  duration_ms: 2.67423
+  ...
+# Subtest: production combat order excludes calendar owners
+ok 5 - production combat order excludes calendar owners
+  ---
+  duration_ms: 0.308899
+  ...
+# Subtest: production primary ticks iterate the combat queue, not calendar names
+ok 6 - production primary ticks iterate the combat queue, not calendar names
+  ---
+  duration_ms: 0.24495
+  ...
+# Subtest: legacy47a and unprofiled hosts still walk calendar every tick
+ok 7 - legacy47a and unprofiled hosts still walk calendar every tick
+  ---
+  duration_ms: 0.648606
+  ...
+# Subtest: content gates: quiet open flight omits idle owners; wake restores them
+ok 8 - content gates: quiet open flight omits idle owners; wake restores them
+  ---
+  duration_ms: 0.371384
+  ...
+# Subtest: content gate sticky massline settles then drops
+ok 9 - content gate sticky massline settles then drops
+  ---
+  duration_ms: 0.232322
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 174.137888
+TAP version 13
+# Subtest: HUD and voice skip only on extra catch-up steps
+ok 1 - HUD and voice skip only on extra catch-up steps
+  ---
+  duration_ms: 1.878
+  ...
+# Subtest: SimulationRunner numbers extra catch-up steps and still advances exact ticks
+ok 2 - SimulationRunner numbers extra catch-up steps and still advances exact ticks
+  ---
+  duration_ms: 3.012342
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 152.254666
