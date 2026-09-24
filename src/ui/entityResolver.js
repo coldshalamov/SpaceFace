@@ -25,7 +25,7 @@ import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
 import { BODY_MODULES } from '../data/claimableBodies.js';
-import { aceById } from '../data/namedAces.js';
+import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
 
 export const ENTITY_TYPES = Object.freeze([
@@ -462,4 +462,78 @@ export function resolveEntity(state, ref) {
     links: (body.links || []).filter((l) => l && l.ref && l.label),
     route: body.route || null,
   };
+}
+
+// ── PQ-183.02 global find ──────────────────────────────────────────────────────────────────────
+// One key finds ANYTHING: every entity class the resolver can open is enumerable here. Rows are
+// the refs themselves — a find result is a door, and the drawer's delegated handler opens it, so
+// find can never name a thing it cannot show.
+const FIND_ORDER = { faction: 0, commodity: 1, station: 2, hull: 3, module: 4, captain: 5, sector: 6, contract: 7 };
+
+/**
+ * Search every resolvable entity class by name. Returns { ref, label, type, kicker, detail }.
+ * Prefix matches outrank substring matches; kinds hold the FIND_ORDER reading order. Only refs
+ * that resolve to a live dossier are returned — a find that cannot open is a lie.
+ */
+export function searchEntities(state, query, { limit = 14 } = {}) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return [];
+  const rows = [];
+  const push = (type, id, label, detail = '') => {
+    if (!id || !label) return;
+    const name = String(label);
+    if (!name.toLowerCase().includes(q)) return;
+    const ref = type + ':' + id;
+    if (!entityExists(ref)) return;
+    rows.push({ ref, label: name, type, kicker: DOSSIERS[type] ? type : 'entity', detail });
+  };
+
+  for (const f of FACTION_META) push('faction', f.id, f.name);
+  for (const c of COMMODITIES) push('commodity', c.id, c.name);
+  for (const [id, st] of STATION_BY_ID) {
+    const sec = SECTOR_OF_STATION.get(id);
+    const secName = sec && SECTOR_BY_ID.get(sec) ? SECTOR_BY_ID.get(sec).name : '';
+    push('station', id, st && st.name, secName ? `in ${secName}` : '');
+  }
+  for (const h of SHIPS) push('hull', h.id, h.name);
+  for (const m of MODULES.concat(WEAPONS, BODY_MODULES)) push('module', m.id, m.name);
+  for (const a of knownAces()) push('captain', a && a.id, a && a.name, a && a.crew ? String(a.crew) : '');
+  for (const s of SECTORS) push('sector', s.id, s.name);
+
+  // Contracts are live records — enumerate the same pools findContractRecord scans.
+  const seenContracts = new Set();
+  const contractPools = [
+    state && state.missions && state.missions.active,
+    state && state.missions && state.missions.available,
+    state && state.missions && state.missions.offered,
+  ];
+  const boards = state && state.missions && state.missions.boards;
+  if (boards) {
+    for (const sid in boards) {
+      const slots = boards[sid] && boards[sid].slots;
+      if (Array.isArray(slots)) contractPools.push(slots);
+    }
+  }
+  for (const pool of contractPools) {
+    if (!pool) continue;
+    const list = Array.isArray(pool) ? pool : Object.values(pool);
+    for (const rec of list) {
+      if (!rec) continue;
+      const id = rec.id || rec.missionId;
+      if (!id || seenContracts.has(id)) continue;
+      seenContracts.add(id);
+      push('contract', id, rec.title || rec.name || rec.brief || 'Contract');
+    }
+  }
+
+  rows.sort((a, b) => {
+    const ap = a.label.toLowerCase().startsWith(q) ? 0 : 1;
+    const bp = b.label.toLowerCase().startsWith(q) ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    const ao = FIND_ORDER[a.type] != null ? FIND_ORDER[a.type] : 9;
+    const bo = FIND_ORDER[b.type] != null ? FIND_ORDER[b.type] : 9;
+    if (ao !== bo) return ao - bo;
+    return a.label.localeCompare(b.label);
+  });
+  return rows.slice(0, Math.max(1, limit));
 }

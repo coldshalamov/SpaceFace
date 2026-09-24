@@ -16585,7 +16585,7 @@
       "priority": 419,
       "title": "Global find and chart notes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00",
         "PQ-162.00"
@@ -16606,7 +16606,9 @@
         "npm run check:entity-links",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-183.02-REPORT.md"
+      ],
       "brief": "One key opens find across entities and screens; the chart accepts player notes that persist per save. DONE WHEN: Find reaches every entity class; notes round-trip through save."
     },
     {

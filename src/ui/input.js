@@ -263,6 +263,15 @@ export function createUiInput(ctx, screenManager) {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
         catch (e) { console.error('[uiInput] screen onKey error:', e); }
       }
+      // PQ-183.02: one key finds anything, from anywhere — over a modal screen the palette mounts
+      // inside that screen so the dossier still has a host. Runs after def.onKey so a screen that
+      // already binds `/` to its own in-context find (the chart's target search) keeps it — one
+      // key still finds, it just finds the thing the player is looking at.
+      if (matchesBinding(ev, BINDINGS.find)) {
+        ev.preventDefault();
+        bus.emit('ui:globalFind', {});
+        return;
+      }
       // Repeat the open binding to close the same instrument (mission log already does this in
       // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
       if (def && def.id === 'techTree' && matchesBinding(ev, BINDINGS.techTree)) {
@@ -315,6 +324,14 @@ export function createUiInput(ctx, screenManager) {
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('hud:recallObjective');
+      return;
+    }
+
+    // PQ-183.02: one key finds anything. In flight the palette mounts on #screens itself and
+    // carries the .screen marker so the dossier drawer still has a host.
+    if (matchesBinding(ev, BINDINGS.find)) {
+      ev.preventDefault();
+      bus.emit('ui:globalFind', {});
       return;
     }
 

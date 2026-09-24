@@ -2867,6 +2867,14 @@ function escapeMapHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+/** The stable key a player note hangs on: the target's own stable id when it has one
+ *  (sectorId/stationId are data ids that survive reloads), else the map-assigned id. */
+function noteKeyForTarget(t) {
+  if (!t || !t.kind) return null;
+  const id = t.sectorId || t.stationId || t.id;
+  return id ? `${t.kind}:${id}` : null;
+}
+
 /** Safe HTML for one dynamic map-search row, including imported-save claim names. */
 export function mapSearchItemHtml(target, index = 0) {
   const t = target || {};
@@ -3292,6 +3300,11 @@ export const galaxyMapScreen = {
   // the chart, not a fact about the universe, and writing it into gameState would widen the save
   // shape and the golden surface for a purely cosmetic convenience. Same posture as `_localIntel`.
   _bookmarks: [],
+  // PQ-183.02 chart notes. Player-authored lines on a selected mark, keyed `kind:stable-id`,
+  // persisted per save through the galaxyMap screenMemory bag — the same lane bookmarks ride.
+  _notes: new Map(),
+  _noteEditing: null,
+  _lastNoteSlotKey: '',
   _ribbonEl: null,
   _lastRibbonKey: null,
   // Separate, coarser key for the action row so live ETA churn cannot steal keyboard focus from
@@ -4213,6 +4226,12 @@ export const galaxyMapScreen = {
           .filter((b) => b && b.focusGlobal && Number.isFinite(b.focusGlobal.x) && Number.isFinite(b.focusGlobal.z))
           .map((b) => ({ label: String(b.label || ''), x: b.focusGlobal.x, z: b.focusGlobal.z, span: Number(b.spanWU) || 0 }))
         : [],
+      // PQ-183.02 chart notes — player-authored lines, same artifact lane as bookmarks.
+      // Flattened to {ref,text}; 32 notes of 160 chars is the screenMemory bound, and the bag
+      // cannot smuggle more than that in either.
+      notes: this._notes instanceof Map
+        ? [...this._notes].slice(-32).map(([ref, text]) => ({ ref: String(ref), text: String(text).slice(0, 160) }))
+        : [],
     });
   },
 
@@ -4252,6 +4271,18 @@ export const galaxyMapScreen = {
         .filter((b) => b && Number.isFinite(b.x) && Number.isFinite(b.z))
         .map((b) => ({ label: String(b.label || 'Chart'), focusGlobal: { x: b.x, z: b.z }, spanWU: Number(b.span) || 0 }))
         .slice(-8);
+    }
+    // Chart notes reset to EMPTY then rehydrate: notes are per-save artifacts, and a note from
+    // save A must never leak into save B the way an unconditional merge would.
+    this._notes = new Map();
+    this._noteEditing = null;
+    this._lastNoteSlotKey = '';
+    if (Array.isArray(bag.notes)) {
+      for (const n of bag.notes) {
+        if (n && typeof n.ref === 'string' && typeof n.text === 'string' && n.text.trim()) {
+          this._notes.set(n.ref, n.text.slice(0, 160));
+        }
+      }
     }
     // Deliberately no zoom/camera restore — see _rememberScreenState. Restoring a bookmark's
     // coordinates is not the same thing: the player must still choose to jump to one.
@@ -4751,6 +4782,7 @@ export const galaxyMapScreen = {
     // SLICE C: the tablist and the place actions track the selection, so they refresh here too.
     this._renderTabs(state);
     this._renderPlaceActions(state);
+    this._renderNoteSlot(state);
 
     const t = this._selectedTarget;
     // A new selection re-seats the action band at its top so the primary action is never
@@ -5579,10 +5611,12 @@ export const galaxyMapScreen = {
     // button will actually do. It used to key off the primary action, which meant the row claimed
     // "Lay a course to this mark" for a neighbour and then committed a jump.
     const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
+    const noteKey = noteKeyForTarget(t);
     const acts = [
       { id: 'frame', label: 'Frame', available: true, reason: 'Centre the chart on this mark' },
       { id: 'open-system', label: 'Open system', available: !!sectorId, reason: sectorId ? 'Zoom to this mark\'s own sector' : 'This mark has no parent sector' },
       { id: 'bookmark', label: 'Bookmark', available: true, reason: 'Save this view to the left rail' },
+      { id: 'note', label: noteKey && this._notes.get(noteKey) ? 'Edit note' : 'Note', available: !!noteKey, reason: noteKey ? 'Write a private line on this mark — saved with this save' : 'This mark cannot carry a note' },
     ];
     if (t.kind !== 'rumor' && t.courseDisabled !== true) {
       const plot = resolveGalaxyMapPlotAction(state, t);
@@ -5616,6 +5650,16 @@ export const galaxyMapScreen = {
       return true;
     }
     if (id === 'bookmark') return this._addBookmark();
+    if (id === 'note') {
+      const key = noteKeyForTarget(t);
+      if (!key) return false;
+      this._noteEditing = key;
+      this._lastNoteSlotKey = ''; // force the slot to repaint as an edit field
+      this._renderNoteSlot(state);
+      const input = this._root && this._root.querySelector('#gm-note-slot .gm-note-input');
+      if (input) { try { input.focus({ preventScroll: true }); } catch (_) { try { input.focus(); } catch (__) {} } }
+      return true;
+    }
     if (id === 'frame' || id === 'open-system') {
       // Both are camera moves in the GLOBAL frame (ADR D2.1). A search-style target carries global
       // x/z; a galaxy sector node carries GRAPH coordinates, so its global position is derived from
@@ -5636,6 +5680,63 @@ export const galaxyMapScreen = {
       return this._setCameraFraming({ focusGlobal: focus, spanWU });
     }
     return false;
+  },
+
+  /**
+   * PQ-183.02 — the note slot under the place actions. Read-mode shows the saved line; edit-mode
+   * is one input, Enter keeps (empty deletes), Esc drops. Re-renders only when the visible
+   * signature changes so a live inspector pass never yanks focus out of the field.
+   */
+  _renderNoteSlot(state) {
+    if (!HAS_DOC || !this._root) return;
+    const slot = this._root.querySelector('#gm-note-slot');
+    if (!slot) return;
+    const t = this._selectedTarget;
+    const key = t ? noteKeyForTarget(t) : null;
+    if (!key) {
+      if (slot.innerHTML !== '') slot.innerHTML = '';
+      this._noteEditing = null;
+      this._lastNoteSlotKey = '';
+      return;
+    }
+    const text = (this._notes instanceof Map && this._notes.get(key)) || '';
+    // Selection moved while an editor was open on the previous mark — drop the session; the
+    // unsaved draft is the player's to lose, not ours to resurrect on a later click.
+    if (this._noteEditing && this._noteEditing !== key) this._noteEditing = null;
+    const editing = this._noteEditing === key;
+    const signature = `${key}|${editing ? 'e' : 'r'}|${text}`;
+    if (signature === this._lastNoteSlotKey) return;
+    this._lastNoteSlotKey = signature;
+    if (editing) {
+      slot.innerHTML = `<input class="gm-note-input" type="text" maxlength="160"
+        aria-label="Chart note for this mark" placeholder="A line only you will read…"
+        value="${escapeMapHtml(text)}"><div class="gm-ins-note k-t-fine k-38">Enter keeps it — empty deletes · Esc drops it</div>`;
+      const input = slot.querySelector('.gm-note-input');
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const v = String(input.value || '').trim().slice(0, 160);
+          if (!(this._notes instanceof Map)) this._notes = new Map();
+          if (v) this._notes.set(key, v); else this._notes.delete(key);
+          this._noteEditing = null;
+          this._rememberScreenState();
+          this._lastNoteSlotKey = '';
+          this._renderNoteSlot(state);
+          this._renderPlaceActions(state); // 'Note' vs 'Edit note' label follows the save
+        } else if (ev.key === 'Escape') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          this._noteEditing = null;
+          this._lastNoteSlotKey = '';
+          this._renderNoteSlot(state);
+        }
+      });
+      return;
+    }
+    slot.innerHTML = text
+      ? `<div class="gm-ins-note gm-note-line" role="note">“${escapeMapHtml(text)}”</div>`
+      : '';
   },
 
   // ═══ SLICE C — inspector tabs ══════════════════════════════════════════════════════════════

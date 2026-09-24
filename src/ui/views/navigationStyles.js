@@ -379,6 +379,15 @@ export const CSS = `
 #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { color: var(--k-red); }
 #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"]::after { background: var(--k-red); }
 #sf-galaxymap .gm-place-actions { display: flex; flex-wrap: wrap; gap: calc(8px * var(--k-s)) var(--k-gap); }
+/* PQ-183.02 chart notes: the player's own line reads like the inspector's other notes, quoted
+   and lit; the edit field is one hairline-bordered input, same ink, no new chrome. */
+#sf-galaxymap .gm-note-slot { margin-top: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-note-slot:empty { margin-top: 0; }
+#sf-galaxymap .gm-note-line { color: var(--k-text-live); font-style: italic; }
+#sf-galaxymap .gm-note-input { width: 100%; box-sizing: border-box; background: transparent;
+  border: 0; border-bottom: 1px solid var(--k-hair); color: var(--k-text-live);
+  font: inherit; padding: 4px 0; outline: none; }
+#sf-galaxymap .gm-note-input:focus { border-bottom-color: var(--k-bone); }
 #sf-galaxymap .gm-meter, #sf-galaxymap .gm-mission-meter { position: relative; height: 2px; width: 100%; background: var(--k-hair); overflow: hidden; }
 #sf-galaxymap .gm-meter > i, #sf-galaxymap .gm-mission-meter-fill { display: block; height: 100%; background: var(--k-bone-62); }
 #sf-galaxymap .gm-mission-name { color: var(--k-text-live); }
