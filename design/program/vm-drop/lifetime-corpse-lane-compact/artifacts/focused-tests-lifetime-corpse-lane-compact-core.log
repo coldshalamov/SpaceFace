@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: reinitializing core does not duplicate entity command listeners
+ok 1 - reinitializing core does not duplicate entity command listeners
+  ---
+  duration_ms: 4.092322
+  ...
+# Subtest: destroying core detaches entity command listeners
+ok 2 - destroying core detaches entity command listeners
+  ---
+  duration_ms: 0.335076
+  ...
+# Subtest: Continue/load does not invent a multi-day day:tick from a restored simTime
+ok 3 - Continue/load does not invent a multi-day day:tick from a restored simTime
+  ---
+  duration_ms: 4.098564
+  ...
+# Subtest: crossing the next day boundary after Continue still emits a single day:tick
+ok 4 - crossing the next day boundary after Continue still emits a single day:tick
+  ---
+  duration_ms: 1.286465
+  ...
+# Subtest: New Game clock reset does not emit a negative day:tick catch-up
+ok 5 - New Game clock reset does not emit a negative day:tick catch-up
+  ---
+  duration_ms: 0.539787
+  ...
+# Subtest: lifetimeSweep does not recycle or drop the current player wreck
+ok 6 - lifetimeSweep does not recycle or drop the current player wreck
+  ---
+  duration_ms: 5.304726
+  ...
+# Subtest: lifetimeSweep does not expire the current player via TTL
+ok 7 - lifetimeSweep does not expire the current player via TTL
+  ---
+  duration_ms: 0.697426
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 8 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 11.776407
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 9 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.041004
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 10 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.799612
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 11 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 2.300964
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 12 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.804008
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 13 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.252789
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 14 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 0.999778
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 15 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.101122
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 16 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.745475
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 17 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 3.195952
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 18 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 1.478691
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 19 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.548442
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 214.437771
+Could not find '/workspace/spaceface-scratch/hillclimb-20260924h/test/fields-npc-plan.test.mjs'
