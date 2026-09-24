@@ -16,6 +16,7 @@ import {
   buildCodeFor, buildNameFor, counterplayFor, deathCauseText, deathSentence, storyMomentsFor,
 } from '../src/systems/survivalResults.js';
 import { injectHudCss } from '../src/ui/views/hudStyles.js';
+import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
 
@@ -660,6 +661,9 @@ document.addEventListener('click', (event) => {
 
 // HUD stylesheet, so the bench can show HUD chrome over the still when a screen expects it.
 injectHudCss();
+// Game boot loads the station sheet set up front (main.js, ledger D15) — the bench does the same
+// so a screen is judged against the cascade the player actually has from first paint.
+ensureStationStylesheet();
 
 void goto(params.get('screen') || 'pause');
 

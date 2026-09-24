@@ -17,6 +17,7 @@ import { el } from '../kit/index.js';
 import { disabledServiceWhy, disabledVitalActHtml } from './serviceQuotes.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
+import { ensureStylesheet } from './stationStyles.js';
 import { createStationCommands } from './stationCommands.js';
 import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
@@ -77,30 +78,11 @@ function resolveTarget(tab) {
   return action ? { action } : {};
 }
 
-// Field Hardware tokens + component layer first. Interior layout lives in station-orbital.css;
-// station.css loads last so the berth chrome (kit plates, keys, stencil name) beats the leftover
-// Orbital Command website walls.
-const STATION_STYLES = [
-  { id: 'sx-fh-tokens', href: '/assets/ui/kit/tokens/tokens.css' },
-  { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
-  { id: 'sx-station-orbital-css', href: '/styles/station-orbital.css' },
-  { id: 'sx-station-css', href: '/styles/station.css' },
-  { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
-];
-// Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
-// stage wears .sx-sw* classes styled only by this sheet, so opening F2 before the first dock must
-// not wait for a dock to inject it.
-export function ensureStylesheet() {
-  if (typeof document === 'undefined') return;
-  for (const style of STATION_STYLES) {
-    if (document.getElementById(style.id)) continue;
-    const link = document.createElement('link');
-    link.id = style.id;
-    link.rel = 'stylesheet';
-    link.href = style.href;
-    document.head.appendChild(link);
-  }
-}
+// The sheet set lives in ./stationStyles.js so game boot (main.js) can load it without this
+// module's graph. Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the
+// shared shipworks stage wears .sx-sw* classes styled only by this sheet, so opening F2 before
+// the first dock must not wait for a dock to inject it.
+export { ensureStylesheet };
 
 // The berth: the player's hull in the station's own dock interior — now drawn by the MAIN renderer
 // (src/render/uiStage.js, packet P20) on the world canvas behind this screen, not by a second

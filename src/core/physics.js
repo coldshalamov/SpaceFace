@@ -364,7 +364,7 @@ export const physics = {
     this._diag.backend = 'rapier-dynamic';
     if (!this._sg02Init && !this._sg02) {
       const token = ++this._sg02Token;
-      this._sg02Init = createSg02DynamicBodyOwner({
+      const init = createSg02DynamicBodyOwner({
         mode: 'rapier-dynamic',
         captureContactImpacts: combatFlag('weaponImpulseConsequences'),
         publishTelemetry: shouldPublishSg02Telemetry(state),
@@ -375,6 +375,10 @@ export const physics = {
           const currentBackend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
           if (token !== this._sg02Token || currentBackend !== 'rapier-dynamic') {
             if (owner && typeof owner.dispose === 'function') owner.dispose();
+            // A discarded init must release the slot: while _sg02 is null and _sg02Init
+            // still holds this settled promise no update ever re-initializes the
+            // authority, and every live flight tick silently freezes (D26).
+            if (this._sg02Init === init) this._sg02Init = null;
             return null;
           }
           this._sg02 = owner;
@@ -385,10 +389,13 @@ export const physics = {
           if (token === this._sg02Token) {
             console.warn('[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
             this._sg02 = null;
-            this._sg02Init = null;
           }
+          // Whatever the token state, this promise can no longer deliver an owner;
+          // release the slot so a later update retries instead of freezing flight (D26).
+          if (this._sg02Init === init) this._sg02Init = null;
           return null;
         });
+      this._sg02Init = init;
     }
 
     if (!this._sg02) {

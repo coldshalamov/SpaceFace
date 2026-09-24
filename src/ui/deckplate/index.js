@@ -54,5 +54,10 @@ export function injectDeckplate(doc = globalThis.document) {
   const style = doc.createElement('style');
   style.id = STYLE_ID;
   style.textContent = DECKPLATE_CSS;
-  doc.head.appendChild(style);
+  // The station sheet set (src/ui/station/stationStyles.js) may already be in <head> — game boot
+  // loads it up front since ledger D15. This sheet writes .sx-* rules the station sheets must
+  // beat, the same order first-dock injection produced; landing after it would invert the cascade.
+  const stationAnchor = doc.getElementById('sx-fh-tokens');
+  if (stationAnchor) doc.head.insertBefore(style, stationAnchor);
+  else doc.head.appendChild(style);
 }

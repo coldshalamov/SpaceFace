@@ -13,7 +13,7 @@
 // Build order note (SCREENS_B §3): this is step 1 — the promotion. Steps 2–5 (CREST/STAGE/APRON
 // restructure, engineering-stage adoption, handling deck, scars, capability deck) land on top.
 
-import { ensureStylesheet as ensureStationStylesheet } from '../station/stationApp.js';
+import { ensureStylesheet as ensureStationStylesheet } from '../station/stationStyles.js';
 import { getSharedShipStage } from '../station/screens/shipworks.js';
 
 // The shared stage's .sx-* vocabulary is styled by the station sheets, which the station shell

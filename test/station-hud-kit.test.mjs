@@ -326,8 +326,9 @@ test('station shell, market, shipworks, and accept controls resolve through the 
 
   const app = read('src/ui/station/stationApp.js');
   assert.match(app, /bindStationMarkup\(\s*stationFrameHtml\(\)/);
-  const styles = app.slice(app.indexOf('STATION_STYLES'), app.indexOf('];'));
-  assert.ok(styles.indexOf('station-workbench.css') > styles.indexOf('/styles/station.css'));
+  const styles = read('src/ui/station/stationStyles.js');
+  const list = styles.slice(styles.indexOf('STATION_STYLES'), styles.indexOf('];'));
+  assert.ok(list.indexOf('station-workbench.css') > list.indexOf('/styles/station.css'));
   assert.match(read('src/ui/station/screens/market.js'), /bindStationMarkup\(\s*marketBrowserHtml\(\)/);
   assert.match(read('src/ui/station/screens/market.js'), /bindStationMarkup\(\s*marketTradeHtml\(/);
   assert.match(read('src/ui/station/screens/shipworks.js'), /bindStationMarkup\(\s*shipworksFrameHtml\(\)/);
