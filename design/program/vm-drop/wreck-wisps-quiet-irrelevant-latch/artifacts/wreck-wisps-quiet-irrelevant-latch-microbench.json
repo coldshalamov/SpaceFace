@@ -1,0 +1,131 @@
+{
+  "name": "wreck-wisps-quiet-irrelevant-latch",
+  "primary": "quiet-wreck-wisps-empty-bucket-version-wake",
+  "iterations": 200000,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 11.528488999999993,
+      "afterMs": 3.655024999999995,
+      "speedup": 3.154147782846905,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 13.294919000000007,
+      "afterMs": 4.297511,
+      "speedup": 3.0936323374157757,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 13.803450999999995,
+      "afterMs": 3.555876000000012,
+      "speedup": 3.88187074014953,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.894194000000013,
+      "afterMs": 3.302986000000004,
+      "speedup": 3.601042813987101,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.859651999999997,
+      "afterMs": 3.4841440000000006,
+      "speedup": 3.4038926060461323,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.813434,
+      "afterMs": 3.1509229999999917,
+      "speedup": 3.7491979334309447,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 13.393424999999993,
+      "afterMs": 3.4798410000000075,
+      "speedup": 3.848861197968518,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.993448,
+      "afterMs": 3.574655000000007,
+      "speedup": 3.3551344115725787,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.541747999999998,
+      "afterMs": 3.436644000000001,
+      "speedup": 3.35843572974099,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 11.467057999999994,
+      "afterMs": 3.424942999999999,
+      "speedup": 3.3481018516220558,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    },
+    {
+      "beforeMs": 12.763276000000005,
+      "afterMs": 3.81322999999999,
+      "speedup": 3.3471036365496016,
+      "beforeWalks": 200000,
+      "afterWalks": 0,
+      "afterSkips": 200000,
+      "beforeClears": 200000,
+      "afterClears": 0
+    }
+  ],
+  "medianSpeedup": 3.35843572974099,
+  "minSpeedup": 3.0936323374157757,
+  "maxSpeedup": 3.88187074014953,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "relatch": true,
+    "walks": 3,
+    "skips": 2,
+    "clears": 2
+  },
+  "note": "Prior hold modeled a wake that still re-scanned while latched (~0.96×). Version-only wake matches #115 loot-magnet. Soft-GPU fps not claimed."
+}
