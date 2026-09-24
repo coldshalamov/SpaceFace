@@ -1,4 +1,4 @@
-# IMPORT — digest 20260924df
+# IMPORT — digest 20260924dg
 
-Read `report.md` for the full stack + hold table after #146
-(catch-nets-empty-quiet-latch).
+Read `report.md` for the full stack + hold table after #147
+(sanctuary-empty-quiet-latch).
