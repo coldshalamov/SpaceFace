@@ -2080,8 +2080,11 @@ export function ensureBootTerminalCanvas(document = globalThis.document) {
   const canvas = document.createElement('canvas');
   canvas.id = 'boot-terminal-canvas';
   canvas.className = 'boot-canvas';
-  canvas.width = 640;
-  canvas.height = 380;
+  const box = typeof canvas.getBoundingClientRect === 'function' ? canvas.getBoundingClientRect() : null;
+  const viewW = (typeof globalThis.innerWidth === 'number' && globalThis.innerWidth) || 1280;
+  const viewH = (typeof globalThis.innerHeight === 'number' && globalThis.innerHeight) || 720;
+  canvas.width = Math.max(2, Math.round((box && box.width) || viewW));
+  canvas.height = Math.max(2, Math.round((box && box.height) || viewH));
   const scrim = typeof overlay.querySelector === 'function' ? overlay.querySelector('.boot-scrim') : null;
   if (scrim && scrim.parentNode === overlay) overlay.insertBefore(canvas, scrim);
   else overlay.insertBefore(canvas, overlay.firstChild);

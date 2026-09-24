@@ -399,9 +399,10 @@ function exportSlotChoice(ctx, slots) {
   return latestOccupiedSlot(slots);
 }
 
-function canSave(ctx) {
+export function canSave(ctx) {
   const state = ctx && ctx.state;
-  return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
+  return !!(state && state.playerId != null && state.entities
+    && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
 }
 
 export function shouldOfferNewGameShortcut(meta, saveAllowed) {

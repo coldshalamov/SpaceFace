@@ -319,7 +319,22 @@ export function generateContacts(stationId, state = {}) {
       ],
     }]
     : [];
-  return [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  const listed = [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  stampUnheardBarRumor(listed, stationId, state);
+  return listed;
+}
+
+/** WORLD-05 — a new game can hear a station's wreck rumor before the wreck is scanned. */
+function stampUnheardBarRumor(contacts, stationId, state) {
+  const rumor = uniqueWreckBarRumor(state, stationId, 'rumors');
+  if (!rumor || !rumor.sourceRef) return;
+  const host = contacts.find((contact) => contact && contact.role === 'barkeep') || contacts[0];
+  if (!host || host.rumorSourceRef) return;
+  host.rumorSourceRef = rumor.sourceRef;
+  const sentence = String(rumor.text || '').split(/(?<=\.)\s/)[0];
+  if (sentence && /silver-draft/i.test(sentence) && host.line === ROLE_LINES.barkeep) {
+    host.line = sentence;
+  }
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */

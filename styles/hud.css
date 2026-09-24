@@ -97,7 +97,6 @@
     rgba(0, 0, 0, 0.98) 100%
   );
   transition: opacity 0.12s linear;
-  will-change: opacity;
 }
 
 /* --- Multi-Stage Missile Lock Convergence (dp-bracket motion: breathe at idle, snap on latch) --- */
@@ -254,7 +253,7 @@
     display: none !important;
   }
   .sf-gloc-vignette {
-    display: none !important;
+    transition: none !important;
   }
   .sf-lockring.sf-lockring--latch {
     animation: none !important;
@@ -296,6 +295,7 @@ html.sf-reduce-flash .sf-hud-glitch-overlay {
   display: none !important;
 }
 
-html.sf-reduce-motion .sf-gloc-vignette {
-  display: none !important;
+html.sf-reduce-motion .sf-gloc-vignette,
+html.sf-reduce-flash .sf-gloc-vignette {
+  transition: none !important;
 }

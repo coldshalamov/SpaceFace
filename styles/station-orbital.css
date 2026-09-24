@@ -43,9 +43,9 @@
 }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-crown { grid-area: auto; min-width: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .so-credit-delta { position: absolute; right: 0; bottom: -16px; color: var(--so-accent); font-size: 12px; opacity: 0; pointer-events: none; }
-/* Leftover interior buttons that are not kit keys keep a quiet face; kit keys keep their nine-slice. */
-:is(#screens .sx-observatory, .sx-observatory) button:not(.fh-key):not(.sx-tile):not(.sxb-launch):not(.sxb-vital__act):not(.sxb-vital__head):not(.sx-comms__toggle):not(.sxb-help):not(.so-command-trigger) {
-  font-family: var(--so-face); font-size: 13px; line-height: 1.3; color: var(--so-ink);
+/* INST-12 — leftover buttons inherit the kit. This rule must not paint a second control face. */
+:is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key, [data-sf-role="primary"]) {
+  font: inherit;
 }
 :is(#screens .sx-observatory, .sx-observatory) :is(button,input,select,textarea,a,[tabindex]):focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 3px; }
 :is(#screens .sx-observatory, .sx-observatory) :is(.k-caps,.so-overline) { font: 600 11px/1.5 var(--so-face); letter-spacing: .075em; text-transform: uppercase; color: var(--so-muted); }

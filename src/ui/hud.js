@@ -3790,7 +3790,6 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('mission:updated', () => { objDirty = true; });
   ctx.bus.on('mission:accepted', () => { objDirty = true; });
   ctx.bus.on('mission:completed', () => { objDirty = true; });
-  ctx.bus.on('mission:abandoned', () => { objDirty = true; });
 
   // Reticle accuracy bloom: the crosshair expands with sustained fire and contracts when cool — a
   // classic combat-readability cue. Driven by the player's own combat:fire events; _recoilBloom

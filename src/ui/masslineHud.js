@@ -147,7 +147,7 @@ export function placeBracketWords(mark, hull, label, viewport) {
 
 function playerHullScreenRect(player, w2s) {
   if (!player || !player.pos || typeof w2s !== 'function') return null;
-  const screen = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
+  const screen = projectWorld(w2s, player.pos.x, player.pos.z);
   if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y)) return null;
   const size = 64;
   return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
@@ -265,7 +265,7 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:var(--dp-metal-3, rgba(148,163,184,0.22));
   position:relative; overflow:hidden; }
 #sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, var(--dp-lamp, #f2b950)); }
-#sf-ml2 .ml2-pill.ml2-on { box-shadow:0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
+#sf-ml2 .ml2-pill.ml2-on { box-shadow:0 0 8px var(--dp-lamp-bloom, rgba(242,185,80,0.35)); color:var(--dp-lamp-hot, #ffd98c); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
 #sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:0 0 8px rgba(159,139,255,.3); color:#efeaff; }
 #sf-ml2 .ml2-pill.ml2-strain .ml2-fill i { background:var(--dp-lamp, #f2b950); }
@@ -333,6 +333,35 @@ export function resolveReleaseCue(projection, options = {}) {
   };
 }
 
+const SCREEN_QUERY = { x: 0, y: 0, z: 0 };
+
+function projectWorld(w2s, x, z) {
+  SCREEN_QUERY.x = x;
+  SCREEN_QUERY.y = 0;
+  SCREEN_QUERY.z = z;
+  return w2s(SCREEN_QUERY);
+}
+
+/**
+ * VERB-08 — the meeting diamond is the throw intercept. Hide it when the player is the body
+ * that will move: the latched body is the player, or it outweighs the player (a heavy anchor
+ * or a self-sling). A lighter payload still gets the diamond.
+ */
+export function meetingDiamondHidden(throwState, state) {
+  if (!throwState || !state || state.playerId == null) return false;
+  if (throwState.payloadId === state.playerId) return true;
+  const get = state.entities && state.entities.get;
+  if (typeof get !== 'function' || throwState.payloadId == null) return false;
+  const player = get.call(state.entities, state.playerId);
+  const anchor = get.call(state.entities, throwState.payloadId);
+  if (!player || !anchor) return false;
+  const anchorBody = Number(anchor.physicsBody && anchor.physicsBody.mass);
+  const playerBody = Number(player.physicsBody && player.physicsBody.mass);
+  const anchorMass = Number.isFinite(anchorBody) && anchorBody > 0 ? anchorBody : Number(anchor.mass);
+  const playerMass = Number.isFinite(playerBody) && playerBody > 0 ? playerBody : Number(player.mass);
+  return Number.isFinite(anchorMass) && Number.isFinite(playerMass) && anchorMass > playerMass;
+}
+
 // Resolve the world anchor independently from DOM projection. R3B release targets are captured
 // when the line latches (or when a current precision-input intent repaints them), so a fixed point
 // must stay fixed even when gun/UI selection or a stale aimWorld changes underneath the throw.
@@ -392,10 +421,16 @@ function throwPayloadRadius(throwState, state) {
   return payload && Number.isFinite(payload.radius) ? payload.radius : 0;
 }
 
+const COLLATERAL_SPOTS = [];
+
 function throwCollateralSpots(state, throwState) {
-  const spots = [];
+  const spots = COLLATERAL_SPOTS;
+  let count = 0;
   const entities = state && state.entities;
-  if (!entities || typeof entities.forEach !== 'function') return spots;
+  if (!entities || typeof entities.forEach !== 'function') {
+    spots.length = 0;
+    return spots;
+  }
   const releaseTarget = throwState && throwState.releaseTarget;
   const aimId = throwState && throwState.aimTargetId != null
     ? throwState.aimTargetId
@@ -409,11 +444,15 @@ function throwCollateralSpots(state, throwState) {
     if (!isLawProtectedBody(entity)) return;
     const data = entity.data || {};
     const raw = data.displayName || data.name || data.label || entity.type || 'body';
-    spots.push({
-      x: entity.pos.x, z: entity.pos.z, r: entity.radius,
-      label: String(raw).slice(0, 28).toUpperCase(),
-    });
+    let spot = spots[count];
+    if (!spot) spot = spots[count] = { x: 0, z: 0, r: 0, label: '' };
+    spot.x = entity.pos.x;
+    spot.z = entity.pos.z;
+    spot.r = entity.radius;
+    spot.label = String(raw).slice(0, 28).toUpperCase();
+    count += 1;
   });
+  spots.length = count;
   return spots;
 }
 
@@ -538,18 +577,22 @@ function writeMasslineHudFields(fields, state, player) {
   // changes because the signature rolls with them.
   fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
     || finite(player && player.mass));
-  fields[index++] = selected.targetId != null && state.entities && typeof state.entities.get === 'function'
-    ? Math.round(finite(state.entities.get(selected.targetId)?.physicsBody?.mass)
-      || finite(state.entities.get(selected.targetId)?.mass))
-    : 0;
+  let selectedMass = 0;
+  if (selected.targetId != null && state.entities && typeof state.entities.get === 'function') {
+    const selectedEntity = state.entities.get(selected.targetId);
+    const bodyMass = selectedEntity && selectedEntity.physicsBody && selectedEntity.physicsBody.mass;
+    selectedMass = Math.round(finite(bodyMass) || finite(selectedEntity && selectedEntity.mass));
+  }
+  fields[index++] = selectedMass;
   // INF-014: solver-owned strain (quantized so the bar rolls with it).
-  fields[index++] = (() => {
-    if (!(playerState.tether && playerState.tether.active)) return 0;
+  let strain = 0;
+  if (playerState.tether && playerState.tether.active) {
     const raw = Number.isFinite(playerState.tether.strain)
       ? playerState.tether.strain
       : finite(playerState.masslineTelemetry && playerState.masslineTelemetry.strain);
-    return Math.round(finite(raw) * 50) / 50;
-  })();
+    strain = Math.round(finite(raw) * 50) / 50;
+  }
+  fields[index++] = strain;
   fields[index++] = bridle.phase
     ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
     : '';
@@ -686,7 +729,7 @@ export const masslineHud = {
     if (!selected || tethered) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
-    const targetScreen = w2s({ x: target.pos.x, y: 0, z: target.pos.z });
+    const targetScreen = projectWorld(w2s, target.pos.x, target.pos.z);
     if (!targetScreen || !Number.isFinite(targetScreen.x) || !Number.isFinite(targetScreen.y)) {
       return this._hideAcquisitionPreview(dom);
     }
@@ -744,7 +787,7 @@ export const masslineHud = {
     const denied = denial.targetId != null && state.entities && state.entities.get
       ? state.entities.get(denial.targetId) : null;
     const anchor = denied && denied.pos ? denied.pos : player.pos;
-    const screen = w2s({ x: anchor.x, y: 0, z: anchor.z });
+    const screen = projectWorld(w2s, anchor.x, anchor.z);
     if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
     const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
     const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
@@ -800,8 +843,8 @@ export const masslineHud = {
   },
 
   _updateSnarePreview(dom, preview, w2s) {
-    const source = w2s({ x: preview.source.x, y: 0, z: preview.source.z });
-    const target = w2s({ x: preview.target.x, y: 0, z: preview.target.z });
+    const source = projectWorld(w2s, preview.source.x, preview.source.z);
+    const target = projectWorld(w2s, preview.target.x, preview.target.z);
     if (!finiteProjection(source) || !finiteProjection(target)) {
       this._hideAcquisitionPreview(dom);
       return;
@@ -846,7 +889,7 @@ export const masslineHud = {
       this._hideAcquisitionPreview(dom);
       return;
     }
-    const sourceScreen = w2s({ x: sourceEntity.pos.x, y: 0, z: sourceEntity.pos.z });
+    const sourceScreen = projectWorld(w2s, sourceEntity.pos.x, sourceEntity.pos.z);
     if (!finiteProjection(sourceScreen)) {
       this._hideAcquisitionPreview(dom);
       return;
@@ -868,7 +911,7 @@ export const masslineHud = {
       ? setup.lastDenial
       : null;
     const targetScreen = targetEntity && targetEntity.pos
-      ? w2s({ x: targetEntity.pos.x, y: 0, z: targetEntity.pos.z })
+      ? projectWorld(w2s, targetEntity.pos.x, targetEntity.pos.z)
       : null;
     const hasTarget = finiteProjection(targetScreen) && !sameEndpoint;
     let anchorX = sx;
@@ -935,12 +978,15 @@ export const masslineHud = {
 
   _updateThrowMark(dom, throwState, state, w2s) {
     const solution = throwState && throwState.armed ? throwState.solution : null;
-    if (!solution || !solution.valid) { setStyle(dom.throwEl, 'display', 'none'); return; }
+    if (!solution || !solution.valid || meetingDiamondHidden(throwState, state)) {
+      setStyle(dom.throwEl, 'display', 'none');
+      return;
+    }
     // Place the diamond on the intercept ray at either the aim entity or a fixed reach — the
     // POSITION names the consequence ("the rock goes THERE"), the COLOR names the timing.
     const mark = resolveThrowMarkWorldPoint(throwState, state);
     if (!mark) { setStyle(dom.throwEl, 'display', 'none'); return; }
-    const proj = w2s({ x: mark.x, y: 0, z: mark.z });
+    const proj = projectWorld(w2s, mark.x, mark.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
       viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
@@ -984,12 +1030,13 @@ export const masslineHud = {
   },
 
   _updateSelfMark(dom, throwState, state, w2s) {
-    const self = throwState && !throwState.armed ? throwState.selfSolution : null;
+    const playerMoves = meetingDiamondHidden(throwState, state);
+    const self = throwState && (playerMoves || !throwState.armed) ? throwState.selfSolution : null;
     if (!self) { setStyle(dom.selfEl, 'display', 'none'); return; }
     const target = self.targetId != null ? state.entities.get(self.targetId) : null;
     const targetPos = target && target.pos ? target.pos : self.targetPos;
     if (!targetPos) { setStyle(dom.selfEl, 'display', 'none'); return; }
-    const proj = w2s({ x: targetPos.x, y: 0, z: targetPos.z });
+    const proj = projectWorld(w2s, targetPos.x, targetPos.z);
     const cue = resolveReleaseCue(proj, {
       viewportWidth: viewportExtent('innerWidth', 'clientWidth', 1440),
       viewportHeight: viewportExtent('innerHeight', 'clientHeight', 900),
@@ -1019,8 +1066,8 @@ export const masslineHud = {
       setStyle(dom.ringSvg, 'display', 'none');
       return;
     }
-    const center = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
-    const edge = w2s({ x: player.pos.x + cloakState.radius, y: 0, z: player.pos.z });
+    const center = projectWorld(w2s, player.pos.x, player.pos.z);
+    const edge = projectWorld(w2s, player.pos.x + cloakState.radius, player.pos.z);
     if (!center || !Number.isFinite(center.x) || !edge || !Number.isFinite(edge.x)) {
       setStyle(dom.ringSvg, 'display', 'none');
       return;
