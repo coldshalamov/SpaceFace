@@ -1,5 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
-import { injectOrreryShipworks } from '../../orrery/shipworksLayouts.js';
+import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
+import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { hullPosterUrl } from '../../hullPosters.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -1560,13 +1562,96 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).join('');
   }
 
+  // ORRERY (dock host): the hull on its jig -- the plan drawing in a dial, every system a node on
+  // it with its name on a leader in a column beside (the refit's law, src/ui/orrery/hullSchematic.js).
+  // The hardpoint buttons stay the controls (focus, Enter, the chooser, the checks); a node or its
+  // name is a way to the same button. Where a hull has no drawing the schematic stands down and the
+  // live stage shows as before.
+  let jig = null;
+  let jigHost = null;
+  let jigLit = 0;
+  function ensureJig() {
+    if (jig || host !== 'dock' || typeof document === 'undefined') return jig;
+    jigHost = document.createElement('div');
+    jigHost.className = 'orr-sw-jig';
+    stageEl.appendChild(jigHost);
+    jig = createHullSchematic({
+      host: jigHost,
+      // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
+      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), el.querySelector('.sx-sw-verbs'), el.querySelector('.sx-sw__gauges')],
+      labelWidth: 220,
+      gap: 30,
+      edge: 40,
+      onPick: (index) => {
+        const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
+        jigLit = index;
+        if (anchor) openChooser(index, anchor);
+      },
+    });
+    jigHost.addEventListener('click', (ev) => {
+      const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
+      if (!node) return;
+      const index = Number(node.getAttribute('data-slot'));
+      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`);
+      jigLit = index;
+      if (anchor) openChooser(index, anchor);
+    });
+    jigHost.addEventListener('pointerover', (ev) => {
+      const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
+      if (!node || !jig) return;
+      if (typeof performance !== 'undefined' && performance.now() - jig.laidOutAt() < 420) return;
+      jig.light(Number(node.getAttribute('data-slot')));
+    });
+    // keyboard on the hidden hardpoint buttons moves the Hand to the same node
+    slotfieldEl.addEventListener('focusin', (ev) => {
+      const anchor = ev.target.closest && ev.target.closest('[data-spatial-slot]');
+      if (anchor && jig) jig.light(Number(anchor.getAttribute('data-spatial-slot')));
+    });
+    return jig;
+  }
+  function syncJig(def, slots, fittings, shipName) {
+    // the panel composes for the drawing before it lays out (the stage needs the column's height)
+    el.classList.toggle('orr-sw--jig', host === 'dock' && !!(def && hullPosterUrl(def.id, 'jig')));
+    if (host !== 'dock') { if (jigHost) jigHost.hidden = true; return; }
+    const j = ensureJig();
+    if (!j || !jigHost) return;
+    jigHost.hidden = false;
+    const existing = new Map([...jigHost.querySelectorAll('.orr-sw-node[data-slot]')].map((n) => [n.getAttribute('data-slot'), n]));
+    const nodes = (def ? slots : []).map((slot, i) => {
+      const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
+      let node = existing.get(String(i));
+      if (!node) {
+        node = document.createElement('div');
+        node.className = 'orr-sw-node';
+        node.setAttribute('data-slot', String(i));
+        node.setAttribute('aria-hidden', 'true');
+        jigHost.appendChild(node);
+      }
+      existing.delete(String(i));
+      const slotName = SLOT_LABEL[slot.type] || slot.type;
+      const ring = hardpointClassOf(slot) === 'ring' ? ' · ring' : '';
+      const html = `<span class="orr-sw-node__num">${String(i + 1).padStart(2, '0')}</span>`
+        + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(fitted ? fitted.name : slotName)}</b>`
+        + `<span class="orr-sw-node__state">${escapeHtml(fitted ? `${slotName} · ${slot.size || ''}${ring}` : `empty · ${slot.size || ''}${ring}`)}</span></span>`;
+      if (node.innerHTML !== html) node.innerHTML = html;
+      node.classList.toggle('is-fitted', !!fitted);
+      node.classList.toggle('is-empty', !fitted);
+      return { el: node, slotType: slot.type, state: fitted ? 'fitted' : 'open', num: String(i + 1).padStart(2, '0') };
+    });
+    for (const stale of existing.values()) stale.remove();
+    const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
+    j.setHull(def ? def.id : null);
+    j.setNodes(nodes, { engraving: def ? `${shipName || def.name || ''} \u00b7 ${fittedCount} of ${nodes.length} fitted` : '' });
+    if (nodes.length) j.light(Math.max(0, Math.min(nodes.length - 1, selectedSlot >= 0 ? selectedSlot : jigLit)), { swing: false });
+  }
+
   function renderSpatialSlots() {
     spatialAnchors = new Map();
     spatialSlotMeta = new Map();
-    if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; return; }
+    if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
     const ship = viewedShip();
     const def = ship && SHIP_BY_ID.get(ship.defId);
-    if (!def) { slotfieldEl.innerHTML = ''; return; }
+    if (!def) { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
     const slots = buildSlotList(def);
     const fittings = ship.fittings || [];
     slotfieldEl.innerHTML = slots.map((slot, i) => {
@@ -1598,6 +1683,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
       `</button>`;
     }).join('');
+    syncJig(def, slots, fittings, ship.name);
     scheduleSpatialProjection();
   }
 
@@ -2025,7 +2111,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
     const moduleMass = equippedDefs.reduce((sum, d) => sum + (Number(d.mass) || 0), 0);
     const systemDraw = new Map();
-    for (const t of ['weapon', 'shield', 'engine', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
+    for (const t of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
     for (const d of equippedDefs) {
       const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
       systemDraw.set(d.slotType, (systemDraw.get(d.slotType) || 0) + draw);
@@ -2087,7 +2173,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-sw-circuit">` +
         `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
           `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
-        `<div class="k-hero sx-sw-circuit__core"><span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">energy core · ${fmt(totalDraw)} continuous draw</span></div>` +
+        // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it
+        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">core · ${fmt(totalDraw)} draw</span></div>` +
         `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
@@ -2360,6 +2447,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       mount.setExplodedFocus(spatialAnchors.get(slotIndex) || null);
     }
     chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
+    if (jig) { jigLit = slotIndex; jig.light(slotIndex); }
     slotfieldEl.classList.add('is-focusing');
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
       node.classList.toggle('is-selected', Number(node.getAttribute('data-spatial-slot')) === slotIndex);
