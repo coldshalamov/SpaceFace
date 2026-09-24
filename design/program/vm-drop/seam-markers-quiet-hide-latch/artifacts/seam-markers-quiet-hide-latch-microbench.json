@@ -1,0 +1,95 @@
+{
+  "name": "seam-markers-quiet-hide-latch",
+  "primary": "quiet-seam-relevant-plus-sleep",
+  "iterations": 200000,
+  "runs": 11,
+  "rocks": 11,
+  "pairs": [
+    {
+      "beforeMs": 14.900464999999997,
+      "afterMs": 4.283441999999994,
+      "speedup": 3.4786195307418706,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 14.407658999999995,
+      "afterMs": 5.287492,
+      "speedup": 2.72485688867236,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 14.693288999999993,
+      "afterMs": 4.2702990000000085,
+      "speedup": 3.4408103507506063,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.556111999999999,
+      "afterMs": 3.946813999999989,
+      "speedup": 3.941435294391892,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.354488000000003,
+      "afterMs": 4.719138999999998,
+      "speedup": 3.253663009290468,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 17.17929500000001,
+      "afterMs": 3.9841229999999968,
+      "speedup": 4.311938913532545,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.217017999999996,
+      "afterMs": 4.118459000000001,
+      "speedup": 3.6948329460120863,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.195715000000007,
+      "afterMs": 3.7310599999999994,
+      "speedup": 4.072760824001761,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 14.982535999999996,
+      "afterMs": 4.4745710000000045,
+      "speedup": 3.3483737323645064,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.660540000000012,
+      "afterMs": 4.458287999999996,
+      "speedup": 3.512680203701516,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 15.181791000000004,
+      "afterMs": 4.055987000000002,
+      "speedup": 3.7430571153211285,
+      "beforeSleeps": 200000,
+      "afterSkips": 200000
+    }
+  ],
+  "medianSpeedup": 3.512680203701516,
+  "minSpeedup": 2.72485688867236,
+  "maxSpeedup": 4.311938913532545,
+  "wakeProof": {
+    "latchedSkips": 9,
+    "woke": true,
+    "wakes": 1,
+    "hidden": false
+  }
+}

@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bk (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24bl (post-import hillclimb)
 
 Master tip: **`273f8bad7`** (fetched; unchanged from #94).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924i` on `origin/master` @ `273f8bad7`;
-through #103 @ `f5a2562bb`; +#104 measured on stacked tip @ `e404c8cd4`. Profile
+Scratch `vm-work/hillclimb-20260924j` on `origin/master` @ `273f8bad7`;
+through #104 @ `e404c8cd4`; +#105 measured on stacked tip @ `9d9cf5065`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -91,6 +91,7 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 102 | `energy-bolt-quiet-begin-commit` |
 | 103 | `energy-quiet-hide-latch` |
 | 104 | `energy-quiet-relevant-skip` |
+| 105 | `seam-markers-quiet-hide-latch` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -133,6 +134,7 @@ classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
 **energy-bolt quiet empty commit (~1.41× — hold; superseded by #102 begin+commit latch ~4.5×)**;
 **energy quiet hide consecutive reset (shipped #103 ~11.8× — supersedes idle plasma/retro/fleet.reset churn)**;
 **energy quiet-hidden relevant probe (shipped #104 ~4.3× — supersedes idle `_energyPlumeRelevant` drive walk)**.
+**seam-markers relevant+sleep quiet latch (shipped #105 ~3.6× — supersedes prior no-wake hold ~4.6×)**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -147,13 +149,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), spaceBg (hold), feel speed-lines / hot plasma residual (volumetric/retro held)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), spaceBg (hold), feel speed-lines / hot plasma residual (volumetric/retro held)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -162,6 +164,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 105 | `seam-markers-quiet-hide-latch` | Portable quiet-irrelevant seam `_seamMarkersRelevant`+`_sleepSeamMarkers` **~3.6×** median (200k; floor minSpeedup ≥2.59× across rebenches). Safe dirty wake: player quantum / `entityIndexVersion` / drawWu / mining pulse / 0.35s re-probe. Focused dynamic-buffer-ranges 24/24; trail-streak-instancing pass; vfx-additive-single-pass pass; thruster propulsion-family 68/68. Soft-GPU fps not claimed. |
 | 104 | `energy-quiet-relevant-skip` | Portable quiet-hidden `vfx._updateEnergy` relevant probe **~4.3×** median (200k; floor minSpeedup ≥3.1× across rebenches). Cheap `_energyQuietMaybeAwake` while `#103` hide-latched. Focused thruster propulsion-family 68/68; plasma-unit 26/26; retro+history+plasma 29/29. Soft-GPU fps not claimed. |
 | 103 | `energy-quiet-hide-latch` | Portable quiet `vfx._hideEnergyPlumes` after first cold publish **~11.8×** median (200k; floor minSpeedup ≥10.3× across rebenches). Stops plasma/retro/fleet.reset churn that also cleared #100 asleep latch. Focused thruster propulsion-family 68/68; plasma-unit 26/26; retro+history+plasma 29/29. Soft-GPU fps not claimed. |
 | 102 | `energy-bolt-quiet-begin-commit` | Portable quiet `EnergyBoltPool.beginFrame`+`commit` when already empty **~4.5×** median (200k; floor minSpeedup ≥3.82×). Supersedes commit-only hold ~1.41×. Focused weapon-vfx-techniques 16/16; vfx-techniques 9/9; vfx-force-language 92/92. Soft-GPU fps not claimed. |
@@ -181,7 +184,7 @@ native GL / bloom admission owners ignored for portable ranking.
 |---|---|
 | `_energyPlumeRelevant` while `_energyQuietHidden` (full drive walk every idle tick) | **shipped #104 ~4.3×** (floor ≥3.1×; cheap maybe-awake) |
 | `_sleepNpcJobSignatures` quiet latch (12-slot clear every idle tick) | **~1.56× under bar / hold** (floor ~1.40×) |
-| seam-markers quiet hide latch (relevant+sleep; wake needs seam dirty) | **~4.6× if skip relevant — hold** (no safe wake dirty yet); sleep-only **~1.13× under bar** |
+| seam-markers quiet hide latch (relevant+sleep + safe dirty wake) | **shipped #105 ~3.6×** (floor ≥2.59×; player quantum / index version / drawWu / pulse / 0.35s re-probe) |
 | `_hideEnergyPlumes` quiet latch (plasma/retro/fleet.reset every idle tick) | **shipped #103 ~11.8×** (floor ≥10.3×; also stops clearing #100 asleep latch) |
 | EnergyBoltPool beginFrame+commit quiet latch (Map.clear + uniforms + attr republish) | **shipped #102 ~4.5×** (floor ≥3.82×; supersedes commit-only ~1.41× hold) |
 | EmergentPrimitivePools quiet-empty latch (count/visible re-assign) | **~1.22× under bar / hold** (empty-assign model still ~1.46× hold) |
@@ -196,13 +199,13 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105
    (syncEntityViews residual closures / ordnance / microMotion; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg / feel
    speed-lines / hot-drive plasma residual; volumetric/retro cold-reset held
    ~1.42–1.48×; emergent empty-assign/latch held ~1.22–1.46×; npc-job-signatures
-   quiet sleep held ~1.56×; seam-markers relevant+sleep wake dirty held).
+   quiet sleep held ~1.56×).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual; rock visit context-only held ~1.09×).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88

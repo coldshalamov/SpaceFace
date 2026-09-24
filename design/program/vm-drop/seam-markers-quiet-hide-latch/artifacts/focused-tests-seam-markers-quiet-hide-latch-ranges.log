@@ -1,0 +1,131 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: component spans retain one bounded union in component indexes
+ok 1 - component spans retain one bounded union in component indexes
+  ---
+  duration_ms: 2.106718
+  ...
+# Subtest: owner registration leaves every attribute untouched when a later attribute is rejected
+ok 2 - owner registration leaves every attribute untouched when a later attribute is rejected
+  ---
+  duration_ms: 1.293864
+  ...
+# Subtest: scene-owned publication forces the initial buffer and restores the prior hook
+ok 3 - scene-owned publication forces the initial buffer and restores the prior hook
+  ---
+  duration_ms: 1.625233
+  ...
+# Subtest: ordinary dirty spans survive skipped draws and publish once on eligibility
+ok 4 - ordinary dirty spans survive skipped draws and publish once on eligibility
+  ---
+  duration_ms: 0.641733
+  ...
+# Subtest: one interleaved backing owns ranged publication, replacement, and context recovery
+ok 5 - one interleaved backing owns ranged publication, replacement, and context recovery
+  ---
+  duration_ms: 1.351514
+  ...
+# Subtest: probe-only full-span control changes requested bytes without changing logical writes
+ok 6 - probe-only full-span control changes requested bytes without changing logical writes
+  ---
+  duration_ms: 0.637243
+  ...
+# Subtest: probe-only full-span control cannot change during an armed renderer epoch
+ok 7 - probe-only full-span control cannot change during an armed renderer epoch
+  ---
+  duration_ms: 0.624612
+  ...
+# Subtest: context loss supersedes an unacknowledged generation and restore forces a full replacement
+ok 8 - context loss supersedes an unacknowledged generation and restore forces a full replacement
+  ---
+  duration_ms: 0.724101
+  ...
+# Subtest: context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+ok 9 - context restoration accepts Three driver re-upload without weakening unsolicited callback detection
+  ---
+  duration_ms: 0.783163
+  ...
+# Subtest: Three first bufferData does not retire the owner or abort later frames
+ok 10 - Three first bufferData does not retire the owner or abort later frames
+  ---
+  duration_ms: 0.607655
+  ...
+# Subtest: an invalid owner can still release its callback and coordinator ownership
+ok 11 - an invalid owner can still release its callback and coordinator ownership
+  ---
+  duration_ms: 0.549999
+  ...
+# Subtest: one owner trap cannot latch the coordinator dead for later frames
+ok 12 - one owner trap cannot latch the coordinator dead for later frames
+  ---
+  duration_ms: 0.673264
+  ...
+# Subtest: a nested scene render during publication does not freeze later frames
+ok 13 - a nested scene render during publication does not freeze later frames
+  ---
+  duration_ms: 0.436719
+  ...
+# Subtest: live sprite and trail owners publish only their packed prefixes after initial residency
+ok 14 - live sprite and trail owners publish only their packed prefixes after initial residency
+  ---
+  duration_ms: 23.984242
+  ...
+# Subtest: dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+ok 15 - dense one-times and five-times fanout stays at 31 ranges and charges packed bytes
+  ---
+  duration_ms: 7.635973
+  ...
+# Subtest: common-rock matrices publish only the changed compacted slot after residency
+ok 16 - common-rock matrices publish only the changed compacted slot after residency
+  ---
+  duration_ms: 8.010351
+  ...
+# Subtest: ordinary-flight plume layers publish one packed socket prefix per layer
+ok 17 - ordinary-flight plume layers publish one packed socket prefix per layer
+  ---
+  duration_ms: 8.354662
+  ...
+# Subtest: signed RCS layers publish only the live impulse prefix
+ok 18 - signed RCS layers publish only the live impulse prefix
+  ---
+  duration_ms: 3.514521
+  ...
+# Subtest: ordinary-flight shard particles publish only their live prefix and survive quality migration
+ok 19 - ordinary-flight shard particles publish only their live prefix and survive quality migration
+  ---
+  duration_ms: 3.741684
+  ...
+# Subtest: shard particles pack fragmented CPU slots into the live GPU prefix
+ok 20 - shard particles pack fragmented CPU slots into the live GPU prefix
+  ---
+  duration_ms: 1.132354
+  ...
+# Subtest: nearby asteroid seam markers publish only their live matrix and color prefix
+ok 21 - nearby asteroid seam markers publish only their live matrix and color prefix
+  ---
+  duration_ms: 1.709943
+  ...
+# Subtest: active field-device geometry publishes each visible instance prefix
+ok 22 - active field-device geometry publishes each visible instance prefix
+  ---
+  duration_ms: 3.419205
+  ...
+# Subtest: tether topology coordinates stay resident while the rope positions move
+ok 23 - tether topology coordinates stay resident while the rope positions move
+  ---
+  duration_ms: 4.46576
+  ...
+# Subtest: authored instance chunks publish only moved, hidden, released, and reused matrix slots
+ok 24 - authored instance chunks publish only moved, hidden, released, and reused matrix slots
+  ---
+  duration_ms: 4.087906
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 529.40681
