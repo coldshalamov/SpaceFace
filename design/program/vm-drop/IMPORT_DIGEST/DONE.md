@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924bu
+# DONE — IMPORT_DIGEST 20260924bv
 
-Post-#113 hillclimb on Quiet Grok Bot VM. Shipped **#114
-`bomb-presentation-quiet-empty-latch`** (~2.6× median quiet bomb telegraph
-empty latch; floor ≥2.15× across package runs). Soft-GPU fps not a KPI.
-Master tip `273f8bad7`. Scratch `vm-work/hillclimb-20260924j` @ `4da7b5994`.
+Post-#114 hillclimb on Quiet Grok Bot VM. Shipped **#115
+`loot-magnet-quiet-empty-latch`** (~3.0× median quiet loot-magnet empty
+buckets latch; floor ≥2.48× across package runs). Soft-GPU fps not a KPI.
+Master tip `8ebdf5537`. Scratch `vm-work/hillclimb-20260924k` @ `040ee0efa`.
