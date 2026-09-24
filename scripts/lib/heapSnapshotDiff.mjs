@@ -28,7 +28,10 @@ if (!beforePath || !afterPath) {
 }
 
 function aggregate(snapshot) {
-  const { node_fields: nodeFields, node_types: nodeTypes } = snapshot.snapshot;
+  // The schema lives on `snapshot.meta` in the real CDP capture format (node_fields etc.
+  // sit under meta, beside node_count/edge_count — verified against a live capture).
+  const meta = snapshot.snapshot.meta || snapshot.snapshot;
+  const { node_fields: nodeFields, node_types: nodeTypes } = meta;
   const nodes = snapshot.nodes;
   const strings = snapshot.strings;
   const typeIdx = nodeFields.indexOf('type');

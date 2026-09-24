@@ -365,3 +365,27 @@ test('a preload whose residency owner died rejects incomplete instead of resolvi
     /ownerInactive\(\) && !libraryHasPreloadPlan\(library, plan\)/,
     'an inactive owner with a satisfied plan still resolves normally');
 });
+
+test('an aborted whole-ship LOD demotion disposes its uploaded composed root', () => {
+  const partsLibrary = read('src/render/partsLibrary.js');
+  // D24 (v6 browser evidence): every demotion that loses its commit race AFTER
+  // prepareAuthoredShipVisualPipelines has compiled and uploaded the hidden root
+  // used to return (or throw through the catch) with no dispose — the root had no
+  // scene retainer yet, so its renderer-registered geometries/materials leaked
+  // forever, outside the residency ledger. Both failure paths must dispose.
+  assert.match(partsLibrary,
+    /async function disposeAbandonedWholeShipLodRoot\(composed\)/,
+    'the abandonment teardown helper must exist');
+  assert.match(partsLibrary,
+    /await disposePreparedAuthoredShip\(composed\)/,
+    'the teardown must ride the prepared-authored disposal (package instances, owner-local materials, template pin)');
+  const teardownCalls = partsLibrary.match(/await disposeAbandonedWholeShipLodRoot\(composed\)/g) || [];
+  assert.equal(teardownCalls.length, 2,
+    'exactly two abandonment sites dispose the root: the post-upload stale-race return and the catch path');
+  assert.match(partsLibrary,
+    /if \(!shouldCommitWholeShipLodLoad\(pendingLevel, requested, !!boundary\.parent\)\) \{\s*\n[^}]*await disposeAbandonedWholeShipLodRoot\(composed\)/,
+    'the post-upload stale-race early return must dispose before returning');
+  assert.match(partsLibrary,
+    /\} catch \(error\) \{\s*\n\s*\/\/ A throw after compose abandons the same uploaded root[^`]*?await disposeAbandonedWholeShipLodRoot\(composed\)/s,
+    'the catch path must dispose the abandoned root before logging');
+});

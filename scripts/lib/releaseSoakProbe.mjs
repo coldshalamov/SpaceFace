@@ -241,7 +241,16 @@ export async function runReleaseSoakProbe({
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
-      await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      // Navigation is measurement apparatus (the boot floor anchors at timeOrigin, read
+      // after this resolves). A host busy with other lanes' builds/benches can starve the
+      // dev server's first domcontentloaded past Playwright's 60 s default — retry once
+      // with a wide bound before declaring the page dead.
+      try {
+        await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      } catch (navigationError) {
+        console.warn(`[probe] initial goto timed out on a busy host; retrying once with a 180 s bound (${String(navigationError && navigationError.message || navigationError).slice(0, 140)})`);
+        await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+      }
       // Browser boot floor anchors at navigation start, not harness start: a web
       // player's boot is page-load -> menu; the harness's own server spin-up and
       // cold Chromium launch are measurement apparatus, not the game's boot.
@@ -2619,7 +2628,7 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
     window.__M6_CONTEXT_EVENTS__.active = false;
     return result;
   }, start.beforeMeshUuid);
-  await page.screenshot({ path: path.join(outputDir, 'context-restored.png'), type: 'png', animations: 'disabled' });
+  await screenshotBounded(page, { path: path.join(outputDir, 'context-restored.png'), type: 'png', animations: 'disabled' }, 'context-restored');
   const result = { ...start, ...end, recovered: end.lostEvent && end.restoredEvent && end.meshResourceReady && end.pixelProof && end.frameAdvanced && end.after === false };
   log(`context-loss ${JSON.stringify(result)}`);
   return result;
@@ -4750,6 +4759,20 @@ function pBound(promise, timeoutMs, fallback) {
   ]).finally(() => clearTimeout(timer));
 }
 
+// Diagnostic screenshots queue behind the same saturated main thread as route work (see
+// pBound above): one healthy-but-busy renderer blew Playwright's 30 s default and killed
+// a soak before its window opened. Bound each capture at 90 s with exactly one retry —
+// a second stall is a wedged page and must surface as the real failure.
+async function screenshotBounded(page, options, label) {
+  const attempt = () => page.screenshot({ ...options, timeout: 90_000 });
+  try {
+    return await attempt();
+  } catch (error) {
+    console.warn(`[probe] screenshot ${label} timed out at 90 s on a busy renderer; retrying once (${String(error && error.message || error).slice(0, 140)})`);
+    return attempt();
+  }
+}
+
 function withTimeout(promise, timeoutMs, label) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
@@ -5500,11 +5523,11 @@ async function finalizePerformanceAttributionRun({
     runtimeKind,
     electronRuntime,
   );
-  await page.screenshot({
+  await screenshotBounded(page, {
     path: path.join(outputDir, 'performance-closure-overview.png'),
     type: 'png',
     animations: 'disabled',
-  });
+  }, 'performance-closure-overview');
   const ownedCleanup = await closeAttributionResources({
     runtimeKind,
     page,
@@ -5806,7 +5829,16 @@ async function runPerformanceAttributionProbe({
       }));
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
-      await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      // Navigation is measurement apparatus (the boot floor anchors at timeOrigin, read
+      // after this resolves). A host busy with other lanes' builds/benches can starve the
+      // dev server's first domcontentloaded past Playwright's 60 s default — retry once
+      // with a wide bound before declaring the page dead.
+      try {
+        await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      } catch (navigationError) {
+        console.warn(`[probe] initial goto timed out on a busy host; retrying once with a 180 s bound (${String(navigationError && navigationError.message || navigationError).slice(0, 140)})`);
+        await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+      }
       if (enableTier1Counters) await assertTier1CountersBooted(page, { phase: 'initial boot' });
     } else {
       const launched = await launchElectron(root, (owned) => {

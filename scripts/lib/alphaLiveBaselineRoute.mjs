@@ -243,7 +243,9 @@ export async function runBrowserPublicRoute({
           thrust: flightInput.wHeld?.player?.thrust,
           thrustHealth: flightInput.wHeld?.player?.thrustHealth,
           physicsSleeping: flightInput.wHeld?.player?.physicsSleeping,
+          physicsDynamic: flightInput.wHeld?.player?.physicsDynamic,
           mode: flightInput.wHeld?.mode,
+          physics: flightInput.wHeld?.physics,
         },
       });
       await page.waitForTimeout(1500);
@@ -798,7 +800,25 @@ async function readFlightSnapshot(page) {
         pos: { x: Number(player.pos?.x || 0), z: Number(player.pos?.z || 0) },
         vel: { x: Number(player.vel?.x || 0), z: Number(player.vel?.z || 0) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        // D26 forensics: the powered-pin signature is thrust demanded + dynamic body
+        // classification + healthy thrusters, while speed and displacement stay 0.
+        physicsDynamic: player.physicsBody === false
+          ? false
+          : (player.physicsBody?.dynamic ?? state?.entityIndex?.physicsDynamics?.includes(player) ?? null),
+        physicsSleeping: player.physicsSleeping === true,
+        thrustHealth: Array.isArray(player.physicsBody?.thrusters)
+          ? player.physicsBody.thrusters.map((t) => Number(t?.health ?? 1))
+          : null,
+        thrust: Array.isArray(player.physicsBody?.thrusters)
+          ? player.physicsBody.thrusters.reduce((sum, t) => sum + Number(t?.health ?? 1) * Number(t?.forward || 0), 0)
+          : null,
       } : null,
+      physics: {
+        backend: state?.physicsRuntime?.diagnostics?.backend || null,
+        sg02Ready: state?.physicsRuntime?.diagnostics?.sg02Ready === true,
+        sg02Bodies: Number(state?.physicsRuntime?.diagnostics?.sg02Bodies || 0),
+        sg02DynamicBodies: Number(state?.physicsRuntime?.diagnostics?.sg02DynamicBodies || 0),
+      },
       authored,
       controls: {
         moveX: Number(state?.input?.moveX || 0),
@@ -1264,7 +1284,17 @@ async function waitForBootOverlayGone(page) {
 }
 
 async function screenshot(page, outputDir, fileName) {
-  await page.screenshot({ path: path.join(outputDir, fileName), type: 'png', animations: 'allow' });
+  // The capture queues behind a saturated main thread (shader-link/GC/register rebuilds
+  // hold rAF for tens of seconds on the min-spec iGPU) — Playwright's 30 s default read
+  // a healthy-but-busy page as dead and killed the run before the soak window opened.
+  // One bounded retry: a second stall is a genuinely wedged page and must fail the route.
+  const attempt = (timeoutMs) => page.screenshot({ path: path.join(outputDir, fileName), type: 'png', animations: 'allow', timeout: timeoutMs });
+  try {
+    await attempt(90_000);
+  } catch (error) {
+    console.warn(`[route] screenshot ${fileName} timed out at 90 s on a busy renderer; retrying once (${String(error && error.message || error).slice(0, 140)})`);
+    await attempt(90_000);
+  }
 }
 
 function compactFlight(snapshot) {
