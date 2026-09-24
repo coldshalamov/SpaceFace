@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bz (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ca (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924k` on `origin/master` @ `8ebdf5537`;
-through #118 @ `33355d9bc`; +#119 measured on stacked tip @ `fc3d7670b`. Profile
+through #119 @ `fc3d7670b`; +#120 measured on stacked tip @ `8b90ee87b`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -187,6 +187,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 120 | `well-distortion-quiet-empty-latch` | Portable quiet `_syncWellDistortion` empty-active a11y+CAP-zero+DistortionField.uTime **~2.16×** median (CAP 6 × 400k; floor minSpeedup ≥1.63× across 4 package runs). Latch after empty sync when fields.active empty; wake on active ref/len. Dirty-wake proved. Reduced-motion + live wells refuse empty-only latch. Focused latch+well+weapon-vfx+impact 50/50. Soft-GPU fps not claimed. **Different angle** from held sync-empty ~1.47× / floor ~1.18× (prior probe omitted DistortionField uTime write + real a11y resolve). |
 | 119 | `npc-job-signatures-quiet-sleep-latch` | Portable quiet npc-job relevant+sleep composite **~2.51×** median (12 slots × 400k; floor minSpeedup ≥2.07× across 4 package runs). Latch after empty sleep when npcJobs.revision trustworthy; wake on revision bump from `_invalidateJobIds`. Dirty-wake proved. No-revision refuses latch. Focused latch+signature+wiring+kernel+inactive+momentum+wreck 81/81. Soft-GPU fps not claimed. Supersedes sleep-only hold ~1.56×. |
 | 118 | `momentum-sink-quiet-empty-latch` | Portable quiet `_updateMomentumSinkPresentation` empty combat.entities walk **~137×** median (48 entities × 200k; floor minSpeedup ≥101.99× across 4 package runs). Latch after empty collect when statusNextPendingSeq trustworthy; wake on seq bump. Dirty-wake proved. No-seq refuses latch. Focused momentum-sink latch+presentation + loot-magnet+wreck-wisps+sprites+field-force+inactive 26/26. Soft-GPU fps not claimed. |
 | 117 | `wreck-wisps-quiet-irrelevant-latch` | Portable quiet `_wreckWispsRelevant` empty wrecks latch **~3.4×** median (200k; floor minSpeedup ≥2.87× across 4 package runs). Latch after empty observe when entityIndexVersion trustworthy; wake on version bump. Dirty-wake proved. Type-filter empty check; no-index refuses latch. Focused wreck-wisps+loot-magnet+sprites+field-force+bomb+vfx-save+inactive 18/18. Soft-GPU fps not claimed. |
@@ -220,7 +221,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | Attempt | Result |
 |---|---|
 | npc-job-signatures quiet sleep latch (relevant+sleep composite; npcJobs.revision wake) | **shipped #119 ~2.51×** (floor ≥2.07× across package runs; supersedes sleep-only hold ~1.56× / floor ~1.40×) |
-| well-distortion quiet sync empty (6-slot zero + update early-out) | **~1.47× under bar / hold** (floor ~1.18×) |
+| well-distortion quiet sync empty (a11y + CAP zero + DistortionField uTime write; empty-active-only latch) | **shipped #120 ~2.16×** (floor ≥1.63× across package runs; supersedes prior sync-empty hold ~1.47× / floor ~1.18× that omitted uTime+a11y) |
 | sprites idle commit skip (4-bucket reset+commit while liveSpriteCount===0) | **shipped #116 ~6.4×** (floor ≥5.89× across package runs; activate dirty-wake; mirrors #92 particles) |
 | bomb-presentation quiet empty latch (frustum + a11y + empty walk + publish(0) after owner exists) | **shipped #114 ~2.6×** (floor ≥2.15× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | loot-magnet quiet empty buckets (player + dual indexedTypeScan when pickups/payloads empty) | **shipped #115 ~3.0×** (floor ≥2.48× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
@@ -255,10 +256,10 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118+#119
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118+#119+#120
    (syncEntityViews residual closures / microMotion; sprites idle-commit shipped #116;
    wreck-wisps empty shipped #117; momentum-sink empty shipped #118; npc-job-signatures
-   empty shipped #119; authored-instance
+   empty shipped #119; well-distortion empty shipped #120; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg; feel
    speed-lines shipped #112; field-force shipped #113; bomb telegraph shipped #114;
