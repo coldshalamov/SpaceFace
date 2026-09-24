@@ -301,7 +301,19 @@ export const mainMenuScreen = {
 
   // P20/P22: the approved "Field at dusk" shot as a live presentation scene on the main renderer
   // (src/render/uiStage.js). Simulation stays frozen; the plate is the assemble / no-WebGL fallback.
-  stage: { scene: 'title-field', hullDefId: NEW_GAME.shipId },
+  //
+  // LIVE TITLE (build_map.md §25 Phase 5.2): once the screen has been visibly up and idle
+  // for ATTRACT_IDLE_MS, `_attractLive` swaps the request to the `title-attract` scene —
+  // the deterministic Crucible replay tape plays behind the menu instead of the still.
+  // The manager re-resolves this function on every stack sync, so the flag plus a
+  // syncVisibility() nudge is the whole swap; anything that fails upstream keeps the
+  // authored plate, which is the same still the screen started on.
+  stage(ctx) {
+    return {
+      scene: this._attractLive === true ? 'title-attract' : 'title-field',
+      hullDefId: NEW_GAME.shipId,
+    };
+  },
 
   mount(rootEl, ctx) {
     injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
@@ -347,10 +359,11 @@ export const mainMenuScreen = {
     }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
     // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
-    const asideItems = [{ action: 'archive', label: 'Archive' }];
-    // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features without playing for
-    // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
-    if (IS_DEV) asideItems.push({ action: 'sandbox', label: 'Sandbox' });
+    // Wave B11: Physics lab / Sandbox toy on front door.
+    const asideItems = [
+      { action: 'archive', label: 'Archive' },
+      { action: 'sandbox', label: 'Sandbox' },
+    ];
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
     // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
@@ -596,7 +609,7 @@ export const mainMenuScreen = {
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();
-    this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
+    this._startIdleAttract({ ctx, state: ctx && ctx.state, rootEl: refs && refs.root });
   },
   onHide() {
     this._stopIdleAttract();

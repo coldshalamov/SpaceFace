@@ -97,7 +97,7 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_bank_stream_m', name: 'Bank Stream M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 16000, requiresTech: 'tech_kinetic_drivers',
     sentence: 'A bright fixed stream. Banks off stone. Each shot is light; the ribbon is the gun.',
     dmg: 5.14, rof: 14, dps: 71.96, damageType: 'kinetic', energyCost: 0.6,
-    projSpeed: 520, range: 280, tracking: 'fixed', spreadDeg: 0.8,
+    projSpeed: 520, range: 370, tracking: 'fixed', spreadDeg: 0.8,
     heatPerShot: 4, heatMax: 100, heatDissip: 36, armorPierce: 0.35,
     impulsePerHit: 12, tumbleTorque: 1.2, impulseProvenance: 'bank_stream',
   },

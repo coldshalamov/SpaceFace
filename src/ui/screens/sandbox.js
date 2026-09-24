@@ -47,6 +47,7 @@ const COMBAT_LAB_DIGEST_MAX = 96;
 let lastCombatLabSetup = null;
 
 function injectStyle() {
+  if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
@@ -287,7 +288,6 @@ export const sandboxScreen = {
   id: 'sandbox',
 
   mount(rootEl, ctx) {
-    if (!IS_DEV) return; // production guard — should never be reached (registration is gated too)
     injectStyle();
     rootEl.innerHTML = '';
     // A dev harness is still a screen. It was a bare `.panel` taller than the viewport with nothing
