@@ -30,7 +30,7 @@ const CSS = `
 .orr-chain__process { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9px * var(--orr-chain-s)); letter-spacing:.2em; text-transform:uppercase; color:rgb(${BONE} / .7); }
 .orr-chain__time { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-chain__qty { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(40px * var(--orr-chain-s)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; }
-.orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); white-space:normal; max-width:26ch; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
+.orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); white-space:nowrap; line-height:1.3; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-svg .orr-chain__node { fill:rgb(6 8 11 / .9); stroke:rgb(${BONE} / .85); stroke-width:1.3; }
 .orr-svg .orr-chain__node--short { stroke:rgb(${BONE} / .55); stroke-dasharray:3.2 2.4; }
 .orr-svg .orr-chain__node--process { stroke:rgb(248 244 234); fill:none; }
@@ -118,7 +118,7 @@ export function createChainBeam(host) {
     clearLabels();
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const inputs = Array.isArray(data.inputs) ? data.inputs : [];
-    const sc = Math.max(1, Math.min(2.2, H / 170));
+    const sc = Math.max(1, Math.min(2.5, H / 170));
     host.style.setProperty('--orr-chain-s', sc.toFixed(3));
     const cy = H / 2;
     const labelW = Math.min(220, W * 0.26);
@@ -188,7 +188,7 @@ export function createChainBeam(host) {
     }
     layer.appendChild(rise(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: 'orr-chain__node orr-chain__node--out' }), 300));
     layer.appendChild(rise(svg('circle', { cx: f(xOut), cy: f(cy), r: 2.4 * sc, class: 'orr-chain__core' }), 300));
-    const ol = label('is-right', xOut + 18 * sc, cy - 26 * sc, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${data.output && data.output.unit ? data.output.unit : 'per run'}</span>`);
+    const ol = label('is-right', xOut + 18 * sc, cy - 26 * sc, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${String(data.output && data.output.unit ? data.output.unit : 'per run').split(' · ').join('<br>')}</span>`);
     if (arriveNow) { ol.classList.add('orr-chain__rise'); ol.style.setProperty('--orr-delay', '340ms'); }
   }
 

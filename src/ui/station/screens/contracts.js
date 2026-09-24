@@ -178,7 +178,7 @@ export function missionDossierReadiness(mission, state) {
   const standing = missionStandingRequirement(mission, state);
   return {
     state: readiness.state,
-    label: readiness.state === 'ready' ? 'ROUTE CLEAR' : (readiness.state === 'caution' ? 'CHECK' : 'BLOCKED'),
+    label: readiness.state === 'ready' ? 'Route clear' : (readiness.state === 'caution' ? 'Check' : 'Blocked'),
     detail: blocker || warning || 'Ship and account ready',
     blocker,
     warning,
@@ -335,7 +335,7 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
  * marked to the right and the loss (red: a loss is the threat) to the left of zero.
  */
 export function consequenceScalesSvg(m) {
-  const w = 520; const h = 66;
+  const w = 520; const h = 84;
   const f = (n) => Math.round(n * 100) / 100;
   const r = Math.min(risk(m), 5);
   const consequences = missionConsequenceSummary(m);
@@ -343,33 +343,33 @@ export function consequenceScalesSvg(m) {
   const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
   let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   // risk: five stops
-  const rx0 = 92; const rx1 = 272; const ry = 22;
+  const rx0 = 96; const rx1 = 336; const ry = 20;
   out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
   out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1"/>`;
   let ticks = '';
   for (let i = 0; i <= 5; i += 1) { const x = rx0 + ((rx1 - rx0) * i) / 5; ticks += `M ${f(x)} ${ry - 4} L ${f(x)} ${ry + 5} `; }
   out += `<path class="orr-core orr-ct-scale__tick" d="${ticks}" stroke-width="1"/>`;
   const rxc = rx0 + ((rx1 - rx0) * r) / 5;
-  out += `<path class="orr-core orr-ct-scale__fill${r >= 3 ? ' is-high' : ''}" d="M ${rx0} ${ry} L ${f(rxc)} ${ry}" stroke-width="3" stroke-linecap="butt"/>`;
-  out += `<path class="orr-bloom orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
-  out += `<path class="orr-core orr-ct-scale__cursor" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
+  out += `<path class="orr-bloom orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
+  out += `<path class="orr-core orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
   out += `<text class="orr-ct-scale__word" x="${rx1 + 12}" y="${ry + 4}">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
-  out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 18}" text-anchor="start">ROUTINE</text>`;
-  out += `<text class="orr-ct-scale__end" x="${rx1}" y="${ry + 18}" text-anchor="end">SEVERE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
   // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
-  const sy = 52; const sx0 = 92; const sx1 = 272; const mid = (sx0 + sx1) / 2; const span = 10;
+  const sy = 62; const sx0 = 96; const sx1 = 336; const mid = (sx0 + sx1) / 2; const span = 10;
   const xOf = (v) => mid + ((sx1 - sx0) / 2) * Math.max(-1, Math.min(1, v / span));
   out += `<text class="orr-ct-scale__key" x="0" y="${sy + 4}">STANDING</text>`;
   out += `<path class="orr-core orr-ct-scale__rule" d="M ${sx0} ${sy} L ${sx1} ${sy}" stroke-width="1"/>`;
   out += `<path class="orr-core orr-ct-scale__tick" d="M ${mid} ${sy - 5} L ${mid} ${sy + 6}" stroke-width="1.2"/>`;
   if (gain > 0) out += `<path class="orr-core orr-ct-scale__fill" d="M ${mid} ${sy} L ${f(xOf(gain))} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
   if (loss > 0) out += `<path class="orr-core orr-ct-scale__loss" d="M ${f(xOf(-loss))} ${sy} L ${mid} ${sy}" stroke-width="3" stroke-linecap="butt"/>`;
+  // the reading runs the way the scale does: the loss to the left, the gain to the right
   const words = [];
-  if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
   if (loss > 0) words.push(`<tspan class="orr-ct-scale__lossword">−${loss}</tspan>`);
+  if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
   out += `<text class="orr-ct-scale__word" x="${sx1 + 12}" y="${sy + 4}">${words.length ? words.join('<tspan class="orr-ct-scale__sep">  ·  </tspan>') : 'NO CHANGE'}</text>`;
-  out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 18}" text-anchor="start">ON FAILURE</text>`;
-  out += `<text class="orr-ct-scale__end" x="${sx1}" y="${sy + 18}" text-anchor="end">ON SUCCESS</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 20}" text-anchor="start">ON FAILURE</text>`;
+  out += `<text class="orr-ct-scale__end" x="${sx1}" y="${sy + 20}" text-anchor="end">ON SUCCESS</text>`;
   out += `</svg>`;
   return out;
 }
@@ -430,7 +430,8 @@ export function missionDossierHtml(m, state, options = {}) {
     termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
       // a forfeit is a loss: the one term that carries the threat channel's red tick
-      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : '')
+      // the collateral term always holds its line, so the commit key never moves between missions
+      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : termRow('Collateral', 'None', '', { cls: 'sx-term--none' }))
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
       + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
       + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')

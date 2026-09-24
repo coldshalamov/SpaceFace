@@ -2133,7 +2133,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) { sideEl.innerHTML = ''; return; }
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
-        .map(([t, arr]) => `${(arr || []).length}× ${SLOT_LABEL[t] || t}`).join('<br>');
+        .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}× ${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);

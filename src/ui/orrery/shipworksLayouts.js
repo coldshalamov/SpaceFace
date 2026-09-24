@@ -473,6 +473,62 @@ ${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
   ${W} .sx-sw-verb.orr-lampkey { min-height:34px !important; font-size:11.5px !important; }
 }
 
+/* ================================ ROUND 8 ==================================================== */
+/* the readouts: one ruled ledger column (name left, figure right); a name never truncates */
+${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr !important; gap:0 !important; }
+${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:auto minmax(0, 1fr) !important; column-gap:12px; padding:4px 0 !important; align-items:baseline !important; }
+${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { overflow:visible !important; text-overflow:clip !important; white-space:nowrap !important; max-width:none !important; min-width:0; }
+${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { justify-self:end; white-space:nowrap; }
+/* For Sale: the hardpoints one per line; the rendered hull lit as an object on the jig, not a shadow in the bay */
+${W} .sx-spec__hp { display:block; }
+${W} .sx-sw__stage > .sx-sw__poster { filter:brightness(1.32) contrast(1.06); }
+${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absolute; left:14%; right:14%; top:14%; bottom:16%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 56%, rgb(${BONE} / .15), rgb(${BONE} / .05) 42%, transparent 68%); }
+@media (max-height:800px) {
+  /* a 720-tall stage: six stacked cells in three columns; the dial and the rack close up to give them a floor */
+  ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr 1fr 1fr !important; gap:1px 10px !important; margin-top:8px !important; padding-top:5px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:1fr !important; padding:1px 0 !important; row-gap:0; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.1; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:12px !important; justify-self:start; text-align:left; line-height:1.15; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:184px; height:119px; }
+  ${W} .sx-sw-circuit__core { margin:4px 0 4px !important; }
+  ${W} .sx-sw-circuit__core .k-hero__n { top:45px; font-size:26px !important; }
+  ${W} .sx-sw-circuit__core .k-hero__w { top:80px; }
+  ${W} .sx-sw-rack { margin-top:8px !important; }
+  ${W} .sx-sw-rack__cells { margin-top:4px !important; }
+  ${W} .sx-sw-rack__cell.is-empty .k-row__sub { display:none !important; }
+  /* For Sale at 720 tall: the hardpoints run inline and the handling closes up so the Buy key keeps its floor */
+  ${W} .sx-spec__hp { display:inline; }
+  ${W} .sx-spec__hp:not(:last-child)::after { content:" · "; color:rgb(${BONE} / .45); }
+  ${W}.sx-sw--buying .sx-spec > li { padding:2px 0 !important; }
+  ${W}.sx-sw--buying .sx-sw-bar { padding:2px 0 !important; }
+  ${W}.sx-sw--buying .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:38px !important; }
+  ${W}.sx-sw--buying .sx-sw-band__meta { display:none !important; }
+}
+
+/* ---- round 8b: the 720-tall readouts as two ledger columns (a ghost never pushes a column off the page) ---- */
+@media (max-height:800px) {
+  ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; gap:0 12px !important; padding-top:5px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:auto minmax(0, 1fr) !important; column-gap:8px; padding:2px 0 !important; align-items:baseline !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.2; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:11.5px !important; justify-self:end !important; text-align:right !important; line-height:1.2; white-space:nowrap; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-size:10px !important; }
+  /* a ghosted reading (18t → 20t) must still fit beside its name in a 114px cell */
+  ${W} .orr-sw-readouts .sx-sw-gauge { column-gap:6px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:7.5px !important; letter-spacing:.1em !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:11px !important; }
+  /* the column's foot fade must not dim the last reading */
+  ${W} .sx-sw__side { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  /* For Sale at 720 tall: the price a little smaller, the spec tighter, the handling closes up under the render */
+  ${W}.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:32px !important; }
+  ${W}.sx-sw--buying .sx-sw-side__hero { margin:6px 0 10px !important; }
+  ${W}.sx-sw--buying .sx-spec > li > .k-row__num { line-height:1.3 !important; }
+  ${W}.sx-sw--buying .sx-buybar { margin-top:8px !important; }
+  ${W}.sx-sw--buying .sx-sw-bar { padding:0 !important; }
+  ${W}.sx-sw--buying .sx-sw-hero { padding:0 0 4px !important; }
+  ${W}.sx-sw--buying .sx-sw-bands { gap:6px 28px !important; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

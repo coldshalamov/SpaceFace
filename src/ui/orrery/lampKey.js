@@ -1,8 +1,11 @@
 // src/ui/orrery/lampKey.js — the Lamp Key (design/frontend/ORRERY.md §3.6, §4 #10): the one primary
 // verb on a screen. An amber field with dark ink and one 45-degree cut at the top right, a slow sheen
-// that crosses it, a ripple on press; and for an irreversible verb the Hold Ring: an arc of light
-// that fills round a ring at the key's left end while the key is held, and empties if it is let go
-// early. The ring reads the hold from `--sf-hold-p` (0..1), which src/ui/kit/holdVerb.js clocks.
+// that crosses it, a ripple on press; and for an irreversible verb the Hold: a line of the Hand's
+// light that traces the key's own silhouette while the key is held — out from the cut, down the
+// right edge, along the foot, up the left edge and back across the top — with a bright bead at its
+// head, and a short red segment before the cut where the verb commits. Let go early and it empties.
+// The line reads the hold from `--sf-hold-p` (0..1), which src/ui/kit/holdVerb.js clocks on the
+// `span.dp-holdring` it appends; this module puts the drawing inside that span.
 //
 // A screen dresses its existing button; the word, the handlers and the attributes stay its own.
 // The station's one Lamp Key is the tab's commit verb (Accept, Trade, Buy); Undock stays a word.
@@ -11,6 +14,13 @@ import { injectOrrery } from './tokens.js';
 
 export const LAMPKEY_STYLE_ID = 'orr-lampkey-style';
 const BONE = '236 230 216';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** the hold line runs this far outside the field, so it stands on the glass and not on the amber */
+const RING_OUT = 4;
+/** the field's cut, in px (matches the clip-path below) */
+const CUT = 13;
+/** the last stretch of the perimeter before the cut, where the hold commits */
+const COMMIT_LEN = 40;
 
 const CSS = `
 .orr-lampkey { position:relative; display:inline-flex !important; align-items:center; gap:0; min-height:44px !important; height:auto !important;
@@ -19,11 +29,11 @@ const CSS = `
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;
   font-size:15px !important; letter-spacing:.14em !important; text-transform:uppercase; line-height:1 !important; }
 .orr-lampkey::before { content:"" !important; position:absolute !important; z-index:-1; inset:0 !important; display:block !important; width:auto !important; height:auto !important; margin:0 !important;
-  background:var(--dp-hand, #f2b950) !important; clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important; box-shadow:none !important; border:0 !important;
+  background:var(--dp-hand, #f2b950) !important; clip-path:polygon(0 0, calc(100% - ${CUT}px) 0, 100% ${CUT}px, 100% 100%, 0 100%) !important; box-shadow:none !important; border:0 !important;
   transition:background .16s linear; }
 /* the sheen: a band of light crossing the field every six seconds */
 .orr-lampkey::after { content:"" !important; position:absolute !important; z-index:-1; inset:0 !important; display:block !important; pointer-events:none;
-  clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%) !important; border:0 !important; box-shadow:none !important;
+  clip-path:polygon(0 0, calc(100% - ${CUT}px) 0, 100% ${CUT}px, 100% 100%, 0 100%) !important; border:0 !important; box-shadow:none !important;
   background:linear-gradient(112deg, transparent 38%, rgb(255 250 236 / .42) 50%, transparent 62%) !important; background-size:60% 100% !important; background-repeat:no-repeat !important;
   background-position:-80% 0 !important; animation:orr-lampkey-sheen 6s linear infinite; }
 @keyframes orr-lampkey-sheen { 0% { background-position:-80% 0; } 22% { background-position:180% 0; } 100% { background-position:180% 0; } }
@@ -34,31 +44,31 @@ const CSS = `
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .55) !important; }
 .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
 .orr-lampkey:disabled::after { display:block !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .96) !important; background-size:auto !important;
-  clip-path:polygon(0 0, calc(100% - 12.6px) 0, 100% 12.6px, 100% 100%, 0 100%) !important; }
-/* the hold ring: a 1px track, the fill an arc of the Hand, a bright bead at its leading edge; it hangs at the
-   key's right end so the key never moves and a scrolling reading never clips it */
-.orr-lampkey[data-hold] { margin-left:0 !important; margin-right:76px !important; }
-.orr-lampkey .dp-holdring { position:absolute !important; left:auto !important; right:-74px !important; top:50% !important; width:58px !important; height:58px !important; margin:-29px 0 0 !important;
-  display:block !important; border-radius:50% !important; vertical-align:baseline !important; flex:none !important; background:none !important;
-  -webkit-mask:none !important; mask:none !important; }
-/* the ring itself is the span's own light, masked to a band; the bead is a child and stays unmasked */
-.orr-lampkey .dp-holdring::before { content:""; position:absolute; inset:0; border-radius:50%;
-  background:conic-gradient(var(--dp-hand, #f2b950) calc(var(--sf-hold-p, 0) * 360deg), rgb(${BONE} / .26) 0 332deg, rgb(255 80 56 / .8) 332deg 360deg);
-  -webkit-mask:radial-gradient(circle, transparent 26.2px, #000 26.6px, #000 28px, transparent 28.4px);
-  mask:radial-gradient(circle, transparent 26.2px, #000 26.6px, #000 28px, transparent 28.4px); }
-.orr-lampkey .dp-holdring > .orr-lampkey__bead { position:absolute; left:0; top:0; width:100%; height:100%; margin:0; pointer-events:none;
-  transform:rotate(calc(var(--sf-hold-p, 0) * 360deg)); opacity:0; transition:opacity .12s linear; }
-.orr-lampkey .orr-lampkey__bead::before { content:""; position:absolute; left:50%; top:1.7px; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
-  background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 8px 2px rgb(255 217 140 / .6); }
-.orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
-.orr-lampkey.orr-lampkey--small[data-hold] { margin-left:0 !important; margin-right:62px !important; }
-.orr-lampkey.orr-lampkey--small .dp-holdring { left:auto !important; right:-60px !important; width:46px !important; height:46px !important; margin-top:-23px !important; }
-.orr-lampkey.orr-lampkey--small .dp-holdring::before { -webkit-mask:radial-gradient(circle, transparent 20.2px, #000 20.6px, #000 22px, transparent 22.4px);
-  mask:radial-gradient(circle, transparent 20.2px, #000 20.6px, #000 22px, transparent 22.4px); }
-.orr-lampkey.orr-lampkey--small .orr-lampkey__note { left:auto; right:-60px; width:46px; top:calc(50% + 27px); }
+  clip-path:polygon(0 0, calc(100% - ${CUT - 0.4}px) 0, 100% ${CUT - 0.4}px, 100% 100%, 0 100%) !important; }
+/* the hold: the ring span becomes a drawing laid over the key's silhouette, a little outside the field */
+.orr-lampkey[data-hold] { margin-left:0 !important; margin-right:0 !important; }
+.orr-lampkey .dp-holdring { position:absolute !important; left:${-RING_OUT}px !important; right:auto !important; top:${-RING_OUT}px !important; width:calc(100% + ${RING_OUT * 2}px) !important;
+  height:calc(100% + ${RING_OUT * 2}px) !important; margin:0 !important; display:block !important; border-radius:0 !important; vertical-align:baseline !important; flex:none !important;
+  background:none !important; -webkit-mask:none !important; mask:none !important; pointer-events:none; overflow:visible; z-index:2; }
+.orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
+.orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
+/* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
+.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .22); stroke-width:1; }
+.orr-lampkey .orr-lampkey__commit { fill:none; stroke:rgb(255 80 56 / .8); stroke-width:1.5; }
+.orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;
+  stroke-dasharray:100; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
+.orr-lampkey .orr-lampkey__fill { stroke-width:1.6; }
+.orr-lampkey .orr-lampkey__fillbloom { stroke-width:6; opacity:.28; }
+/* the bead rides the same silhouette, ahead of the fill */
+.orr-lampkey .dp-holdring > .orr-lampkey__bead { position:absolute; left:0; top:0; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; pointer-events:none;
+  background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 8px 2px rgb(255 217 140 / .6);
+  offset-path:var(--orr-hold-path); offset-distance:calc(var(--sf-hold-p, 0) * 100%); offset-rotate:0deg; opacity:0; transition:opacity .12s linear; }
 .orr-lampkey.is-holding .orr-lampkey__bead { opacity:1; }
-.orr-lampkey .orr-lampkey__note { position:absolute; left:auto; right:-74px; top:calc(50% + 34px); width:58px; text-align:center; pointer-events:none;
+/* the word under the key's left edge */
+.orr-lampkey .orr-lampkey__note { position:absolute; left:0; right:auto; top:100%; margin-top:8px; width:auto; text-align:left; pointer-events:none;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8.5px; letter-spacing:.2em; text-transform:uppercase; color:rgb(${BONE} / .6); white-space:nowrap; }
+.orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
+.orr-lampkey.orr-lampkey--small .orr-lampkey__note { margin-top:6px; }
 html.sf-reduce-motion .orr-lampkey::after { animation:none; }
 `;
 
@@ -72,10 +82,46 @@ export function injectLampKey(doc = globalThis.document) {
   doc.head.appendChild(style);
 }
 
+/** The key's silhouette in the ring's own box (which stands RING_OUT outside the field on every side). */
+export function holdPathD(width, height) {
+  const W = Math.max(1, width);
+  const H = Math.max(1, height);
+  const c = CUT + RING_OUT;
+  return `M ${W - c} 0 L ${W} ${c} L ${W} ${H} L 0 ${H} L 0 0 Z`;
+}
+
+function svgEl(doc, name, attrs) {
+  const el = doc.createElementNS(SVG_NS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el;
+}
+
+/** Lay the hold drawing over the key's current box. Re-run whenever the key's size changes. */
+function layoutHold(button, ring) {
+  if (!button || !ring || typeof button.getBoundingClientRect !== 'function') return;
+  const r = button.getBoundingClientRect();
+  if (!(r.width > 0) || !(r.height > 0)) return;
+  const W = r.width + RING_OUT * 2;
+  const H = r.height + RING_OUT * 2;
+  const d = holdPathD(W, H);
+  const svg = ring.querySelector('svg');
+  if (svg) {
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (const p of svg.querySelectorAll('.orr-lampkey__track, .orr-lampkey__fillbloom, .orr-lampkey__fill')) p.setAttribute('d', d);
+    const commit = svg.querySelector('.orr-lampkey__commit');
+    if (commit) {
+      const c = CUT + RING_OUT;
+      commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0 L ${W - c} 0`);
+    }
+  }
+  if (ring.style && typeof ring.style.setProperty === 'function') ring.style.setProperty('--orr-hold-path', `path("${d}")`);
+}
+
 /**
  * Dress a screen's own button as the Lamp Key. With `hold`, the button carries `data-hold` and its
- * `.dp-holdring` (from attachHoldVerb) becomes the Hold Ring; `note` is the word under the ring.
- * The bead's var is read from the ring, so the caller's hold clock drives both.
+ * `.dp-holdring` (from attachHoldVerb) becomes the hold drawing round the key; `note` is the word
+ * under the key. The fill and the bead read `--sf-hold-p` from the ring, so the caller's hold
+ * clock drives both.
  */
 export function dressLampKey(button, { hold = false, note = '' } = {}) {
   if (!button || typeof button.classList !== 'object') return button;
@@ -92,11 +138,26 @@ export function dressLampKey(button, { hold = false, note = '' } = {}) {
   if (hold) {
     button.setAttribute('data-hold', '1');
     const ring = button.querySelector && button.querySelector('.dp-holdring');
-    if (ring && !ring.querySelector('.orr-lampkey__bead')) {
+    if (ring && !ring.querySelector('svg') && typeof doc.createElementNS === 'function') {
+      const svg = svgEl(doc, 'svg', { 'aria-hidden': 'true', focusable: 'false', viewBox: '0 0 100 40' });
+      svg.append(
+        svgEl(doc, 'path', { class: 'orr-lampkey__track', d: holdPathD(100, 40), 'vector-effect': 'non-scaling-stroke' }),
+        svgEl(doc, 'path', { class: 'orr-lampkey__commit', d: 'M 0 0 L 0 0', 'vector-effect': 'non-scaling-stroke' }),
+        svgEl(doc, 'path', { class: 'orr-lampkey__fillbloom', d: holdPathD(100, 40), pathLength: 100, 'vector-effect': 'non-scaling-stroke' }),
+        svgEl(doc, 'path', { class: 'orr-lampkey__fill', d: holdPathD(100, 40), pathLength: 100, 'vector-effect': 'non-scaling-stroke' }),
+      );
+      ring.appendChild(svg);
       const bead = doc.createElement('span');
       bead.className = 'orr-lampkey__bead';
       bead.setAttribute('aria-hidden', 'true');
       ring.appendChild(bead);
+      layoutHold(button, ring);
+      const raf = globalThis.requestAnimationFrame;
+      if (typeof raf === 'function') raf(() => layoutHold(button, ring));
+      if (typeof ResizeObserver === 'function') {
+        const ro = new ResizeObserver(() => layoutHold(button, ring));
+        ro.observe(button);
+      }
     }
     if (note && button.querySelector && !button.querySelector('.orr-lampkey__note')) {
       const n = doc.createElement('span');
