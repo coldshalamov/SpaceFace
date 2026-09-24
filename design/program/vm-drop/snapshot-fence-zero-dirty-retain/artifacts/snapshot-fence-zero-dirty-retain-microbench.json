@@ -1,0 +1,60 @@
+{
+  "label": "snapshot-fence-zero-dirty-retain",
+  "primary": {
+    "n": 400,
+    "dirtyCount": 0,
+    "frames": 10000,
+    "beforeMedMs": 0.0021190000000217424,
+    "afterMedMs": 0.00023099999998521525,
+    "speedup": 9.173160173841408,
+    "dirtyCountAfterPrime": 0,
+    "packCountBefore": 10003,
+    "packCountAfter": 3,
+    "minSpeedup": 8.397637793983934,
+    "maxSpeedup": 9.749999998947343
+  },
+  "runs": [
+    {
+      "n": 120,
+      "dirtyCount": 0,
+      "frames": 12000,
+      "beforeMedMs": 0.001699999999971169,
+      "afterMedMs": 0.00019700000001421358,
+      "speedup": 8.629441623596517,
+      "dirtyCountAfterPrime": 0,
+      "packCountBefore": 12003,
+      "packCountAfter": 3,
+      "minSpeedup": 7.8387096776897565,
+      "maxSpeedup": 9.642045453855465
+    },
+    {
+      "n": 400,
+      "dirtyCount": 0,
+      "frames": 10000,
+      "beforeMedMs": 0.0021190000000217424,
+      "afterMedMs": 0.00023099999998521525,
+      "speedup": 9.173160173841408,
+      "dirtyCountAfterPrime": 0,
+      "packCountBefore": 10003,
+      "packCountAfter": 3,
+      "minSpeedup": 8.397637793983934,
+      "maxSpeedup": 9.749999998947343
+    },
+    {
+      "n": 400,
+      "dirtyCount": 4,
+      "frames": 8000,
+      "beforeMedMs": 0.002067000000010921,
+      "afterMedMs": 0.007676000000003569,
+      "speedup": 0.2692808754572642,
+      "dirtyCountAfterPrime": 0,
+      "packCountBefore": 8003,
+      "packCountAfter": 8003,
+      "minSpeedup": 0.2650938609858376,
+      "maxSpeedup": 0.2739226663191597
+    }
+  ],
+  "ship_bar": 1.5,
+  "clears_bar": true,
+  "note": "Soft-GPU fps not claimed. O(1) dirtyCount zero-dirty retain under prepareFrame packFence after #51."
+}

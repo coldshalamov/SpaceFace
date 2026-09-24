@@ -1,10 +1,12 @@
-# IMPORT_DIGEST report — 2026-09-24af (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ag (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #66; +#67 measured on
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #67; +#68 measured on
+stacked tip @ `7f6dd1c42`. Fresh profile `settled-45s-stacked-20260924ac`
+(Picture ON, soft-GPU; tip through #64).
 stacked tip @ `454dab17b`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
@@ -54,6 +56,7 @@ stacked tip @ `454dab17b`. Fresh profile `settled-45s-stacked-20260924ac`
 | 65 | `camera-clearance-never-roof-exclude` |
 | 66 | `sensor-contact-scratch-fill` |
 | 67 | `roster-retain-stable` |
+| 68 | `snapshot-fence-zero-dirty-retain` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -68,7 +71,9 @@ reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays),
 normalizePinReasons/bitfield materialize (~0.87× — miss; distinct from #64 small-n),
 lifetimeSweep dirty-publish isMovableEntity trust (thin ~1.51–1.69×; **full-pole ~1.08× — drop**),
 classify physics-partition fuse-only (~1.44× under bar — replaced by cache),
-**roster-member-scratch-fill (alloc-only ~0.97× — drop; replaced by #67 retain-stable)**.
+**roster-member-scratch-fill (alloc-only ~0.97× — drop; replaced by #67 retain-stable)**;
+**snapshot-fence zero-dirty scan-without-dirtyCount (~0.8× — replaced by O(1) dirtyCount)**;
+**contact-base identity retain (~1.27× under bar)**.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -98,7 +103,8 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 67 | `roster-retain-stable` | Portable quiet liveListSquads retain-when-stable **~1.78×** median (6×4×30000; floor minSpeedup ≥1.72×). Focused AI suites 59/59. |
+| 67 | `roster-retain-stable` |
+| 68 | `snapshot-fence-zero-dirty-retain` | Portable quiet liveListSquads retain-when-stable **~1.78×** median (6×4×30000; floor minSpeedup ≥1.72×). Focused AI suites 59/59. |
 
 ## Scour attempts / misses
 
@@ -114,6 +120,9 @@ native GL / bloom admission owners ignored for portable ranking.
 | clearance never-roof structural exclude (after #63) | **shipped #65 ~1.78×** |
 | liveFramesFor entityContacts scratch fill | **shipped #66 ~5.75×** |
 | liveListSquads retain-when-stable | **shipped #67 ~1.78×** |
+| packFence zero-dirty retain (O(1) dirtyCount) | **shipped #68 ~9.2×** |
+| packFence zero-dirty JS dirty-scan (no dirtyCount) | ~0.8× — miss; replaced by dirtyCount |
+| contact-base identity retain | ~1.27× under bar — hold |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -125,8 +134,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65 (syncEntityViews /
-   packFence / residual closures / camera.follow residual).
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68 (syncEntityViews /
+   packFence residual / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67 (preStep residual /
