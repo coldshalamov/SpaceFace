@@ -1,3 +1,22 @@
+# DONE — IMPORT_DIGEST 20260926c
+
+Post-#168 digest.
+
+- **#170** `retail-gltfloader-vendored-alias`: the packaged bundle now uses the vendored GLTFLoader, so #168 reaches
+  players.
+  - It adds one esbuild alias, `three/addons/loaders/GLTFLoader.js` → vendor. three itself and the other addons
+    stay on npm.
+  - Before #168, the vendored loader was byte-identical to npm r184.
+  - Before #170, retail JS on #168 was byte-identical to master.
+  - With #170, retail output is identical to master's retail output across 259 + 936 GLBs.
+  - Bundle cost: +1 286 B JS, −63 B gzip.
+  - Suite: 717/754 vs master 709/746. The failure set is identical.
+  - Import after #168 (#167 stack order: #166 → #167 → #168 → after-167 → #170; #169 in any order).
+- Owner decisions:
+  - Master retail build is already broken: 54 stale render-package runtime tables since `a1cc1c66d`.
+  - The `vendor/three.module.js` `SpaceFace:` fixes are still dev-only.
+- Master tip unchanged: `97c88f92b`.
+
 # DONE — IMPORT_DIGEST 20260926b
 
 Post-#167 digest.

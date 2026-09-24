@@ -1,0 +1,156 @@
+From 2121e9a4823929f0229d3615789f942b405252b0 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 19:38:25 -0400
+Subject: [PATCH] build(retail): bundle the vendored GLTFLoader the dev
+ importmap already loads (#170)
+
+The zero-build path maps three/addons/ to vendor/addons/ through the importmap, but
+build-bundle.mjs resolved every bare specifier from node_modules, so the packaged game
+parsed render packages with the stock three r184 GLTFLoader and never got the in-place
+GLB body reads (#168). The retail bundle now aliases exactly one specifier,
+three/addons/loaders/GLTFLoader.js, to vendor/addons/loaders/GLTFLoader.js (upstream
+r184, byte-identical to node_modules before #168, plus only SpaceFace hunks). three
+itself and every other addon still resolve from node_modules, so there is one THREE
+instance. A focused test pins the alias, checks the importmap agrees, proves the
+retail resolution bundles the vendored loader with the #168 code path, and fails if
+vendor three and npm three drift to different revisions.
+---
+ scripts/build-bundle.mjs                      |  6 +-
+ scripts/lib/retailBundleAliases.mjs           | 17 +++++
+ .../retail-gltfloader-vendored-alias.test.mjs | 74 +++++++++++++++++++
+ 3 files changed, 96 insertions(+), 1 deletion(-)
+ create mode 100644 scripts/lib/retailBundleAliases.mjs
+ create mode 100644 test/retail-gltfloader-vendored-alias.test.mjs
+
+diff --git a/scripts/build-bundle.mjs b/scripts/build-bundle.mjs
+index c57341407..9bf3c1509 100644
+--- a/scripts/build-bundle.mjs
++++ b/scripts/build-bundle.mjs
+@@ -23,6 +23,7 @@ import {
+   validateReleaseBuildReceipt,
+   writeReleaseBuildReceipt,
+ } from './lib/releasePackaging.mjs';
++import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
+ 
+ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+ const SRC = join(ROOT, 'src');
+@@ -94,9 +95,12 @@ async function build() {
+     target: ['chrome110'],    // Electron 31 = Chromium 126; chrome110 is a safe floor
+     platform: 'browser',
+     // Resolve bare specifiers to the npm packages (three/rapier ship ESM in node_modules).
+-    // The vendor/ copies are only for the zero-build dev path; the bundle uses node_modules.
++    // The vendor/ copies are otherwise only for the zero-build dev path; the bundle uses node_modules...
+     mainFields: ['browser', 'module', 'main'],
+     conditions: ['browser', 'import'],
++    // ...except the vendor-patched modules the dev importmap already loads (GLTFLoader), so dev and
++    // retail parse render packages with the same code.
++    alias: retailBundleAliases(ROOT),
+     logLevel: 'info',
+     // Treat dynamic imports of literal strings as code-splittable chunks (default).
+     legalComments: 'none',
+diff --git a/scripts/lib/retailBundleAliases.mjs b/scripts/lib/retailBundleAliases.mjs
+new file mode 100644
+index 000000000..1639a6bc1
+--- /dev/null
++++ b/scripts/lib/retailBundleAliases.mjs
+@@ -0,0 +1,17 @@
++// scripts/lib/retailBundleAliases.mjs — bare specifiers the retail bundle must resolve to the SAME file
++// the zero-build path loads.
++//
++// The dev importmap maps `three/addons/` → vendor/addons/, while build-bundle.mjs resolves bare
++// specifiers from node_modules. For modules the project has patched in vendor/ that split means dev
++// and retail run different code. Each entry here pins one such module to its vendor copy; everything
++// else (three itself, every other addon) keeps resolving from node_modules.
++import { join } from 'node:path';
++
++/** esbuild `alias` map for the retail bundle, rooted at the project directory. */
++export function retailBundleAliases(root) {
++  return {
++    // three r184 GLTFLoader + SpaceFace in-place GLB body reads (vendor copy is upstream r184 plus
++    // only `SpaceFace:` hunks; three itself still resolves from node_modules, so one THREE instance).
++    'three/addons/loaders/GLTFLoader.js': join(root, 'vendor', 'addons', 'loaders', 'GLTFLoader.js'),
++  };
++}
+diff --git a/test/retail-gltfloader-vendored-alias.test.mjs b/test/retail-gltfloader-vendored-alias.test.mjs
+new file mode 100644
+index 000000000..f0d2c4315
+--- /dev/null
++++ b/test/retail-gltfloader-vendored-alias.test.mjs
+@@ -0,0 +1,74 @@
++// #170: the retail bundle (scripts/build-bundle.mjs) must parse GLBs with the same GLTFLoader the
++// zero-build path loads through the importmap (vendor/addons/loaders/GLTFLoader.js), not the stock
++// node_modules copy. Bundles only the loader with the retail resolution options — no asset copy.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { createRequire } from 'node:module';
++import { dirname, join, relative, sep } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import * as esbuild from 'esbuild';
++
++import { retailBundleAliases } from '../scripts/lib/retailBundleAliases.mjs';
++
++const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
++const rel = (p) => relative(ROOT, p).split(sep).join('/');
++
++async function bundleRetail(contents) {
++  const result = await esbuild.build({
++    stdin: { contents, resolveDir: ROOT, sourcefile: 'retail-probe.js' },
++    bundle: true,
++    format: 'esm',
++    write: false,
++    metafile: true,
++    minify: true,
++    platform: 'browser',
++    target: ['chrome110'],
++    mainFields: ['browser', 'module', 'main'],
++    conditions: ['browser', 'import'],
++    alias: retailBundleAliases(ROOT),
++    logLevel: 'silent',
++  });
++  return { inputs: Object.keys(result.metafile.inputs), text: result.outputFiles.map((f) => f.text).join('\n') };
++}
++
++test('build-bundle.mjs applies the retail alias map', () => {
++  const src = readFileSync(join(ROOT, 'scripts/build-bundle.mjs'), 'utf8');
++  assert.match(src, /import\s*\{\s*retailBundleAliases\s*\}\s*from\s*'\.\/lib\/retailBundleAliases\.mjs'/);
++  assert.match(src, /alias:\s*retailBundleAliases\(ROOT\)/);
++});
++
++test('the importmap and the retail alias point three/addons GLTFLoader at the same vendor file', () => {
++  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
++  const map = JSON.parse(html.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1]).imports;
++  assert.equal(map['three/addons/'], './vendor/addons/');
++  assert.equal(rel(retailBundleAliases(ROOT)['three/addons/loaders/GLTFLoader.js']), 'vendor/addons/loaders/GLTFLoader.js');
++});
++
++test('retail resolution bundles the vendored GLTFLoader (with #168) and node_modules three', async () => {
++  const { inputs, text } = await bundleRetail(
++    "export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\n"
++    + "export { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';\n",
++  );
++  assert.ok(inputs.includes('vendor/addons/loaders/GLTFLoader.js'), inputs.join(', '));
++  assert.ok(!inputs.some((p) => p.endsWith('examples/jsm/loaders/GLTFLoader.js')), 'stock GLTFLoader must not be bundled');
++  // One THREE instance: the vendored loader's `three` import still resolves to the npm package.
++  assert.ok(inputs.some((p) => /node_modules\/three\/build\/three\.(module|core)\.js$/.test(p)));
++  assert.ok(!inputs.some((p) => p.startsWith('vendor/three.')), 'vendor three core must not enter the retail bundle');
++  // Other addons keep resolving from node_modules.
++  assert.ok(inputs.some((p) => p.endsWith('node_modules/three/examples/jsm/libs/meshopt_decoder.module.js')));
++  // #168 in-place GLB body reads survive minification (property names are not mangled).
++  for (const marker of ['glbBodyRange', 'glbBodySliceRange', 'bodyRange', 'bodyByteOffset']) {
++    assert.ok(text.includes(marker), `bundle must contain ${marker}`);
++  }
++});
++
++test('vendored three addons track the npm three revision the retail bundle links against', () => {
++  // The alias mixes vendor/addons/loaders/GLTFLoader.js with node_modules three. Bumping one without
++  // the other must fail here, not in a player's build.
++  const require = createRequire(import.meta.url);
++  const threeEntry = require.resolve('three'); // node_modules/three/build/three.cjs
++  const npmVersion = JSON.parse(readFileSync(join(dirname(threeEntry), '..', 'package.json'), 'utf8')).version;
++  const vendorRevision = readFileSync(join(ROOT, 'vendor/three.core.js'), 'utf8').match(/const REVISION = '(\d+)'/)[1];
++  assert.equal(npmVersion.split('.')[1], vendorRevision, `npm three ${npmVersion} vs vendor r${vendorRevision}`);
++});
+-- 
+2.47.3
+

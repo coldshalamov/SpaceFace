@@ -1,3 +1,66 @@
+# IMPORT_DIGEST report — 20260926c (post-#168; **#170 ship** retail-gltfloader-vendored-alias)
+
+Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.
+
+## #170 pass — make the retail bundle load the loader #168 patched
+
+- **How retail resolved GLTFLoader.** `npm run dist` → `scripts/build-bundle.mjs` (one esbuild call, no plugins,
+  and no alias before #170) → electron-builder ships `build/web/**`. Bare specifiers resolved through npm
+  `three@0.184.0`'s `exports` (`./addons/*` → `./examples/jsm/*`).
+
+  Both GLTFLoader import sites are literal dynamic imports:
+  - `renderPackageLoader.js:907` (render packages)
+  - `assetLoader.js:816` (whole ships and parts)
+
+  Retail therefore bundled the stock npm loader. The dev importmap loads `vendor/addons/`. **The #168 build's
+  retail JS was byte-identical to master's.**
+- **Version check.** On bare master, `vendor/addons/loaders/GLTFLoader.js`, its utils imports, the meshopt decoder
+  and `three.core.js` are all **byte-identical** to npm r184. After #168, the loaders differ only by #168's hunks.
+  There is no other behavioral difference.
+- **SHIP #170.** `scripts/lib/retailBundleAliases.mjs` maps `three/addons/loaders/GLTFLoader.js` to the vendor copy,
+  and `build-bundle.mjs` passes `alias: retailBundleAliases(ROOT)`. Everything else, `three` included, stays on npm,
+  so there is still one THREE instance. A 4-test file:
+  - pins the alias;
+  - checks that the importmap agrees;
+  - proves the retail resolution bundles the vendored loader with the #168 markers;
+  - fails if vendor and npm three ever become different revisions.
+- **Proof** (the real `build-bundle.mjs` esbuild call captured with a loader hook):
+  - The retail `GLTFLoader-*` chunk now comes from `vendor/…/GLTFLoader.js` and contains `glbBodyRange` /
+    `glbBodySliceRange`.
+  - The other 1 258 modules have identical output bytes.
+  - Size: JS **+1 286 B**, gzip −63 B, 166 → 165 files.
+  - Identity through the retail chunks themselves (loader + meshopt + production embedded-KTX2 plugin, before
+    vs after bundle): **259/259 render packages + 936/936 other GLBs identical**, and the body is never
+    materialized. The same holds on the #167 stack. The mutation check gives DIFF.
+  - Suite (#168's 96 files + packaging/loader/render-package set): **717/754 vs master 709/746, identical
+    failure set** (36 + 1 pre-existing).
+- **Import order:** after #168. With #167: #166 → #167 → #168 → `glb-body-in-place/patches-after-167` → #170.
+  #169 is independent. `git apply --cached` is clean on #168, the 26c stack, 26d, `vm-work/stack-20260924u` and
+  bare master.
+
+### Owner decisions surfaced this pass
+
+- **The retail build is broken on master (pre-existing, independent of #170).** `build-bundle.mjs` aborts in the
+  render-package projection: 54 of 259 packages have `runtime` tables that no longer match
+  `renderPackageRuntimeTable`. The cause is material roles (hull → signal) since `a1cc1c66d` "Tell lamps and bare
+  metal apart…". So `npm run dist`, `check:bundle` and `check:m6:packaging` cannot finish today. Refreshing the
+  tables changes shipped material roles, which is a picture call. List:
+  `retail-gltfloader-vendored-alias/artifacts/logs/master-runtime-table-drift.json`.
+- **Dev-only vendor patches besides GLTFLoader.** The two `vendor/three.module.js` `SpaceFace:` fixes (empty shadow
+  sampler depth texture, and destroyed-program readiness) still do not reach retail. The vendored KTX2Loader CSP
+  patch is already covered in retail by `configureCspSafeKtx2Loader`. The vendored postprocessing addons are older
+  upstream copies, used only by the asteroid interior preview. Aliasing `three` itself is a larger, separate call;
+  the same alias map would carry it.
+
+### Scratch
+
+- #168 + #170: `vm-work/hillclimb-20260926e` @ `2121e9a48`
+- #167 + #168 + after-167 + #170: `vm-work/hillclimb-20260926f` @ `3ce58c5a6`
+- Both are in `/workspace/spaceface-scratch/master-20260924u`. They are local only and were not pushed; the patch
+  is in the package.
+
+## Previous digest header (20260926b)
+
 # IMPORT_DIGEST report — 20260926b (post-#167; **#168 ship** glb-body-in-place + **#169 ship** shader-readiness-no-isprogram)
 
 Master tip: **`97c88f92b`** (fetched; unchanged). No restack needed. No vm-drop package has been imported since dz.

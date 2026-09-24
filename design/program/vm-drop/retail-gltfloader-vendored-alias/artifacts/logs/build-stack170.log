@@ -1,0 +1,129 @@
+[bundle] entry points: 2 (main.js + loadingTerminalArt; 31 screens via dynamic imports)
+▲ [WARNING] Duplicate key "post" in object literal [duplicate-object-key]
+
+    src/ui/loadingTerminalArt.js:1921:10:
+      1921 │           post: recordStatus,
+           ╵           ~~~~
+
+  The original key "post" is here:
+
+    src/ui/loadingTerminalArt.js:1909:10:
+      1909 │           post: () => {},
+           ╵           ~~~~
+
+▲ [WARNING] Duplicate key "on" in object literal [duplicate-object-key]
+
+    src/localization/pipeline.js:389:2:
+      389 │   on: L('en', 'sur', 'auf', 'em'),
+          ╵   ~~
+
+  The original key "on" is here:
+
+    src/localization/pipeline.js:358:2:
+      358 │   on: L('en', 'sur', 'auf', 'em'),
+          ╵   ~~
+
+▲ [WARNING] Duplicate key "_openChoice" in object literal [duplicate-object-key]
+
+    src/systems/onboarding.js:1360:2:
+      1360 │   _openChoice() {
+           ╵   ~~~~~~~~~~~
+
+  The original key "_openChoice" is here:
+
+    src/systems/onboarding.js:1348:2:
+      1348 │   _openChoice() {
+           ╵   ~~~~~~~~~~~
+
+▲ [WARNING] Duplicate key "prevBank" in object literal [duplicate-object-key]
+
+    src/render/shipMicroMotion.js:450:8:
+      450 │         prevBank: 0,
+          ╵         ~~~~~~~~
+
+  The original key "prevBank" is here:
+
+    src/render/shipMicroMotion.js:443:8:
+      443 │         prevBank: 0,
+          ╵         ~~~~~~~~
+
+▲ [WARNING] Duplicate key "dropBomb" in object literal [duplicate-object-key]
+
+    src/ui/screens/settings.js:184:2:
+      184 │   dropBomb: 'Bomb bay: drop bomb',
+          ╵   ~~~~~~~~
+
+  The original key "dropBomb" is here:
+
+    src/ui/screens/settings.js:167:2:
+      167 │   dropBomb: 'Bomb bay: release selected payload',
+          ╵   ~~~~~~~~
+
+▲ [WARNING] Duplicate key "cycleBomb" in object literal [duplicate-object-key]
+
+    src/ui/screens/settings.js:185:2:
+      185 │   cycleBomb: 'Bomb bay: cycle payload',
+          ╵   ~~~~~~~~~
+
+  The original key "cycleBomb" is here:
+
+    src/ui/screens/settings.js:168:2:
+      168 │   cycleBomb: 'Bomb bay: select next payload',
+          ╵   ~~~~~~~~~
+
+▲ [WARNING] Duplicate key "dropBomb" in object literal [duplicate-object-key]
+
+    src/ui/screens/settings.js:216:2:
+      216 │   dropBomb: 'Bomb bay: drop bomb',
+          ╵   ~~~~~~~~
+
+  The original key "dropBomb" is here:
+
+    src/ui/screens/settings.js:211:2:
+      211 │   dropBomb: 'Bomb bay: release selected payload',
+          ╵   ~~~~~~~~
+
+▲ [WARNING] Duplicate key "cycleBomb" in object literal [duplicate-object-key]
+
+    src/ui/screens/settings.js:217:2:
+      217 │   cycleBomb: 'Bomb bay: cycle payload',
+          ╵   ~~~~~~~~~
+
+  The original key "cycleBomb" is here:
+
+    src/ui/screens/settings.js:212:2:
+      212 │   cycleBomb: 'Bomb bay: select next payload',
+          ╵   ~~~~~~~~~
+
+8 warnings
+
+  build/web.__building/main.js                       6.2mb ⚠️
+  build/web.__building/rapier-Q73UQ3RE.js            2.1mb ⚠️
+  build/web.__building/chunk-MOPSPEJ6.js             1.1mb ⚠️
+  build/web.__building/chunk-FOTUS5CJ.js           713.1kb
+  build/web.__building/chunk-JMHKELGJ.js           552.5kb
+  build/web.__building/stationScreen-NLBWWCMX.js   403.2kb
+  build/web.__building/chunk-32N7ZFLO.js           295.0kb
+  build/web.__building/chunk-EGOEY3PB.js           275.0kb
+  build/web.__building/chunk-PNPK7JYL.js           272.4kb
+  build/web.__building/chunk-ZAS7AFUX.js           232.2kb
+  build/web.__building/asteroidScreen-ZBHAGK4K.js  231.1kb
+  build/web.__building/chunk-RP4ZX6EB.js           229.1kb
+  build/web.__building/chunk-DMC3ZYAC.js           206.1kb
+  build/web.__building/chunk-TWX4SLIH.js           183.7kb
+  build/web.__building/chunk-EGRFTFNC.js           175.0kb
+  build/web.__building/chunk-XHMCRP62.js           162.0kb
+  build/web.__building/chunk-3WQUVOLH.js           150.2kb
+  build/web.__building/chunk-MIGO3WA7.js           145.4kb
+  build/web.__building/chunk-2LDUZLTN.js           143.1kb
+  build/web.__building/chunk-3GHLCGPW.js           129.1kb
+  ...and 146 more output files...
+
+⚡ Done in 1388ms
+[r170-capture] esbuild output captured to /workspace/spaceface-scratch/r170-cap/s170
+[bundle] FAILED: Error: assets/ships/release/render-packages/apron-shuttle/render-package.json runtime table does not match its compiled render.glb
+    at renderPackageSourceOmissions (file:///workspace/spaceface-scratch/master-20260924u/scripts/lib/releasePackaging.mjs:387:13)
+    at async createReleaseCopyPlans (file:///workspace/spaceface-scratch/master-20260924u/scripts/lib/releasePackaging.mjs:145:9)
+    at async copyReleaseRuntimeTrees (file:///workspace/spaceface-scratch/master-20260924u/scripts/lib/releasePackaging.mjs:163:17)
+    at async build (file:///workspace/spaceface-scratch/master-20260924u/scripts/build-bundle.mjs:120:3)
+    at async runLockedBuild (file:///workspace/spaceface-scratch/master-20260924u/scripts/build-bundle.mjs:264:14)
