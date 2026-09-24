@@ -1,0 +1,27 @@
+{
+  "medianSpeedup": 41.223,
+  "minSpeedup": 7.59,
+  "maxSpeedup": 45.402,
+  "pairs": [
+    7.59,
+    9.619,
+    45.402,
+    43.583,
+    29.025,
+    42.29,
+    41.223,
+    41.67,
+    41.218,
+    41.451,
+    41.095
+  ],
+  "wakeDeploy": {
+    "quietLatched": false,
+    "cmQuiet": null
+  },
+  "wakeMember": {
+    "wasLatched": true,
+    "quietLatched": false,
+    "cmQuiet": null
+  }
+}

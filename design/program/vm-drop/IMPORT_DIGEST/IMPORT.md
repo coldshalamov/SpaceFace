@@ -1,7 +1,7 @@
-# IMPORT — DIGEST 20260924cj
+# IMPORT — DIGEST 20260924ck
 
 Owner applies vm-drop packages in numeric order. This digest tip records
-hillclimb through **#128 `classify-frame-quiet-retain`** (after #127
-classify-rock-visit-quiet-retain / digest 20260924ci).
+hillclimb through **#129 `countermeasures-quiet-empty-latch`** (after #128
+classify-frame-quiet-retain / digest 20260924cj).
 
 See `report.md` for stack, holds, and next poles.
