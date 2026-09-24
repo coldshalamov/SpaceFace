@@ -1198,6 +1198,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         && render?._frameMembrane?.seq === state?.world?.frameOriginSeq;
     }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: scenarioReadyTimeoutMs() }).catch(async (error) => {
       const last = await page.evaluate(() => window.__SF_SCENARIO_RESTORE_WAIT_LAST__ || null).catch(() => null);
+      log(`[scenario] restore wait starved for ${scenarioId}: ${JSON.stringify(last)}`);
       throw new Error(`scenario restore wait starved for ${scenarioId}: ${JSON.stringify(last)} — ${error?.message || error}`);
     });
   }
