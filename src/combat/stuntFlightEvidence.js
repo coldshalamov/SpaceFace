@@ -10,10 +10,59 @@ export function interceptSeconds(relative,velocity,radius) {
   const d=b*b-4*a*c;if(!(a>0)||d<0)return Infinity;
   const t=(-b-Math.sqrt(d))/(2*a);return t>=0?t:Infinity;
 }
+// Threat scan only needs bodies that can close in the 2s intercept window. Far rocks/pickups
+// and opposite-hemisphere traffic were paying isHostileForAI on every entity every tick.
+const THREAT_SCAN_RANGE_WU = 2400;
+const THREAT_SCAN_RANGE_SQ = THREAT_SCAN_RANGE_WU * THREAT_SCAN_RANGE_WU;
+function isThreatCandidateType(type) {
+  return type === 'ship' || type === 'projectile' || type === 'drone';
+}
+
+/** Prefer entity-index ship/drone/projectile lanes so quiet Ceres rocks never pay the threat walk. */
+function threatCandidateLanes(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    return [index.ships, index.drones, index.projectiles];
+  }
+  return null;
+}
+
+function forEachThreatCandidate(state, playerId, visit) {
+  const lanes = threatCandidateLanes(state);
+  if (lanes) {
+    for (let li = 0; li < lanes.length; li++) {
+      const lane = lanes[li];
+      if (!lane) continue;
+      for (let i = 0; i < lane.length; i++) {
+        const e = lane[i];
+        if (!e?.pos || !e.vel || e.alive === false || e.id === playerId) continue;
+        visit(e);
+      }
+    }
+    return;
+  }
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return;
+  for (const e of entities.values()) {
+    if (!e?.pos || !e.vel || e.alive === false || e.id === playerId) continue;
+    if (!isThreatCandidateType(e.type)) continue;
+    visit(e);
+  }
+}
 function hostileThreat(state,e,player) {
+  // Ships/drones only become stunt threats while actively targeting the player.
+  // Check that cheap lock before isHostileForAI — quiet traffic paid hostility then
+  // failed the targetId gate every tick after #40 lane cuts removed rocks.
+  if(e.type!=='projectile'){
+    const data=e.data;
+    if(!data)return false;
+    const combat=data.combat;
+    const ai=data.ai;
+    if(!(combat&&combat.targetId===player.id)
+      &&!(ai&&ai.activity&&ai.activity.targetId===player.id))return false;
+  }
   const owner=e.ownerId!=null?state.entities.get(e.ownerId):e;
-  if(!owner||!isHostileForAI(state,owner,player))return false;
-  return e.type==='projectile'||e.data?.ai?.activity?.targetId===player.id||e.data?.combat?.targetId===player.id;
+  return !!(owner&&isHostileForAI(state,owner,player));
 }
 export class StuntFlightObserver {
   constructor(){this.tracks=new Map();this.history=[];this.lastTick=-1;this.lastDamageTick=-Infinity;this.lastContactTick=-Infinity;}
@@ -26,9 +75,18 @@ export class StuntFlightObserver {
     const life=bodyLife(player,state),u=life.cruise,L=life.length,pr=life.radius;
     let incoming=false;const results=[];
     const previous=this.history.at(-1);
-    for(const e of state.entities.values()) {
-      if(!e?.pos||!e.vel||e.alive===false||e.id===player.id||!hostileThreat(state,e,player))continue;
+    // Quiet cadence: with no open tracks and an empty projectile lane, ship/drone
+    // lock discovery can wait one tick (~16 ms). Active tracks and live projectiles
+    // keep the full every-tick walk. Stunt open-window is 0.2–1.2 s so a single
+    // skipped tick cannot drop a legitimate threat episode.
+    const lanes=threatCandidateLanes(state);
+    const projectiles=lanes?lanes[2]:null;
+    const quietNoAmmo=this.tracks.size===0&&Array.isArray(projectiles)&&projectiles.length===0;
+    const scanThreats=!quietNoAmmo||((tick&1)===0);
+    if(scanThreats) forEachThreatCandidate(state, player.id, (e) => {
       const dx=e.pos.x-player.pos.x,dz=e.pos.z-player.pos.z;
+      if(dx*dx+dz*dz>THREAT_SCAN_RANGE_SQ)return;
+      if(!hostileThreat(state,e,player))return;
       const radius=pr+(e.radius??0),rv={x:e.vel.x-player.vel.x,z:e.vel.z-player.vel.z};
       const t=interceptSeconds({x:dx,z:dz},rv,radius);
       if(t<=2)incoming=true;
@@ -39,7 +97,7 @@ export class StuntFlightObserver {
           initialSeparation:Math.hypot(dx,dz),maxSeparation:0,minClearance:Infinity,relativeSpeed:0,rootId:null,completed:false};
         this.tracks.set(tl.id,track);
       }
-      if(!track)continue;
+      if(!track)return;
       // Minimum over the actual swept relative segment, not distance at a single frame.
       if(track.lastRelative) {
         const ax=track.lastRelative.x,az=track.lastRelative.z,vx=dx-ax,vz=dz-az;
@@ -49,7 +107,7 @@ export class StuntFlightObserver {
       }
       track.lastRelative={x:dx,z:dz};track.lastSeen=tick;
       track.maxSeparation=Math.max(track.maxSeparation,Math.hypot(dx,dz));
-    }
+    });
     j.pressure={incomingInterception:incoming,tick};
     const controlled=Math.abs(state.input?.turn??0)+Math.abs(state.input?.throttle??0)+Math.abs(state.input?.strafe??0)>0.01
       ||state.input?.brake===true||state.input?.boost===true||state.input?.drawFlight===true;
@@ -88,8 +146,30 @@ export class StuntFlightObserver {
           momentum:root.kind==='flight'?0:life.mass*Math.hypot(root.dv.x,root.dv.z)},contact:null})});
     }
     const frame={tick,pos:pt(player.pos),vel:pt(player.vel),bodies:[]};
-    for(const e of state.entities.values())if(e?.pos&&e.vel&&e.collides!==false&&e.id!==player.id&&distance(e.pos,player.pos)<L*8&&frame.bodies.length<32)
-      frame.bodies.push({id:e.id,pos:pt(e.pos),vel:pt(e.vel),radius:e.radius??0});
+    const histLimit = L*8;
+    const histLimitSq = histLimit * histLimit;
+    const histLane = (() => {
+      const index = state.entityIndex;
+      if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+        if (Array.isArray(index.spatialDynamics) && index.spatialDynamics.length) return index.spatialDynamics;
+        if (Array.isArray(index.movables) && index.movables.length) return index.movables;
+      }
+      return null;
+    })();
+    if (histLane) {
+      for (let i = 0; i < histLane.length && frame.bodies.length < 32; i++) {
+        const e = histLane[i];
+        if (!e?.pos || !e.vel || e.collides === false || e.id === player.id || e.alive === false) continue;
+        const hx = e.pos.x - player.pos.x, hz = e.pos.z - player.pos.z;
+        if (hx * hx + hz * hz >= histLimitSq) continue;
+        frame.bodies.push({ id: e.id, pos: pt(e.pos), vel: pt(e.vel), radius: e.radius ?? 0 });
+      }
+    } else {
+      for (const e of state.entities.values()) {
+        if (!(e?.pos && e.vel && e.collides !== false && e.id !== player.id && distance(e.pos, player.pos) < histLimit && frame.bodies.length < 32)) continue;
+        frame.bodies.push({ id: e.id, pos: pt(e.pos), vel: pt(e.vel), radius: e.radius ?? 0 });
+      }
+    }
     this.history.push(frame);if(this.history.length>121)this.history.shift();
     return results;
   }

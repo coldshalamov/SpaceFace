@@ -1,5 +1,4 @@
 # IMPORT — IMPORT_DIGEST
 
-Report-only package. Read `DONE.md` + `report.md` for apply order of pending
-vm-drop rows vs current master tip. New ships this pass: `composition-threat-prefilter`,
-`classify-rock-body-context`.
+Report-only. See `report.md` for ranked poles and shipped packages.
+Digest tip: **20260924n**.

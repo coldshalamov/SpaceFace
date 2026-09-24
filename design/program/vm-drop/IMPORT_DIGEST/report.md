@@ -1,12 +1,12 @@
-# IMPORT_DIGEST report — 2026-09-24m (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24n (post-import hillclimb)
 
-Master tip: **`2e7ec656b`** (fetched; moved from `a4bb310e2`).
+Master tip: **`2e7ec656b`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` rebased onto `2e7ec656b` (23 commits clean, then +1 ship).
-Prior tip content retained (#31–#46 + opening hitch + sync-entity-views-closure-gate).
-New work measured from stacked tip + #47/#48.
+Scratch `vm-work/hillclimb-20260924h` already on `2e7ec656b` through #48; +#49 measured
+on stacked tip. vm-drop catch-up: #40 `stunt-threat-index-lanes` source was docs-only
+and is now landed with #49.
 
 ### Already on stack (do not rediscover)
 
@@ -26,13 +26,15 @@ New work measured from stacked tip + #47/#48.
 | 13 | `prepare-pitch-settle` |
 | 15 | `sync-entity-views-submit-scratch` |
 | 12 | `massline-settext-cache` (rebased) |
-| 40 | `stunt-threat-index-lanes` |
+| 40 | `stunt-threat-index-lanes` (**source catch-up this pass**) |
 | 41 | `far-query-row-scan` |
 | 42 | `hud-objective-plate-cache` |
 | 43 | `fields-npc-plan-cadence` |
 | 44 | `sync-entity-views-middle-policy-cadence` |
 | 45 | `classify-signature-record` |
 | 46 | `snapshot-fence-yaw-quat-cache` |
+| 47 | `composition-threat-prefilter` |
+| 48 | `classify-rock-body-context` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -40,7 +42,8 @@ New work measured from stacked tip + #47/#48.
 `flight-propulsion-scratch`, `classify-closed-form-scan` (superseded by #37),
 physics S1-idle sleep, spatial-hash surface@600, hitch-opening-admission,
 midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss),
-classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar).
+classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar),
+imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×).
 
 ## Quiet CPU / hitch profile (stacked tip pre-#47/#48 cite)
 
@@ -51,31 +54,32 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 | ms | owner | notes |
 |---:|---|---|
-| 100 | `registry.step` | residual after #39+#43 |
-| 66 | `prepareFrame` | residual after #13+#44+#46; **#47** cuts composition hostility walk |
-| 61 | `classifyWorld` | residual after #37+#38+#45; **#48** cuts rock visit-body context |
+| 100 | `registry.step` | residual after #39+#43; **#49** cuts stuntFlightEvidence child (~92 hits) |
+| 66 | `prepareFrame` | residual after #13+#44+#46+#47 |
+| 61 | `classifyWorld` | residual after #37+#38+#45+#48 |
 | 45 | `syncEntityViews` | residual after #15 + closure-gate + #44 |
 | 22 | `_stepCraft` | HOLD propulsion |
 | 19 | `_stepFixed` | physics sleep residual |
+
+Profile children under `registry.step`: preStep, **stuntFlightEvidence.update**, input,
+_stepCraft, lifetimeSweep, fields, world, physics, weapons…
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 47 | `composition-threat-prefilter` | Portable follow-pair **~2.09–2.33×** quiet (8000 iters); combat ~2.06×. Camera + activity suites pass. |
-| 48 | `classify-rock-body-context` | Portable rock-dominated context fill **~1.55×** (180 rocks+20 ships × 4k). Activity suites pass. |
+| 49 | `stunt-threat-lock-prefilter` | Portable quiet threat scan **~2.04×** (lock-before-hostility + cadence2 when no tracks / empty projectiles). Combat active-tracks lock-only ~1.63×. Stunt suites 20/20. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
-| Physics S1-idle sleep expansion | Hold — not retried |
-| classifyWorld visit-loop cadence | Prior under bar — leave |
-| classifyWorld stamp-reuse / inert fast-path | Prior under bar — leave (new angle #48 instead) |
-| spatial-hash surface @600 | Hold — not retried |
-| syncCombatantBounds early-out | Prior miss — not retried |
-| serviceRenderMeshResidency | Already poll-cadenced — no new ≥1.5× |
-| registry.step residual after #39+#43 | Not shipped this pass (physics/flight/AI holds) |
+| classify rock-only resolvePins | ~1.02× — under bar |
+| selectClassify empty-projectile skip | ~1.11× indexed — under bar |
+| imminentCollision earlyout | prior ~1.22× — under bar |
+| Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
+| prepareFrame non-composition leftovers | Not shipped (pack/residency/bg under investigation) |
+| classifyWorld non-rock visit | Not shipped this pass |
 
 ## Rock audit (unchanged)
 
@@ -83,8 +87,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. registry.step after #39+#43 (physics / flight / AI holds).
-2. prepareFrame residual after #13+#44+#46+#47 (non-composition leftovers).
-3. classifyWorld residual after #37+#38+#45+#48 (non-rock visit / selectClassify).
-4. Physics sleep / spatial-hash@600 holds.
+1. prepareFrame residual after #13+#44+#46+#47 (non-composition: pack/residency/spaceBg).
+2. classifyWorld residual after #37+#38+#45+#48 (non-rock visit / selectClassify).
+3. registry.step after #39+#43+#49 (physics / flight / AI / remaining combat-island).
+4. syncEntityViews residual (micro-motion / pose) after #15+#44.
 5. Soft-GPU fps is not a KPI.
