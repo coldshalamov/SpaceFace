@@ -1,4 +1,4 @@
-# DONE — IMPORT_DIGEST 20260924dl
+# DONE — IMPORT_DIGEST 20260924dm
 
-Post-#151 digest; #152 ship (`flyby-focus-empty-quiet-latch`).
+Post-#152 digest; #153 ship (`bark-director-quiet-latch`).
 Master tip still `97c88f92b`. Soft-GPU fps not a KPI.

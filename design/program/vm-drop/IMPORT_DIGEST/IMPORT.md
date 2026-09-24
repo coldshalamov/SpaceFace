@@ -1,4 +1,4 @@
-# IMPORT — DIGEST 20260924dl
+# IMPORT — DIGEST 20260924dm
 
-Read `report.md`. Ship #152 `flyby-focus-empty-quiet-latch` after #151
-`pirate-parley-empty-quiet-latch` (digest 20260924dk).
+Read `report.md`. Ship #153 `bark-director-quiet-latch` after #152
+`flyby-focus-empty-quiet-latch` (digest 20260924dl).

@@ -1,0 +1,40 @@
+run 0: before=7.2573 after=0.5977 x=12.142 latched=true skips=60000
+run 1: before=7.7929 after=0.7074 x=11.016 latched=true skips=60000
+run 2: before=8.0226 after=0.5584 x=14.367 latched=true skips=60000
+run 3: before=7.3185 after=0.6191 x=11.821 latched=true skips=60000
+run 4: before=7.7969 after=0.6154 x=12.670 latched=true skips=60000
+run 5: before=7.8498 after=0.5984 x=13.118 latched=true skips=60000
+run 6: before=7.4657 after=0.7883 x=9.471 latched=true skips=60000
+run 7: before=7.7551 after=0.5949 x=13.036 latched=true skips=60000
+run 8: before=7.6566 after=0.5821 x=13.153 latched=true skips=60000
+run 9: before=7.3735 after=0.5542 x=13.305 latched=true skips=60000
+run 10: before=9.6201 after=0.8204 x=11.726 latched=true skips=60000
+{
+  "name": "bark-director-quiet-latch",
+  "iters": 60000,
+  "runs": 11,
+  "medianSpeedup": 12.67,
+  "minSpeedup": 9.471,
+  "maxSpeedup": 14.367,
+  "medianBeforeUs": 7.755,
+  "medianAfterUs": 0.598,
+  "pairs": [
+    12.142,
+    11.016,
+    14.367,
+    11.821,
+    12.67,
+    13.118,
+    9.471,
+    13.036,
+    13.153,
+    13.305,
+    11.726
+  ],
+  "dirtyWake": {
+    "dirtyWakeOk": true,
+    "armed": true,
+    "said": 1,
+    "latchedAfter": false
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "bark-director-quiet-latch",
+  "iters": 60000,
+  "runs": 11,
+  "medianSpeedup": 12.615,
+  "minSpeedup": 11.89,
+  "maxSpeedup": 16.22,
+  "medianBeforeUs": 7.768,
+  "medianAfterUs": 0.605,
+  "pairs": [
+    12.108,
+    12.615,
+    13.234,
+    12.981,
+    14.152,
+    12.594,
+    12.08,
+    16.22,
+    13.924,
+    12.428,
+    11.89
+  ],
+  "dirtyWake": {
+    "dirtyWakeOk": true,
+    "armed": true,
+    "said": 1,
+    "latchedAfter": false
+  }
+}
