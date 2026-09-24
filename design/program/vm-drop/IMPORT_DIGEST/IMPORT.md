@@ -1,3 +1,3 @@
-# IMPORT — IMPORT_DIGEST
+# IMPORT — IMPORT_DIGEST 20260924dw
 
-Read-only coordination digest for the owner import machine. Not game code.
+Read-only digest update. No code patch. See `report.md`.

@@ -1,3 +1,4 @@
-# DONE — IMPORT_DIGEST 20260924dv
+# DONE — IMPORT_DIGEST 20260924dw
 
-Digest refreshed after #159 shield-bubble-quiet-latch ship. See report.md.
+Post-#159 digest with **#160 ship** `faction-presence-quiet-latch`
+(~7.92–8.23× median / ≥6.01× floor). Master tip unchanged `97c88f92b`.

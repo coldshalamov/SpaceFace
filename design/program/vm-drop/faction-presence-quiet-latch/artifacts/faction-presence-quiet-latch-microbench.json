@@ -1,0 +1,16 @@
+{
+  "N": 40,
+  "ITERS": 30000,
+  "off": {
+    "label": "off",
+    "us": 3.0823,
+    "latched": false
+  },
+  "on": {
+    "label": "on",
+    "us": 0.4885,
+    "latched": true
+  },
+  "speedup": 6.31,
+  "absBeforeUs": 3.0823
+}
