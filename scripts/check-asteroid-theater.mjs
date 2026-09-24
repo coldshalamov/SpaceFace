@@ -67,11 +67,12 @@ try {
         localStorage.setItem('sf.firstRunIntroSeen', '1');
       } catch (_) {}
     });
-    // 90s matches the sibling runtime checks (pq020/pq022 routes): the dev server ships an
-    // unbundled module graph (~460 requests), so domcontentloaded exceeds playwright's 30s
-    // default on a contended disk. The law assertions below are unchanged.
-    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
-    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+    // 180s goto / 90s boot wait: the sibling runtime checks budget 90s for the same unbundled
+    // module graph (~460 requests) and even that has been exceeded on today's contended disk
+    // (page.goto Timeout 90000ms at boot, twice in one sitting). These are infrastructure
+    // budgets only — the law assertions below are unchanged.
+    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 90_000 });
     await page.evaluate(() => {
       window.SF.bus.emit('game:new', { name: 'Site Engineer', difficulty: 'standard' });
     });
@@ -958,7 +959,12 @@ try {
           return read.net.runs.length >= 2
             || (read.net.mount && read.net.mount.phase !== 'loading');
         };
-        for (let waited = 0; !mountSettled(n0) && waited < 60000; waited += 250) {
+        // 180s, not 60s: on today's contended host a stalled template acquisition has measured
+        // settling at ~90s (the bounced run showed 'authored 8/8' in the register section right
+        // after this 60s window had given up), and the mount watchdog itself gives up at 150s —
+        // so the window must outlive the load tail to see either the mount or the honest
+        // 'failed' phase. Infrastructure budget only; the assertions below are unchanged.
+        for (let waited = 0; !mountSettled(n0) && waited < 180000; waited += 250) {
           await page.waitForTimeout(250);
           n0 = await readNet();
         }

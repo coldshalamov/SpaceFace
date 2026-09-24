@@ -166,6 +166,12 @@ export function extractWorksInclusionKit(blueprint) {
 
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
+// The full authored conduit template set (D34 prewarm admission list). Both families share one
+// release file per kind, so these 12 ids cover every conduit either register can ask for.
+export const WORKS_CONDUIT_TEMPLATE_IDS = Object.freeze(
+  ['power', 'lane'].flatMap((family) => CONDUIT_KINDS.map((kind) => `place_works_conduit_${family}_${kind}`)),
+);
+
 function conduitPart(family, kind) {
   const assetId = `place_works_conduit_${family}_${kind}`;
   return Object.freeze({

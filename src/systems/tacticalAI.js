@@ -585,7 +585,8 @@ export function applyEngagementPosture(entity, doctrine, state) {
   // route: reserves held 645-724 WU under reform/reposition for the whole capture window instead
   // of closing to hail range).
   if (current.kind === 'attack_run' && current.targetId != null
-    && String(current.reason || '').startsWith('security_response:')) return;
+    && (String(current.reason || '').startsWith('security_response:')
+      || String(current.reason || '').startsWith('wanted_warrant:'))) return;
   if (String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) return;
   // A break is already in flight but another writer replaced the activity with a non-posture
   // reason: do not stash the interloper — re-commit must hand back the ORIGINAL authored
