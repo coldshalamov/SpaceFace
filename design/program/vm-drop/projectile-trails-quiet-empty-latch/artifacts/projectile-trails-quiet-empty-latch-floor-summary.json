@@ -1,0 +1,34 @@
+{
+  "name": "projectile-trails-quiet-empty-latch",
+  "primaryMedian": 6.698698637347934,
+  "primaryMin": 5.7016989726653815,
+  "packageRuns": [
+    {
+      "median": 6.37,
+      "min": 4.736,
+      "max": 7.724
+    },
+    {
+      "median": 6.617,
+      "min": 5.391,
+      "max": 7.063
+    },
+    {
+      "median": 6.246,
+      "min": 5.254,
+      "max": 9.089
+    },
+    {
+      "median": 6.699,
+      "min": 5.702,
+      "max": 9.915
+    }
+  ],
+  "floorMinSpeedup": 4.736,
+  "medians": [
+    6.37,
+    6.617,
+    6.246,
+    6.699
+  ]
+}
