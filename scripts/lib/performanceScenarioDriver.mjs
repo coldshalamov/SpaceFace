@@ -753,12 +753,12 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
   if (definition.actualRenderedEntitiesRequired
       || definition.presentationWorldReadyRequired
       || definition.presentationWorldMode) {
-    readiness = await waitForPerformanceScenarioReady(page, scenarioId);
+    readiness = await waitForPerformanceScenarioReady(page, scenarioId, { log });
   }
   let churn = null;
   if (definition.presentationWorldMode === 'churn') {
     churn = await advancePresentationWorldChurn(page, scenarioId, seed);
-    readiness = await waitForPerformanceScenarioReady(page, scenarioId);
+    readiness = await waitForPerformanceScenarioReady(page, scenarioId, { log });
     churn = { ...churn, settlement: await capturePresentationWorldChurnSettlement(page, scenarioId) };
   }
   log(`[scenario] prepared ${scenarioId} injected=${receipt.injectedEntityCount}`);
@@ -777,13 +777,17 @@ function scenarioReadyTimeoutMs() {
 // Driver-visible upload quiescence, part of scenario readiness. The dirty-range comparator reads
 // tier1 postBoot.bufferUploadBytes — every buffer upload, not just the measured owners'. Route and
 // authored-admission churn emit MB-scale ambient uploads for tens of seconds after the admission
-// counters reach zero (2026-09-24 run: ~5.1 MB/s still decaying when the ranged window opened, vs a
-// ~1.5 MB/s steady floor under live combat). A window that opens mid-tail charges the tail to its
-// driver bytes and the shipped variant loses the ratio on traffic it never produced. Readiness
-// therefore requires the driver-visible rate under the steady-state band — 3 MB/s splits the
-// observed tail from the observed combat floor — sustained for 1.5 s. The gate engages only when
-// the tier1 counter set is actually enabled; uninstrumented callers keep the previous semantics.
-const UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 3 * 1024 * 1024;
+// counters reach zero (2026-09-24 run: ~5.1 MB/s still decaying when the ranged window opened, vs
+// 1.5–3.1 MB/s steady-state under live combat on this host). A window that opens mid-tail charges
+// the tail to its driver bytes while the later window inherits the settled floor — it is the
+// ASYMMETRY that loses the ratio, so readiness waits for the rate to reach steady state, not for
+// a fixed low rate: pass when the recent rate is under the absolute floor, or when it has stopped
+// falling (within a band of the trailing mean) under the ceiling above which even symmetric
+// ambient breaks the comparator. Engages only when tier-1 counters are enabled.
+const UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 4 * 1024 * 1024;
+const UPLOAD_QUIET_CEILING_BYTES_PER_SEC = 8 * 1024 * 1024;
+const UPLOAD_QUIET_STABLE_MIN = 0.92;
+const UPLOAD_QUIET_STABLE_MAX = 1.2;
 const UPLOAD_QUIET_REQUIRED_MS = 1_500;
 
 async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
@@ -819,8 +823,8 @@ async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 
   }, scenarioId);
 }
 
-export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
-  await page.waitForFunction(({ expectedId, uploadQuietFloorBytesPerSec, uploadQuietRequiredMs }) => {
+export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs(), log = () => {} } = {}) {
+  await page.waitForFunction(({ expectedId, uploadQuietFloorBytesPerSec, uploadQuietCeilingBytesPerSec, uploadQuietStableMin, uploadQuietStableMax, uploadQuietRequiredMs }) => {
     const sf = window.SF;
     const state = sf?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
@@ -866,29 +870,55 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
       : (window.__SF_SCENARIO_UPLOAD_QUIET__ = { tag, samples: [], lastAt: null, since: null });
     const now = performance.now();
     // getCounterSnapshot allocates a full report — sampling the byte counter at ~10 Hz is enough
-    // for a 1 s rate window, so most polls skip the snapshot entirely.
+    // for a multi-second rate window, so most polls skip the snapshot entirely.
     if (quiet.lastAt == null || now - quiet.lastAt >= 100) {
       const uploadBytes = perfApi.getCounterSnapshot().totals?.bufferUploadBytes;
       if (!Number.isFinite(uploadBytes)) return true;
       quiet.samples.push({ at: now, bytes: uploadBytes });
       quiet.lastAt = now;
-      while (quiet.samples.length > 2 && now - quiet.samples[0].at > 1_000) quiet.samples.shift();
+      while (quiet.samples.length > 2 && now - quiet.samples[0].at > 8_000) quiet.samples.shift();
     }
-    const first = quiet.samples[0];
     const last = quiet.samples[quiet.samples.length - 1];
-    const spanMs = first && last ? last.at - first.at : 0;
-    const rate = spanMs >= 250
-      ? (last.bytes - first.bytes) / (spanMs / 1_000)
-      : Number.POSITIVE_INFINITY;
-    if (rate <= uploadQuietFloorBytesPerSec) {
+    const firstShort = quiet.samples.find((sample) => last && last.at - sample.at <= 2_000) || last;
+    const firstLong = quiet.samples[0];
+    const spanShort = last && firstShort ? last.at - firstShort.at : 0;
+    const spanLong = last && firstLong ? last.at - firstLong.at : 0;
+    const shortRate = spanShort >= 1_000 ? (last.bytes - firstShort.bytes) / (spanShort / 1_000) : Number.POSITIVE_INFINITY;
+    const longRate = spanLong >= 4_000 ? (last.bytes - firstLong.bytes) / (spanLong / 1_000) : null;
+    const steady = Number.isFinite(longRate)
+      && shortRate >= longRate * uploadQuietStableMin
+      && shortRate <= longRate * uploadQuietStableMax;
+    const quietNow = shortRate <= uploadQuietFloorBytesPerSec
+      || (steady && shortRate <= uploadQuietCeilingBytesPerSec);
+    if (quietNow) {
       if (quiet.since == null) quiet.since = now;
     } else quiet.since = null;
     return quiet.since != null && now - quiet.since >= uploadQuietRequiredMs;
   }, {
     expectedId: scenarioId,
     uploadQuietFloorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC,
+    uploadQuietCeilingBytesPerSec: UPLOAD_QUIET_CEILING_BYTES_PER_SEC,
+    uploadQuietStableMin: UPLOAD_QUIET_STABLE_MIN,
+    uploadQuietStableMax: UPLOAD_QUIET_STABLE_MAX,
     uploadQuietRequiredMs: UPLOAD_QUIET_REQUIRED_MS,
-  }, { timeout: timeoutMs });
+  }, { timeout: timeoutMs }).catch(async (error) => {
+    const quiet = await page.evaluate(() => {
+      const q = window.__SF_SCENARIO_UPLOAD_QUIET__;
+      if (!q) return null;
+      const first = q.samples?.[0];
+      const last = q.samples?.[q.samples.length - 1];
+      return {
+        tag: q.tag,
+        sampleCount: q.samples?.length || 0,
+        lastRateBytesPerSec: first && last && last.at > first.at
+          ? (last.bytes - first.bytes) / ((last.at - first.at) / 1_000)
+          : null,
+        quietForMs: q.since != null && last ? last.at - q.since : null,
+      };
+    }).catch(() => null);
+    log(`[scenario] ready wait starved for ${scenarioId}: ${JSON.stringify({ ...quiet, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })}`);
+    throw new Error(`scenario ready wait starved for ${scenarioId}: ${JSON.stringify({ ...quiet, floorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC })} — ${error?.message || error}`);
+  });
   return page.evaluate((expectedId) => {
     const state = window.SF?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;

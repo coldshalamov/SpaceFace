@@ -144,7 +144,11 @@ test('scenario readiness requires driver-visible upload quiescence only when cou
   assert.match(source, /getCounterSnapshot\(\)\.totals\?\.bufferUploadBytes/);
   // Quiet must be sustained, not instantaneous — a single sub-floor poll cannot open the window.
   assert.match(source, /quiet\.since != null && now - quiet\.since >= uploadQuietRequiredMs/);
-  assert.match(source, /UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 3 \* 1024 \* 1024/);
+  assert.match(source, /UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 4 \* 1024 \* 1024/);
+  assert.match(source, /UPLOAD_QUIET_CEILING_BYTES_PER_SEC = 8 \* 1024 \* 1024/);
+  // The asymmetry, not the level, loses the ratio: a steady hot host may pass, a decaying tail
+  // must not. The gate therefore also accepts a stable rate under the ceiling.
+  assert.match(source, /shortRate >= longRate \* uploadQuietStableMin[\s\S]*shortRate <= longRate \* uploadQuietStableMax/);
   assert.match(source, /UPLOAD_QUIET_REQUIRED_MS = 1_500/);
 });
 
