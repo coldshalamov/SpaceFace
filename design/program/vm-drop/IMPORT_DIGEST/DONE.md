@@ -1,8 +1,7 @@
-# DONE — IMPORT_DIGEST 20260924bd
+# DONE — IMPORT_DIGEST 20260924bf
 
-Post-#92 hillclimb on Quiet Grok Bot VM. Shipped **#93
-`weapon-discharge-quiet-active-skip`** (~6.7× median quiet WeaponDischargePool when
-activeCount===0; floor ≥4.86×), **#94 `plasma-stream-cold-reset-skip`** (~3.3×
-median quiet PlasmaStream already-cold !commanded skip; floor ≥2.81×). Soft-GPU
-fps not a KPI. Master tip `273f8bad7`. Scratch `vm-work/hillclimb-20260924i` @
-`a8c75e836`.
+Post-#97 hillclimb on Quiet Grok Bot VM. Shipped **#98
+`rcs-impulse-quiet-empty-skip`** (~2.7× median quiet RcsImpulseSystem when already
+empty; floor ≥1.95×), **#99 `weapon-light-quiet-live-skip`** (~1.60× median quiet
+WeaponLightPool when live===0; floor ≥1.46×). Soft-GPU fps not a KPI. Master tip
+`273f8bad7`. Scratch `vm-work/hillclimb-20260924i` @ `923777bd1`.
