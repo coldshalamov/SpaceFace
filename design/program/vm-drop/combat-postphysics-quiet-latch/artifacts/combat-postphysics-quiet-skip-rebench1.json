@@ -1,0 +1,104 @@
+{
+  "label": "combat-postphysics-quiet-skip",
+  "primary": "quiet-48-combatant-postphysics-residual-after-154",
+  "iterations": 60000,
+  "runs": 11,
+  "ships": 49,
+  "pairs": [
+    {
+      "beforeMs": 670.946402,
+      "afterMs": 48.56886800000001,
+      "beforeUs": 11.182440033333334,
+      "afterUs": 0.8094811333333335,
+      "speedup": 13.81433065312537,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 720.292749,
+      "afterMs": 48.75328999999999,
+      "beforeUs": 12.004879149999999,
+      "afterUs": 0.8125548333333332,
+      "speedup": 14.774238805217044,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 717.05215,
+      "afterMs": 49.053049999999985,
+      "beforeUs": 11.950869166666667,
+      "afterUs": 0.8175508333333331,
+      "speedup": 14.617891242236725,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 817.7449979999999,
+      "afterMs": 51.35085700000002,
+      "beforeUs": 13.629083299999998,
+      "afterUs": 0.855847616666667,
+      "speedup": 15.924661159988032,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 743.7745090000001,
+      "afterMs": 51.27499599999999,
+      "beforeUs": 12.396241816666668,
+      "afterUs": 0.8545832666666664,
+      "speedup": 14.505598576740997,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 651.10271,
+      "afterMs": 50.719573999999994,
+      "beforeUs": 10.851711833333333,
+      "afterUs": 0.8453262333333332,
+      "speedup": 12.837306362234036,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 673.227046,
+      "afterMs": 52.534876999999994,
+      "beforeUs": 11.220450766666666,
+      "afterUs": 0.8755812833333332,
+      "speedup": 12.814859088753554,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 653.528859,
+      "afterMs": 49.02689999999998,
+      "beforeUs": 10.89214765,
+      "afterUs": 0.8171149999999998,
+      "speedup": 13.330005751944343,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 675.3824950000001,
+      "afterMs": 46.60119499999999,
+      "beforeUs": 11.256374916666669,
+      "afterUs": 0.7766865833333332,
+      "speedup": 14.49281493747103,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 696.806446,
+      "afterMs": 49.46675400000001,
+      "beforeUs": 11.613440766666667,
+      "afterUs": 0.8244459000000002,
+      "speedup": 14.086358809797785,
+      "skips": 60000
+    },
+    {
+      "beforeMs": 685.0821309999999,
+      "afterMs": 50.31887800000001,
+      "beforeUs": 11.418035516666665,
+      "afterUs": 0.8386479666666669,
+      "speedup": 13.614813331092154,
+      "skips": 60000
+    }
+  ],
+  "medianSpeedup": 14.086358809797785,
+  "minSpeedup": 12.814859088753554,
+  "maxSpeedup": 15.924661159988032,
+  "absBeforeUsMedian": 11.418035516666665,
+  "absAfterUsMedian": 0.8244459000000002,
+  "dirtyWakeOk": true,
+  "note": "Before=postPhysics ensure+sync walk every tick (prePhysics latch ON). After=skip walk while quiet latch armed. Soft-GPU fps not claimed."
+}

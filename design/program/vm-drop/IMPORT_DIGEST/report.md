@@ -1,23 +1,23 @@
-# IMPORT_DIGEST report — 20260924dn (post-#153; #154 ship)
+# IMPORT_DIGEST report — 20260924do (post-#154; #155 ship)
 
-Master tip: **`97c88f92b`** (fetched; unchanged since #153 / digest 20260924dm).
+Master tip: **`97c88f92b`** (fetched; unchanged since #154 / digest 20260924dn).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924o` @ `2f1968384` on `origin/master`
-@ `97c88f92b` through #154. No restack needed (master tip unchanged). Profile cite remains
+Scratch `vm-work/hillclimb-20260924o` @ `16332ab5c` on `origin/master`
+@ `97c88f92b` through #155. No restack needed (master tip unchanged). Profile cite remains
 `settled-45s-stacked-20260924ac` (+ `settled-20s-stacked-20260924ad` cross-check; Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
 
 | # | Package |
 |---:|---|
-| 31–153 | (unchanged — see digest 20260924dm / dl) |
-| **154** | **combat-prephysics-quiet-latch** (this digest) |
+| 31–154 | (unchanged — see digest 20260924dn / dm) |
+| **155** | **combat-postphysics-quiet-latch** (this digest) |
 
 ### SKIP / hold (unchanged + prior)
 
-Carry forward all holds from digest 20260924dm / dl / dk / dj / di / dh / dg / df / de / dd / dc / db / da / cz. Prior holds still stand:
+Carry forward all holds from digest 20260924dn / dm / dl / dk / dj / di / dh / dg / df / de / dd / dc / db / da / cz. Prior holds still stand:
 classify selectClassify id-replay after #128 ~1.16×; weapon-presenter
 callsite quiet ~2.0×/floor ~1.18×; vfx quiet-head composite ~2.27×/floor ~1.36×;
 ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining;
@@ -63,20 +63,24 @@ packCombat single-dirty remains held (synthetic ~2× noisy; not casually retried
   not casually retried without awake-set rewrite.
 - tether-web empty VFX latch remains regress (~0.93×).
 
-**#146 / #147 / #148 / #149 / #150 / #151 / #152 / #153 carry:** no new thin holds (shipped catch-nets /
-sanctuary / salvage / bountyHunt / pirateDisengage / pirateParley / flybyFocus / barkDirector).
+**#146 / #147 / #148 / #149 / #150 / #151 / #152 / #153 / #154 carry:** no new thin holds
+(shipped catch-nets / sanctuary / salvage / bountyHunt / pirateDisengage /
+pirateParley / flybyFocus / barkDirector / combat prePhysics).
 
 **flybyFocus thin-abs deferral SUPERSEDED by #152** — do not rediscover.
 
-**#154 this pass:** no new thin holds (shipped fresh combat prePhysics idle-walk quiet latch).
-Abs before ~32.5–33.2 µs/call — well clear of the updateDockRange / impulseCharges /
-lawSecurity residual thin-abs band.
+**#154 scour note (ai / aiPorts isolation) still stands:** tick++ microbenches
+attribute full `ensureActivityClassified` cost to ai (~8 µs) / aiPorts (~7 µs).
+Fair same-tick residual (classify warm) collapses those to ~0.7 / ~0.4 µs —
+not portable poles. Do not casually retry ai/aiPorts quiet latches from
+isolation numbers alone; prefer fair same-tick residual first.
 
-**#154 scour note (ai / aiPorts isolation):** tick++ microbenches attribute full
-`ensureActivityClassified` cost to ai (~8 µs) / aiPorts (~7 µs). Fair same-tick
-residual (classify warm) collapses those to ~0.7 / ~0.4 µs — not portable poles.
-Do not casually retry ai/aiPorts quiet latches from isolation numbers alone;
-prefer fair same-tick residual first.
+**#155 this pass:** no new thin holds (shipped fresh combat postPhysics
+ensure+sync quiet skip under #154 latch). Abs before ~11.4–11.8 µs/call —
+well clear of the updateDockRange / impulseCharges / lawSecurity residual
+thin-abs band. Stale claim folder `combat-postphysics-quiet-skip` (#87-era
+empty-byId early-out) is NOT this package — that early-out is already on
+master; do not rediscover.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -84,20 +88,20 @@ Tool cite: fresh `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip
 through #64 @ `e1b3f26a3`). Idle **65.2%**. Long tasks **17**. Soft-GPU /
 native GL / bloom admission owners ignored for portable ranking.
 Cross-check `settled-20s-stacked-20260924ad`: this pass claimed combat
-prePhysics idle entity walk under actions / registry.step residual.
+postPhysics ensure+sync walk under actions / registry.step residual after #154.
 
 ### Top portable src/ self (aggregated) — climb targets
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after …+#154 combat prePhysics; preStep / packCombat / law wanted·ambient / HUD / ai fair residual still open |
+| 323 | `registry.step` | residual after …+#155 combat postPhysics; preStep / packCombat / law wanted·ambient / HUD / ai fair residual still open |
 | 269 | `classifyWorld` | residual after …+#141; flying-early-latch held ~1.3×; NPC/disc-admission still thin |
 | 202 | `syncEntityViews` | residual after …+#142; asteroid settled + render-entity-frame retain thin |
 | 186 | `prepareFrame` | residual after …+#126 (quiet-VFX floors still held) |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
-### Notable callees (post-#154)
+### Notable callees (post-#155)
 
 - syncEntityViews → presentationQueries.query (#74+#77+#**142** pose-dirty retain),
   refreshVisibleEntity (#76), updateCraftMicroMotion (#57), noteRealtimeShadowCasterPose (#81),
@@ -118,6 +122,7 @@ prePhysics idle entity walk under actions / registry.step residual.
   flybyFocus empty closing-hostile (#**152** empty quiet latch);
   barkDirector quiet bark/hail (#**153** quiet latch);
   combat prePhysics idle walk (#**154** quiet latch via actions);
+  combat postPhysics ensure+sync (#**155** quiet skip under #154 latch);
   tumbleStates (#140) + tacticalAI (#139)
   + CM/fields/bombs/far/optic/decode/field/poi/dock shipped;
   pose-rematch / sleeping-clocks / compact-skip / dirty-publish / quiet-compact-skip remain held
@@ -126,17 +131,18 @@ prePhysics idle entity walk under actions / registry.step residual.
 
 | # | Package | Evidence |
 |---:|---|---|
-| **154** | **combat-prephysics-quiet-latch** | Isolated `actions.update`/`kernel.prePhysics` median **~24.8–25.4×** / floorMin **≥21.27×** (5×11-pair @ 60k quiet roster, `--expose-gc` children); abs before ~32.5–33.2 µs/call; dirty-wake OK (routeDamage heat → latch clears); focused latch **5/5** + combat suites **32/32**. Soft-GPU fps not claimed. |
+| **155** | **combat-postphysics-quiet-latch** | Isolated `actions.update`+`kernel.postPhysics` median **~13.5–14.1×** / floorMin **≥9.32×** (5×11-pair @ 60k quiet roster, `--expose-gc` children); abs before ~11.4–11.8 µs/call; dirty-wake OK (routeDamage heat → skip clears); focused latch **5/5** + #154 latch **10/10** + combat suites **27/27** (37/37). Soft-GPU fps not claimed. Requires #154 applied first. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| **combat prePhysics quiet latch (actions)** | **SHIP #154** — median ~24.8–25.4× / floor ≥21.27×; abs ~32.5–33.2 µs; dirty-wake damage→heat OK. Fresh actions residual after #153. |
-| ai / aiPorts isolation latch sketches | **not shipped** — isolation ~8 / ~7 µs was ensureActivityClassified-inflated; fair same-tick residual ~0.7 / ~0.4 µs. Hold note added. |
+| **combat postPhysics quiet skip (under #154 latch)** | **SHIP #155** — median ~13.5–14.1× / floor ≥9.32×; abs ~11.4–11.8 µs; dirty-wake damage→heat OK. Fresh combat residual after #154 prePhysics. |
+| ai / aiPorts isolation latch sketches | **not casually retried** (held — classify-inflated) |
 | impulseCharges empty / updateDockRange far / spatial all-sleeping sketch | **not casually retried** (held from #145/#148) |
-| packCombat single-dirty / flying-early-latch / NPC visit / spatial stub / asteroid settled / render-entity-frame retain / pose-rematch / sleeping-clocks / dirty-publish / quiet-VFX / zoneAt / preStep-all-sleeping / stampNearWork-empty / projectile-evidence surface-cadence / env-machinery far / hazards far / weapons residual deepen / quiet-compact-skip / flybyFocus / pirate* / barkDirector | **not casually retried** (held / shipped) |
+| packCombat single-dirty / flying-early-latch / NPC visit / spatial stub / asteroid settled / render-entity-frame retain / pose-rematch / sleeping-clocks / dirty-publish / quiet-VFX / zoneAt / preStep-all-sleeping / stampNearWork-empty / projectile-evidence surface-cadence / env-machinery far / hazards far / weapons residual deepen / quiet-compact-skip / flybyFocus / pirate* / barkDirector / combat prePhysics | **not casually retried** (held / shipped) |
 | lawSecurity quiet residual after cones+sanctuary | **still ~1.0 µs/call in prior scour** — too thin to deepen casually (held) |
+| stale `combat-postphysics-quiet-skip` empty-byId claim | **not rediscovered** — already on master; this #155 is ensure+sync under #154 latch |
 
 ## Rock audit (unchanged)
 
@@ -149,21 +155,22 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    ~1.12×; **flying-early-latch held ~1.3×**; id-replay ~1.16×; rock context ~1.09×).
    Prefer angles that still move residual under flying retain without replaying
    the early-latch skip of extents+selectClassify.
-2. registry.step after …+#154 (preStep residual / packCombatTable residual /
+2. registry.step after …+#155 (preStep residual / packCombatTable residual /
    lifetimeSweep quiet-clocks shipped; weapons NPC quiet shipped; customs cones
    shipped; catch-nets shipped; sanctuary shipped; salvage unstable shipped;
    bountyHunt empty hunters shipped; pirateDisengage empty combatants shipped;
    pirateParley empty toll shipped; flybyFocus empty closing-hostile shipped;
    barkDirector quiet bark/hail shipped; combat prePhysics idle walk shipped;
+   combat postPhysics ensure+sync quiet skip shipped;
    **quiet-compact-skip thin floor held**;
    pose-rematch / sleeping-clocks / compact-skip / dirty-publish fair remain held;
    tumbleStates + tacticalAI quiet residuals; lawSecurity wanted / ambient residual
    deepen (thin abs); **ai / aiPorts fair same-tick residual** (not isolation);
    HUD NEW angles).
-   Prefer NEW preStep / packCombat / HUD / fair-ai angles that are not
-   single-dirty / all-sleeping / stamp-empty / cones / catch-nets / sanctuary / salvage /
-   bountyHunt / pirateDisengage / pirateParley / flybyFocus / barkDirector /
-   combat prePhysics.
+   Prefer NEW preStep / packCombat / HUD / fair-ai / law wanted·ambient angles
+   that are not single-dirty / all-sleeping / stamp-empty / cones / catch-nets /
+   sanctuary / salvage / bountyHunt / pirateDisengage / pirateParley /
+   flybyFocus / barkDirector / combat prePhysics / combat postPhysics.
 3. syncEntityViews residual after #15+#44+#57+#74+#76+#77+#81+#142 (closures /
    microMotion / ordnance / applySnapshotPose hold ~0.85×; query pose-dirty shipped;
    asteroid settled ~1.14× + render-entity-frame retain ~1.21× held).
@@ -183,7 +190,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 ## Scratch
 
 - Branch: `vm-work/hillclimb-20260924o`
-- Tip: `2f196838418d2841d4704cf56a53122a7391d88d`
+- Tip: `16332ab5c62d570598593b7a7cc7ecfd723459d4`
 - Worktree: `/workspace/spaceface-scratch/hillclimb-20260924h`
 - Master tip: `97c88f92b`
-- Clean master patch (am verify): `2f1968384` on `97c88f92b`
+- Clean master patch (am verify): `649b3c51a` on `97c88f92b`+#154
