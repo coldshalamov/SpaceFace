@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24x (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24y (post-import hillclimb)
 
 Master tip: **`abcccfd87`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #58; +#59 measured on
-stacked tip @ `8119853f7`.
+Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #59; +#60 measured on
+stacked tip @ `6357d192c`.
 
 ### Already on stack (do not rediscover)
 
@@ -44,6 +44,7 @@ stacked tip @ `8119853f7`.
 | 56 | `volatile-index-cadence` |
 | 57 | `micromotion-settled-skip` |
 | 58 | `event-trace-thrust-sanitize` |
+| 59 | `prestep-movables-trust` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
@@ -54,7 +55,8 @@ midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior 
 classifyWorld visit-loop cadence (prior under bar), stamp-reuse/inert/near-disc (under bar),
 imminent-collision earlyout (~1.22× under bar), rock-resolvePins-only (~1.02×),
 selectClassify empty-projectile (~1.11×), isMovableEntity type-first (~1.10× — not lane trust),
-reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays).
+reusablePins pinBits short-circuit (slower on quiet 0–2 pin arrays),
+normalizePinReasons/bitfield materialize (~0.87× — miss this pass).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -67,39 +69,37 @@ native GL / bloom admission owners ignored for portable ranking.
 | samples | owner | notes |
 |---:|---|---|
 | 319 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59 |
-| 310 | `classifyWorld` | residual after #37+#38+#45+#48 |
+| 310 | `classifyWorld` | residual after #37+#38+#45+#48+#60 |
 | 204 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#57 |
 | 181 | `syncEntityViews` | residual after #15+#44+#57 |
 | 153 | `hud.frame` | radar.draw + setLagTranslate |
-| 71 | `sanitizePayload` | **#58 shipped** |
-| 58 | `authoredPhysicsBody` | **#59 target** (under isMovableEntity from preStep) |
+| 45 | `selectClassifyEntities` | **#60 shipped** |
 
-### Notable callees (post-#57 / pre-#59)
+### Notable callees (post-#57 / pre-#60)
 
 - prepareFrame → syncEntityViews (**#57**), camera.follow, packPresentationWorldToFence, spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
-- classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities, reusablePins, shouldSyncPhysics
+- classifyWorld → resolvePins, normalizePinReasons, selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget, input.update (**#55**), lifetimeSweep, eventTrace sanitize (**#58**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 59 | `prestep-movables-trust` | Portable quiet `isMovableEntity` re-check on `index.movables` **~2.19–2.28×** median (80k × 9; admit parity). Trust append-gated lane; focused lifecycle suites 29/29. |
+| 60 | `select-classify-epoch-seen` | Portable quiet selectClassify seen-membership **~2.89×** median (12k × 11; admit parity 220). Uint32Array id-epoch marks; focused activity suites 64/64. |
 
 ## Scour attempts / misses
 
 | Attempt | Result |
 |---|---|
-| reusablePins pinBits short-circuit | ~0.54× — slower than short array compare (miss) |
-| isMovableEntity type-first | ~1.10× — under bar (prior; distinct from #59 lane trust) |
-| classify rock-only resolvePins | ~1.02× — under bar (prior) |
-| selectClassify empty-projectile skip | ~1.11× indexed — under bar (prior) |
-| imminentCollision earlyout | prior ~1.22× — under bar |
+| resolvePins rockBody skip + normalize | ~1.07× — under bar (confirms prior rock-resolvePins miss) |
+| bitfield materialize pins (replace normalize) | ~0.87× — slower than normalize on quiet pins (miss) |
+| selectClassify Map-epoch marks (isolated) | ~1.46× — under bar; replaced by dense Uint32Array |
+| stampNearWorkBudget always-awake cache | ~1.58× isolated — ready next; not shipped this pass |
+| reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
-| spaceBg steady-state | Profile `deepSkyPlates.pump` was one-shot `initTexture` upload — not a quiet portable cut |
-| midflight-wave-hull-decode | Hold — not retried |
-| syncCombatantBounds | Prior miss — not retried |
+| spaceBg steady-state | Hold — not retried |
+| midflight-wave-hull-decode / syncCombatantBounds | Holds — not retried |
 
 ## Rock audit (unchanged)
 
@@ -109,10 +109,11 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 1. prepareFrame residual after #13+#44+#46+#47+#51–#58 (syncEntityViews /
    packFence / residual closures / camera.follow).
-2. classifyWorld after #37+#38+#45+#48 (selectClassify / reusablePins /
-   shouldSyncPhysics / resolvePins+normalizePinReasons).
+2. classifyWorld after #37+#38+#45+#48+#60 (resolvePins+normalizePinReasons /
+   reusablePins / shouldSyncPhysics; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59 (preStep residual /
-   lifetimeSweep / stampNearWorkBudget / tacticalAI).
+   lifetimeSweep / stampNearWorkBudget always-awake cache ~1.58× ready /
+   tacticalAI).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.

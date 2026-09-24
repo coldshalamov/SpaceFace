@@ -1,0 +1,13 @@
+{
+  "label": "select-classify-epoch-seen",
+  "before": {
+    "ms": 68.497,
+    "admitted": 220
+  },
+  "after": {
+    "ms": 23.683,
+    "admitted": 220
+  },
+  "speedup": 2.892,
+  "note": "Portable CPU. Soft-GPU fps not claimed. Before=Set.clear; After=Uint32Array id-epoch marks."
+}
