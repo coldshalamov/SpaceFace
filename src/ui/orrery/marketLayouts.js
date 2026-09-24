@@ -278,6 +278,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size:10.5px !important; }
   ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
   ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }
+  ${M} .sx-mkt__quote > :is(.sx-mkt-readouts, .sx-mkt-sale) { display:none !important; }
   ${M} .sx-mkt__analysis { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; }
   ${M} .sx-decision__opt { flex-direction:column !important; gap:1px !important; }
   ${M} .sx-decision__opt { position:relative !important; padding-left:16px !important; align-items:flex-start !important; }
