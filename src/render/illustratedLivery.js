@@ -35,7 +35,7 @@ export function illustratedLiveryForAsset(assetId = '') {
   if (/helios_cradle|ore_barge|prospector|mining_drone/.test(id)) return ILLUSTRATED_LIVERIES.industrial;
   if (/mule|atlas/.test(id)) return ILLUSTRATED_LIVERIES.convoy;
   if (/helios_span|volatiles_tanker|pelican/.test(id)) return ILLUSTRATED_LIVERIES.freight;
-  if (/yard_tug/.test(id)) return ILLUSTRATED_LIVERIES.yard;
+  if (/yard_tug|hawser/.test(id)) return ILLUSTRATED_LIVERIES.yard;
   if (/repair_tender|survey_pin/.test(id)) return ILLUSTRATED_LIVERIES.service;
   if (/rescue|capsule/.test(id)) return ILLUSTRATED_LIVERIES.rescue;
   if (/warden/.test(id)) return ILLUSTRATED_LIVERIES.warden;
@@ -45,6 +45,10 @@ export function illustratedLiveryForAsset(assetId = '') {
   if (/ashline/.test(id)) return ILLUSTRATED_LIVERIES.raider;
   if (/ashline|salvage|scrap|aftermath|dead_hulk|debris|drifter/.test(id)) return ILLUSTRATED_LIVERIES.salvage;
   if (/station|gate|lane_|support_gantry|tally|claim_mark|cold_locker|ash_pin|whistle|memorial|pod_/.test(id)) return ILLUSTRATED_LIVERIES.habitat;
+  if (/ironback/.test(id)) return ILLUSTRATED_LIVERIES.industrial;
+  if (/ranger/.test(id)) return ILLUSTRATED_LIVERIES.service;
+  if (/colossus/.test(id)) return ILLUSTRATED_LIVERIES.heavyPatrol;
+  if (/leviathan/.test(id)) return ILLUSTRATED_LIVERIES.warden;
   return null;
 }
 
