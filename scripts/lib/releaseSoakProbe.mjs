@@ -518,10 +518,19 @@ export async function runReleaseSoakProbe({
     }
     // Same read for the delete trap: `delete: object does not belong to this context`
     // storms name no caller either, and the fix depends on which dispose path issues them.
+    // Entries whose handle passed its own isX() check (alive: true) are recorded too — beside
+    // 'does not belong' warnings they are still the storm's caller (binding-layer blind spot).
+    // Eviction/drop counts surface a saturated cap: the storm fires at the end of a soak, so
+    // saturation must be seen, never silent.
     const glDeleteTrap = await readGlDeleteTrap(page);
-    if (glDeleteTrap.length > 0) {
-      doLog(`gl-delete trap captured ${glDeleteTrap.length} dead-handle delete caller(s): ${
-        glDeleteTrap.slice(0, 4).map((entry) => `${entry.count}x ${entry.api} ${String(entry.stack || '').split('\n')[2] || '?'}`).join(' | ')
+    const glDeleteTrapEntries = glDeleteTrap.entries;
+    const glTrapSaturated = glDeleteTrap.evicted > 0 || glDeleteTrap.dropped > 0;
+    if (glDeleteTrapEntries.length > 0 || glTrapSaturated) {
+      const dead = glDeleteTrapEntries.filter((entry) => entry.alive === false);
+      doLog(`gl-delete trap captured ${glDeleteTrapEntries.length} delete caller(s), ${dead.length} failed their own isX check${
+        glTrapSaturated ? `; SATURATED: ${glDeleteTrap.evicted} routine entries evicted, ${glDeleteTrap.dropped} unique keys dropped` : ''
+      }: ${
+        (dead.length > 0 ? dead : glDeleteTrapEntries).slice(0, 4).map((entry) => `${entry.count}x ${entry.api}${entry.alive === false ? ' [dead]' : ''} ${String(entry.stack || '').split('\n')[2] || '?'}`).join(' | ')
       }`);
     }
 
@@ -810,6 +819,11 @@ async function launchElectron(
     rootUrl,
   });
   await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+  // Arm the read-only GL traps on the live page: without this the Electron route ran every soak
+  // with both traps disarmed — they only rode the opt-in tier1-counter reload — which is why the
+  // v6 acceptance pair captured 256 dead-handle warnings with zero trapped stacks. launchBrowser
+  // keeps its context-level install: every page there inherits the init scripts.
+  await installGlTrapsOnLivePage(page);
   if (enableTier1Counters) {
     // Electron creates its first page as part of app startup, before Playwright can install an init
     // script. Reload the same canonical route once inside the same owned runtime after arming the
@@ -895,60 +909,67 @@ export async function installTier1CountersInitScript(target) {
 // post-restore wrappers still belong to the context object and can pass it). The trap is read-only:
 // it never filters, throws, or alters the return value, so product behaviour is untouched and the
 // captured stacks travel with the evidence when warnings fail validation.
+// The in-page bodies are exported so the same source arms the trap two ways: addInitScript
+// (browser contexts, and any Electron page created after installation) and a live-page evaluate
+// (Electron's first window, which exists before Playwright can install an init script at all).
+// Each body is idempotent per document — a second arm must be a no-op, not a defineProperty throw.
+export function armGlProgramQueryTrapInPage() {
+  if (globalThis.__SF_PROGRAM_QUERY_TRAP__) return;
+  const queries = [];
+  const seen = new Map();
+  const wrap = (proto, ctxKind) => {
+    if (!proto || typeof proto.getProgramParameter !== 'function') return;
+    const original = proto.getProgramParameter;
+    if (original.__sfProgramQueryTrap === true) return;
+    const wrapped = function (program, pname) {
+      const result = original.call(this, program, pname);
+      // The driver-level verdict is the only version-proof predicate: the JS binding accepts
+      // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
+      // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
+      // and returns null. isProgram() is unreliable here — it can still answer true for those
+      // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
+      // zero bad queries. A live same-context program never returns null for a valid pname.
+      if (result === null) {
+        try {
+          const stack = (new Error('sf-program-query-trap')).stack || '';
+          const key = stack.split('\n').slice(2, 8).join('|');
+          const existing = seen.get(key);
+          if (existing != null) {
+            queries[existing].count += 1;
+          } else if (queries.length < 64) {
+            seen.set(key, queries.length);
+            queries.push({
+              count: 1,
+              ctx: ctxKind,
+              pname: Number(pname),
+              isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
+              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+              at: Math.round(performance.now()),
+              stack: stack.slice(0, 3000),
+            });
+          }
+        } catch (_) { /* trap bookkeeping must never break the queried path */ }
+      }
+      return result;
+    };
+    wrapped.__sfProgramQueryTrap = true;
+    proto.getProgramParameter = wrapped;
+  };
+  try {
+    wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype, 'webgl2');
+    wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype, 'webgl1');
+  } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
+  Object.defineProperty(globalThis, '__SF_PROGRAM_QUERY_TRAP__', {
+    value: queries,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+}
+
 export async function installGlProgramQueryTrap(target) {
   assert(target && typeof target.addInitScript === 'function', 'program-query trap requires an init-script seam');
-  await target.addInitScript(() => {
-    const queries = [];
-    const seen = new Map();
-    const wrap = (proto, ctxKind) => {
-      if (!proto || typeof proto.getProgramParameter !== 'function') return;
-      const original = proto.getProgramParameter;
-      if (original.__sfProgramQueryTrap === true) return;
-      const wrapped = function (program, pname) {
-        const result = original.call(this, program, pname);
-        // The driver-level verdict is the only version-proof predicate: the JS binding accepts
-        // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
-        // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
-        // and returns null. isProgram() is unreliable here — it can still answer true for those
-        // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
-        // zero bad queries. A live same-context program never returns null for a valid pname.
-        if (result === null) {
-          try {
-            const stack = (new Error('sf-program-query-trap')).stack || '';
-            const key = stack.split('\n').slice(2, 8).join('|');
-            const existing = seen.get(key);
-            if (existing != null) {
-              queries[existing].count += 1;
-            } else if (queries.length < 64) {
-              seen.set(key, queries.length);
-              queries.push({
-                count: 1,
-                ctx: ctxKind,
-                pname: Number(pname),
-                isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
-                lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
-                at: Math.round(performance.now()),
-                stack: stack.slice(0, 3000),
-              });
-            }
-          } catch (_) { /* trap bookkeeping must never break the queried path */ }
-        }
-        return result;
-      };
-      wrapped.__sfProgramQueryTrap = true;
-      proto.getProgramParameter = wrapped;
-    };
-    try {
-      wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype, 'webgl2');
-      wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype, 'webgl1');
-    } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
-    Object.defineProperty(globalThis, '__SF_PROGRAM_QUERY_TRAP__', {
-      value: queries,
-      configurable: false,
-      enumerable: false,
-      writable: false,
-    });
-  });
+  await target.addInitScript(armGlProgramQueryTrapInPage);
 }
 
 export async function readGlProgramQueryTrap(page) {
@@ -964,78 +985,147 @@ export async function readGlProgramQueryTrap(page) {
 }
 
 // Dead-handle delete trap: `delete: object does not belong to this context` names the API
-// but never the JS frame. A non-null handle that fails its own isX() check is dead or
-// foreign — the same condition the decoder reports — so record the stack. Read-only like
-// the query trap: it never filters, throws, or alters the delete itself.
-export async function installGlDeleteTrap(target) {
-  assert(target && typeof target.addInitScript === 'function', 'gl-delete trap requires an init-script seam');
-  await target.addInitScript(() => {
-    const deletes = [];
-    const seen = new Map();
-    const pairs = [
-      ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
-      ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
-      ['deleteFramebuffer', 'isFramebuffer'], ['deleteRenderbuffer', 'isRenderbuffer'],
-      ['deleteVertexArray', 'isVertexArray'],
-    ];
-    const wrap = (proto) => {
-      if (!proto) return;
-      for (const [del, is] of pairs) {
-        if (typeof proto[del] !== 'function') continue;
-        const original = proto[del];
-        if (original.__sfGlDeleteTrap === true) continue;
-        const wrapped = function (handle) {
+// but never the JS frame. Read-only like the query trap: it never filters, throws, or alters
+// the delete itself.
+//
+// v6 acceptance-pair lesson (2026-09-23): record EVERY delete, not only isX() failures. The
+// binding layer lets stale/foreign wrappers through isX() — the exact failure the query trap's
+// comment above documents for isProgram() — so the Electron storm (248x 'delete:' + 8x
+// 'deleteVertexArray' warnings inside one ~10 ms recovery burst) would read as zero bad deletes
+// even with the trap armed. `alive` keeps the two classes separable in evidence: an
+// alive:false entry is a handle that failed its own isX() check; an alive:true entry beside
+// Chromium 'does not belong' warnings at the same timestamp is still the storm's caller.
+export function armGlDeleteTrapInPage() {
+  if (globalThis.__SF_GL_DELETE_TRAP__) return;
+  const deletes = [];
+  const seen = new Map();
+  const order = [];
+  const meta = { evicted: 0, dropped: 0 };
+  const CAP = 128;
+  const pairs = [
+    ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
+    ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
+    ['deleteFramebuffer', 'isFramebuffer'], ['deleteRenderbuffer', 'isRenderbuffer'],
+    ['deleteVertexArray', 'isVertexArray'],
+  ];
+  const wrap = (proto) => {
+    if (!proto) return;
+    for (const [del, is] of pairs) {
+      if (typeof proto[del] !== 'function') continue;
+      const original = proto[del];
+      if (original.__sfGlDeleteTrap === true) continue;
+      const wrapped = function (handle) {
+        try {
+          let alive = null;
           if (handle != null && typeof this[is] === 'function') {
-            let alive = false;
             try { alive = this[is](handle) === true; } catch (_) { alive = false; }
-            if (!alive) {
-              try {
-                const stack = (new Error('sf-gl-delete-trap')).stack || '';
-                const key = `${del}|${stack.split('\n').slice(2, 8).join('|')}`;
-                const existing = seen.get(key);
-                if (existing != null) {
-                  deletes[existing].count += 1;
-                } else if (deletes.length < 64) {
-                  seen.set(key, deletes.length);
-                  deletes.push({
-                    count: 1,
-                    api: del,
-                    lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
-                    at: Math.round(performance.now()),
-                    stack: stack.slice(0, 3000),
-                  });
+          }
+          const stack = (new Error('sf-gl-delete-trap')).stack || '';
+          const key = `${del}|${alive}|${stack.split('\n').slice(2, 8).join('|')}`;
+          const existing = seen.get(key);
+          if (existing != null) {
+            deletes[existing].count += 1;
+          } else {
+            const entry = {
+              count: 1,
+              api: del,
+              alive,
+              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+              at: Math.round(performance.now()),
+              stack: stack.slice(0, 3000),
+            };
+            if (deletes.length < CAP) {
+              seen.set(key, deletes.length);
+              order.push(key);
+              deletes.push(entry);
+            } else {
+              // Saturated: the storm fires at the END of a multi-hour soak, so a fixed
+              // drop-on-full cap would silently crowd it out with routine dispose stacks —
+              // the exact 'storm arrives with zero trapped stacks' failure this trap exists
+              // to fix. Evict the OLDEST common-class entry instead (FIFO); a precise
+              // alive:false entry is never the victim. If every slot is alive:false, the
+              // new key is dropped but counted. Either way saturation is visible in
+              // evidence via the meta read — never silent.
+              let victimIdx = -1;
+              for (let i = 0; i < order.length; i++) {
+                const victimKey = order[i];
+                if (deletes[seen.get(victimKey)].alive !== false) {
+                  victimIdx = seen.get(victimKey);
+                  order.splice(i, 1);
+                  seen.delete(victimKey);
+                  break;
                 }
-              } catch (_) { /* trap bookkeeping must never break the delete path */ }
+              }
+              if (victimIdx >= 0) {
+                meta.evicted += 1;
+                deletes[victimIdx] = entry;
+                seen.set(key, victimIdx);
+                order.push(key);
+              } else {
+                meta.dropped += 1;
+              }
             }
           }
-          return original.call(this, handle);
-        };
-        wrapped.__sfGlDeleteTrap = true;
-        proto[del] = wrapped;
-      }
-    };
-    try {
-      wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype);
-      wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype);
-    } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
-    Object.defineProperty(globalThis, '__SF_GL_DELETE_TRAP__', {
-      value: deletes,
-      configurable: false,
-      enumerable: false,
-      writable: false,
-    });
+        } catch (_) { /* trap bookkeeping must never break the delete path */ }
+        return original.call(this, handle);
+      };
+      wrapped.__sfGlDeleteTrap = true;
+      proto[del] = wrapped;
+    }
+  };
+  try {
+    wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype);
+    wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype);
+  } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
+  Object.defineProperty(globalThis, '__SF_GL_DELETE_TRAP__', {
+    value: deletes,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  Object.defineProperty(deletes, '__sfSaturation', {
+    value: meta,
+    configurable: false,
+    enumerable: false,
+    writable: false,
   });
 }
 
+export async function installGlDeleteTrap(target) {
+  assert(target && typeof target.addInitScript === 'function', 'gl-delete trap requires an init-script seam');
+  await target.addInitScript(armGlDeleteTrapInPage);
+}
+
+// Electron's first window exists before Playwright can install an init script, so the
+// init-script form above only arms after a reload — and the acceptance run does not spend a
+// reload on diagnostics (the reload path is opt-in tier1-counter instrumentation). That is how
+// the v6 Electron soak captured 256 dead-handle warnings with zero trapped stacks: both traps
+// were disarmed for the whole run, including the controlled context-loss exercise where the
+// storm fires. Arm the same read-only wraps on the live page instead: the storm class happens
+// late (context-loss recovery), so a post-boot arm covers it without touching boot-to-menu
+// evidence. Idempotent per document; a tier1 reload after this re-arms via the init scripts.
+export async function installGlTrapsOnLivePage(page) {
+  assert(page && typeof page.evaluate === 'function', 'live-page gl traps require an evaluate seam');
+  await page.evaluate(armGlProgramQueryTrapInPage);
+  await page.evaluate(armGlDeleteTrapInPage);
+}
+
+// Returns { entries, evicted, dropped }: the saturation meta travels with the evidence so a
+// soak that outran the cap is visible in the report — a crowd-out can never be silent.
 export async function readGlDeleteTrap(page) {
   try {
-    return await page.evaluate(() => (
-      Array.isArray(globalThis.__SF_GL_DELETE_TRAP__)
-        ? globalThis.__SF_GL_DELETE_TRAP__.slice()
-        : []
-    ));
+    return await page.evaluate(() => {
+      const armed = globalThis.__SF_GL_DELETE_TRAP__;
+      if (!Array.isArray(armed)) return { entries: [], evicted: 0, dropped: 0 };
+      const meta = armed.__sfSaturation || {};
+      return {
+        entries: armed.slice(),
+        evicted: Number(meta.evicted) || 0,
+        dropped: Number(meta.dropped) || 0,
+      };
+    });
   } catch (_) {
-    return [];
+    return { entries: [], evicted: 0, dropped: 0 };
   }
 }
 
