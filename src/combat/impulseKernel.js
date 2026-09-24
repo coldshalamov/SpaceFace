@@ -214,6 +214,12 @@ export const TERRAIN_CRUMPLE_LAW = Object.freeze({
 // almost nothing: it is terrain, not a mutual grinder.
 export const HEAVY_AS_TERRAIN_MASS = 150;
 
+// §22 B5 — spall energy axis. Shares the feel/audio 8→150 WU/s ramp: below the touch speed a
+// contact cannot throw chips at all, at the reference slam the chip count saturates.
+export const COLLISION_DEBRIS_SPEED_TOUCH = 8;
+export const COLLISION_DEBRIS_SPEED_SLAM = 150;
+export const COLLISION_DEBRIS_MIN_SEVERITY = 0.08;
+
 const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
   terrain: 1.15,
   structure: 1,
@@ -357,8 +363,21 @@ export function resolveCollisionConsequence(input = {}) {
   }
   const damage01 = damageCap > 0
     ? impactDamage / damageCap : 0;
-  const debrisCount = impactDamage > 0
-    ? clamp(Math.ceil(3 + damage01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
+  // §22 B5 — spall is moved mass: it reads the impact's energy, not only its damage packet. The
+  // receipt's deltaV is solver-capped near mass·40 WU/s, so a damage-only count would paint a
+  // 150 WU/s slam with a 40 WU/s nudge's chips — the same erasure the crumple law removed for
+  // terrain hull damage. The energy axis shares the feel/audio 8→150 ramp; material surfaces
+  // only ('other' has nothing to chip off, and a sub-threshold brush still throws nothing).
+  const energy01 = Number.isFinite(input.preSolveClosingSpeed)
+    ? clamp(
+      (input.preSolveClosingSpeed - COLLISION_DEBRIS_SPEED_TOUCH)
+        / (COLLISION_DEBRIS_SPEED_SLAM - COLLISION_DEBRIS_SPEED_TOUCH),
+      0, 1)
+    : 0;
+  const materialSurface = (SURFACE_DAMAGE_MULTIPLIER[surface] || 0) > 0;
+  const spall01 = Math.max(damage01, energy01);
+  const debrisCount = materialSurface && (impactDamage > 0 || energy01 > COLLISION_DEBRIS_MIN_SEVERITY)
+    ? clamp(Math.ceil(3 + spall01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
     : 0;
 
   return Object.freeze({

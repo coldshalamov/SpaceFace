@@ -6,6 +6,7 @@ import test from 'node:test';
 import { searchEntities, resolveEntity, entityExists } from '../src/ui/entityResolver.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { createBus } from '../src/core/eventBus.js';
+import { mapControlAttrs, mapControlLabel } from '../src/ui/map/mapControlMap.js';
 import galaxyMapScreen from '../src/ui/galaxyMap.js';
 
 function makeState() {
@@ -83,6 +84,17 @@ test('chart notes round-trip through the galaxyMap screenMemory bag', () => {
 
   screen._ctx = prevCtx;
   screen._notes = prevNotes;
+});
+
+test('every chart place-action id carries a binding-map label', () => {
+  // `_renderPlaceActions` stamps `mapControlAttrs(a.id)` on each act it paints; an id absent from
+  // MAP_CONTROLS throws mid-refresh — the selection never paints and the search dropdown stays
+  // open (this is what ate Enter on the Helios waypoint arm). This list mirrors that acts array;
+  // a new place verb must land here and in the binding map together.
+  for (const id of ['plot', 'frame', 'open-system', 'sweep-sector', 'bookmark', 'note']) {
+    assert.doesNotThrow(() => mapControlAttrs(id), `place-action "${id}" missing from MAP_CONTROLS`);
+    assert.ok(mapControlLabel(id).trim(), `place-action "${id}" resolved to an empty label`);
+  }
 });
 
 test('chart sweep verb fires world:requestSectorScan only for the sector the ship is in', () => {

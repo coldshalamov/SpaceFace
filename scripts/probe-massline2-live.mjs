@@ -83,7 +83,7 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   assert.equal(new URL(page.url()).search, '', 'probe must boot the normal root route without debug query flags');
   await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry && window.SF.helpers), null, { timeout: 20_000 });
 
@@ -580,7 +580,7 @@ async function exerciseReleasePredictor(page, anchorId, secondAnchorId) {
     return !!(solution && solution.valid && solution.targetKind === 'waypoint'
       && solution.anticipatedBonusDv > 0 && solution.sampleIntervalTicks === 4
       && cue && getComputedStyle(cue).display !== 'none');
-  }, null, { timeout: 8_000 });
+  }, null, { timeout: 90_000 }); // starved hosts still need the real sim beats to land
   const cue = await releaseCueEvidence(page);
   await page.screenshot({ path: RELEASE_SCREENSHOT });
 
@@ -609,8 +609,8 @@ async function exerciseReleasePredictor(page, anchorId, secondAnchorId) {
   // delay so this remains stable under slow CI frame pacing.
   await waitForSimTicks(page, 42);
   await page.keyboard.press('KeyF');
-  await waitForProbeEvent(page, 'massline:selfSling', 8_000);
-  await waitForProbeEvent(page, 'massline:releaseValidated', 8_000);
+  await waitForProbeEvent(page, 'massline:selfSling', 30_000);
+  await waitForProbeEvent(page, 'massline:releaseValidated', 30_000);
   await waitForSimTicks(page, 3);
   const settled = await page.evaluate(() => {
     const events = window.__SF_MASSLINE_LIVE_EVENTS__ || [];

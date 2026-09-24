@@ -543,7 +543,14 @@ export function resolveCollisionCue(input) {
     COLLISION_CUE.RATE_MIN,
     COLLISION_CUE.RATE_MAX,
   );
-  const loudNorm = Math.sqrt(clamp(dp / COLLISION_CUE.DP_FULL, 0, 1));
+  // Loudness rides exchanged momentum; §22 B5 adds the same pre-solve energy axis the pitch bend
+  // reads — the solver caps dp near mass·40, so a 150 WU/s slam and a 40 WU/s nudge carried the
+  // same loudNorm before. Only receipts that actually carry a closing speed earn the blend:
+  // a legacy dp-only receipt keeps the untouched loudness law.
+  // forceU is sqrt-shaped like the pitch bend; loudness squares it back to the linear speed
+  // axis so the slam sits a real gain step above the nudge, not a rounding error.
+  const energyNorm = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0 ? forceU * forceU : 0;
+  const loudNorm = Math.max(Math.sqrt(clamp(dp / COLLISION_CUE.DP_FULL, 0, 1)), energyNorm);
   const gain = clamp(
     COLLISION_CUE.GAIN_MIN + (COLLISION_CUE.GAIN_MAX - COLLISION_CUE.GAIN_MIN) * loudNorm,
     COLLISION_CUE.GAIN_MIN,
