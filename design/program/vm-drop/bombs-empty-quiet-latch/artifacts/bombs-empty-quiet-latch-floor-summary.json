@@ -1,0 +1,173 @@
+{
+  "primary": {
+    "name": "bombs-empty-quiet-latch",
+    "iters": 60000,
+    "ships": 64,
+    "medianSpeedup": 9.514,
+    "minSpeedup": 2.019,
+    "maxSpeedup": 12.53,
+    "pairs": [
+      2.019,
+      4.196,
+      5.985,
+      11.944,
+      11.385,
+      9.534,
+      9.456,
+      9.514,
+      12.53,
+      9.215,
+      9.804
+    ],
+    "latched": true,
+    "wake": {
+      "wokeOnMembership": true,
+      "memBefore": 1,
+      "memAfter": 2
+    },
+    "dirtyWakeOk": true
+  },
+  "rebenches": [
+    {
+      "tag": "rebench1",
+      "medianSpeedup": 11.149,
+      "minSpeedup": 2.028,
+      "maxSpeedup": 12.713,
+      "pairs": [
+        2.028,
+        3.183,
+        3.764,
+        12.713,
+        11.59,
+        11.138,
+        11.149,
+        11.689,
+        11.4,
+        11.668,
+        11.044
+      ],
+      "speedup": 11.149,
+      "latched": true,
+      "wake": {
+        "wokeOnMembership": true,
+        "memBefore": 1,
+        "memAfter": 2
+      }
+    },
+    {
+      "tag": "rebench2",
+      "medianSpeedup": 10.812,
+      "minSpeedup": 2.012,
+      "maxSpeedup": 12.462,
+      "pairs": [
+        2.012,
+        3.41,
+        4.003,
+        12.462,
+        9.556,
+        10.812,
+        11.52,
+        10.453,
+        11.989,
+        12.413,
+        11.697
+      ],
+      "speedup": 10.812,
+      "latched": true,
+      "wake": {
+        "wokeOnMembership": true,
+        "memBefore": 1,
+        "memAfter": 2
+      }
+    },
+    {
+      "tag": "rebench3",
+      "medianSpeedup": 11.669,
+      "minSpeedup": 1.986,
+      "maxSpeedup": 13.32,
+      "pairs": [
+        1.986,
+        3.085,
+        4.169,
+        13.161,
+        11.374,
+        10.772,
+        11.742,
+        13.32,
+        11.669,
+        11.683,
+        11.885
+      ],
+      "speedup": 11.669,
+      "latched": true,
+      "wake": {
+        "wokeOnMembership": true,
+        "memBefore": 1,
+        "memAfter": 2
+      }
+    },
+    {
+      "tag": "rebench4",
+      "medianSpeedup": 10.661,
+      "minSpeedup": 1.78,
+      "maxSpeedup": 17.014,
+      "pairs": [
+        1.78,
+        17.014,
+        3.949,
+        11.891,
+        9.705,
+        10.841,
+        10.86,
+        10.84,
+        10.509,
+        10.324,
+        10.661
+      ],
+      "speedup": 10.661,
+      "latched": true,
+      "wake": {
+        "wokeOnMembership": true,
+        "memBefore": 1,
+        "memAfter": 2
+      }
+    },
+    {
+      "tag": "rebench5",
+      "medianSpeedup": 11.346,
+      "minSpeedup": 1.962,
+      "maxSpeedup": 12.188,
+      "pairs": [
+        1.962,
+        3.213,
+        3.592,
+        10.503,
+        11.346,
+        11.822,
+        9.24,
+        12.067,
+        11.794,
+        11.583,
+        12.188
+      ],
+      "speedup": 11.346,
+      "latched": true,
+      "wake": {
+        "wokeOnMembership": true,
+        "memBefore": 1,
+        "memAfter": 2
+      }
+    }
+  ],
+  "medianBand": [
+    9.514,
+    11.149,
+    10.812,
+    11.669,
+    10.661,
+    11.346
+  ],
+  "floorMinSpeedup": 1.78,
+  "clears15x": true,
+  "dirtyWakeOk": true
+}

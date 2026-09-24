@@ -1,0 +1,28 @@
+{
+  "name": "bombs-empty-quiet-latch",
+  "iters": 60000,
+  "ships": 64,
+  "medianSpeedup": 9.514,
+  "minSpeedup": 2.019,
+  "maxSpeedup": 12.53,
+  "pairs": [
+    2.019,
+    4.196,
+    5.985,
+    11.944,
+    11.385,
+    9.534,
+    9.456,
+    9.514,
+    12.53,
+    9.215,
+    9.804
+  ],
+  "latched": true,
+  "wake": {
+    "wokeOnMembership": true,
+    "memBefore": 1,
+    "memAfter": 2
+  },
+  "dirtyWakeOk": true
+}

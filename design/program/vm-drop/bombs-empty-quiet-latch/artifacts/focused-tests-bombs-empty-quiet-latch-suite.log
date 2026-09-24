@@ -1,0 +1,150 @@
+TAP version 13
+# Subtest: a fresh ship leaves the yard with the two-payload starter kit
+ok 1 - a fresh ship leaves the yard with the two-payload starter kit
+  ---
+  duration_ms: 6.992434
+  ...
+# Subtest: payload purchases debit through the economy owner and refuse when broke
+ok 2 - payload purchases debit through the economy owner and refuse when broke
+  ---
+  duration_ms: 1.603368
+  ...
+# Subtest: sell-back pays the resell fraction through the same economy seam
+ok 3 - sell-back pays the resell fraction through the same economy seam
+  ---
+  duration_ms: 1.007234
+  ...
+# Subtest: fitting and unfitting are dock-side verbs that move units between hangar and sockets
+ok 4 - fitting and unfitting are dock-side verbs that move units between hangar and sockets
+  ---
+  duration_ms: 1.463575
+  ...
+# Subtest: cycle walks only fitted, loaded sockets — hangar stock is never cyclable
+ok 5 - cycle walks only fitted, loaded sockets — hangar stock is never cyclable
+  ---
+  duration_ms: 1.67542
+  ...
+# Subtest: depletion advances in socket order, not back to the first loaded socket
+ok 6 - depletion advances in socket order, not back to the first loaded socket
+  ---
+  duration_ms: 2.389043
+  ...
+# Subtest: a drop consumes one loaded unit; a dry rack refuses the verb and toasts once per press
+ok 7 - a drop consumes one loaded unit; a dry rack refuses the verb and toasts once per press
+  ---
+  duration_ms: 2.569663
+  ...
+# Subtest: dock-side restock refills fitted magazines for the yard fee; the socket weld extends once
+ok 8 - dock-side restock refills fitted magazines for the yard fee; the socket weld extends once
+  ---
+  duration_ms: 1.509484
+  ...
+# Subtest: payload cooldowns are per-payload and survive cycles, sector sweeps and dock trips
+ok 9 - payload cooldowns are per-payload and survive cycles, sector sweeps and dock trips
+  ---
+  duration_ms: 1.865072
+  ...
+# Subtest: the rack bag round-trips through save/load and pre-rack saves land on the starter kit
+ok 10 - the rack bag round-trips through save/load and pre-rack saves land on the starter kit
+  ---
+  duration_ms: 2.956097
+  ...
+# Subtest: NPC drift-bomb drops bypass the player rack and never consume its stock
+ok 11 - NPC drift-bomb drops bypass the player rack and never consume its stock
+  ---
+  duration_ms: 1.186712
+  ...
+# Subtest: game:new reseats the starter kit and clears the run clocks
+ok 12 - game:new reseats the starter kit and clears the run clocks
+  ---
+  duration_ms: 0.933361
+  ...
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 13 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 3.685166
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 14 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.7951
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+ok 15 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 0.927759
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 16 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.952952
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 17 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.405385
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 18 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.599967
+  ...
+# Subtest: a dropped bomb inherits the full ship velocity and falls behind under low drag
+ok 19 - a dropped bomb inherits the full ship velocity and falls behind under low drag
+  ---
+  duration_ms: 4.926539
+  ...
+# Subtest: the fuze arms on sim time and detonates on a hostile through the damage router
+ok 20 - the fuze arms on sim time and detonates on a hostile through the damage router
+  ---
+  duration_ms: 4.42577
+  ...
+# Subtest: friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze
+ok 21 - friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze
+  ---
+  duration_ms: 2.94044
+  ...
+# Subtest: the concussion drum shoves through the physics authority and routes no damage
+ok 22 - the concussion drum shoves through the physics authority and routes no damage
+  ---
+  duration_ms: 0.909018
+  ...
+# Subtest: the neutron slug opens a moving pull field, crushes, and collapses
+ok 23 - the neutron slug opens a moving pull field, crushes, and collapses
+  ---
+  duration_ms: 5.099237
+  ...
+# Subtest: the tarburst sticks status_goo on the burst and re-applies it inside the volume
+ok 24 - the tarburst sticks status_goo on the burst and re-applies it inside the volume
+  ---
+  duration_ms: 6.652381
+  ...
+# Subtest: the bay cycles payloads on the cycle verb and wraps
+ok 25 - the bay cycles payloads on the cycle verb and wraps
+  ---
+  duration_ms: 0.685687
+  ...
+# Subtest: the bay respects its payload cooldown, and a full bay preserves deployed traps
+ok 26 - the bay respects its payload cooldown, and a full bay preserves deployed traps
+  ---
+  duration_ms: 1.828473
+  ...
+# Subtest: sector exit releases every live bomb
+ok 27 - sector exit releases every live bomb
+  ---
+  duration_ms: 0.666663
+  ...
+# Subtest: indexed bomb targets receive the same effects in the same order, including loose bodies
+ok 28 - indexed bomb targets receive the same effects in the same order, including loose bodies
+  ---
+  duration_ms: 14.939597
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 329.605608
