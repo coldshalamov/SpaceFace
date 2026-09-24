@@ -266,9 +266,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
 export function withOnlySubjectsDrawable(scene, subjects, fn) {
   const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
-  // hiding one would make the subject's "draw" a silent no-op and leave its program cold.
+  // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
+  // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
   for (const subject of [...keep]) {
     for (let p = subject.parent; p; p = p.parent) keep.add(p);
+    if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
   const saved = [];
   if (scene && typeof scene.traverse === 'function') {
@@ -303,6 +305,35 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     ? renderer.getRenderTarget()
     : null;
   const previousAutoClear = renderer.autoClear;
+  // The render below draws the lighting scene's graph — a subject outside it (a detached authored
+  // root mid-prepare, or one parented into a foreign staging group) contributes nothing, so its
+  // "touched" program still links inside the first presented pass. Park each foreign subject in
+  // the lighting scene for the draw and restore its real parentage afterwards.
+  const parked = [];
+  for (const item of subjects) {
+    if (item === lightingScene) continue;
+    let underScene = false;
+    for (let node = item; node; node = node.parent) {
+      if (node === lightingScene) { underScene = true; break; }
+    }
+    if (underScene || typeof lightingScene.add !== 'function') continue;
+    parked.push({ item, parent: item.parent });
+    lightingScene.add(item);
+  }
+  // The touch's only job is to make the subject's draw issue — a subject outside the camera
+  // frustum (a parked detached root at its pre-commit local pose) would be culled and stay cold.
+  const cullable = new Set();
+  for (const item of subjects) {
+    if (typeof item.traverse === 'function') {
+      item.traverse((node) => {
+        if (node.frustumCulled === true) cullable.add(node);
+      });
+    }
+    for (let node = item.parent; node; node = node.parent) {
+      if (node.frustumCulled === true) cullable.add(node);
+    }
+  }
+  for (const node of cullable) node.frustumCulled = false;
   try {
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
@@ -314,6 +345,11 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     });
     return { skipped: false, subjects: subjects.length };
   } finally {
+    for (const node of cullable) node.frustumCulled = true;
+    for (const { item, parent } of parked) {
+      if (parent && typeof parent.add === 'function') parent.add(item);
+      else if (typeof lightingScene.remove === 'function') lightingScene.remove(item);
+    }
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {
       renderer.setRenderTarget(previousTarget || null);

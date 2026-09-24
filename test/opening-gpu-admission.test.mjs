@@ -212,6 +212,80 @@ test('an exact-target touch reaches a subject parked under a hidden holder', () 
   assert.equal(other.visible, true, 'hidden drawables restored');
 });
 
+test('an exact-target touch parks a detached subject in the lighting scene for the draw', () => {
+  // Authored ships compile while their composed root is still detached (pre-commit prepare).
+  // renderer.render() draws the lighting scene's graph, not the subject — a detached subject's
+  // "touch" drew nothing and its bloom-target variant linked inside the first presented frame.
+  const scene = new THREE.Scene();
+  const other = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  scene.add(other);
+  const detached = new THREE.Group();
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  detached.add(leaf);
+  const seenParents = [];
+  const renderer = {
+    autoClear: true,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    render() {
+      seenParents.push({ parentIsScene: detached.parent === scene, leafVisible: leaf.visible });
+    },
+  };
+  const receipt = touchSubjectOnExactTarget(renderer, null, detached, {}, scene);
+  assert.equal(receipt.skipped, false);
+  assert.deepEqual(seenParents, [{ parentIsScene: true, leafVisible: true }],
+    'the parked subject is under the lighting scene during the render');
+  assert.equal(detached.parent, null, 'the subject is detached again after the touch');
+});
+
+test('an exact-target touch restores a foreign-parented subject after parking it', () => {
+  const scene = new THREE.Scene();
+  const staging = new THREE.Group();
+  const subject = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  staging.add(subject);
+  const renderer = {
+    autoClear: true,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    render() { assert.equal(subject.parent, scene); },
+  };
+  touchSubjectOnExactTarget(renderer, null, subject, {}, scene);
+  assert.equal(subject.parent, staging, 'the original parent keeps the subject');
+});
+
+test('an exact-target touch draws a frustum-cullable subject and restores the flag', () => {
+  // The touch exists to link the subject's program on the exact target — a subject outside the
+  // camera frustum (a parked detached root at its pre-commit pose) would be culled and stay
+  // cold. Same contract bloom.js and compilePresentSlice.js already keep for their warm draws.
+  const scene = new THREE.Scene();
+  const holder = new THREE.Group();
+  const subject = new THREE.Group();
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  holder.add(subject);
+  subject.add(leaf);
+  scene.add(holder);
+  const seen = [];
+  const renderer = {
+    autoClear: true,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    render() {
+      seen.push({
+        holder: holder.frustumCulled,
+        subject: subject.frustumCulled,
+        leaf: leaf.frustumCulled,
+      });
+    },
+  };
+  const receipt = touchSubjectOnExactTarget(renderer, null, subject, {}, scene);
+  assert.equal(receipt.skipped, false);
+  assert.deepEqual(seen, [{ holder: false, subject: false, leaf: false }],
+    'subject subtree and ancestors draw regardless of camera aim');
+  assert.equal(holder.frustumCulled, true, 'ancestor culling restored');
+  assert.equal(subject.frustumCulled, true, 'subject culling restored');
+  assert.equal(leaf.frustumCulled, true, 'leaf culling restored');
+});
+
 test('a batched admission touches every issued unit even when the deadline lapses mid-issue', async () => {
   // The brick this removes: an issued-but-never-drawn unit pays its final link/bufferData inside
   // the first presented scene pass. The deadline gates issuing; an issued subject is always
