@@ -60,7 +60,6 @@ surface — these are feature gaps a demo player can hit, not dead code to delet
 
 | Seam | Backend waits at | Gap |
 |---|---|---|
-| `ui:fitModule` | `ships.js:1437` → `fitModule` accepts `instanceId` | `ui:unfitModule` is emitted by shipworks, but nothing emits fit for owned `moduleInventory` rows — unfit modules are stranded except via presets. Needs a fit-from-inventory affordance in outfitting. |
 | `ui:setShipAppearance` | `ships.js:1446` → `setShipAppearance` | Livery backend fully unsurfaced; no UI references appearance. Surface it in shipworks or mark the seam out-of-demo. |
 | `ui:kurtzInteract` | `story.js:191` → `_onKurtzInteract` (takeLedger/openLedger/takeCoords/approach) | Kurtz evidence chain unreachable — no UI emits the intent (test-only). |
 | `ui:heliosBay7Scan` | `story.js:192` → `_onHeliosBay7Scan` | Helios Bay 7 evidence gated behind a producer that doesn't exist. |

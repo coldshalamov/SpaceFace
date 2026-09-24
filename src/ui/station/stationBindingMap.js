@@ -75,6 +75,7 @@ export const STATION_CONTROLS = Object.freeze({
   'upgrade-rack': { label: 'Upgrade' },
   'make-active': { label: 'Make active' },
   'buy-fit': { label: 'Buy' },
+  'fit-from-hold': { label: 'Fit', role: 'primary' },
   back: { label: 'Back' },
   'remove-module': { label: 'Remove' },
   'payload-fit': { label: 'Load', role: 'primary' },

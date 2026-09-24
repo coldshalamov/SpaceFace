@@ -1821,7 +1821,7 @@ export const ships = {
 
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
-  buyModule({ defId, fitSlotIndex = null }) {
+  buyModule({ defId, fitSlotIndex = null, shipIndex = null }) {
     const def = defById(defId);
     const p = this.state.player;
     if (!def) { this.bus.emit('toast', { text: 'Unknown module', kind: 'error', ttl: 2 }); return false; }
@@ -1837,7 +1837,7 @@ export const ships = {
     }
     const shouldFit = Number.isInteger(fitSlotIndex);
     if (shouldFit) {
-      const blocker = this.moduleFitBlocker({ slotIndex: fitSlotIndex, def });
+      const blocker = this.moduleFitBlocker({ shipIndex, slotIndex: fitSlotIndex, def });
       if (blocker) {
         if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
         return false;
@@ -1845,7 +1845,7 @@ export const ships = {
     }
     const item = { instanceId: this.nextInstanceId(), defId };
     p.moduleInventory.push(item);
-    const equipped = shouldFit ? this.fitModule({ slotIndex: fitSlotIndex, instanceId: item.instanceId }) : false;
+    const equipped = shouldFit ? this.fitModule({ shipIndex, slotIndex: fitSlotIndex, instanceId: item.instanceId }) : false;
     if (shouldFit && !equipped) {
       const rollbackIndex = p.moduleInventory.findIndex((entry) => entry.instanceId === item.instanceId);
       if (rollbackIndex >= 0) p.moduleInventory.splice(rollbackIndex, 1);
