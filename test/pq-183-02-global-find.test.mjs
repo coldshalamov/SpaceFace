@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import { searchEntities, resolveEntity, entityExists } from '../src/ui/entityResolver.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
+import { createBus } from '../src/core/eventBus.js';
 import galaxyMapScreen from '../src/ui/galaxyMap.js';
 
 function makeState() {
@@ -82,4 +83,36 @@ test('chart notes round-trip through the galaxyMap screenMemory bag', () => {
 
   screen._ctx = prevCtx;
   screen._notes = prevNotes;
+});
+
+test('chart sweep verb fires world:requestSectorScan only for the sector the ship is in', () => {
+  const state = makeState();
+  state.mode = 'flight';
+  state.world = { currentSectorId: 'sector_helios_prime' };
+  const bus = createBus();
+  const emitted = [];
+  bus.on('world:requestSectorScan', (p) => emitted.push(p));
+
+  const screen = galaxyMapScreen;
+  const prevCtx = screen._ctx;
+  const prevTarget = screen._selectedTarget;
+  screen._ctx = { bus, state };
+
+  screen._selectedTarget = { kind: 'sector', id: 'sector_helios_prime' };
+  assert.equal(screen._activatePlaceAction('sweep-sector'), true);
+  assert.equal(emitted.length, 1, 'the verb emits the shipped sector-scan intent');
+
+  // A remote sector refuses — the ship's sensors cannot reach it, and the control says so.
+  screen._selectedTarget = { kind: 'sector', id: 'sector_ceres_belt' };
+  assert.equal(screen._activatePlaceAction('sweep-sector'), false);
+  assert.equal(emitted.length, 1);
+
+  // Docked is not flying — the sweep is a flight instrument.
+  state.mode = 'docked';
+  screen._selectedTarget = { kind: 'sector', id: 'sector_helios_prime' };
+  assert.equal(screen._activatePlaceAction('sweep-sector'), false);
+  assert.equal(emitted.length, 1);
+
+  screen._ctx = prevCtx;
+  screen._selectedTarget = prevTarget;
 });

@@ -62,7 +62,6 @@ surface — these are feature gaps a demo player can hit, not dead code to delet
 |---|---|---|
 | `ui:fitModule` | `ships.js:1437` → `fitModule` accepts `instanceId` | `ui:unfitModule` is emitted by shipworks, but nothing emits fit for owned `moduleInventory` rows — unfit modules are stranded except via presets. Needs a fit-from-inventory affordance in outfitting. |
 | `ui:setShipAppearance` | `ships.js:1446` → `setShipAppearance` | Livery backend fully unsurfaced; no UI references appearance. Surface it in shipworks or mark the seam out-of-demo. |
-| `world:requestSectorScan` | `world.js:468` → `_beginScan` (reveals stations/fields/POIs) | The sector sweep is a whole feature with no trigger — `scan:pulse` (KeyC) is the separate entity scanner. Needs an input/map surface or an auto-fire rule (e.g. on `sector:enter`). |
 | `ui:kurtzInteract` | `story.js:191` → `_onKurtzInteract` (takeLedger/openLedger/takeCoords/approach) | Kurtz evidence chain unreachable — no UI emits the intent (test-only). |
 | `ui:heliosBay7Scan` | `story.js:192` → `_onHeliosBay7Scan` | Helios Bay 7 evidence gated behind a producer that doesn't exist. |
 | `ui:endingArchiveOpen` | `story.js:161` → re-emits `endgame:archive` | Doubly dead: nothing emits the open intent *and* `endgame:archive` has no consumer — the archive viewer was never built. |

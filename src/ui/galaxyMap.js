@@ -5612,9 +5612,13 @@ export const galaxyMapScreen = {
     // "Lay a course to this mark" for a neighbour and then committed a jump.
     const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
     const noteKey = noteKeyForTarget(t);
+    // The sector sweep is a ship instrument: it only answers for the sector the ship is in.
+    const sweepsCurrent = !!(sectorId && state && state.mode === 'flight'
+      && state.world && state.world.currentSectorId === sectorId);
     const acts = [
       { id: 'frame', label: 'Frame', available: true, reason: 'Centre the chart on this mark' },
       { id: 'open-system', label: 'Open system', available: !!sectorId, reason: sectorId ? 'Zoom to this mark\'s own sector' : 'This mark has no parent sector' },
+      { id: 'sweep-sector', label: 'Sweep sector', available: sweepsCurrent, reason: sweepsCurrent ? 'Your ship sweeps the sector it flies — stations, fields and marks come up on the chart' : 'Your ship can only sweep the sector it is in' },
       { id: 'bookmark', label: 'Bookmark', available: true, reason: 'Save this view to the left rail' },
       { id: 'note', label: noteKey && this._notes.get(noteKey) ? 'Edit note' : 'Note', available: !!noteKey, reason: noteKey ? 'Write a private line on this mark — saved with this save' : 'This mark cannot carry a note' },
     ];
@@ -5650,6 +5654,16 @@ export const galaxyMapScreen = {
       return true;
     }
     if (id === 'bookmark') return this._addBookmark();
+    if (id === 'sweep-sector') {
+      // The ship's own sweep — the same world:request* family the route/jump verbs emit. world.js
+      // re-checks mode and ignores a second call while a sweep is in progress.
+      const sectorId = t.sectorId || (t.kind === 'sector' ? t.id : null);
+      const bus = this._ctx && this._ctx.bus;
+      if (!bus || !sectorId || sectorId !== state.world.currentSectorId || state.mode !== 'flight') return false;
+      bus.emit('world:requestSectorScan', {});
+      bus.emit('toast', { text: 'Sweeping the sector…', kind: 'info', ttl: 2 });
+      return true;
+    }
     if (id === 'note') {
       const key = noteKeyForTarget(t);
       if (!key) return false;
