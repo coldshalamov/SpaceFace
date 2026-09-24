@@ -1,5 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924dc
+# DONE — IMPORT_DIGEST 20260924dd
 
-Post-#143 **miss-only** digest for **#144** hill-climb. Master tip `4b28a8323`
-unchanged. No code package. Quiet-compact-skip probed ~1.67× floorMedian but
-floorMin 1.301× — held/reverted. Soft-GPU fps not claimed. Picture ON.
+Post-#143 stack refresh. **#144 weapons-npc-quiet-latch** shipped
+(~2.50–2.56× / floor ≥2.08×). Soft-GPU fps not claimed. Picture ON.
+Prior #144-miss holds (quiet-compact-skip thin floor; projectile-evidence
+cadence ~1.0×) remain — different angle shipped.
