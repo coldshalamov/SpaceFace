@@ -55,7 +55,7 @@ ${W} .orr-sw-jig { position:absolute; inset:0 0 34px 0; z-index:3; }
 @media (max-height:800px) {
   ${W} .orr-sw-jig { bottom:22px; }
   /* a short stage: the readings carry the proposed fit's changes as their ghosts; the separate line steps back */
-  ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta { display:none !important; }
+  ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta.sx-sw__delta, ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta.sx-sw__delta:not([hidden]) { display:none !important; }
   ${W} .sx-chooser__kicker { white-space:normal !important; }
 }
 /* a drawing that cannot lay out stands down whole: its labels never fall into the flow */
@@ -94,7 +94,7 @@ ${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size:9.5px !impor
 ${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
 /* while choosing, the screen's own verbs and the instruction step back */
 ${W}.orr-sw--jig.is-choosing .sx-sw-verbs { visibility:hidden !important; }
-${W}.is-choosing .sx-sw-circuit__instruction { display:none !important; }
+${W}.is-choosing .sx-sw-circuit__instruction { visibility:hidden !important; }
 ${W} .orr-sw-node.is-lit .orr-sw-node__num { color:var(--dp-hand, #f2b950); }
 
 /* the drawing takes the main column's height: the handling stands under the fleet in the left
@@ -218,7 +218,7 @@ ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !im
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
-${W} .sx-chooser__kicker { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; white-space:nowrap; }
+${W} .sx-chooser__kicker { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; line-height:1.5 !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
 ${W} .sx-chooser__head h3 { ${LABEL} font-size:10px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
@@ -240,6 +240,7 @@ ${W} .sx-modrow .sx-modrow__role { font-size:11px !important; color:rgb(${BONE} 
 ${W} .sx-modrow .sx-modrow__metrics { font-size:11px !important; color:rgb(${BONE} / .78) !important; }
 ${W} .sx-modrow .sx-modrow__meta { display:none !important; }
 ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:11.5px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:"\\A"; white-space:pre; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
 ${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }

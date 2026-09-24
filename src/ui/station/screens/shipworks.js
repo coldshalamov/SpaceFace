@@ -2146,6 +2146,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       systemDraw.set(d.slotType, (systemDraw.get(d.slotType) || 0) + draw);
     }
     const totalDraw = [...systemDraw.values()].reduce((a, b) => a + b, 0);
+    // the stock drive is the hull's drive: counted with the fitted systems, as the drawing counts it
+    const stockDriveCounted = slots.some((slot, i) => slot.type === 'engine' && !fittings[i])
+      && !!(activeBandModel && activeBandModel.handling && activeBandModel.handling.profile && activeBandModel.handling.profile.driveLabel);
     const flows = [...systemDraw.entries()].filter(([type]) => slots.some((slot) => slot.type === type));
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
@@ -2201,7 +2204,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     sideEl.innerHTML =
       `<div class="sx-sw-circuit">` +
         `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
-          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
+          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
         // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it
         `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">core · ${fmt(totalDraw)} draw</span></div>` +
         `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
