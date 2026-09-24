@@ -1,13 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ag (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24ah (post-import hillclimb)
 
-Master tip: **`abcccfd87`** (fetched; unchanged).
+Master tip: **`fd8adfdfd`** (fetched; moved from `abcccfd87`).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` on `abcccfd87` through #67; +#68 measured on
-stacked tip @ `7f6dd1c42`. Fresh profile `settled-45s-stacked-20260924ac`
-(Picture ON, soft-GPU; tip through #64).
-stacked tip @ `454dab17b`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` rebased onto `fd8adfdfd` through #68; +#69
+measured on stacked tip @ `d6f4b62c5`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -57,6 +55,7 @@ stacked tip @ `454dab17b`. Fresh profile `settled-45s-stacked-20260924ac`
 | 66 | `sensor-contact-scratch-fill` |
 | 67 | `roster-retain-stable` |
 | 68 | `snapshot-fence-zero-dirty-retain` |
+| 69 | `stunt-projectile-evidence-quiet-iter` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -85,26 +84,25 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67 |
+| 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61 |
 
 ### Notable callees (post-#57 / pre-#60)
 
-- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance), packPresentationWorldToFence, spaceBackground (hold)
+- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance), packPresentationWorldToFence (**#68**), spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
-- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**)
+- registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**)
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| 67 | `roster-retain-stable` |
-| 68 | `snapshot-fence-zero-dirty-retain` | Portable quiet liveListSquads retain-when-stable **~1.78×** median (6×4×30000; floor minSpeedup ≥1.72×). Focused AI suites 59/59. |
+| 69 | `stunt-projectile-evidence-quiet-iter` | Portable quiet sampleProjectileEvidence **~1.77×** median (400×4000 plates=0; floor minSpeedup ≥1.64×). Focused stunt suites 30/30. |
 
 ## Scour attempts / misses
 
@@ -123,6 +121,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | packFence zero-dirty retain (O(1) dirtyCount) | **shipped #68 ~9.2×** |
 | packFence zero-dirty JS dirty-scan (no dirtyCount) | ~0.8× — miss; replaced by dirtyCount |
 | contact-base identity retain | ~1.27× under bar — hold |
+| quiet-iter sampleProjectileEvidence (collidables+for-in+cold cadence) | **shipped #69 ~1.77×** |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -138,7 +137,7 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    packFence residual / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67 (preStep residual /
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69 (preStep residual /
    lifetimeSweep residual / tacticalAI residual).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
