@@ -1,4 +1,5 @@
-# DONE — IMPORT_DIGEST 20260924cx
+# DONE — IMPORT_DIGEST 20260924cy
 
-Post-#141 ship digest. Master tip `4b28a8323` unchanged. Shipped
-classify-flying-rock-retain (~2.4× / floor ≥2.03×). Holds carried from cw.
+Post-#141 miss digest for #142. Master tip `4b28a8323` unchanged. No package
+shipped. Hold: classify flying-early-latch under #141 (~1.3–1.4× / floor ~1.2×).
+Prior holds carried from cx.

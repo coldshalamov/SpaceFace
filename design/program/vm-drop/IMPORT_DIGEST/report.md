@@ -1,4 +1,4 @@
-# IMPORT_DIGEST report — 2026-09-24cx (post-#141 ship)
+# IMPORT_DIGEST report — 2026-09-24cy (post-#141; #142 miss)
 
 Master tip: **`4b28a8323`** (fetched; unchanged since #138 / digest 20260924cu).
 
@@ -12,12 +12,11 @@ Scratch `vm-work/hillclimb-20260924m` @ `c2a9bf173` on `origin/master`
 
 | # | Package |
 |---:|---|
-| 31–140 | (unchanged — see digest 20260924cw) |
-| **141** | **classify-flying-rock-retain** (~2.4× / floor ≥2.03×) |
+| 31–141 | (unchanged — see digest 20260924cx) |
 
-### SKIP / hold (unchanged + prior miss)
+### SKIP / hold (unchanged + #142 miss)
 
-Carry forward all holds from digest 20260924cw. Prior holds still stand:
+Carry forward all holds from digest 20260924cx. Prior holds still stand:
 classify selectClassify id-replay after #128 ~1.16×; weapon-presenter
 callsite quiet ~2.0×/floor ~1.18×; vfx quiet-head composite ~2.27×/floor ~1.36×;
 ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining;
@@ -32,6 +31,13 @@ Ceres has a zone — probed ~21× empty / ~1.0× Ceres residual).
 lifetimeSweep skip-lane-compact-when-no-membership ~1.45× / floor ~1.40× —
 held (thin vs current #88 lane baseline).
 zoneAt cell-retain weak floor ~0.98× remains held.
+lifetimeSweep no-movable thin (synthetic latch ~1.60×; full-skip sketch unfair).
+**NEW #142 hold: classify flying-early-latch under #141** — production-profile
+A/B median ~1.34–1.39× / floor ~1.21–1.26× (eligibility + drift-bounded deepen);
+in-process rocks48 ~1.31× / floor ~1.27×. Clears neither ≥~1.5× median nor solid
+floor. Soft-GPU fps not claimed. Picture ON. Different angle from #141 (still
+paid extents+selectClassify+retain walk) but residual after flying-frame-retain
+is too thin once that path is hot.
 
 ## Quiet CPU / hitch profile (stacked tip cite)
 
@@ -44,19 +50,19 @@ native GL / bloom admission owners ignored for portable ranking.
 | samples | owner | notes |
 |---:|---|---|
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88+#129+#130+#131+#132+#133+#134+#135+#136+#137+#139+#140 |
-| 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64+#127+#128+#138+#141 |
+| 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64+#127+#128+#138+#141; flying-early-latch held ~1.3× |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
 | 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89–#126 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
-### Notable callees (post-#141)
+### Notable callees (post-#141 / #142 miss)
 
 - classifyWorld → resolvePins, normalizePinReasons (#64), selectClassifyEntities (#60),
   reusablePins, shouldSyncPhysics (#62), rock-visit quiet retain (#127),
   frame quiet retain (#128), early quiet latch (#138), **flying rock/frame retain (#141)**;
-  selectClassify id-replay after #128 held ~1.16× (superseded by early latch angle);
-  rock visit context-only held ~1.09×
+  flying-early-latch (extents/selectClassify skip under #141) **held ~1.3×**;
+  selectClassify id-replay after #128 held ~1.16×; rock visit context-only held ~1.09×
 - prepareFrame → (unchanged; quiet-VFX floors still held)
 - syncEntityViews → presentationQueries.query (#74+#77), refreshVisibleEntity (#76),
   updateCraftMicroMotion (#57), noteRealtimeShadowCasterPose (#81), applySnapshotPose (hold ~0.85×)
@@ -71,15 +77,16 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| **141** | **classify-flying-rock-retain** | Isolated 5×11-pair @ 20k flying rocks48: medians ~2.39–2.49×; package floor minSpeedup **≥2.03×**. Dirty-wake ok (pose / mining). Focused **95/95**. Functional **7/7**. |
+| — | **none** (#142 miss) | No weak package. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| classify flying rock/frame retain under #138 | **SHIPPED #141** — see above |
-| per-rock flying retain alone (no frame short-circuit) | probe ~1.32× / floor ~1.24× — too thin; deepened into frame retain |
-| hazards empty-list / far / env-machinery far / asteroid-field empty / classify id-replay / rock visit-context / prepareFrame quiet-VFX / zoneAt cell-retain / lifetimeSweep no-movable / lifetimeSweep compact-skip | **not casually retried** (held floors) |
+| classify flying-early-latch under #141 (skip extents/pinFacts/selectClassify after flying-frame-retain; eligibility + drift-bounded deepen) | **HOLD** — prod-profile median ~1.34–1.39× / floor ~1.21–1.26×; rocks48 in-process ~1.31×. Below ≥~1.5× bar. 0 stale-glass on soak when eligibility present; not enough portable win. Reverted from scratch tip. |
+| flying-early-latch IDEAL upper bound (skip ensure entirely) | probe ~3000× — proves cost is inside ensure/classify, but legal cut cannot skip ensure |
+| lifetimeSweep no-nonplayer-movable full-skip sketch | ~5× unfair (skips bus.flush / player transform / compact); careful synthetic ~1.60× already held |
+| per-rock flying retain alone / hazards empty-list / far / env-machinery far / asteroid-field empty / classify id-replay / rock visit-context / prepareFrame quiet-VFX / zoneAt cell-retain / lifetimeSweep compact-skip | **not casually retried** (held floors) |
 
 ## Rock audit (unchanged)
 
@@ -89,8 +96,10 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 1. classifyWorld residual after #37+#38+#45+#48+#60+#62+#64+#127+#128+#138+#141
    (rescan-path / non-rock visit residual; selectClassify residual — id-replay
-   after #128 held ~1.16×; rock visit context-only held ~1.09×). Prefer angles
-   that still move residual under flying retain (NPC/ship visit, rescan audit).
+   after #128 held ~1.16×; rock visit context-only held ~1.09×;
+   **flying-early-latch held ~1.3×**). Prefer angles that still move residual
+   under flying retain without replaying the early-latch skip of
+   extents+selectClassify (NPC/ship visit deepen, disc-admission index).
 2. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88+#129+#130+#131+#132+#133+#134+#135+#136+#137+#139+#140
    (preStep residual / packCombatTable residual / lifetimeSweep dirty-publish;
    tumbleStates + tacticalAI quiet residuals after #140+#139).
@@ -105,11 +114,12 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 7. Deferred/held: hazards far; asteroid-field **empty** latch held at floor
    ~1.22× (still-player remains #135); hazards empty-list (non-Ceres) optional;
    zone-cell-retain weak floor; lifetimeSweep no-movable thin; lifetimeSweep
-   skip-lane-compact-when-no-membership ~1.45× thin.
+   skip-lane-compact-when-no-membership ~1.45× thin;
+   **classify flying-early-latch ~1.3×**.
 
 ## Scratch
 
 - Branch: `vm-work/hillclimb-20260924m`
-- Tip: `c2a9bf1733560e100a43e285845823bebd91523a`
+- Tip: `c2a9bf1733560e100a43e285845823bebd91523a` (unchanged; #141 tip; thin #142 latch reverted)
 - Worktree: `/workspace/spaceface-scratch/hillclimb-20260924h`
-- Package: `design/program/vm-drop/classify-flying-rock-retain/`
+- Package: none this pass (miss-only digest)
