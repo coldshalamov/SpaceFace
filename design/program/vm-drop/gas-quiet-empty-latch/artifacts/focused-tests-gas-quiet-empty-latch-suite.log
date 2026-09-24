@@ -1,0 +1,151 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: gas quiet-latches after first empty observe
+ok 1 - gas quiet-latches after first empty observe
+  ---
+  duration_ms: 111.068563
+  ...
+# Subtest: gas emit (liveCount) dirty-wakes the quiet latch
+ok 2 - gas emit (liveCount) dirty-wakes the quiet latch
+  ---
+  duration_ms: 22.102193
+  ...
+# Subtest: gas re-latches after bodies retire
+ok 3 - gas re-latches after bodies retire
+  ---
+  duration_ms: 19.10653
+  ...
+# Subtest: sector:enter clears gas quiet latch
+ok 4 - sector:enter clears gas quiet latch
+  ---
+  duration_ms: 22.03022
+  ...
+# Subtest: the payload decodes to exactly the atlas the metadata describes
+ok 5 - the payload decodes to exactly the atlas the metadata describes
+  ---
+  duration_ms: 25.707685
+  ...
+# Subtest: every family ships a film with matching frame and bounds counts
+ok 6 - every family ships a film with matching frame and bounds counts
+  ---
+  duration_ms: 0.275488
+  ...
+# Subtest: no family is a static volume — every film measurably evolves frame to frame
+ok 7 - no family is a static volume — every film measurably evolves frame to frame
+  ---
+  duration_ms: 16.272453
+  ...
+# Subtest: every family has matter AND openings — neither empty nor a solid block
+ok 8 - every family has matter AND openings — neither empty nor a solid block
+  ---
+  duration_ms: 13.179703
+  ...
+# Subtest: the four families are different matter, not one film played four times
+ok 9 - the four families are different matter, not one film played four times
+  ---
+  duration_ms: 1.838716
+  ...
+# Subtest: the aux channel means something different in each family
+ok 10 - the aux channel means something different in each family
+  ---
+  duration_ms: 0.297557
+  ...
+# Subtest: baked bounds are tight enough to be worth marching
+ok 11 - baked bounds are tight enough to be worth marching
+  ---
+  duration_ms: 0.273138
+  ...
+# Subtest: the material is a depth-writing premultiplied volume, not an additive card
+ok 12 - the material is a depth-writing premultiplied volume, not an additive card
+  ---
+  duration_ms: 9.44883
+  ...
+# Subtest: a GLSL template literal contains no backtick and no unresolved hole
+ok 13 - a GLSL template literal contains no backtick and no unresolved hole
+  ---
+  duration_ms: 0.653931
+  ...
+# Subtest: the fragment stage declares no attribute — it is a reserved word in GLSL ES 3.00
+ok 14 - the fragment stage declares no attribute — it is a reserved word in GLSL ES 3.00
+  ---
+  duration_ms: 0.467903
+  ...
+# Subtest: every varying the fragment stage reads is declared and written by the vertex stage
+ok 15 - every varying the fragment stage reads is declared and written by the vertex stage
+  ---
+  duration_ms: 0.695582
+  ...
+# Subtest: cell bounds pack one min/max pair per atlas slot
+ok 16 - cell bounds pack one min/max pair per atlas slot
+  ---
+  duration_ms: 0.218492
+  ...
+# Subtest: an empty pool draws nothing and costs nothing
+ok 17 - an empty pool draws nothing and costs nothing
+  ---
+  duration_ms: 4.696401
+  ...
+# Subtest: a body retires and the batch stops drawing it
+ok 18 - a body retires and the batch stops drawing it
+  ---
+  duration_ms: 1.804692
+  ...
+# Subtest: the film advances on the SIM clock, so a paused sim freezes the gas
+ok 19 - the film advances on the SIM clock, so a paused sim freezes the gas
+  ---
+  duration_ms: 1.047178
+  ...
+# Subtest: bodies are written far-to-near, because premultiplied over is order dependent
+ok 20 - bodies are written far-to-near, because premultiplied over is order dependent
+  ---
+  duration_ms: 0.817715
+  ...
+# Subtest: each family is capped independently so one event cannot starve the others
+ok 21 - each family is capped independently so one event cannot starve the others
+  ---
+  duration_ms: 0.952402
+  ...
+# Subtest: a floating-origin rebase moves the bodies and their occluders with it
+ok 22 - a floating-origin rebase moves the bodies and their occluders with it
+  ---
+  duration_ms: 0.790835
+  ...
+# Subtest: reduced motion lowers energy and slows the arc but never freezes the volume
+ok 23 - reduced motion lowers energy and slows the arc but never freezes the volume
+  ---
+  duration_ms: 0.756032
+  ...
+# Subtest: impact material selects the matter, and a shield throws none
+ok 24 - impact material selects the matter, and a shield throws none
+  ---
+  duration_ms: 0.226802
+  ...
+# Subtest: emitFromImpact is the one entry point and never throws on a bad record
+ok 25 - emitFromImpact is the one entry point and never throws on a bad record
+  ---
+  duration_ms: 0.848763
+  ...
+# Subtest: an UNSIGNED collision axis draws symmetric, never a fabricated direction
+ok 26 - an UNSIGNED collision axis draws symmetric, never a fabricated direction
+  ---
+  duration_ms: 0.745416
+  ...
+# Subtest: severity and radius scale the body instead of only its opacity
+ok 27 - severity and radius scale the body instead of only its opacity
+  ---
+  duration_ms: 0.431683
+  ...
+# Subtest: the gas subsystem subscribes to nothing — the impacts lane owns the timing
+ok 28 - the gas subsystem subscribes to nothing — the impacts lane owns the timing
+  ---
+  duration_ms: 11.52822
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 558.369241
