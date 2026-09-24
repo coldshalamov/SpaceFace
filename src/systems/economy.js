@@ -893,7 +893,6 @@ export const economy = {
     bus.on('ui:service', (p) => { if (p) this.handleService(p); });
 
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
-    bus.on('sim:jumpGate', (p) => this.runScan(p || {}));
     bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' }));
     bus.on('patrol:proximity', (p) => this.runScan(p || {}));
     bus.on('contraband:bribe', (p) => this.payBribe(p || {}));
