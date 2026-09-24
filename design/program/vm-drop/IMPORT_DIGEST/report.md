@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ai (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24aj (post-import hillclimb)
 
 Master tip: **`7850b341e`** (fetched; moved from `fd8adfdfd`).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` rebased onto `7850b341e` through #69; +#70
-measured on stacked tip @ `212773a58`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` rebased onto `7850b341e` through #70; +#71
+measured on stacked tip @ `5dd63881a`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -57,6 +57,7 @@ measured on stacked tip @ `212773a58`. Fresh profile `settled-45s-stacked-202609
 | 68 | `snapshot-fence-zero-dirty-retain` |
 | 69 | `stunt-projectile-evidence-quiet-iter` |
 | 70 | `stunt-flight-history-quiet-skip` |
+| 71 | `composition-framing-trust` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -88,13 +89,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61 |
 
 ### Notable callees (post-#57 / pre-#60)
 
-- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance), packPresentationWorldToFence (**#68**), spaceBackground (hold)
+- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance, **#71** framing trust), packPresentationWorldToFence (**#68**), spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -103,7 +104,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 70 | `stunt-flight-history-quiet-skip` | Portable quiet StuntFlightObserver history **~4.66×** median (120 ships + 40 near dyn × 8000; floor minSpeedup ≥3.91×). Focused stunt suites 31/31. |
+| 71 | `composition-framing-trust` | Portable `playerHasActiveAttackerFraming` **~11.75×** median (120 ships × 20000; floor minSpeedup ≥10.93× quiet-120). Focused camera suites 64/64. |
 
 ## Scour attempts / misses
 
@@ -124,6 +125,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | contact-base identity retain | ~1.27× under bar — hold |
 | quiet-iter sampleProjectileEvidence (collidables+for-in+cold cadence) | **shipped #69 ~1.77×** |
 | quiet-skip StuntFlightObserver history (no tracks + empty projectiles) | **shipped #70 ~4.66×** |
+| composition framing trust (sticky.hadActiveAttacker) | **shipped #71 ~11.75×** framing-alone; follow-pair ~1.06× informational |
 | reusablePins pinBits short-circuit | prior miss — not retried |
 | Physics S1-idle / spatial-hash@600 / visit-loop / stamp-reuse | Holds — not retried |
 | spaceBg steady-state | Hold — not retried |
@@ -135,8 +137,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68 (syncEntityViews /
-   packFence residual / residual closures / camera.follow residual).
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71 (syncEntityViews /
+   packFence residual / residual closures / camera.follow lookAt+clearance residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70 (preStep residual /

@@ -1,0 +1,153 @@
+From 5dd63881ad660b6af2261ea7212f572aa3465912 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:31:25 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20trust=20composition=20attacker?=
+ =?UTF-8?q?=20bit=20for=20framing=20(~11.7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Live chase sticky carries resolveChaseComposition.hasActiveAttacker so
+playerHasActiveAttackerFraming skips a second shipLike walk on the quiet
+FOLLOW path. Pure callers without sticky.hadActiveAttacker keep the scan.
+---
+ src/render/camera.js                    | 12 +++-
+ test/composition-framing-trust.test.mjs | 82 +++++++++++++++++++++++++
+ 2 files changed, 93 insertions(+), 1 deletion(-)
+ create mode 100644 test/composition-framing-trust.test.mjs
+
+diff --git a/src/render/camera.js b/src/render/camera.js
+index d73d674c2..c24eea683 100644
+--- a/src/render/camera.js
++++ b/src/render/camera.js
+@@ -635,6 +635,13 @@ export function playerHasActiveAttackerFraming(state, player, sticky = null) {
+     if (held && held.alive !== false && held.hull > 0) return true;
+   }
+   if (readFlybyLeaseTargetId(state) != null) return true;
++  // Live chase sticky bag carries last resolveChaseComposition.hasActiveAttacker.
++  // Framing runs before composition in follow(); trusting the prior frame skips a second
++  // shipLike walk on the quiet FOLLOW path (composition already scanned). Pure callers
++  // omit sticky (or omit hadActiveAttacker) and keep the frame-instant scan.
++  if (sticky && Object.prototype.hasOwnProperty.call(sticky, 'hadActiveAttacker')) {
++    return sticky.hadActiveAttacker === true;
++  }
+   if (!state.entities || typeof state.entities.values !== 'function') return false;
+   for (const e of cameraThreatCandidates(state)) {
+     if (e === player) continue;
+@@ -757,6 +764,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
+     result.nearbyEnemies = nearbyEnemies;
+     result.hasThreatFocus = false;
+     delete result.hasActiveAttacker;
++    if (sticky) sticky.hadActiveAttacker = false;
+     result.hasTetherFocus = false;
+     result.zoomBias = zoomBias;
+     result.minZoom = 0;
+@@ -1042,6 +1050,8 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
+   result.nearbyEnemies = nearbyEnemies;
+   result.hasThreatFocus = !!nearestThreat || !!composedThreat;
+   result.hasActiveAttacker = composedIsActive;
++  // Feed live chase framing: next follow() lookahead uses this instead of a second shipLike walk.
++  if (sticky) sticky.hadActiveAttacker = composedIsActive;
+   result.hasTetherFocus = !!tetherAnchor;
+   result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
+   result.minZoom = minZoom;
+@@ -1192,7 +1202,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
+   let _contextZoomCap = COMPOSITION_ZOOM_MAX;
+   let _dynamicNear = cam.near;
+   // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
+-  const _compositionSticky = { id: null, remainS: 0, wasActive: false };
++  const _compositionSticky = { id: null, remainS: 0, wasActive: false, hadActiveAttacker: false };
+   const cameraDirector = createCameraDirector();
+   let _holdT = 0;
+   let _deathCam = false;
+diff --git a/test/composition-framing-trust.test.mjs b/test/composition-framing-trust.test.mjs
+new file mode 100644
+index 000000000..a5ac82807
+--- /dev/null
++++ b/test/composition-framing-trust.test.mjs
+@@ -0,0 +1,82 @@
++/**
++ * Live chase sticky feeds resolveChaseComposition.hasActiveAttacker into
++ * playerHasActiveAttackerFraming so follow() does not pay a second shipLike walk.
++ * Pure callers (no sticky.hadActiveAttacker) keep the frame-instant scan.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import {
++  playerHasActiveAttackerFraming,
++  resolveChaseComposition,
++} from '../src/render/camera.js';
++
++function ship(id, x, z, team, extra = {}) {
++  return {
++    id,
++    type: 'ship',
++    alive: true,
++    hull: 100,
++    hullMax: 100,
++    team,
++    pos: { x, z },
++    radius: 6,
++    data: {
++      ai: { passive: team !== 1, archetype: team === 1 ? 'pirate' : 'trader' },
++      combat: { targetId: null, lockTarget: null },
++      ...extra.data,
++    },
++    ...extra,
++  };
++}
++
++function stateWith(player, others) {
++  const ships = [player, ...others];
++  const entities = new Map(ships.map((e) => [e.id, e]));
++  return {
++    playerId: player.id,
++    entities,
++    entityIndex: { __spacefaceEntityIndexV1: true, ready: true, shipLike: ships },
++    player: {},
++    combat: { entities: {} },
++  };
++}
++
++test('framing trusts sticky.hadActiveAttacker without shipLike scan', () => {
++  const player = ship(1, 0, 0, 0);
++  const attacker = ship(2, 60, 0, 1, { data: { combat: { targetId: 1, lockTarget: 1 } } });
++  const state = stateWith(player, [attacker]);
++  const sticky = { id: null, remainS: 0, wasActive: false, hadActiveAttacker: false };
++  assert.equal(playerHasActiveAttackerFraming(state, player, sticky), false);
++  sticky.hadActiveAttacker = true;
++  assert.equal(playerHasActiveAttackerFraming(state, player, sticky), true);
++});
++
++test('compose feeds sticky.hadActiveAttacker for the next framing call', () => {
++  const player = ship(1, 0, 0, 0);
++  const attacker = ship(2, 60, 0, 1, { data: { combat: { targetId: 1, lockTarget: 1 } } });
++  const ambient = ship(3, 80, 0, 3);
++  const state = stateWith(player, [attacker, ambient]);
++  const sticky = { id: null, remainS: 0, wasActive: false, hadActiveAttacker: false };
++  const view = { dt: 1 / 60, fov: 50, aspect: 16 / 9, tiltDeg: 60 };
++  const composition = resolveChaseComposition(state, player, player.pos, view, null, null, sticky);
++  assert.equal(composition.hasActiveAttacker, true);
++  assert.equal(sticky.hadActiveAttacker, true);
++  assert.equal(playerHasActiveAttackerFraming(state, player, sticky), true);
++
++  attacker.data.combat = { targetId: null, lockTarget: null };
++  const quiet = resolveChaseComposition(state, player, player.pos, view, null, null, sticky);
++  assert.equal(quiet.hasActiveAttacker, false);
++  assert.equal(sticky.hadActiveAttacker, false);
++  assert.equal(playerHasActiveAttackerFraming(state, player, sticky), false);
++});
++
++test('pure framing callers without hadActiveAttacker still scan', () => {
++  const player = ship(1, 0, 0, 0);
++  const attacker = ship(2, 60, 0, 1, { data: { combat: { targetId: 1, lockTarget: 1 } } });
++  const ambient = ship(3, 60, 0, 1, { data: { combat: { targetId: null, lockTarget: null } } });
++  assert.equal(playerHasActiveAttackerFraming(stateWith(player, [attacker]), player), true);
++  assert.equal(playerHasActiveAttackerFraming(stateWith(player, [ambient]), player), false);
++  // Sticky without the trust field keeps the scan (legacy bags).
++  const legacy = { id: null, remainS: 0, wasActive: false };
++  assert.equal(playerHasActiveAttackerFraming(stateWith(player, [attacker]), player, legacy), true);
++});
+-- 
+2.47.3
+
