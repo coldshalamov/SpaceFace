@@ -264,6 +264,28 @@ async function sampleFrames(page, selector, frames, { requireHover = true } = {}
     })();
     let baselineRect = null;
     const mutations = { screenChildList: 0, readoutsChildList: 0, handoffChildList: 0, dockAttributes: 0, other: 0, details: [] };
+    // A row still flying its entrance (opacity/translate/blur mid-transition) — or pushed by a
+    // sibling's entrance — would be measured as drift and oscillation: the loader, not the
+    // hover. Wait until the element's box and painted style are unchanged across three
+    // consecutive frames before measuring (bounded so a perpetually moving element still gets
+    // sampled rather than hanging the probe).
+    const frameOrTimer = () => new Promise((resolve) => {
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; resolve(); } };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(done);
+      setTimeout(done, 34);
+    });
+    let stillFrames = 0;
+    let prevSig = '';
+    const settleDeadline = performance.now() + 8_000;
+    while (stillFrames < 3 && performance.now() < settleDeadline) {
+      const r = initial.getBoundingClientRect();
+      const s = getComputedStyle(initial);
+      const sig = [r.left, r.top, r.width, r.height, s.opacity, s.transform, s.filter, s.color].join('|');
+      stillFrames = sig === prevSig ? stillFrames + 1 : 0;
+      prevSig = sig;
+      await frameOrTimer();
+    }
     const observer = new MutationObserver((records) => {
       for (const record of records) {
         const node = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
@@ -294,12 +316,7 @@ async function sampleFrames(page, selector, frames, { requireHover = true } = {}
       // starves the whole probe (D33's ten-minute stall). Sample per produced frame when frames
       // exist and per a bounded timer when they do not — the assertions read DOM state, not
       // frame indices.
-      await new Promise((resolve) => {
-        let settled = false;
-        const done = () => { if (!settled) { settled = true; resolve(); } };
-        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(done);
-        setTimeout(done, 34);
-      });
+      await frameOrTimer();
       const current = document.querySelector(sel);
       if (current === initial) sameNodeFrames += 1;
       if (!hoverExpected || initial.matches(':hover')) hoverFrames += 1;
