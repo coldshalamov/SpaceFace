@@ -1,7 +1,7 @@
-# DONE — IMPORT_DIGEST 20260924bn
+# DONE — IMPORT_DIGEST 20260924bo
 
-Post-#106 hillclimb on Quiet Grok Bot VM. Shipped **#107
-`tumble-body-language-quiet-skip`** (~29× median quiet tumble body-language
-shipLike walk; floor ≥25.9×; pitchPresentationEpoch dirty wake). Soft-GPU
-fps not a KPI. Master tip `273f8bad7`. Scratch `vm-work/hillclimb-20260924j`
-@ `cd08998b8`.
+Post-#107 hillclimb on Quiet Grok Bot VM. Shipped **#108
+`trail-emit-idle-drive-walk`** (~7× median quiet trail emit idle drive walk;
+floor ≥4.0× across package runs; typical pair floor ≥6.0×; cheap maybe-awake
++ empty-ribbon share). Soft-GPU fps not a KPI. Master tip `273f8bad7`.
+Scratch `vm-work/hillclimb-20260924j` @ `c4f5d9c26`.
