@@ -1,0 +1,14 @@
+{
+  "rounds": 8000,
+  "legacy": {
+    "ms": 2.4792130000000725,
+    "layoutReads": 8000
+  },
+  "modern": {
+    "ms": 8.21188200000006,
+    "layoutReads": 0
+  },
+  "layoutReduction": 8000,
+  "layoutEliminated": true,
+  "primary": "layoutReads"
+}
