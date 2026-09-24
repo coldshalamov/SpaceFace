@@ -1,4 +1,5 @@
-# IMPORT — digest 20260924cu
+# IMPORT — IMPORT_DIGEST
 
-Read `report.md` for the full stack + holds. Apply package folders in numeric
-order; #138 is `classify-early-quiet-latch/`.
+Read `report.md` for the current tip digest (**20260924cv**, post-#139).
+No code patch. Owner imports numbered packages under `vm-drop/<job>/` in
+order; this folder is the running scoreboard + hold list.
