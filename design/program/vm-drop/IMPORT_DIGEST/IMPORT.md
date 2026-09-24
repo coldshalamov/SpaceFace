@@ -1,4 +1,3 @@
-# IMPORT — digest 20260924dh
+# IMPORT — IMPORT_DIGEST 20260924di
 
-Read `report.md` for the full stack + hold table after #148
-(salvage-unstable-quiet-empty-latch).
+Digest only. No code. Read report.md after importing #149.
