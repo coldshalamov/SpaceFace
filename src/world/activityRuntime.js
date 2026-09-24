@@ -849,67 +849,99 @@ function classifyWorld(state, runtime) {
     const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
     const onRunway = submitRunway || prefetchKeep;
     const data = entity.data || {};
-    const ai = ownerAiRecord(entity);
+    const entityType = entity.type;
+    // Quiet near-disc is rock-dominated. Asteroids/payloads never need ship AI / ace / authored
+    // combat / escort / hail / dock / aggro context — fill the pin-relevant subset only.
+    const rockBody = entityType === 'asteroid' || entityType === 'payload';
+    const ai = rockBody ? null : ownerAiRecord(entity);
     runtime.currentEntityIds.add(entity.id);
     const firstActivityObservation = !runtime.seenEntityIds.has(entity.id);
     runtime.seenEntityIds.add(entity.id);
     ctx.visibleOnGlass = onGlass;
     ctx.onGlass = onGlass;
     ctx.onRunway = onRunway;
-    ctx.mapOrRadar = entity.type === 'ship' || entity.type === 'station' || entity.type === 'drone';
-    ctx.hostileAggro = facts.aggro.has(entity.id);
-    ctx.projectileThreat = facts.projectileThreat.has(entity.id);
-    ctx.tetherOrAttachment = facts.tether.has(entity.id)
-      || !!(entity.flags && entity.flags.tethered)
-      || data.tethered === true;
-    ctx.dockingOrLanding = facts.dockId != null && entity.id === facts.dockId;
-    ctx.escortOrFollow = !!(data.escort || (ai && (ai.escort || ai.follow)));
-    ctx.hailOrConversation = facts.hailId != null && entity.id === facts.hailId;
-    ctx.playerMiningTarget = facts.miningId != null && entity.id === facts.miningId;
-    ctx.playerScannedAndTracked = facts.tracked.has(entity.id);
-    ctx.damagedByPlayerUntilT = facts.damagedByPlayerUntil.has(entity.id)
-      ? facts.damagedByPlayerUntil.get(entity.id)
-      : -1;
-    ctx.damagedPlayerUntilT = facts.damagedPlayerUntil.has(entity.id)
-      ? facts.damagedPlayerUntil.get(entity.id)
-      : -1;
+    ctx.priorSimTier = entity.activity && entity.activity.simTier;
+    ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
+    ctx.dormant = false;
     const recId = data.worldRecordId;
     const bag = state.world && state.world.records && state.world.records.byId;
     const worldRec = recId && bag ? bag[recId] : null;
-    const scheduledWakeDue = durableWakeDue(worldRec, simTime)
-      || liveWakeDue(entity, simTime) != null;
-    if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
-    ctx.hasItinerary = !!data.itinerary || scheduledWakeDue;
-    ctx.priorSimTier = entity.activity && entity.activity.simTier;
-    ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
-    const authoredPresence = data.factionPresence
-      && data.factionPresence.source === 'depth-program-k1';
-    const authoredActiveCombat = authoredPresence && ai && ai.passive === false
-      && (ai.combatant === true || ai.engagementTrigger != null
-        || (ai.activity && ai.activity.kind === 'attack_run'));
-    const namedAceActor = !!(
-      data.namedAceId
-      || (data.aceMemory && data.aceMemory.aceId)
-      || (ai && ai.namedAceId)
-    );
-    ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
-      || data.activityActorSlotId
-      || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
-      || namedAceActor
-      || (entity.flags && entity.flags.missionPinned)
-      // K1 authored active presence is a named, durable combat actor even when its global sector
-      // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
-      // the exact owner view; generic far passive traffic remains wake-gated below.
-      || authoredActiveCombat);
-    ctx.imminentCollision = imminentCollisionFor(state, player, entity);
-    ctx.aggregateOnly = entity.type === 'ship'
-      && !onGlass
-      && !onRunway
-      && !data.itinerary
-      && !data.named
-      && !(ai && ai.combatant === true)
-      && !ctx.missionCritical;
-    ctx.dormant = false;
+    let scheduledWakeDue = false;
+    if (rockBody) {
+      ctx.mapOrRadar = false;
+      ctx.hostileAggro = false;
+      ctx.projectileThreat = false;
+      ctx.tetherOrAttachment = facts.tether.has(entity.id)
+        || !!(entity.flags && entity.flags.tethered)
+        || data.tethered === true;
+      ctx.dockingOrLanding = false;
+      ctx.escortOrFollow = false;
+      ctx.hailOrConversation = false;
+      ctx.playerMiningTarget = facts.miningId != null && entity.id === facts.miningId;
+      ctx.playerScannedAndTracked = facts.tracked.has(entity.id);
+      ctx.damagedByPlayerUntilT = facts.damagedByPlayerUntil.has(entity.id)
+        ? facts.damagedByPlayerUntil.get(entity.id)
+        : -1;
+      ctx.damagedPlayerUntilT = -1;
+      scheduledWakeDue = durableWakeDue(worldRec, simTime)
+        || (entity.activity && dueAt(entity.activity.nextEventAtT, simTime) != null)
+        || dueAt(data.nextEventAtT, simTime) != null;
+      if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
+      ctx.hasItinerary = !!data.itinerary || scheduledWakeDue;
+      ctx.missionCritical = !!(entity.flags && entity.flags.missionPinned)
+        || !!(data.missionPinned || data.missionId || data.missionTag || data.jobId);
+      ctx.imminentCollision = imminentCollisionFor(state, player, entity);
+      ctx.aggregateOnly = false;
+    } else {
+      ctx.mapOrRadar = entityType === 'ship' || entityType === 'station' || entityType === 'drone';
+      ctx.hostileAggro = facts.aggro.has(entity.id);
+      ctx.projectileThreat = facts.projectileThreat.has(entity.id);
+      ctx.tetherOrAttachment = facts.tether.has(entity.id)
+        || !!(entity.flags && entity.flags.tethered)
+        || data.tethered === true;
+      ctx.dockingOrLanding = facts.dockId != null && entity.id === facts.dockId;
+      ctx.escortOrFollow = !!(data.escort || (ai && (ai.escort || ai.follow)));
+      ctx.hailOrConversation = facts.hailId != null && entity.id === facts.hailId;
+      ctx.playerMiningTarget = facts.miningId != null && entity.id === facts.miningId;
+      ctx.playerScannedAndTracked = facts.tracked.has(entity.id);
+      ctx.damagedByPlayerUntilT = facts.damagedByPlayerUntil.has(entity.id)
+        ? facts.damagedByPlayerUntil.get(entity.id)
+        : -1;
+      ctx.damagedPlayerUntilT = facts.damagedPlayerUntil.has(entity.id)
+        ? facts.damagedPlayerUntil.get(entity.id)
+        : -1;
+      scheduledWakeDue = durableWakeDue(worldRec, simTime)
+        || liveWakeDue(entity, simTime) != null;
+      if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
+      ctx.hasItinerary = !!data.itinerary || scheduledWakeDue;
+      const authoredPresence = data.factionPresence
+        && data.factionPresence.source === 'depth-program-k1';
+      const authoredActiveCombat = authoredPresence && ai && ai.passive === false
+        && (ai.combatant === true || ai.engagementTrigger != null
+          || (ai.activity && ai.activity.kind === 'attack_run'));
+      const namedAceActor = !!(
+        data.namedAceId
+        || (data.aceMemory && data.aceMemory.aceId)
+        || (ai && ai.namedAceId)
+      );
+      ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
+        || data.activityActorSlotId
+        || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
+        || namedAceActor
+        || (entity.flags && entity.flags.missionPinned)
+        // K1 authored active presence is a named, durable combat actor even when its global sector
+        // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
+        // the exact owner view; generic far passive traffic remains wake-gated below.
+        || authoredActiveCombat);
+      ctx.imminentCollision = imminentCollisionFor(state, player, entity);
+      ctx.aggregateOnly = entityType === 'ship'
+        && !onGlass
+        && !onRunway
+        && !data.itinerary
+        && !data.named
+        && !(ai && ai.combatant === true)
+        && !ctx.missionCritical;
+    }
 
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
