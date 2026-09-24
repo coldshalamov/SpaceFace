@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24da (post-#142; #143 miss)
+# IMPORT_DIGEST report — 2026-09-24db (post-#142; #143 ship)
 
 Master tip: **`4b28a8323`** (fetched; unchanged since #138 / digest 20260924cu).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924m` @ `89579be51` on `origin/master`
-@ `4b28a8323` through #142. No restack this pass (master unchanged). Profile cite remains
+Scratch `vm-work/hillclimb-20260924m` @ `0e0549558` on `origin/master`
+@ `4b28a8323` through #143. No restack this pass (master unchanged). Profile cite remains
 `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -13,10 +13,11 @@ Scratch `vm-work/hillclimb-20260924m` @ `89579be51` on `origin/master`
 | # | Package |
 |---:|---|
 | 31–142 | (unchanged — see digest 20260924cz) |
+| **143** | **lifetime-sweep-quiet-clocks-skip** (this digest) |
 
-### SKIP / hold (unchanged + #143 thin probes)
+### SKIP / hold (unchanged + prior #143-miss thin probes)
 
-Carry forward all holds from digest 20260924cz. Prior holds still stand:
+Carry forward all holds from digest 20260924da / cz. Prior holds still stand:
 classify selectClassify id-replay after #128 ~1.16×; weapon-presenter
 callsite quiet ~2.0×/floor ~1.18×; vfx quiet-head composite ~2.27×/floor ~1.36×;
 ceres-a11y / feel FOV+hullCrit / damage-venting / tether-arc-mining;
@@ -37,10 +38,10 @@ lifetimeSweep no-movable thin (synthetic latch ~1.60×; full-skip sketch unfair)
 Prior #142 scour holds: lifetimeSweep dirty-publish fair ~1.04×;
 classify NPC visit under frame-miss ~1.08×; selectClassify spatial stub ~1.12×;
 adaptive quantize cruise fair regress ~0.78–0.98× — do not retry casually.
-**NEW #143 holds (thin):** asteroid-motion sticky settled-skip ~1.14× /
-floor ~1.00× (dirty-wake ok; pristine full path already lean vs tumble write);
-render-entity-frame unchanged retain ~1.21× / floor ~1.11× (yaw inform ~1.44×);
-lifetimeSweep pose-rematch skip ~1.14×; lifetimeSweep sleeping-clocks skip ~1.12×.
+**#143-miss holds (still stand; different angle shipped):** asteroid-motion sticky
+settled-skip ~1.14× / floor ~1.00×; render-entity-frame unchanged retain ~1.21× /
+floor ~1.11× (yaw inform ~1.44×); lifetimeSweep pose-rematch skip ~1.14×;
+lifetimeSweep sleeping-clocks skip ~1.12×.
 packCombat single-dirty remains held (synthetic ~2× noisy; not casually retried).
 
 ## Quiet CPU / hitch profile (stacked tip cite)
@@ -53,14 +54,14 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after …+#140; dirty-publish / pose-rematch / sleeping-clocks thin this pass |
+| 323 | `registry.step` | residual after …+#143 quiet clocks; preStep / packCombat still open |
 | 269 | `classifyWorld` | residual after …+#141; flying-early-latch held ~1.3×; NPC/disc-admission still thin |
-| 202 | `syncEntityViews` | residual after …+#142; asteroid settled + render-entity-frame retain thin this pass |
+| 202 | `syncEntityViews` | residual after …+#142; asteroid settled + render-entity-frame retain thin |
 | 186 | `prepareFrame` | residual after …+#126 (quiet-VFX floors still held) |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
-### Notable callees (post-#142 / #143 miss)
+### Notable callees (post-#143)
 
 - syncEntityViews → presentationQueries.query (#74+#77+#**142** pose-dirty retain),
   refreshVisibleEntity (#76), updateCraftMicroMotion (#57), noteRealtimeShadowCasterPose (#81),
@@ -70,25 +71,22 @@ native GL / bloom admission owners ignored for portable ranking.
   selectClassify id-replay after #128 held ~1.16×; rock visit context-only held ~1.09×;
   NPC visit ~1.08×; spatial stub ~1.12×
 - prepareFrame → (unchanged; quiet-VFX floors still held)
-- registry.step → preStep / packCombatTable / lifetimeSweep residual;
-  tumbleStates (#140) + tacticalAI (#139) + CM/fields/bombs/far/optic/decode/field/poi/dock shipped;
-  lifetimeSweep pose-rematch / sleeping-clocks thin this pass
+- registry.step → preStep / packCombatTable / lifetimeSweep (#**143** quiet short-lived
+  clocks skip); tumbleStates (#140) + tacticalAI (#139) + CM/fields/bombs/far/optic/decode/field/poi/dock shipped;
+  pose-rematch / sleeping-clocks / compact-skip remain held
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| — | **none** (#143 miss) | No weak package. |
+| **143** | **lifetime-sweep-quiet-clocks-skip** | Isolated lifetimeSweep median **~1.98–2.06×** / floorMin **≥1.65×** (5×11-pair on master-applied tree); dirty-wake OK; focused **7/7**. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| asteroid-motion sticky settled-skip (tumble-only; event + amortized ore wake) | **HOLD** — median ~1.14× / floor ~1.00×; dirty-wake ok. Pristine full path already lean. Reverted. |
-| render-entity-frame unchanged retain (skip flag recompute when root pose/vis/LOD match) | **HOLD** — median ~1.21× / floor ~1.11×; yaw inform ~1.44×; dirty-wake ok. Below ≥~1.5× bar. Reverted. |
-| lifetimeSweep pose-rematch skip (trust preStep POSE) | ~1.14× — thin |
-| lifetimeSweep sleeping-still clocks skip | ~1.12× — thin |
-| packCombat player-row direct (held-adjacent) | synthetic ~2.2× noisy floor; **not casually retried** (held) |
+| **lifetimeSweep quiet short-lived-lane clocks skip** | **SHIP #143** — median ~1.98–2.06× / floor ≥1.65×; dirty-wake projectile TTL + shipLike despawnAt OK. Different angle from held pose-rematch / sleeping-clocks / compact-skip. |
+| asteroid-motion sticky settled-skip / render-entity-frame unchanged retain / pose-rematch / sleeping-clocks | **not casually retried** (held from digest 20260924da) |
 | flying-early-latch / lifetimeSweep compact-skip / asteroid-field empty / hazards / env-machinery / id-replay / rock visit-context / quiet-VFX / zoneAt / preStep-all-sleeping / NPC visit / selectClassify spatial stub / adaptive quantize / dirty-publish fair | **not casually retried** (held) |
 
 ## Rock audit (unchanged)
@@ -102,23 +100,24 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    ~1.12×; **flying-early-latch held ~1.3×**; id-replay ~1.16×; rock context ~1.09×).
    Prefer angles that still move residual under flying retain without replaying
    the early-latch skip of extents+selectClassify.
-2. registry.step after …+#140 (preStep residual / packCombatTable residual /
-   lifetimeSweep dirty-publish fair ~1.04× + pose-rematch ~1.14× + sleeping-clocks
-   ~1.12× thin; tumbleStates + tacticalAI quiet residuals).
+2. registry.step after …+#143 (preStep residual / packCombatTable residual /
+   lifetimeSweep quiet-clocks shipped; pose-rematch / sleeping-clocks /
+   compact-skip / dirty-publish fair remain held; tumbleStates + tacticalAI quiet residuals).
 3. syncEntityViews residual after #15+#44+#57+#74+#76+#77+#81+#142 (closures /
    microMotion / ordnance / applySnapshotPose hold ~0.85×; query pose-dirty shipped;
-   asteroid settled ~1.14× + render-entity-frame retain ~1.21× held this pass).
+   asteroid settled ~1.14× + render-entity-frame retain ~1.21× held).
 4. prepareFrame residual after #13+#44+#46+#47+#51–#126 (quiet-VFX floors held).
 5. Soft-GPU fps is not a KPI.
 6. environmentalMachinery far (held ~0.87×).
 7. Deferred/held: hazards far; asteroid-field **empty** ~1.22×; zoneAt;
-   lifetimeSweep no-movable / compact-skip; **flying-early-latch ~1.3×**;
-   lifetimeSweep dirty-publish / pose-rematch / sleeping-clocks thin;
-   asteroid-motion settled; render-entity-frame unchanged retain.
+   lifetimeSweep no-movable / compact-skip / pose-rematch / sleeping-clocks;
+   **flying-early-latch ~1.3×**; asteroid-motion settled; render-entity-frame
+   unchanged retain.
 
 ## Scratch
 
 - Branch: `vm-work/hillclimb-20260924m`
-- Tip: `89579be51e54aa29cee63314b376e9f226cd7b59`
+- Tip: `0e054955874a6ea4cae0052f290691872b105f67`
 - Worktree: `/workspace/spaceface-scratch/hillclimb-20260924h`
-- Package: none (#143 miss)
+- Master tip: `4b28a8323`
+- Clean master patch (am verify): `83b00f07e` on `4b28a8323`

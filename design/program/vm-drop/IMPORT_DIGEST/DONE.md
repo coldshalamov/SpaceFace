@@ -1,5 +1,5 @@
-# DONE — IMPORT_DIGEST 20260924da
+# DONE — IMPORT_DIGEST 20260924db
 
-Post-#142 miss digest for #143. Master tip `4b28a8323` unchanged. No package.
-Scoured classifyWorld / registry.step / syncEntityViews residuals; no cut cleared
-≥~1.5× median with solid floor. Holds carried from cz (+ new thin probes below).
+Post-#142 ship digest for **#143** `lifetime-sweep-quiet-clocks-skip`. Master tip
+`4b28a8323` unchanged. Proven ≥~1.98× median / floor ≥1.65× on isolated
+lifetimeSweep; dirty-wake OK; focused 7/7. Soft-GPU fps not claimed. Picture ON.
