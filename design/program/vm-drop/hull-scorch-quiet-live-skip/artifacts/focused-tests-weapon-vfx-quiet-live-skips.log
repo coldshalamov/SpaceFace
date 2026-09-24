@@ -1,0 +1,295 @@
+TAP version 13
+# [impact cost] 160 events, 1549 primitives | peak occupancy: blades 124/128  arcs 48/48  shards 64/64  plates 32/32
+# Subtest: a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+ok 1 - a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+  ---
+  duration_ms: 14.925648
+  ...
+# Subtest: every pair of impact classes differs by order, layout or primitive mix before any colour
+ok 2 - every pair of impact classes differs by order, layout or primitive mix before any colour
+  ---
+  duration_ms: 2.237765
+  ...
+# Subtest: large destruction opens its structure before anything else, and structure outlives the light
+ok 3 - large destruction opens its structure before anything else, and structure outlives the light
+  ---
+  duration_ms: 10.69143
+  ...
+# Subtest: an unsigned collision axis cannot yield a signed outward direction
+ok 4 - an unsigned collision axis cannot yield a signed outward direction
+  ---
+  duration_ms: 0.413279
+  ...
+# Subtest: flipping an unsigned axis draws the identical event; flipping a signed normal does not
+ok 5 - flipping an unsigned axis draws the identical event; flipping a signed normal does not
+  ---
+  duration_ms: 13.905914
+  ...
+# Subtest: a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+ok 6 - a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+  ---
+  duration_ms: 0.534218
+  ...
+# Subtest: the classifier reads the physics of a contact, not its size alone
+ok 7 - the classifier reads the physics of a contact, not its size alone
+  ---
+  duration_ms: 0.637165
+  ...
+# Subtest: the beats of one event arrive in sequence instead of on the contact frame
+ok 8 - the beats of one event arrive in sequence instead of on the contact frame
+  ---
+  duration_ms: 3.126175
+  ...
+# Subtest: a reserved later beat is not cannibalised to draw the next event
+ok 9 - a reserved later beat is not cannibalised to draw the next event
+  ---
+  duration_ms: 1.894817
+  ...
+# Subtest: a worked face cuts and fractures without igniting or celebrating
+ok 10 - a worked face cuts and fractures without igniting or celebrating
+  ---
+  duration_ms: 1.998159
+  ...
+# Subtest: an interior that is not hot is not drawn hot, and a shield throws no matter
+ok 11 - an interior that is not hot is not drawn hot, and a shield throws no matter
+  ---
+  duration_ms: 0.342542
+  ...
+# Subtest: a contact mark takes the failure of the surface it hit, and the default is unchanged
+ok 12 - a contact mark takes the failure of the surface it hit, and the default is unchanged
+  ---
+  duration_ms: 2.034786
+  ...
+# Subtest: one contact composes one recipe: structure first, then gas, then debris, exactly once each
+ok 13 - one contact composes one recipe: structure first, then gas, then debris, exactly once each
+  ---
+  duration_ms: 2.156277
+  ...
+# Subtest: supporting layers bind as resolvers, so build order cannot silently pin them to null
+ok 14 - supporting layers bind as resolvers, so build order cannot silently pin them to null
+  ---
+  duration_ms: 2.028454
+  ...
+# Subtest: the recipe still lands when the gas and debris layers never arrive
+ok 15 - the recipe still lands when the gas and debris layers never arrive
+  ---
+  duration_ms: 2.996842
+  ...
+# Subtest: the record is handed to the supporting layers in world space and unmodified
+ok 16 - the record is handed to the supporting layers in world space and unmodified
+  ---
+  duration_ms: 1.958975
+  ...
+# Subtest: a massacre of small deaths cannot truncate the capital breakup behind it
+ok 17 - a massacre of small deaths cannot truncate the capital breakup behind it
+  ---
+  duration_ms: 1.662251
+  ...
+# Subtest: repeated hits on one surface and dense mixed combat stay inside the fixed pools
+ok 18 - repeated hits on one surface and dense mixed combat stay inside the fixed pools
+  ---
+  duration_ms: 26.499219
+  ...
+# Subtest: the same contact draws the same event every replay, without consuming simulation randomness
+ok 19 - the same contact draws the same event every replay, without consuming simulation randomness
+  ---
+  duration_ms: 3.349656
+  ...
+# Subtest: malformed receipts cannot poison the record or the pools
+ok 20 - malformed receipts cannot poison the record or the pools
+  ---
+  duration_ms: 1.328157
+  ...
+# Subtest: the structural plate is a closed lit sheet, not a card
+ok 21 - the structural plate is a closed lit sheet, not a card
+  ---
+  duration_ms: 0.48481
+  ...
+# Subtest: saturated weapon ribbons rotate eviction across pool slots
+ok 22 - saturated weapon ribbons rotate eviction across pool slots
+  ---
+  duration_ms: 3.523773
+  ...
+# Subtest: saturated hull scorches rotate eviction across pool slots
+ok 23 - saturated hull scorches rotate eviction across pool slots
+  ---
+  duration_ms: 1.357176
+  ...
+# Subtest: saturated distortion fields rotate eviction across pool slots
+ok 24 - saturated distortion fields rotate eviction across pool slots
+  ---
+  duration_ms: 0.970245
+  ...
+# Subtest: weapon effect pools preserve explicit zero intensity and color channels
+ok 25 - weapon effect pools preserve explicit zero intensity and color channels
+  ---
+  duration_ms: 0.545257
+  ...
+# Subtest: ribbon trail rebuild holds visibility while pipelines are pending
+ok 26 - ribbon trail rebuild holds visibility while pipelines are pending
+  ---
+  duration_ms: 3.261911
+  ...
+# Subtest: ribbon trail rebuild reveals once pipelines settle
+ok 27 - ribbon trail rebuild reveals once pipelines settle
+  ---
+  duration_ms: 0.605333
+  ...
+# Subtest: ribbon trail without a latch behaves as before
+ok 28 - ribbon trail without a latch behaves as before
+  ---
+  duration_ms: 0.498512
+  ...
+# ribbon-trail-head-glue: characterization + glue contract PASS
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/ribbon-trail-head-glue.test.mjs
+ok 4 - /workspace/spaceface-scratch/hillclimb-20260924h/test/ribbon-trail-head-glue.test.mjs
+  ---
+  duration_ms: 173.329101
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# WELL DISTORTION CALIBRATION (1280px UV peak; DistortionField envelope * 0.035)
+# radius 95 WU @ strength 240: gpu=0.1250 peak=5.60 px
+# radius 190 WU @ strength 240: gpu=0.2500 peak=11.20 px
+# radius 285 WU @ strength 240: gpu=0.3750 peak=16.80 px
+# strength 120 @ radius 190 WU: gpu=0.1250 peak=5.60 px
+# strength 240 @ radius 190 WU: gpu=0.2500 peak=11.20 px
+# strength 360 @ radius 190 WU: gpu=0.3750 peak=16.80 px
+# standard 190/240: 11.20 px (target 8–16)
+# bounded max gpu strength 0.4 → 17.92 px
+# FLAG PATH: visible only when settings.video.renderGraph === true (SpaceRenderGraph). Bloom/native never samples tDistortion.
+# FLAG/CAPTURE PATH: well refraction is SpaceRenderGraph-only. Enable settings.video.renderGraph (Settings: Render graph (GTAO + bloom)), 1280px shipping-camera capture, HUD hidden. activeWeaponRenderGraph() returns null when the flag is false, so the presenter detaches and the distortion pass never samples. Queue done still needs that capture.
+# Subtest: fields publish raw well distortion radius/strength and zero for non-wells
+ok 30 - fields publish raw well distortion radius/strength and zero for non-wells
+  ---
+  duration_ms: 4.795897
+  ...
+# Subtest: no well: zero live well records and the distortion pass stays asleep
+ok 31 - no well: zero live well records and the distortion pass stays asleep
+  ---
+  duration_ms: 46.397634
+  ...
+# Subtest: standard well: bounded localized refraction, monotone in radius and strength
+ok 32 - standard well: bounded localized refraction, monotone in radius and strength
+  ---
+  duration_ms: 14.675429
+  ...
+# Subtest: two wells plus live weapon haze accumulate in one graph pass
+ok 33 - two wells plus live weapon haze accumulate in one graph pass
+  ---
+  duration_ms: 16.260927
+  ...
+# Subtest: distortion restores autoClear if a later producer render throws
+ok 34 - distortion restores autoClear if a later producer render throws
+  ---
+  duration_ms: 11.417216
+  ...
+# Subtest: collapse clears the well producer and returns the pass to sleep
+ok 35 - collapse clears the well producer and returns the pass to sleep
+  ---
+  duration_ms: 10.024713
+  ...
+# Subtest: reduced motion produces no well distortion; reduced flash still admits wells
+ok 36 - reduced motion produces no well distortion; reduced flash still admits wells
+  ---
+  duration_ms: 17.345687
+  ...
+# Subtest: well producers stay preallocated and the render-graph flag path is explicit
+ok 37 - well producers stay preallocated and the render-graph flag path is explicit
+  ---
+  duration_ms: 9.810373
+  ...
+# Subtest: one-field attachDistortionField API still wakes a single producer
+ok 38 - one-field attachDistortionField API still wakes a single producer
+  ---
+  duration_ms: 8.979447
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: weapon lights are a dedicated pool and do not steal the six event lights
+ok 39 - weapon lights are a dedicated pool and do not steal the six event lights
+  ---
+  duration_ms: 41.642682
+  ...
+# Subtest: shield contact writes four bubble hit slots instead of a spark in empty space
+ok 40 - shield contact writes four bubble hit slots instead of a spark in empty space
+  ---
+  duration_ms: 16.179375
+  ...
+# Subtest: distortion is a graph pass and stays off when nothing is live
+ok 41 - distortion is a graph pass and stays off when nothing is live
+  ---
+  duration_ms: 13.901718
+  ...
+# Subtest: weapon depth binding follows the active graph route rather than a retained graph object
+ok 42 - weapon depth binding follows the active graph route rather than a retained graph object
+  ---
+  duration_ms: 0.215991
+  ...
+# Subtest: pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+ok 43 - pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+  ---
+  duration_ms: 18.162488
+  ...
+# Subtest: reduced-flash and reduced-motion keep the dash and contact mark, not haze
+ok 44 - reduced-flash and reduced-motion keep the dash and contact mark, not haze
+  ---
+  duration_ms: 21.861147
+  ...
+# Subtest: energy-card recipes never fall back to a cylinder identity
+ok 45 - energy-card recipes never fall back to a cylinder identity
+  ---
+  duration_ms: 0.311191
+  ...
+# Subtest: distortion encodes signed offsets around neutral and composite decodes them
+ok 46 - distortion encodes signed offsets around neutral and composite decodes them
+  ---
+  duration_ms: 12.769611
+  ...
+# Subtest: presenter clears stale depth and carries recipe pixel floors per bolt
+ok 47 - presenter clears stale depth and carries recipe pixel floors per bolt
+  ---
+  duration_ms: 13.348887
+  ...
+# Subtest: normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+ok 48 - normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+  ---
+  duration_ms: 2.299598
+  ...
+# Subtest: equal-depth bolts retain write order and a reused pool handles partial and full volleys
+ok 49 - equal-depth bolts retain write order and a reused pool handles partial and full volleys
+  ---
+  duration_ms: 1.082983
+  ...
+# Subtest: shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+ok 50 - shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+  ---
+  duration_ms: 9.420095
+  ...
+# Subtest: ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+ok 51 - ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+  ---
+  duration_ms: 0.364843
+  ...
+# Subtest: weapon ribbons stay on WebGL1-compatible uint16 indices
+ok 52 - weapon ribbons stay on WebGL1-compatible uint16 indices
+  ---
+  duration_ms: 1.990639
+  ...
+# Subtest: weapon pose and velocity preserve zero components
+ok 53 - weapon pose and velocity preserve zero components
+  ---
+  duration_ms: 8.252953
+  ...
+# Subtest: accessibility scales flash geometry and reproject keeps target-local marks
+ok 54 - accessibility scales flash geometry and reproject keeps target-local marks
+  ---
+  duration_ms: 8.584239
+  ...
+1..54
+# tests 54
+# suites 0
+# pass 54
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 611.067845

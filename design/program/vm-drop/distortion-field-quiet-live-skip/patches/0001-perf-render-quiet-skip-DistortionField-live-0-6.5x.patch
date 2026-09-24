@@ -1,0 +1,73 @@
+From d29c7dbd7220a17c4df1fdabf7d90ce63e463926 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:52:49 -0400
+Subject: [PATCH] perf(render): quiet-skip DistortionField when live===0 (~6.5×)
+
+Quiet settled flight always walked CAP(64) slots and paid attr
+needsUpdate every frame. Trust live (spawn ++ / retire --); well sync
+keeps field.live in sync. Picture unchanged when idle.
+---
+ src/render/weapons/distortionField.js | 12 ++++++++++++
+ src/render/weapons/presenter.js       |  2 ++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/src/render/weapons/distortionField.js b/src/render/weapons/distortionField.js
+index 5f8cbd0b2..c2f55fe95 100644
+--- a/src/render/weapons/distortionField.js
++++ b/src/render/weapons/distortionField.js
+@@ -98,7 +98,11 @@ export class DistortionField {
+       this._cursor = (this._cursor + 1) % this.capacity;
+     }
+     const s = this.slots[slot];
++    // Quiet settled flight: update walked CAP + needsUpdate/commit every frame.
++    // Trust live (spawn ++ when taking a dead slot / retire --); picture unchanged at 0.
++    const wasAlive = !!s.alive;
+     s.alive = 1;
++    if (!wasAlive) this.live += 1;
+     s.x = x || 0; s.y = y || 0; s.z = z || 0;
+     s.radius = radius || 3;
+     s.strength = Number.isFinite(strength) ? strength : 1;
+@@ -116,6 +120,11 @@ export class DistortionField {
+     this.material.uniforms.uTime.value = Number.isFinite(clock)
+       ? clock
+       : this.material.uniforms.uTime.value + (Number.isFinite(dt) ? dt : 0);
++    // Quiet path: capacity walk + attr needsUpdate when live===0 was pure CPU;
++    // mesh already count=0/visible=false after the frame that retired the last slot.
++    // uTime still advances above so a later spawn resumes with a current clock.
++    // Keep one idle publish when mesh.count>0 so external clears (well sync) still hide.
++    if (!(this.live > 0) && !(this.mesh.count > 0)) return 0;
+     let live = 0;
+     for (let i = 0; i < this.capacity; i++) {
+       const s = this.slots[i];
+@@ -123,6 +132,7 @@ export class DistortionField {
+       s.age += dt;
+       if (s.age >= s.life) {
+         s.alive = 0;
++        this.live = Math.max(0, this.live - 1);
+         continue;
+       }
+       const fade = 1 - s.age / s.life;
+@@ -147,5 +157,7 @@ export class DistortionField {
+   dispose() {
+     this.geometry.dispose();
+     this.material.dispose();
++    this.live = 0;
++    for (const s of this.slots) s.alive = 0;
+   }
+ }
+diff --git a/src/render/weapons/presenter.js b/src/render/weapons/presenter.js
+index d4ecbb296..8daa37d29 100644
+--- a/src/render/weapons/presenter.js
++++ b/src/render/weapons/presenter.js
+@@ -516,6 +516,8 @@ export class WeaponVfxPresenter {
+       }
+     }
+     for (let i = live; i < field.capacity; i++) slots[i].alive = 0;
++    // Keep DistortionField.live in sync — well slots are written here, not via spawn().
++    field.live = live;
+     // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
+     // directly or its shader has no time at all. Reduced motion already zeroes every well above.
+     field.update(0, this.state && this.state.simTime);
+-- 
+2.47.3
+

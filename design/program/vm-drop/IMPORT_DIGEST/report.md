@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bd (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24be (post-import hillclimb)
 
-Master tip: **`273f8bad7`** (fetched; unchanged from #92).
+Master tip: **`273f8bad7`** (fetched; unchanged from #94).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924i` on `origin/master` @ `273f8bad7`;
-through #92 @ `bbd35c7e7`; +#93–#94 measured on stacked tip @ `a8c75e836`. Profile
+through #94 @ `a8c75e836`; +#95–#97 measured on stacked tip @ `d29c7dbd7`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -81,6 +81,9 @@ cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through
 | 92 | `particles-idle-commit-skip` |
 | 93 | `weapon-discharge-quiet-active-skip` |
 | 94 | `plasma-stream-cold-reset-skip` |
+| 95 | `hull-scorch-quiet-live-skip` |
+| 96 | `distortion-field-quiet-live-skip` |
+| 97 | `weapon-ribbon-quiet-live-skip` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -137,7 +140,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), spaceBg (hold), feel speed-lines / hot plasma residual
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), spaceBg (hold), feel speed-lines / hot plasma residual
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -146,18 +149,19 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 93 | `weapon-discharge-quiet-active-skip` | Portable quiet `WeaponDischargePool.update` when activeCount===0 **~6.7×** median (48 slots × 200k; floor minSpeedup ≥4.86×). Focused weapon-source+force-language+muzzle+wave-a7 36/36. Soft-GPU fps not claimed. |
+| 95 | `hull-scorch-quiet-live-skip` | Portable quiet `HullScorchPool.update` when live===0 **~5.3×** median (32 slots × 200k; floor minSpeedup ≥5.32×). Focused weapon-vfx+well+impact+ribbon 54/54. Soft-GPU fps not claimed. |
+| 96 | `distortion-field-quiet-live-skip` | Portable quiet `DistortionField.update` when live===0 **~6.5×** median (64 slots × 200k; floor minSpeedup ≥5.70×). Well sync keeps field.live in sync. Focused 54/54. Soft-GPU fps not claimed. |
+| 97 | `weapon-ribbon-quiet-live-skip` | Portable quiet `WeaponRibbonPool.update` when live===0 **~65×** median (256 slots × 200k; floor minSpeedup ≥59.4×). Focused 54/54. Soft-GPU fps not claimed. |
 | 94 | `plasma-stream-cold-reset-skip` | Portable quiet `PlasmaStreamSystem.update` when already cold + !commanded **~3.3×** median (200k; floor minSpeedup ≥2.81×). Focused plasma+thruster+contrail+retro 62/62. Soft-GPU fps not claimed. |
-| 92 | `particles-idle-commit-skip` | Portable quiet `_integrateParticles` idle commit republish skip **~2.31×** median (7-binding commit × 200k; floor minSpeedup ≥2.20×). Focused vfx save/restore+quarks+transients 15/15. Soft-GPU fps not claimed. |
-| 91 | `persistent-beams-quiet-active-skip` | Portable quiet `PersistentCombatBeamPool.update` when active===0 **~3.67×** median (16 slots × 300k; floor minSpeedup ≥3.09×). Focused beam pool 4/4. Soft-GPU fps not claimed. |
-| 90 | `phased-explosion-quiet-active-skip` | Portable quiet `PhasedExplosionLifecycle.update` when active===0 **~6.96×** median (40 slots × 200k; floor minSpeedup ≥6.15×). Focused explosion+impact+killed 34/34. Soft-GPU fps not claimed. |
+| 93 | `weapon-discharge-quiet-active-skip` | Portable quiet `WeaponDischargePool.update` when activeCount===0 **~6.7×** median (48 slots × 200k; floor minSpeedup ≥4.86×). Focused weapon-source+force-language+muzzle+wave-a7 36/36. Soft-GPU fps not claimed. |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| WeaponDischargePool quiet activeCount===0 skip (48-slot walk + begin/end commit(0)) | **shipped #93 ~6.7×** |
-| PlasmaStream already-cold !commanded skip (envelope + repeated reset()) | **shipped #94 ~3.3×** |
+| HullScorchPool quiet live===0 skip (32-slot walk + 5-attr commit(0)) | **shipped #95 ~5.3×** |
+| DistortionField quiet live===0 skip (64-slot walk + needsUpdate; well live sync) | **shipped #96 ~6.5×** |
+| WeaponRibbonPool quiet live===0 skip (256 linger + _writeVertices) | **shipped #97 ~65×** |
 | (held poles not casually retried — see SKIP / hold) | — |
 
 ## Rock audit (unchanged)
@@ -166,11 +170,11 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97
    (syncEntityViews residual closures / ordnance / microMotion; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg / feel
-   speed-lines / hot-drive plasma residual).
+   speed-lines / hot-drive plasma residual; weapon lights / bolts quiet residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual; rock visit context-only held ~1.09×).
 3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88
