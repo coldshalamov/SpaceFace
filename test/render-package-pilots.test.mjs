@@ -17,6 +17,7 @@ import {
   buildAuthoredPlaceProp,
   disposePreparedAuthoredBoundary,
   endAuthoredInstanceMeshDisposeRegistrationProbe,
+  inspectAuthoredBoundaryRegistrations,
   invalidatePartsLibraryCaches,
   preloadAuthoredPartLibrary,
   prepareAuthoredInstancePoolsForContextLoss,
@@ -549,7 +550,10 @@ test('production render-package instances bypass runtime geometry preparation on
     throw new Error('production package geometry must not be cloned at runtime');
   };
   const material = new THREE.MeshStandardMaterial({ color: 0x7a7168 });
-  const tags = Object.freeze({ lod: 'lod0', tint: 'none', instance: true });
+  // instance:false is the authored opt-out a real package uses for surfaces that must stay
+  // direct meshes — batch-eligible primitives legitimately go through the static-batch merge now,
+  // so the immutable-decoded-buffer contract is pinned on a surface production keeps direct.
+  const tags = Object.freeze({ lod: 'lod0', tint: 'none', instance: false });
   let instances = 0;
   const record = {
     url: 'assets/ships/release/parts/places/place_debris_chunk.glb',
@@ -944,27 +948,27 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
   let stagedRoot = null;
   let failingGeometry = null;
   let restoreGeometryDispose = null;
-  let failingNavObject = null;
-  let restoreNavObjectDispose = null;
-  let navObjectDisposeAttempts = 0;
+  let failingInstance = null;
+  let restoreInstanceDispose = null;
+  let navLightMaterial = null;
+  let instanceDisposeAttempts = 0;
   let fallbackNavMaterialDisposals = 0;
-  let staleNavObjectDisposals = 0;
-  let staleGeometryDisposals = 0;
-  let preparedRootWasContextVisible = false;
-  let failedResourcesWereContextVisible = false;
+  let navMaterialDisposeListenerCalls = 0;
+  let geometryDisposeListenerCalls = 0;
   let detachedContextListeners = 0;
-  const contextDisposeListener = (event) => {
-    if (event.target === failingNavObject) staleNavObjectDisposals++;
-  };
+  const contextDisposeListener = () => {};
   const geometryContextDisposeListener = (event) => {
-    if (event.target === failingGeometry) staleGeometryDisposals++;
+    if (event.target === failingGeometry) geometryDisposeListenerCalls++;
+  };
+  const navMaterialContextDisposeListener = (event) => {
+    if (event.target === navLightMaterial) navMaterialDisposeListenerCalls++;
   };
   Object.defineProperty(geometryContextDisposeListener, 'name', { configurable: true, value: 'r' });
   captureSimulatedRendererInstancedMeshDisposeRegistration(
     renderer,
     scene,
     contextDisposeListener,
-    { geometry: geometryContextDisposeListener },
+    { geometry: geometryContextDisposeListener, material: navMaterialContextDisposeListener },
   );
   const options = {
     releaseMode: true,
@@ -972,27 +976,44 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
     bootstrapPlan: {},
     loadAuthoredPart: async () => fixture.record,
     prepareAuthoredPipelines: async (subject) => {
-      if (!subject?.isGroup) return { skipped: false };
+      if (!subject?.isGroup || stagedRoot) return { skipped: false };
       stagedRoot = subject;
       const boundsProxy = subject.getObjectByName('GLTFKit_BoundsProxy');
       failingGeometry = boundsProxy?.geometry || null;
       assert.ok(failingGeometry);
+      // Fallback nav lights are two plain meshes on the shared resident sphere geometry — a
+      // per-ship InstancedMesh would owe a fresh instanceMatrix upload inside the round. The
+      // owner-local leg they contribute is the shared cloned accent material; the disposable
+      // object leg is the render-package instance itself.
       const fallbackNavLights = subject.getObjectByName('GLTFKit_Nav_Lights');
-      assert.ok(fallbackNavLights?.isInstancedMesh,
-        'a whole-ship package without authored nav tags uses the owner-local fallback light material');
-      fallbackNavLights.addEventListener('dispose', contextDisposeListener);
+      assert.ok(
+        fallbackNavLights?.isGroup
+          && fallbackNavLights.children.length === 2
+          && fallbackNavLights.children.every((light) => (
+            light.isMesh && light.userData?.damageRole === 'navLight'
+          )),
+        'a whole-ship package without authored nav tags uses the owner-local fallback light material',
+      );
+      navLightMaterial = fallbackNavLights.children[0].material;
+      assert.ok(fallbackNavLights.children.every((light) => light.material === navLightMaterial),
+        'both fallback nav lights share one owner-local material');
+      subject.traverse((object) => {
+        const instance = object.userData?.renderPackageInstance;
+        if (instance && !failingInstance) failingInstance = instance;
+      });
+      assert.ok(failingInstance, 'the prepared whole-ship owns its render-package instance');
       failingGeometry.addEventListener('dispose', geometryContextDisposeListener);
-      failingNavObject = fallbackNavLights;
-      restoreNavObjectDispose = fallbackNavLights.dispose.bind(fallbackNavLights);
-      fallbackNavLights.dispose = () => {
-        navObjectDisposeAttempts++;
-        if (navObjectDisposeAttempts === 1) {
-          throw new Error('injected preparing ship object cleanup refusal');
+      navLightMaterial.addEventListener('dispose', navMaterialContextDisposeListener);
+      restoreInstanceDispose = failingInstance.dispose.bind(failingInstance);
+      failingInstance.dispose = () => {
+        instanceDisposeAttempts++;
+        if (instanceDisposeAttempts === 1) {
+          throw new Error('injected preparing ship instance cleanup refusal');
         }
-        return restoreNavObjectDispose();
+        return restoreInstanceDispose();
       };
-      const originalNavMaterialDispose = fallbackNavLights.material.dispose.bind(fallbackNavLights.material);
-      fallbackNavLights.material.dispose = () => {
+      const originalNavMaterialDispose = navLightMaterial.dispose.bind(navLightMaterial);
+      navLightMaterial.dispose = () => {
         fallbackNavMaterialDisposals++;
         originalNavMaterialDispose();
       };
@@ -1027,31 +1048,35 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
       'a failed PREPARING cleanup remains owned by the boundary journal');
     assert.equal(stagedRoot.children.length, 0,
       'cleanup exhausts later graph teardown even though one resource disposer failed');
+    // Registry detachment is unconditional on cleanup failure (PQ-033.02): a throwing dispose
+    // must not pin the boundary and its whole prepared tree in preparedAuthoredRoots forever.
+    // The boundary's parked disposer — not the context-loss registry — carries the retry journal.
+    assert.equal(inspectAuthoredBoundaryRegistrations(scene, boundary).preparedRoots, 0,
+      'the cleanup-blocked prepared ship still releases its prepared-roots registry entry');
     const contextReceipt = detachPreparedContextLossResources(scene, renderer);
-    preparedRootWasContextVisible = contextReceipt.roots.includes(stagedRoot);
-    failedResourcesWereContextVisible = contextReceipt.roots.includes(failingNavObject)
-      && contextReceipt.roots.includes(failingGeometry);
     detachedContextListeners = contextReceipt.listenersDetached;
-    assert.equal(preparedRootWasContextVisible, true,
-      'the detached authored root remains discoverable after a cleanup-blocked graph clear');
-    assert.equal(failedResourcesWereContextVisible, true,
-      'failed owner-local resources remain explicit context-loss roots after graph teardown');
-    assert.equal(detachedContextListeners, 2,
-      'context loss detaches exact object and geometry callbacks from the blocked prepared owner');
-    assert.equal(staleNavObjectDisposals, 0);
-    assert.equal(staleGeometryDisposals, 0);
-    assert.equal(navObjectDisposeAttempts, 1);
+    assert.equal(contextReceipt.roots.includes(stagedRoot), false,
+      'the released prepared root is no longer a context-loss discovery root');
+    assert.equal(detachedContextListeners, 0,
+      'no stale callbacks are detached once the failed prepared tree leaves the registry');
+    assert.equal(instanceDisposeAttempts, 1);
     assert.equal(fallbackNavMaterialDisposals, 1,
       'owner-local fallback material cleanup is not skipped by an earlier resource failure');
+    assert.equal(navMaterialDisposeListenerCalls, 1,
+      'the owner-local material still delivers its live dispose listener');
+    assert.equal(geometryDisposeListenerCalls, 0,
+      'the refused geometry disposal never dispatched');
 
     failingGeometry.dispose = restoreGeometryDispose;
     assert.equal(await disposePreparedAuthoredBoundary(boundary), true);
     assert.equal(stagedRoot.children.length, 0);
-    assert.equal(navObjectDisposeAttempts, 2);
+    assert.equal(instanceDisposeAttempts, 2,
+      'the journaled cleanup retries only the legs that failed');
     assert.equal(fallbackNavMaterialDisposals, 1,
       'retrying the failed journal does not redispose resources that already completed cleanup');
-    assert.equal(staleNavObjectDisposals, 0);
-    assert.equal(staleGeometryDisposals, 0);
+    assert.equal(navMaterialDisposeListenerCalls, 1);
+    assert.equal(geometryDisposeListenerCalls, 1,
+      'the restored geometry dispose still delivers its live listener once');
     assert.equal(boundary.userData.__disposePreparedAuthoredBoundary, undefined);
     scene.remove(boundary);
   } finally {
@@ -1444,19 +1469,28 @@ test('package pool allocation failure leaves the accepted first surface direct a
   try {
     const first = await admitPackageShip('package-failure-a', 0, renderer, scene, options);
     const firstEligible = authoredPackageInstance(first).nodes.get('eligible');
-    const descriptor = Object.getOwnPropertyDescriptor(fixture.geometry, 'uuid');
-    let reads = 0;
-    Object.defineProperty(fixture.geometry, 'uuid', {
-      configurable: true,
-      get() {
-        reads++;
-        if (reads === 3) throw new Error('injected second-slot allocation failure');
-        return descriptor.value;
-      },
-    });
-    const failed = await requestPackageShip('package-failure-b', 40, renderer, scene, options);
-    Object.defineProperty(fixture.geometry, 'uuid', descriptor);
+    // Refuse the second owner's 'removed' release registration — the last commit inside
+    // allocateInstance, after its slot and zero matrix are already written. The promotion
+    // transaction must roll back the detached chunk it just created (and the first owner's
+    // committed slot) without suppressing the accepted direct mesh.
+    const failed = startPackageShip('package-failure-b', 40, renderer, scene, options);
+    let releaseRegistrationRefused = false;
+    const boundaryAddEventListener = failed.addEventListener.bind(failed);
+    failed.addEventListener = (type, listener) => {
+      if (type === 'removed' && !releaseRegistrationRefused) {
+        releaseRegistrationRefused = true;
+        throw new Error('injected second-slot allocation failure');
+      }
+      return boundaryAddEventListener(type, listener);
+    };
+    for (let turn = 0; turn < 80
+      && !['authored', 'unavailable'].includes(failed.userData.authoredAssetState); turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    failed.addEventListener = boundaryAddEventListener;
 
+    assert.equal(releaseRegistrationRefused, true,
+      'the second owner reached pool-slot release registration');
     assert.equal(failed.userData.authoredAssetState, 'unavailable');
     assert.equal(firstEligible.isMesh, true, 'failed repetition never suppresses the accepted direct mesh');
     assert.equal(firstEligible.visible, true);
@@ -1661,7 +1695,7 @@ test('removing one owner during package pool admission restores the live direct 
   }
 });
 
-test('deferred pool retirement remains discoverable and retryable after object cleanup refusal', async () => {
+test('deferred pool retirement drains clean after object cleanup refusal', async () => {
   const renderer = {};
   const scene = new THREE.Scene();
   const dynamicBuffers = createDynamicBufferCoordinator(scene);
@@ -1715,17 +1749,26 @@ test('deferred pool retirement remains discoverable and retryable after object c
     scene.remove(pending);
     poolPreparation.resolve();
     const receipt = await pending.userData.authoredUpgradePromise;
-    assert.ok(receipt.error instanceof AggregateError);
-    assert.match(receipt.error.message, /cleanup failed/i);
+    // The detached-owner commit runs the parked disposer once and reports its cleanup refusal on
+    // the warning channel; the admission error handler then drains the same journal, finds no
+    // retryable leg left (the chunk is already retired), and lets the job settle as 'unavailable'.
+    assert.equal(receipt.status, 'unavailable');
+    assert.equal(pending.userData.authoredAssetState, 'unavailable');
     assert.equal(disposeAttempts, 1);
-    assert.ok(detachPreparedContextLossResources(scene, renderer).roots.includes(exactTarget),
-      'a failed retired target remains registered for context-loss listener detachment');
+    // Chunk retirement is deliberately unconditional (PQ-033.02): a failed GPU-side dispose must
+    // still release retiringChunks, or a half-finalized chunk pins itself — and the boundary that
+    // owns it — forever. The retired chunk can never be re-finalized, so no journal remains parked.
+    assert.equal(detachPreparedContextLossResources(scene, renderer).roots.includes(exactTarget), false,
+      'a cleanup-blocked retired chunk still leaves the context-loss registry');
     assert.equal(dynamicBuffers.getDiagnostics().registeredOwners, 0,
-      'successful earlier cleanup steps are retained while only the failed object disposal retries');
-    assert.equal(typeof pending.userData.__disposePreparedAuthoredBoundary, 'function');
+      'successful earlier cleanup steps are retained while only the failed object disposal is refused');
+    assert.equal(pending.userData.__disposePreparedAuthoredBoundary, undefined,
+      'the drained journal self-deletes once no retryable cleanup leg remains');
 
-    assert.equal(await disposePreparedAuthoredBoundary(pending), true);
-    assert.equal(disposeAttempts, 2);
+    assert.equal(await disposePreparedAuthoredBoundary(pending), false,
+      'no parked disposer survives a drain that left nothing to retry');
+    assert.equal(disposeAttempts, 1,
+      'a registry-released retired chunk is never re-finalized');
     assert.equal(detachPreparedContextLossResources(scene, renderer).roots.includes(exactTarget), false);
     assert.equal(pending.userData.__disposePreparedAuthoredBoundary, undefined);
     scene.remove(current);
@@ -1879,6 +1922,52 @@ async function requestPackageShip(id, x, renderer, scene, options) {
   return boundary;
 }
 
+// Mirrors directAuthoredAdmissionSubstrate() in src/render/visualOverrides.js — the mount a real
+// render-package pilot receives: a zero-draw ownership slot plus one shared abstract resolving
+// marker. The live compose gate (mayComposeAuthoredShipLive) deliberately refuses a readable
+// procedural hull — a second authored identity must never pop over a body the player is already
+// reading — so a fixture that mounts a visible box hull settles 'procedural-settled' before the
+// package pipeline runs, while the real substrate admits the authored body directly.
+const PACKAGE_SUBSTRATE_MARKER_GEOMETRY = new THREE.OctahedronGeometry(1, 0);
+PACKAGE_SUBSTRATE_MARKER_GEOMETRY.userData.spacefaceSharedAsset = true;
+const PACKAGE_SUBSTRATE_MARKER_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0x39496b,
+  emissive: 0x2b4a72,
+  emissiveIntensity: 0.6,
+  roughness: 0.9,
+  metalness: 0.05,
+  transparent: true,
+  opacity: 0.5,
+  depthWrite: false,
+});
+PACKAGE_SUBSTRATE_MARKER_MATERIAL.userData.spacefaceSharedAsset = true;
+
+function directAdmissionSubstrateFor(entity) {
+  const root = new THREE.Group();
+  root.name = `${entity.data.defId}_DirectAuthoredAdmission`;
+  root.visible = false;
+  root.userData.kind = 'ship';
+  root.userData.authoredAdmissionSubstrate = true;
+  const marker = new THREE.Mesh(PACKAGE_SUBSTRATE_MARKER_GEOMETRY, PACKAGE_SUBSTRATE_MARKER_MATERIAL);
+  marker.name = 'AuthoredResolvingMarker';
+  const radius = Math.max(4, Number.isFinite(entity.radius) ? entity.radius : 6);
+  marker.scale.set(radius * 1.7, radius * 0.3, radius * 0.85);
+  marker.userData.spacefaceSharedAsset = true;
+  marker.userData.authoredResolvingMarker = true;
+  root.add(marker);
+  root.userData.resolvingMarker = marker;
+  root.userData.authoredResolvingMarker = true;
+  root.userData.authoredAdmissionTemporaryDrawables = 1;
+  root.userData.shipConstruction = 'authored-direct';
+  root.userData.assetId = 'DIRECT_AUTHORED_ADMISSION';
+  root.userData.renderContract = {
+    assetBoundary: 'resident authored identity admission substrate',
+    gracefulFallback: false,
+    temporaryDrawables: 1,
+  };
+  return root;
+}
+
 function startPackageShip(id, x, renderer, scene, options, requestOptions = {}) {
   const entity = {
     id,
@@ -1894,11 +1983,7 @@ function startPackageShip(id, x, renderer, scene, options, requestOptions = {}) 
       sectorId: 'sector_helios_prime',
     },
   };
-  const fallback = new THREE.Group();
-  const fallbackHull = new THREE.Group();
-  fallbackHull.add(new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.5), new THREE.MeshBasicMaterial()));
-  fallback.add(fallbackHull);
-  fallback.userData.hull = fallbackHull;
+  const fallback = directAdmissionSubstrateFor(entity);
   const boundary = wrapShipWithAuthoredParts(entity, fallback, options);
   entity.mesh = boundary;
   boundary.position.x = x;

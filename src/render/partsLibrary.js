@@ -7212,7 +7212,15 @@ function instantiateFlightRootTemplate(
     const objectMaterials = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
       : EMPTY_ARRAY;
-    for (const material of objectMaterials) if (material) ownerLocalMaterials.add(material);
+    for (const material of objectMaterials) {
+      // Package subtrees recreated through instantiateRenderPackagePart carry the fleet-shared
+      // authored variants — the same spacefaceSharedAsset exclusion the fresh-compose path applies
+      // when it builds ownerLocalMaterials. A failed sibling's cleanup must never dispose a shared
+      // material that live ships are still drawing.
+      if (material && material.userData?.spacefaceSharedAsset !== true) {
+        ownerLocalMaterials.add(material);
+      }
+    }
     const instance = object.userData?.renderPackageInstance;
     if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
   });
@@ -9402,7 +9410,10 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
     await prepareRenderPackagePoolAdmission(admission, options);
     activateRenderPackagePoolAdmission(admission);
   }).catch((error) => {
-    try { console.warn('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    // A mid-preparation cancellation is the owner-gone race, not a defect — keep it off the
+    // warning channel the same way the boundary path classifies 'owner became inactive'.
+    const log = admission && admission.cancelled === true ? console.info : console.warn;
+    try { log.call(console, '[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
   });
 }
 
@@ -9496,7 +9507,16 @@ function prepareRenderPackagePoolAdmission(admission, options) {
   }
   if (admission.prepared) return Promise.resolve(admission.result);
   if (!admission.preparation) {
-    admission.preparation = prepareAuthoredVisualPipelines(admission.target, options).then((result) => {
+    const ownerIsActive = options && options.isResidencyOwnerActive;
+    admission.preparation = prepareAuthoredVisualPipelines(admission.target, {
+      ...options,
+      // A cancelled admission is a dead owner for this exact target: let an in-flight compile
+      // settle, but never let it start a residency upload the retired chunk can never use. The
+      // between-stage assert in prepareAuthoredVisualPipelines is the same abort the boundary's
+      // entity-level predicate already drives.
+      isResidencyOwnerActive: () => admission.cancelled !== true
+        && (typeof ownerIsActive !== 'function' || ownerIsActive() === true),
+    }).then((result) => {
       admission.result = result;
       admission.prepared = !admission.cancelled;
       return result;
@@ -9504,6 +9524,13 @@ function prepareRenderPackagePoolAdmission(admission, options) {
       // A later repeated root may retry the same still-hidden exact target. The already-live first
       // direct mesh remains untouched until one preparation succeeds.
       admission.preparation = null;
+      // Cancellation mid-preparation is the chunk retiring, not a pipeline defect: the boundary
+      // that shares this admission may be a live ship whose eligible mesh stays direct, so the
+      // preparation resolves as skipped — the same verdict the entry check above returns when
+      // cancellation lands before any GPU work starts.
+      if (admission.cancelled === true) {
+        return { skipped: true, reason: 'package pool admission cancelled' };
+      }
       throw error;
     });
   }
