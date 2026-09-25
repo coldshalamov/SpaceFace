@@ -937,6 +937,13 @@ export const onboarding = {
       return;
     }
     this._onBeatEvent('mission:accepted', payload);
+    // The rail yields to real work: an accepted contract that is not the dock beat's own
+    // recommended first-trade offer ends the tutorial through the same _finish() the choice
+    // beat's accept uses, so the objective slot follows the job the player actually took and
+    // the n/12 status retires instead of pinning a stale beat for the rest of the run.
+    if (ob.active && !ob.finished && payload.source !== FIRST_TRADE_CONTRACT_SOURCE) {
+      this._finish();
+    }
   },
 
   _onMissionCompleted(payload) {
