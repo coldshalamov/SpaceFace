@@ -3840,6 +3840,14 @@ agents), 2026-09-25:** frame p50 44–78 ms, longest 0.5–3.4 s; 54–74 % of b
 they enter the screen, late ones 1–8 s; 9–19 shader links per 60 s flight, all behind the hide
 latch (pop-in, not in-frame hitch). Long pole: the serial authored composition lane (ledger D38).
 
+**End of 2026-09-25, same laptop (CPU 99 % busy from other agents):** in-flight shader links 19 →
+4–8, links inside a drawn frame 0 in every run since fe6dfd778 (the first-thrust freeze), on-time
+appearance 0.58–0.87 with 0 late arrivals in the best runs, buffer uploads ~242 → ~21 KB per frame.
+Frame times on this host swing ±50 % run to run and are not evidence either way; a 1.8–2.8 s frame
+with zero in-frame links still occurs — next: `--cpu-profile` on a quieter host to name it. Other
+next cuts named by the profile: `_publishAssetResidencyDiagnostics` → `canonicalDiagnostics`
+(~0.8 s per flight, rebuilt every 0.25 s poll — memoize on a residency mutation epoch).
+
 | # | System | What exists | Gap | Next |
 |---|---|---|---|---|
 | 1 | Fixed shader catalogue, prepared at startup | Material ABI metadata (`materialAbi.js`, `sharedMaterialRoles.js`); boot precompile; in-session program-binary cache; the desktop app's Chromium GPU shader disk cache is live (verified 2026-09-25: 11 MB in `%APPDATA%/spaceface/GPUCache`), so repeat launches reuse prepared shaders | Program identity still varies per material: measured in-flight links differ from an existing program by one parameter — dithering, one texture slot present/absent, side (Front vs Double), clearcoat, alphaTest | LANDED 2026-09-25 (`programCanon.js`): authored PBR materials get neutral 1×1 textures in empty slots and dithering on before admission; A/B in-flight links 17→13 and 13→11, on-time 62→81 % and 47→78 %. Residual variants: side (Front vs Double), clearcoat, alphaTest, instancing — need a perf call. Then a check that fails on a new in-flight program |
