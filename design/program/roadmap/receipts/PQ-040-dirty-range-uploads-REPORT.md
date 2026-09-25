@@ -1248,3 +1248,38 @@ PQ-040 remains `acceptance: unproven`. Broker-managed evidence is still required
 
 The implemented stage is dependency-ready for PERF-07 architecture work. It is not claim-ready for terminal PERF-06
 acceptance: **dependency-ready is not claim-ready**.
+
+## Update 2026-09-25 — first clean matched measurement (browser diagnostic)
+
+A full browser diagnostic on candidate `ff171c034` (`.devshots/perf/dirty-ranges/browser/
+performance-dirty-ranges-browser-2026-09-25T10-00-32-541Z-20248-6ac6932d/`) completed both windows on
+a quiet host with zero warnings, zero page/GL/console errors, and quiet activity censuses at both
+boundaries. The comparator returned `failures: []` with:
+
+- driver-level upload bytes per logical byte: **6.42 ranged vs 19.72 full-span → 67.4% reduction**
+  (gate: ≥25%);
+- owner-requested upload bytes per logical byte: **1.05 ranged vs 15.34 full-span → 93.2%
+  reduction**;
+- settings identical at both window boundaries (hit-stop `timeScale` edges are transient runtime
+  state, now excluded from the settings gate and settled before the end slice);
+- no post-boot shader links, shader compiles, or render-target allocations inside either window.
+
+Getting there required three real runtime/probe fixes that the contaminated runs exposed:
+
+1. **PMREM bake size pin** (`376adf947`, `ff171c034`): `fromEquirectangular` sized the env output
+   from the input width, so the foundry-HDRI promotion (unfreeze or context-restore re-bake)
+   changed `envMapCubeUVHeight` in every lit material's program key — a mass re-link observed as a
+   2735 ms `bloomScene` brick on parallax/quarks materials. All IBL sources now bake through one
+   fixed-size scene capture (`IBL_PMREM_CUBE_SIZE = 256`, the card rig's tuned tap ceiling).
+2. **Authored-admission stall watchdog** (`c23188f4c`): a wedged in-flight job (e.g. the 82 MB
+   `critical-hub` decode) previously held the serial lane forever, starving queued ship admissions.
+   Once every unreleased in-flight job is provably stale (120 s+), one queued still-needed ship is
+   hoisted past the hog; the hog's diagnostic closes as `stalled-slot-released` while its real slot
+   accounting stays truthful.
+3. **Host-saturation census leg** (`b0e47c7ea`, `ff171c034`): the acceptance environment check now
+   measures per-process CPU for non-Idle-priority processes, so generic agent churn blocks
+   acceptance while deprioritized housekeeping (e.g. a background `git gc`) does not.
+
+Still open for claim-readiness: a brokered **browser acceptance** launch on this candidate line
+(the manifest caps launches at one per candidate; earlier launches burned on env-blocked censuses),
+and the paired **Electron acceptance** on the same candidate.

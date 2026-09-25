@@ -272,6 +272,30 @@ export async function incrementCandidateLaunchCount(outputRoot, candidateDigest)
   return next.byCandidate[candidateDigest];
 }
 
+/**
+ * Release one reserved launch for a candidate. Used to refund the quota
+ * reservation when an issued claim's probe exited at the pre-launch
+ * environment census — that host-contention check runs before any
+ * measurement exists, so it must not burn the candidate's launch budget.
+ */
+export async function decrementCandidateLaunchCount(outputRoot, candidateDigest) {
+  if (!candidateDigest) return 0;
+  const previous = await readPersistedLaunchCounts(outputRoot);
+  const prior = Number(previous.byCandidate[candidateDigest]) || 0;
+  const nextCount = Math.max(0, prior - 1);
+  const next = {
+    schema: 'spaceface.validation-launch-counts.v1',
+    currentCandidateDigest: previous.currentCandidateDigest ?? candidateDigest,
+    byCandidate: {
+      ...(previous.byCandidate ?? {}),
+      [candidateDigest]: nextCount,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJsonAtomically(path.join(outputRoot, LAUNCH_COUNTS_NAME), next);
+  return nextCount;
+}
+
 function brokerClaimConsumedSentinelPath(claimPath) {
   return `${claimPath}.consumed`;
 }
@@ -2592,7 +2616,13 @@ async function runProbeProcess({
     // failure: it fires before any measurement exists, so persisting it as a
     // primary failure would wedge the manifest behind a regression-digest
     // change no code fix can satisfy. Leave any prior failure record intact.
-    const primaryAcceptance = !isDiagnostic && !isEnvironmentBlockedProbeError(errorText);
+    // For the same reason, refund the launch-count reservation minted with the
+    // claim — the quota bounds measured launches, not contested-host preflights.
+    const envBlocked = isEnvironmentBlockedProbeError(errorText);
+    if (envBlocked && !isDiagnostic) {
+      await decrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
+    }
+    const primaryAcceptance = !isDiagnostic && !envBlocked;
     const identity = manifest.normalizeFailure({
       runtimeKind: manifest.runtimeKind,
       phase: isDiagnostic ? 'diagnostic-probe' : 'acceptance-probe',
