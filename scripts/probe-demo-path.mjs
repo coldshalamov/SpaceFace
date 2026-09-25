@@ -466,7 +466,7 @@ try {
     }, null, { timeout: 240_000 });
     await page.waitForFunction(() => Number.isFinite(window.SF.state.render
       && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
-    return page.evaluate(() => ({ credits: window.SF.state.economy.credits, simTime: +window.SF.state.simTime.toFixed(1) }));
+    return page.evaluate(() => ({ credits: window.SF.state.player.credits, simTime: +window.SF.state.simTime.toFixed(1) }));
   });
 
   // ------------------------------------------- in-page adventure helpers (real seams only)
@@ -564,7 +564,7 @@ try {
         const bp = best && (best.pos || best);
         return best ? { id: best.id, x: bp.x, z: bp.z, d: +bd.toFixed(0) } : null;
       },
-      credits: () => window.SF.state.economy.credits,
+      credits: () => window.SF.state.player.credits,
     };
   });
 
@@ -699,7 +699,7 @@ try {
     if (!alreadyDocked) await dockAt(destId);
     // The settle may already have landed during an emergency dock inside the transit leg.
     await page.waitForFunction(() => window.__SF_DEMO_PAID__ != null, null, { timeout: 30_000 });
-    return page.evaluate(() => ({ paid: window.__SF_DEMO_PAID__, credits: window.SF.state.economy.credits }));
+    return page.evaluate(() => ({ paid: window.__SF_DEMO_PAID__, credits: window.SF.state.player.credits }));
   });
 
   // ---------------------------------------------------------------- step 10: fit one upgrade at a shipyard, fly out
@@ -711,7 +711,7 @@ try {
       const st = window.SF.state;
       const shipIndex = st.player.activeShipIndex | 0;
       const ship = st.player.ownedShips[shipIndex];
-      const credits = st.economy.credits;
+      const credits = st.player.credits;
       // Cheapest affordable def that fills an empty slot; prefer the Swing Drive first-haul toy.
       return window.SF.bus && (async () => {
         const { MODULES } = await import('/src/data/modules.js');
@@ -722,14 +722,29 @@ try {
         const candidates = Object.values(MODULES)
           .map((def) => ({ def, offer: (def.shopOffers && def.shopOffers.station_helios) || { price: def.price } }))
           .filter((c) => c.def && c.def.id && Number.isFinite(c.offer.price) && c.offer.price <= credits)
+          // A free stock part is a swap, not an upgrade: paid parts first, stock only as a fallback.
           .sort((a, b) => (a.def.id === 'mod_swing_drive_s' ? -1 : 0) - (b.def.id === 'mod_swing_drive_s' ? -1 : 0)
+            || (a.offer.price > 0 ? 0 : 1) - (b.offer.price > 0 ? 0 : 1)
             || a.offer.price - b.offer.price);
+        // A starter hull arrives fully fitted, so a real first upgrade is a swap: fitModule returns
+        // the displaced part to the hold. Prefer an empty slot; never "upgrade" to the same part.
+        const fittedId = (i) => {
+          const f = fittings[i];
+          return f && typeof f === 'object' ? f.defId : f || null;
+        };
+        const pickSlot = (def) => {
+          const empty = slots.findIndex((slot, i) => !fittedId(i) && fits(slot, def));
+          if (empty >= 0) return empty;
+          return slots.findIndex((slot, i) => fittedId(i) !== def.id && fits(slot, def));
+        };
         for (const c of candidates) {
-          const idx = slots.findIndex((slot, i) => !fittings[i] && fits(slot, c.def));
+          const idx = pickSlot(c.def);
           if (idx >= 0) {
             const before = credits;
             window.SF.bus.emit('ui:buyModule', { defId: c.def.id, fitSlotIndex: idx, shipIndex });
-            return { defId: c.def.id, price: c.offer.price, slot: idx, creditsBefore: before, creditsAfter: window.SF.state.economy.credits };
+            // A refused buy (research lock, fit blocker) charges nothing — try the next part.
+            if (c.offer.price > 0 && window.SF.state.player.credits >= before) continue;
+            return { defId: c.def.id, price: c.offer.price, slot: idx, creditsBefore: before, creditsAfter: window.SF.state.player.credits };
           }
         }
         return null;
