@@ -804,7 +804,19 @@ test('new-game run epoch supersedes an in-flight autosave before any old-run wri
     assert.equal(save._autosaveInFlight, false);
     const epoch = save._runEpoch;
     h.bus.emit('game:newGame');
-    assert.equal(save._runEpoch, epoch + 1, 'secondary newGame lifecycle event also advances the run epoch');
+    // The live route emits the legacy `game:newGame` alias mid-transition (main.js prepareRun),
+    // inside the epoch window `game:new` already opened at the route boundary. The assertions
+    // above prove that first bump fully superseded the old write, so a second bump adds no
+    // protection and would orphan autosave work the new epoch may have started during the
+    // transition — the `_epochOpenedByNew` guard suppresses it by contract.
+    assert.equal(save._runEpoch, epoch,
+      'game:newGame inside the game:new-opened transition must not bump the run epoch again');
+    // Once the run actually starts the window closes: a `game:newGame` emit outside a `game:new`
+    // transition (standalone/legacy emitter) still opens a fresh epoch.
+    h.bus.emit('game:started');
+    h.bus.emit('game:newGame');
+    assert.equal(save._runEpoch, epoch + 1,
+      'a standalone game:newGame still advances the run epoch once the transition has closed');
   } finally { h.restore(); }
 });
 
