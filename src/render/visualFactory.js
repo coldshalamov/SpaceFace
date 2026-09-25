@@ -30,6 +30,7 @@ import {
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
+import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
@@ -2351,8 +2352,13 @@ function buildAsteroid(e) {
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   const tint = e.data && e.data.tint; // optional sector tint override
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type
-  const geo = astDisplacedGeometry(typeId, def, variantIdx);
-  const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint, variantIdx));
+  // Optic lattice cells are tinted asteroids — they ride this same constructor but wear a
+  // dedicated skin (opticCellPresentation.js): matte rock / mirror / clear prism / burned
+  // prism instead of the shared sector-material flat tint.
+  const opticKind = opticCellKindOf(e);
+  const geo = (opticKind && opticCellGeometry(opticKind)) || astDisplacedGeometry(typeId, def, variantIdx);
+  const mesh = new THREE.Mesh(geo,
+    opticKind ? opticCellBodyMaterial(opticKind, variantIdx) : astMaterial(typeId, def, tint, variantIdx));
   mesh.scale.setScalar(R);
   // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
   // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
@@ -2371,7 +2377,10 @@ function buildAsteroid(e) {
     mesh.userData.asteroidInstanceVariant = variantIdx;
     g.userData.asteroidInstanceBody = mesh;
   }
-  if (def.variant === 'crystal') {
+  // Optic cells wear their own detail language — neon ore shards, gas hulls and glowing
+  // veins would fight the matte-rock / mirror / prism read (and veins mean "mineral
+  // wealth", which an optic stone is not).
+  if (!opticKind && def.variant === 'crystal') {
     const rnd = mulberryLite(hashId(e.id));
     const shardMat = emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK);
     for (let i = 0; i < 6; i++) {
@@ -2383,7 +2392,7 @@ function buildAsteroid(e) {
       shard.userData.spacefaceTags = { greeble: true };
       g.add(shard);
     }
-  } else if (def.variant === 'gas') {
+  } else if (!opticKind && def.variant === 'gas') {
     const hull = new THREE.Mesh(
       geo,
       getMaterial('ast:gashull', () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
@@ -2411,7 +2420,7 @@ function buildAsteroid(e) {
   // GLOWING ORE VEINS — emissive streaks scattered across the surface for valuable ore types, so a
   // rock reads as "mineral-rich" at a glance (neon veins glowing through the rock = the cyberpunk
   // mining fantasy). Each vein is a thin additive capsule sunk slightly into the surface.
-  if (def.veinColor) {
+  if (def.veinColor && !opticKind) {
     const rnd = mulberryLite(hashId(e.id) ^ 0xbeef);
     const veinMat = emissiveMaterial(def.veinColor, 1.6, SHARED_MATERIAL_ROLE.ROCK);
     const veinGeo = getGeometry('ast:vein', () => new THREE.CapsuleGeometry(0.025, 0.5, 3, 5).rotateZ(Math.PI / 2));
@@ -2426,6 +2435,7 @@ function buildAsteroid(e) {
       g.add(vein);
     }
   }
+  if (opticKind) dressOpticCell(g, mesh, e, opticKind, variantIdx);
   g.userData.kind = 'asteroid';
   g.userData.updateLod = function updateAsteroidLod(level) {
     applyProjectedDetailLod(g, level);

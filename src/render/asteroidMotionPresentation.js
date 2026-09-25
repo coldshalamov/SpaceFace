@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 
 import { invalidateAsteroidInstancePool } from './asteroidInstancePool.js';
+import { syncOpticCellSkin } from './opticCellPresentation.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -513,9 +514,15 @@ export function createAsteroidMotionTracker() {
       rec.miningAgitation = Math.max(0, rec.miningAgitation - dt * 6.0);
     }
 
+    // 3b. Optic lattice skin — a discharged prism flips data.opticMaterial to 'spent' (and a
+    //     quiet one rekindles to 'diamond') without rebuilding the mesh. Entity data is
+    //     authoritative; syncOpticCellSkin is one string compare for ordinary rocks and a
+    //     shared-material swap on the rare transition. Render-only read, never writes sim state.
+    const data = entity.data || EMPTY_DATA;
+    if (data.opticMaterial != null) syncOpticCellSkin(entity, mesh);
+
     // 4. Thermal fracture progression — monotonic: a worked rock never visibly heals.
     //    oreHP/oreHPMax is the sim's ore-body pool (hull/hullMax alias); render-only read.
-    const data = entity.data || EMPTY_DATA;
     const frac = resolveFractureProgress(
       Number.isFinite(data.oreHP) ? data.oreHP : entity.hull,
       Number.isFinite(data.oreHPMax) ? data.oreHPMax : entity.hullMax,
