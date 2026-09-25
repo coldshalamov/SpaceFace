@@ -36,6 +36,7 @@ const SCENARIO_PATHS = Object.freeze([
 ]);
 
 const REGRESSION_PATHS = Object.freeze([
+  'test/alpha-live-baseline-electron-contract.test.mjs',
   'test/dynamic-buffer-ranges.test.mjs',
   'test/electron-shell-lifecycle.test.mjs',
   'test/performance-dirty-ranges.test.mjs',
@@ -56,6 +57,7 @@ const PRODUCTION_PATHS = Object.freeze([
 
 const HARNESS_PATHS = Object.freeze([
   'scripts/check-performance-dirty-ranges.mjs',
+  'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
   'scripts/lib/alphaLiveBaselineRoute.mjs',
   'scripts/lib/performanceDirtyRangeAcceptance.mjs',
   'scripts/lib/releaseSoakProbe.mjs',

@@ -622,6 +622,26 @@ async function testOwnedElectronCleanup() {
   assert.deepEqual(report.processMonitor.pendingLineFragments, [],
     'owned close publishes no unflushed process fragments');
 
+  // 2026-09-25 acceptance: electronApp.close() raced the process exit — the owned app
+  // quit code 0 while Playwright's close promise never settled, and the run failed
+  // 'Electron application close timed out' on a genuinely clean teardown. The ChildProcess
+  // 'close' through the monitor is the stronger proof; reconcile on it.
+  const racedClose = cleanupFixture({ closeHang: true });
+  await delay(8);
+  const racedReport = await closeOwnedElectronRuntime(racedClose.resources, {
+    fetchImpl: async () => { throw new Error('connection refused'); },
+    timeoutSignalFactory: () => undefined,
+    appCloseTimeoutMs: 10,
+  });
+  assert.equal(racedReport.appCloseCompleted, true,
+    'a confirmed graceful process close settles the connection-close race');
+  assert.equal(racedReport.appCloseSettledBy, 'graceful-process-close');
+  assert.equal(racedReport.gracefulProcessCloseConfirmed, true);
+  assert.equal(racedReport.pass, true,
+    `connection-race teardown must pass when the owned process exited cleanly: ${racedReport.failures}`);
+  assert(!racedReport.failures.some((failure) => /application close/i.test(failure)),
+    'the stale close-timeout verdict is retracted once process close proves release');
+
   const leftAlive = cleanupFixture({ closeProcess: false });
   await delay(8);
   const processLeak = await closeOwnedElectronRuntime(leftAlive.resources, {
@@ -1042,6 +1062,7 @@ function cleanupFixture({
   closeProcess = true,
   emitClose = true,
   afterExit = null,
+  closeHang = false,
 } = {}) {
   const page = new FakePage(CANONICAL);
   const childProcess = fakeChildProcess();
@@ -1056,6 +1077,10 @@ function cleanupFixture({
       afterExit?.(childProcess);
       if (emitClose) childProcess.emit('close', 0, null);
     }
+    // Playwright's ElectronApplication.close() can stay pending forever when the app
+    // quits faster than the CDP connection drains — the 2026-09-25 acceptance run
+    // watched the owned process exit code 0 while the promise never settled.
+    if (closeHang) await new Promise(() => {});
   };
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, { pollIntervalMs: 2, bootstrapTimeoutMs: 60 });
   const processMonitor = createElectronProcessMonitor({ electronApp, childProcess });

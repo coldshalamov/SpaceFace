@@ -944,7 +944,8 @@ export async function closeOwnedElectronRuntime(resources, {
       await withTimeout(resources.electronApp.close(), appCloseTimeoutMs, 'Electron application close');
       report.appCloseCompleted = true;
     } catch (error) {
-      report.failures.push(`Electron application close failed: ${error.message || error}`);
+      report.appCloseError = `Electron application close failed: ${error.message || error}`;
+      report.failures.push(report.appCloseError);
     }
   }
 
@@ -969,6 +970,19 @@ export async function closeOwnedElectronRuntime(resources, {
       resources.processMonitor,
     );
     report.gracefulProcessCloseConfirmed = report.gracefulProcessClose?.closed === true;
+    // electronApp.close() can stay pending forever when the app quits faster than the
+    // CDP connection drains — Playwright never sees the browser 'close' event even though
+    // the owned process exited. A ChildProcess 'close' observed after markClosing with the
+    // expected exit code is the stronger release proof; reconcile the close flag so the
+    // connection-race artifact cannot fail a genuinely clean teardown.
+    if (report.appCloseCompleted !== true
+        && report.gracefulProcessCloseConfirmed === true
+        && report.gracefulProcessClose?.expected === true
+        && report.gracefulProcessClose?.code === 0) {
+      report.appCloseCompleted = true;
+      report.appCloseSettledBy = 'graceful-process-close';
+      report.failures = report.failures.filter((failure) => failure !== report.appCloseError);
+    }
     report.processClose = report.gracefulProcessClose;
     report.processCloseConfirmed = report.gracefulProcessCloseConfirmed;
     report.processExited = report.gracefulProcessCloseConfirmed;
