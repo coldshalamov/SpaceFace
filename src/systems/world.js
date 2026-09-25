@@ -26,6 +26,7 @@ import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '.
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -2365,6 +2366,48 @@ export const world = {
         }, { rot: part.rot, name: oneOff.name, radius: part.radius, worldOneOff: true });
       }
     }
+    this._spawnHeliosRopeCache(sector, active);
+  },
+
+  // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a
+  // payload without `anchored` is wiped on the same sector:enter that materializes it.
+  // `persistent` stays false so residency despawn still removes it and the next materialization
+  // places one pod again. A dead pod on this bag is not replaced until the bag itself is new.
+  _spawnHeliosRopeCache(sector, active) {
+    const cache = HELIOS_ROPE_CACHE;
+    if (!cache || !sector || cache.sectorId !== sector.id || !active) return;
+    const priorId = active.heliosRopeCacheId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    const anchorPos = this._oneOffAnchorPos(sector, cache.anchor);
+    if (!anchorPos) return;
+    const pos = this._toGlobal({
+      x: anchorPos.x + cache.offsetLocal.x,
+      z: anchorPos.z + cache.offsetLocal.z,
+    }, sector.id);
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: cache.commodityId,
+      amount: cache.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: cache.radius,
+      ownerId: cache.landmarkPoiId,
+      originId: cache.landmarkPoiId,
+      factionId: 'faction_scn',
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = cache.placeId;
+    pod.data.name = cache.name;
+    pod.data.oneOffId = cache.id;
+    pod.data.worldOneOff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${cache.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.heliosRopeCacheId = pod.id;
   },
 
   _trackOneOffSpin(active, entityId, spin) {

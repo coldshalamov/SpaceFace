@@ -110,6 +110,24 @@ export const WORLD_ONE_OFFS = Object.freeze([
   }),
 ]);
 
+// One ropeable cache beside a named Helios landmark. Not one of the six texture props:
+// those stay non-colliding dressing. This record is a jettisoned cargo pod the beam
+// already knows how to split, parked 120 WU east of The Candle Fleet (latch is 390).
+export const HELIOS_ROPE_CACHE = Object.freeze({
+  id: 'oneoff_helios_candle_cache',
+  name: 'Candle Fleet sample pod',
+  placeId: 'place_cargo_pod_standard',
+  sectorId: 'sector_helios_prime',
+  landmarkPoiId: 'poi_memorial',
+  anchor: Object.freeze({ type: 'station', id: 'station_helios' }),
+  // station_helios (1280, -420) + this offset = (1800, -820), 120 WU east of
+  // poi_memorial The Candle Fleet at (1680, -820).
+  offsetLocal: Object.freeze({ x: 520, z: -400 }),
+  commodityId: 'cmdty_ore_iron',
+  amount: 1,
+  radius: 8,
+});
+
 // The courier one-off ("a courier far too fast") is not a prop: it is a named lane contact
 // flying the `express` traffic role — see lane_cinder_run_courier in src/data/laneContacts.js,
 // whose live motion really is far too fast for her hull. Kept beside the other contacts so
