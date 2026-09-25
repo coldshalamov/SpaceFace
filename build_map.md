@@ -4924,7 +4924,7 @@ rank out-shouts a higher one fails, whatever the numbers say.
 | **7 · Ship the demo** | `PQ-033.02`, `PQ-033.03`, §22 E1, E8, `PQ-167` | Electron demo package, photo-mode store shots, a replay-cut trailer |
 
 Every phase ends with a **stranger pass**: the path played at the shipping camera and the frames
-opened and judged against the order above. Progress lines live in the program file's §7.
+opened and judged against the order above. **What is still open, in order, is the program file's §7** (refreshed 2026-09-24: the fifteen-minute path in one clean pass, the quiet-host load reading, the belt tail, the D24 leak, and every Phase 7 ship-the-demo item); progress lines live in its §8.
 
 ## 26. Use what we already have
 

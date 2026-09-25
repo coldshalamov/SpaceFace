@@ -233,23 +233,43 @@ Everything else in this program already had an owner. These did not:
 - Re-opening a `done` packet to re-derive it instead of looking at what it put on screen.
 - Taking a later phase because it is more fun while an earlier one has no visible slice.
 
-## 7. Next, in order (after the first session, 2026-09-23)
+## 7. Next, in order (refreshed 2026-09-24 after the second session)
 
-The first session closed Phase 1's body scale, most of Phase 3, the Phase 4 Crucible sentence
-card, Phase 5's demo flag and end card, and F6. What the stranger pass still showed, in the order a
-stranger would notice it:
+Closed since the first list and not to be redone: the rocks (`abcccfd87`), wakes and kill rings
+sized to their body (`9eac8e570`), the latch state as a shape (no `CAN` word; verified), HUD quiet
+at 1280×720 and 1920×1080 (verified), round zero (`37f50a70d`, `e6078aaeb`), the live title
+(`a0a7217b1`), the kill replay and pad six verbs (`9b47b2977`), results trick names (`fd8adfdfd`),
+iGPU 60 (`ca16fa777`), Crucible door and refit already on ORRERY (verified), slam ≠ nudge and the
+throw's release ghost (`29ec2b69e`), the §22 Wave A slice A1–A6 (`a5e2325f0`, `1d241b204`), and the
+swarm that presses and kills a player who stops fighting (`8199748ef`, ledger D38). The sky is
+**not** to be dimmed (owner ruling, Phase 2).
 
-1. **Load** (Phase 5.4): Crucible launch → control is still 47–108 s on a busy host. Take a quiet
-   reading first; then the ~14 s of fixed bootstrap waits and the first-frame census.
-2. **Belt tail** (F6 follow-up): after the bridge, ~8 bodies still compiling at 10–20 s on a busy
+What is still open, in order. Each item is a unit a fresh agent can take from this list alone:
+
+1. **The fifteen-minute path, one clean pass** (`PQ-210.08`, Phase 5.6). `npm run probe:demo-path`
+   walks title → Crucible → real death or round 5 → results → Take it to the belt → adventure
+   (undock, job, paid, fit, fly out) → end card, with a still per step. Its die-mode (ship-only
+   hostile filter, sticky target, A/D yaw steering) was rewritten but has **never completed an
+   end-to-end run** on the saturated host. Get one clean pass, judge every still against the law of
+   the glass, fix or ledger what fails, then set `PQ-210.08`'s queue state.
+2. **Load, quiet-host reading** (Phase 5.4). The launch warm now pays only round 1 (`0c32e7d34`) and
+   the launch path has zero fixed sleeps, but every reading so far was host-starved (launch → flight
+   386 s at 86 % CPU). Take the reading on a quiet machine against the §3 bar (Crucible ≤ 15 s,
+   New Game ≤ 10 s); then cut whichever cook stage leads (`cook.crucibleWarm`,
+   `wait.prepareLiveSectorBeforeFlight`, first-frame census). Keep in-round links and first-draw
+   uploads at 0 (`probe:smooth-flight:crucible --with-kill`).
+3. **Belt tail** (F6 follow-up): after the bridge, ~8 bodies still compiling at 10–20 s on a busy
    host — throughput, not ordering. Order what the opening frame shows first.
-3. **The rocks and the sky** (Phase 2.3, 2.1): beige-clay rocks with pink crystals; a galaxy plate
-   plus a ringed giant in one Crucible frame. `AQ-SURFACE` and C6's luminance numbers.
-4. **`CAN`** (Phase 4.2): the latch state is still a bare word beside the body.
-5. **Round zero** (Phase 5.3) and the **live title** (Phase 5.2): not started.
-6. **The honest death** (Phase 5.6): the stranger pass reached results through the run's end API
-   because the fight never killed the player in four minutes; re-walk it after F6 and take the
-   `PQ-210.08` scripted path end to end.
+4. **The long-session leak** (ledger D24): re-measure at low priority on a quiet host
+   (`check-release-soak-browser.mjs --cycles=40`, `SF_SOAK_HEAP_SNAPSHOTS=1`), then fix the
+   retained classes.
+5. **Ship the demo** (Phase 7, all still open): Electron demo package from `build-bundle --demo`;
+   crash reporting on; store screenshots retaken in photo mode (the five on the page are
+   stand-ins); a sixty-second trailer cut from deterministic Crucible replays; the local opt-in demo
+   funnel (boot → Crucible → round 3 → results → adventure → end card). Springboards `PQ-033.02`,
+   `PQ-033.03`, §22 E1, E8, `PQ-167`.
+6. **Stranger pass per phase** (§3): a phase is closed only when the frames from its step were
+   opened and nothing fails the law of the glass — not when its numbers are green.
 
 ## 8. Progress
 
@@ -270,5 +290,9 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 | 1 | The fight starts on time on a busy machine (F6): a hostile ship inside the fight-fit range takes the admission lane ahead of station furniture and the queued hub, and a Crucible run stops admitting Helios dressing it cannot show | wave-1 materialization → first hostile shot at 77–85 % host load **never in 240 s → 0.3–1.3 sim-s**; belt-bridge hull painted by 5 s on every run; `test/authored-upgrade-policy.test.mjs`, `test/authored-critical-admission-order.test.mjs` | `100d9dbb9` |
 | 1 | Far scenery waits during a Crucible fight only when it could not be on the glass: the defer asks the renderer's own glass classifier (lead-shifted frame, skirt, body radius) instead of a distance | scenery on the glass left pending by the defer **possible → 0**; on-glass pending (wave-2 ships, fresh hulks) 0 by ~25 sim-s on a 60 % host — throughput, next item 7.2 | `3e8e48269` |
 | 2 | The sky yields a single camera-visible planet or wormhole; the authored plates and starfields remain, and a departed landmark can hand off its place as you fly. The arena, sky luminance and substances are still open. | concurrent hero limit **up to 3 → 1**; four live sector captures: Helios 1, Ceres 0, Pallas 1, Veil 1; 28 focused tests and the public flight route passed | `88a91dff0` |
-| 5 | The Crucible launch warm pays only the wave it can field: ship exemplars and (file × palette) subjects scope to the launch wave's eligibility (`swarmEligibleEnemyIds`) instead of the whole roster plus boss packages, and each later wave's newcomers run the same exemplar → compile → residency recipe during the armory dwell. The launch control reads "Readying the field…" until the batch settles; a skipped draft still warms through `run:wavePlanned`; a mid-run re-cook scopes to the restored wave | live probe (86 % host CPU): launch ship cohort **~13 kicks → 2** (`wasp_swarmer` + player, both `authored-root` at flight), in-round **shaderLinks +0 / bufferFullUploads +0** across a kill-containing sample; fixed sleeps on the launch path **0** (the ~14 s earlier readings were bounded races on real readiness, not timers); launch→flight 386 s is host-starved, not a bar reading — quiet-host re-measure still owed; `test/swarm-deferred-warm.test.mjs` (7) + 25-test warm suite | pending |
-| 2 | Sky richness audited after `9b47b2977` + `88a91dff0`: the pair changed admission only — every authored plate, starfield, nebula and galaxy survives at its authored luminance, and the one-hero-body limit holds in frame | per-profile sky-plate luminance identical before/after (helios 0.128, core 0.087, belt 0.083, fringe 0.000, anomaly 0.078; Tethys **added** at 0.220 — all under muzzle 3.1 / engine 6.85); zero knob diffs on starDensity/intensity/nebula/coverage; Helios + Crucible flight stills opened — galactic band, nebula wash and dense starfield read rich, one ringed hero body in each | pending |
+| 5 | The Crucible launch warm pays only the wave it can field: ship exemplars and (file × palette) subjects scope to the launch wave's eligibility (`swarmEligibleEnemyIds`) instead of the whole roster plus boss packages, and each later wave's newcomers run the same exemplar → compile → residency recipe during the armory dwell. The launch control reads "Readying the field…" until the batch settles; a skipped draft still warms through `run:wavePlanned`; a mid-run re-cook scopes to the restored wave | live probe (86 % host CPU): launch ship cohort **~13 kicks → 2** (`wasp_swarmer` + player, both `authored-root` at flight), in-round **shaderLinks +0 / bufferFullUploads +0** across a kill-containing sample; fixed sleeps on the launch path **0** (the ~14 s earlier readings were bounded races on real readiness, not timers); launch→flight 386 s is host-starved, not a bar reading — quiet-host re-measure still owed; `test/swarm-deferred-warm.test.mjs` (7) + 25-test warm suite | `0c32e7d34` |
+| 2 | Sky richness audited after `9b47b2977` + `88a91dff0`: the pair changed admission only — every authored plate, starfield, nebula and galaxy survives at its authored luminance, and the one-hero-body limit holds in frame | per-profile sky-plate luminance identical before/after (helios 0.128, core 0.087, belt 0.083, fringe 0.000, anomaly 0.078; Tethys **added** at 0.220 — all under muzzle 3.1 / engine 6.85); zero knob diffs on starDensity/intensity/nebula/coverage; Helios + Crucible flight stills opened — galactic band, nebula wash and dense starfield read rich, one ringed hero body in each | audit only, no code change |
+| 3 | A slam and a nudge differ on every channel: spall, loudness and the directed kick read the pre-solve closing speed instead of the solver-capped exchange | 40 vs 150 WU/s on seeds 4242/8008: hit-stop 1.7×, trauma 1.9×, light 2.4×, spall 2.6×, gain 3.8×, kick 2.4×; `test/b5-impact-channel-spread.test.mjs` | `29ec2b69e` |
+| 3 | The throw shows its future: while a throw is armed a thin dashed arc draws the payload's predicted post-release path from the same solution as the intercept diamond | `test/massline-release-ghost.test.mjs` (9) | `29ec2b69e` |
+| 6 | The adventure five minutes play in order on the default route: raid, a throw kill, salvage, patrol in frame, dock, Swing Drive S bought at the first-haul price (7 400 at Helios), undock fitted | all 7 beats on seed 4242, no debug spawns; `test/wave-a6-opening-slice.test.mjs`, `tools/agentic/a6OpeningSlice.mjs`; A1–A5 battery 24/24 on 4242+8008 | `a5e2325f0`, `1d241b204` |
+| 5 | The swarm presses: recycled entity ids no longer leave wave-1 wasps inert, and dodging a sibling no longer vetoes facing the target | passive player **survives indefinitely → dies at 58.7 s (4242) / 53.1 s (8008)**; hostile within 400 WU **mostly 0 → 100 %** of post-hold samples | `8199748ef` |
