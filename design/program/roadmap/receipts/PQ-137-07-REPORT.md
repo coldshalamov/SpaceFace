@@ -79,3 +79,29 @@ same seed, same scenario module, same harness.
   enough explicit spring for that regime is not integrable at 60 Hz (its natural frequency times the
   step exceeds 2), so that regime is the distance-constraint road (`legacy_rope` mode exists) and
   is left open here, honestly.
+
+---
+
+## Re-verification 2026-09-25 (PQ-137 leaves .06/.07 sim-half lane)
+
+The leaf was re-opened for the packet's sim-half audit. No game code needed changing — the
+load-scaled stiffness and the load-rating break landed in `785e92a8`/`3effea4d` and still hold on
+the current (heavily dirty) tree. Re-measured:
+
+- **Real path, seed 4242** (`test/rope-swing-release.test.mjs`, 4/4): peak stretch **8.481 %** of
+  the 100 WU line at 1.5× live cruise, line held to commanded release, tangential retention 5 s
+  after release **100.03 %**. The starter Hitch is now governed at **195 WU/s**
+  (`drive_reaction_m`, "Restore fast cruise ceilings" `e8d10fed7`), so the swing runs at
+  292.5 WU/s — a harder swing than the receipt's 2026-09-05 run, still inside the 10 % bar.
+- **Stale guard fixed additively** in the clean `test/rope-swing-release.test.mjs`: it pinned
+  `cruiseSpeed !== 195` as a hard-coded-constant guard from the halved-speed era; the live catalog
+  now authors `combatSpeed: 195` for `drive_reaction_m`, so the guard pinned a coincidence, not
+  the vision sentence. It now asserts provenance: `metrics.cruiseSpeed` must equal the live
+  catalog combatSpeed of `drive_reaction_m`, whatever that value is.
+- **New law-level suite** `test/pq-137-terrain-lethal.test.mjs` (B7 half), headless sg02 fixture
+  (100 WU `tether_standard` line, 240,000-mass static anchor, 1.5× live cruise tangential start):
+  peak stretch **8.48 %**, stiffness rises **140 → ~2,736** with the coupled load, and the swing
+  never requests a break; the same swing on a **3,000-rated** line requests break at tick 2 at
+  that identical 8.48 % stretch while a 60,000-rated or unrated line never does — break is by
+  load rating, never by stretch ratio; a tangent cut keeps **100.03 %** of tangential speed
+  5 s later (no drag on the released hull at any point of the coast).

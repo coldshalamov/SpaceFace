@@ -1,0 +1,257 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-25T23:28:20.489Z",
+  "date": "2026-09-25",
+  "quick": false,
+  "harnessDigest": "171a318332c983b05873a73f155a77338172db66729d6913c52460a2cdd9fa9e",
+  "sourceIdentity": {
+    "gitHead": "eeab67842c68fc4e71b01b1b8264346c8376c1e9",
+    "gitTree": "d6c0c2c2d0e8527be2f0aedfa80314b55463dc88",
+    "productionDirty": true,
+    "productionDiffHash": "c5925188f0f1d32238fd47106d4806a9f7118e039d606cd5679d1ca6fdfda2be"
+  },
+  "seeds": [
+    4242
+  ],
+  "benches": {
+    "verbs": {
+      "runs": [
+        {
+          "runRef": "verbs feel.rope_swing_release seed 4242",
+          "bench": "verbs",
+          "scenarioId": "feel.rope_swing_release",
+          "seed": 4242,
+          "runHash": "70f5cfcc9e171f2e91e56debafb13f9b05b5cf479da2dcfaa4b860a8643afb84",
+          "fedByRef": "verbs/feel.rope_swing_release/s4242",
+          "funMetrics": {
+            "verbsPerMinute": null,
+            "verbsUsed": null,
+            "consequencesPerAction": null,
+            "timeToFirstConsequenceS": null,
+            "momentsPerMinute": null,
+            "nothingHappenedSeconds": null,
+            "deathsByCause": null,
+            "knockBudget": null,
+            "gaps": [
+              "verbsPerMinute: run metrics do not report verb usage",
+              "verbsUsed: run metrics do not report verb usage",
+              "consequencesPerAction: verb trace is scenario-specific, no player action count",
+              "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+              "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+              "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+              "deathsByCause: verb scenario records no deaths",
+              "knockBudget: verb scenario does not measure the knock budget"
+            ]
+          },
+          "bars": [
+            {
+              "id": "B1",
+              "key": "feel.earned_speed_kept",
+              "title": "Earned speed is kept",
+              "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+              "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+                  "value": 1.000253875976908,
+                  "unit": "fraction",
+                  "met": true
+                }
+              ],
+              "met": null,
+              "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench.",
+              "fedBy": [
+                "verbs/feel.rope_swing_release/s4242"
+              ]
+            },
+            {
+              "id": "B7",
+              "key": "feel.rope_swing_release",
+              "title": "The rope is a rope",
+              "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+              "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "peak line stretch (worst of 1 run(s))",
+                  "value": 0.08480905759092479,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "tangential speed kept 5 s after release (worst of 1 run(s))",
+                  "value": 1.000253875976908,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "peak stretch on a 100 WU line at 1.5x cruise",
+                  "value": 0.08480905759092479,
+                  "unit": "fraction",
+                  "met": true,
+                  "note": "authored 100 WU; peak line 108.481 WU"
+                },
+                {
+                  "label": "line held until commanded release",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "tangential speed kept 5 s after release",
+                  "value": 1.000253875976908,
+                  "unit": "fraction",
+                  "met": true,
+                  "note": "before 281.18 WU/s; 5 s 281.25 WU/s"
+                }
+              ],
+              "met": true,
+              "notes": "authored 100 WU; peak line 108.481 WU before 281.18 WU/s; 5 s 281.25 WU/s",
+              "fedBy": [
+                "verbs/feel.rope_swing_release/s4242"
+              ]
+            }
+          ]
+        },
+        {
+          "runRef": "verbs feel.terrain_slam seed 4242",
+          "bench": "verbs",
+          "scenarioId": "feel.terrain_slam",
+          "seed": 4242,
+          "runHash": "b7e8301598cceaeb30d20623282bac39d5f6549cab214fa1a801c520ce34ed16",
+          "fedByRef": "verbs/feel.terrain_slam/s4242",
+          "funMetrics": {
+            "verbsPerMinute": null,
+            "verbsUsed": null,
+            "consequencesPerAction": null,
+            "timeToFirstConsequenceS": null,
+            "momentsPerMinute": null,
+            "nothingHappenedSeconds": null,
+            "deathsByCause": null,
+            "knockBudget": null,
+            "gaps": [
+              "verbsPerMinute: run metrics do not report verb usage",
+              "verbsUsed: run metrics do not report verb usage",
+              "consequencesPerAction: verb trace is scenario-specific, no player action count",
+              "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+              "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+              "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+              "deathsByCause: verb scenario records no deaths",
+              "knockBudget: verb scenario does not measure the knock budget"
+            ]
+          },
+          "bars": [
+            {
+              "id": "B6",
+              "key": "feel.terrain_slam",
+              "title": "Terrain is lethal",
+              "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+              "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "light hostile dies at ≥ 75 % of cruise closing (ran at 76 % of cruise, 1 run(s))",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "hull lost at ≥ 50 % of cruise closing (worst of 1 run(s))",
+                  "value": 1,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "helm lost at ≥ 50 % of cruise closing (1 run(s))",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "heavy hull lost at the same speed (worst of 1 run(s))",
+                  "value": 0,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "heavy keeps its helm at the same speed (1 run(s))",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "light hostile hull lost at 50 % of cruise closing",
+                  "value": 1,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "light hostile loses the helm at 50 % of cruise closing",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "light hostile dies at 76 % of cruise closing",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                },
+                {
+                  "label": "heavy hull lost at the same closing speed",
+                  "value": 0,
+                  "unit": "fraction",
+                  "met": true
+                },
+                {
+                  "label": "heavy keeps its helm at the same closing speed",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                }
+              ],
+              "met": true,
+              "notes": "",
+              "fedBy": [
+                "verbs/feel.terrain_slam/s4242"
+              ]
+            },
+            {
+              "id": "B11",
+              "key": "feel.hitstun_curve",
+              "title": "Hitstun law is universal",
+              "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+              "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+              "reachable": true,
+              "coverage": "partial",
+              "values": [
+                {
+                  "label": "terrain slam strips the helm (1 run(s))",
+                  "value": 1,
+                  "unit": "bool",
+                  "met": true
+                }
+              ],
+              "met": null,
+              "notes": "the feeding shove runs carried no helmLossDurationS. the shove runs report no ΔV fraction of cruise, so the ≥ 30 % ΔV regime cannot be confirmed; helm duration is the scenario constant, not a measured curve, and the ≥ 1 s helm clause cannot be evaluated from it.",
+              "fedBy": [
+                "verbs/feel.terrain_slam/s4242"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "summary": {
+    "reachable": 11,
+    "met": 2,
+    "partial": 4,
+    "unreachable": 2
+  },
+  "wallMs": 15667
+}

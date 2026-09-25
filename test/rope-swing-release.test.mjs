@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 import { discoverScenarioModules, listVerbScenarios } from '../scripts/lib/bench/verbBench.mjs';
 import { scenario } from '../scripts/lib/bench/scenarios/feel.rope_swing_release.mjs';
+import { getPropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
 
 const SEED = 4242;
 const LONG = { timeout: 180_000 };
@@ -37,8 +38,16 @@ test('the instrument measures the real path around a 100 WU line at 1.5x cruise'
   assert.equal(m.owners.sg02Ready, true);
   assert.equal(m.owners.combatSystem || m.owners.actionsSystem, true, 'the attachment owner must have run');
   assert.equal(m.owners.tetherGameplaySystem, true, 'the tether gameplay owner must be registered');
-  assert.ok(Number.isFinite(m.cruiseSpeed) && m.cruiseSpeed > 0, 'cruise must be the live governed number, not a hard-coded 195');
-  assert.notEqual(m.cruiseSpeed, 195);
+  assert.ok(Number.isFinite(m.cruiseSpeed) && m.cruiseSpeed > 0, 'cruise must be the live governed number, not a toy fallback');
+  // 2026-09-25: this guard was `assert.notEqual(m.cruiseSpeed, 195)` — written when the live
+  // governed cruise was the halved ~90 WU/s era and 195 could only be the old inline toy's
+  // hard-coded constant. "Restore fast cruise ceilings" (e8d10fed7) has since authored
+  // `combatSpeed: 195` for drive_reaction_m, the starter Hitch's own drive, so the LIVE governed
+  // cruise is legitimately exactly 195 again and the inequality pinned a coincidence, not the
+  // vision sentence. B7 ("Swinging at 1.5x cruise on a 100 WU line...") is cruise-agnostic; the
+  // honest provenance guard is that the scenario reads the live catalog value, whatever it is.
+  assert.equal(m.cruiseSpeed, getPropulsionProfile('drive_reaction_m').combatSpeed,
+    'cruise must be the live governed catalog combatSpeed of the starter drive (drive_reaction_m), not a fallback');
   assert.ok(Number.isFinite(m.authoredLength) && Math.abs(m.authoredLength - 100) < 0.05, `standard 100 WU line, got ${m.authoredLength}`);
   assert.ok(m.anchorMass > 1800, 'the anchor must be a clearly identified heavy');
   const bars = Array.isArray(m.bars) ? m.bars.filter((row) => row && row.bar === 'B7') : [];
