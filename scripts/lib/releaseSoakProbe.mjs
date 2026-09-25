@@ -1420,23 +1420,40 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   try {
     await waitForLoadFlight();
   } catch (loadWaitError) {
-    // D31: a transient staging stall inside finalizeLoadedGame dumps the run to a frozen menu
-    // (runtime:start-failed) with the save intact. A player would just load again — retry the
-    // same public key once so one host hiccup cannot kill a multi-hour soak. The signature is
-    // recorded either way; a persistent defect still fails the second wait.
-    const deadEnded = await page.evaluate(() => {
+    // D31 + D35: a failed restore is designed to land in the retryable start-failed menu — but
+    // the app's own bounded gates can outlive the 210 s probe wait before that landing commits
+    // (the authored-visuals gate alone owns 180 s plus a 30 s retry, and the authored-library
+    // stage owns another pair of 180 s races). The one-shot sample this used to do could read
+    // mode:'loading' seconds before the recovery fired and report a bounded failure as a
+    // permanent freeze. So wait for the session to actually LAND: late flight means a slow but
+    // healthy load and the leg continues; the start-failed menu is the recoverable state a
+    // player would retry from; still 'loading' after the grace window is the real hang.
+    const landed = await page.waitForFunction(() => {
       const s = window.SF?.state;
+      if (s?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
       const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
         ? window.SF.timeEffects.describeRequests() : {};
-      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? {
-        mode: s.mode,
-        timeRequests: reqs,
-      } : null;
-    }).catch(() => null);
-    if (!deadEnded) throw loadWaitError;
-    mark('load-retry-start-failed', deadEnded);
-    await page.keyboard.press('F9');
-    await waitForLoadFlight();
+      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? 'menu' : false;
+    }, null, { timeout: 240_000, polling: 1000 })
+      .then((handle) => handle.jsonValue())
+      .catch(() => null);
+    if (!landed) throw loadWaitError;
+    if (landed === 'flight') {
+      mark('load-late-flight', {});
+    } else {
+      const deadEnded = await page.evaluate(() => {
+        const s = window.SF?.state;
+        const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
+          ? window.SF.timeEffects.describeRequests() : {};
+        return {
+          mode: s?.mode,
+          timeRequests: reqs,
+        };
+      }).catch(() => null);
+      mark('load-retry-start-failed', deadEnded);
+      await page.keyboard.press('F9');
+      await waitForLoadFlight();
+    }
   }
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);

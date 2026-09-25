@@ -59,6 +59,15 @@ const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 const DEGENERATE_SEP2 = 1e-24;
 const DEGENERATE_SEP_CLAMP = 0.0001;
 const _contactNormalScratch = { x: 1, z: 0 };
+// D35: the Rapier module import + WASM init behind `createSg02DynamicBodyOwner` has no internal
+// bound, so `prepareBackend` used to await `_sg02Init` with no deadline. Both startup gates
+// (new-game waitForPhysics, load finalizeLoadedGame) hold the session at mode:'loading' with
+// time frozen while that await is outstanding — a host that starves the init (contended WASM
+// compile, an aborted module fetch that never settles) froze the run forever with no retry.
+// Bound only the wait, never the init itself: a late-settling bring-up still installs the owner
+// and is adopted by the next prepareBackend call, so a timed-out load retries into a ready
+// authority instead of forcing a fresh init.
+const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
 
 // The optic grammar's one friendly-fire opening (build_map §24 "Your own grenade"):
 // a prism splinter (opticGeneration >= 1) may strike the hull that lit the ring.
@@ -254,7 +263,26 @@ export const physics = {
 
     if (reset) this._disableSg02DynamicAuthority();
     this._updateSg02DynamicAuthority(0, state);
-    if (this._sg02Init) await this._sg02Init;
+    if (this._sg02Init) {
+      const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
+        ? Math.max(0, options.initTimeoutMs)
+        : SG02_INIT_PREPARE_TIMEOUT_MS;
+      let timer = null;
+      const settled = await Promise.race([
+        Promise.resolve(this._sg02Init).then(() => true, () => true),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), initTimeoutMs); }),
+      ]);
+      if (timer !== null) clearTimeout(timer);
+      if (!settled) {
+        console.warn('[physics] SG-02 dynamic authority init did not settle within'
+          + ` ${Math.round(initTimeoutMs)} ms; startup fails closed to a retryable state instead of`
+          + ' holding the session frozen at loading. A late init still installs for the next attempt.');
+        this._diag.sg02InitTimedOut = true;
+        this._diag.tickMs = 0;
+        this._publishRuntime(state);
+        return false;
+      }
+    }
     this._updateSg02DynamicAuthority(0, state);
     this._diag.tickMs = 0;
     this._publishRuntime(state);
@@ -428,6 +456,7 @@ export const physics = {
     const sg02ImpactCount = this._emitSg02ContactImpacts(state);
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
+    this._diag.sg02InitTimedOut = false;
     this._diag.bodies = sdiag.bodies;
     this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
     this._diag.ccdBodies = sdiag.ccdBodies || 0;

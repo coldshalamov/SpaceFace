@@ -451,6 +451,11 @@ function bootstrapScene(state, helpers, bus, registry) {
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
   const newGamePlus = resolveNewGamePlusOverlay(registry, opts);
+  // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
+  // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
+  // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
+  // waitForPhysics below still gates flight on the same promise.
+  let physicsPrep = null;
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -541,6 +546,15 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // Installing them on game:started prepares the wrong hull, then replaces it in flight.
       bus.emit('game:scenePrepared', {});
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      const physicsSystem = registry.get('physics');
+      if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+        // Fresh-run entities were just spawned while timeScale was 0; reset so no record
+        // from a prior run's entity objects survives into the new world. The catch marker
+        // only suppresses the unhandled-rejection window before waitForPhysics awaits it.
+        physicsPrep = Promise.resolve()
+          .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+        physicsPrep.catch(() => {});
+      }
       const saveSystem = registry.get('save');
       if (saveSystem && typeof saveSystem.primeAutosaveCapture === 'function') {
         saveSystem.primeAutosaveCapture();
@@ -596,12 +610,14 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       }
     },
     waitForPhysics: async () => {
-      const physicsSystem = registry.get('physics');
-      if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
+      if (!physicsPrep) {
+        const physicsSystem = registry.get('physics');
+        if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
+        physicsPrep = Promise.resolve()
+          .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+      }
       try {
-        // Fresh-run entities were just spawned while timeScale was 0; reset so no
-        // record from a prior run's entity objects survives into the new world.
-        return await physicsSystem.prepareBackend(state, { reset: true });
+        return await physicsPrep;
       } catch (error) {
         console.warn('[startup] physics backend preparation failed', error);
         return false;
@@ -967,17 +983,38 @@ function loadingDetailForStage(stageId) {
   return 'Preparing the playable scene';
 }
 
+// D35/D36: rAF can starve entirely on an occluded or compositor-blocked host while timers keep
+// running. A startup wait that only listens to rAF then never settles, and load finalization
+// holds the session at mode:'loading' with time frozen. Every frame-wait below therefore pairs
+// its rAF with a timer fallback — when frames present normally the timer is a no-op, and under
+// starvation the waits resolve at the fallback cadence so their callers' own wall-clock bounds
+// still apply instead of the load hanging open.
 function nextFrame() {
   return new Promise((resolve) => {
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
-    else setTimeout(resolve, 16);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
+    setTimeout(finish, 48);
   });
 }
 
 function nextPaint() {
   if (typeof requestAnimationFrame !== 'function') return delay(0);
   return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(finish));
+    // 250 ms ≈ 4 fps: a merely slow compositor still wins the race and gets its real paint;
+    // only a starved one gives the boundary up to the timer.
+    setTimeout(finish, 250);
   });
 }
 
