@@ -47,17 +47,18 @@ const CSS = `
 .orr-svg .orr-ltape__hand-ring { stroke:var(--dp-hand-hot, #ffd98c); fill:none; }
 .orr-svg .orr-ltape__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.18; }
 .orr-svg .orr-ltape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
-.orr-svg .orr-ltape__leader { stroke:rgb(${BONE} / .4); }
+.orr-svg .orr-ltape__leader { stroke:rgb(${BONE} / .6); stroke-linecap:butt; }
 .orr-svg .orr-ltape__axis-line { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-ltape__axis-minor { stroke:rgb(${BONE} / .28); }
-.orr-ltape text.orr-ltape__axis-n { fill:rgb(${BONE} / .72); font-size:11px; }
+.orr-ltape text.orr-ltape__key.orr-ltape__axis-n { fill:rgb(${BONE} / .72); font-size:11px; }
 .orr-svg .orr-ltape__ghost-stem { stroke:rgb(${BONE} / .4); }
 .orr-svg .orr-ltape__ghost-bead { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
 .orr-svg .orr-ltape__arc-headbloom { fill:rgb(248 244 234); opacity:.22; }
 .orr-svg .orr-ltape__arc-headbloom--out { fill:rgb(${BONE}); opacity:.14; }
 .orr-svg .orr-ltape__arc-bloom--out { opacity:.1; }
-.orr-ltape text.orr-ltape__figure.orr-ltape__foot-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-size:22px !important; font-weight:250; letter-spacing:-.01em; fill:rgb(248 244 234); }
-.orr-ltape text.orr-ltape__key.orr-ltape__foot-k { font-size:11px; }
+.orr-ltape text.orr-ltape__figure.orr-ltape__foot-n, .orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-size:22px !important; font-weight:250; letter-spacing:-.01em; fill:rgb(248 244 234); }
+.orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size:11px; fill:rgb(${BONE} / .6); }
+.orr-ltape__purse text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:9px; }
 .orr-svg .orr-ltape__hand-drop { stroke:var(--dp-hand, #f2b950); }
 .orr-ltape text.orr-ltape__net-key { font-size:8.5px; }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
@@ -211,7 +212,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         // the origin's name yields a line when the first tick stands within its run
         const crowded = k === 0 && xs.length && xs[0] - x0 < 64;
         // the origin's name hangs off the origin, past the axis figures' column
-        const t = svg('text', { x: f(mx + (k === 0 ? 62 : 4)), y: f(y + (crowded ? 38 : 24)), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
+        const labelY = k === 0 ? Math.min(y + (crowded ? 38 : 24), y + maxUp / 2 - 10) : y + 24;
+        const t = svg('text', { x: f(mx + (k === 0 ? 62 : 4)), y: f(labelY), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
         t.textContent = c;
         layer.appendChild(rise(t, 80));
         lastCycle = c;
@@ -254,7 +256,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         }
       }
       // the axis runs from the ceiling down and out of the tape: the reading beneath hangs from it
-      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - stemLen(ceilCr))} L ${f(x0)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
+      rg.appendChild(svg('path', { d: `M ${f(x0 + 0.5)} ${f(y - stemLen(ceilCr))} L ${f(x0 + 0.5)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
       rg.appendChild(svg('path', { d: minors, class: 'orr-core orr-ltape__axis-minor', 'stroke-width': 1 }));
       layer.appendChild(rise(rg, 70));
@@ -265,7 +267,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       const gLen = (v) => (v / ghostCeil) * maxUp;
       let majors = '';
       for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt((ghostCeil * k) / 4)}${k === 4 && sign > 0 ? ' cr' : ''}`; rg.appendChild(t); } }
-      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - gLen(ghostCeil))} L ${f(x0)} ${f(y + gLen(ghostCeil))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
+      rg.appendChild(svg('path', { d: `M ${f(x0 + 0.5)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 0.5)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
       const gx = x0 + 64; // clear of the axis figures (x0 + 9 .. x0 + 48)
       rg.appendChild(svg('path', { d: `M ${f(gx)} ${y} L ${f(gx)} ${f(y - gLen(ghostCeil / 2))}`, class: 'orr-core orr-ltape__ghost-stem', 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));
@@ -309,8 +311,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       // of 24px toward the origin, along to the axis
       // the leader ends where the reading's first words begin, never on a rule: down past the tape's foot, a 24px
       // 45-degree elbow, then along the reading's kicker line to twelve px past its last glyph, with an end tick
-      const yRun = H + 30;
-      const xEnd = x0 + (Number.isFinite(data.leaderEndX) ? data.leaderEndX : 140);
+      const yRun = H + 34.5;
+      const xEnd = x0 + (Number.isFinite(data.leaderEndX) ? data.leaderEndX : 148) + 0.5;
       const ex = chosen.x - 24;
       const leaderD = ex > xEnd + 8
         ? `M ${f(chosen.x)} ${f(foot + 12)} L ${f(chosen.x)} ${f(yRun - 24)} L ${f(ex)} ${f(yRun)} L ${f(xEnd)} ${f(yRun)} M ${f(xEnd)} ${f(yRun - 3)} L ${f(xEnd)} ${f(yRun + 3)}`
@@ -364,7 +366,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head' }));
         const n = svg('text', { x: f(acx + 14), y: f(acy + r + 16), 'text-anchor': 'start', class: 'orr-ltape__figure orr-ltape__foot-n' });
         n.textContent = fmt(sold);
-        const t = svg('text', { x: f(acx + 14), y: f(acy + r + 30), 'text-anchor': 'start', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx + 14), y: f(acy + r + 32), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__foot-k' });
         t.textContent = 'SOLD';
         ag.append(n, t);
       }
@@ -377,13 +379,13 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head orr-ltape__arc-head--out' }));
         const n = svg('text', { x: f(acx - 14), y: f(acy + r + 16), 'text-anchor': 'end', class: 'orr-ltape__figure orr-ltape__foot-n' });
         n.textContent = fmt(bought);
-        const t = svg('text', { x: f(acx - 14), y: f(acy + r + 30), 'text-anchor': 'end', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx - 14), y: f(acy + r + 32), 'text-anchor': 'end', class: 'orr-ltape__key orr-ltape__foot-k' });
         t.textContent = 'BOUGHT';
         ag.append(n, t);
       }
       if (!sorted.length) {
         for (const [x, anchor] of [[acx - 14, 'end'], [acx + 14, 'start']]) { const d = svg('text', { x: f(x), y: f(acy + r + 16), 'text-anchor': anchor, class: 'orr-ltape__figure orr-ltape__foot-n' }); d.textContent = '\u2014'; ag.appendChild(d); }
-        for (const [x, anchor, w] of [[acx - 14, 'end', 'BOUGHT'], [acx + 14, 'start', 'SOLD']]) { const t = svg('text', { x: f(x), y: f(acy + r + 30), 'text-anchor': anchor, class: 'orr-ltape__key' }); t.textContent = w; ag.appendChild(t); }
+        for (const [x, anchor, w] of [[acx - 14, 'end', 'BOUGHT'], [acx + 14, 'start', 'SOLD']]) { const t = svg('text', { x: f(x), y: f(acy + r + 32), 'text-anchor': anchor, class: 'orr-ltape__key orr-ltape__foot-k' }); t.textContent = w; ag.appendChild(t); }
       }
       const label = sorted.length ? signed(net) : '\u2014';
       const fs = Math.min(22, Math.max(12, Math.floor((r * 1.1) / Math.max(1, label.length * 0.58))));

@@ -43,12 +43,12 @@ const CSS = `
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
 /* the key being charged stays the brightest filled shape; the travelling light is bigger than the field's edge */
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
-.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .66) !important; }
+.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .5) !important; opacity:1 !important; filter:none !important; }
 /* a disabled key is its silhouette alone: the field's cut shape as a 1px bone outline (the overlay hollows it), the verb in dim ink */
-.orr-lampkey:disabled::before { background:rgb(${BONE} / .36) !important; box-shadow:none !important; }
+.orr-lampkey:disabled::before { background:transparent !important; background-image:none !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .5) !important; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }
 .orr-lampkey:disabled .orr-lampkey__commit, .orr-lampkey:disabled .orr-lampkey__commit-bloom, .orr-lampkey:disabled .orr-lampkey__fill, .orr-lampkey:disabled .orr-lampkey__fillbloom { display:none; }
-.orr-lampkey:disabled::after { display:block !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .92) !important; background-size:auto !important;
+.orr-lampkey:disabled::after { display:none !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .92) !important; background-size:auto !important;
   clip-path:polygon(0 0, calc(100% - ${CUT - 0.4}px) 0, 100% ${CUT - 0.4}px, 100% 100%, 0 100%) !important; }
 /* the hold: the ring span becomes a drawing laid over the key's silhouette, a little outside the field */
 .orr-lampkey[data-hold] { margin-left:0 !important; margin-right:0 !important; }
@@ -93,7 +93,9 @@ export function holdPathD(width, height) {
   const W = Math.max(1, width);
   const H = Math.max(1, height);
   const c = CUT + RING_OUT;
-  return `M ${W - c} 0 L ${W} ${c} L ${W} ${H} L 0 ${H} L 0 0 Z`;
+  // starts at the cut corner and runs clockwise (right edge, foot, left edge, top, the cut), on the half-pixel
+  // grid so a 1px track reads as one row
+  return `M ${W - 0.5} ${c + 0.5} L ${W - 0.5} ${H - 0.5} L 0.5 ${H - 0.5} L 0.5 0.5 L ${W - c + 0.5} 0.5 Z`;
 }
 
 function svgEl(doc, name, attrs) {
@@ -107,15 +109,15 @@ function layoutHold(button, ring) {
   if (!button || !ring || typeof button.getBoundingClientRect !== 'function') return;
   const r = button.getBoundingClientRect();
   if (!(r.width > 0) || !(r.height > 0)) return;
-  const W = r.width + RING_OUT * 2;
-  const H = r.height + RING_OUT * 2;
+  const W = Math.round(r.width + RING_OUT * 2);
+  const H = Math.round(r.height + RING_OUT * 2);
   const d = holdPathD(W, H);
   const svg = ring.querySelector('svg');
   if (svg) {
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     for (const p of svg.querySelectorAll('.orr-lampkey__track, .orr-lampkey__fillbloom, .orr-lampkey__fill')) p.setAttribute('d', d);
     const c = CUT + RING_OUT;
-    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0 L ${W - c} 0`);
+    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0.5 L ${W - c + 0.5} 0.5`);
   }
   if (ring.style && typeof ring.style.setProperty === 'function') ring.style.setProperty('--orr-hold-path', `path("${d}")`);
 }

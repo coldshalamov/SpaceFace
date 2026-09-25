@@ -34,6 +34,15 @@ const CSS = `
 .orr-svg .orr-chain__timearc--off { stroke:rgb(${BONE} / .28); }
 .orr-svg .orr-chain__track { stroke:rgb(${BONE} / .3); }
 .orr-svg .orr-chain__track-cap { fill:rgb(${BONE} / .6); }
+.orr-svg .orr-chain__stock-track { stroke:rgb(${BONE} / .33); }
+.orr-svg .orr-chain__stock-div { stroke:rgb(${BONE} / .6); }
+.orr-svg .orr-chain__stock-fill { stroke:rgb(248 244 234); }
+.orr-svg .orr-chain__stock-bloom { stroke:rgb(${BONE}); }
+.orr-svg .orr-chain__beam--short { stroke:rgb(${BONE} / .33); stroke-dasharray:none; }
+.orr-chain.is-blocked .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .45); }
+.orr-chain.is-blocked .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .4); }
+.orr-chain.is-blocked .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .4); }
+.orr-chain__reason { color:rgb(248 244 234 / .82); }
 /* while the line is blocked, light stops at the block: the product is drawn at the ring's own alpha */
 .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .45); }
@@ -217,8 +226,20 @@ export function createChainBeam(host, { onLayout = null } = {}) {
         pulse.appendChild(m);
         layer.appendChild(pulse);
       }
-      layer.appendChild(riseG(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-bloom orr-chain__node-bloom', 'stroke-width': 4, opacity: short ? '.06' : '.16', fill: 'none' }), 60 + i * 40));
-      layer.appendChild(rise(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: `orr-chain__node${short ? ' orr-chain__node--short' : ''}` }), 60 + i * 40));
+      // the node is an arc gauge of held stock: a track with one division per unit needed (up to twelve), filled
+      // clockwise from twelve o'clock to the fraction held; an empty track is visibly empty, a full one visibly full
+      const need = Math.max(1, Number(inp.need) || 1);
+      const have = Math.max(0, Math.min(need, Number(inp.have) || 0));
+      const frac = have / need;
+      const gauge = svg('g', { class: `orr-chain__stock${frac >= 1 ? ' is-full' : frac > 0 ? ' is-part' : ' is-empty'}` });
+      gauge.appendChild(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-core orr-chain__stock-track', 'stroke-width': 1 }));
+      if (need <= 12) gauge.appendChild(svg('path', { d: ticksD(xIn, y, rIn, need, { len: 3, major: need + 1, majorLen: 3, inward: true }), class: 'orr-core orr-chain__stock-div', 'stroke-width': 1 }));
+      if (frac > 0.001) {
+        const dA = arcD(xIn, y, rIn, 0, 360 * Math.min(0.9999, frac));
+        gauge.appendChild(svg('path', { d: dA, class: 'orr-bloom orr-chain__stock-bloom', 'stroke-width': 5, opacity: '.2' }));
+        gauge.appendChild(svg('path', { d: dA, class: 'orr-core orr-chain__stock-fill', 'stroke-width': 1.8, 'stroke-linecap': 'butt' }));
+      }
+      layer.appendChild(rise(gauge, 60 + i * 40));
       if (inp.glyph) layer.appendChild(rise(glyphAt(inp.glyph, xIn, y, rIn, short ? 'is-short' : ''), 60 + i * 40));
       else if (!short) layer.appendChild(rise(svg('circle', { cx: f(xIn), cy: f(y), r: 2 * gIn, class: 'orr-chain__core' }), 60 + i * 40));
       const l = label(`is-left${short ? ' is-short' : ''}${blocked ? ' is-after-block' : ''}`, 0, y - 16 * scL, `<span class="orr-chain__name">${inp.nameHtml || ''}</span><span class="orr-chain__count"><b>${inp.have}</b> / ${inp.need}${short ? ' · short' : ''}</span>${inp.verbHtml ? `<span class="orr-chain__verb">${inp.verbHtml}</span>` : ''}`);
@@ -254,7 +275,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     }
     // the process name rides the top of the ring's inner scale
     const arcId = `orr-chain-arc-${++pathSeq}`;
-    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rProc - 15 * scL, -75, 75), fill: 'none', stroke: 'none' }));
+    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rProc - 19 * scL, -75, 75), fill: 'none', stroke: 'none' }));
     const arcText = svg('text', { class: `orr-chain__procarc${blocked ? ' is-blocked' : ''}` });
     const arcPath = svg('textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' });
     arcPath.textContent = String(data.process || 'process').toUpperCase();
@@ -273,7 +294,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     if (blocked) {
       // the reason takes the twelve o'clock slot alone, at label weight in ink; a way out hangs under it when there is one
       const compactW = W < 1000;
-      const rl = label(compactW ? 'is-left' : 'is-centre', compactW ? xProc - 20 : xProc - 150, cy - rProc - (compactW ? 58 : 74) * scL, `<span class="orr-chain__reason${compactW ? ' is-compact' : ''}">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
+      const rl = label(compactW ? 'is-left' : 'is-centre', compactW ? xProc : xProc - 150, cy - rProc - (compactW ? 58 : 74) * scL, `<span class="orr-chain__reason${compactW ? ' is-compact' : ''}">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
       rl.style.width = compactW ? '320px' : '300px';
       // the block's last line (the way out) clears the leader: seat the block's foot 26px above the ring
       if (rl.offsetHeight) rl.style.top = `${f(cy - rProc - 26 * scL - rl.offsetHeight)}px`;

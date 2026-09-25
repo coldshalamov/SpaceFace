@@ -42,10 +42,10 @@ const CSS = `
 .orr-crest.is-chosen > img { opacity:1; }
 .orr-crest.is-authority::after { display:none; } / .45); pointer-events:none; }
 .orr-crest__words { position:absolute; display:flex; flex-direction:column; gap:1px; pointer-events:none; white-space:nowrap; hyphens:none; word-break:keep-all; }
-.orr-crest.is-south .orr-crest__words { left:50%; top:calc(100% + 2px); transform:translateX(-50%); align-items:center; }
-.orr-crest.is-north .orr-crest__words { left:50%; top:auto; bottom:calc(100% + 2px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse; }
-.orr-crest.is-east .orr-crest__words { left:calc(100% + 2px); top:50%; transform:translateY(-50%); align-items:flex-start; }
-.orr-crest.is-west .orr-crest__words { right:calc(100% + 2px); top:50%; transform:translateY(-50%); align-items:flex-end; }
+.orr-crest.is-south .orr-crest__words { left:50%; top:calc(100% + 14px); transform:translateX(-50%); align-items:center; }
+.orr-crest.is-north .orr-crest__words { left:50%; top:auto; bottom:calc(100% + 14px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse; }
+.orr-crest.is-east .orr-crest__words { left:calc(100% + 12px); top:50%; transform:translateY(-50%); align-items:flex-start; }
+.orr-crest.is-west .orr-crest__words { right:calc(100% + 12px); top:50%; transform:translateY(-50%); align-items:flex-end; }
 .orr-crest__name { pointer-events:none;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62);
   paint-order:stroke; text-shadow:0 0 6px rgb(4 6 9 / .9); }
@@ -58,6 +58,7 @@ const CSS = `
 .orr-crestorbit__centre > img { display:block; width:100%; height:100%; opacity:1; filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); transition:opacity .22s linear; }
 .orr-crestorbit__centre.is-pivot > img { opacity:.3; }
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
+.orr-svg .orr-crestorbit__sunring { stroke:rgb(${BONE} / .3); }
 .orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-crestorbit__centre { z-index:1; }
 .orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:2; }
@@ -72,6 +73,14 @@ const CSS = `
 .orr-svg .orr-crestorbit__standing-bloom { opacity:.22; }
 .orr-svg .orr-crestorbit__ghost { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .5); }
+.orr-svg .orr-crestorbit__rel { stroke:rgb(${BONE} / .4); }
+.orr-svg .orr-crestorbit__rel.is-hostile { stroke:rgb(255 80 56 / .45); }
+.orr-svg .orr-crestorbit__rel-bloom { stroke:rgb(${BONE}); opacity:.13; }
+.orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.14; }
+.orr-svg .orr-crestorbit__rel-bead { fill:rgb(${BONE} / .85); }
+.orr-svg .orr-crestorbit__rel-bead.is-hostile { fill:rgb(255 80 56 / .8); }
+.orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) > img { opacity:.34; }
+.orr-crestorbit.has-relations .orr-crest.is-related > img { opacity:.92; }
 .orr-crestorbit__rise { opacity:0; animation:orr-crestorbit-rise .5s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-crestorbit-rise { to { opacity:1; } }
 html.sf-reduce-motion .orr-crestorbit__rise { animation:none; opacity:1; }
@@ -156,6 +165,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
   let arrived = false;
   let handDeg = 0;
   let armFromRim = false;
+  let relG = null;
   const spring = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => paintHand(v) });
 
   const schedule = () => {
@@ -186,7 +196,48 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     hand.seat.setAttribute('cx', f(sx));
     hand.seat.setAttribute('cy', f(sy));
     hand.seat.setAttribute('r', f(cs0 / 2 + 11));
-    hand.tip.setAttribute('d', '');
+    // the arm's footing: a short bone arc on the sun's ring, centred on the arm
+    hand.tip.setAttribute('d', r0 > 0 ? arcD(cx, cy, r0, deg - 12, deg + 12) : '');
+    paintRelations(deg);
+  }
+
+  // the relations: from the sun's ring (the authority chosen) or the chosen crest's seat to each related crest's
+  // emblem edge; a rim-to-rim beam bows toward the centre so it clears the sun; hostile ones red, all under the Hand
+  function paintRelations(deg) {
+    if (!relG || !geo || !data) return;
+    relG.textContent = '';
+    const rels = Array.isArray(data.relations) ? data.relations : [];
+    const n = data.items.length;
+    const chosenIdx = Math.max(0, data.items.findIndex((i) => i.id === data.selectedId));
+    const fromSun = !!(data.authorityId && data.items[chosenIdx] && data.items[chosenIdx].id === data.authorityId);
+    const { cx, cy, R, cs, centreNow } = geo;
+    const related = new Set();
+    for (const rel of rels) {
+      const k = data.items.findIndex((i) => i.id === rel.id);
+      if (k < 0 || k === chosenIdx) continue;
+      related.add(rel.id);
+      const tDeg = (360 * k) / n;
+      const [tx, ty] = polar(cx, cy, R - cs / 2 - 4, tDeg);
+      let d;
+      if (fromSun) {
+        const [sx, sy] = polar(cx, cy, centreNow / 2 + 18, tDeg);
+        d = `M ${f(sx)} ${f(sy)} L ${f(tx)} ${f(ty)}`;
+      } else {
+        // from the chosen crest's seat, bowing through the interior with a minimum radius that clears the sun's ring
+        const [ox, oy] = polar(cx, cy, R - cs / 2 - 11, deg);
+        const mid = (deg + tDeg) / 2 + (Math.abs(((tDeg - deg) % 360 + 540) % 360 - 180) > 180 ? 180 : 0);
+        const rc = Math.max(centreNow / 2 + 40, R * 0.45);
+        const [mx, my] = polar(cx, cy, rc, mid);
+        d = `M ${f(ox)} ${f(oy)} Q ${f(mx)} ${f(my)} ${f(tx)} ${f(ty)}`;
+      }
+      const hostile = rel.weight < 0;
+      relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom${hostile ? ' is-hostile' : ''}`, 'stroke-width': 4 }));
+      relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1 }));
+      const [bx, by] = polar(cx, cy, R - cs / 2 - 6, tDeg);
+      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.5, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}` }));
+    }
+    host.classList.toggle('has-relations', related.size > 0);
+    for (const [id, el] of crestEls) el.classList.toggle('is-related', related.has(id));
   }
 
   function standDown() {
@@ -215,7 +266,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     const centreNow = small ? Math.round(centreSize * 0.7) : centreSize;
     // the words sit outside the crests: at east and west they need their own room, so a wide-enough
     // host is bounded by its height and a narrow one by its width less a name's length
-    const R = Math.max(90, Math.min(H / 2 - cs / 2 - 36, W / 2 - cs / 2 - (small ? 70 : 108)));
+    const R = Math.max(90, Math.min(H / 2 - cs / 2 - 48, W / 2 - cs / 2 - (small ? 80 : 118)));
     geo = { cx, cy, R, cs, centreNow };
     host.classList.toggle('is-small', small);
     const arriveNow = !arrived && !reducedMotion();
@@ -242,9 +293,12 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       rings.appendChild(drift);
       const sunRings = svg('g', { class: 'orr-crestorbit__sunrings' });
       sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-core orr-crestorbit__ring', 'stroke-width': 1, opacity: '.7' }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-core orr-crestorbit__sunring', 'stroke-width': 1 }));
       rings.appendChild(sunRings);
       layer.appendChild(rise(rings, 0));
+      // the chosen power's relations: beams of light across the orbit's interior, drawn under the Hand
+      relG = svg('g', { class: 'orr-crestorbit__relations' });
+      armLayer.appendChild(relG);
       // the Hand: a bloom and a core from the centre crest to the rim, a bead where it meets the crest
       const hg = svg('g', { class: 'orr-crestorbit__hand' });
       hand = {
@@ -267,13 +321,15 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         // a ghost ring carries every arc; the arc grows from the crest's top, one step of 30 degrees per
         // tier from neutral: clockwise for a gain, counter-clockwise against you
         const steps = Number.isFinite(item.tierSteps) ? item.tierSteps : Math.sign(rep) * Math.min(4, Math.ceil(Math.abs(rep) / 250));
-        const sweep = Math.max(30, Math.abs(steps) * 30);
+        // the arc's sweep carries magnitude: 22 degrees per tier band, the fraction inside the band included
+        const pos = Number.isFinite(item.bandPos) ? item.bandPos : steps;
+        const sweep = Math.max(20, Math.min(150, Math.abs(pos) * 22));
         const arcs = svg('g', {});
         arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-core orr-crestorbit__ghost', 'stroke-width': 1 }));
         // the zero tick on every crest: the arc's direction reads against it
         const [zx0, zy0] = polar(x, y, r - 2, 0); const [zx1, zy1] = polar(x, y, r + 4, 0);
         arcs.appendChild(svg('path', { d: `M ${f(zx0)} ${f(zy0)} L ${f(zx1)} ${f(zy1)}`, class: 'orr-core orr-crestorbit__zero', 'stroke-width': 1 }));
-        if (steps) {
+        if (steps || Math.abs(pos) > 0.05) {
           const cls = item.hostile ? 'orr-crestorbit__standing orr-crestorbit__standing--against' : 'orr-crestorbit__standing';
           const d = rep < 0 ? arcD(x, y, r, -sweep, 0) : arcD(x, y, r, 0, sweep);
           arcs.appendChild(svg('path', { d, class: `orr-bloom ${cls} orr-crestorbit__standing-bloom`, 'stroke-width': 7, opacity: '.24' }));
@@ -319,10 +375,10 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         if (wordsEl) {
           const base = 'position:absolute; display:flex; flex-direction:column; gap:1px; white-space:nowrap; pointer-events:none; margin:0; padding:0;';
           const by = {
-            north: 'left:50%; right:auto; top:auto; bottom:calc(100% + 2px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse;',
-            south: 'left:50%; right:auto; bottom:auto; top:calc(100% + 2px); transform:translateX(-50%); align-items:center;',
-            east: 'left:calc(100% + 2px); right:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-start;',
-            west: 'right:calc(100% + 2px); left:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-end;',
+            north: 'left:50%; right:auto; top:auto; bottom:calc(100% + 14px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse;',
+            south: 'left:50%; right:auto; bottom:auto; top:calc(100% + 14px); transform:translateX(-50%); align-items:center;',
+            east: 'left:calc(100% + 12px); right:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-start;',
+            west: 'right:calc(100% + 12px); left:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-end;',
           };
           wordsEl.style.cssText = base + by[side];
         }

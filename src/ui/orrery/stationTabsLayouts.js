@@ -1384,6 +1384,59 @@ ${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-
   ${T} .orr-standing text.orr-standing__val { font-size:8.5px !important; }
 }
 
+/* ================================ ROUND 8: INDUSTRY ========================================= */
+${T} .sx-fab-foot .orr-lampkey:disabled { opacity:1 !important; color:rgb(${BONE} / .5) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .5) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
+${T} .sx-ind .orr-extent::before, ${T} .sx-ind__list .orr-extent::before, ${T} .sx-fab .orr-extent::before { opacity:.4 !important; }
+
+/* ================================ ROUND 10: MISSIONS ======================================== */
+/* the junction bead: on the spine where the arm leaves it, at every spelling of "chosen" */
+${T} .sx-ct__rows .sx-ct-row.is-active::before, ${T} .sx-ct__rows .sx-ct-row.is-selected::before, ${T} .sx-ct__rows .sx-ct-row[aria-selected="true"]::before {
+  content:"" !important; display:block !important; position:absolute !important; left:5.5px !important; top:50% !important; width:4.5px !important; height:4.5px !important;
+  margin:-2.25px 0 0 !important; border-radius:50% !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important;
+  clip-path:none !important; transform:none !important; opacity:1 !important; filter:none !important; }
+/* the ladder window's extent cursor is a rail mark, not a selection */
+${T} .sx-ct__board > .orr-extent::before, ${T} .sx-ct__board .orr-extent::before { opacity:.3 !important; }
+
+/* ================================ ROUND 9: BAR ============================================== */
+/* the old comb is gone; the voice lives on the portrait */
+${T} .orr-bar-wave { display:none !important; }
+${T} .sx-bar__stage { position:relative !important; }
+/* B1: the Hand touches its bead — the row paints no lamp of its own; the arm runs spine to bead centre */
+${T} .sx-bar__rows .sx-bar-row.fh-key--legend, ${T} .sx-bar__rows .sx-bar-row.is-active { background:none !important; background-image:none !important; box-shadow:none !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { display:block !important; left:7px !important; width:29px !important; opacity:1 !important; visibility:visible !important; z-index:2; clip-path:none !important;
+  background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; }
+/* B2: the leads' marker sleeps at rest (a third of the focus cursor's lift, no bloom) and wakes when Tab lands */
+${T} .sx-lead__rows .sx-lead.is-current::before { opacity:1 !important; background:rgb(${BONE} / .42) !important; box-shadow:none !important; }
+${T} .sx-lead__rows:focus-within .sx-lead.is-current::before { background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+/* B3: one spine at one rest light from the first contact to the last lead; the lists keep their ticks only */
+${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .36) 7px, rgb(${BONE} / .36) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat !important;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; }
+${T} .sx-bar__rows, ${T} .sx-lead__rows { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+/* B4: three hints, one voice */
+${T} .sx-talk__keys, ${T} .sx-bar__keys, ${T} .sx-bar__leadkeys { font-size:10px !important; letter-spacing:.14em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
+/* the ladder's prices stop short of the dialogue column */
+@media (min-width:1500px) { ${T} .sx-bar__rows .sx-bar-row, ${T} .sx-lead__rows .sx-lead { max-width:528px !important; } }
+/* B5: a short screen gives LEADS its air */
+@media (max-height:800px) { ${T} .sx-bar__leads > .k-caps { margin-top:30px !important; } }
+
+/* ================================ ROUND 8: FACTIONS ========================================= */
+/* the watermark stays inside its column and fades out above the scale row */
+${T} .sx-fac-crest { left:0 !important; top:6px !important; width:320px !important; height:320px !important;
+  -webkit-mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; }
+@media (max-height:800px) { ${T} .sx-fac-crest { width:200px !important; height:200px !important; } }
+/* the legend: who the chosen power stands with and against, one line, rivals red */
+${T} .sx-fac-legend { margin:0 0 6px !important; font-size:10.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; }
+${T} .sx-fac-legend__k { color:rgb(248 244 234); }
+${T} .sx-fac-legend .is-hostile { color:rgb(255 80 56 / .85) !important; }
+/* a short screen carries the rim names outside the ring at 8px */
+@media (max-height:800px) {
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:block !important; font-size:8px !important; letter-spacing:.08em !important; }
+  ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
+}
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

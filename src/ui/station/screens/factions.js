@@ -105,6 +105,9 @@ function liveFaction(state, id) {
   return (state && state.factions && state.factions[id]) || null;
 }
 
+/** The standing as a linear position for the rim arcs: one unit per hundred points, so −120 draws longer than −50. */
+function bandPosOf(r) { return (Number(r) || 0) / 100; }
+
 function relationEntries(meta) {
   return Object.entries((meta && meta.relations) || {})
     .map(([id, weight]) => ({ id, weight: Number(weight) || 0 }))
@@ -275,7 +278,8 @@ export function createFactionsScreen(ctx) {
           `</div>` +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
-            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">Relations${relations.length ? ` · ${relations.length}` : ''}</button>` +
+            (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +
+            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">${relations.length ? 'Detail' : 'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
             (relations.length
               ? `<ul class="k-rows sx-fac-network__rows" hidden>${relationRows}</ul>`
               : `<p class="k-empty sx-fac-network__empty" hidden>No material relations recorded.</p>`) +
@@ -290,10 +294,11 @@ export function createFactionsScreen(ctx) {
     if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 118 });
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     orbit.set({
-      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4, hostile: r <= FACTION_AGGRO_THRESHOLD }; }),
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4, bandPos: bandPosOf(r), hostile: r <= FACTION_AGGRO_THRESHOLD }; }),
       selectedId: f.id,
       authorityId,
       swing: picked,
+      relations: relationEntries(f.meta).map((r) => ({ id: r.id, weight: r.weight })),
     });
     for (const stop of stopDecrypt.splice(0)) stop();
     if (reducedMotion()) return;

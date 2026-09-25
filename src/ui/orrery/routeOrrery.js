@@ -41,6 +41,7 @@ const CSS = `
 .orr-svg .orr-route__swing-bloom { stroke:var(--dp-hand, #f2b950); opacity:.26; }
 .orr-route__beamg { transition:opacity .25s linear; }
 .orr-svg .orr-route__leader { stroke:rgb(${BONE} / .45); }
+.orr-svg .orr-route__leader--dest { stroke:rgb(${BONE} / .7); }
 .orr-svg .orr-route__pulse { fill:var(--dp-ice, #8fcbff); }
 .orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
 .orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
@@ -287,6 +288,9 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     const beamSegs = [];
     if (dest && !local) for (let i = 1; i < routePts.length; i += 1) beamSegs.push([routePts[i - 1], routePts[i]]);
     else if (endPoint) beamSegs.push([{ x: cx, y: cy }, endPoint]);
+    // the screen's tether leaves the origin down-left at 45 degrees: no name lies across it
+    if (data.tether) { const o = place.get(data.origin) || { x: cx, y: cy }; beamSegs.push([{ x: o.x, y: o.y }, { x: o.x - 900, y: o.y + 900 }]); }
+    const onRim = (pt) => !!pt && Math.abs(Math.hypot(pt.x - cx, pt.y - cy) - R) < 6;
 
     // the names: every drawn sector is named, or it is not drawn. A name takes the first of the
     // places round its node that touches no other name, no node and not the beam.
@@ -303,12 +307,12 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       for (let k = 1; k <= rings; k += 1) { const rr = ringR(k); if (dmin < rr + 4 && dmax > rr - 4) return true; }
       return false;
     };
-    function placeName(p, lines, { isDest = false, reserve = false, outside = false } = {}) {
+    function placeName(p, lines, { isDest = false, reserve = false, outside = false, preferOutside = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
       const h = sizes.reduce((s, x) => s + x.h + 1, -1);
       const gapR = isDest ? 14 : 10;
-      const turns = [0, 45, -45, 90, -90, 135, -135, 180];
+      const turns = preferOutside ? [] : [0, 45, -45, 90, -90, 135, -135, 180];
       for (const turn of turns) {
         const deg = ((p.deg + turn) % 360 + 360) % 360;
         const rad = ((deg - 90) * Math.PI) / 180;
@@ -332,7 +336,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         return { box, anchor, ax, top: box.t, w, h };
       }
-      if (isDest || outside) {
+      if (isDest || outside || preferOutside) {
         // no room round the node: the name hangs outside the outer ring on the node's bearing, off a leader
         const rad = ((p.deg - 90) * Math.PI) / 180;
         const ux = Math.cos(rad); const uy = Math.sin(rad);
@@ -376,7 +380,8 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         .concat(data.destName && String(data.destName).toUpperCase() !== String(SECTOR.get(dest).name || '').toUpperCase()
           ? [{ text: String(data.destName).toUpperCase(), cls: 'orr-route__name--berth', small: true }] : [])
       : null;
-    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
+    // a destination on the rim hangs just outside its berth on a solid leader, never in a lane
+    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true, preferOutside: onRim(place.get(dest)) }) : null;
     // then the rest, the route first, nearest ring first
     // a short host names only what it has room for: the route and the berth's own lane neighbours
     const compactNames = H < 340;
@@ -384,7 +389,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
-      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true });
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true, preferOutside: onRim(p) });
       if (spot) drawn.set(id, spot);
     }
 
@@ -486,7 +491,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 3.2, class: 'orr-route__hand-bead' }),
       );
       beamG.appendChild(fade(hg, 520));
-      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader', 'stroke-width': 1, 'stroke-dasharray': '2 3' }), 540));
+      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader orr-route__leader--dest', 'stroke-width': 1 }), 540));
       if (destSpot && destLines) layer.appendChild(fade(textLines(destSpot, destLines), 560));
       if (local) {
         const t = svg('text', { x: f(endPoint.x + 12), y: f(endPoint.y + 3), 'text-anchor': 'start', class: 'orr-route__name orr-route__name--live' });

@@ -701,7 +701,8 @@ export function createContractsScreen(ctx) {
       const hide = () => { tether.style.display = 'none'; cap.style.display = 'none'; };
       if (!kr || !(dr.width > 0) || !(kr.width > 0)) { hide(); return; }
       const kx = kr.right - dr.left + 12;
-      const ky = kr.top - dr.top + kr.height / 2;
+      // snapped to the pixel grid so the 1px core reads as one row, not two half rows
+      const ky = Math.round(kr.top - dr.top + kr.height / 2) + 0.5;
       const ox = rr.left - dr.left + g.origin.x;
       const oy = rr.top - dr.top + g.origin.y;
       if (!(ox > kx + 80)) { hide(); return; }
@@ -720,6 +721,20 @@ export function createContractsScreen(ctx) {
       cap.style.top = `${Math.round(ky + 8)}px`;
       tether.style.display = '';
       cap.style.display = '';
+      // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the
+      // left column ends where the instrument's line begins (no push when it already reaches the foot)
+      try {
+        const yours = document.querySelector('.sx-ct__yours');
+        const firstJob = document.querySelector('.sx-job');
+        const list = firstJob ? firstJob.parentElement : null;
+        if (yours && list) {
+          yours.style.removeProperty('margin-top');
+          const bottom = list.getBoundingClientRect().bottom;
+          const push = (dr.top + ky - 6) - bottom;
+          // the sheet's own margin is !important: the push must be too
+          if (push > 0) yours.style.setProperty('margin-top', `${Math.round(push)}px`, 'important');
+        }
+      } catch (_) { /* cosmetic */ }
       // the dossier settles after the orrery's first layout (the scales land, the key seats): measure again on
       // the next frames and redraw if anything moved; at most two extra passes per layout
       if (!g.__settled && typeof requestAnimationFrame === 'function') {
@@ -751,6 +766,7 @@ export function createContractsScreen(ctx) {
       originName: (ctx.station && ctx.station.name) || 'This station',
       dest: destSectorIdOf(m),
       destName: destName(m),
+      tether: true,
     });
     // the consequences as instruments: the risk on a five-tick scale, the standing as a gain and a
     // loss on one small scale (the loss red: it is the one threat here). The sentence stays for the ear.
