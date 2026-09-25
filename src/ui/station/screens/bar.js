@@ -486,7 +486,21 @@ export function createBarScreen(ctx) {
     leadsKeysHint();
   }
 
-  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }
+  // the spine runs from the first heading's cap line to twelve px under the board key: never bare past the rail
+  function seatSpine() {
+    try {
+      const hang = el.querySelector('.sx-bar__hang');
+      const first = railEl.querySelector('.k-caps') || railEl;
+      const last = leadsEl.querySelector('.k-word--primary, [data-station-control="open-board"], button:last-of-type') || leadsEl;
+      if (!hang || !first || !last) return;
+      const hr = hang.getBoundingClientRect();
+      const top = first.getBoundingClientRect().top - hr.top + hang.scrollTop;
+      const bottom = last.getBoundingClientRect().bottom - hr.top + hang.scrollTop + 12;
+      hang.style.setProperty('--bar-spine-top', `${Math.round(top)}px`);
+      hang.style.setProperty('--bar-spine-h', `${Math.max(0, Math.round(bottom - top))}px`);
+    } catch (_) { /* cosmetic */ }
+  }
+  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); seatSpine(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine); }
 
   // ---------- interactions ----------
   function selectContact(id, focus) {

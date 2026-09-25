@@ -1559,6 +1559,22 @@ ${T} .sx-ind__list .orr-extent::before { left:6px !important; width:3px !importa
 ${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:9px; height:1.5px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 1.5px); background:rgb(${BONE} / .6); }
 ${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
 
+/* ================================ ROUND 11: BAR ============================================= */
+/* K1: the Hand stops at its bead's rim (the core stays on top) and carries a bloom */
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:26px !important; box-shadow:0 0 3px 1px rgb(242 185 80 / .28) !important; }
+/* K2: one 1px spine from the first heading to twelve px under the board key; the leads' marker opaque and asleep */
+${T} .sx-bar__hang::after { width:1px !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; }
+${T} .sx-lead__rows .sx-lead.is-current::before { background:rgb(124 120 112) !important; }
+/* K5: every lead title at full light (the marker alone says current); at 720 a long title takes a second line */
+${T} .sx-lead__rows .sx-lead .sx-lead__t, ${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(248 244 234) !important; }
+@media (max-height:800px) {
+  ${T} .sx-lead__t { white-space:normal !important; -webkit-mask-image:none !important; mask-image:none !important; overflow:visible !important; max-width:222px !important; }
+  ${T} .sx-lead__t .sf-entity-link { white-space:normal !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:4px !important; padding-bottom:4px !important; }
+  ${T} .sx-bar__leads { padding-bottom:16px !important; }
+}
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

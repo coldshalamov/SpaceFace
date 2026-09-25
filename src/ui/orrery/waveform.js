@@ -140,42 +140,57 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
   const f = (n) => Math.round(n * 100) / 100;
   const n = Math.max(12, bars | 0);
   const env = voiceEnvelope(text, n);
-  // bar-to-bar variation seeded by the line's own characters (the same line draws the same voice every time):
-  // no run of more than three equal bars, and no silence longer than three bars
-  const src = String(text || '').replace(/\s+/g, ' ');
-  const lens = [];
-  let quiet = 0;
-  for (let i = 0; i < n; i += 1) {
-    const ch = src.length ? src.charCodeAt(Math.floor(((i + 0.5) / n) * src.length)) : 97;
-    const h = (((ch * 2654435761) ^ (i * 40503)) >>> 0) % 1000 / 1000;
-    let v = env[i] < 0.1 && quiet < 3 ? 0 : Math.max(0.12, env[i] * 0.62 + h * 0.38);
-    quiet = v === 0 ? quiet + 1 : 0;
-    let len = Math.round(4 + v * 24);
-    const k = lens.length;
-    if (k >= 3 && lens[k - 1] === len && lens[k - 2] === len && lens[k - 3] === len) len = len > 16 ? len - 5 : len + 5;
-    lens.push(len);
-  }
+  // phrasing: the bars are shared among the words by their length; each word is a hump (a sine over the word,
+  // scaled by a seed from its characters), each word boundary drops to a whisper, and a full stop rests for three
+  // bars. Deterministic: the same line always draws the same voice.
+  const src = String(text || '').replace(/\s+/g, ' ').trim();
+  const lens = new Array(n).fill(4);
+  const words = src ? src.split(' ') : [];
+  const totalChars = words.reduce((a, w) => a + w.length, 0) || 1;
+  let cursor = 0;
+  words.forEach((w, wi) => {
+    const stop = /[.!?]$/.test(w) && wi < words.length - 1;
+    let count = Math.max(2, Math.round((w.length / totalChars) * n));
+    if (cursor + count > n) count = Math.max(0, n - cursor);
+    const seed = ((w.charCodeAt(0) * 2654435761) >>> 0) % 1000 / 1000;
+    for (let k = 0; k < count; k += 1) {
+      const t = (k + 0.5) / count;
+      const jitter = ((((w.charCodeAt(k % w.length) || 97) * 40503) ^ (k * 2654435761)) >>> 0) % 1000 / 1000;
+      lens[cursor + k] = Math.round(4 + 24 * Math.sin(Math.PI * t) * (0.6 + 0.4 * seed) * (0.82 + 0.18 * jitter));
+    }
+    cursor += count;
+    if (cursor < n) { lens[cursor] = 4; cursor += 1; }
+    if (stop) for (let r = 0; r < 3 && cursor < n; r += 1) { lens[cursor] = 0; cursor += 1; }
+  });
+  for (let k = cursor; k < n; k += 1) lens[k] = 4;
   const span = to - from;
   layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-voicearc__track' }));
+  let leaderSegs = [];
+  let leaderPath = '';
+  if (leaderFrom) {
+    const [px, py] = polar(cx, cy, r, land);
+    const lx = leaderFrom.x + 10; const ly = Math.round(leaderFrom.y) + 0.5;
+    const ex = px - Math.abs(py - ly);
+    if (ex > lx + 16) { leaderSegs = [[lx, ly, ex, ly], [ex, ly, px, py]]; leaderPath = `M ${f(lx)} ${ly} H ${f(ex)} L ${f(px)} ${f(py)}`; }
+    else { leaderSegs = [[lx, ly, px, py]]; leaderPath = `M ${f(lx)} ${ly} L ${f(px)} ${f(py)}`; }
+  }
+  const segDist = (ax, ay, bx, by, px, py) => { const dx = bx - ax; const dy = by - ay; const L = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)); return Math.hypot(ax + t * dx - px, ay + t * dy - py); };
+  const nearLeader = (x0, y0, x1, y1) => leaderSegs.some(([ax, ay, bx, by]) => { for (let k = 0; k <= 4; k += 1) { const qx = x0 + ((x1 - x0) * k) / 4; const qy = y0 + ((y1 - y0) * k) / 4; if (segDist(ax, ay, bx, by, qx, qy) < 3) return true; } return false; });
   let dBars = '';
   for (let i = 0; i < n; i += 1) {
     const a = from + (span * (i + 0.5)) / n;
-    if (leaderFrom && Math.abs(a - land) < span / n * 1.5) continue; // the bars part where the leader lands
     const len = lens[i];
+    if (!len) continue;
     const [x0, y0] = polar(cx, cy, r + 3, a);
     const [x1, y1] = polar(cx, cy, r + 3 + len, a);
+    if (leaderFrom && nearLeader(x0, y0, x1, y1)) continue; // the bars part wherever the leader passes
     dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
   }
   layer.appendChild(svg('path', { d: dBars, class: 'orr-voicearc__bloom' }));
   layer.appendChild(svg('path', { d: dBars, class: 'orr-voicearc__bars' }));
-  if (leaderFrom) {
-    const [px, py] = polar(cx, cy, r, land);
-    const lx = leaderFrom.x + 10; const ly = Math.round(leaderFrom.y) + 0.5;
-    const dy = py - ly;
-    const ex = px - Math.abs(dy);
-    const d = ex > lx + 16 ? `M ${f(lx)} ${ly} H ${f(ex)} L ${f(px)} ${f(py)}` : `M ${f(lx)} ${ly} L ${f(px)} ${f(py)}`;
-    layer.appendChild(svg('path', { d, class: 'orr-voicearc__leader' }));
-    layer.appendChild(svg('circle', { cx: f(lx), cy: ly, r: 1.6, class: 'orr-voicearc__foot' }));
+  if (leaderFrom && leaderPath) {
+    layer.appendChild(svg('path', { d: leaderPath, class: 'orr-voicearc__leader' }));
+    layer.appendChild(svg('circle', { cx: f(leaderSegs[0][0]), cy: leaderSegs[0][1], r: 1.6, class: 'orr-voicearc__foot' }));
   }
   host.appendChild(layer);
   return { el: layer, dispose() { if (layer.parentNode) layer.parentNode.removeChild(layer); } };
