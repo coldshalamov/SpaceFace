@@ -136,6 +136,14 @@ function transferableSourceBytes(parser, bufferViewIndex) {
   if (!plain) {
     return parser.getDependency('bufferView', bufferViewIndex).then((bufferView) => bufferView.slice(0));
   }
+  // With the vendored loader's in-place GLB body (#168), slice the same range straight off the fetched
+  // GLB so the body itself is never materialized; ArrayBuffer.prototype.slice clamping is preserved.
+  const range = typeof parser.glbBodySliceRange === 'function'
+    ? parser.glbBodySliceRange(def.buffer, def.byteOffset || 0, def.byteLength)
+    : null;
+  if (range) {
+    return Promise.resolve(range).then((r) => r.source.slice(r.byteOffset, r.byteOffset + r.byteLength));
+  }
   return parser.getDependency('buffer', def.buffer).then((buffer) => {
     const byteOffset = def.byteOffset || 0;
     return buffer.slice(byteOffset, byteOffset + def.byteLength);
