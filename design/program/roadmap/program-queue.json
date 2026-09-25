@@ -10240,7 +10240,7 @@
       "priority": 205,
       "title": "The climax is a toy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10262,7 +10262,9 @@
         "npm run check:sim",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-032-02-RECEIPT.md"
+      ],
       "brief": "Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). DONE WHEN: Owner plays each ending's climax; verdict recorded."
     },
     {
