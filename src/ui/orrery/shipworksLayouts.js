@@ -713,6 +713,10 @@ ${W} .sx-sw__stage.has-salering > .sx-sw__canvas { z-index:1; }
 /* For Sale: the stage stands full height (its readouts float over it), so the ring is the same dial the Fleet jig draws */
 ${W}.sx-sw--buying .sx-sw__stage { flex:1 1 auto !important; min-height:0 !important; height:auto !important; max-height:none !important; }
 
+/* For Sale: the handling readouts float at the stage's lower left, clear of the ring, so the stage keeps its full height */
+/* the For Sale readouts stand out of flow (so the stage keeps its full height); the screen seats them from the stage's box */
+${W}.sx-sw--buying .sx-sw__stats { position:absolute !important; left:258px !important; right:auto !important; top:auto !important; bottom:14px !important; transform:none !important; width:220px !important; max-width:220px !important; z-index:3; }
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

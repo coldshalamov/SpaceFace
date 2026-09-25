@@ -42,7 +42,7 @@ const CSS = `
 .orr-chain.is-blocked .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .45); }
 .orr-chain.is-blocked .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .4); }
 .orr-chain.is-blocked .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .4); }
-.orr-chain__label .orr-chain__reason, .orr-chain__reason { color:rgb(248 244 234 / .88) !important; opacity:1 !important; }
+.orr-chain__label .orr-chain__reason, .orr-chain__reason { color:rgb(248 244 234 / .74) !important; opacity:1 !important; }
 /* while the line is blocked, light stops at the block: the product is drawn at the ring's own alpha */
 .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .45); }

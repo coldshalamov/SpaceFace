@@ -357,7 +357,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
           dist += 6;
         }
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
-        if (reserve) nameBoxes.push(box);
+        if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: ox, y2: oy } };
       }
       return null;

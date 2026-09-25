@@ -404,12 +404,14 @@ export function createBarScreen(ctx) {
       try {
         const sr = stageEl.getBoundingClientRect();
         const ar = avatar ? avatar.getBoundingClientRect() : null;
-        const mr = spokenEl.getBoundingClientRect();
+        // the words' own extent (a range over the text), not the element's box
+        let mr = spokenEl.getBoundingClientRect();
+        try { const rg = document.createRange(); rg.selectNodeContents(spokenEl); const rr = rg.getBoundingClientRect(); if (rr.width > 0) mr = rr; } catch (_) { /* the box stands in */ }
         if (ar && ar.width > 120 && sr.width > 0) {
           const compact = sr.width < 1000;
           const cx = ar.left - sr.left + ar.width * 0.48;
           const cy = ar.top - sr.top + ar.height * 0.44;
-          const r = ar.width * (compact ? 0.5 : 0.42);
+          const r = ar.width * 0.42;
           const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: mr.right - sr.left, y: mr.top - sr.top + mr.height / 2 } });
           if (speak) wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
         }

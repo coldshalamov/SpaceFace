@@ -1633,7 +1633,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // the stage ring's geometry: the same formula the hull jig uses, so the hull for sale sits in the same dial
   function stageRingGeo() {
     const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
-    if (W < 240 || H < 200) return null;
+    if (W < 240 || H < 160) return null;
     const edge = 40; const gap = 30; const labelWidth = 220;
     const bandMargin = Math.min(52, Math.round((H - 56) * 0.11));
     const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (H - 56) / 2 - bandMargin));
@@ -1686,7 +1686,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
   }
   // the verbs' one home, both modes and both sizes: centred under the ring's caption
+  function seatSaleStats(g) {
+    const stats = el.querySelector('.sx-sw__stats');
+    if (!stats) return;
+    const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
+    if (!g || !el.classList.contains('sx-sw--buying')) { for (const k of props) stats.style.removeProperty(k); return; }
+    const sr = stageEl.getBoundingClientRect();
+    const w = Math.max(170, Math.min(250, g.hx - g.R - 44));
+    stats.style.setProperty('position', 'fixed', 'important');
+    stats.style.setProperty('left', `${Math.round(sr.left + 16)}px`, 'important');
+    stats.style.setProperty('width', `${Math.round(w)}px`, 'important');
+    stats.style.setProperty('max-width', `${Math.round(w)}px`, 'important');
+    stats.style.setProperty('right', 'auto', 'important');
+    stats.style.setProperty('bottom', 'auto', 'important');
+    stats.style.setProperty('transform', 'none', 'important');
+    stats.style.setProperty('z-index', '3', 'important');
+    const h = stats.offsetHeight || 200;
+    stats.style.setProperty('top', `${Math.round(sr.bottom - h - 14)}px`, 'important');
+  }
   function seatVerbs(g) {
+    seatSaleStats(g);
     const rack = el.querySelector('.sx-sw-verbs');
     if (!rack) return;
     if (!g) { rack.style.cssText = ''; return; }

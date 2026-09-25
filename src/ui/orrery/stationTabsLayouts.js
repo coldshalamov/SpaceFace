@@ -22,10 +22,11 @@ ${T} ${row} { ${PLAIN} position:relative !important; padding-left:44px !importan
 ${T} ${row}::after { display:none !important; }
 ${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1.5px !important;
   margin:0 !important; background:rgb(${BONE} / .55) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; border:0 !important; }
-${T} ${row}:is(${chosen})::before { left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important; clip-path:none !important; border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important;
+${T} ${row}:is(${chosen})::before { translate:none !important; scale:none !important; left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important; clip-path:none !important; border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important;
   box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; filter:none !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
 ${T} ${row}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important; width:26px !important; height:1.5px !important; margin:-.75px 0 0 !important;
+  translate:none !important; scale:none !important; rotate:none !important;
   clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
 ${T} ${row}:focus-visible { outline:none !important; }`;
@@ -1473,6 +1474,40 @@ ${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { colo
 
 /* the tape (and the leader's run into the reading) stands above the reading's glass */
 ${T} .sx-ledger__right > .orr-ledger-tape { position:relative; z-index:2; }
+
+/* ================================ ROUND 10: INDUSTRY ======================================== */
+/* the ladder's state light clears the contrast floor: blocked 55%, short 70%, sub-labels 45%; the chosen rung under the Hand at its state + 25% */
+${T} .sx-ind-process__items .sx-ind-row.is-blocked:not(.is-active, [aria-selected="true"]) { opacity:.55 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-active.is-blocked, ${T} .sx-ind-process__items .sx-ind-row[aria-selected="true"].is-blocked { opacity:.8 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-active.is-materials, ${T} .sx-ind-process__items .sx-ind-row[aria-selected="true"].is-materials { opacity:.95 !important; }
+${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier { color:rgb(${BONE} / .5) !important; }
+${T} .sx-ind-process__head .sx-ind-process__count { color:rgb(${BONE} / .62) !important; }
+/* one spine for the whole ladder, drawn once at 40%; the group lists keep their ticks; the extent cursor retires (the window ends on a whole rung) */
+${T} .sx-ind__list { position:relative !important; }
+${T} .sx-ind__list::before { content:""; position:absolute; left:7px; top:6px; bottom:6px; width:1px; background:rgb(${BONE} / .4); pointer-events:none; z-index:0; }
+${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-ind__list .orr-extent { display:none !important; }
+@media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:nowrap !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
+
+/* ================================ ROUND 10: BAR ============================================= */
+/* every chosen-row arm on every rail: the kit's individual translate/scale never apply */
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row)::after,
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row)::before { translate:none !important; scale:none !important; }
+/* the spine is its own layer with its own fade: the column's content is never masked (labels and keys stay whole) */
+${T} .sx-bar__hang { background:none !important; -webkit-mask-image:none !important; mask-image:none !important; }
+${T} .sx-bar__hang::after { content:""; position:absolute; left:7px; top:0; bottom:0; width:1.5px; background:rgb(${BONE} / .36); pointer-events:none; z-index:0;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+/* C4: three hints, one voice; the leads' hint lifts only with the same condition that lights the leads' marker */
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
+${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(119 112 104) !important; }
+${T} .sx-bar__leads:has(.sx-lead__rows:focus-within) .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
+/* C5: a short screen fits its column: the TAB LEAD hint folds (the key carries the verb) and the contacts close up */
+@media (max-height:800px) {
+  ${T} .sx-bar__hang .sx-bar__leadkeys { display:none !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:6px !important; padding-bottom:6px !important; min-height:0 !important; }
+}
+
+${T} .sx-ind__list[data-snapped="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
 
 `;
 

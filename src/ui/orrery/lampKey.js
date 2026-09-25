@@ -47,7 +47,7 @@ const CSS = `
 /* a disabled key is its silhouette alone: the field's cut shape as a 1px bone outline (the overlay hollows it), the verb in dim ink */
 .orr-lampkey:disabled::before { background:transparent !important; background-image:none !important; box-shadow:none !important; }
 .orr-lampkey__rim { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; display:none; z-index:1; }
-.orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.5; stroke-linejoin:miter; }
+.orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
 .orr-lampkey:disabled .orr-lampkey__rim { display:block; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }
 .orr-lampkey:disabled .orr-lampkey__commit, .orr-lampkey:disabled .orr-lampkey__commit-bloom, .orr-lampkey:disabled .orr-lampkey__fill, .orr-lampkey:disabled .orr-lampkey__fillbloom { display:none; }

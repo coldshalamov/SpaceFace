@@ -24,8 +24,8 @@ html.sf-reduce-motion .orr-wave__bar, html.sf-reduce-motion .orr-wave.is-speakin
 /* the voice arc: bars of light radiating from an open arc round a face, breathing as a whole */
 .orr-voicearc { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-voicearc .orr-voicearc__track { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1; }
-.orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.16; stroke-linecap:butt; }
-.orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
+.orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.1; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .48); stroke-width:2; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
 .orr-voicearc .orr-voicearc__leader { fill:none; stroke:rgb(${BONE} / .4); stroke-width:1; stroke-linejoin:miter; }
 .orr-voicearc .orr-voicearc__foot { fill:rgb(${BONE} / .7); }
 @keyframes orr-voicearc-breathe { from { opacity:.82; } to { opacity:1; } }
@@ -140,13 +140,28 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
   const f = (n) => Math.round(n * 100) / 100;
   const n = Math.max(12, bars | 0);
   const env = voiceEnvelope(text, n);
+  // bar-to-bar variation seeded by the line's own characters (the same line draws the same voice every time):
+  // no run of more than three equal bars, and no silence longer than three bars
+  const src = String(text || '').replace(/\s+/g, ' ');
+  const lens = [];
+  let quiet = 0;
+  for (let i = 0; i < n; i += 1) {
+    const ch = src.length ? src.charCodeAt(Math.floor(((i + 0.5) / n) * src.length)) : 97;
+    const h = (((ch * 2654435761) ^ (i * 40503)) >>> 0) % 1000 / 1000;
+    let v = env[i] < 0.1 && quiet < 3 ? 0 : Math.max(0.12, env[i] * 0.62 + h * 0.38);
+    quiet = v === 0 ? quiet + 1 : 0;
+    let len = Math.round(4 + v * 24);
+    const k = lens.length;
+    if (k >= 3 && lens[k - 1] === len && lens[k - 2] === len && lens[k - 3] === len) len = len > 16 ? len - 5 : len + 5;
+    lens.push(len);
+  }
   const span = to - from;
   layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-voicearc__track' }));
   let dBars = '';
   for (let i = 0; i < n; i += 1) {
     const a = from + (span * (i + 0.5)) / n;
     if (leaderFrom && Math.abs(a - land) < span / n * 1.5) continue; // the bars part where the leader lands
-    const len = 4 + env[i] * 24;
+    const len = lens[i];
     const [x0, y0] = polar(cx, cy, r + 3, a);
     const [x1, y1] = polar(cx, cy, r + 3 + len, a);
     dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;

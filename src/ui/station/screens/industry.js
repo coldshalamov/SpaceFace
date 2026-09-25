@@ -111,13 +111,14 @@ export function createIndustryScreen(ctx) {
   function fitLadderWindow() {
     try {
       listEl.style.maxHeight = '';
+      listEl.removeAttribute('data-snapped');
       const top = listEl.getBoundingClientRect().top;
       const limit = top + listEl.clientHeight;
       let cut = 0;
       for (const row of listEl.querySelectorAll('.sx-ind-row')) {
         const r = row.getBoundingClientRect();
         if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) listEl.style.maxHeight = `${Math.round(cut - top + 6)}px`; return; }
+        else { if (cut) { listEl.style.maxHeight = `${Math.round(cut - top + 4)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
   }
@@ -138,16 +139,20 @@ export function createIndustryScreen(ctx) {
           // itself lacks the facility (printed once on the header, never on the rows)
           const readiness = blueprints.map((bp) => industryReadiness(bp, state, stn));
           const readyCount = readiness.filter((r) => r.state === 'ready').length;
-          const allStation = readiness.length > 0 && readiness.every((r) => r.state === 'station');
-          const facility = allStation ? (blueprints[0].stationType === 'fab' ? 'fabricator' : 'refinery') : '';
+          // the group's reason is printed once on the header when at least half its rungs share a facility block
+          const stationBlocked = readiness.filter((r) => r.state === 'station').length;
+          const allStation = readiness.length > 0 && stationBlocked * 2 >= readiness.length;
+          const facility = allStation ? ((blueprints.find((bp, k) => readiness[k].state === 'station') || blueprints[0]).stationType === 'fab' ? 'fabricator' : 'refinery') : '';
+          const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
           const it = items(state);
           const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(it[id] || 0); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
           return `<section class="sx-ind-process${allStation ? ' is-blocked' : ''}" data-process="${category}">` +
-            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}<span class="sx-ind-process__count">${readyCount} of ${blueprints.length} ready</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : ''}</p>` +
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : ''}</p>` +
             `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp, bi) => {
               const r = readiness[bi];
               const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
-              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : (r.state === 'station' ? '' : shortBlockLabel(bp, r));
+              // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
+              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r);
               const selected = bp.id === selectedId;
               const outputName = niceName(bp.outputs.id, bp.outputs.kind);
               const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
