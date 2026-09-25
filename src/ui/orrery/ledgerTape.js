@@ -135,7 +135,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
     // the purse gauge always holds the right end, so the tape's extent never changes between states
     const withArc = W >= 520;
     const R_ARC = H >= 190 ? 52 : 44;
-    const arcW = withArc ? R_ARC * 2 + 92 : 0;
+    const arcW = withArc ? R_ARC * 2 + 140 : 0;
     const padL = 0;
     const padR = 12;
     const x0 = padL;

@@ -938,7 +938,7 @@ ${T} .orr-bar-wave { height:24px !important; }
 /* the reading hangs off the Hand's leader: no gap between tape and reading, the leader's last inch is the reading's own stub, one left edge */
 ${T} .sx-ledger > .sx-ledger__right { gap:0 !important; }
 ${T} .sx-ledger__right > .orr-ledger-tape { margin-top:-4px !important; }
-${T} .sx-ledger__right > .sx-ledger__read { padding:14px 0 0 0 !important; }
+${T} .sx-ledger__right > .sx-ledger__read { position:relative !important; padding:14px 0 0 0 !important; }
 ${T} .sx-ledger__read::after { content:""; position:absolute; left:0; top:0; width:1px; height:14px; background:rgb(${BONE} / .6); pointer-events:none; }
 ${T} .sx-ledger__read::before { inset:-24px -60px -40px -40px; }
 /* the unit sits on the numeral's baseline as a suffix; one label above says the direction */
@@ -982,6 +982,11 @@ ${T} .sx-talk__choices { align-items:stretch !important; max-width:min(100%, 52c
 ${T} .sx-talk__choices > li { display:block !important; width:100%; }
 ${T} .sx-choice { width:100% !important; }
 @media (max-width:1499px) { ${T} .sx-bar { grid-template-columns:360px minmax(0, 1fr) !important; } }
+
+/* the orrery's glass disc stays under the orrery: its own stacking context, the disc beneath its rings, never over the dossier's words */
+${T} .sx-dossier > .orr-ct-route { z-index:0; isolation:isolate; }
+/* the library disc is 118% wide and translated by half of itself: with the inset box that translate slid it 420px left over the title */
+${T} .sx-dossier > .orr-ct-route::before { z-index:-1 !important; inset:-4% -4% 6% -4% !important; width:auto !important; height:auto !important; transform:none !important; }
 
 `;
 

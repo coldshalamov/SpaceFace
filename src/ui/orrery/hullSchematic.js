@@ -544,11 +544,13 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     points.forEach((p, i) => {
       const kind = nodes[i].state === 'fitted' ? 'is-fitted' : nodes[i].state === 'open' ? 'is-open' : 'is-bare';
       const g = svg('g', { class: `orr-hull__node ${kind}` });
+      // a narrow stage draws a small hull: its sockets scale with it so they never crowd the lines
+      const ns = W < numeralsMinWidth ? 0.72 : 1;
       g.append(
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 12, class: 'orr-hull__glow' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 9.5, class: 'orr-hull__well' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 8, class: 'orr-hull__ring' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 3, class: 'orr-hull__core' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: (12 * ns).toFixed(1), class: 'orr-hull__glow' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: (9.5 * ns).toFixed(1), class: 'orr-hull__well' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: (8 * ns).toFixed(1), class: 'orr-hull__ring' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: (3 * ns).toFixed(1), class: 'orr-hull__core' }),
         svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 14, class: 'orr-hull__hit' }),
       );
       if (typeof onPick === 'function') g.addEventListener('click', () => onPick(i));

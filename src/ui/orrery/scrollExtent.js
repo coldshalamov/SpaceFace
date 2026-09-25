@@ -15,7 +15,8 @@ function paint(el) {
   if (!mark) return;
   const sh = el.scrollHeight || 0;
   const ch = el.clientHeight || 0;
-  const over = sh > ch + 2;
+    // a fold and a thumb only over a real overflow: a few pixels of padding are not a list to scroll
+  const over = sh - ch > 6;
   el.setAttribute('data-overflow', over ? '1' : '0');
   if (!over) { mark.style.setProperty('--orr-ext-top', '0px'); mark.style.setProperty('--orr-ext-h', '0px'); return; }
   const frac = Math.max(0.06, Math.min(1, ch / sh));
