@@ -1,5 +1,5 @@
 // Combat target assist runs by default from the selected hostile. G separately enables the
-// clutchable draw-to-fly trackpad route; Backspace releases the combat lock for free aim.
+// relative dynamic combat stick; Backspace releases the combat lock for free aim.
 //
 // TARGET RECONCILIATION (the "two variables" rule). There are two target-ish values on the player:
 //   state.player.targetId        — the player's SELECTION. It seeds a newly latched throw's
@@ -50,7 +50,7 @@ export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()
   }
   if (bus) {
     bus.emit('toast', {
-      text: inp.autoFire ? 'Draw-to-fly ON' : 'Draw-to-fly OFF',
+      text: inp.autoFire ? 'Combat stick ON' : 'Combat stick OFF',
       kind: 'info',
       ttl: 2,
     });
@@ -200,6 +200,9 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
         rawX / length,
         rawZ / length,
         magnitude,
+        rawX / length,
+        rawZ / length,
+        Math.sqrt(magnitude),
       );
     }
   }
@@ -234,7 +237,7 @@ function followAutoTargetPath(inp, player, state, runtime, dt) {
   applyWorldFlightCommand(inp, player, x, z, 1);
   return true;
 }
-function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, headingX = worldX, headingZ = worldZ) {
+function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, headingX = worldX, headingZ = worldZ, turnScale = 1) {
   const rotation = finite(player.rot);
   const forwardX = Math.cos(rotation);
   const forwardZ = Math.sin(rotation);
@@ -247,7 +250,7 @@ function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, heading
   const desiredHeading = Math.atan2(headingZ, headingX);
   const headingError = wrapAngle(desiredHeading - rotation);
   inp.turnIntent = Math.max(-1, Math.min(1,
-    headingError / AUTO_TARGET_HEADING_SOFT_ANGLE));
+    headingError / AUTO_TARGET_HEADING_SOFT_ANGLE)) * Math.max(0, Math.min(1, finite(turnScale, 1)));
 }
 
 function finite(value, fallback = 0) {
