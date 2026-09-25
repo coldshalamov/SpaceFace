@@ -622,7 +622,9 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.tick();
   checkEqual(s.state.input.autoTargetPath.points.length, 0,
     'entering combat-stick mode clears stale draw-path geometry');
-  for (let i = 0; i < 6; i += 1) {
+  // The harness emits movementX/Y=1 per move. Cross the authored 10 px deadzone deliberately;
+  // sub-deadzone tremor is supposed to remain neutral.
+  for (let i = 0; i < 18; i += 1) {
     s.dom.move(300 + i * 12, 220 + i * 9);
     s.tick();
   }
