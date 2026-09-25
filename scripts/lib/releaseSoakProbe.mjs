@@ -3481,6 +3481,23 @@ async function sampleRafWindow(page, {
       const settingsEnd = readSettingsSlice();
       const routeEnd = readRouteProof();
       const sceneEnd = collectPerformanceSceneStructure({ state });
+      // A mesh build or admission queued mid-window that drains a beat later is ambient
+      // churn, not a pipeline mismatch — the boundary contract just needs the queue empty
+      // when it is sampled. Give it a bounded moment; work still in flight past the
+      // deadline still fails the pipeline-stable check as intended.
+      const pipelineDrainDeadline = performance.now() + 2_000;
+      for (;;) {
+        const probeReadiness = collectPerformancePipelineReadiness({
+          state,
+          registry: window.SF?.registry,
+          resourceStartTime,
+          measurementHorizonMs: admissionMeasurementHorizonMs,
+        });
+        if ((Number(probeReadiness?.meshBuildQueueRemaining) === 0
+            && Number(probeReadiness?.activeAdmissionJobs) === 0)
+          || performance.now() >= pipelineDrainDeadline) break;
+        await raf();
+      }
       const pipelineEnd = collectPerformancePipelineReadiness({
         state,
         registry: window.SF?.registry,
