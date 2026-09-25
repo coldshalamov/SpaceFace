@@ -425,7 +425,13 @@ function laneSummary(lanes) {
 
 // Counts that must never go up. Timing is host-dependent: reported always, gated only with
 // --strict-timing (the owner's laptop is shared with other agents and the CPU is often saturated).
-const COUNT_KEYS = ['blinks', 'rootSwaps', 'regressions', 'stuckMissing', 'stationNoCollider', 'flightShaderLinks', 'leftUndrawn'];
+const COUNT_KEYS = ['blinks', 'rootSwaps', 'regressions', 'stuckMissing', 'stationNoCollider', 'flightShaderLinks', 'inFrameShaderLinks', 'leftUndrawn'];
+
+/** A link whose stack runs through a presented draw (renderObjects / renderBufferDirect): a freeze. */
+export function isInFrameLink(link) {
+  return !!(link && Array.isArray(link.stack)
+    && link.stack.some((line) => /renderObjects|renderBufferDirect/.test(line)));
+}
 
 export function frameSolidMetrics(summary, extra = {}) {
   const timing = (summary && summary.timing) || frameSolidTiming(null);
@@ -437,6 +443,7 @@ export function frameSolidMetrics(summary, extra = {}) {
     missingFrames: summary ? summary.missingFrames : null,
     stationNoCollider: summary ? summary.stationNoCollider : null,
     flightShaderLinks: Number.isFinite(extra.flightShaderLinks) ? extra.flightShaderLinks : null,
+    inFrameShaderLinks: Number.isFinite(extra.inFrameShaderLinks) ? extra.inFrameShaderLinks : null,
     leftUndrawn: timing.appear.leftUndrawn,
     appearOnTimeRate: timing.appear.onTimeRate,
     appearLateP95Ms: timing.appear.lateP95Ms,

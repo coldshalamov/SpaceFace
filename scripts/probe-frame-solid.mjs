@@ -29,6 +29,7 @@ import {
   compareFrameSolidMetrics,
   frameSolidMetrics,
   installFrameSolidSampler,
+  isInFrameLink,
   resolveFrameSolidLinks,
   summarizeFrameSolid,
 } from './lib/frameSolidSampler.mjs';
@@ -479,7 +480,9 @@ try {
   const flightLinkEvents = resolvedLinks.length
     ? resolvedLinks
     : (shaderLinksAtFlight ? await readFlightLinkEvents(shaderLinksAtFlight.frame) : []);
-  const metrics = frameSolidMetrics(summary, { flightShaderLinks });
+  // Links inside a presented draw are the freeze class; only the sampler's own witness has stacks.
+  const inFrameShaderLinks = Array.isArray(rec && rec.links) ? resolvedLinks.filter(isInFrameLink).length : null;
+  const metrics = frameSolidMetrics(summary, { flightShaderLinks, inFrameShaderLinks });
   // GPU submission per presented frame over the route (system 7: draw less).
   let submission = null;
   if (shaderLinksAtFlight && shaderLinksAtEnd) {
@@ -565,7 +568,8 @@ try {
       for (const row of stretch.top.slice(0, 8)) console.log(`      ${row.ms}ms  ${row.fn}`);
     }
   }
-  console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`);
+  console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`
+    + ` (inside a drawn frame: ${inFrameShaderLinks == null ? 'n/a' : inFrameShaderLinks})`);
   for (const e of flightLinkEvents.slice(0, 40)) {
     console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
       + ` nearest=${e.nearestProgram || '-'}`
