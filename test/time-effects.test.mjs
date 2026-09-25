@@ -36,7 +36,7 @@ assert.throws(() => createTimeEffects([]), /state/i, 'array state must be reject
 const state = { timeScale: 1 };
 const effects = createTimeEffects(state);
 assert.equal(createTimeEffects(state), effects, 'one service instance must own each state');
-assert.deepEqual(Object.keys(effects).sort(), ['clear', 'getEffectiveScale', 'reset', 'set'], 'public API must contain exactly the four contract methods');
+assert.deepEqual(Object.keys(effects).sort(), ['clear', 'describeRequests', 'getEffectiveScale', 'reset', 'set'], 'public API must contain exactly the five contract methods');
 assert.equal(effects.getEffectiveScale(), 1);
 
 const staleScalarState = { timeScale: 0 };
