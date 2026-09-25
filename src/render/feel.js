@@ -1207,21 +1207,6 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15);
     });
 
-    // Mining-yield haptic. Mining has rich VFX (beam, spark fan, yield burst) but no camera/UI pulse,
-    // so popping ore feels soft. A tiny fov kick + micro-trauma on the player's yields (scaled by qty)
-    // gives the economy loop a heartbeat. Kept very light — mining yields repeatedly, so a heavy kick
-    // here would be nauseating. The floating "+qty" number already gets the GF-2 spawn-pop.
-    bus.on('mining:yield', (p) => {
-      if (!p || p.minerId !== state.playerId) return;
-      if (!_warpGate()) return;
-      const qty = Math.max(1, p.qty || 1);
-      // scale gently with qty: 1 unit -> ~0.6, big strike (8+) -> capped ~1.4
-      const fov = Math.min(1.4, 0.4 + Math.log2(qty) * 0.35);
-      this._fovPunch = addFovPunch(this._fovPunch, fov);
-      const ctrl = _warpCtrl();
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(Math.min(0.08, 0.03 + qty * 0.005));
-    });
-
     // Tether snap: 0.25 trauma (spec2/02 §3).
     bus.on('tether:broken', (p) => {
       if (!p) return;

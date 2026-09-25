@@ -82,6 +82,21 @@ test('a broken bound bigger than the camera far plane never pushes the camera', 
     'off the footprint nothing reports — the broken box never becomes a floor');
 });
 
+test('a station that is still loading does not push the camera', () => {
+  const loading = wreckRoot(400, 800, 400);
+  loading.userData.kind = 'station';
+  loading.userData.authoredAssetState = 'loading';
+  const swapping = wreckRoot(400, 800, 400);
+  swapping.userData.kind = 'station';
+  swapping.position.set(CAM_X + 20, 0, CAM_Z);
+  swapping.userData.authoredAssetState = 'orphaned-before-swap';
+  const owner = structuralOwner([loading, swapping]);
+  assert.equal(cameraClearanceFloorAt(owner, CAM_X, CAM_Z, CAM_Y), -Infinity,
+    'a loading station has no roof yet');
+  assert.equal(cameraClearanceFloorAt(owner, CAM_X + 20, CAM_Z, CAM_Y), -Infinity,
+    'a model mid-swap does not report a roof');
+});
+
 test('a non-finite bound is rejected the same way', () => {
   const corrupt = wreckRoot(300, 300, 300);
   corrupt.children[0].position.y = Infinity;

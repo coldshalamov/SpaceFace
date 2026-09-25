@@ -102,7 +102,7 @@ export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
 // Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
 // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
 // is meaningfully closer or a new active attacker appears.
-export const COMPOSITION_THREAT_STICK_S = 0.28;
+export const COMPOSITION_THREAT_STICK_S = 0.80;
 export const COMPOSITION_THREAT_STICK_CLOSER = 0.85; // INF-006 hysteresis: challenger must be < 85% of sticky distance
 // B3b group fit: with one or more hostiles attacking, single-threat composition leaves every
 // attacker but the composed pair off-frame — and even a lone attacker holding past ~330 zoom's
@@ -162,10 +162,13 @@ export const CAMERA_HOLD_S = 0.15;
 export const DEATH_CAM_HOLD_S = 1.2;
 export const DEATH_CAM_PUSH_ZOOM = 0.22;
 // Structural clearance: the renderer reports the roof height of any large structure whose
-// footprint contains the camera's XZ. The floor snaps UP instantly (never eases through
-// geometry) and releases back down at a fixed rate, so entering/leaving a structure can never
-// oscillate the camera against itself.
+// footprint contains the camera's XZ. A roof has to stay put for a third of a second before
+// the camera believes it — a model swapping in, or a bound that flickers while it loads, is
+// not a roof. Once believed, the camera eases up and eases down at the same rate. A one-frame
+// appearance or disappearance does nothing.
 export const CAMERA_CLEARANCE_RELEASE_WU_S = 110;
+export const CAMERA_CLEARANCE_ADOPT_S = 0.30;
+const CAMERA_CLEARANCE_ROOF_JUMP_WU = 12;
 // PQ-159.03 photo mode. Free camera + exposure live on the chase controller; filters stay off
 // unless the player turns them on. Capture lives on the pause surface.
 export const PHOTO_EXPOSURE_DEFAULT = 1;
@@ -1172,9 +1175,17 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _recenterT = 0;         // seconds remaining in the recenter window
   let _recenterDur = 0;       // total window length (for the ease fraction)
   let _snappedPlayerId = null;
-  // World-Y floor reported by the renderer's structure bounds. Kept between frames so the
-  // release can ease the camera back down after a structure roof stops containing it.
+  // World-Y floor the camera is actually riding. A reported roof becomes the target only
+  // after it has held still; the ridden floor eases toward that target in both directions.
   let _clearanceY = 0;
+  let _clearanceCandidate = -Infinity;
+  let _clearanceCandidateAge = 0;
+  let _clearanceAbsentAge = 0;
+  let _clearanceTarget = 0;
+  let _exceptionalHold = 0;
+  let _anchorHoldX = 0;
+  let _anchorHoldZ = 0;
+  let _anchorHoldValid = false;
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
@@ -1238,6 +1249,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
     if (c.kickOffset) c.kickOffset.set(0, 0, 0);
     _clearanceY = 0; // a teleport re-derives structure clearance at the destination, not here
+    _clearanceCandidate = -Infinity;
+    _clearanceCandidateAge = 0;
+    _clearanceAbsentAge = 0;
+    _clearanceTarget = 0;
+    _exceptionalHold = 0;
+    _anchorHoldValid = false;
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
@@ -1433,6 +1450,25 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
         const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
         playerSpeed = Math.hypot(vx, vz);
+        // The drawn hull can teleport when a mesh is swapped. If the sim ship did not
+        // move with it, the picture is lying — keep the anchor we already believed.
+        // When the ship itself jumps (a real teleport), both agree and the camera follows.
+        if (_anchorHoldValid) {
+          const jump = Math.hypot(fx - _anchorHoldX, fz - _anchorHoldZ);
+          const budget = Math.max(120, playerSpeed * frameDt + 80);
+          const simX = p.pos.x - frameOrigin.x;
+          const simZ = p.pos.z - frameOrigin.z;
+          const meshAgrees = Math.hypot(fx - simX, fz - simZ) <= 80;
+          if (jump > budget && !meshAgrees) {
+            fx = _anchorHoldX;
+            fz = _anchorHoldZ;
+            _playerLocalScratch.x = fx;
+            _playerLocalScratch.z = fz;
+          }
+        }
+        _anchorHoldX = fx;
+        _anchorHoldZ = fz;
+        _anchorHoldValid = true;
         const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW
           && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
@@ -1543,7 +1579,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
           _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
           _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
-          _contextMinZoom = Math.max(0, finiteOr(composition.minZoom, 0));
+          // Fight distance eases in and eases out. A one-frame change of who is nearest
+          // must not retarget the zoom; the sticky hold above already keeps the anchor.
+          const requestedMin = Math.max(0, finiteOr(composition.minZoom, 0));
+          _contextMinZoom = damp(_contextMinZoom, requestedMin, CONTEXT_ZOOM_LERP, frameDt);
           fx = baseFx + _compositionBiasX;
           fz = baseFz + _compositionBiasZ;
           _safeFocusInputScratch.x = fx;
@@ -1656,7 +1695,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           // The above-cap opening is not computed here. `velocityLanguage`'s owner-bound record is
           // the single writer; the owned exceptional-speed scalar and this ordinary camera curve
           // share the governed combat-speed cap.
-          const exceptionalSpeed = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
+          // A one-tick speed spike is not earned speed. The wide frame opens only after
+          // the owned exceptional scalar has held for a beat, then eases with everything else.
+          const rawExceptional = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
+          if (rawExceptional > 0) {
+            _exceptionalHold = Math.min(0.40, _exceptionalHold + frameDt);
+          } else {
+            _exceptionalHold = 0;
+          }
+          const exceptionalSpeed = _exceptionalHold >= 0.40 ? rawExceptional : 0;
           _speedZoomFactor = resolveExceptionalSpeedZoomFactor(
             exceptionalSpeed,
             ordinarySpeedZoom,
@@ -1706,21 +1753,23 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       if (holding && !_deathCam) {
         // PQ-159.02 camera hold: freeze distance as well as look-at.
       } else if (directorOwnsComposition) {
-        _dynamicZoom = _directorFrame.zoom;
+        // A gate, a hostile rope, or a two-ship line asks for a distance. It eases there.
+        // Assigning the distance in one frame was the frantic retake.
+        const desired = finiteOr(_directorFrame.zoom, _dynamicZoom);
+        let nextZoom = damp(_dynamicZoom, desired, ZOOM_LERP, frameDt);
+        const zoomStep = ZOOM_OUT_RATE_MAX_WU_PER_S
+          * Math.min(Math.max(finiteOr(frameDt, 0), 0), ZOOM_OUT_STEP_MAX_FRAME_DT);
+        if (nextZoom > _dynamicZoom) nextZoom = Math.min(nextZoom, _dynamicZoom + zoomStep);
+        else if (nextZoom < _dynamicZoom) nextZoom = Math.max(nextZoom, _dynamicZoom - zoomStep);
+        _dynamicZoom = nextZoom;
         if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
-        const zoomOutStep = ZOOM_OUT_RATE_MAX_WU_PER_S
+        const zoomStep = ZOOM_OUT_RATE_MAX_WU_PER_S
           * Math.min(Math.max(finiteOr(frameDt, 0), 0), ZOOM_OUT_STEP_MAX_FRAME_DT);
-        // When minZoom is demanding more distance than the ease would open this frame, step toward
-        // the floor at the continuity cap so a distant active attacker re-enters without a cut.
-        if (_contextMinZoom > _dynamicZoom + 0.5 && targetZoom >= _contextMinZoom - 1e-6) {
-          nextZoom = Math.max(nextZoom, Math.min(_contextMinZoom, _dynamicZoom + zoomOutStep));
-        }
-        // Hard continuity cap on any outward jump (damp alone can overshoot 6 wu on a large gap).
-        if (nextZoom > _dynamicZoom) {
-          nextZoom = Math.min(nextZoom, _dynamicZoom + zoomOutStep);
-        }
+        // Same rate in and out. A fight that opens and a fight that ends are one motion.
+        if (nextZoom > _dynamicZoom) nextZoom = Math.min(nextZoom, _dynamicZoom + zoomStep);
+        else if (nextZoom < _dynamicZoom) nextZoom = Math.max(nextZoom, _dynamicZoom - zoomStep);
         _dynamicZoom = nextZoom;
       }
       // The zoom the picture is opening toward, before damping arrives. Residency
@@ -1733,7 +1782,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // gate's real depth bounds; easing is owned by the same 0.35 s transition as focus/zoom.
       // Ordinary chase, manual flight, and Flyby Focus all remain at the canonical 1 wu near plane.
       const nextNear = directorOwnsComposition ? finiteOr(_directorFrame.nearPlane, 1) : 1;
-      _dynamicNear = Math.max(1, Math.min(160, nextNear));
+      const nearTarget = Math.max(1, Math.min(160, nextNear));
+      _dynamicNear = damp(_dynamicNear, nearTarget, 1 / 0.35, frameDt);
       if (Math.abs(cam.near - _dynamicNear) > 0.01) {
         cam.near = _dynamicNear;
         cam.updateProjectionMatrix();
@@ -1822,17 +1872,34 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const floor = clearanceAt(camX, camZ, camY);
         // A roof above the far plane cannot be a real structure — only a broken bound (the
         // 2026-09-25 compounded asteroid scale reported ~1.4e8 and orbited the camera). Refuse
-        // the snap, and drop any lift already above the ceiling in one step: easing down from
-        // orbit at the release rate would never return inside a session.
+        // it. A roof that appears, grows, or vanishes for less than a third of a second is the
+        // same kind of lie: a model loading. Only a roof that holds still may move the camera,
+        // and then only by easing.
         const clearanceCeiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
         const saneFloor = Number.isFinite(floor) && floor <= clearanceCeiling ? floor : -Infinity;
-        if (saneFloor > _clearanceY) {
-          _clearanceY = saneFloor; // snap up — easing upward would traverse the structure's volume
-        } else if (_clearanceY > 0) {
-          const target = saneFloor > -Infinity ? saneFloor : 0;
-          _clearanceY = _clearanceY > clearanceCeiling
-            ? target
-            : Math.max(target, _clearanceY - CAMERA_CLEARANCE_RELEASE_WU_S * frameDt);
+        if (saneFloor > -Infinity) {
+          const fresh = !Number.isFinite(_clearanceCandidate)
+            || Math.abs(saneFloor - _clearanceCandidate) > CAMERA_CLEARANCE_ROOF_JUMP_WU;
+          _clearanceCandidate = saneFloor;
+          _clearanceCandidateAge = fresh ? 0 : _clearanceCandidateAge + frameDt;
+          _clearanceAbsentAge = 0;
+          if (_clearanceCandidateAge >= CAMERA_CLEARANCE_ADOPT_S) {
+            _clearanceTarget = _clearanceCandidate;
+          }
+        } else {
+          _clearanceAbsentAge += frameDt;
+          if (_clearanceAbsentAge >= CAMERA_CLEARANCE_ADOPT_S) {
+            _clearanceTarget = 0;
+            _clearanceCandidate = -Infinity;
+            _clearanceCandidateAge = 0;
+          }
+        }
+        if (_clearanceY > clearanceCeiling) _clearanceY = _clearanceTarget;
+        const clearanceStep = CAMERA_CLEARANCE_RELEASE_WU_S * frameDt;
+        if (_clearanceY < _clearanceTarget) {
+          _clearanceY = Math.min(_clearanceTarget, _clearanceY + clearanceStep);
+        } else if (_clearanceY > _clearanceTarget) {
+          _clearanceY = Math.max(_clearanceTarget, _clearanceY - clearanceStep);
         }
         if (_clearanceY > camY) camY = _clearanceY;
       }

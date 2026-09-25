@@ -1788,9 +1788,25 @@ const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
 const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
 const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
 
+function clearanceBoundUnsettled(data) {
+  if (!data) return true;
+  if (data.geometryPending === true) return true;
+  if (data.authoredAdmissionSubstrate === true) return true;
+  const status = data.authoredAssetState || '';
+  return status === 'loading'
+    || status === 'awaiting-authored-admission'
+    || status === 'compiling-pipelines'
+    || status === 'orphaned-before-swap'
+    || status === 'pending-admission'
+    || isAuthoredPendingStatus(status);
+}
+
 function cameraClearanceBoxForMesh(mesh) {
   const data = mesh && mesh.userData;
   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
+  // A model that is still arriving does not have a roof. Measuring the stand-in, or the
+  // half-built body, is what yanked the camera up and down while stations loaded.
+  if (clearanceBoundUnsettled(data)) return null;
   // Numeric cache stamp — a per-frame string key here meant an allocation per structural mesh
   // per camera query. Field equality covers the same invalidation inputs.
   const assetState = data.authoredAssetState || '';
@@ -12412,9 +12428,19 @@ export const render = {
     stats.evicted = 0;
     stats.built = 0;
 
+    // The evict radius is fixed for the whole poll except for the authored ship/wreck cap —
+    // compute both once instead of re-deriving camera terms and trig per mesh.
+    const speed = tableTravelSpeed(state);
+    const cam = liveTableCamera(state);
+    const evictRadiusBase = residencyEvictRadius(
+      speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
+    const evictRadiusShipWreck = Math.max(evictRadiusBase, authoredResidencyEvictRadius(speed));
     for (const [id, mesh] of this._meshes) {
       stats.meshVisits++;
       const entity = resolveWorldPresentationEntity(state, id);
+      const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
+        ? evictRadiusShipWreck
+        : evictRadiusBase;
       const residencyEvict = !!(entity && entity.alive !== false)
         && !isEntityRenderRelevant(entity, state, evictRadius);
       if (!entity || entity.alive === false || residencyEvict) {
@@ -12428,19 +12454,9 @@ export const render = {
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
-    // The evict radius is fixed for the whole poll except for the authored ship/wreck cap —
-    // compute both once instead of re-deriving camera terms and trig per mesh.
-    const evictSpeed = tableTravelSpeed(state);
-    const evictCam = liveTableCamera(state);
-    const evictRadiusBase = residencyEvictRadius(
-      evictSpeed, evictCam.prefetchZoom, evictCam.fov, evictCam.aspect, evictCam.tilt);
-    const evictRadiusShipWreck = Math.max(evictRadiusBase, authoredResidencyEvictRadius(evictSpeed));
         continue;
       }
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
-      const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
-        ? evictRadiusShipWreck
-        : evictRadiusBase;
     }
 
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
@@ -12454,6 +12470,19 @@ export const render = {
     }
     kickDecodeRunwayAssets(this, presentationList);
     const env = renderAdmissionEnv(state);
+    // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
+    // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
+    // it per call; cache one value per entity for the whole pass.
+    const tGlassCache = this._meshResidencyTtGCache || (this._meshResidencyTtGCache = new Map());
+    tGlassCache.clear();
+    const tGlass = (entity) => {
+      let s = tGlassCache.get(entity);
+      if (s === undefined) {
+        s = entityTimeToGlassSeconds(entity, env, state);
+        tGlassCache.set(entity, s);
+      }
+      return s;
+    };
     const urgentShips = this._meshResidencyUrgentShipCandidates
       || (this._meshResidencyUrgentShipCandidates = []);
     const urgentOthers = this._meshResidencyUrgentOtherCandidates
@@ -12470,19 +12499,6 @@ export const render = {
       const urgent = tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS;
       if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
       else (urgent ? urgentOthers : otherCandidates).push(entity);
-    // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
-    // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
-    // it per call; cache one value per entity for the whole pass.
-    const tGlassCache = this._meshResidencyTtGCache || (this._meshResidencyTtGCache = new Map());
-    tGlassCache.clear();
-    const tGlass = (entity) => {
-      let s = tGlassCache.get(entity);
-      if (s === undefined) {
-        s = entityTimeToGlassSeconds(entity, env, state);
-        tGlassCache.set(entity, s);
-      }
-      return s;
-    };
     }
     // Within each tier the drain is still FIFO, so collection order used to decide which
     // of several same-tier candidates spent the bounded per-frame build budget — a distant
@@ -12591,6 +12607,7 @@ export const render = {
     if (!queue || this._meshBuildQueueHead >= queue.length) return 0;
     const frame = this._activityFrame;
     const glassIds = frame && frame.renderGlassIds;
+    const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
     let moved = 0;
     for (let i = this._meshBuildQueueHead; i < queue.length; i++) {
       const entity = resolveWorldPresentationEntity(this.state, queue[i]);
@@ -12607,7 +12624,6 @@ export const render = {
     // on soft-GPU crucible). Exempt ids stay hoisted at the head, so the next hold
     // frames finish the rest without letting non-exempt work slip through.
     return moved > 0
-    const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
       ? this._drainMeshBuildQueue(Math.min(moved, RUNTIME_MESH_BUILD_BUDGET))
       : 0;
   },
