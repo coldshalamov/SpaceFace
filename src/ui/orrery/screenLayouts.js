@@ -19,8 +19,8 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-title.orr-title .dp-title__rule { display:none; }
 /* the name stands on the emblem: above the dial, each letter cut clear of the rings by a halo of dark */
 .of-title.orr-title .dp-title { position:relative; z-index:2; }
-.of-title.orr-title .dp-logotype { filter:drop-shadow(0 0 2px rgb(4 6 9)) drop-shadow(0 0 5px rgb(4 6 9 / .95)) drop-shadow(0 2px 14px rgb(0 0 0 / .55)) !important; }
-.of-title.orr-title .dp-title__eyebrow { text-shadow:0 0 4px rgb(4 6 9), 0 0 9px rgb(4 6 9 / .9); }
+.of-title.orr-title .dp-logotype { filter:drop-shadow(0 0 1.5px rgb(4 6 9)) drop-shadow(0 0 3px rgb(4 6 9)) drop-shadow(0 0 6px rgb(4 6 9 / .95)) drop-shadow(0 2px 14px rgb(0 0 0 / .55)) !important; }
+.of-title.orr-title .dp-title__eyebrow { text-shadow:0 0 2px rgb(4 6 9), 0 0 3px rgb(4 6 9), 0 0 5px rgb(4 6 9), 0 0 9px rgb(4 6 9 / .95), 0 0 14px rgb(4 6 9 / .8); }
 .of-title.orr-title .dp-title__eyebrow { letter-spacing:.24em; }
 .of-title.orr-title > .dp-frame__foot { opacity:.82; }
 /* the Hand is the only amber: the kicker's dot is bone */

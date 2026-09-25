@@ -496,7 +496,8 @@ export function createBarScreen(ctx) {
       if (!hang || !first || !last) return;
       const hr = hang.getBoundingClientRect();
       const top = first.getBoundingClientRect().top - hr.top + hang.scrollTop;
-      const bottom = last.getBoundingClientRect().bottom - hr.top + hang.scrollTop + 12;
+      // never past the rail's visible box: the fade completes inside it instead of being cut by the scroll edge
+      const bottom = Math.min(last.getBoundingClientRect().bottom - hr.top + hang.scrollTop + 12, hang.scrollTop + hang.clientHeight - 1);
       hang.style.setProperty('--bar-spine-top', `${Math.round(top)}px`);
       hang.style.setProperty('--bar-spine-h', `${Math.max(0, Math.round(bottom - top))}px`);
       // the contacts' minor ticks: one lands on the Hand's row
@@ -507,6 +508,7 @@ export function createBarScreen(ctx) {
         const armY = Math.floor(cr.top + cr.height / 2);
         const top0 = Math.round(rr.top);
         rows.style.setProperty('--bar-tick-y', `${(((armY - top0) % 8) + 8) % 8}px`);
+        chosen.style.setProperty('--bar-arm-y', `${armY - Math.round(cr.top)}px`);
       }
     } catch (_) { /* cosmetic */ }
   }

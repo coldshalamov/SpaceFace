@@ -121,6 +121,7 @@ function injectStyle(doc = globalThis.document) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ROW_GAP = 26;
+let clearSeq = 0;
 
 /**
  * The dial's geometry for a host of W x H holding `count` verbs. Pure, so it is testable: the pivot
@@ -205,7 +206,7 @@ function drawFace(p, re) {
  *                                  name engraved over it (a long menu stays a readable dial)
  */
 export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
-  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null } = {}) {
+  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -367,6 +368,22 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       const big = engravingDeg != null;
       layer.appendChild(circularText(pivot.x, pivot.y, re + (big ? 26 : 22), engraving.toUpperCase(),
         { startDeg: big ? engravingDeg : a1 + 34, size: big ? 11 : 8, className: big ? 'orr-arcrail__lettering' : 'orr-micro', anchor: 'middle', upright: true }));
+    }
+    // clearOf: the dial's face, rings and scales break round the screen's own words (the title's name and
+    // kicker), the way a dial's rule breaks for its numeral; the Hand and the verbs stay whole
+    if (typeof clearOf === 'function') {
+      const hr = host.getBoundingClientRect();
+      const boxes = (clearOf() || []).filter((e) => e && typeof e.getBoundingClientRect === 'function').map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
+      if (boxes.length) {
+        const id = `orr-arcrail-clear-${++clearSeq}`;
+        const m = svg('mask', { id, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
+        m.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
+        for (const b of boxes) m.appendChild(svg('rect', { x: (b.left - hr.left - 8).toFixed(1), y: (b.top - hr.top - 6).toFixed(1), width: (b.width + 16).toFixed(1), height: (b.height + 12).toFixed(1), rx: 4, fill: '#000' }));
+        const defs = svg('defs'); defs.appendChild(m);
+        const back = svg('g', { mask: `url(#${id})` });
+        while (layer.firstChild) back.appendChild(layer.firstChild);
+        layer.append(defs, back);
+      }
     }
     leader = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.2, opacity: '.9' });
     layer.appendChild(leader);

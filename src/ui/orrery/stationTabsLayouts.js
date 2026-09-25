@@ -1613,12 +1613,11 @@ ${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .3) 0 1px,
 
 /* ================================ ROUND 13: BAR ============================================= */
 /* N1: the Hand's arm and bead on one whole row: the arm one pixel on it, the bead's five rows centred on it */
-${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:round(down, 50%, 1px) !important; margin-top:0 !important; height:1px !important; }
-${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(round(down, 50%, 1px) - 2px) !important; margin-top:0 !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:var(--bar-arm-y, round(down, 50%, 1px)) !important; margin-top:0 !important; height:1px !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(var(--bar-arm-y, round(down, 50%, 1px)) - 2px) !important; margin-top:0 !important; }
 /* N2: the key hints at the label size: 11px caps about 5:1 */
 ${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:11px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
 /* N3: at 720 the leads keep room under the key so the spine's fade ends inside the box */
-@media (max-height:800px) { ${T} .sx-bar__leads { padding-bottom:28px !important; } }
 /* N4: one rhythm on a tall screen: the section break closes to about 60px */
 @media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__leads { margin-top:28px !important; } }
 

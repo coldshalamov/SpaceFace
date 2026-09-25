@@ -406,6 +406,17 @@ export const mainMenuScreen = {
       span: 74,
       engraving: 'SpaceFace · Orrery of the Helios Reach',
       engravingDeg: 292,
+      // the kicker's box spans the frame: its words' own extent (a range over its text, the dot included) is what clears
+      clearOf: () => {
+        const eyebrow = rootEl.querySelector('.dp-title__eyebrow');
+        let words = null;
+        if (eyebrow && typeof document !== 'undefined' && typeof document.createRange === 'function') {
+          const range = document.createRange();
+          range.selectNodeContents(eyebrow);
+          words = { getBoundingClientRect: () => { const r = range.getBoundingClientRect(); const e = eyebrow.getBoundingClientRect(); return { left: e.left, top: r.top, width: r.right - e.left, height: r.height }; } };
+        }
+        return [rootEl.querySelector('.dp-logotype'), words];
+      },
     });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
