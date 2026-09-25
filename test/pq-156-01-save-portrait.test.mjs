@@ -11,6 +11,7 @@ import {
   paintSavePortrait,
   roundTripSavePortrait,
   savePortraitFieldsPresent,
+  shipLabel,
 } from '../src/ui/screens/saveLoad.js';
 
 const SEED = 15610;
@@ -100,6 +101,10 @@ test('PQ-156.01: seed matches the packet', () => {
   assert.equal(SEED, 15610);
   assert.equal(SAVE_PORTRAIT_SEED, 15610);
   assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
+  assert.equal(shipLabel('ship_kestrel'), 'Hitch');
+  assert.equal(shipLabel('ship_pelican'), 'Pelican');
+  assert.equal(shipLabel('ship_wasp'), 'Wasp');
+  assert.equal(shipLabel('ship_kestrel_runner'), 'Kestrel Runner');
 });
 
 test('PQ-156.01: a file-list index still yields five portrait fields', () => {
@@ -113,7 +118,7 @@ test('PQ-156.01: a file-list index still yields five portrait fields', () => {
     },
   });
   assert.equal(savePortraitFieldsPresent(portrait), true, VISION);
-  assert.equal(portrait.hull.line, 'Kestrel');
+  assert.equal(portrait.hull.line, 'Hitch');
   assert.equal(portrait.scars.line, 'Clean plates');
   assert.equal(portrait.titles.line, 'No titles');
   assert.equal(portrait.rapSheet.line, 'Clean');
@@ -125,7 +130,7 @@ test('PQ-156.01: seed 15610 portrait is hull + scars + titles + rap + grudge', (
   const portrait = buildSavePortrait({ data });
   assert.equal(savePortraitFieldsPresent(portrait), true, VISION);
   assert.equal(portrait.hull.id, 'ship_kestrel');
-  assert.equal(portrait.hull.line, 'Kestrel');
+  assert.equal(portrait.hull.line, 'Hitch');
   assert.match(portrait.scars.line, /starboard beam/);
   assert.match(portrait.scars.line, /heavy/);
   assert.equal(portrait.scars.count, 1);
@@ -153,12 +158,14 @@ test('PQ-156.01: save envelope round-trip keeps the portrait', () => {
 test('PQ-156.01: paint writes scars, titles, rap sheet, and grudge', () => {
   const portrait = buildSavePortrait({ data: portraitSave(SEED) });
   const nodes = {
+    hull: { textContent: '' },
     scars: { textContent: '' },
     titles: { textContent: '' },
     rapSheet: { textContent: '' },
     grudge: { textContent: '' },
   };
   paintSavePortrait(nodes, portrait);
+  assert.equal(nodes.hull.textContent, portrait.hull.line);
   assert.equal(nodes.scars.textContent, portrait.scars.line);
   assert.equal(nodes.titles.textContent, portrait.titles.line);
   assert.equal(nodes.rapSheet.textContent, portrait.rapSheet.line);

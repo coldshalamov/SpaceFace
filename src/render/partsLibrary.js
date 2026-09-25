@@ -6610,7 +6610,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
-  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url);
+  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually

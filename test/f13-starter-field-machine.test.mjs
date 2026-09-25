@@ -24,7 +24,8 @@ import { fields } from '../src/systems/fields.js';
 import { terrainAnchors } from '../src/systems/terrainAnchors.js';
 
 const LONG = { timeout: 180_000 };
-const SEED = 1313;
+// §22.2 wave law: the closure number prints on seeds 4242 and 8008.
+const SEEDS = [4242, 8008];
 const LIGHT_HULL_ID = 'ship_wasp';
 const PLAYER_HULL_ID = 'ship_kestrel';
 const SURGE_TICKS = 240;
@@ -156,7 +157,8 @@ test('a Helios visit places the jaw and does not register it while the pilot is 
   }
 });
 
-test('a light hull shoved into the starter mouth leaves debris, and the pilot beside it does not', LONG, async () => {
+for (const seed of SEEDS) {
+test(`a light hull shoved into the starter mouth leaves debris, and the pilot beside it does not (seed ${seed})`, LONG, async () => {
   const machine = STARTER_FIELD_MACHINE;
   const pose = shovePose(machine);
   const playerPos = spectatorPose(machine);
@@ -164,7 +166,7 @@ test('a light hull shoved into the starter mouth leaves debris, and the pilot be
   const previousFields = FIELD_FLAGS.enabled;
   FIELD_FLAGS.enabled = true;
   const host = await bootRealPath({
-    seed: SEED,
+    seed,
     systems: [
       'actions',
       'flightV3',
@@ -226,7 +228,7 @@ test('a light hull shoved into the starter mouth leaves debris, and the pilot be
     });
     const thrown = maxVictimSpeed - victimSpeed0;
     console.log([
-      `F13 seed=${SEED}`,
+      `F13 seed=${seed}`,
       `thrown=${thrown.toFixed(2)}`,
       `died=${died}`,
       `debris=${debris}`,
@@ -244,3 +246,4 @@ test('a light hull shoved into the starter mouth leaves debris, and the pilot be
     FIELD_FLAGS.enabled = previousFields;
   }
 });
+}

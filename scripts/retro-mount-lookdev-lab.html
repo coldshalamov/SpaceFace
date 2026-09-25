@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SpaceFace retro-mount look-dev lab</title>
+  <style>
+    html, body { margin: 0; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+    #hud {
+      position: fixed; left: 12px; top: 12px; color: #9cf; font-size: 12px;
+      background: rgba(0,0,0,0.55); padding: 8px 10px; border-radius: 6px; z-index: 2;
+      white-space: pre;
+    }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="hud">retro-mount lab</div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { attachRetroMounts } from '/src/render/thruster/retroMounts.js';
+
+    const params = new URLSearchParams(location.search);
+    const hullUrl = params.get('hull') || '/assets/ships/parts/hulls/hull_starter.glb';
+    const radius = Number(params.get('radius') || 14);
+    const defId = params.get('def') || 'ship_kestrel';
+    const driveId = params.get('drive') || null;
+    const engineUrl = params.get('engine') || null;
+    const view = params.get('view') || 'bow';
+    const mountsOn = params.get('mounts') !== '0';
+    const irisLit = params.get('iris') === 'lit';
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(1440, 900, false);
+    renderer.setClearColor(0x05070c, 1);
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    {
+      const geo = new THREE.BufferGeometry();
+      const n = 1200;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 900;
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 500;
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 900;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x8fa8cc, size: 0.8, sizeAttenuation: true })));
+    }
+    scene.add(new THREE.AmbientLight(0x405060, 0.6));
+    const key = new THREE.DirectionalLight(0xfff4e6, 1.15);
+    key.position.set(8, 14, 6);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0x6688ff, 0.35);
+    fill.position.set(-6, 4, -10);
+    scene.add(fill);
+
+    const loader = new GLTFLoader();
+    const gltf = await loader.loadAsync(hullUrl);
+    const hull = new THREE.Group();
+    hull.name = 'LabHull';
+    const partRoot = new THREE.Group();
+    partRoot.name = 'LabHullPart';
+    partRoot.add(gltf.scene);
+    gltf.scene.traverse((o) => {
+      if (o.name && /LOD[12]/.test(o.name)) o.visible = false;
+      if (o.name === 'COLLISION_HULL') o.visible = false;
+    });
+    partRoot.updateMatrixWorld(true);
+    const rawBox = new THREE.Box3().setFromObject(partRoot);
+    const srcLen = Math.max(rawBox.max.x - rawBox.min.x, 1e-6);
+    partRoot.scale.setScalar(1.72 / srcLen); // same targetLength contract as instantiatePart
+    hull.add(partRoot);
+
+    const entity = { data: { defId, driveId }, radius };
+    let assembly = null;
+    if (mountsOn) {
+      assembly = attachRetroMounts(hull, entity, {}, engineUrl);
+    }
+    hull.scale.setScalar(radius);
+    scene.add(hull);
+    scene.updateMatrixWorld(true);
+
+    // Report: hull + assembly bounds and socket world positions.
+    const report = { hullUrl, radius, defId, driveId, engineUrl };
+    {
+      const hb = new THREE.Box3().setFromObject(hull);
+      report.hullWorld = { min: hb.min.toArray(), max: hb.max.toArray() };
+      if (assembly) {
+        const ab = new THREE.Box3().setFromObject(assembly);
+        report.assemblyWorld = { min: ab.min.toArray(), max: ab.max.toArray() };
+      }
+      report.sockets = {};
+      for (const name of ['SOCKET_Retro_Port', 'SOCKET_Retro_Starboard']) {
+        const s = hull.getObjectByName(name);
+        if (s) report.sockets[name] = s.getWorldPosition(new THREE.Vector3()).toArray();
+      }
+      report.children = assembly ? assembly.children.map((c) => c.name) : [];
+    }
+
+    // ?debug=1: dump lateral skin-ray hits at each socket's (x, y±window) in world units.
+    if (params.get('debug') === '1') {
+      const dbg = new THREE.Raycaster();
+      report.debugSkin = [];
+      for (const [name, side] of [['SOCKET_Retro_Port', -1], ['SOCKET_Retro_Starboard', 1]]) {
+        const s = hull.getObjectByName(name);
+        const sx = s ? s.getWorldPosition(new THREE.Vector3()).x : radius * 0.46;
+        for (const dyWU of [0, -0.4, 0.4, -0.8, 0.8, -1.4, 1.4]) {
+          const origin = new THREE.Vector3(sx, 0.77 + dyWU, side * radius * 2);
+          dbg.set(origin, new THREE.Vector3(0, 0, -side));
+          dbg.far = radius * 2;
+          const hits = dbg.intersectObject(hull, true)
+            .filter((h) => !h.object.name.startsWith('Retro_') && h.point.z * side > 0);
+          report.debugSkin.push({
+            side, dyWU, hits: hits.slice(0, 4).map((h) => ({
+              z: +h.point.z.toFixed(3), y: +h.point.y.toFixed(3), obj: h.object.name,
+            })),
+          });
+        }
+      }
+    }
+
+    const portSock = hull.getObjectByName('SOCKET_Retro_Port');
+    const mountFocus = portSock
+      ? portSock.getWorldPosition(new THREE.Vector3())
+      : new THREE.Vector3(radius * 0.42, 0, -radius * 0.4);
+
+    const camera = new THREE.PerspectiveCamera(50, 1440 / 900, 0.05, 4000);
+    const GAME_DIST = 144;
+    const GAME_TILT = 60 * Math.PI / 180;
+    if (view === 'game') {
+      camera.position.set(0, GAME_DIST * Math.sin(GAME_TILT), -GAME_DIST * Math.cos(GAME_TILT));
+      camera.lookAt(0, 0, 0);
+    } else if (view === 'bow') {
+      // Closeup on the port bow mount, seen from forward-above-port.
+      camera.position.set(mountFocus.x + radius * 0.55, mountFocus.y + radius * 0.34, mountFocus.z - radius * 0.34);
+      camera.lookAt(mountFocus.x - radius * 0.06, mountFocus.y, mountFocus.z);
+    } else if (view === 'bowtop') {
+      camera.position.set(mountFocus.x + radius * 0.12, mountFocus.y + radius * 0.75, mountFocus.z - radius * 0.1);
+      camera.lookAt(mountFocus.x, mountFocus.y, mountFocus.z);
+    } else if (view === 'top') {
+      camera.position.set(0, radius * 3.2, 0);
+      camera.lookAt(0, 0, 0);
+      camera.up.set(0, 0, 1);
+    } else if (view === 'side') {
+      camera.position.set(0, radius * 0.35, -radius * 2.4);
+      camera.lookAt(0, 0, 0);
+    } else if (view === 'quarter') {
+      camera.position.set(radius * 1.7, radius * 1.15, -radius * 1.7);
+      camera.lookAt(radius * 0.25, 0, 0);
+    } else if (view === 'nose') {
+      camera.position.set(radius * 1.9, radius * 0.55, 0);
+      camera.lookAt(radius * 0.35, 0, 0);
+    }
+
+    if (irisLit && assembly) {
+      assembly.traverse((o) => {
+        if (o.name === 'Retro_Throat_Irises') o.material.emissiveIntensity = 2.4;
+      });
+    }
+
+    renderer.render(scene, camera);
+    document.getElementById('hud').textContent =
+      `retro-mount lab — ${hullUrl.split('/').pop()} r=${radius} def=${defId} view=${view} mounts=${mountsOn ? 'on' : 'off'}`;
+    window.__labReport = report;
+    window.__lab = {
+      capture: () => renderer.domElement.toDataURL('image/png'),
+      report,
+      rerender: () => renderer.render(scene, camera),
+    };
+    window.__labReady = true;
+  </script>
+</body>
+</html>

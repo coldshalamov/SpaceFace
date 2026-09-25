@@ -335,8 +335,9 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
  * five-tick ruler with a light cursor at the tier, STANDING as a centred scale with the gain
  * marked to the right and the loss (red: a loss is the threat) to the left of zero.
  */
-export function consequenceScalesSvg(m) {
-  const w = 520; const h = 84;
+export function consequenceScalesSvg(m, { compact = false } = {}) {
+  // compact: a short screen draws the scales at 1:1 in a 400x60 box (no endpoint captions), so the labels never shrink
+  const w = compact ? 400 : 520; const h = compact ? 60 : 84;
   const f = (n) => Math.round(n * 100) / 100;
   const r = Math.min(risk(m), 5);
   const consequences = missionConsequenceSummary(m);
@@ -344,7 +345,7 @@ export function consequenceScalesSvg(m) {
   const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
   let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   // risk: five stops
-  const rx0 = 96; const rx1 = 336; const ry = 20;
+  const rx0 = compact ? 84 : 96; const rx1 = compact ? 300 : 336; const ry = compact ? 14 : 20;
   out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
   out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1"/>`;
   let ticks = '';
@@ -354,10 +355,9 @@ export function consequenceScalesSvg(m) {
   out += `<path class="orr-bloom orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
   out += `<path class="orr-core orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
   out += `<text class="orr-ct-scale__word" x="${rx1 + 12}" y="${ry + 4}">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
-  out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text>`;
-  out += `<text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
+  if (!compact) out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text><text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
   // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
-  const sy = 62; const sx0 = 96; const sx1 = 336; const mid = (sx0 + sx1) / 2; const span = 10;
+  const sy = compact ? 44 : 62; const sx0 = rx0; const sx1 = rx1; const mid = (sx0 + sx1) / 2; const span = 10;
   const xOf = (v) => mid + ((sx1 - sx0) / 2) * Math.max(-1, Math.min(1, v / span));
   out += `<text class="orr-ct-scale__key" x="0" y="${sy + 4}">STANDING</text>`;
   out += `<path class="orr-core orr-ct-scale__rule" d="M ${sx0} ${sy} L ${sx1} ${sy}" stroke-width="1"/>`;
@@ -369,8 +369,7 @@ export function consequenceScalesSvg(m) {
   if (loss > 0) words.push(`<tspan class="orr-ct-scale__lossword">−${loss}</tspan>`);
   if (gain > 0) words.push(`<tspan class="orr-ct-scale__gain">+${gain}</tspan>`);
   out += `<text class="orr-ct-scale__word" x="${sx1 + 12}" y="${sy + 4}">${words.length ? words.join('<tspan class="orr-ct-scale__sep">  ·  </tspan>') : 'NO CHANGE'}</text>`;
-  out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 20}" text-anchor="start">ON FAILURE</text>`;
-  out += `<text class="orr-ct-scale__end" x="${sx1}" y="${sy + 20}" text-anchor="end">ON SUCCESS</text>`;
+  if (!compact) out += `<text class="orr-ct-scale__end" x="${sx0}" y="${sy + 20}" text-anchor="start">ON FAILURE</text><text class="orr-ct-scale__end" x="${sx1}" y="${sy + 20}" text-anchor="end">ON SUCCESS</text>`;
   out += `</svg>`;
   return out;
 }
@@ -673,7 +672,7 @@ export function createContractsScreen(ctx) {
       const scales = document.createElement('div');
       scales.className = 'orr-ct-scales';
       scales.setAttribute('aria-hidden', 'true');
-      scales.innerHTML = consequenceScalesSvg(m);
+      scales.innerHTML = consequenceScalesSvg(m, { compact: typeof window !== 'undefined' && window.innerHeight > 0 && window.innerHeight <= 800 });
       risky.insertAdjacentElement('afterend', scales);
     }
     // the words resolve; the reward rolls

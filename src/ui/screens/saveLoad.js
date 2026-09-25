@@ -10,6 +10,7 @@ import { createSaveStage } from '../views/saveFrame.js';
 
 import { livingHullScars } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
@@ -28,6 +29,7 @@ const ACE_MEMORY_META = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
 ]);
 const TITLE_BY_ID = new Map(TITLES.map((title) => [title.id, title]));
+const SHIP_NAME_BY_ID = new Map(SHIPS.map((def) => [def.id, def.name]));
 const PORTRAIT_SCAR_MAX = 3;
 
 const FH_KEY = {
@@ -267,6 +269,10 @@ function titleCaseWords(s) {
 
 export function shipLabel(id) {
   if (!id) return '';
+  // Catalog name wins. ship_kestrel's player-facing name is Hitch; title-casing the id
+  // would put the legacy "Kestrel" on the load portrait.
+  const known = SHIP_NAME_BY_ID.get(id);
+  if (known) return known;
   return titleCaseWords(String(id).replace(/^ship_/, ''));
 }
 

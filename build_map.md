@@ -1941,12 +1941,21 @@ must read as that ship. This is a large asset + integration job; cut it into a p
 dispatch. Law: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md)
 (no box, no cheaper species, no blank lock).
 
+**Direction (owner, 2026-09-24, same day):** this is a top-down chase camera — a body is either in
+the picture or it is not, and on-screen hulls all sit in a narrow size band. Distance LOD swapping
+buys little here and costs a second load per hull. So LOD files serve one job: **an instant
+stand-in** that is that same ship while the full body loads; once the full body is resident it
+stays. Measured the same day (`probe:frame-solid --census`, 8 resident NPC hulls): the whole-ship
+LOD swap controller was installed on none of them and zero on-screen LOD swaps occurred — the "box"
+the owner saw was the pending-body resolving marker, not a LOD file. F4 below is therefore parked,
+not queued.
+
 | Leaf | Outcome | Done when |
 |---|---|---|
 | **F1 — inventory** | One table of every stand-in the live route can draw: the authored-admission resolving marker (`visualOverrides.js`), `partsLibrary.js` procedural fallbacks, modular-kit identities, station fat-cylinder fallback, and each whole-ship `_lod1`/`_lod2` file (Colossus, Ironback and Leviathan LOD1/LOD2 carry the identical triangle count — ~4–5k against a ~43–57k LOD0 — so LOD2 is not a distinct step). | Each row names where it draws, how often on a 10-minute default flight (`probe:frame-solid` offender log), and whether it reads as its ship at chase and 330 WU zoom-out. |
 | **F2 — honest LOD bodies** | Every `_lod1`/`_lod2` file is the same silhouette, paint and damage language as its LOD0 at the distance it serves; equal-count LOD1/LOD2 pairs get a real LOD1 step between. Blender material-truth preflight applies. | Matched stills at the switch distance: a stranger cannot name which is the LOD. Only then may a family join the live LOD allowlist. |
 | **F3 — no box while decoding** | The pending-body stand-in is a low-cost version of *that* hull (its own LOD2, preloaded with the sector), not a generic marker or kit. | On a cold New Game, no on-screen hull ever shows a shape that is not its own ship; `probe:frame-solid` regressions/rootSwaps stay 0. |
-| **F4 — distance swap live** | Whole-ship LOD1/LOD2 residency switching turns on for families that closed F2, with hysteresis and no swap while on the chase frame's hero band. | 330 WU zoom-out battle: CPU/GPU frame time down, zero visible identity changes, zero blink/root-swap counters. |
+| **F4 — distance swap (PARKED)** | Only if a measured zoom-out battle shows triangle/draw cost is the bottleneck: LOD1/LOD2 switching for families that closed F2, with hysteresis and no swap on the chase frame's hero band. | Not dispatched without that measurement. Would need: CPU/GPU frame time down, zero visible identity changes, zero blink/root-swap counters. |
 
 ### Later — not this packet
 

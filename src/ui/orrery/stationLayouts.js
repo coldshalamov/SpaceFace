@@ -277,8 +277,8 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} { zoom:1.85; --k-s:1; }
 }
 /* the tab rail's cursor and its attention dot are bone: every composed tab owns the one amber Hand */
-${S} .sxb-ops .sx-tile::after { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .4) !important; }
-${S} .sxb-ops .sx-tile::before { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .55) !important; }
+${S} .sx-tile::after, ${S} .sx-dock .sx-tile::after, ${S} .sx-tile[aria-current]::after, ${S} .sx-tile.is-active::after { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .4) !important; }
+${S} .sx-tile::before, ${S} .sx-dock .sx-tile::before, ${S} .sx-tile[aria-current]::before, ${S} .sx-tile.is-active::before { background:rgb(248 244 234) !important; background-image:none !important; background-color:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .55) !important; border-color:rgb(248 244 234) !important; }
 
 `;
 

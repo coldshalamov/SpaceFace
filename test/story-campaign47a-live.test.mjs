@@ -209,6 +209,17 @@ function completeSpineSetPiece(h, mission) {
     h.bus.emit('dock:docked', { stationId: mission.destStationId });
     return;
   }
+  if (mission.type === 'authored_set_piece') {
+    const role = mission.params && mission.params.primaryRole;
+    const target = mission.targetEntityIds
+      .map((id) => h.state.entities.get(id))
+      .find((entity) => entity && entity.data && entity.data.physicalRole === role);
+    assert.ok(target, `climax needs ${role}`);
+    h.bus.emit('tether:whipImpact', {
+      victimId: target.id, targetId: h.state.playerId, rating: 'solid', relSpeed: 90,
+    });
+    return;
+  }
   completePhysicalMission(h, mission);
 }
 
@@ -317,8 +328,10 @@ function completeB7(h, outcome) {
   // The adapter gate accelerates the late-game economy/reputation prerequisite, never the story spine.
   h.state.player.credits = Math.max(100_000, h.state.player.credits || 0);
   h.state.factions[route.factionId].rep = Math.max(50, h.state.factions[route.factionId].rep || 0);
-  const mission = acceptCurrentStoryOffer(h, route.b4StationId, 'campaign47a:b7:');
-  completePhysicalMission(h, mission);
+  const mission = acceptCurrentStoryOffer(h, 'station_ashcache', 'campaign47a:b7:');
+  assert.ok(mission.params && mission.params.completionMethods && mission.params.completionMethods.length >= 2,
+    'the Deep Reach climax posts two physical solutions');
+  completeSpineSetPiece(h, mission);
   assert.equal(h.state.story.beatIndex, 7);
   assert.equal(h.state.story.flags.deep_reach_operation_complete, true);
   assert.equal(h.state.story.flags.endgame, true);

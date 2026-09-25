@@ -25,14 +25,24 @@ export const TABLE_REFERENCE_SPEED_WU = 160;
 /** How far ahead a submitted root may sit so a fast crosser cannot pop. */
 export const TABLE_SUBMIT_APPROACH_SECONDS = 0.75;
 
-/** Mesh decode/build runway. Long enough for the two-build/frame drain. */
-export const TABLE_RESIDENCY_PREFETCH_SECONDS = 2.0;
+/**
+ * Mesh decode/build runway. Long enough for the two-build/frame drain — and (owner
+ * 2026-09-24: bodies were reaching the screen before they finished loading) long
+ * enough that a closing hull is built before it can arrive on the glass.
+ */
+export const TABLE_RESIDENCY_PREFETCH_SECONDS = 3.5;
 
-/** Evict a little past prefetch so a ship oscillating on the lip does not thrash. */
-export const TABLE_RESIDENCY_EVICT_SECONDS = 2.5;
+/**
+ * Evict well past prefetch so a ship oscillating on the lip does not thrash — the wider
+ * gap also means turning around does not unload the body that was just built.
+ */
+export const TABLE_RESIDENCY_EVICT_SECONDS = 5.0;
 
-/** Authored GLB decode may take a couple of seconds; start before the mesh runway. */
-export const TABLE_AUTHORED_DECODE_SECONDS = 4.0;
+/**
+ * Authored GLB decode may take seconds; start well before the mesh runway so the
+ * authored body is resident before it can reach the glass (owner 2026-09-24).
+ */
+export const TABLE_AUTHORED_DECODE_SECONDS = 6.0;
 
 /** Immediate authored radius: already next to the glass. */
 export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;

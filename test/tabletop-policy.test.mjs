@@ -63,11 +63,14 @@ test('default glass is a table, not a thousand-unit fake-visible box', () => {
     'submit runway is one second of travel or less');
   assert.ok(submit.halfX < 420, `submit halfX ${submit.halfX} must beat the old 900 WU margin`);
   assert.ok(submit.halfZ < 360, `submit halfZ ${submit.halfZ} must beat the old 900 WU margin`);
-  assert.ok(residencyPrefetchRadius() < 700);
-  assert.ok(residencyEvictRadius() < 800);
+  assert.ok(residencyPrefetchRadius() < 800,
+    `prefetch ${residencyPrefetchRadius().toFixed(0)} is the 3.5 s owner-widened runway, not a sector load`);
+  assert.ok(residencyEvictRadius() < 1000,
+    `evict ${residencyEvictRadius().toFixed(0)} is the 5 s hysteresis lip, not a whole-sector pin`);
   assert.ok(residencyEvictRadius() > residencyPrefetchRadius());
   assert.ok(residencyPrefetchRadius() > glassCornerWu(144, 50, 16 / 9, 60));
-  assert.ok(authoredPrefetchRadius() < 800);
+  assert.ok(authoredPrefetchRadius() < 1000,
+    `authored prefetch ${authoredPrefetchRadius().toFixed(0)} is the 6 s decode runway, not a sector load`);
   assert.ok(authoredImmediateRadius() < 300);
   const maxZoom = submitCullHalfExtents(330, 50, 16 / 9);
   assert.ok(maxZoom.halfX < 700, `max-zoom submit ${maxZoom.halfX} is still a table`);
@@ -133,7 +136,7 @@ test('a planet filling the glass stays meshed at the skim band', () => {
 
 test('residency grows with live camera zoom so director-zoom objects stay meshed', () => {
   const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160 };
-  const ship = { id: 2, type: 'ship', alive: true, pos: { x: 700, z: 0 }, radius: 8 };
+  const ship = { id: 2, type: 'ship', alive: true, pos: { x: 990, z: 0 }, radius: 8 };
   const tight = {
     playerId: 1,
     camera: { zoom: 144, tilt: 60 },
@@ -145,7 +148,7 @@ test('residency grows with live camera zoom so director-zoom objects stay meshed
     entities: new Map([[1, player]]),
   };
   assert.equal(isEntityRenderRelevant(ship, tight), false,
-    'at default zoom a ship 700 WU out is off the table');
+    'at default zoom a ship past the 3.5 s prefetch runway is off the table');
   assert.equal(isEntityRenderRelevant(ship, wide), true,
     'at max legal zoom that same ship is on the glass and must stay meshed');
   const director = {
@@ -311,7 +314,7 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   const offAxisOutside = {
     id: 11, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: authoredPrefetchRadius(160) + 60 },
   };
-  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
+  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 3000, z: 0 } };
   const inboundTraffic = {
     id: 6,
     type: 'ship',

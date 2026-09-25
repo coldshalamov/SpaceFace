@@ -18,25 +18,25 @@ test('tintable hull variants with different base albedo still share after palett
 });
 
 test('LOD family admission: cold start keeps packaged LOD0; siblings load only when packaged-live', () => {
-  // Pelican's lod1/lod2 siblings exist on disk but have no compiled render-package pilot — an
-  // unpackaged remaster sibling must never leave the live path, so demotion falls back to the
-  // packaged LOD0.
+  // Pelican's lod1/lod2 siblings now carry compiled pilots — demotion resolves the real simplified
+  // file, and only that tier enters the at-LOD demand plan. Cold start still admits LOD0 alone.
   const pelican = { type: 'ship', data: { defId: 'ship_pelican' } };
   assert.deepEqual(
     authoredPreloadPlanForEntity(pelican, { requiredWholeShip: true }).hull,
     ['wholeships/pelican_production_v1.glb'],
   );
-  for (const level of ['lod1', 'lod2']) {
-    assert.equal(
-      wholeShipLodFileForEntity(pelican, level, { requiredWholeShip: true }),
-      'wholeships/pelican_production_v1.glb',
-      `unpackaged pelican ${level} must fall back to packaged LOD0`,
-    );
-    assert.deepEqual(
-      authoredPreloadPlanForEntityAtLod(pelican, level, { requiredWholeShip: true }).hull,
-      ['wholeships/pelican_production_v1.glb'],
-    );
-  }
+  assert.equal(
+    wholeShipLodFileForEntity(pelican, 'lod1', { requiredWholeShip: true }),
+    'wholeships/pelican_production_v1_lod1.glb',
+  );
+  assert.equal(
+    wholeShipLodFileForEntity(pelican, 'lod2', { requiredWholeShip: true }),
+    'wholeships/pelican_production_v1_lod2.glb',
+  );
+  assert.deepEqual(
+    authoredPreloadPlanForEntityAtLod(pelican, 'lod1', { requiredWholeShip: true }).hull,
+    ['wholeships/pelican_production_v1_lod1.glb'],
+  );
 
   // Ranger's lod1/lod2 siblings carry compiled pilots — demotion resolves the real simplified
   // file, and only that tier enters the at-LOD demand plan. Cold start still admits LOD0 alone.
@@ -71,7 +71,7 @@ test('sector prewarm requests include spawnable hostile and traffic archetype hu
   assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span.glb')));
 });
 
-test('distant live ships keep a packaged LOD0 instead of an unpackaged remaster sibling', () => {
+test('distant live ships demote to packaged simplified siblings; unpackaged bodies keep LOD0', () => {
   const farPelican = {
     type: 'ship',
     id: 9,
@@ -88,11 +88,14 @@ test('distant live ships keep a packaged LOD0 instead of an unpackaged remaster 
     requiredWholeShip: true,
   });
   const pelicanHullUrls = pelicanRequests.filter((r) => r.slot === 'hull').map((r) => r.url);
-  assert.ok(pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1.glb')));
-  assert.equal(
+  assert.ok(
     pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1_lod2.glb')),
+    'a distant pelican requests its packaged simplified LOD2',
+  );
+  assert.equal(
+    pelicanHullUrls.some((url) => url.endsWith('wholeships/pelican_production_v1.glb')),
     false,
-    'unpackaged Pelican LOD2 must never enter the live demand plan',
+    'the packaged demotion must not also pin the full-detail LOD0',
   );
 
   // The same far ship demotes to its packaged simplified sibling when one exists.
@@ -113,5 +116,27 @@ test('distant live ships keep a packaged LOD0 instead of an unpackaged remaster 
     rangerHullUrls.some((url) => url.endsWith('wholeships/ranger_production_v1.glb')),
     false,
     'the packaged demotion must not also pin the full-detail LOD0',
+  );
+
+  // A ship without packaged LOD siblings keeps its packaged LOD0.
+  const farDart = {
+    type: 'ship',
+    id: 11,
+    alive: true,
+    radius: 8,
+    pos: { x: 4000, z: 0 },
+    data: { silhouette: 'drone_swarm' },
+  };
+  const dartRequests = authoredPrewarmRequestsForEntities([farDart], {
+    playerId: 1,
+    playerPos: { x: 0, z: 0 },
+    viewportHeight: 800,
+    includeSpawnableArchetypes: false,
+    requiredWholeShip: true,
+  });
+  const dartHullUrls = dartRequests.filter((r) => r.slot === 'hull').map((r) => r.url);
+  assert.ok(
+    dartHullUrls.some((url) => url.endsWith('wholeships/ashline_dart.glb')),
+    'an archetype without packaged LOD siblings safely keeps packaged LOD0',
   );
 });

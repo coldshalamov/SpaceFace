@@ -747,12 +747,38 @@ function engineGlow(pal, x, z, scale) {
 const FACING_YAW = { front: 0, right: -Math.PI / 2, rear: Math.PI, left: Math.PI / 2, turret: 0 };
 
 // ---- shared geometry primitives, cached ------------------------------------------------------
-// Beveled hull slab: a box with its vertical edges chamfered by scaling — reads as a real plate
-// rather than a flat box because the normal map + the slight inset catches light. We keep a handful
-// of aspect buckets so the cache stays small.
+// Beveled hull slab: an aerospace plate with its vertical edges chamfered and beveled — reads as
+// real plating rather than a flat box because the chamfers and bevels catch light and starlight reflections.
 function hullSlabGeo(lx, ly, lz) {
   const key = `slab:${q(lx)}:${q(ly)}:${q(lz)}`;
-  return getGeometry(key, () => new THREE.BoxGeometry(lx, ly, lz, 1, 1, 1));
+  return getGeometry(key, () => {
+    const c = Math.min(lx, lz) * 0.12;
+    const b = Math.min(c * 0.4, ly * 0.2);
+    const shape = new THREE.Shape();
+    const hx = Math.max(0.01, lx * 0.5 - b);
+    const hz = Math.max(0.01, lz * 0.5 - b);
+    const chamfer = Math.max(0.005, c - b);
+    shape.moveTo(-hx + chamfer, -hz);
+    shape.lineTo(hx - chamfer, -hz);
+    shape.lineTo(hx, -hz + chamfer);
+    shape.lineTo(hx, hz - chamfer);
+    shape.lineTo(hx - chamfer, hz);
+    shape.lineTo(-hx + chamfer, hz);
+    shape.lineTo(-hx, hz - chamfer);
+    shape.lineTo(-hx, -hz + chamfer);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: Math.max(0.01, ly - 2 * b),
+      bevelEnabled: true,
+      bevelSegments: 1,
+      steps: 1,
+      bevelSize: b,
+      bevelThickness: b,
+    });
+    geo.center();
+    geo.rotateX(Math.PI / 2);
+    return geo;
+  });
 }
 function q(v) { return Math.round(v * 100) / 100; }
 
@@ -1310,7 +1336,7 @@ function buildFreighter(ctx) {
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
       for (const sgn of (cols > 1 ? [1, -1] : [0])) {
-        const pod = new THREE.Mesh(getGeometry(`frt:pod:${c}:${r}`, () => new THREE.BoxGeometry(0.32, 0.4, 0.36)), podMat);
+        const pod = new THREE.Mesh(hullSlabGeo(0.32, 0.4, 0.36), podMat);
         const px = (-L * 0.3 + c * 0.36) * R;
         const py = (r - (rows - 1) / 2) * 0.4 * R;
         pod.position.set(px, py, sgn * W * 0.55 * R); pod.scale.setScalar(R); g.add(pod);
@@ -1885,6 +1911,21 @@ function buildShipMesh(e, pal) {
   const shieldBubble = kit.createShieldBubble(pal.accent || '#5fd0ff', R);
   outer.add(shieldBubble);
   outer.userData.shieldBubble = shieldBubble;
+
+  // Attach LOD support so procedural ships demote gracefully at distance
+  let activeLod = 'lod0';
+  outer.userData.updateLod = function updateProceduralShipLod(level) {
+    if (level === activeLod) return;
+    activeLod = level;
+    const isFar = level === 'lod2';
+    applyProjectedDetailLod(outer, level);
+    if (outer.userData.weapons) {
+      for (const w of outer.userData.weapons) {
+        if (w) w.visible = !isFar;
+      }
+    }
+  };
+  attachLodState(outer);
 
   return outer;
 }
@@ -2709,7 +2750,11 @@ function buildStation(e) {
   const core = new THREE.Mesh(getGeometry('stat:core', () => new THREE.CylinderGeometry(0.42, 0.46, 0.6, 10)), m);
   core.scale.setScalar(R); g.add(core);
   for (let i = 0; i < 8; i++) {
-    const box = new THREE.Mesh(getGeometry(`stat:gb${i}`, () => new THREE.BoxGeometry(0.18, 0.18, 0.18)), m);
+    const geoBuilder = () => (i % 2 === 0
+      ? new THREE.CylinderGeometry(0.10, 0.12, 0.20, 6)
+      : new THREE.CylinderGeometry(0.12, 0.10, 0.18, 8));
+    const box = new THREE.Mesh(getGeometry(`stat:gb${i}`, geoBuilder), m);
+    box.userData.spacefaceTags = { greeble: true };
     const a = (i / 8) * Math.PI * 2;
     box.position.set(Math.cos(a) * R * (0.35 + rnd() * 0.2), (rnd() - 0.5) * R * 0.5, Math.sin(a) * R * (0.35 + rnd() * 0.2));
     box.scale.setScalar(R * (0.7 + rnd() * 0.8)); box.rotation.y = rnd() * 3; g.add(box);
@@ -2741,7 +2786,7 @@ function buildStation(e) {
     for (const side of [-1, 1]) {
       const a = (corridorDeg + side * 25) * (Math.PI / 180);
       const cx = Math.cos(a), cz = Math.sin(a);
-      const cap = new THREE.Mesh(getGeometry('stat:ringcap', () => new THREE.BoxGeometry(0.10, 0.34, 0.10)), ringMat);
+      const cap = new THREE.Mesh(getGeometry('stat:ringcap', () => new THREE.CylinderGeometry(0.08, 0.09, 0.34, 8)), ringMat);
       cap.position.set(cx * R * 0.8, 0, cz * R * 0.8);
       cap.scale.setScalar(R);
       cap.receiveShadow = true; cap.castShadow = true;
@@ -2760,7 +2805,24 @@ function buildStation(e) {
   // docking spars
   const spars = [];
   for (let i = 0; i < 4; i++) {
-    const arm = new THREE.Mesh(getGeometry('stat:spar', () => new THREE.BoxGeometry(0.16, 0.12, 0.7)), m);
+    const arm = new THREE.Mesh(getGeometry('stat:spar', () => {
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.08, -0.06);
+      shape.lineTo(0.08, -0.06);
+      shape.lineTo(0.06, 0.06);
+      shape.lineTo(-0.06, 0.06);
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.70,
+        bevelEnabled: true,
+        bevelSegments: 1,
+        steps: 1,
+        bevelSize: 0.015,
+        bevelThickness: 0.015,
+      });
+      geo.center();
+      return geo;
+    }), m);
     const a = i * Math.PI / 2;
     arm.position.set(Math.cos(a) * R * 0.55, 0, Math.sin(a) * R * 0.55);
     arm.rotation.y = -a; arm.scale.setScalar(R); g.add(arm); spars.push(arm);
@@ -3740,7 +3802,46 @@ function buildWreck(e) {
   for (let i = 0; i < 4; i++) {
     const side = i % 2 ? -1 : 1;
     const hullPlate = new THREE.Mesh(
-      getGeometry(`wreck:hull-plate:${i}`, () => new THREE.BoxGeometry(0.72, 0.10, 0.46)),
+      getGeometry(`wreck:hull-plate:${i}`, () => {
+        const shape = new THREE.Shape();
+        if (i === 0) {
+          shape.moveTo(-0.36, -0.22);
+          shape.lineTo(0.28, -0.23);
+          shape.lineTo(0.36, -0.08);
+          shape.lineTo(0.24, 0.22);
+          shape.lineTo(-0.30, 0.21);
+          shape.lineTo(-0.36, 0.05);
+        } else if (i === 1) {
+          shape.moveTo(-0.34, -0.20);
+          shape.lineTo(0.35, -0.22);
+          shape.lineTo(0.22, 0.22);
+          shape.lineTo(-0.28, 0.24);
+        } else if (i === 2) {
+          shape.moveTo(-0.35, -0.18);
+          shape.lineTo(0.32, -0.22);
+          shape.lineTo(0.36, 0.12);
+          shape.lineTo(0.18, 0.23);
+          shape.lineTo(-0.32, 0.19);
+        } else {
+          shape.moveTo(-0.36, -0.23);
+          shape.lineTo(0.34, -0.21);
+          shape.lineTo(0.28, 0.02);
+          shape.lineTo(0.35, 0.15);
+          shape.lineTo(-0.20, 0.23);
+          shape.lineTo(-0.34, 0.10);
+        }
+        shape.closePath();
+        const geo = new THREE.ExtrudeGeometry(shape, {
+          depth: 0.10,
+          bevelEnabled: true,
+          bevelSegments: 1,
+          steps: 1,
+          bevelSize: 0.018,
+          bevelThickness: 0.015,
+        });
+        geo.center();
+        return geo;
+      }),
       i === 3 ? cutEdge : plate,
     );
     hullPlate.name = `Wreck_HullPlate_${i + 1}`;
@@ -3826,7 +3927,24 @@ function buildWreck(e) {
     }
     for (let i = 0; i < 4; i++) {
       const radiator = new THREE.Mesh(
-        getGeometry('wreck:reactor-radiator', () => new THREE.BoxGeometry(0.34, 0.035, 0.18)),
+        getGeometry('wreck:reactor-radiator', () => {
+          const shape = new THREE.Shape();
+          shape.moveTo(-0.17, -0.09);
+          shape.lineTo(0.17, -0.09);
+          shape.lineTo(0.14, 0.09);
+          shape.lineTo(-0.14, 0.09);
+          shape.closePath();
+          const geo = new THREE.ExtrudeGeometry(shape, {
+            depth: 0.035,
+            bevelEnabled: true,
+            bevelSegments: 1,
+            steps: 1,
+            bevelSize: 0.006,
+            bevelThickness: 0.005,
+          });
+          geo.center();
+          return geo;
+        }),
         heatMaterial,
       );
       radiator.name = `Wreck_ReactorRadiator_${i + 1}`;

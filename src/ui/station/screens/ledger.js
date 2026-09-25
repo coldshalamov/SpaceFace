@@ -317,7 +317,21 @@ export function createLedgerScreen(ctx) {
       status.textContent = status.textContent.replace(/\b1 entries\b/g, '1 entry');
     }
     // one page is no archive: the count stands alone, and the key hint offers PAGE only when there is one
-    if (status && /archive page 1 of 1/i.test(status.textContent)) status.textContent = status.textContent.replace(/\s*Archive page 1 of 1\.?/i, '');
+    if (status && /archive page 1 of 1/i.test(status.textContent)) status.textContent = status.textContent.replace(/\s*Archive page 1 of 1\.?/i, '').replace(/\.\s*$/, '');
+    // a trade's line item is equipment, not prose: verb · quantity · commodity · station · signed figure
+    const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
+    const entries = (panel.model && panel.model.entries) || [];
+    rows.forEach((row, i) => {
+      const entry = entries[i];
+      if (!entry || String(entry.type) !== 'trade') return;
+      const t = entry.tokens || {};
+      const credits = Number(String(t.credits || '').replace(/[^0-9.]/g, ''));
+      if (!Number.isFinite(credits)) return;
+      const sold = t.verbPast === 'sold';
+      const verb = String(t.verbPast || t.verb || (sold ? 'sold' : 'bought'));
+      const line = row.querySelector('.st-ledger-line');
+      if (line) line.textContent = `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${t.qty != null ? `${t.qty}u ` : ''}${t.commodity || ''} \u00b7 ${t.station || ''} \u00b7 ${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')} cr`;
+    });
     const older = panel.el.querySelector('[data-ledger-page="older"]');
     const newer = panel.el.querySelector('[data-ledger-page="newer"]');
     const paged = (older && !older.disabled && !older.hidden) || (newer && !newer.disabled && !newer.hidden);

@@ -113,9 +113,9 @@ test('nothing on the live screen loses its mesh, whatever tier the sim-side fram
     id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
     maxSpeed: 160, radius: 8, collides: true, team: 0, data: {},
   };
-  // 900 WU out: beyond the ~821 WU runway disc the sim-side classifier keeps at default zoom.
+  // 1020 WU out: beyond the ~960 WU authored-decode disc an inbound wreck admits at.
   const wreck = {
-    id: 2, type: 'wreck', alive: true, pos: { x: 0, z: -900 }, vel: { x: 0, z: 0 },
+    id: 2, type: 'wreck', alive: true, pos: { x: 0, z: -1020 }, vel: { x: 0, z: 0 },
     radius: 14, collides: true, team: 0, data: {},
     activity: { presentationTier: PRESENTATION_TIER.R3_UNLOADED },
   };

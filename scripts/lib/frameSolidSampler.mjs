@@ -25,6 +25,7 @@ export async function installFrameSolidSampler() {
     frames: 0, blinks: 0, missingFrames: 0, stuckMissing: 0, rootSwaps: 0, regressions: 0,
     stationNearFrames: 0, stationNoCollider: 0, maxOnScreen: 0,
     byType: {}, offenders: {},
+    lodFrames: {}, lodSwapsOnScreen: 0, lodSwapKinds: {}, stationBounds: {},
   };
   window.__SF_FRAME__ = rec;
   window.__SF_FRAME_STOP__ = false;
@@ -93,8 +94,30 @@ export async function installFrameSolidSampler() {
         const uuid = mesh ? mesh.uuid : null;
         const assetState = mesh && mesh.userData ? mesh.userData.authoredAssetState || null : null;
         if (!t) {
-          t = { prevOnScreen: false, prevVisible: false, uuid, assetState, onSince: now };
+          t = { prevOnScreen: false, prevVisible: false, uuid, assetState, onSince: now, lod: null };
           track.set(e.id, t);
+        }
+        const lodLevel = mesh && mesh.userData ? mesh.userData.wholeShipLodActiveLevel || null : null;
+        if (lodLevel) {
+          rec.lodFrames[lodLevel] = (rec.lodFrames[lodLevel] || 0) + 1;
+          if (t.lod && t.lod !== lodLevel) {
+            rec.lodSwapsOnScreen++;
+            const key = `${t.lod}->${lodLevel}`;
+            rec.lodSwapKinds[key] = (rec.lodSwapKinds[key] || 0) + 1;
+          }
+          t.lod = lodLevel;
+        }
+        if (e.type === 'station' && mesh && visible && !rec.stationBounds[e.id]) {
+          const box = new THREE.Box3().setFromObject(mesh);
+          if (!box.isEmpty()) {
+            rec.stationBounds[e.id] = {
+              stationId: e.data && e.data.stationId, collisionRadius: e.radius,
+              dockRadius: e.data && e.data.dockRadius,
+              drawnHalfX: Math.round((box.max.x - box.min.x) / 2),
+              drawnHalfZ: Math.round((box.max.z - box.min.z) / 2),
+              asset: mesh.userData && mesh.userData.authoredAssetState,
+            };
+          }
         }
         if (t.onSince < 0) t.onSince = now;
         if (t.prevOnScreen) {

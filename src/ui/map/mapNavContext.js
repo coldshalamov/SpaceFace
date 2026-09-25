@@ -337,7 +337,10 @@ export function resolveMapNavContext(input = {}) {
       detail: objective
         ? (Number.isFinite(objective.distanceWU)
           ? formatDistanceWU(objective.distanceWU)
-          : (objective.sectorName ? `in ${objective.sectorName}` : ''))
+          : (objective.sectorName
+            && (!destination || objective.sectorName !== destination.sectorName)
+            ? `in ${objective.sectorName}`
+            : (objective.sectorName ? 'course laid' : '')))
         : 'Select a mission or mark to track it',
       tone: objective ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.MUTED,
     }),

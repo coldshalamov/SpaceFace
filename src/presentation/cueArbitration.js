@@ -187,6 +187,37 @@ export function admitStructuralFxCue(eventName, payload, state) {
 }
 
 /**
+ * Admit one impact cue (contact structure, gas jets, debris) against the fixed structural pools.
+ *
+ * This does not charge `CUE_LANE_BUDGETS`. Those totals belong to presentation recipes; charging
+ * them here would steal slots from unrelated cues. The budget is the pool the primitive will
+ * actually use. A hero cue is lifted with the same floor as a kill, so flavor already sitting in
+ * the pool cannot crowd it out. `pools` may contain holes — only entries with `admission()` count.
+ *
+ * @returns {{ admitted: boolean, reason: string|null, priority: number }}
+ *   `reason` is `over_budget` when any needed pool cannot take this cue's beats.
+ *   A gate with `live === false` is an unused slot in a reused list, not a pool.
+ */
+export function arbitrateStructuralImpactCue(pools, cue = {}) {
+  const raw = Number(cue.priority);
+  const base = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0.5;
+  const priority = cue.hero ? scaleHeroAdmissionPriority(base) : base;
+  const list = pools || [];
+  let sawPool = false;
+  for (let i = 0; i < list.length; i += 1) {
+    const pool = list[i];
+    if (!pool || pool.live === false || typeof pool.admission !== 'function') continue;
+    sawPool = true;
+    const slot = pool.admission(priority);
+    if (slot !== 'free' && slot !== 'evict') {
+      return { admitted: false, reason: 'over_budget', priority };
+    }
+  }
+  if (!sawPool) return { admitted: false, reason: 'empty', priority };
+  return { admitted: true, reason: null, priority };
+}
+
+/**
  * The packet's required budget declaration, as data so tests can assert it rather than trusting
  * prose. Instance/pool figures name the module that actually enforces them — this leaf declares the
  * contract and does not re-implement pooling that already exists.
@@ -220,6 +251,7 @@ export const CUE_BUDGET_DECLARATION = Object.freeze({
     families: STRUCTURAL_FX_FAMILIES,
     pool: 'src/render/combat/arcadeStructuralFx.js',
     admission: 'deriveVfxAdmissionMetadata',
+    impactCue: 'arbitrateStructuralImpactCue',
     laneBudgetsCharged: false,
   }),
   allocation: Object.freeze({

@@ -1902,7 +1902,7 @@ export const STORY_BEATS = [
     reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },
   { beat: 6, id: 'empire_seed',    objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
     reward: { credits: 3000, unlock: 'passive_income' }, introduces: 'passive_income', next: 7 },
-  { beat: 7, id: 'deep_reach',     objective: 'Use the Empire Seed in a physical Ashfall operation, then review final dispositions.',
+  { beat: 7, id: 'deep_reach',     objective: 'The Deep Reach climax: run the blockade, siege the tower, or tow the evidence, then review final dispositions.',
     reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];
 

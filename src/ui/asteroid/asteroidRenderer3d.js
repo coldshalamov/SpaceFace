@@ -207,6 +207,7 @@ export function createConduitMountLifecycle({
   scheduleWatchdog = defaultScheduleWatchdog,
   now = () => Date.now(),
   onWatchdogEvent = null,
+  onRebuildSettled = null,
 } = {}) {
   for (const [name, fn] of Object.entries({ acquireTemplates, prepare, mount, unmount, release, createScope, releaseScope })) {
     if (typeof fn !== 'function') throw new TypeError(`[conduitMount] ${name} must be a function`);
@@ -292,6 +293,23 @@ export function createConduitMountLifecycle({
     currentTemplates = null;
   };
   const cancelled = (attempt) => attempt !== generation || isClosed();
+  // D37: every terminal settle of the LIVE attempt is reported, whichever caller owns the
+  // rebuild promise. The screen holds only the promise of the rebuild IT started — the
+  // watchdog's retry (`void rebuild(lastDesired)` above) is fire-and-forget, and a late
+  // template settle after a loud 'failed' still lands here on the live generation. A
+  // superseded attempt's late settle reports nothing: the live attempt may be genuinely
+  // failed and the glass must keep saying so.
+  const settled = (result) => {
+    if (result.status === 'cancelled') return result;
+    // A listener bug must never turn a mounted network into a reported failure — the authored
+    // return runs inside rebuild's try, so a throwing handler would be caught as a mount error.
+    try {
+      onRebuildSettled?.(result);
+    } catch (error) {
+      console.error('[conduitMount] settle listener threw', error);
+    }
+    return result;
+  };
   async function rebuild(desiredInput) {
     const desired = Array.isArray(desiredInput) ? desiredInput.slice() : [];
     generation += 1;
@@ -309,7 +327,7 @@ export function createConduitMountLifecycle({
     if (!desired.length) {
       retire();
       publish({ phase: 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
-      return { status: 'empty', state };
+      return settled({ status: 'empty', state });
     }
     armWatchdog(attempt);
     let templates = null;
@@ -332,7 +350,7 @@ export function createConduitMountLifecycle({
       scope = createScope(desired);
       if (cancelled(attempt)) {
         releaseStaged();
-        return { status: 'cancelled', state };
+        return settled({ status: 'cancelled', state });
       }
       for (let i = 0; i < desired.length; i++) {
         const rec = desired[i];
@@ -341,7 +359,7 @@ export function createConduitMountLifecycle({
         if (cancelled(attempt)) {
           release({ source, desired: rec });
           releaseStaged();
-          return { status: 'cancelled', state };
+          return settled({ status: 'cancelled', state });
         }
         let prepared = null;
         try {
@@ -358,7 +376,7 @@ export function createConduitMountLifecycle({
       }
       if (cancelled(attempt)) {
         releaseStaged();
-        return { status: 'cancelled', state };
+        return settled({ status: 'cancelled', state });
       }
       for (const record of staged) {
         record.mounted = true;
@@ -366,7 +384,7 @@ export function createConduitMountLifecycle({
       }
       if (cancelled(attempt)) {
         releaseStaged();
-        return { status: 'cancelled', state };
+        return settled({ status: 'cancelled', state });
       }
       // Mount the complete replacement before retiring the prior generation. JavaScript cannot
       // present between these calls, so the scene never exposes a blank conduit frame; a failed
@@ -378,10 +396,10 @@ export function createConduitMountLifecycle({
       currentScope = scope;
       scope = null;
       publish({ phase: 'authored', desiredCount: desired.length, authoredCount: current.length, templateCount: ids.length, failure: null });
-      return { status: 'authored', state };
+      return settled({ status: 'authored', state });
     } catch (error) {
       releaseStaged();
-      if (cancelled(attempt)) return { status: 'cancelled', state };
+      if (cancelled(attempt)) return settled({ status: 'cancelled', state });
       const failure = error?.message || String(error);
       publish({
         phase: 'failed',
@@ -390,7 +408,7 @@ export function createConduitMountLifecycle({
         templateCount: currentTemplates?.ids?.length || 0,
         failure,
       });
-      return { status: 'failed', state };
+      return settled({ status: 'failed', state });
     } finally {
       // This attempt settled (authored, cancelled, or failed): its watchdog timer is done.
       disarmWatchdogFor(attempt);
@@ -3789,6 +3807,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     else console.error('[asteroidRenderer3d] conduit mount watchdog failed', info);
     showConduitMountFault(kind);
   }
+  // D37: the strip answers to EVERY live rebuild settle, not only the promise rebuildOverlays
+  // happens to hold — the watchdog's retry rebuild is fire-and-forget inside the lifecycle,
+  // and a late template settle after a loud 'failed' still mounts the live generation. An
+  // authored/empty settle means a real network is on the board (or none is wanted): the strip
+  // is a lie and clears. A settle into 'failed' stays loud — a mount that died without ever
+  // starving long enough to trip the watchdog still raises the hard strip.
+  function onConduitMountSettled(result) {
+    if (!result || result.status === 'cancelled') return;
+    if (result.status === 'authored' || result.status === 'empty') hideConduitMountFault();
+    else showConduitMountFault('failed');
+  }
 
   // ---------------------------------------------------------------- sizing + zoom registers
   // The board is sovereign: the canvas fills the stage box and the ortho box is derived from the
@@ -5546,6 +5575,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       },
       isClosed: () => worksTearingDown || disposed || glTeardownDone,
       onWatchdogEvent: onConduitMountWatchdogEvent,
+      onRebuildSettled: onConduitMountSettled,
     });
     return conduitMountLifecycle;
   }

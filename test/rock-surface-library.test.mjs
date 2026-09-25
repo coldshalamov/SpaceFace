@@ -11,7 +11,7 @@ import {
   preloadRockSurfaceLibrary,
 } from '../src/render/rockSurfaceLibrary.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
-import { entityVisualCullRadius } from '../src/render/renderer.js';
+import { entityVisualCullRadius, isOnLiveCameraView } from '../src/render/renderer.js';
 import { COMMON_ROCK_UV_TRANSFORMS } from '../src/render/objectSpaceGeology.js';
 
 function attributeFingerprint(attribute) {
@@ -222,6 +222,55 @@ test('authored world bounds expand render culling without changing gameplay radi
   assert.equal(entityVisualCullRadius(station), 90);
   assert.equal(entityVisualCullRadius({ type: 'station', radius: 34, data: {} }), 34);
   assert.equal(entityVisualCullRadius({ type: 'asteroid', radius: 30, data: { placeRadius: 55 } }), 55);
+});
+
+test('an authored root without visualBounds culls at its measured drawn envelope', () => {
+  // station_helios draws 549x420 WU half-extents against a 90 WU dock radius — a hull
+  // whose centre leaves the glass must still cull at the size it actually draws at.
+  const station = { type: 'station', radius: 42, data: { dockRadius: 90 } };
+  const root = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1100, 10, 900), new THREE.MeshBasicMaterial());
+  root.add(body);
+  root.userData.authoredAssetState = 'authored';
+  const measured = entityVisualCullRadius(station, root);
+  assert.ok(measured >= 500,
+    `measured ${measured.toFixed(0)} must cover the drawn body, not just the dock radius`);
+  // Same call again hits the cache, not a re-measure.
+  assert.equal(entityVisualCullRadius(station, root), measured);
+  // A pending substrate must not define the size: loading roots keep the presence radius.
+  root.userData.authoredAssetState = 'loading';
+  assert.equal(entityVisualCullRadius(station, root), 90);
+  // The stamp includes the asset state — landing the authored body re-measures.
+  root.userData.authoredAssetState = 'authored';
+  assert.equal(entityVisualCullRadius(station, root), measured);
+  // And an asset-state change with a different envelope invalidates instead of
+  // serving the stale measurement.
+  root.clear();
+  root.add(new THREE.Mesh(new THREE.BoxGeometry(100, 10, 100), new THREE.MeshBasicMaterial()));
+  root.userData.authoredAssetState = 'authored:refit';
+  const remeasured = entityVisualCullRadius(station, root);
+  assert.ok(remeasured < measured && remeasured >= 90,
+    `remeasured ${remeasured.toFixed(0)} should follow the smaller refit envelope`);
+});
+
+test('the live-camera frustum counts a centre-off-screen body whose limb still shows', () => {
+  const camera = new THREE.PerspectiveCamera(50, 16 / 9, 1, 5000);
+  camera.position.set(0, 125, -72); // the 60-degree tilt chase view at zoom 144
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const projView = new THREE.Matrix4().multiplyMatrices(
+    camera.projectionMatrix,
+    camera.matrixWorldInverse,
+  );
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(projView);
+  assert.equal(isOnLiveCameraView(frustum, { x: 0, y: 0, z: 0 }, 10), true,
+    'the look-at origin is on view');
+  assert.equal(isOnLiveCameraView(frustum, { x: 600, y: 0, z: 0 }, 20), false,
+    'a small rock far off the rectangle is genuinely off view');
+  assert.equal(isOnLiveCameraView(frustum, { x: 600, y: 0, z: 0 }, 550), true,
+    'a helios-sized hull centred off the frustum still counts while a limb shows');
+  assert.equal(isOnLiveCameraView(null, { x: 0, y: 0, z: 0 }, 10), false,
+    'no camera -> the rectangle test decides alone');
 });
 
 // 2ca4bc8e5 (2026-09-11, "Wait for the opening cook on this Intel laptop") made the opening's wait

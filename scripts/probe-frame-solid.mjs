@@ -18,6 +18,7 @@ import { installFrameSolidSampler, summarizeFrameSolid } from './lib/frameSolidS
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
+const CENSUS = process.argv.includes('--census');
 const AWAY_WU = 2500;
 const AWAY_MS = 35_000;
 const BACK_MS = 45_000;
@@ -309,6 +310,38 @@ try {
     weave: true,
   });
 
+  if (CENSUS) {
+    // One line per resident non-player ship: which whole-ship LOD family is
+    // installed, which level is active, and the last projected pixel width the
+    // LOD logic recorded. Resident means a bound mesh root (e.mesh).
+    const census = await page.evaluate(() => {
+      const s = window.SF && window.SF.state;
+      const rows = [];
+      if (!s || !s.entities) return rows;
+      for (const e of s.entities.values()) {
+        if (!e || e.alive === false || e.type !== 'ship' || e.id === s.playerId) continue;
+        const mesh = e.mesh || null;
+        if (!mesh) continue;
+        const ud = mesh.userData || {};
+        const lod = ud.lod || {};
+        rows.push({
+          id: e.id,
+          defId: (e.data && (e.data.defId || e.data.shipId)) || null,
+          lodFamilyInstalled: ud.wholeShipLodFamilyInstalled ?? null,
+          lodActiveLevel: ud.wholeShipLodActiveLevel ?? null,
+          lastPx: Number.isFinite(lod.lastPx) ? lod.lastPx : null,
+        });
+      }
+      rows.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      return rows;
+    });
+    console.log(`  ship census — ${census.length} resident non-player ships:`);
+    for (const r of census) {
+      console.log(`    id=${r.id} defId=${r.defId} lodFamilyInstalled=${r.lodFamilyInstalled}`
+        + ` lodActiveLevel=${r.lodActiveLevel} lastPx=${r.lastPx}`);
+    }
+  }
+
   await page.evaluate(() => { window.__SF_FRAME_STOP__ = true; });
   const rec = await page.evaluate(() => window.__SF_FRAME__);
   const summary = summarizeFrameSolid(rec);
@@ -324,6 +357,10 @@ try {
     + ` countsPeak=${JSON.stringify(perf.countsPeak)}`
     + ` frameInterval mean=${(perf.frameIntervalMsSum / Math.max(1, perf.frameIntervals)).toFixed(2)}ms max=${perf.frameIntervalMaxMs.toFixed(2)}ms`);
   console.log(`  summary: ${JSON.stringify(summary)}`);
+  console.log(`  lodFrames=${JSON.stringify((summary && summary.lodFrames) || {})}`
+    + ` lodSwapsOnScreen=${(summary && summary.lodSwapsOnScreen) | 0}`
+    + ` lodSwapKinds=${JSON.stringify((summary && summary.lodSwapKinds) || {})}`);
+  console.log(`  stationBounds=${JSON.stringify((summary && summary.stationBounds) || {}, null, 2)}`);
   for (const o of (summary && summary.offenders) || []) {
     console.log(`  offender id=${o.id} type=${o.type} defId=${o.defId} radius=${o.radius}`
       + ` blinks=${o.blinks} missing=${o.missingFrames} stuck=${o.stuckMissing}`

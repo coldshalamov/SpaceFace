@@ -32,6 +32,7 @@ import {
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
 import { SpatialHash } from './spatialHash.js';
+import { opticGenerationOf } from '../combat/opticField.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
@@ -58,6 +59,13 @@ const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
 const DEGENERATE_SEP2 = 1e-24;
 const DEGENERATE_SEP_CLAMP = 0.0001;
 const _contactNormalScratch = { x: 1, z: 0 };
+
+// The optic grammar's one friendly-fire opening (build_map §24 "Your own grenade"):
+// a prism splinter (opticGeneration >= 1) may strike the hull that lit the ring.
+// The parent bolt — generation 0 — stays owner-immune on every contact path.
+function opticSplinterHitsOwner(proj) {
+  return opticGenerationOf(proj) > 0;
+}
 
 export const physics = {
   name: 'physics',
@@ -755,7 +763,7 @@ export const physics = {
     for (let i = 0; i < list.length; i++) {
       const tgt = list[i];
       if (!tgt || !tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
-      if (proj.ownerId === tgt.id) continue;
+      if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) continue;
       // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
@@ -880,7 +888,7 @@ export const physics = {
       const proj = ta === 'projectile' ? a : b;
       const tgt = ta === 'projectile' ? b : a;
       if (tgt.type === 'projectile') return;
-      if (proj.ownerId === tgt.id) return; // never hit owner
+      if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) return; // never hit owner (optic splinters exempt)
       bus.emit('projectile:hit', projectileHitPayload(proj, tgt, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
       return;

@@ -587,20 +587,71 @@ const SECTOR_POST_GRADE = 0.45;
 const SECTOR_POST_TOE = DEFAULT_CINEMATIC_TOE;
 const SECTOR_POST_VIGNETTE = 0.12;
 
+const _drawnCullBox = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
+
+/**
+ * True drawn reach for an authored root that carries no authored visualBounds: measure the
+ * real envelope once and cache it on userData. station_helios draws 549x420 WU half-extents
+ * against a 90 WU dock radius, so collision-proxied radii hide limbs that are still on the
+ * glass. The stamp mirrors cameraClearanceBoxForMesh — field equality, never a per-call
+ * string. A pending substrate (authoredAssetState not yet 'authored*') must not define the
+ * size, so callers only reach this once the authored body has landed.
+ */
+function drawnCullRadiusForMesh(mesh) {
+  const data = mesh && mesh.userData;
+  if (!data || mesh.isObject3D !== true || !_drawnCullBox) return 0;
+  const assetState = data.authoredAssetState || '';
+  const compositionId = data.authoredCompositionId || '';
+  const lodLevel = data.wholeShipLodActiveLevel || '';
+  const childCount = mesh.children ? mesh.children.length : 0;
+  const cached = data.drawnCullRadius;
+  if (cached && cached.assetState === assetState && cached.compositionId === compositionId
+    && cached.lodLevel === lodLevel && cached.childCount === childCount) {
+    return cached.radius;
+  }
+  _drawnCullBox.setFromObject(mesh);
+  let radius = 0;
+  if (!_drawnCullBox.isEmpty()) {
+    const b = _drawnCullBox;
+    const px = mesh.position ? mesh.position.x : 0;
+    const pz = mesh.position ? mesh.position.z : 0;
+    // Farthest XZ corner from the root's own position — the body may sit off-centre.
+    radius = Math.max(
+      Math.hypot(b.min.x - px, b.min.z - pz),
+      Math.hypot(b.min.x - px, b.max.z - pz),
+      Math.hypot(b.max.x - px, b.min.z - pz),
+      Math.hypot(b.max.x - px, b.max.z - pz),
+    );
+  }
+  const rec = cached || (data.drawnCullRadius = {});
+  rec.assetState = assetState;
+  rec.compositionId = compositionId;
+  rec.lodLevel = lodLevel;
+  rec.childCount = childCount;
+  rec.radius = radius;
+  return radius;
+}
+
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
 export function entityVisualCullRadius(entity, mesh = null) {
   // Presence, not collision: a station's drawn envelope reaches data.dockRadius while
   // entity.radius is only the small collision proxy, so a hull centred just off-screen
   // still culls as the size it actually draws at.
   const presence = entityPresenceRadius(entity);
-  const hull = mesh && mesh.userData && mesh.userData.hull;
+  const data = mesh && mesh.userData;
+  const hull = data && data.hull;
   const bounds = hull && hull.userData && hull.userData.visualBounds
-    || mesh && mesh.userData && mesh.userData.visualBounds;
+    || data && data.visualBounds;
   const size = bounds && bounds.size;
-  if (!Array.isArray(size)) return presence;
-  const x = Math.max(0, Number(size[0]) || 0);
-  const z = Math.max(0, Number(size[2]) || 0);
-  return Math.max(presence, Math.hypot(x, z) * 0.5);
+  if (Array.isArray(size)) {
+    const x = Math.max(0, Number(size[0]) || 0);
+    const z = Math.max(0, Number(size[2]) || 0);
+    return Math.max(presence, Math.hypot(x, z) * 0.5);
+  }
+  if (data && String(data.authoredAssetState || '').startsWith('authored')) {
+    return Math.max(presence, drawnCullRadiusForMesh(mesh));
+  }
+  return presence;
 }
 
 /**
@@ -1600,6 +1651,26 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.posZ = posZ;
   rec.box = box;
   return box;
+}
+
+const _liveViewFrustum = typeof THREE !== 'undefined' ? new THREE.Frustum() : null;
+const _liveViewProjView = typeof THREE !== 'undefined' ? new THREE.Matrix4() : null;
+const _liveViewSphere = typeof THREE !== 'undefined' ? new THREE.Sphere() : null;
+
+/**
+ * Camera-view arm of the live-glass test: the real frustum decides whether any of a
+ * root's envelope is still drawn, so a huge body cannot be hidden just because its
+ * centre left the screen rectangle.
+ */
+export function isOnLiveCameraView(frustum, position, radius) {
+  if (!frustum || !position || !_liveViewSphere) return false;
+  _liveViewSphere.center.set(
+    Number(position.x) || 0,
+    Number(position.y) || 0,
+    Number(position.z) || 0,
+  );
+  _liveViewSphere.radius = Math.max(0, Number(radius) || 0);
+  return frustum.intersectsSphere(_liveViewSphere);
 }
 
 /** Pure renderer-side clearance policy used by the camera callback and focused tests. */
@@ -12698,6 +12769,18 @@ export const render = {
       INNER_VIEW_BAND_SCALE,
     );
 
+    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
+    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
+    // per pass from the live camera; no camera -> the rectangle below decides alone.
+    let liveViewFrustum = null;
+    const liveCam = this.cam && this.cam.obj;
+    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+      liveCam.updateMatrixWorld();
+      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+      liveViewFrustum = _liveViewFrustum;
+    }
+
     for (let index = 0; index < query.visibleCount; index++) {
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
@@ -12790,9 +12873,10 @@ export const render = {
       // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
       // real screen. The presented pose inside the live glass extents wins over the runway deny.
       const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
-      const onLiveGlass = Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
+      const onLiveGlass = (Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
         && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + TABLE_FRAME_SKIRT_WU + glassRadius
-        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + TABLE_FRAME_SKIRT_WU + glassRadius;
+        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + TABLE_FRAME_SKIRT_WU + glassRadius)
+        || isOnLiveCameraView(liveViewFrustum, mesh.position, glassRadius + TABLE_FRAME_SKIRT_WU);
       // The live-glass deadline only exists once the live screen does: a root
       // pending behind the loading shell is not on glass yet — its clock starts
       // at the first playable frame, same gate the admission lane serves.

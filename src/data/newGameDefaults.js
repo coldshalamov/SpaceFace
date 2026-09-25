@@ -73,7 +73,7 @@ export const NEW_GAME_STARTERS = Object.freeze([
     shipId: 'ship_kestrel',
     name: 'Hitch',
     tag: 'Skater',
-    blurb: 'Turns wide. Sluggish under load. Stops badly.',
+    blurb: 'Light on the line. Quick to bank. Lives on the swing.',
     line: 'Light, quick, and the best swinger in the yard. One of everything, so the first ten minutes can go any way.',
     fittedModules: Object.freeze(NEW_GAME.fittedModules.slice()),
   }),

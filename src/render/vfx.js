@@ -3039,7 +3039,8 @@ export const vfx = {
     sock.y = this._socketWorldPos.y;
     sock.z = local.z;
     sock.ax = -this._socketForward.x;
-    sock.ay = 0;
+    // Keep the vertical component: a gimbaling pack pitches its jet as well as yawing it.
+    sock.ay = -this._socketForward.y;
     sock.az = -this._socketForward.z;
     sock.retroIris = socket.userData && socket.userData.retroIris;
     return true;
@@ -10120,24 +10121,14 @@ export const vfx = {
     req.magnitude = magnitude;
     req.dv = dv;
     req.terrain = terrain ? 1 : 0;
-    this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
-    // IMPACTS: a heavy contact is a SLAM — it compresses along the surface and stops hard before
-    // any matter leaves. Unsigned axis again, so the compression lip is mirrored. Terrain reads as
-    // rock and cleaves; a ship reads as hull and tears.
-    _impactOpts.vx = req.velX; _impactOpts.vy = req.velY; _impactOpts.vz = req.velZ;
-    _impactOpts.serial = this._collisionPatternSerial(p);
-    _impactOpts.targetId = p.targetId ?? null;
-    _impactOpts.eventClass = undefined;
-    _impactOpts.priority = 0.62;
-    _impactOpts.hero = false;
-    const slammed = this._composeImpact(
-      pos.x, 0.22, pos.z, axisX, 0, axisZ, false,
-      Math.max(0.16, Math.min(0.72, 0.16 + dv * 0.012)),
-      terrain ? 'rock' : 'hull',
-      Math.max(2, Number(victim && victim.radius) || 6),
-      _impactOpts,
-    );
-    if (!slammed && this._weaponPresenter && this._weaponPresenter.quarks) {
+    // A stagger is a control, not a structural hit. The arbiter already refuses it.
+    // A tumble uses that one admitted family (opposed arcs and shards, no blades).
+    // A second impact sheet here was drawing blades the family does not own.
+    let slammed = false;
+    if (hard) {
+      slammed = this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
+    }
+    if (!slammed && hard && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(
         local.x, 0.2, local.z,

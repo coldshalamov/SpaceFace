@@ -15,18 +15,18 @@ const PLAIN = 'background:none !important; border:0 !important; border-image:non
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
 /** The rail of light down a list, a tick on every row, the Hand on the chosen one. */
 const rail = (list, row, chosen) => `
-${T} ${list} { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+${T} ${list} { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .32) 7px, rgb(${BONE} / .32) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat,
     linear-gradient(90deg, transparent 5px, rgb(${BONE} / .07) 5px, rgb(${BONE} / .07) 10px, transparent 10px) 0 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
 ${T} ${row} { ${PLAIN} position:relative !important; padding-left:44px !important; }
 ${T} ${row}::after { display:none !important; }
 ${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1.5px !important;
   margin:0 !important; background:rgb(${BONE} / .55) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; border:0 !important; }
-${T} ${row}:is(${chosen})::before { left:31px !important; width:10px !important; height:13px !important; margin-top:-6.5px !important; ${HAND} background:var(--dp-hand, #f2b950) !important;
-  filter:drop-shadow(0 0 5px rgb(242 185 80 / .55)); }
+${T} ${row}:is(${chosen})::before { left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important; clip-path:none !important; border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important;
+  box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; filter:none !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
 ${T} ${row}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important; width:26px !important; height:1.5px !important; margin:-.75px 0 0 !important;
-  clip-path:none !important; background:var(--dp-hand, #f2b950) !important; opacity:1; filter:drop-shadow(0 0 5px rgb(242 185 80 / .85)); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
+  clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
 ${T} ${row}:focus-visible { outline:none !important; }`;
 /** A verb that commits: a bone word at the reading's weight; amber where the player reaches it. */
@@ -990,7 +990,7 @@ ${T} .sx-dossier > .orr-ct-route::before { z-index:-1 !important; inset:-4% -4% 
 
 /* the arm follows the bone cursors where the Hand lives elsewhere (Missions beam, Factions arm, Ledger tape) */
 ${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; left:7px !important; top:50% !important; width:26px !important; height:1.5px !important; margin:-.75px 0 0 !important; border-radius:0 !important; clip-path:none !important; opacity:1 !important; background:rgb(248 244 234) !important; filter:drop-shadow(0 0 4px rgb(248 244 234 / .5)) !important; }
-${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::before { left:31px !important; }
+${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::before { left:31px !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
 ${T} :is(.sx-ct__rows, .sx-fac__rows, .st-ledger-list):is(:focus-within, :hover) :is(.sx-ct-row, .sx-fac-row, .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { background:rgb(255 250 240) !important; }
 
 /* ================================ ROUND 5: BAR ============================================== */
@@ -1152,6 +1152,81 @@ ${T} .sx-fac__rows .sx-fac-row__tier.is-zero { color:rgb(${BONE} / .32) !importa
 /* every ladder row keeps the arm's room whatever its own sheet said */
 ${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead, .sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry, .sx-ind__list .sx-ind-row) { padding-left:44px !important; }
 ${T} .sx-ct__active { padding-left:44px !important; }
+
+/* ================================ ROUND 7: MISSIONS ========================================= */
+/* focus is a cursor that rides the rail: a vertical bloomed segment the height of the row; the open mark stays a tick; section majors 12px */
+${T} .sx-ct__rows .sx-ct-row:focus-visible::before { left:6px !important; top:5px !important; bottom:5px !important; width:2px !important; height:auto !important; margin:0 !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 7px 1px rgb(248 244 234 / .6) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { width:12px !important; }
+/* one red mark for the collateral: its rung and its figure; no stray tick above it */
+${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { display:none !important; }
+${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-danger, #ff5038) !important; width:12px !important; }
+/* a short screen: the scales stay on the rail at 1:1; the price rides the row's sub-line so the name has the ladder's width; the featured word shows */
+@media (max-height:800px) {
+  ${T} .orr-ct-scales { height:60px !important; max-width:400px !important; }
+  ${T} .orr-ct-scales::before { top:14px !important; }
+  ${T} .orr-ct-scales::after { top:44px !important; }
+  ${T} .sx-ct__rows .sx-ct-row { display:block !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; white-space:nowrap !important; display:block !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:block !important; text-align:left !important; font-size:10.5px !important; margin-top:1px; color:rgb(${BONE} / .7) !important; }
+  ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+  ${T} .sx-ct__rows .sx-ct-row { padding-top:3px !important; padding-bottom:3px !important; }
+  ${T} .sx-dossier > .orr-ct-route .orr-route__caption { top:auto !important; bottom:-26px !important; left:0 !important; right:0 !important; justify-content:center !important; }
+}
+
+/* ================================ ROUND 5: LEDGER =========================================== */
+/* the reading's left edge is the axis; the ladder's read mark is light on the rail, no arrowhead */
+${T} .sx-ledger__right > .sx-ledger__read, ${T} .sx-ledger__read > *, ${T} .sx-ledger__read .k-hero { padding-left:0 !important; margin-left:0 !important; }
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::before { display:none !important; }
+${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::after { width:18px !important; height:2px !important; margin-top:-1px !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .5) !important; }
+${T} .orr-ledger-purse { width:270px; height:224px; }
+@media (max-height:800px) { ${T} .orr-ledger-purse { width:240px; height:190px; } }
+
+/* a short screen: a posted name wraps rather than clips once the price rides the sub-line */
+@media (max-height:800px) { ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; line-height:1.25 !important; } }
+/* the reading stands on the axis */
+${T} .sx-ledger__read .k-caps, ${T} .sx-ledger__read-kicker, ${T} .sx-ledger__read-title, ${T} .sx-ledger__read-line, ${T} .sx-ledger__read-hand { padding-left:0 !important; margin-left:0 !important; text-indent:0 !important; }
+
+${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { padding-left:0 !important; }
+
+/* ================================ ROUND 7: BAR ============================================== */
+/* one column: the contacts open their pitch on a tall screen and the leads follow at a fixed gap, so one spine reads from HERE TONIGHT to the board */
+@media (min-width:1500px) and (min-height:900px) {
+  ${T} .sx-bar__leads { margin-top:44px !important; }
+  ${T} .sx-bar__rows .sx-bar-row { padding-top:11px !important; padding-bottom:11px !important; }
+  ${T} .sx-talk__choices > li .sx-choice { padding-top:13px !important; padding-bottom:13px !important; }
+}
+/* the reply spine and its ticks at rest light */
+${T} .sx-talk__choices { background:linear-gradient(90deg, transparent 30px, rgb(${BONE} / .3) 30px, rgb(${BONE} / .3) 31.5px, transparent 31.5px) 0 8px / 100% calc(100% - 16px) no-repeat !important; }
+${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { background:rgb(${BONE} / .55) !important; }
+/* the reply keys are keys, not list numbers: dim unless current */
+${T} .sx-choice::after { font-size:11px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
+${T} .sx-choice.is-current::after { color:rgb(248 244 234) !important; }
+/* the stage direction says nothing the keys do not */
+${T} .sx-talk__reply.is-idle { display:none !important; }
+/* the feather ends at the hairline; the world under it is deep; the portrait fades before the tab rail */
+${T} .sx-talk__avatar :is(img, canvas, .sx-portrait) { -webkit-mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 62%, transparent 86%) !important; mask-image:radial-gradient(ellipse 47% 58% at 56% 47%, #000 62%, transparent 86%) !important; }
+${T} .sx-talk__avatar::before { background:radial-gradient(ellipse 42% 60% at 56% 47%, rgb(6 8 11 / .94), rgb(6 8 11 / .9) 56%, rgb(6 8 11 / .55) 68%, rgb(6 8 11 / 0) 84%); }
+${T} .sx-talk__avatar { -webkit-mask-image:linear-gradient(180deg, #000 76%, transparent 95%) !important; mask-image:linear-gradient(180deg, #000 76%, transparent 95%) !important; }
+/* a lead's price is a reading on the column's edge; the first lead is current at rest */
+${T} .sx-lead__rows .sx-lead { margin-right:0 !important; }
+${T} .sx-lead__s { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important; font-size:15px !important; color:rgb(${BONE} / .85) !important; }
+${T} .sx-lead__rows .sx-lead.is-current::before { left:6px !important; top:5px !important; bottom:5px !important; width:2px !important; height:auto !important; margin:0 !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(248 244 234) !important; }
+${T} .sx-bar__leadkeys { margin-top:6px !important; }
+
+/* ================================ ROUND 5: INDUSTRY ========================================= */
+/* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
+${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* the block note under the reason; the disabled key's outline is enough */
+${T} .orr-chain__blocknote { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
+${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .45) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; }
+/* the ladder ends on a whole rung: the fold is a rung deep; the extent cursor rides at rest light */
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 46px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 46px), transparent) !important; }
+${T} .sx-ind__list > .orr-extent::before { opacity:.55 !important; }
 
 `;
 
