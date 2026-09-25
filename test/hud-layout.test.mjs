@@ -60,6 +60,8 @@ test('HUD placement survives the normal settings save and prompts an autosave', 
     helpers: {},
     registry: {},
     _loadProfileSettings() {},
+    _syncSharedPlayerStore() {},
+    recordDirty() {},
     requestAutosave(reason) { reasons.push(reason); },
   }, { state, bus, helpers: {}, registry: {} });
   bus.emit('hud:layoutChanged', { key: 'band', placement: { x: 514, y: 196 } });

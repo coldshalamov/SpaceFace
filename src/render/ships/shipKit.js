@@ -378,6 +378,12 @@ export function addTorusX(parent, material, name, major, tube, position, radial 
 }
 
 // A weapon/engine/cargo/sensor hardpoint marker the VFX + combat systems look up by name.
+//
+// Emitter contract: a socket is OWNED BY THE PART it fires from. Put it inside the part's node —
+// for anything that articulates, inside the gimbal pivot alongside the nozzle meshes — so the
+// vfx layer's per-frame world-matrix read makes the exhaust track the hardware it exits. Never
+// plant a firing point on the hull root beside a moving part: the instant the part swings, the
+// jet decouples from its nozzle. Procedural reference: Retro_Thruster_* in retroMounts.js.
 export function addSocket(parent, name, position, role, forward = [1, 0, 0]) {
   const socket = new THREE.Object3D();
   socket.name = name;

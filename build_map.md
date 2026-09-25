@@ -3821,6 +3821,38 @@ and share code, plus the five-second skippable kill replay, are §22-B9; the muz
 wired to zero is §22-A7; the physics lab toy is §22-B11; the art-directed iGPU-60 preset is
 §22-E8; the controller-first pass rides `PQ-164` (twin-stick admitted as `.04`).
 
+### 21.4 Hitch, low FPS and late loading are one mechanism (owner, 2026-09-25)
+
+Owner's plan: loading anything costs three kinds of main-thread work — shader preparation (up to
+~0.5 s each on Intel/ANGLE), GPU upload, and model assembly. Hiding a body until that work is done
+trades the hitch for pop-in; showing it sooner trades it back. The trade-off cannot be tuned away.
+The work has to get cheaper, earlier, or move off the frame. Ten systems, biggest win first.
+
+**Guard rail (system 9, landed 2026-09-25).** `node scripts/probe-frame-solid.mjs` flies away from
+and back to a station and reports longest frame, frame p99, time-to-appear, blinks, every in-flight
+shader link (named, diffed against the nearest existing program), admission lane depths, and
+per-job composition time. Each run writes `.devshots/frame-solid/<stamp>.json`;
+`--compare=<baseline.json>` fails any change that raises a count. Compare every change in this
+section against a baseline taken back to back on the same machine.
+
+**Baseline, owner's laptop (Core Ultra 7 155U, Intel Graphics, CPU 85–95 % busy from other
+agents), 2026-09-25:** frame p50 44–78 ms, longest 0.5–3.4 s; 54–74 % of bodies drawn the frame
+they enter the screen, late ones 1–8 s; 9–19 shader links per 60 s flight, all behind the hide
+latch (pop-in, not in-frame hitch). Long pole: the serial authored composition lane (ledger D38).
+
+| # | System | What exists | Gap | Next |
+|---|---|---|---|---|
+| 1 | Fixed shader catalogue, prepared at startup | Material ABI metadata (`materialAbi.js`, `sharedMaterialRoles.js`); boot precompile; in-session program-binary cache; Electron's Chromium disk shader cache | Program identity still varies per material: measured in-flight links differ from an existing program by one parameter — dithering, one texture slot present/absent, side (Front vs Double), clearcoat, alphaTest | LANDED 2026-09-25 (`programCanon.js`): authored PBR materials get neutral 1×1 textures in empty slots and dithering on before admission; A/B in-flight links 17→13 and 13→11, on-time 62→81 % and 47→78 %. Residual variants: side (Front vs Double), clearcoat, alphaTest, instancing — need a perf call. Then a check that fails on a new in-flight program |
+| 2 | Baked, ready-to-use model packages | 267 render packages with collisions, LODs, HLODs, clusters; off-thread digest worker | Composition still runs per instance on the main thread (1.3–7.9 s per ship job in flight on the laptop) and is now the measured long pole: overlapping it with the GPU gate raised throughput but cost frame time (ledger D38) | NEXT: profile one ship composition job; move clone/material setup out of the per-instance path |
+| 3 | Load by ship type per sector | Every sector prefetch decodes all spawnable combat/traffic hulls (`spawnableShipArchetypePrewarmUrls`); Crucible warms its roster | Decode only; exemplar compile warm was measured an iGPU regression and stays unwired | Revisit after 1 shrinks the catalogue |
+| 4 | One predictive loading director | Time-to-glass runways (`tabletopPolicy.js`), on-glass urgent lanes, wave-plan hull decode | Composition is FIFO-serial behind a 20 s first-flight hold; known future spawns feed decode, not composition | After D38: one deadline-sorted queue across composition, compile and upload |
+| 5 | Strict per-frame budget | `admissionSliceBudget.js` (3 ms target, 8 ms hard), heavy-admission present gate, one compile per present | Composition in flight is serial through its GPU gate; overlapping it (tried 2026-09-25, parked) showed a single composition step is too heavy to fit a frame budget | After 2 makes composition cheap, retry the parked overlap patch |
+| 6 | Always something correct on screen | Each hull has LOD1/LOD2 files; pending bodies stay hidden | No instant stand-in; §13D Wave F3 is planned | §13D F2 then F3 |
+| 7 | Draw less | Package instance pools, asteroid instance pool, static batch cache, shadow present cadence | Not the measured bottleneck today | Measure draw calls in a crowded fight first |
+| 8 | Simulation off the drawing thread | Fixed-step sim with flat state, decoupled from render | Not started; touches every UI that reads state | Design packet after 1–6 |
+| 9 | Measurement guard rail | `probe:frame-solid` above; `probe:shader-timeline`, `probe:runtime-witness`, smooth-flight | An idle-machine run is still owed | Run on a quiet machine and save that baseline |
+| 10 | WebGPU | `webgpuPresent.js` gate, off | Needs 1–7 first | Later |
+
 ## 22. The gap between the description and the build — ADMITTED 2026-09-21
 
 The owner asked for the work that turns the live game into the game the docs describe, and for a

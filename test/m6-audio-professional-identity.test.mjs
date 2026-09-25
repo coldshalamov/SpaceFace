@@ -197,12 +197,13 @@ test('professional identity recipes are finite one-shots on the existing combat 
 });
 
 test('an authored discovery earns a distinct finite wonder stinger', () => {
-  const recipe = AUDIO_RECIPE_BY_ID.sfx_discovery_reveal;
+  // The shipped payoff is the restrained 3-note plate-note motif (feature 20): root, major
+  // third, fifth spaced like a clock chime, each note a finite one-shot — never a loop.
+  const recipe = AUDIO_RECIPE_BY_ID.sfx_discovery_plate_note;
   assert.ok(recipe);
   assert.equal(recipe.category, 'ui');
   assert.equal(recipe.type, 'oscillator');
-  assert.equal(recipe.wave, 'triangle');
-  assert(Number(recipe.gainEnvelope.release) <= 0.4);
+  assert(Number(recipe.gainEnvelope.release) <= 0.6);
 
   const calls = [];
   const harness = {
@@ -213,7 +214,9 @@ test('an authored discovery earns a distinct finite wonder stinger', () => {
   harness._onDiscoveryUnlocked({ sectorId: 'sector_ashfall_reach', poiId: 'poi_vault' });
   assert.deepEqual(calls, [
     { kind: 'duck', seconds: 1.1 },
-    { kind: 'play', recipeId: 'sfx_discovery_reveal', options: { gain: 0.72, critical: true } },
+    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.7, critical: true } },
+    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.62, rate: 1.26, critical: true } },
+    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.55, rate: 1.5, critical: true } },
   ]);
 
   calls.length = 0;
@@ -241,9 +244,11 @@ test('live combat receipts route armor separately and pan player urgency', () =>
     hullDamage: 0,
     after: { hull: 100 },
   });
+  // One voice per hit (817e56ffc): the armor layer cue carries the player signature's
+  // ship-local pan and urgency-scaled gain — there is no second damage voice.
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].recipeId, 'sfx.armorHit');
-  assert.equal(calls[1].recipeId, 'sfx.playerDamage');
-  assert(calls[1].opts.pan > 0.8);
+  assert(calls[0].opts.pan > 0.8);
   assert.equal(calls.some((call) => call.recipeId === 'sfx.hullHit'), false);
 });
 

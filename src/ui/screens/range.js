@@ -736,6 +736,7 @@ function toggleTractorThrow(sim) {
     tether.active = true;
     tether.attachedOnce = true;
     tether.prevAngle = Math.atan2(payload.z - sim.player.z, payload.x - sim.player.x);
+    tether.lastRot = sim.player.rot;
     tether.latchSpeed = speedOf(sim.player);
     return 'latch';
   }
@@ -746,6 +747,13 @@ function applyTractorCarry(sim, stepS) {
   const player = sim.player;
   const payload = sim.payload;
   const tether = sim.tether;
+  // Light pods sit on the boom: hull yaw sweeps the line, and the cut keeps that
+  // swing. Heavy mass still adds no carry. This is not a release impulse.
+  const light = payload.mass <= 200;
+  const yawDelta = light && Number.isFinite(tether.lastRot)
+    ? wrapAngle(player.rot - tether.lastRot)
+    : 0;
+  if (light) tether.lastRot = player.rot;
   const dx = payload.x - player.x;
   const dz = payload.z - player.z;
   const dist = Math.hypot(dx, dz);
@@ -754,15 +762,20 @@ function applyTractorCarry(sim, stepS) {
     payload.z = player.z;
     return;
   }
-  const angle = Math.atan2(dz, dx);
+  let angle = Math.atan2(dz, dx);
+  let nx = dx / dist;
+  let nz = dz / dist;
+  if (yawDelta) {
+    angle = wrapAngle(angle + yawDelta);
+    nx = Math.cos(angle);
+    nz = Math.sin(angle);
+  }
   if (Number.isFinite(tether.prevAngle)) {
     tether.angVel = wrapAngle(angle - tether.prevAngle) / Math.max(1e-6, stepS);
   } else {
     tether.angVel = 0;
   }
   tether.prevAngle = angle;
-  const nx = dx / dist;
-  const nz = dz / dist;
   const length = Math.max(24, finite(tether.length, 48));
   payload.x = player.x + nx * length;
   payload.z = player.z + nz * length;
@@ -884,6 +897,7 @@ export function createTractorThrowRung(options = {}) {
       attachedOnce: false,
       releasedAfterAttach: false,
       prevAngle: null,
+      lastRot: null,
       angVel: 0,
       latchSpeed: 0,
       throwSpeed: 0,

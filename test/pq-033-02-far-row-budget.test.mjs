@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   FAR_ROW_BUDGET,
+  FAR_ROW_ORPHAN_GRACE_S,
   FAR_ACTOR_SCHEMA,
   ensureFarActorTable,
   enforceFarRowBudget,
@@ -69,4 +70,61 @@ test('the serialized far table stays bounded across an endless shelving session'
   assert.equal(data.schema, FAR_ACTOR_SCHEMA);
   assert.ok(data.rows.length <= FAR_ROW_BUDGET + 40, `serialized rows bounded (got ${data.rows.length})`);
   assert.ok(data.rows.length < FAR_ROW_BUDGET * 4, 'the save does not accumulate every actor ever shelved');
+});
+
+test('a spent orphan is swept only after its grace window; authored site rows are never spent', () => {
+  // PQ-033.02 D28 residual: a shelved traffic row kept its durability exemption after the
+  // 180 s recent-memory gc reclaimed its RECENT record — the one far-row channel with no
+  // plateau. Two classes must NOT be swept with it:
+  //   • authored world-site component rows — their data.worldRecordId is a site component id
+  //     (persistenceOwner:'asteroidSites'), which captureEntityRecord refuses by design, so
+  //     it can never resolve in the records bag; the first sweep ate Ceres site wrecks and
+  //     turned check:pq020:ceres-topology red (materializedEntities 1 vs 15).
+  //   • freshly shelved rows whose record has not landed yet (capture walks live entities on
+  //     its own cadence) — the FAR_ROW_ORPHAN_GRACE_S window absorbs the transient.
+  const state = {
+    world: { records: { byId: { 'wr:convoy:live': { recordId: 'wr:convoy:live' } } } },
+    npcJobs: { byId: { 'job:live': { job: {} } } },
+    simTime: 1000,
+  };
+  const anchored = expendableRow(state, 1);
+  anchored.data = { worldRecordId: 'wr:convoy:live' }; // record still in the bag
+  const jobRow = expendableRow(state, 2);
+  jobRow.jobId = 'job:live'; // job bag entry still exists
+
+  // Authored site component, shelved long ago: never spent, whatever the bags say.
+  const siteWreck = expendableRow(state, 3);
+  siteWreck.virtualizedAt = 1000 - (FAR_ROW_ORPHAN_GRACE_S * 4);
+  siteWreck.data = {
+    persistenceOwner: 'asteroidSites',
+    worldSiteId: 'world_site_ceres_cinder_sluice',
+    worldSiteComponentId: 'world_site_ceres_cinder_sluice/component/wreck_1',
+    worldRecordId: 'world_site_ceres_cinder_sluice/component/wreck_1',
+  };
+
+  // Unanchored id-carrying rows: swept only once the grace window has fully elapsed.
+  const staleOrphan = expendableRow(state, 4);
+  staleOrphan.virtualizedAt = 1000 - (FAR_ROW_ORPHAN_GRACE_S + 5);
+  staleOrphan.data = { worldRecordId: 'wr:gone:old' }; // record reclaimed long ago
+  const youngOrphan = expendableRow(state, 5);
+  youngOrphan.virtualizedAt = 1000 - 10; // shelved moments ago; its record may still land
+  youngOrphan.data = { worldRecordId: 'wr:gone:new' };
+  const plain = expendableRow(state, 6); // no ids at all: the budget, not the sweep, decides
+
+  const evicted = enforceFarRowBudget(state); // rows far under FAR_ROW_BUDGET
+  const table = ensureFarActorTable(state);
+  assert.equal(table.byId.has(1), true, 'the record-anchored row survives');
+  assert.equal(table.byId.has(2), true, 'the job-anchored row survives');
+  assert.equal(table.byId.has(3), true,
+    'an authored site-component row is durable by construction (persistenceOwner/worldSiteId)');
+  assert.equal(table.byId.has(4), false, 'a row whose anchors vanished past the grace window is swept');
+  assert.equal(table.byId.has(5), true, 'a row still inside its grace window is not swept');
+  assert.equal(table.byId.has(6), true, 'a plain under-budget row is the budget\'s business, not the sweep\'s');
+  assert.equal(evicted, 1, 'exactly the one spent orphan was evicted');
+
+  // Once the transient's grace closes with no record ever landing, it is spent too.
+  state.simTime = youngOrphan.virtualizedAt + FAR_ROW_ORPHAN_GRACE_S + 1;
+  enforceFarRowBudget(state);
+  assert.equal(table.byId.has(5), false, 'after the grace window an still-unanchored row is swept');
+  assert.equal(table.byId.has(3), true, 'the authored site row still survives the later pass');
 });

@@ -8,6 +8,7 @@
 
 import { injectOrrery } from './tokens.js';
 import { reducedMotion } from './motion.js';
+import { svg, arcD, polar } from './svg.js';
 
 const STYLE_ID = 'orr-waveform-style';
 const BONE = '236 230 216';
@@ -20,6 +21,15 @@ const CSS = `
 @keyframes orr-wave-breathe { from { transform:scaleY(var(--orr-wave-rest, .18)); } to { transform:scaleY(calc(var(--orr-wave-rest, .18) * 1.18 + .03)); } }
 @keyframes orr-wave-speak { from { transform:scaleY(var(--orr-wave-lo, .2)); } to { transform:scaleY(var(--orr-wave-hi, 1)); } }
 html.sf-reduce-motion .orr-wave__bar, html.sf-reduce-motion .orr-wave.is-speaking .orr-wave__bar { animation:none; transform:scaleY(var(--orr-wave-rest, .18)); }
+/* the voice arc: bars of light radiating from an open arc round a face, breathing as a whole */
+.orr-voicearc { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+.orr-voicearc .orr-voicearc__track { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1; }
+.orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.16; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
+.orr-voicearc .orr-voicearc__leader { fill:none; stroke:rgb(${BONE} / .4); stroke-width:1; stroke-linejoin:miter; }
+.orr-voicearc .orr-voicearc__foot { fill:rgb(${BONE} / .7); }
+@keyframes orr-voicearc-breathe { from { opacity:.82; } to { opacity:1; } }
+html.sf-reduce-motion .orr-voicearc .orr-voicearc__bars { animation:none; opacity:1; }
 `;
 
 function injectStyle(doc) {
@@ -87,7 +97,7 @@ export function createWaveform(host, { bars = 28, envelope = null } = {}) {
     const centre = 1 - Math.abs((i - (bars - 1) / 2) / ((bars - 1) / 2));
     const env = envelope && Number.isFinite(envelope[i]) ? Math.max(0, Math.min(1, envelope[i])) : null;
     // 2..14px of a 24px line at rest: a real envelope, tapered at the ends; the breathe adds to it
-    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.08 + env * 0.74).toFixed(2));
+    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.14 + env * 0.68).toFixed(2));
     bar.style.setProperty('--orr-wave-d', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-sd', `${(0.28 + Math.random() * 0.3).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-delay', `${(-Math.random() * 2).toFixed(2)}s`);
@@ -108,4 +118,50 @@ export function createWaveform(host, { bars = 28, envelope = null } = {}) {
     idle() { host.classList.remove('is-speaking'); if (timer) { clearTimeout(timer); timer = 0; } },
     dispose() { if (timer) clearTimeout(timer); host.classList.remove('orr-wave', 'is-speaking'); host.textContent = ''; },
   };
+}
+
+/**
+ * The voice on the person: a Waveform drawn on an open arc anchored to a portrait, on the face's speaking side only,
+ * never closing round the head. Bars radiate outward from a faint track; their heights are the line's own envelope
+ * (two phrases, two swells; a silence at the full stop). A leader from the spoken line's last glyph runs level and
+ * elbows at 45 degrees to the track, so the words label the voice. Coordinates are the host's own px.
+ * @param {HTMLElement} host - a positioned box (the arc's svg fills it, overflow visible)
+ * @param {{ text?:string, cx:number, cy:number, r:number, from?:number, to?:number, bars?:number, leaderFrom?:{x:number,y:number}|null, land?:number }} o
+ *   from/to: degrees, 0 at twelve o'clock, clockwise (270 is the left); land: the leader's landing angle
+ */
+export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 308, bars = 64, leaderFrom = null, land = 284 } = {}) {
+  const doc = host && host.ownerDocument;
+  if (!doc) return null;
+  injectOrrery(doc);
+  injectStyle(doc);
+  const layer = svg('svg', { class: 'orr-svg orr-voicearc', 'aria-hidden': 'true', focusable: 'false' });
+  const W = Math.max(1, host.clientWidth || 1); const H = Math.max(1, host.clientHeight || 1);
+  layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const f = (n) => Math.round(n * 100) / 100;
+  const n = Math.max(12, bars | 0);
+  const env = voiceEnvelope(text, n);
+  const span = to - from;
+  layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-voicearc__track' }));
+  let dBars = '';
+  for (let i = 0; i < n; i += 1) {
+    const a = from + (span * (i + 0.5)) / n;
+    if (leaderFrom && Math.abs(a - land) < span / n * 1.5) continue; // the bars part where the leader lands
+    const len = 4 + env[i] * 24;
+    const [x0, y0] = polar(cx, cy, r + 3, a);
+    const [x1, y1] = polar(cx, cy, r + 3 + len, a);
+    dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+  }
+  layer.appendChild(svg('path', { d: dBars, class: 'orr-voicearc__bloom' }));
+  layer.appendChild(svg('path', { d: dBars, class: 'orr-voicearc__bars' }));
+  if (leaderFrom) {
+    const [px, py] = polar(cx, cy, r, land);
+    const lx = leaderFrom.x + 10; const ly = Math.round(leaderFrom.y) + 0.5;
+    const dy = py - ly;
+    const ex = px - Math.abs(dy);
+    const d = ex > lx + 16 ? `M ${f(lx)} ${ly} H ${f(ex)} L ${f(px)} ${f(py)}` : `M ${f(lx)} ${ly} L ${f(px)} ${f(py)}`;
+    layer.appendChild(svg('path', { d, class: 'orr-voicearc__leader' }));
+    layer.appendChild(svg('circle', { cx: f(lx), cy: ly, r: 1.6, class: 'orr-voicearc__foot' }));
+  }
+  host.appendChild(layer);
+  return { el: layer, dispose() { if (layer.parentNode) layer.parentNode.removeChild(layer); } };
 }

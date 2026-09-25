@@ -330,7 +330,14 @@ export function createLedgerScreen(ctx) {
       const sold = t.verbPast === 'sold';
       const verb = String(t.verbPast || t.verb || (sold ? 'sold' : 'bought'));
       const line = row.querySelector('.st-ledger-line');
-      if (line) line.textContent = `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${t.qty != null ? `${t.qty}u ` : ''}${t.commodity || ''} \u00b7 ${t.station || ''} \u00b7 ${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')} cr`;
+      if (line) {
+        line.textContent = '';
+        const item = document.createElement('span'); item.className = 'sx-ledger__item';
+        item.textContent = `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${t.qty != null ? `${t.qty}u ` : ''}${t.commodity || ''} \u00b7 ${t.station || ''}`;
+        const fig = document.createElement('span'); fig.className = 'sx-ledger__fig';
+        fig.textContent = `${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')} cr`;
+        line.append(item, fig);
+      }
     });
     const older = panel.el.querySelector('[data-ledger-page="older"]');
     const newer = panel.el.querySelector('[data-ledger-page="newer"]');

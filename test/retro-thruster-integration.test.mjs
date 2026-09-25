@@ -24,16 +24,23 @@ test('the paired mouths are physical hull parts, separated and mounted on every 
   const spans = new Set();
   for (const id of ids) {
     const { hull, assembly } = mountedHull(id);
+    const portPivot = hull.getObjectByName('Retro_Thruster_Port');
+    const stbdPivot = hull.getObjectByName('Retro_Thruster_Starboard');
     const port = hull.getObjectByName('SOCKET_Retro_Port');
     const starboard = hull.getObjectByName('SOCKET_Retro_Starboard');
-    assert.ok(assembly?.children.length >= 3, `${id}: shrouds, lips, throats`);
+    // Each side is one articulating pack: pivot owns its meshes and its emitter socket.
+    assert.equal(assembly?.children.length, 2, `${id}: two pack pivots`);
+    assert.ok(portPivot && stbdPivot, `${id}: both pack pivots`);
+    assert.equal(port.parent, portPivot, `${id}: port socket rides its pivot`);
+    assert.equal(starboard.parent, stbdPivot, `${id}: starboard socket rides its pivot`);
+    assert.ok(portPivot.children.filter((c) => c.isMesh).length >= 4, `${id}: port pack is built`);
     assert.ok(port && starboard, `${id}: both physical mouth sockets`);
-    assert.ok(port.position.x > 0 && starboard.position.x > 0, `${id}: bow-mounted`);
-    assert.ok(port.position.z < 0 && starboard.position.z > 0, `${id}: separated sides`);
+    assert.ok(portPivot.position.x > 0 && stbdPivot.position.x > 0, `${id}: bow-mounted`);
+    assert.ok(portPivot.position.z < 0 && stbdPivot.position.z > 0, `${id}: separated sides`);
     assert.ok(port.userData.forward[0] > 0.9 && port.userData.forward[2] < 0);
     assert.ok(starboard.userData.forward[2] > 0);
     assert.equal(attachRetroMounts(hull, { data: { defId: id } }), null, 'no duplicate on rebuild');
-    spans.add(Math.round(starboard.position.z * 100));
+    spans.add(Math.round(stbdPivot.position.z * 100));
   }
   assert.ok(spans.size >= 3, 'engine families use distinct hardware spacing');
 });
@@ -66,6 +73,75 @@ test('mounted retro exhaust follows presented yaw and world position, including 
     assert.ok(Math.abs(-sock.ax - Math.cos(exhaustYaw)) < 1e-5, `yaw ${yaw}: exhaust X`);
     assert.ok(Math.abs(-sock.az - Math.sin(exhaustYaw)) < 1e-5, `yaw ${yaw}: exhaust Z`);
   }
+});
+
+test('the emitter rides its articulating mount — gimbaling the pack moves the jet with it', () => {
+  const { root, hull } = mountedHull('ship_kestrel');
+  const ctx = {
+    _socketWorldPos: new THREE.Vector3(),
+    _socketWorldQuat: new THREE.Quaternion(),
+    _socketWorldScale: new THREE.Vector3(),
+    _socketForward: new THREE.Vector3(),
+    _entityLocalXZ: { x: 0, z: 0 },
+    _spawnLocalXZ: { x: 0, z: 0 },
+    _frameMembrane: null,
+    _toLocalXZ(x, z, out) { out.x = x; out.z = z; return out; },
+  };
+  const pivot = hull.getObjectByName('Retro_Thruster_Port');
+  const socket = hull.getObjectByName('SOCKET_Retro_Port');
+  const sock = {};
+  vfx._writeRetroSocketPose.call(ctx, socket, sock);
+  const rest = { x: sock.x, z: sock.z, ax: sock.ax, az: sock.az };
+  // The pack gimbals on its pivot (micro-motion writes rotation.y/z); the socket and every
+  // hardware mesh are its children, so the plume origin and axis must swing with the part.
+  pivot.rotation.y += 0.07;
+  pivot.rotation.z -= 0.04;
+  root.updateWorldMatrix(true, true);
+  vfx._writeRetroSocketPose.call(ctx, socket, sock);
+  assert.ok(Math.hypot(sock.x - rest.x, sock.z - rest.z) > 1e-6, 'socket world pose followed the pivot');
+  assert.ok(Math.hypot(sock.ax - rest.ax, sock.az - rest.az) > 1e-3, 'jet axis followed the gimbal');
+  const fwd = new THREE.Vector3(...socket.userData.forward).applyQuaternion(socket.getWorldQuaternion(new THREE.Quaternion()));
+  // ax is opposite exhaust: exhaust = -a = world forward of the socket.
+  assert.ok(Math.abs(-sock.ax - fwd.x) < 1e-5 && Math.abs(-sock.az - fwd.z) < 1e-5, 'exhaust is the socket forward');
+});
+
+test('spool heats the pack hardware and reset cools it — the part carries its own heat sink', () => {
+  const jets = new PlayerRetroJets(THREE);
+  jets.attach(new THREE.Scene());
+  jets.configure('engine_ion_small', 14);
+  const iris = { emissiveIntensity: 0.12 };
+  const heat = { emissiveIntensity: 0.04 };
+  const sock = {
+    x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0,
+    retroIris: { material: iris, idle: 0.12, lit: 3.4, heatMaterial: heat, heatIdle: 0.04, heatLit: 0.6 },
+  };
+  const env = { drive: 1, boost: 0, lengthWU: 3, exitRadiusWU: 1.2, spread: 0.5, radiance: 1.1, opacity: 0.1 };
+  jets.update(1 / 60, [sock], env);
+  assert.ok(iris.emissiveIntensity > 1, 'iris lit at full brake');
+  assert.ok(heat.emissiveIntensity > 0.2, 'throat heat rises with spool');
+  jets.reset();
+  assert.equal(iris.emissiveIntensity, 0.12, 'reset cools the iris');
+  assert.equal(heat.emissiveIntensity, 0.04, 'reset cools the throat');
+  jets.dispose();
+});
+
+test('a released jet withers instead of snapping — coherence dies and the tail frays', () => {
+  const jets = new PlayerRetroJets(THREE);
+  jets.attach(new THREE.Scene());
+  jets.configure('engine_ion_small', 14);
+  const sock = { x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
+  const env = (drive) => ({ drive, boost: 0, lengthWU: 3, exitRadiusWU: 1.2, spread: 0.5, radiance: 1.1, opacity: 0.1 });
+  jets.update(1 / 60, [sock], env(1));
+  const held = jets._plumes[0].material.uniforms;
+  const heldCoherence = held.uCoherence.value;
+  const heldWobble = held.uWobble.value;
+  const heldLength = jets._shape.jetLength;
+  jets.update(1 / 60, [sock], env(0.05));
+  const fading = jets._plumes[0].material.uniforms;
+  assert.ok(fading.uCoherence.value < heldCoherence * 0.4, 'the column breaks up as it dies');
+  assert.ok(jets._shape.jetLength > heldLength, 'the tail keeps its drift while it dies');
+  assert.ok(fading.uWobble.value > heldWobble, 'fraying grows while it fades');
+  jets.dispose();
 });
 
 test('installed engine changes retro heat, axial flow and scale while staying two jets', () => {
@@ -129,4 +205,68 @@ test('the high-speed brake has one subtle camera bite per engagement and respect
   vfx._updateRetroVolume.call(ctx, player, release, 1 / 60, {});
   vfx._updateRetroVolume.call(ctx, player, brake, 1 / 60, { reducedMotion: true });
   assert.equal(calls.length, 4, 'reduced motion keeps the force and jets without camera motion');
+});
+
+test('the pack bake is shared per hull record + engine profile, so wave spawns draw resident buffers', () => {
+  // A (hull record, engine profile, side) pack is one deterministic bake: the seats raycast the
+  // record's shared skin soup and the profile dims are fixed. Sharing the merged geometry is what
+  // lets a launch-warm exemplar stamp the buffers once so an in-round spawn pays no
+  // mergeGeometries and no first-draw bufferData — the +64 full uploads measured at the
+  // round-zero -> wave-1 pack boundary (seed 4242) were these per-compose Retro_* bakes.
+  const skin = new THREE.BoxGeometry(1.6, 0.4, 0.7);
+  const record = {
+    bounds: { size: [2, 1, 1] },
+    primitives: [{ geometry: skin, matrix: new THREE.Matrix4(), tags: { lod: 'lod0' } }],
+  };
+  const packMeshes = (hull) => {
+    const out = [];
+    hull.traverse((o) => { if (o.isMesh && /^Retro_/.test(o.name)) out.push(o); });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  };
+  const mount = (defId, rec = record) => {
+    const hull = new THREE.Group();
+    attachRetroMounts(hull, { data: { defId } }, {}, null, rec);
+    return hull;
+  };
+  const a = packMeshes(mount('ship_wasp'));
+  const b = packMeshes(mount('ship_wasp'));
+  assert.ok(a.length >= 10, 'five pack parts per side');
+  assert.equal(a.length, b.length);
+  for (let i = 0; i < a.length; i++) {
+    assert.equal(a[i].geometry, b[i].geometry,
+      `${a[i].name}: every spawn draws the same baked buffers`);
+    assert.equal(a[i].geometry.userData.spacefaceSharedAsset, true,
+      `${a[i].name}: flagged shared so a retiring hull cannot dispose the cache entry`);
+    assert.notEqual(a[i].material, b[i].material,
+      `${a[i].name}: materials stay per-ship — iris/throat are driven per socket`);
+  }
+  // The pivot-local bake must be identical too: same seats, same socket pose.
+  const hullA = mount('ship_wasp');
+  const hullB = mount('ship_wasp');
+  for (const side of ['Port', 'Starboard']) {
+    const pivotA = hullA.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    const pivotB = hullB.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    assert.deepEqual(pivotA, pivotB, `${side} pivot pose is deterministic`);
+    const sockA = hullA.getObjectByName(`SOCKET_Retro_${side}`).position.toArray();
+    const sockB = hullB.getObjectByName(`SOCKET_Retro_${side}`).position.toArray();
+    assert.deepEqual(sockA, sockB, `${side} socket pose is deterministic`);
+  }
+  // A different engine profile bakes its own pack instead of reusing the wasp's.
+  const other = packMeshes(mount('ship_leviathan'));
+  assert.notEqual(other[0].geometry, a[0].geometry, 'engine profiles keep distinct bakes');
+  // A different record is a different hull — never shares the bake.
+  const record2 = { ...record, primitives: [...record.primitives] };
+  const c = packMeshes(mount('ship_wasp', record2));
+  assert.notEqual(c[0].geometry, a[0].geometry, 'the cache is per hull record');
+  // And hulls without a record keep the per-attach bake: the live-tree skin is per-hull.
+  const bare = (hull) => packMeshes(hull);
+  const hullX = new THREE.Group();
+  hullX.add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.7), new THREE.MeshBasicMaterial()));
+  const hullY = new THREE.Group();
+  hullY.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.3, 0.5), new THREE.MeshBasicMaterial()));
+  attachRetroMounts(hullX, { data: { defId: 'ship_wasp' } });
+  attachRetroMounts(hullY, { data: { defId: 'ship_wasp' } });
+  const mx = bare(hullX).filter((m) => m.geometry.userData.spacefaceSharedAsset);
+  assert.equal(mx.length, 0, 'unmeasured hulls never enter the shared cache');
+  assert.ok(bare(hullY).length >= 10, 'unmeasured hulls still get a full pack');
 });

@@ -1,7 +1,7 @@
 import { ObjectiveKind, ContactKind } from '../ai/contracts.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
-import { assessFriendlyFireLane } from '../ai/fireDiscipline.js';
+import { assessFriendlyFireLane, assessOpticSplinterReturn } from '../ai/fireDiscipline.js';
 import {
   isPdScreenActor,
   resolvePdCharge,
@@ -123,6 +123,22 @@ export function applyAIFiringIntent(decision, state) {
     return;
   }
 
+  // Optic fire discipline: an energy volley that would prism a diamond and throw the splinter
+  // ring back through the shooter or a same-team hull is refused — the lattice is terrain, not
+  // scenery. Kinetic-only hulls skip the scan entirely; an empty collidable bucket keeps CLEAR.
+  const splinterLane = assessOpticSplinterReturn({
+    shooter: e,
+    target,
+    aimAngle,
+    entities: opticLaneBodies(state),
+    weapons: data.weapons,
+  });
+  if (!splinterLane.clear && target.type !== 'projectile') {
+    clearFire(intent, splinterLane.reason, splinterLane.blockerId);
+    intent.aimAngle = aimAngle;
+    return;
+  }
+
   intent.fire = true;
   intent.fireBlockReason = null;
   intent.fireBlockerId = null;
@@ -141,6 +157,25 @@ export function friendlyFireLaneEntities(state) {
     return index.shipLike;
   }
   return state?.entityList || state?.entities;
+}
+
+const EMPTY_OPTIC_LANE_BODIES = Object.freeze([]);
+
+/**
+ * Every body a bolt or splinter could meet: the live collidable index when it is ready, else the
+ * entity list in minimal states. Splinters die in any solid hull — ships included — so this is
+ * deliberately broader than the ship-like friendly-lane view. A ready index without a
+ * `collidables` bucket reports empty rather than touching the dense list (the firing-authority
+ * tests proxy it to prove the scan stays off it).
+ */
+export function opticLaneBodies(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    return index.ready === true && Array.isArray(index.collidables)
+      ? index.collidables
+      : EMPTY_OPTIC_LANE_BODIES;
+  }
+  return (state && state.entityList) || (state && state.entities) || EMPTY_OPTIC_LANE_BODIES;
 }
 
 /**

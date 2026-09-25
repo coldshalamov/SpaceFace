@@ -31,6 +31,7 @@ const CSS = `
 .orr-route__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:400; font-size:24px; letter-spacing:0;
   color:rgb(248 244 234); font-variant-numeric:tabular-nums; line-height:1; }
 .orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
+.orr-route.is-tether > .orr-route__caption { display:none; }
 .orr-svg .orr-route__ring { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-route__ring--near { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-route__lane { stroke:rgb(${BONE} / .16); }
@@ -40,6 +41,7 @@ const CSS = `
 .orr-svg .orr-route__swing-bloom { stroke:var(--dp-hand, #f2b950); opacity:.26; }
 .orr-route__beamg { transition:opacity .25s linear; }
 .orr-svg .orr-route__leader { stroke:rgb(${BONE} / .45); }
+.orr-svg .orr-route__leader--dest { stroke:rgb(${BONE} / .7); }
 .orr-svg .orr-route__pulse { fill:var(--dp-ice, #8fcbff); }
 .orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
 .orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
@@ -163,13 +165,14 @@ let pathSeq = 0;
  * @param {HTMLElement} host a block the instrument fills
  * @param {{ maxRings?: number }} [opts]
  */
-export function createRouteOrrery(host, { maxRings = 3 } = {}) {
+export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = 'foot', onLayout = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, relayout() {}, active: () => false, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
   injectOrrery(doc);
   injectStyle(doc);
   host.classList.add('orr-route', 'is-off');
+  if (captionMode === 'tether') host.classList.add('is-tether');
 
   const layer = svg('svg', { class: 'orr-svg orr-route__svg', 'aria-hidden': 'true', focusable: 'false' });
   host.appendChild(layer);
@@ -233,7 +236,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const routeDepth = dest ? (depth.get(dest) || 0) : 0;
     const rings = Math.max(1, Math.min(maxRings, Math.max(routeDepth, 1) + (routeDepth >= maxRings ? 0 : 1)));
     const pad = 34;
-    const capH = 26;
+    const capH = captionMode === 'tether' ? 0 : 26;
     const cx = W / 2;
     const cy = (H - capH) / 2;
     const R = Math.max(60, Math.min(W / 2 - pad, (H - capH) / 2 - pad + 14));
@@ -285,6 +288,9 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const beamSegs = [];
     if (dest && !local) for (let i = 1; i < routePts.length; i += 1) beamSegs.push([routePts[i - 1], routePts[i]]);
     else if (endPoint) beamSegs.push([{ x: cx, y: cy }, endPoint]);
+    // the screen's tether leaves the origin down-left at 45 degrees: no name lies across it
+    if (data.tether) { const o = place.get(data.origin) || { x: cx, y: cy }; beamSegs.push([{ x: o.x, y: o.y }, { x: o.x - 900, y: o.y + 900 }]); }
+    const onRim = (pt) => !!pt && Math.abs(Math.hypot(pt.x - cx, pt.y - cy) - R) < 6;
 
     // the names: every drawn sector is named, or it is not drawn. A name takes the first of the
     // places round its node that touches no other name, no node and not the beam.
@@ -292,13 +298,21 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
     const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
     let destBox = null;
-    const labelSize = (text, small) => ({ w: text.length * (small ? 6.6 : 7.2), h: small ? 11 : 12 });
-    function placeName(p, lines, { isDest = false, reserve = false, outside = false } = {}) {
+    const labelSize = (text, small) => ({ w: text.length * (small ? 7.4 : 8.6), h: small ? 11 : 12 });
+    const ringCrosses = (box) => {
+      const corners = [[box.l, box.t], [box.r, box.t], [box.l, box.b], [box.r, box.b]];
+      const ds = corners.map(([x, y]) => Math.hypot(x - cx, y - cy));
+      const nx = Math.max(box.l, Math.min(cx, box.r)); const ny = Math.max(box.t, Math.min(cy, box.b));
+      const dmin = Math.hypot(nx - cx, ny - cy); const dmax = Math.max(...ds);
+      for (let k = 1; k <= rings; k += 1) { const rr = ringR(k); if (dmin < rr + 4 && dmax > rr - 4) return true; }
+      return false;
+    };
+    function placeName(p, lines, { isDest = false, reserve = false, outside = false, preferOutside = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
       const h = sizes.reduce((s, x) => s + x.h + 1, -1);
       const gapR = isDest ? 14 : 10;
-      const turns = [0, 45, -45, 90, -90, 135, -135, 180];
+      const turns = preferOutside ? [] : [0, 45, -45, 90, -90, 135, -135, 180];
       for (const turn of turns) {
         const deg = ((p.deg + turn) % 360 + 360) % 360;
         const rad = ((deg - 90) * Math.PI) / 180;
@@ -313,6 +327,8 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         const box = { l, r: l + w, t: cyText - h / 2, b: cyText + h / 2 };
         if (box.l < 2 || box.r > W - 2 || box.t < 2 || box.b > H - capH - 2) continue;
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
+        // a ring is a connector too: no name lies across one (its box must sit wholly inside or outside every ring)
+        if (ringCrosses(box)) continue;
         // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
         if (!isDest && destBox && boxesTouch(destBox, box, 24)) continue;
         if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 1))) continue;
@@ -320,17 +336,26 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         return { box, anchor, ax, top: box.t, w, h };
       }
-      if (isDest || outside) {
+      if (isDest || outside || preferOutside) {
         // no room round the node: the name hangs outside the outer ring on the node's bearing, off a leader
         const rad = ((p.deg - 90) * Math.PI) / 180;
         const ux = Math.cos(rad); const uy = Math.sin(rad);
-        const ox = cx + ux * (R + 20); const oy = cy + uy * (R + 20);
-        const anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
-        const ax = anchor === 'middle' ? ox : ox + (ux > 0 ? 4 : -4);
-        const cyText = anchor === 'middle' ? oy + uy * (h / 2 + 4) : oy;
-        const l0 = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
-        const box = { l: Math.max(2, Math.min(W - 2 - w, l0)), t: Math.max(2, Math.min(H - capH - 2 - h, cyText - h / 2)) };
-        box.r = box.l + w; box.b = box.t + h;
+        // out along the radial in 6px steps until neither a ring nor a node lies inside the box
+        let dist = R + 20; let ox = 0; let oy = 0; let anchor = 'middle'; let ax = 0; let box = null;
+        for (let k = 0; k < 12; k += 1) {
+          ox = cx + ux * dist; oy = cy + uy * dist;
+          anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
+          ax = anchor === 'middle' ? ox : ox + (ux > 0 ? 4 : -4);
+          const cyText = anchor === 'middle' ? oy + uy * (h / 2 + 4) : oy;
+          const l0 = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
+          box = { l: Math.max(2, Math.min(W - 2 - w, l0)), t: Math.max(2, Math.min(H - capH - 2 - h, cyText - h / 2)) };
+          box.r = box.l + w; box.b = box.t + h;
+          const clearRings = !ringCrosses(box);
+          const clearNodes = !nodeBoxes.some((nb) => boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 6));
+          const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 24));
+          if (clearRings && clearNodes && clearNames) break;
+          dist += 6;
+        }
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
         if (reserve) nameBoxes.push(box);
         return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: ox, y2: oy } };
@@ -364,7 +389,8 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         .concat(data.destName && String(data.destName).toUpperCase() !== String(SECTOR.get(dest).name || '').toUpperCase()
           ? [{ text: String(data.destName).toUpperCase(), cls: 'orr-route__name--berth', small: true }] : [])
       : null;
-    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
+    // a destination on the rim hangs just outside its berth on a solid leader, never in a lane
+    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true, preferOutside: onRim(place.get(dest)) }) : null;
     // then the rest, the route first, nearest ring first
     // a short host names only what it has room for: the route and the berth's own lane neighbours
     const compactNames = H < 340;
@@ -372,7 +398,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
-      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true });
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true, preferOutside: onRim(p) });
       if (spot) drawn.set(id, spot);
     }
 
@@ -474,7 +500,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 3.2, class: 'orr-route__hand-bead' }),
       );
       beamG.appendChild(fade(hg, 520));
-      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader', 'stroke-width': 1, 'stroke-dasharray': '2 3' }), 540));
+      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader orr-route__leader--dest', 'stroke-width': 1 }), 540));
       if (destSpot && destLines) layer.appendChild(fade(textLines(destSpot, destLines), 560));
       if (local) {
         const t = svg('text', { x: f(endPoint.x + 12), y: f(endPoint.y + 3), 'text-anchor': 'start', class: 'orr-route__name orr-route__name--live' });
@@ -499,6 +525,11 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       via.textContent = `${n === 1 ? 'JUMP' : 'JUMPS'} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
     }
     caption.append(jumps, via);
+    // the screen may draw the reading itself, on a line from its own key to this origin
+    if (typeof onLayout === 'function') {
+      const o = place.get(data.origin) || { x: cx, y: cy };
+      try { onLayout({ W, H, cx, cy, R, origin: { x: o.x, y: o.y }, jumpsText: jumps.textContent, viaText: via.textContent }); } catch (_) { /* the screen's overlay is cosmetic */ }
+    }
 
     // the arm swings from the last berth to this one (a spring with a little overshoot), and only
     // then does the route with its hops and pulse take its place

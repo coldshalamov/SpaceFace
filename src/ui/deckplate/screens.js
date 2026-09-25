@@ -1023,6 +1023,15 @@ ${CRRES} .sf-crres__hero .k-hero__w { font-family:var(--dp-face-etch); font-vari
 ${CRRES} .sf-crres__causal-tag { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.14em; color:var(--dp-ink-dim); }
 ${CRRES} .sf-crres__hit-track, ${CRRES} .k-bar { height:3px; border-radius:0; overflow:hidden; background:var(--dp-rule-hi); box-shadow:none; }
 ${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill { background:var(--dp-danger); box-shadow:0 0 6px var(--dp-danger-bloom); }
+/* the share band reads as an instrument: each item is one aligned row — etched caption, the full
+   code on a single line that scrolls inside its own field, the save link beside it */
+${CRRES} .sf-crres__share-item + .sf-crres__share-item { margin-top:8px; }
+${CRRES} .sf-crres__share-note { margin:0 0 8px; }
+${CRRES} .sf-crres__share-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:14px; }
+${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${CRRES} .sf-crres__share-code { display:block; width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
+  font-family:var(--dp-face-code); font-size:13px; color:var(--dp-ink); }
+${CRRES} .sf-crres__share-link { white-space:nowrap; }
 ${printedKey(`${CRRES} .k-foot .k-word`)}
 @media (max-width:1100px) { ${CRRES} .sf-crres__stage.k-panel { grid-template-columns:minmax(0, 1fr); } }
 @media (forced-colors:active) {

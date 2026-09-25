@@ -87,6 +87,10 @@ export const BULK_CORE_MASS_FRAC = 0.6;    // parent mass; strictly lighter than
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
+// F6: a credit-chip body pays exactly once, however its collection receipt repeats. The
+// settled-receipt ledger below is session-scoped (reset in init) and capped; each settled
+// chip records its grant reason plus its body id for receipts that carry no reason.
+const SETTLED_CHIP_KEY_CAP = 4096;
 const SALVAGE_TIME_DEFAULT = 6; // s to fully drain a wreck if combat didn't set one
 const MINEABLE_QUERY_RADIUS_PAD = 64;
 const SEAM_HIT_RADIUS = 14;
@@ -147,6 +151,7 @@ export const mining = {
     this.registry = ctx.registry;
     this._pickupScratch = [];
     this._mineableScratch = [];
+    this._settledChipKeys = new Set(); // F6 once-only chip receipt ledger (session scope)
     this._diag = {
       pickupScans: 0,
       pickupSpatialQueries: 0,
@@ -1419,7 +1424,10 @@ export const mining = {
   },
 
   _collectCreditChip(p) {
-    const pickupData = this._pickupDataForEvent(p) || {};
+    const pickup = p && p.pickupId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.pickupId)
+      : null;
+    const pickupData = (pickup && pickup.data) || {};
     const requested = finiteWholePickupAmount(
       p.amount != null ? p.amount : (p.credits != null ? p.credits : pickupData.amount),
     );
@@ -1429,14 +1437,23 @@ export const mining = {
       p.invalidAmount = true;
       return 0;
     }
-    if (p.creditGranted === true || pickupData.creditGranted === true) {
+    const reason = (typeof p.grantReason === 'string' && p.grantReason)
+      || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
+      || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
+    // Once-only settle. A same-tick duplicate still sees the live body's creditGranted flag,
+    // but the body flag cannot outlive the body: after the consumed chip is swept, a repeated
+    // receipt would resolve no entity at all and pay a second time. The session ledger closes
+    // that hole — by grant reason always, and by body id for a receipt that carries no reason.
+    // The body key is only consulted while the id is unresolvable, so a recycled live id keeps
+    // its own flag/reason and can never be shadowed by a dead chip.
+    const settled = this._settledChipKeys || (this._settledChipKeys = new Set());
+    if (p.creditGranted === true || pickupData.creditGranted === true
+      || settled.has(`reason:${reason}`)
+      || (!pickup && p.pickupId != null && settled.has(`body:${p.pickupId}`))) {
       p.acceptedAmount = requested;
       p.rejectedAmount = 0;
       return requested;
     }
-    const reason = (typeof p.grantReason === 'string' && p.grantReason)
-      || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
-      || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
     // Wallet routing (PQ-133 CRU-015): a chip stamped for a scored run MUST NOT reach campaign
     // economy. Collection is still owned here — the scoop, the acceptance, the consumed body — but
     // the CREDITS are settled by survivalRewards, which keeps the run's own chip ledger and pays
@@ -1462,10 +1479,10 @@ export const mining = {
     p.acceptedAmount = requested;
     p.rejectedAmount = 0;
     p.creditGranted = true;
-    const pickup = p.pickupId != null && this.state.entities && this.state.entities.get
-      ? this.state.entities.get(p.pickupId)
-      : null;
     if (pickup && pickup.data) pickup.data.creditGranted = true;
+    settled.add(`reason:${reason}`);
+    if (p.pickupId != null) settled.add(`body:${p.pickupId}`);
+    while (settled.size > SETTLED_CHIP_KEY_CAP) settled.delete(settled.values().next().value);
     return requested;
   },
 

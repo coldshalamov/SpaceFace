@@ -57,6 +57,7 @@ import {
   remoteEnginePlaybackRate,
 } from './hitVoice.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isOpticEnergyBolt, isOpticOrdnance, opticMaterialOf } from '../combat/opticField.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -487,6 +488,19 @@ const COLLISION_TIER_RECIPES = Object.freeze({
   slam: 'sfx_explosion_small',
   broadside: 'sfx_explosion_large',
 });
+
+// Optic lattice contacts (build_map §24 "the picture and the sound"): one voice per response
+// kind so the player can hear which answer the field gave — stone and darkened prisms eat the
+// bolt (thud), metal throws it back (ping), a live diamond cracks into its splinter ring.
+// `absorb` covers every refusal (`reason` stone/spent/generation/family): the bolt died on the
+// surface either way, so all of them land as the same dull thud.
+export const OPTIC_CONTACT_RECIPES = Object.freeze({
+  absorb: 'sfx_optic_absorb',
+  reflect: 'sfx_optic_reflect',
+  prism: 'sfx_optic_split',
+});
+// A healed prism gets a soft shimmer under the contact family — a recovery whisper, not a hit.
+export const OPTIC_REKINDLE_RECIPE = 'sfx_optic_rekindle';
 
 // Contact-cue admission (see _admitCollisionCue): ~100 ms between the same pair's voices —
 // the VFX contact-spark cadence — with an escalation escape so a real slam inside the window
@@ -1657,6 +1671,12 @@ export const audio = {
     // `_admitCollisionCue`'s pair+tick window collapses that double-emit into one voice.
     bus.on('collision', (p) => this._onCollision(p));
     bus.on('physics:impact', (p) => this._onCollision(p));
+    // Optic lattice contacts: weapons settles bolt-vs-prism and publishes the response here.
+    // Each response kind owns one cue, and a ring can light a whole lattice neighborhood in a
+    // single tick — the handlers collapse the burst through the shared `_heardRecipes` window,
+    // the same per-tick admission the visual-event lane runs on simultaneous cues.
+    bus.on('optic:contact', (p) => this._onOpticContact(p));
+    bus.on('optic:rekindled', (p) => this._onOpticRekindled(p));
     bus.on('shieldDown', (p) => {
       // Shield break: a sharp energy crackle at the target's position.
       const pos = p && p.pos;
@@ -2975,6 +2995,15 @@ export const audio = {
       : null;
     const type = target && target.type || p.type;
     if (type !== 'asteroid') return;
+    // An optic lattice cell answers a bolt or missile through `optic:contact` — the response
+    // cue (thud / ping / split) IS the hit voice, so the generic rock chip would only blur
+    // which answer the field gave. Kinetic rounds keep the chip: no optic response claimed
+    // them. The predicate mirrors planOpticContact's own domain exactly.
+    if (target && opticMaterialOf(target) && p.projectileId != null
+      && typeof entities.get === 'function') {
+      const projectile = entities.get(p.projectileId);
+      if (projectile && (isOpticEnergyBolt(projectile) || isOpticOrdnance(projectile))) return;
+    }
     this.play('sfx_mining_impact', {
       position: p.pos,
       gain: 0.5,
@@ -3131,6 +3160,31 @@ export const audio = {
         importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
       });
     }
+  },
+
+  _onOpticContact(p) {
+    if (!p) return;
+    const recipeId = OPTIC_CONTACT_RECIPES[p.kind];
+    // Burst collapse rides the shared `_heardRecipes` window (`_onVisualEventAudio` gates the
+    // same way): a prism ring can light a whole lattice neighborhood in one tick, so the first
+    // admitted voice of each kind speaks for the tick. `_noteRecipeHeard` runs here — before
+    // `play()`'s own bookkeeping — so a muted/blocked cue still collapses the rest of the burst.
+    if (!recipeId || this._recipeHeardThisTick(recipeId)) return;
+    this._noteRecipeHeard(recipeId);
+    const rays = Number.isFinite(p.rays) ? p.rays : 0;
+    this.play(recipeId, {
+      position: p.pos || null,
+      // A bigger ring lands a little louder; absorb/reflect keep fixed voices.
+      gain: p.kind === 'prism' ? clamp(0.72 + rays * 0.02, 0.72, 0.92) : p.kind === 'reflect' ? 0.7 : 0.8,
+    });
+  },
+
+  _onOpticRekindled(p) {
+    // A lattice healing back is a whisper under the contact family — one soft shimmer per tick
+    // no matter how many cells came up, so a shelved field never announces itself as a volley.
+    if (!p || this._recipeHeardThisTick(OPTIC_REKINDLE_RECIPE)) return;
+    this._noteRecipeHeard(OPTIC_REKINDLE_RECIPE);
+    this.play(OPTIC_REKINDLE_RECIPE, { position: p.pos || null, gain: 0.32 });
   },
 
   _onKilled(p) {
@@ -4377,7 +4431,12 @@ export const audio = {
     const stationId = (p && p.stationId) || rt._dockStationId || '';
     const sectorId = (this.state.world && this.state.world.currentSectorId) || '';
     const isHelios = String(stationId).includes('helios') || String(sectorId).includes('helios');
-    const voice = this._startLoopVoice('sfx_station_hum', null, isHelios ? 1.0 : 0.9, { busName: 'ambient' });
+    // The authored ambient-bus-input peak for the docked hum — the level §7 of
+    // asteroid-sound-routing measures the mine bed against. `_startLoopVoice` multiplies its
+    // gain argument by the recipe amp, so divide the authored peak back out to land it exactly.
+    const humPeak = isHelios ? 0.045 : 0.038;
+    const humAmp = this._ampFor(AUDIO_RECIPE_BY_ID.sfx_station_hum) || 1;
+    const voice = this._startLoopVoice('sfx_station_hum', null, humPeak / humAmp, { busName: 'ambient' });
     if (!voice) return;
     rt.loops.stationHum = voice;
   },

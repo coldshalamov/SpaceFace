@@ -556,6 +556,13 @@ export function regimeLabel(regime) {
 export function serializeCycles(state) {
   const cycles = state && state.economy && state.economy.cycles;
   if (!cycles) return {};
+  // A crossfade whose window has closed is dead data — blendRegimeFactor ignores simTime past
+  // blendEndT — but the in-memory prune only runs when that station's prices are recomputed,
+  // so unevaluated stations accumulated stale blend tails in every save, forever (PQ-033.02:
+  // the unattributed +1-2 KB/cycle residual in the release soak). Drop the tail once the save
+  // clock proves the window closed; an unknown clock keeps the tail (cannot prove closure).
+  const now = Number(state && state.simTime);
+  const clockKnown = Number.isFinite(now);
   const out = {};
   for (const sid in cycles) {
     const station = cycles[sid];
@@ -576,7 +583,8 @@ export function serializeCycles(state) {
       ];
       // Only cycles still inside their crossfade window carry the tail; older readers
       // ignore trailing row entries, and rows without a tail load as un-blended.
-      if (c.blendFrom && Number(c.blendEndT) > Number(c.blendStartT)) {
+      if (c.blendFrom && Number(c.blendEndT) > Number(c.blendStartT)
+        && (!clockKnown || Number(c.blendEndT) > now)) {
         const f = c.blendFrom;
         row.push(
           c.blendStartT, c.blendEndT,

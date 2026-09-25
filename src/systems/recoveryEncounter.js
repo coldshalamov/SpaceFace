@@ -8,6 +8,7 @@
 // post-scan 10% still-powered surprise; it requests one defense drone through world spawn authority.
 
 import { hash32 } from '../core/rng.js';
+import { CONTACT_HAIL_RANGE } from '../data/contactHail.js';
 import { SECTORS } from '../data/sectors.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
@@ -15,6 +16,8 @@ import { indexedTypeScan } from '../world/livingWorldViews.js';
 const STATE_VERSION = 1;
 const SCAN_RANGE_WU = 260;
 const HOLD_RANGE_WU = 90;
+// One plain plea when the player comes into the contact hail span. Not a status code.
+export const RECOVERY_ROPE_HAIL = 'We\'re dead in the drift. Throw us a rope.';
 const HOLD_RELATIVE_SPEED = 8;
 const STABILIZE_S = 2.5;
 const HAZARD_WINDOW_S = 12;
@@ -64,6 +67,16 @@ function positionOf(value) {
 
 function distance(a, b) {
   return Math.hypot((a && a.x || 0) - (b && b.x || 0), (a && a.z || 0) - (b && b.z || 0));
+}
+
+// Salvage stubs are born at 1/1, which is already "full", so a taut rope would add nothing.
+// Open the max once and leave whatever hull is already there. A later tick must not reset it.
+function ensureRepairableHull(wreck) {
+  const hullMax = Number(wreck.hullMax);
+  if (Number.isFinite(hullMax) && hullMax > 1) return;
+  const hull = Number(wreck.hull);
+  wreck.hullMax = 100;
+  if (!Number.isFinite(hull) || hull <= 0 || hull >= 100) wreck.hull = 40;
 }
 
 function relativeSpeed(a, b) {
@@ -249,6 +262,7 @@ export const recoveryEncounter = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry;
     this._unsubs = [];
+    this._ropeHailed = new Set();
     ensureState(this.state);
     this._listen('signal:investigated', (payload) => this._onSignalInvestigated(payload || {}));
     this._listen('scan:pulse', () => this._onScanPulse());
@@ -275,6 +289,7 @@ export const recoveryEncounter = {
 
   newGame() {
     this.state.recoveryEncounters = freshState();
+    if (this._ropeHailed) this._ropeHailed.clear();
   },
 
   update(dt, state) {
@@ -287,6 +302,7 @@ export const recoveryEncounter = {
     if (!wreck || wreck.alive === false || !player || player.alive === false) return;
     record.pos = positionOf(wreck.pos);
     this._applyRecordToWreck(record, wreck);
+    this._hailForRope(record, wreck, player);
 
     if (record.phase === 'awaiting_scan' || record.phase === 'decision') {
       this._emitProgress(record);
@@ -676,6 +692,33 @@ export const recoveryEncounter = {
     if (record.phase === 'completed') data.scanLabel = `Recovered Derelict - ${String(record.outcome || 'closed').replace(/_/g, ' ')}`;
     else if (record.phase === 'failed') data.scanLabel = 'Burned Derelict - recovery closed';
     else data.scanLabel = record.scanned ? record.conditionLabel : 'Unidentified Derelict';
+    const open = record.phase !== 'completed' && record.phase !== 'failed';
+    if (open && data.latchRepair !== false) {
+      data.derelictHelp = true;
+      ensureRepairableHull(wreck);
+    } else {
+      data.derelictHelp = false;
+    }
+  },
+
+  // One line per approach. Staying inside the hail span does not repeat it; leaving rearms it.
+  _hailForRope(record, wreck, player) {
+    if (!record || !wreck || !wreck.pos || !player || !player.pos) return;
+    if (wreck.data && wreck.data.latchRepair === false) return;
+    if (!this._ropeHailed) this._ropeHailed = new Set();
+    const inRange = distance(player.pos, wreck.pos) <= CONTACT_HAIL_RANGE;
+    if (!inRange) {
+      this._ropeHailed.delete(record.id);
+      return;
+    }
+    if (this._ropeHailed.has(record.id)) return;
+    this._ropeHailed.add(record.id);
+    this._emit('comms:popup', {
+      id: `recovery-rope:${record.id}`,
+      sender: 'Disabled hull',
+      text: RECOVERY_ROPE_HAIL,
+      category: 'warning',
+    });
   },
 
   _recordFromPayload(payload) {

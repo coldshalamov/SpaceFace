@@ -56,10 +56,15 @@ import {
   resolveLiveAttackHit,
 } from '../combat/attackHit.js';
 import {
+  collectOpticSpentIds,
+  opticBeamBolt,
   opticBookFor,
   opticChildSpec,
   opticFamilyIdOf,
+  opticRekindleDue,
+  opticSpendLedger,
   settleOpticContact,
+  tickOpticRekindle,
 } from '../combat/opticField.js';
 import { registerStuntImpulseObserver } from '../combat/stuntEvidence.js';
 import { observeProjectileEmission, observeProjectileRedirect, prepareProjectileContact,
@@ -203,6 +208,7 @@ export const weapons = {
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
     this._beamActiveMeta = new Map();
+    this._opticBeamSeq = 0;
     this._diag = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
@@ -226,6 +232,9 @@ export const weapons = {
     };
 
     on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
+    // §24: combat's beam sweep found an optic surface as the first body on a weapon ray —
+    // the optic owner settles the contact here and marks req.handled so the beam stops.
+    on('optic:beamContact', (req) => handleOpticBeamContact(this, req));
     on('projectile:hit', (payload) => {
       if (handleOpticProjectileHit(this, payload)) {
         prepareProjectileContact(this.state, payload);
@@ -262,11 +271,15 @@ export const weapons = {
       clearAllMomentumSinkPlants(this.state);
       if (this._shuntCooldown) this._shuntCooldown.clear();
       if (this._opticFamilies) this._opticFamilies.clear();
+      // sector:enter fires after materialization, so cells the durable ledger restored dark
+      // are live entities here — pick their ids up for the rekindle watch.
+      this._opticSpent = collectOpticSpentIds(this.state);
     });
     this._playerIncomingLock = false;
-    on('game:new', () => { this._playerIncomingLock = false; });
-    on('game:started', () => { this._playerIncomingLock = false; });
-    on('save:loaded', () => { this._playerIncomingLock = false; });
+    this._opticSpent = new Set();
+    on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
+    on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
+    on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
   },
 
   update(dt, state) {
@@ -289,6 +302,7 @@ export const weapons = {
     // 1) cool/recharge every weapon instance + steer in-flight homing projectiles.
     this._tickWeapons(dt, state);
     this._steerHoming(dt, state);
+    serviceOpticRekindle(this, state);
 
     // 2) fire — player first, then NPC ships.
     const player = this.helpers.getEntity(state.playerId);
@@ -763,15 +777,6 @@ export const weapons = {
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
     const damageType = w.damageType || def.damageType || 'energy';
-    if (state.combat && Array.isArray(state.combat.beams)) {
-      state.combat.beams.push({
-        ownerId: e.id, factionId: e.factionId, weaponId: w.defId,
-        from: { x: origin.x, z: origin.z }, to,
-        dmgType: damageType,
-        dpsThisTick: damage,
-        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
-      });
-    }
     const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
     const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
     this._beamFiring.add(beamKey);
@@ -782,8 +787,23 @@ export const weapons = {
         ownerId: e.id,
         weaponId: w.defId,
         hardpointIdx: w.slotIndex,
+        // §24: one mount-hold is ONE optic "shot" — a diamond throws its ring on the first
+        // contact tick and every later tick of the same burst meets the spent/dark cell
+        // (and the family book's visited mark). A fresh burst draws a fresh family.
+        opticFamilyId: `optic:beam:${beamKey}:${(this._opticBeamSeq = (this._opticBeamSeq || 0) + 1)}`,
       };
       this._beamActiveMeta.set(beamKey, beamMeta);
+    }
+    if (state.combat && Array.isArray(state.combat.beams)) {
+      state.combat.beams.push({
+        ownerId: e.id, factionId: e.factionId, weaponId: w.defId,
+        from: { x: origin.x, z: origin.z }, to,
+        dmgType: damageType,
+        dpsThisTick: damage,
+        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+        beamKey,
+        opticFamilyId: beamMeta.opticFamilyId,
+      });
     }
     this.bus.emit('combat:fire', {
       ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
@@ -1674,8 +1694,18 @@ function handleOpticProjectileHit(host, payload) {
   if (!projectile || projectile.type !== 'projectile' || !target) return false;
   if (!host._opticFamilies) host._opticFamilies = new Map();
   const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(projectile));
-  const plan = settleOpticContact(projectile, target, payload, book);
+  const bus = host.bus;
+  const plan = settleOpticContact(projectile, target, payload, book, {
+    simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    ledger: opticSpendLedger(state),
+    emit: bus ? (name, event) => bus.emit(name, event) : null,
+  });
   if (!plan) return false;
+  // A discharged prism joins the rekindle watch — the quiet clock is what it needs, not ticks.
+  if (plan.spentAt != null) {
+    if (!host._opticSpent) host._opticSpent = new Set();
+    host._opticSpent.add(target.id);
+  }
   // Zero the hit before combat's projectile:hit listener (registered after weapons) routes damage.
   suppressHitPayload(payload);
   // Prism/absorb consume the bolt: drop traited live state so splinters never inherit a parent
@@ -1701,9 +1731,97 @@ function handleOpticProjectileHit(host, payload) {
       ownerId: projectile.ownerId == null ? null : projectile.ownerId,
       pos,
       rays: plan.rays ? plan.rays.length : 0,
+      // Set when this contact discharged (or re-discharged) the prism — the cell reads
+      // 'spent' until its quiet stretch completes.
+      spent: plan.spentAt != null,
     });
   }
   return true;
+}
+
+/**
+ * §24 "Beams and missiles": a continuous beam has no projectile body, so combat's beam sweep
+ * (which owns "the first body on the ray") hands the contact here as an 'optic:beamContact'
+ * request. The beam arrives as a bolt-shaped shim (opticBeamBolt) carrying the mount's burst
+ * family — the same settle rules apply: live diamond throws the ring once and spends, stone,
+ * spent and metal eat the ray (a beam never reflects — there is no body to send back). Sets
+ * req.handled so combat knows the surface consumed the beam.
+ */
+function handleOpticBeamContact(host, req) {
+  const state = host && host.state;
+  const beam = req && req.beam;
+  if (!state || !beam || req.targetId == null) return;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return;
+  const target = entities.get(req.targetId);
+  if (!target || target.alive === false) return;
+  const owner = beam.ownerId != null ? entities.get(beam.ownerId) : null;
+  const pseudo = opticBeamBolt(beam, { pos: req.pos }, owner);
+  if (!host._opticFamilies) host._opticFamilies = new Map();
+  const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(pseudo));
+  const bus = host.bus;
+  const plan = settleOpticContact(pseudo, target, {
+    pos: req.pos,
+    normal: req.normal,
+  }, book, {
+    simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    ledger: opticSpendLedger(state),
+    emit: bus ? (name, event) => bus.emit(name, event) : null,
+  });
+  if (!plan) return;
+  req.handled = true;
+  // A discharged prism joins the rekindle watch — same as the bolt path.
+  if (plan.spentAt != null) {
+    if (!host._opticSpent) host._opticSpent = new Set();
+    host._opticSpent.add(target.id);
+  }
+  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
+    const rays = plan.rays || [];
+    for (let i = 0; i < rays.length; i++) {
+      reserveProjectileCapacity(host.state, 1);
+      host.helpers.spawnEntity(opticChildSpec(pseudo, rays[i]));
+    }
+  }
+  if (host.bus) {
+    host.bus.emit('optic:contact', {
+      kind: plan.kind,
+      reason: plan.reason,
+      materialId: plan.materialId,
+      projectileId: pseudo.id,
+      targetId: target.id,
+      ownerId: pseudo.ownerId == null ? null : pseudo.ownerId,
+      pos: req.pos ? { x: req.pos.x, z: req.pos.z } : (target.pos ? { x: target.pos.x, z: target.pos.z } : null),
+      rays: plan.rays ? plan.rays.length : 0,
+      spent: plan.spentAt != null,
+      via: 'beam',
+    });
+  }
+}
+
+/**
+ * Rekindle watch — a discharged prism heals after OPTIC_SPEND_QUIET sim-seconds untouched.
+ * The watch is a Set of entity ids (bounded by cells actually burned), so the common frame
+ * costs one size check, not an entity scan. Stale ids (despawned, healed by a contact) drop
+ * out as they are met.
+ */
+function serviceOpticRekindle(host, state) {
+  const watch = host._opticSpent;
+  if (!watch || !watch.size) return;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const entities = state && state.entities;
+  const due = [];
+  for (const id of watch) {
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false || !entity.data || entity.data.opticMaterial !== 'spent') {
+      watch.delete(id);
+      continue;
+    }
+    if (opticRekindleDue(entity, now)) due.push(entity);
+  }
+  if (!due.length) return;
+  const emit = host.bus ? (name, payload) => host.bus.emit(name, payload) : null;
+  const rekindled = tickOpticRekindle(due, now, state.world && state.world.opticSpent, emit);
+  for (const record of rekindled) if (record.targetId != null) watch.delete(record.targetId);
 }
 
 function suppressHitPayload(payload) {

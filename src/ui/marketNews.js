@@ -25,6 +25,7 @@ import {
   HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
+import { isSurvivalRunLive } from '../systems/adventureMigration.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME_BY_ID = new Map();
@@ -224,6 +225,8 @@ export function createMarketNews(ctx) {
   // economy emissions retain their original compact payload shapes.
   function commitHeadline(headline, ev, { quiet = false, metadata = null } = {}) {
     if (!headline) return null;
+    // Adventure news (economy, rumors, authored copy) never reaches the Crucible flight glass.
+    if (isSurvivalRunLive(state.run)) return null;
     const kind = ev.kind || normalizeKind(ev.type);
     const stationId = ev.stationId || null;
     const rec = metadata

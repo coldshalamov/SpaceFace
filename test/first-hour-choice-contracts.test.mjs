@@ -140,10 +140,15 @@ test('B5 posts three normal starter-risk offers and accepts exactly one choice',
   const again = h.missions.ensureOnboardingChoiceOffers(FIRST_TRADE_CONTRACT_DEST_STATION_ID);
   assert.deepEqual(again, choices, 're-entering B5 is idempotent within the same run');
 
-  h.bus.emit('mission:accepted', { missionId: 'unrelated', source: 'economyContract' });
   h.bus.emit('ship:purchased', { shipId: 'ship_lark' });
   assert.equal(h.state.onboarding.finished, false,
-    'unrelated missions and ship purchases cannot end the tutorial choice');
+    'a ship purchase cannot end the tutorial choice');
+  // A non-rail contract does end the rail now — "The first ten minutes hand you the power
+  // fantasy without a wall of text." (design/program/FINISH_LANES.md §5). Once the player takes
+  // a real job, the objective slot follows it instead of pinning a stale n/12 beat.
+  h.bus.emit('mission:accepted', { missionId: 'unrelated', source: 'economyContract' });
+  assert.equal(h.state.onboarding.finished, true,
+    'accepting a contract outside the rail ends the tutorial through _finish()');
 
   assert.equal(h.missions.acceptMission(choices[0].id), true);
   assert.equal(h.state.onboarding.finished, true, 'accepting one posted B5 offer ends onboarding');

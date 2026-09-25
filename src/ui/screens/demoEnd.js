@@ -14,6 +14,8 @@ import { dressLampKey } from '../orrery/lampKey.js';
 import { createCounter, decrypt } from '../orrery/text.js';
 import { hand, ring } from '../orrery/instruments.js';
 import { svg } from '../orrery/svg.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 const MODULE_NAME = new Map([...MODULES, ...WEAPONS].map((def) => [def && def.id, def && def.name]));
 
@@ -41,8 +43,10 @@ function mountFactValue(dd, fact) {
 function mountEndDial(host) {
   const doc = host.ownerDocument || globalThis.document;
   if (!doc || typeof doc.createElementNS !== 'function') return null;
+  // The orr-svg class and injectOrrery's stroke sheet are what turn the library's paths into
+  // light; without them the ring fills solid black — a disc, not a dial.
   const figure = svg('svg', {
-    class: 'sf-demo-end__dial',
+    class: 'orr-svg sf-demo-end__dial',
     viewBox: '0 0 160 160',
     width: '160',
     height: '160',
@@ -51,9 +55,27 @@ function mountEndDial(host) {
   figure.appendChild(ring({ cx: 80, cy: 80, r: 68, tone: 'faint', width: 1, bloom: 4, draw: true }));
   const needle = hand({ cx: 80, cy: 80, r0: 14, r1: 62 });
   figure.appendChild(needle.el);
-  needle.pointTo(28);
   host.appendChild(figure);
-  return needle;
+  return { figure, needle };
+}
+
+/** The Hand's bearing from one element's centre to another's — 0 is up, clockwise. Null when
+ *  the host cannot measure (a stub DOM in a node test, a hidden card). */
+function bearingBetween(fromEl, toEl) {
+  if (!fromEl || !toEl
+    || typeof fromEl.getBoundingClientRect !== 'function'
+    || typeof toEl.getBoundingClientRect !== 'function') return null;
+  try {
+    const a = fromEl.getBoundingClientRect();
+    const b = toEl.getBoundingClientRect();
+    if (!a || !b || (a.width <= 0 && a.height <= 0)) return null;
+    const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+    const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+    return Math.atan2(dx, -dy) * 180 / Math.PI;
+  } catch {
+    return null;
+  }
 }
 
 function moduleName(defId) {
@@ -94,8 +116,12 @@ export const demoEndScreen = {
 
   mount(rootEl, ctx) {
     injectDeckplate();
+    // The card composes ORRERY library pieces (the dial, the register) — their stroke sheet and
+    // their screen layout are what the results plate injects, so this card injects them too.
+    injectOrrery(rootEl.ownerDocument || undefined);
+    injectOrreryScreens(rootEl.ownerDocument || undefined);
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-demo-end');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-demo-end', 'orr-demo-end');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-demo-end-title');
@@ -111,16 +137,17 @@ export const demoEndScreen = {
       'You fought the pack, then flew out with a new part bolted on. The belt is the rest of the game.'));
     rootEl.appendChild(title);
 
-    // .k-stage — the record, as a small register of facts (dl rows like the career recap).
+    // .k-stage — the record, as a register of lit readings (dl rows kept for the ear; the eye
+    // reads etched labels over numeral values, the results plate's grammar).
     const stage = el('section', 'k-stage k-panel sf-demo-end__stage');
     let profile = null;
     try { profile = loadCrucibleMeta(); } catch { profile = null; }
     const facts = demoEndFacts(ctx && ctx.state, profile);
-    const list = el('dl', 'sf-demo-end__facts');
+    const list = el('dl', 'sf-demo-end__facts orr-end-facts');
     for (const fact of facts) {
-      const row = el('div', 'sf-demo-end__fact');
-      row.appendChild(el('dt', 'k-caps', fact.label));
-      const dd = el('dd', 'k-sentence');
+      const row = el('div', 'sf-demo-end__fact orr-end-fact');
+      row.appendChild(el('dt', 'k-caps orr-end-fact__w', fact.label));
+      const dd = el('dd', 'k-sentence orr-end-fact__n');
       mountFactValue(dd, fact);
       row.appendChild(dd);
       list.appendChild(row);
@@ -143,7 +170,22 @@ export const demoEndScreen = {
     const play = addItem(el('button', 'k-word k-word--emph k-word--primary', 'Keep playing'));
     play.type = 'button';
     dressPrimary(play);
-    mountEndDial(foot);
+    // The dial stands with the ways out; its Hand bears on the primary key once the card has
+    // laid out — it points at the thing it is offering, not a fixed angle.
+    const dial = mountEndDial(foot);
+    this._dial = dial ? dial.needle : null;
+    this._dialFigure = dial ? dial.figure : null;
+    this._dialTarget = play;
+    const aimDial = () => {
+      const bearing = this._dial ? bearingBetween(this._dialFigure, this._dialTarget) : null;
+      if (bearing != null) this._dial.pointTo(bearing);
+    };
+    this._aimDial = aimDial;
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(aimDial));
+    } else {
+      aimDial();
+    }
     play.setAttribute('aria-label', 'Keep playing — close the card and return to flight');
     play.addEventListener('click', () => {
       cue('confirm');
@@ -164,7 +206,8 @@ export const demoEndScreen = {
     linkWord('Feedback', DEMO_CONFIG.feedbackUrl, 'Give feedback on the demo');
     linkWord('Store page', DEMO_CONFIG.storeUrl, 'Open the store page');
 
-    const menu = addItem(el('button', 'k-word k-word--emph k-word--danger', 'Main menu'));
+    // Leaving a finished demo is an exit, not a destruction — the word is the ordinary one.
+    const menu = addItem(el('button', 'k-word k-word--emph', 'Main menu'));
     menu.type = 'button';
     menu.setAttribute('aria-label', 'Return to the title screen');
     menu.addEventListener('click', () => {
@@ -199,6 +242,8 @@ export const demoEndScreen = {
       settle(r.stage, { from: 'left', delay: 60, state: 'demoEnd:open' });
       settle(r.foot, { from: 'bottom', delay: 120, state: 'demoEnd:open' });
     } catch { /* motion is cosmetic */ }
+    // The foot has settled into layout; the Hand takes its bearing on the primary key now.
+    if (this._aimDial) this._aimDial();
     if (r.play && typeof r.play.focus === 'function') {
       try { r.play.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -206,5 +251,13 @@ export const demoEndScreen = {
 
   onHide() {
     cue('close');
+  },
+
+  dispose() {
+    if (this._dial) this._dial.dispose();
+    this._dial = null;
+    this._dialFigure = null;
+    this._dialTarget = null;
+    this._aimDial = null;
   },
 };

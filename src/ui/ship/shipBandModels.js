@@ -14,6 +14,12 @@ import { shipCapabilityVerbs } from '../../systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../panels/handlingProfile.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { describeTechNodeReadiness } from '../screens/techTree.js';
+import {
+  moduleSentencesForFittings,
+  reversalSentence,
+  sustainedFireForFit,
+  turnRadiusSentence,
+} from './fitReadout.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
 const MODULE_BY_ID = new Map(MODULES.map((moduleDef) => [moduleDef.id, moduleDef]));
@@ -405,12 +411,27 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
       why,
     });
   }
+  const turnSentence = turnRadiusSentence(profile.predictions);
+  const reversalLine = reversalSentence(profile.predictions);
+  const sustainedFire = sustainedFireForFit(shipId, fittings, player);
+  // The crest is the sentence the fit screen already prints under the hull name. Turn radius,
+  // reversal and the burst length belong there, before the player commits, not in a tooltip.
+  const crestSentence = [
+    handlingSentence(profile, derived, dryDerived),
+    turnSentence,
+    reversalLine,
+    sustainedFire.sentence,
+  ].filter(Boolean).join(' ');
   return {
     shipId,
     profile,
     derived,
     bars,
-    crestSentence: handlingSentence(profile, derived, dryDerived),
+    crestSentence,
+    turnSentence,
+    reversalSentence: reversalLine,
+    sustainedFire,
+    moduleSentences: moduleSentencesForFittings(fittings),
   };
 }
 

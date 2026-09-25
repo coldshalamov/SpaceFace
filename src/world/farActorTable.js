@@ -330,25 +330,87 @@ export function insertFarActor(state, entity, simTime = 0) {
 // (PQ-033.02 attribution: ~0.2-0.6 KB/cycle, every other grower plateaued).
 export const FAR_ROW_BUDGET = 128;
 
-function farRowIsDurable(rec) {
+// An unanchored id-carrying row is only SPENT after it has anchored nothing for a full
+// recent-memory window. A freshly shelved hull's record can land moments after the shelve
+// (the world capture pass walks live entities on its own cadence), so an immediate sweep
+// eats legitimate transients. Mirrors RECENT_MEMORY_WINDOW_S without importing the world
+// records module into the far table.
+export const FAR_ROW_ORPHAN_GRACE_S = 180;
+
+function rowCarriesAnchorIds(rec, data) {
+  const jobId = rec.jobId != null ? rec.jobId : (data.jobId != null ? data.jobId : null);
+  const recordId = rec.worldRecordId != null ? rec.worldRecordId
+    : (data.worldRecordId != null ? data.worldRecordId : null);
+  return { jobId, recordId };
+}
+
+// A row is durable while it anchors something that still exists: the npcJobs bag relinks
+// jobs by worldRecordId against rematerialized hulls, and a live world record carries the
+// rematerialization contract — evicting those rows would orphan the job (the exact
+// phantom-job growth the convoy-cap fix closed).
+//
+// Authored/owned bodies are durable BEFORE any bag lookup: a hull whose persistence belongs
+// to another owner (world-site components stamp persistenceOwner:'asteroidSites',
+// worldSiteRuntime.js entitySpec) carries a component id in data.worldRecordId that
+// captureEntityRecord REFUSES by design (worldRecords.js skips every owner but
+// 'worldRecords') — it can never be a records-bag key, so "unresolvable" for it does not
+// mean "spent". The first PQ-033.02 sweep missed this and deleted authored Ceres site
+// wrecks (check:pq020:ceres-topology went red: materializedEntities 1 vs 15).
+//
+// When an owner bag is absent entirely (focused harnesses without that system), the anchor
+// cannot be verified and the conservative 9/19 exemption holds.
+function farRowIsDurable(rec, state) {
   if (!rec) return false;
-  // A row carrying a live npcJobs relink id or a durable world record must survive: the job
-  // bag relinks jobs by worldRecordId against rematerialized hulls, and evicting the row
-  // would orphan the job (the exact phantom-job growth the convoy-cap fix closed).
-  if (rec.jobId != null || rec.worldRecordId != null) return true;
-  const data = rec.data;
-  return !!(data && (data.jobId != null || data.worldRecordId != null));
+  const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
+  if (data.persistenceOwner != null && data.persistenceOwner !== 'worldRecords') return true;
+  if (data.worldSiteId != null || data.worldSiteComponentId != null) return true;
+  const { jobId, recordId } = rowCarriesAnchorIds(rec, data);
+  if (jobId == null && recordId == null) return false;
+  const jobs = state && state.npcJobs && state.npcJobs.byId;
+  const records = state && state.world && state.world.records && state.world.records.byId;
+  if (jobId != null) {
+    if (!jobs) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(jobs, jobId)) return true;
+  }
+  if (recordId != null) {
+    if (!records) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(records, recordId)) return true;
+  }
+  return false; // verifiably anchored to nothing
+}
+
+/** True only for an unanchored id-carrying row whose grace window has fully elapsed. */
+function farRowIsSpentOrphan(rec, state, now) {
+  const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
+  if (farRowIsDurable(rec, state)) return false;
+  const { jobId, recordId } = rowCarriesAnchorIds(rec, data);
+  if (jobId == null && recordId == null) return false; // plain row: the budget walk decides
+  const shelfT = Number(rec.virtualizedAt);
+  if (!Number.isFinite(shelfT) || !(now - shelfT > FAR_ROW_ORPHAN_GRACE_S)) return false;
+  return true;
 }
 
 /** Oldest-first, deterministic (rows is insertion-ordered and restore preserves the order). */
 export function enforceFarRowBudget(state) {
   const table = state && state.world && state.world.farActors;
-  if (!table || !Array.isArray(table.rows) || table.rows.length <= FAR_ROW_BUDGET) return 0;
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) return 0;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
   let evicted = 0;
+  // Spent orphans die on every pass, budget or not: their rematerialization contracts are
+  // provably void AND their grace window has closed, and a slow shelving session that never
+  // crosses FAR_ROW_BUDGET would otherwise accumulate them under the ceiling. Allocation-free
+  // walk, insertion order.
+  for (let i = table.rows.length - 1; i >= 0; i--) {
+    const rec = table.rows[i];
+    if (!farRowIsSpentOrphan(rec, state, now)) continue;
+    removeFarRecord(table, rec);
+    evicted += 1;
+  }
+  if (table.rows.length <= FAR_ROW_BUDGET) return evicted;
   let i = 0;
   while (table.rows.length > FAR_ROW_BUDGET && i < table.rows.length) {
     const rec = table.rows[i];
-    if (farRowIsDurable(rec)) {
+    if (farRowIsDurable(rec, state)) {
       i += 1;
       continue;
     }

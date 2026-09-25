@@ -174,6 +174,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const pending = new Set();
   const capturedPlans = new WeakMap();
   let queued = [];
+  // Urgent (deadline-glass) compiles already serialized on the tail, keyed by
+  // subject so a re-request joins the outstanding link instead of compiling twice.
+  const urgentRuns = new Map();
   let quietTimer = null;
   let maxTimer = null;
   let compileTail = Promise.resolve();
@@ -352,7 +355,42 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   }
 
   return {
-    compile(subject) {
+    compile(subject, compileOptions = null) {
+      // Urgent entries are on-glass deadline work: the subject serializes on the
+      // shared compile tail as its own link — behind whatever is in flight,
+      // ahead of everything still queued in the ambient lane — instead of
+      // joining the FIFO behind runway/prefetch compiles. skipSharedBatch is
+      // forced so the program-readiness wait polls this subject's programs
+      // alone instead of pooling into a foreign batch's drain. A queued ambient
+      // admission for the same subject folds into this run so its latch settles
+      // with it; one already flushed or already urgent is joined, never
+      // duplicated. Urgent work does not honour deferAutoFlush or the bounded
+      // resume budget — the hold exists to coalesce background compiles, and a
+      // root the player can already see cannot pay that wait as a blank frame.
+      if (compileOptions && compileOptions.urgent === true) {
+        const existingUrgent = urgentRuns.get(subject);
+        if (existingUrgent) return existingUrgent;
+        let folded = null;
+        for (const entry of pending) {
+          if (entry.subject !== subject) continue;
+          if (!queued.includes(entry)) return entry.completion;
+          folded = entry;
+          break;
+        }
+        if (folded) queued.splice(queued.indexOf(folded), 1);
+        const run = compileTail.then(() => invokeCompileBatch(
+          [subject],
+          'urgent',
+          { ...compileOptions, skipSharedBatch: true },
+        ));
+        compileTail = run.catch(() => null);
+        urgentRuns.set(subject, run);
+        run.then(
+          (result) => { if (folded) folded.resolve(result); },
+          (error) => { if (folded) folded.reject(error); },
+        ).finally(() => urgentRuns.delete(subject));
+        return run;
+      }
       let resolve;
       let reject;
       const compilation = new Promise((res, rej) => { resolve = res; reject = rej; });

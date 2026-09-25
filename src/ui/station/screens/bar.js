@@ -24,7 +24,7 @@ import {
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
-import { createWaveform, voiceEnvelope } from '../../orrery/waveform.js';
+import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
@@ -394,21 +394,26 @@ export function createBarScreen(ctx) {
     const idEl = stageEl.querySelector('.sx-talk__id');
     const nameEl = stageEl.querySelector('.sx-talk__name');
     if (idEl && nameEl) {
-      const host = document.createElement('div');
-      host.className = 'orr-bar-wave';
-      nameEl.insertAdjacentElement('afterend', host);
-      // the waveform is as wide as the name itself (not its column): measured off the glyph run
-      let nameW = 0;
-      try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
-      if (nameW > 0) host.style.width = `${Math.round(nameW)}px`;
-      // the rest frame is the line's own envelope: the words they said, or the line they open with;
-      // the trace is as long as that line (never the heading's width, so it never reads as a rule)
+      // the voice on the person: the Waveform drawn on an open arc anchored to the portrait's speaking side (never
+      // closing round the head), its bars the line's own envelope, labelled by the spoken line through a leader
+      // that runs level from the last glyph and elbows at 45 degrees to the arc's track
       const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
       const lineText = String((lineEl ? lineEl.textContent : c.line) || '');
-      const bars = Math.max(24, Math.min(96, Math.round(lineText.length * 0.9)));
-      const traceW = Math.min(nameW > 0 ? nameW - 24 : 420, bars * 6);
-      host.style.width = `${Math.round(traceW)}px`;
-      wave = createWaveform(host, { bars: Math.max(24, Math.min(bars, Math.floor(traceW / 6))), envelope: voiceEnvelope(lineText, Math.max(24, Math.min(bars, Math.floor(traceW / 6)))) });
+      const spokenEl = stageEl.querySelector('.sx-talk__memory') || nameEl;
+      const avatar = stageEl.querySelector('[data-bigpic]');
+      try {
+        const sr = stageEl.getBoundingClientRect();
+        const ar = avatar ? avatar.getBoundingClientRect() : null;
+        const mr = spokenEl.getBoundingClientRect();
+        if (ar && ar.width > 120 && sr.width > 0) {
+          const compact = sr.width < 1000;
+          const cx = ar.left - sr.left + ar.width * 0.48;
+          const cy = ar.top - sr.top + ar.height * 0.44;
+          const r = ar.width * (compact ? 0.5 : 0.42);
+          const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: mr.right - sr.left, y: mr.top - sr.top + mr.height / 2 } });
+          if (speak) wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
+        }
+      } catch (_) { wave = null; }
     }
     const firstChoice = stageEl.querySelector('.sx-choice');
     if (firstChoice) firstChoice.classList.add('is-current');

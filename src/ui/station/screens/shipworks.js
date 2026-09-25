@@ -1,6 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar } from '../../orrery/svg.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
@@ -1050,7 +1051,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // field-deploy verb is a question about what is bolted on, not about a number it produces.
       fittings,
     });
-    const condition = conditionFromEntity(viewedEntityForModel());
+    const conditionRaw = conditionFromEntity(viewedEntityForModel());
+    // the active hull docked here has no live entity to read, but it is docked, not stowed: STOWED
+    // belongs to the fleet's other hulls
+    const condition = conditionRaw && conditionRaw.ratio == null && viewIdx === activeFleetIndex()
+      ? { ...conditionRaw, verb: 'DOCKED' }
+      : conditionRaw;
     const scars = scarCalloutsForHull({
       shipId: def.id,
       livingHull: viewedLivingHullForModel(),
@@ -1171,6 +1177,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const same = text === row.liveText;
         row.ghostEl.textContent = same ? '' : `→ ${text}`;
         row.ghostEl.hidden = same;
+        // a change for the worse reads in dim bone, never in the gain's ice: mass, heat and draw want less
+        const liveRaw = currentGaugeStats ? finite(currentGaugeStats[def.key], raw) : raw;
+        const lowerIsBetter = /mass|heat|drain|draw/i.test(String(def.key));
+        const worse = lowerIsBetter ? raw > liveRaw : raw < liveRaw;
+        row.ghostEl.classList.toggle('is-loss', !same && worse);
         continue;
       }
       row.liveText = text;
@@ -1205,7 +1216,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const percent = model.condition && model.condition.percentText
       ? `<span class="sx-sw__conditionPct">${escapeHtml(model.condition.percentText)}</span>`
       : '';
-    const verb = model.condition ? model.condition.verb : 'STOWED';
+    const verb = model.condition ? model.condition.verb : 'DOCKED';
     const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
     // The title block: the hull's name at title size, its blurb as one emphasised sentence, the
     // condition verb as a fine word after the name (it carries the why).
@@ -1409,7 +1420,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? `Over budget ${plusMinus(headroom, 1)}/s`
       : `Power ${plusMinus(headroom, 1)}/s`;
     const powerTone = headroom < 0 ? 'k-hero--bad sx-sw-power__state--foe' : 'k-hero--good sx-sw-power__state--you';
-    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'STOWED');
+    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'DOCKED');
     const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
       ? activePresetRailModel.selectedPreset
       : null;
@@ -1449,7 +1460,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           },
         ) +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
-          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${stationControlLabel('range')}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.def.name}`))}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
@@ -1619,6 +1630,71 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // The hardpoint buttons stay the controls (focus, Enter, the chooser, the checks); a node or its
   // name is a way to the same button. Where a hull has no drawing the schematic stands down and the
   // live stage shows as before.
+  // the stage ring's geometry: the same formula the hull jig uses, so the hull for sale sits in the same dial
+  function stageRingGeo() {
+    const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
+    if (W < 240 || H < 200) return null;
+    const edge = 40; const gap = 30; const labelWidth = 220;
+    const bandMargin = Math.min(52, Math.round((H - 56) * 0.11));
+    const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (H - 56) / 2 - bandMargin));
+    return { hx: W / 2, hy: H / 2, R, W, H };
+  }
+  let saleRing = null;
+  // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
+  // words as marks on the upper arc, a glass under the render so the ship separates from the hangar
+  function drawSaleRing(g) {
+    if (!g) { if (saleRing) { saleRing.remove(); saleRing = null; } stageEl.classList.remove('has-salering'); return; }
+    if (!saleRing) { saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(saleRing); }
+    saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
+    saleRing.textContent = '';
+    const f = (n) => Math.round(n * 100) / 100;
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'orr-core sx-sw__salering-ring', 'stroke-width': 1 }));
+    saleRing.appendChild(orrSvg('path', { d: orrTicksD(g.hx, g.hy, g.R + 6, 72, { len: 4, major: 6, majorLen: 8 }), class: 'orr-core sx-sw__salering-ticks', 'stroke-width': 1 }));
+    // the caption on the lower arc, reading left to right: name, class, tier, mass
+    const side = el.querySelector('.sx-sw__side');
+    const nameEl = side && [...side.querySelectorAll('h2, .k-display, .k-t-title')].find((e) => /[A-Za-z]{3,}/.test(e.textContent || '') && !/^[\d,\s]+$/.test((e.textContent || '').trim()));
+    const specs = side ? [...side.querySelectorAll('.sx-spec > li')] : [];
+    const val = (label) => { const li = specs.find((x) => (x.querySelector('.k-row__name') || {}).textContent && x.querySelector('.k-row__name').textContent.trim().toLowerCase().startsWith(label)); return li ? String((li.querySelector('.k-row__num') || {}).textContent || '').replace(/\s+/g, ' ').trim() : ''; };
+    const parts = [nameEl ? nameEl.textContent.trim() : '', val('class'), val('mass')].filter(Boolean);
+    if (parts.length) {
+      const id = 'sx-sw-salecap';
+      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 24, 215);
+      const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 24, 145);
+      saleRing.appendChild(orrSvg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${f(g.R + 24)} ${f(g.R + 24)} 0 0 0 ${f(x1)} ${f(y1)}`, fill: 'none', stroke: 'none' }));
+      const t = orrSvg('text', { class: 'sx-sw__salering-cap' });
+      const tp = orrSvg('textPath', { href: `#${id}`, startOffset: '50%', 'text-anchor': 'middle' });
+      tp.textContent = parts.join(' \u00b7 ').toUpperCase();
+      t.appendChild(tp);
+      saleRing.appendChild(t);
+    }
+    stageEl.classList.add('has-salering');
+    // the live render fits the ring: its long axis at four fifths of the dial
+    try { if (mount && typeof mount.setZoom === 'function' && poster.isLive && poster.isLive()) mount.setZoom(Math.max(0.2, Math.min(1, (2 * g.R * 0.82) / g.W))); } catch (_) { /* a mount without zoom keeps its own fit */ }
+    stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
+    stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
+    stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
+    // the view words stand on the upper arc as marks: left 300, centre 0, right 60 degrees
+    const cam = el.querySelector('.sx-sw__camera');
+    if (cam) {
+      const angles = { left: 300, reset: 0, right: 60 };
+      for (const b of cam.querySelectorAll('[data-camera]')) {
+        const a = angles[b.getAttribute('data-camera')] ?? 0;
+        const [x, y] = orrPolar(g.hx, g.hy, g.R + 22, a);
+        b.style.left = `${Math.round(x)}px`; b.style.top = `${Math.round(y)}px`;
+      }
+      if (!cam.querySelector('.is-current')) { const c = cam.querySelector('[data-camera="reset"]'); if (c) c.classList.add('is-current'); }
+    }
+  }
+  // the verbs' one home, both modes and both sizes: centred under the ring's caption
+  function seatVerbs(g) {
+    const rack = el.querySelector('.sx-sw-verbs');
+    if (!rack) return;
+    if (!g) { rack.style.cssText = ''; return; }
+    const sr = stageEl.getBoundingClientRect();
+    const short = window.innerHeight <= 800;
+    const w = rack.offsetWidth || 300;
+    rack.style.cssText = `position:fixed !important; left:${Math.round(sr.left + g.hx - w / 2)}px !important; top:${Math.round(sr.top + g.hy + g.R + (short ? 20 : 42))}px !important; margin:0 !important; z-index:4;`;
+  }
   let jig = null;
   let jigHost = null;
   let jigLit = -1;
@@ -1914,10 +1990,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           && fit.inkRect.top < nameplateZone.bottom && fit.inkRect.bottom > nameplateZone.top) {
         fit = fitHullInk({ region: { ...region, top: Math.max(region.top, nameplateZone.bottom + 6) }, ...fitArgs });
       }
+      const ringG = el.classList.contains('sx-sw--buying') ? stageRingGeo() : null;
+      if (ringG) {
+        // the hull for sale sits inside the stage ring, its long axis 80% of the dial
+        const asp = poster.aspect() || 1.6;
+        const long = 2 * ringG.R * 0.8;
+        const w = asp >= 1 ? long : long * asp; const h = asp >= 1 ? long / asp : long;
+        const rect = { left: ringG.hx - w / 2, top: ringG.hy - h / 2, width: w, height: h };
+        fit = { imgRect: rect, inkRect: { left: rect.left, top: rect.top, right: rect.left + w, bottom: rect.top + h } };
+      }
       poster.place(fit.imgRect);
+      drawSaleRing(ringG);
       keepOut = { left: fit.inkRect.left - 6, top: fit.inkRect.top, right: fit.inkRect.right + 6, bottom: fit.inkRect.bottom };
       heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
     }
+
+    if (!el.classList.contains('sx-sw--buying')) drawSaleRing(null);
+    else if (!posterOn) drawSaleRing(stageRingGeo());
+    seatVerbs(stageRingGeo());
 
     const pointOf = (index) => {
       if (livePath) {
@@ -3164,6 +3254,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const control = ev.target.closest('[data-camera]');
     if (!control || !mount) return;
     const command = control.getAttribute('data-camera');
+    for (const b of control.parentElement.parentElement.querySelectorAll('[data-camera]')) b.classList.toggle('is-current', b === control);
     if (command === 'left') mount.rotateBy(-.22);
     else if (command === 'right') mount.rotateBy(.22);
     else { mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); }

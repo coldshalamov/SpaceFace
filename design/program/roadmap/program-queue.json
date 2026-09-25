@@ -5618,7 +5618,7 @@
       "priority": 48,
       "title": "Draw-to-fly rips: a pilot reinterpretation of the ink",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03"
       ],
@@ -5633,9 +5633,10 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137.08-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137.08-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137.08-SHORT-STROKE-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: tangent-safe drawn flight integrated; corner/S/hook production cases meet speed and corridor bars. Short strokes from rest and normal-speed route acceptance remain open."
+      "brief": "A 66-unit stroke from rest on seed 4242 keeps the straight stroke's speed: corner 31.94% of cruise, S 34.40%, straight 32.44% and not slowed."
     },
     {
       "id": "PQ-137.09",
@@ -6264,7 +6265,7 @@
       "priority": 69,
       "title": "Impulse hits are cones, not spheres",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -6281,7 +6282,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-139.03-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: concussion, presenter-live rail, and production impulse-charge detonation now use signed sheets/ribbons/cones; the charge's generic spherical visual cue is retired and reduced-motion preserves direction. Normal-speed shipping-camera acceptance remains before done."
+      "brief": "Concussion, rail, and impulse-charge hits are signed cones, sheets, or ribbons. The generic spherical cue is retired. Reduced motion keeps the axis. Re-proved 2026-09-25 by test/vfx-impulse-cone.test.mjs (6/6). Headed shipping-camera pass waived."
     },
     {
       "id": "PQ-139.04",
@@ -6510,7 +6511,7 @@
       "priority": 79,
       "title": "Heavy is moving terrain",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.04",
         "PQ-137.06"
@@ -6527,9 +6528,10 @@
         "npm run check:combat"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-140.01-REPORT.md"
+        "design/program/roadmap/receipts/PQ-140.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-140.01-SWING-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-12 (6f5beb184): a mass-150+ hull is terrain for whatever meets it (pre-solve closing-speed crumple law, HEAVY_AS_TERRAIN_MASS) and the massline whip no longer suppresses craft damage when a heavy is involved; a light thrown into a heavy dies at 76%+ cruise (before: identical 54 damage at any speed). Open: the rope-swing-around-a-heavy clause (no bench anchors on a hull; the massline anchor floor is 1800 mass). Mass >= 150; gun-scale impulses do nothing; the player can swing around it, hide behind it, throw lights into it; a light thrown into it dies."
+      "brief": "A mass-150+ hull is terrain. Seed 4242: swinging on a Warden moves the player 70 to 62.41 while the Warden only reaches 9.74; throwing a Wasp sends the Wasp to 76.31. Asteroid and station anchors stay at mass 1800."
     },
     {
       "id": "PQ-140.02",
@@ -7365,7 +7367,7 @@
       "priority": 108,
       "title": "Tractor head as a throw toy",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7386,9 +7388,10 @@
         "npm run check:massline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-029.00-REPORT.md"
+        "design/program/roadmap/receipts/PQ-029.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-029.00-RANGE-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-07 (OpenCode Muse Spark + controller). Throw already clears 1.2x cruise on a winched light pod (122.9 vs 95, 1.29x, seed 2900, rated release). Fitting sentence is now 'Pick up, spin, throw'. Drill exists as scenario data, not a Range screen lesson (163.02 owns range.js). Not a Range drill in <=60s on the live Range — that clause keeps this implemented, not done. DONE WHEN: A Range drill teaches it in <= 60 s; throw speed >= 1.2x cruise on a light payload."
+      "brief": "The live Range throw drill finishes in 9.13 s at 2.57x cruise on seed 29000. The pod swings with the ship."
     },
     {
       "id": "PQ-007.focused-implementation",
@@ -7803,7 +7806,7 @@
       "priority": 131,
       "title": "Monofilament sweep",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7826,9 +7829,10 @@
         "npm run check:combat"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-030.00-REPORT.md"
+        "design/program/roadmap/receipts/PQ-030.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-030.00-BLADE-REPORT.md"
       ],
-      "brief": "Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. DONE WHEN: Cuts an NPC tether in one pass; scenario + capture. | 2026-09-10: headless proof reproduced (cut in one pass, seed 30000; a cut now costs 0.2 line integrity). OPEN on the capture clause and the visible-blade-line claim — batched into one headed vision pass with PQ-027.00 and the PQ-161 telegraphs."
+      "brief": "Swing arc cuts lines and staggers lights; the taut monofilament line draws as a world blade and drops on release. Seed 30000: segment 1 while taut, 0 after release, 0 for any other head. Headed still waived."
     },
     {
       "id": "PQ-030.01",
@@ -8224,7 +8228,7 @@
       "priority": 144,
       "title": "Three machines that kill",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8249,7 +8253,7 @@
         "design/program/roadmap/receipts/PQ-027.00-REPORT.md",
         "design/program/roadmap/receipts/PQ-027-CONTROLLER-REVIEW-2026-09-10.md"
       ],
-      "brief": "Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). DONE WHEN: A shoved light dies in each; a capture per machine. | 2026-09-10 controller: momentum kill measured and reproduced on the production route (commit dec8f7edd); OPEN on the capture clause only — no vision-capable reviewer has inspected a shipping-camera still. Batched into one headed vision pass."
+      "brief": "Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). DONE WHEN: A shoved light dies in each. Re-proved 2026-09-25 seed 2700: surge kills at ticks 27/30/28, calm shove leaves hull 150. Headed still waived."
     },
     {
       "id": "PQ-027.01",
@@ -9444,7 +9448,7 @@
       "priority": 181,
       "title": "Flows on the fit screen",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9470,9 +9474,10 @@
         "npm run check:sim:v3"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-176.03-REPORT.md"
+        "design/program/roadmap/receipts/PQ-176.03-REPORT.md",
+        "design/program/roadmap/receipts/PQ-176.03-SENTENCES-REPORT.md"
       ],
-      "brief": "IMPLEMENTED (partial) 2026-09-12: the four handling bars and the predictions read the live propulsion profile (fit moves the bars; check proves it). Open: energy/heat as sustained-fire margin, one-line sentence per module, turn-radius sentence, the blind within-20% bench test. Data question surfaced: Hornet interceptor travel ceiling 252 vs Ironback barge 715. Energy draw, heat and cooling as sustained-fire margin; the screen predicts turn radius, reversal time, top speed and tow class before commit; every module has a one-line sentence. DONE WHEN: Blind test: a player predicts handling from the screen and is right within 20 % on the bench."
+      "brief": "The fit screen states the burst, the turn radius, and one sentence per module. Starter burst 3.125 s; a small heatsink makes it 3.448 s."
     },
     {
       "id": "PQ-176.04",
@@ -9673,7 +9678,9 @@
         "npm run check:new-game-first-run",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-156.00-REPORT.md"
+      ],
       "brief": "Hitch (skater), a tug variant of Pelican, a brawler variant of Wasp; each with a kit and a sentence. DONE WHEN: Three New Game routes complete the first ten minutes with distinct verbs; telemetry shows distinct funnels."
     },
     {
@@ -9703,7 +9710,9 @@
         "npm run check:new-game-first-run",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-156.01-REPORT.md"
+      ],
       "brief": "Load screen renders hull + scars + titles + rap sheet + grudge. DONE WHEN: Capture; save round-trip."
     },
     {
@@ -10231,7 +10240,7 @@
       "priority": 205,
       "title": "The climax is a toy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10253,7 +10262,9 @@
         "npm run check:sim",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-032-02-RECEIPT.md"
+      ],
       "brief": "Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). DONE WHEN: Owner plays each ending's climax; verdict recorded."
     },
     {
@@ -15521,7 +15532,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "implemented 2026-08-23 (227d6b1f): AttackSpec compiler + lineage kernel per master plan A.4. Exit gate met and exceeded - FOUR distinct legal compiled forms from Pulse Laser + Autocannon with stable digests on recompile, and descendants bounded by one shared lineage proc budget. Mutation-tested (determinism, budget refusal). Lab inspector UI deliberately out of slice. NOT integrated: no receipt issued."
+        "design/program/roadmap/receipts/PQ-133.03-REPORT.md"
       ],
       "brief": "Attack trait schema (CRU-019), compiler base weapon + fitting + run modifiers into immutable AttackSpec with stable digest (CRU-020), lineage root/descendant/generation/visited/shared proc budget (CRU-021), multishot (CRU-022), pierce (CRU-023), split (CRU-024), owner-seam metrics and Lab inspector, focused deterministic tests. No surface bounce, no orbit nodes, no conductivity graph."
     },
@@ -15853,7 +15864,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "implemented 2026-08-23 (50e02b34): ArcadeStructuralFx mounted behind cueArbitration; kills and hard collisions have live producers (entity:killed x4 emitters, combat:collisionConsequence x1); bank-shot events are forward-wired for PQ-133.04, which does not exist yet. 11 mount tests wired as check:arcade-structural-fx. NOT integrated: no receipt issued."
+        "design/program/roadmap/receipts/PQ-134.01-REPORT.md"
       ],
       "brief": "Instantiate the pool in the presentation adapter; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat; dispose on context loss; high-water telemetry."
     },
@@ -19129,7 +19140,7 @@
       "priority": 9810,
       "title": "Always-on grid, combat SoA, dirty journal, NEAR token budget",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "performance-control"
@@ -19149,7 +19160,9 @@
       "checks": [
         "node --test test/pq-204-advanced-perf.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-204.00-REPORT.md"
+      ],
       "brief": "Spatial hash stays active at every density. Combat columns pack each tick. Dirty bits mark spawn/pose. Sixteen S1 civilians think per tick; player and combatants always wake."
     },
     {
@@ -19158,7 +19171,7 @@
       "priority": 9811,
       "title": "Save-safe Rapier sleep and off-glass NPC outcomes",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-204.00"
       ],
@@ -19174,7 +19187,9 @@
       "checks": [
         "node --test test/pq-204-advanced-perf.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-204.01-REPORT.md"
+      ],
       "brief": "Non-player non-projectile unattached bodies may sleep; physicsSleeping persists on the entity. Far hostile pairs in one 400 wu cell resolve on a seeded delay."
     },
     {
@@ -19183,7 +19198,7 @@
       "priority": 9812,
       "title": "Family-key collapse and after-present compile",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-204.00"
       ],
@@ -19200,7 +19215,9 @@
       "checks": [
         "node --test test/pq-204-advanced-perf.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-204.02-REPORT.md"
+      ],
       "brief": "Packed-ORM program keys go through canonicalizeSurfaceProgramFamilyKey. After a healthy present, at most one queued compile starts. Weapon lights stay 6+2. No dummy prewarm."
     },
     {
@@ -19223,7 +19240,9 @@
       "checks": [
         "node --test test/pq-204-advanced-perf.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-204.03-REPORT.md"
+      ],
       "brief": "Retained-slot BatchedMesh, multi_draw, and cheaper bloom stay off. Draw-count is not the named pole."
     },
     {
@@ -19248,7 +19267,9 @@
       "checks": [
         "node --test test/pq-204-advanced-perf.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-204.04-REPORT.md"
+      ],
       "brief": "Fence packs bank/pitch. Present applies hull lean from snapshot columns. WASM SIMD, Worker, and WebGPU are not started."
     },
     {

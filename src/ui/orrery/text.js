@@ -3,25 +3,45 @@ import { reducedMotion, onFrame } from './motion.js';
 
 const NOISE = '▚▞▖▗▘▝▙▟#%&*+=<>/\\0123456789';
 
+// One live decrypt per element: a replaced call retires the previous driver before it can
+// keep writing scramble over the new word.
+const activeDecrypts = new WeakMap();
+
 /**
  * Decrypt Text: the word arrives as glyph noise and resolves left to right. Cosmetic randomness
- * only (Math.random is fine here; the sim's rng is never touched by presentation).
+ * only (Math.random is fine here; the sim's rng is never touched by presentation). The final
+ * string is guaranteed at the scheduled end: a starved or backgrounded tab stops rAF entirely,
+ * so a plain timer backstop lands the target even when no late frame ever arrives.
  */
 export function decrypt(element, text, { duration = 260, delay = 0 } = {}) {
   if (!element) return () => {};
   const target = String(text ?? '');
+  // Retire any live driver on this element first — the early returns below must not be
+  // stamped over by a previous decrypt resolving afterwards.
+  const previous = activeDecrypts.get(element);
+  if (typeof previous === 'function') previous();
   if (reducedMotion() || typeof requestAnimationFrame !== 'function' || !target) {
     element.textContent = target;
     return () => {};
   }
   let start = null;
   let stopped = false;
-  const off = onFrame((now) => {
+  let off = () => {};
+  let backstop = 0;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    if (backstop) clearTimeout(backstop);
+    off();
+    if (activeDecrypts.get(element) === stop) activeDecrypts.delete(element);
+    element.textContent = target;
+  };
+  off = onFrame((now) => {
     if (stopped) return false;
     if (start == null) start = now + delay;
     const t = (now - start) / duration;
     if (t < 0) { element.textContent = ''; return true; }
-    if (t >= 1) { element.textContent = target; return false; }
+    if (t >= 1) { stop(); return false; }
     const settled = Math.floor(target.length * t);
     let out = target.slice(0, settled);
     for (let i = settled; i < target.length; i += 1) {
@@ -31,7 +51,9 @@ export function decrypt(element, text, { duration = 260, delay = 0 } = {}) {
     element.textContent = out;
     return true;
   });
-  return () => { stopped = true; off(); element.textContent = target; };
+  backstop = setTimeout(stop, Math.max(0, delay) + Math.max(0, duration) + 64);
+  activeDecrypts.set(element, stop);
+  return stop;
 }
 
 /**

@@ -145,6 +145,71 @@ test('rescue cast members resolve onto the warmed species and packages', () => {
   }
 });
 
+test('scenePrepared begins the opening warm early, not just mid-cook', () => {
+  // The warm used to begin inside live.cook — the rescue-cast packaged-body attaches then
+  // ran inside the cook window and the roster settle still found the drone attach in flight
+  // at the shell-release boundary (the 8 s open-route timeout, left=11 pending at witness).
+  // A non-survival launch must now claim the early slot at game:scenePrepared exactly as a
+  // crucible launch does.
+  const earlyDef = RENDERER_SOURCE.indexOf('_beginEarlyCrucibleRosterWarm() {');
+  const menuDef = RENDERER_SOURCE.indexOf('_beginMenuCrucibleRosterWarm() {');
+  assert.ok(earlyDef > 0 && menuDef > earlyDef);
+  const block = RENDERER_SOURCE.slice(earlyDef, menuDef);
+  assert.match(block, /profile:\s*survivalRunHoldsArena\(state\) \? 'crucible' : 'opening'|profile:\s*openingProfile \? 'opening' : 'crucible'/,
+    'a non-survival scenePrepared arms the opening species cohort, not nothing');
+  assert.match(block, /this\._earlyCrucibleWarm = warm/,
+    'the early warm lands in the slot the cook claims');
+  // A door-staged crucible warm on a non-survival launch is still discarded first —
+  // but the discard must fall through to the opening begin, not return empty.
+  assert.match(block, /_discardEarlyCrucibleWarm\(\)/,
+    'the stale door-staged warm is still discarded');
+  assert.doesNotMatch(block, /_discardEarlyCrucibleWarm\(\);\s*return;/,
+    'discarding the stale warm must not skip the opening begin');
+});
+
+test('the early opening warm defers fleet decodes but starts the attach cohort', () => {
+  // Measured on the witness run: starting the whole-ship GLB decodes at scenePrepared made
+  // the launch SLOWER, not faster — ~100 MB of meshopt decode shares the single main-thread
+  // lane with the authored-library/visuals gates (+8 s on authored-visuals) and the bigger
+  // finish() cohort tripled live.postOpeningPipelines (3.1 → 13.7 s). What actually timed
+  // out was the small packaged-body attach cohort. So: 'hull'-slot files defer to the cook
+  // claim (same runway the mid-cook begin used to give them), small place/pod bodies start
+  // immediately, and finish() backstops the deferred start so no path can skip it.
+  const earlyDef = RENDERER_SOURCE.indexOf('_beginEarlyCrucibleRosterWarm() {');
+  const menuDef = RENDERER_SOURCE.indexOf('_beginMenuCrucibleRosterWarm() {');
+  const earlyBlock = RENDERER_SOURCE.slice(earlyDef, menuDef);
+  assert.match(earlyBlock, /deferFleetDecodes:\s*openingProfile/,
+    'only the early opening warm defers its fleet decodes — crucible keeps the menu dwell');
+
+  const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
+  const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');
+  assert.ok(beginDef > 0 && finishDef > beginDef);
+  const beginBlock = RENDERER_SOURCE.slice(beginDef, finishDef);
+  assert.match(beginBlock, /deferFleetDecodes === true/);
+  assert.match(beginBlock, /warm\.deferredDecodes = \[\]/);
+  // Only the 'hull' slot (whole-ship GLBs) is deferred; place/pod bodies decode immediately.
+  assert.match(beginBlock, /if \(deferFleetDecodes && slot === 'hull'\)/,
+    'the deferral is hull-slot-scoped, not the whole explicit list');
+
+  // The cook claim fires the deferred decodes where the mid-cook begin used to start them.
+  const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
+  const cookBlock = RENDERER_SOURCE.slice(cookStart, beginDef);
+  const claimIndex = cookBlock.indexOf('this._earlyCrucibleWarm = null;');
+  assert.ok(claimIndex > 0, 'the cook claims the early warm');
+  const claimTail = cookBlock.slice(claimIndex, claimIndex + 1200);
+  assert.match(claimTail, /this\._startDeferredWarmDecodes\(crucibleWarm\)/,
+    'the cook claim restarts the deferred fleet decodes with the old mid-cook runway');
+
+  // finish() must backstop the deferred start before the bounded decode wait — a path that
+  // skipped the claim must not leave the fleet files undecoded forever.
+  const releaseDef = RENDERER_SOURCE.indexOf('_releaseSurvivalRosterPrewarm(reason)', finishDef);
+  const finishBlock = RENDERER_SOURCE.slice(finishDef, releaseDef);
+  const decodeWaitIndex = finishBlock.indexOf('decodeWaitMs');
+  const firedIndex = finishBlock.indexOf('_startDeferredWarmDecodes(warm)');
+  assert.ok(firedIndex >= 0 && decodeWaitIndex > firedIndex,
+    'finish() fires deferred decodes before the bounded decode wait');
+});
+
 test('the ordinary opening cook runs the bounded warm with the intro species profile', () => {
   const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
   const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');

@@ -498,7 +498,7 @@ test('C4-LOCAL-02 galaxyMap local layer injects scanner hostility; does not re-o
   // Scanner is a hostility/predicate import, not a world director.
   assert.match(gm, /scanner\.js/);
   assert.doesNotMatch(gm, /enterSector\s*\(/);
-  assert.doesNotMatch(gm, /state\.world\.currentSectorId\s*=/);
+  assert.doesNotMatch(gm, /state\.world\.currentSectorId\s*=(?!=)/);
   const scanner = sourceOpeners().scanner;
   assert.doesNotMatch(scanner, /enterSector\s*\(/);
   assert.doesNotMatch(scanner, /computeRoute\s*\(/);
@@ -513,7 +513,7 @@ test('C4-LOCAL-03 world remains sole route/membership authority across map surfa
     ['localmap', src.localmap],
   ]) {
     assert.doesNotMatch(body, /state\.nav\.route\s*=/, `${name} must not write nav.route`);
-    assert.doesNotMatch(body, /state\.world\.currentSectorId\s*=/, `${name} must not write membership`);
+    assert.doesNotMatch(body, /state\.world\.currentSectorId\s*=(?!=)/, `${name} must not write membership`);
   }
   assert.match(src.world, /computeRoute\(targetSectorId/);
   assert.match(src.world, /this\.state\.nav\.route = route/);

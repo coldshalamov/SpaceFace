@@ -124,7 +124,10 @@ try {
     const bowVerts = []; // verts near the bow station band
     hull.traverse((o) => {
       if (o.name && o.name.startsWith('SOCKET_Retro')) {
-        sockets[o.name] = { pos: o.position.toArray().map((v) => +v.toFixed(3)) };
+        // Sockets live under the articulating pack pivots — report hull-local, not pivot-local.
+        o.updateWorldMatrix(true, false);
+        const wp = new o.position.constructor().setFromMatrixPosition(o.matrixWorld).applyMatrix4(inv);
+        sockets[o.name] = { hullLocal: wp.toArray().map((v) => +v.toFixed(3)) };
         return;
       }
       if (!o.isMesh || retroMeshes.has(o) || !o.geometry || !o.geometry.attributes) return;
@@ -181,13 +184,17 @@ try {
   await page.waitForTimeout(250);
   await shot(page, 'mounts-visible.png');
   // Identify which child mesh owns the visible silhouette: hide each in turn and screenshot.
+  // The assembly is a pair of articulating pivots — descend to their meshes.
   const childNames = await page.evaluate(() => {
     const sf = window.SF;
     const player = sf.state.entities.get(sf.state.playerId);
     const out = [];
     player.view.root.traverse((o) => {
       if (o.userData && o.userData.spacefaceRetroHardware) {
-        for (const c of o.children) out.push({ name: c.name, color: c.material && c.material.color && c.material.color.getHexString(), emissive: c.material && c.material.emissive && c.material.emissive.getHexString(), eInt: c.material && c.material.emissiveIntensity, metal: c.material && c.material.metalness, rough: c.material && c.material.roughness });
+        o.traverse((c) => {
+          if (!c.isMesh) return;
+          out.push({ name: c.name, color: c.material && c.material.color && c.material.color.getHexString(), emissive: c.material && c.material.emissive && c.material.emissive.getHexString(), eInt: c.material && c.material.emissiveIntensity, metal: c.material && c.material.metalness, rough: c.material && c.material.roughness });
+        });
       }
     });
     return out;
@@ -199,13 +206,23 @@ try {
       const player = sf.state.entities.get(sf.state.playerId);
       player.view.root.traverse((o) => {
         if (o.userData && o.userData.spacefaceRetroHardware) {
-          for (const c of o.children) c.visible = c.name !== name;
+          o.traverse((c) => { if (c.isMesh) c.visible = c.name !== name; });
         }
       });
     }, child.name);
     await page.waitForTimeout(180);
     await shot(page, `hide-${child.name}.png`);
   }
+  // Restore visibility for the pair shot.
+  await page.evaluate(() => {
+    const sf = window.SF;
+    const player = sf.state.entities.get(sf.state.playerId);
+    player.view.root.traverse((o) => {
+      if (o.userData && o.userData.spacefaceRetroHardware) {
+        o.traverse((c) => { c.visible = true; });
+      }
+    });
+  });
   await page.evaluate(() => {
     const sf = window.SF;
     const player = sf.state.entities.get(sf.state.playerId);

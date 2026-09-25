@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { followDrawFlightPath } from '../src/combat/drawFlightPath.js';
 import { DRAW_FLIGHT, drawFlightAcceleration, drawWrapAngle } from '../src/core/flight/drawFlightControl.js';
+import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
 
 const DT = 1 / 60;
 const profile = { combatSpeed: 152, mainAccel: 180, maxYawRate: 4.5 };
@@ -162,4 +163,71 @@ test('30/60/120 Hz command integration retains speed and comparable turn complet
   const runs = [30, 60, 120].map(hz => run(p, { dt: 1/hz }));
   for (const r of runs) assert.equal(r.trace.at(-1).exhausted, true);
   assert.ok(Math.max(...runs.map(r => r.trace.at(-1).t)) - Math.min(...runs.map(r => r.trace.at(-1).t)) < 0.12);
+});
+
+// Seed 4242 is the production stroke-speed seed. The ink is deterministic; the seed names
+// the same fixed scenario the 66 WU measurement was taken on.
+const SHORT_STROKE_SEED = 4242;
+function hitchProfile() {
+  return resolvePropulsionProfile({
+    id: 1, isPlayer: true, type: 'ship', driveId: 'drive_reaction_m', mass: 18,
+    data: { defId: 'ship_kestrel' },
+  }, { playerId: 1, player: {}, settings: { controls: { flightMode: 'assisted' } } });
+}
+function scaleStroke(points, length) {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+  }
+  const scale = length / total;
+  return points.map((p) => ({ x: p.x * scale, z: p.z * scale }));
+}
+function meanFractionFromRest(points, flightProfile) {
+  const body = { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  const route = { active: true, points, pointIndex: 1 };
+  const runtime = {};
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < 600; i++) {
+    const command = followDrawFlightPath(route, body, runtime, flightProfile, DT);
+    if (!command) break;
+    const accel = drawFlightAcceleration(body, command, flightProfile, DT);
+    body.vel.x += accel.x * DT;
+    body.vel.z += accel.z * DT;
+    body.pos.x += body.vel.x * DT;
+    body.pos.z += body.vel.z * DT;
+    sum += Math.hypot(body.vel.x, body.vel.z);
+    n += 1;
+    if (command.exhausted) break;
+  }
+  return { fraction: n ? (sum / n) / flightProfile.combatSpeed : 0, samples: n };
+}
+
+test('a 66 WU stroke from rest keeps the straight stroke\'s speed (seed 4242)', () => {
+  const flightProfile = hitchProfile();
+  const cruise = flightProfile.combatSpeed;
+  const envelope = Math.sqrt(flightProfile.mainAccel * 66 / 2) / cruise;
+  const straight = meanFractionFromRest([{ x: 0, z: 0 }, { x: 66, z: 0 }], flightProfile);
+  const corner = meanFractionFromRest(scaleStroke(
+    [{ x: 0, z: 0 }, { x: 1, z: 0 }, { x: 1, z: 1 }], 66,
+  ), flightProfile);
+  const sStroke = meanFractionFromRest(scaleStroke(
+    Array.from({ length: 41 }, (_, i) => ({ x: i, z: 8 * Math.sin((i / 40) * Math.PI * 2) })),
+    66,
+  ), flightProfile);
+  const pct = (fraction) => `${(fraction * 100).toFixed(2)}%`;
+  console.log(
+    `seed ${SHORT_STROKE_SEED} 66 WU from rest: straight ${pct(straight.fraction)} of cruise, `
+    + `corner ${pct(corner.fraction)}, S ${pct(sStroke.fraction)} `
+    + `(straight-line envelope ${pct(envelope)})`,
+  );
+  assert.ok(Math.abs(envelope - 0.3160) < 0.001,
+    `straight-line envelope ${pct(envelope)} should be the measured 31.60% of cruise`);
+  assert.ok(straight.fraction >= 0.3160,
+    `straight stroke slowed to ${pct(straight.fraction)} of cruise`);
+  for (const [name, row] of [['corner', corner], ['S', sStroke]]) {
+    assert.ok(row.fraction >= 0.3160,
+      `${name} from rest averages ${pct(row.fraction)} of cruise, under the straight stroke's 31.60%`);
+    assert.ok(row.samples > 0, `${name} produced no speed samples`);
+  }
 });

@@ -253,11 +253,15 @@ test('tether layer reads the real physics mirror: strain hum, winch spool, attac
   frame(h, 12); // beds built
   const plays = [];
   const origPlay = audio.play.bind(audio);
+  const origTetherBus = tetherGameplay.bus;
   audio.play = (id, opts) => { plays.push(id); return origPlay(id, opts); };
 
   // The production mirror writer, not a test double: tetherGameplay._mirror is the function
-  // that copies attachment authority into state.player.tether every tick.
+  // that copies attachment authority into state.player.tether every tick. It publishes
+  // massline:cadenceChanged on the system bus — init() always supplies one, so this direct
+  // call must wire the harness bus first.
   tetherGameplay._reelStrength = 0.7;
+  tetherGameplay.bus = h.bus;
   tetherGameplay._mirror(h.state, 'rock-9', 0.8, 220, 'loaded',
     { lineControl: true, lineLength: -1, orbitDirection: 0 }, -1, false, 'massline_hook');
   const t = h.state.player.tether;
@@ -267,9 +271,11 @@ test('tether layer reads the real physics mirror: strain hum, winch spool, attac
   assert.ok(Math.abs(t.load) > 0, 'the mirror computes real load');
 
   audio._updateTetherHum();
-  const wantHz = masslineHumHz(0.8);
+  // The hum law follows the PUBLISHED load (computeTetherLoad folds strain through the phase
+  // floors/gain — strain 0.8 pins 'loaded' at load 1.0), not the raw strain argument.
+  const wantHz = masslineHumHz(t.load);
   assert.ok(Math.abs(h.rt.tetherOsc.frequency.value - wantHz) < 0.5,
-    `hum follows strain: ${h.rt.tetherOsc.frequency.value} vs ${wantHz}`);
+    `hum follows the published load: ${h.rt.tetherOsc.frequency.value} vs ${wantHz}`);
   assert.ok(h.rt.tetherHum.gainValue > 0.05, 'strain hum must be audible under load');
   assert.ok(h.rt._tetherSpoolGain.gainValue > 0.005, 'the winch must sing while reeling');
   assert.ok(h.rt._tetherSpoolOsc.frequency.value > 300, 'spool pitch tracks the winch');
@@ -292,8 +298,8 @@ test('tether layer reads the real physics mirror: strain hum, winch spool, attac
   // The layer follows STATE, not payload: slacken the mirror and the bed obeys with no event.
   tetherGameplay._mirror(h.state, 'rock-9', 0.05, 220, 'loaded', { lineControl: false }, 0, false, 'massline_hook');
   audio._updateTetherHum();
-  assert.ok(Math.abs(h.rt.tetherOsc.frequency.value - masslineHumHz(0.05)) < 0.5,
-    'hum follows the eased strain');
+  assert.ok(Math.abs(h.rt.tetherOsc.frequency.value - masslineHumHz(t.load)) < 0.5,
+    'hum follows the eased load (the loaded phase floor keeps a taut line singing)');
   assert.equal(h.rt._tetherSpoolGain.gainValue, 0.0001, 'winch stopped -> spool silent');
 
   // Line gone entirely: the hum closes.
@@ -301,6 +307,7 @@ test('tether layer reads the real physics mirror: strain hum, winch spool, attac
   audio._updateTetherHum();
   assert.equal(h.rt.tetherHum.gainValue, 0.0001, 'detached line must be silent');
   audio.play = origPlay;
+  tetherGameplay.bus = origTetherBus;
 });
 
 // ===========================================================================

@@ -499,7 +499,7 @@ const SHIPPED_MODULES = [
 const USER_MODULE_KEYS = new Set([
   'id', 'name', 'slotType', 'size', 'tier', 'mass', 'price', 'requiresTech', 'baseId',
   'energyDraw', 'mods', 'dps', 'range', 'rareOreChance', 'directToCargo',
-  'legality', 'behavior', 'description', 'visuals',
+  'legality', 'behavior', 'description', 'visuals', 'sentence',
   'purchasable', 'unique', 'salvageOnly', 'variantBonuses',
 ]);
 const USER_MODULE_SLOT_TYPES = new Set(['shield', 'engine', 'cargo', 'mining', 'thruster', 'utility']);
@@ -529,6 +529,9 @@ function userModuleProblem(rec) {
   }
   if (rec.energyDraw != null && (typeof rec.energyDraw !== 'number' || !Number.isFinite(rec.energyDraw))) {
     return 'energyDraw must be a number';
+  }
+  if (rec.sentence != null && (typeof rec.sentence !== 'string' || !rec.sentence.trim() || /[\r\n]/.test(rec.sentence))) {
+    return 'sentence must be one non-empty line';
   }
   if (rec.requiresTech != null && (typeof rec.requiresTech !== 'string' || !rec.requiresTech.startsWith('tech_'))) {
     return 'requiresTech must be a tech_* id';
@@ -567,4 +570,108 @@ function mergeUserModules(base) {
   return merged;
 }
 
-export const MODULES = mergeUserModules(SHIPPED_MODULES);
+// One plain line per module: what it does in the air. Not a price, a mass, or a stat.
+// The fit screen already prints `sentence` on the row. Unwired promises are not claimed —
+// an afterburner and a market uplink do not move the ship or the prices the sim reads.
+const MODULE_AIR_SENTENCE = Object.freeze({
+  mod_shield_booster_s: 'A thicker shield that keeps rebuilding while you fly.',
+  mod_shield_capacitor_m: 'A much thicker shield, and it comes back faster.',
+  mod_shield_aegis_l: 'The heavy shield. It soaks a fight and rebuilds afterward.',
+  unique_choir_bell_aegis: 'The heavy shield, and once a fight it knocks a missile back.',
+  mod_engine_ion_m: 'The yard drive. Push and the run stay where this hull was rated.',
+  mod_engine_fusion_m: 'More push than the yard drive, and a faster run above the speed you fight at.',
+  mod_engine_warp_l: 'The long run. You still fight at the same cap, and you travel much faster.',
+  unique_pale_coil_warp_drive: 'The long run, and once a fight it blinks you a short jump.',
+  mod_thruster_stock_s: 'The yard set for a small bay. Turn, slide and stop stay as this hull was built.',
+  mod_thruster_stock_m: 'The yard set for a medium bay. Turn, slide and stop stay as this hull was built.',
+  mod_thruster_stock_l: 'The yard set for a large bay. Turn, slide and stop stay as this hull was built.',
+  mod_thruster_stripped_s: 'You give up turn, slide and brake. The hull commits, and it answers late.',
+  mod_thruster_vernier_m: 'The nose comes around harder, and you slide and stop with more authority.',
+  mod_thruster_gimbal_l: 'The strongest manoeuvring set. It turns, slides and stops harder than the yard cluster.',
+  mod_cargo_pod_m: 'More room in the hold. The mass is what you feel once it is full.',
+  mod_cargo_expander_l: 'A much larger hold. You will feel the mass when it is full.',
+  mod_cargo_compactor_l: 'More hold, and the space you already have packs tighter.',
+  mod_mining_laser_s: 'Bites ore. Hold it and the beam runs hot until you let it vent.',
+  mod_mining_beam_m: 'Cuts ore faster and farther than the starter laser.',
+  mod_mining_pulverizer_l: 'A heavy cut, and sometimes it cracks a rare seam.',
+  mod_mining_industrial_l: 'The deepest cut. Ore goes straight into the hold.',
+  mod_repulsion_trap_s: 'Drop a charge behind you that shoves whoever flies into it.',
+  mod_cargo_scanner_s: 'Reads what another hull is carrying.',
+  unique_truesight_scanner: 'Reads a hold, and from farther out than a stock scanner.',
+  mod_market_data_s: 'You carry its mass. It does not change the prices you see.',
+  mod_triangulation_suite_s: 'Closes an anomaly fix in two scans instead of three.',
+  mod_shield_hardener_m: 'The same hit takes less out of the hull.',
+  mod_afterburner_m: 'You carry its mass. It does not change the boost you fly.',
+  mod_repair_nanobots_m: 'The hull knits itself back together between fights.',
+  unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots.',
+  mod_tractor_beam_m: 'Picks up ore and wrecks without stopping on them.',
+  unique_tideline_tractor: 'Picks up a whole wreck, from farther out than a stock tractor.',
+  unique_no_cut_filament: 'A taut swing cuts a hostile line.',
+  unique_toll_saint_bridle: 'Anchors two points at once, and the pull tumbles light hulls.',
+  unique_broken_ring_whip: 'Stores the stretch of a swing and gives it back as a snap.',
+  mod_elastic_whip_m: 'Stretch the line, then spend that stored snap when you cut it.',
+  mod_frame_coupler_m: 'Holds a heavy tow on a hitch so the load turns with you.',
+  mod_monofilament_sweep_m: 'A taut swing cuts a hostile line and staggers a light hull.',
+  mod_transverse_snare_m: 'A fast hull that crosses your line gets snatched and tumbled.',
+  mod_twin_bridle_m: 'Latch two targets close together and the line tumbles both.',
+  mod_targeting_computer_m: 'Your guns reach farther and hit harder.',
+  mod_pds_servo_s: 'Knocks down a shot or a missile that gets in close.',
+  mod_decoy_buoy_s: 'Puts a false contact in the water and missiles go for it.',
+  mod_sensor_array_l: 'Sees contacts farther out.',
+  mod_drone_bay_l: 'Puts a drone in the water.',
+  mod_jump_drive_m: 'Jumps you farther than the hull\'s own drive.',
+  mod_ram_plate: 'The hull itself hits harder when you mean to ram.',
+  mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
+  mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
+  mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',
+  mod_loot_magnet_s: 'Debris and pods drift into the hull as you fly past.',
+  mod_mass_flail_rig_m: 'While you tow something heavier than you, a bump hits with the load\'s mass.',
+  mod_massline_spool_m: 'A longer line, so you can swing off things much farther away.',
+  mod_massline_spool_l: 'The longest line. The swing starts from far outside a fight.',
+  mod_cloak_mk1: 'Shrinks the range at which you are seen, and it drinks power while dark.',
+  mod_cloak_mk2: 'Harder to see than the first shroud, and it recovers faster when you drop it.',
+  unique_quietcloak: 'A tighter detection ring than the Mk2, and it drinks less while dark.',
+  mod_charge_rack: 'Carries charges you can throw and set off.',
+  mod_charge_vector_rack: 'Carries the same charges, and you can kick one out behind you.',
+  mod_drill_amp: 'The rich-core window on a rock stays open a little longer.',
+  mod_survey_suite: 'The scan ring is wider, and a ping stays up longer.',
+  unique_deepsurvey_suite: 'A wider scan than the stock suite, and the ping lingers longer.',
+  mod_smuggler_hold: 'A little more cargo, and part of the hold does not show on a scan.',
+  mod_smuggler_hold_m: 'More hidden hold. A scan misses more of what you carry.',
+  mod_sensor_scrambler_s: 'You read quieter on a scan than the hull you are.',
+  mod_sensor_scrambler_m: 'You read much quieter. A scan has to get closer.',
+  unique_phantom_scrambler: 'Quieter still. You are a faint return.',
+  mod_chaff_dispenser_m: 'Breaks a missile lock and pulls the shot off you.',
+  unique_smokesong_chaff: 'A wider chaff cloud that pulls missiles off you.',
+  mod_ecm_jammer_l: 'Jams a missile\'s steering so it stops turning toward you.',
+  mod_thermal_sink_s: 'The guns shed heat faster, so a burst lasts longer.',
+  mod_thermal_sink_m: 'A stronger heatsink. The guns stay cool through a longer hold.',
+  unique_cryo_shroud_sink: 'Cools the guns harder than a stock sink, and the shots hit a little harder.',
+  mod_twin_mount: 'Your shot throws a second, weaker round, and the gun runs hotter.',
+  mod_triad_mount: 'Your shot throws a third, wider round, and the gun runs hotter still.',
+  mod_piercing_core: 'A hit keeps going into the hull behind the first.',
+  mod_forked_core: 'The first thing you hit splits the shot into two weaker children.',
+  mod_bank_shot: 'Shots bounce off stone.',
+  mod_smart_bank: 'After a bounce, the shot steers toward a hostile.',
+  mod_ion_payload: 'A hit leaves the target ionized.',
+  mod_incendiary_payload: 'A hit sets the target burning.',
+  mod_gravity_tag: 'A hit marks the target for gravity.',
+  mod_relay_arc: 'The first hit jumps to a nearby target.',
+  mod_bank_relay: 'A bounced hit can jump onward. A direct hit cannot.',
+  mod_tether_capacitor: 'Shots into the hull on your line hit harder, up to a cap.',
+  mod_conductive_path: 'A chain only jumps to a target that is already ionized.',
+  mod_cryo_payload: 'A hit locks the target in cryo.',
+  mod_cryo_gyros: 'Two orbiting nodes freeze whatever passes close.',
+  mod_herald_fan: 'The volley spreads wider and runs a little hotter. The damage does not change.',
+});
+
+function attachAirSentences(list) {
+  for (const mod of list) {
+    if (!mod || (typeof mod.sentence === 'string' && mod.sentence.trim())) continue;
+    const line = MODULE_AIR_SENTENCE[mod.id];
+    if (line) mod.sentence = line;
+  }
+  return list;
+}
+
+export const MODULES = attachAirSentences(mergeUserModules(SHIPPED_MODULES));

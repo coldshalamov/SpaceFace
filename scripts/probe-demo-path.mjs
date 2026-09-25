@@ -23,6 +23,10 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT_DIR = path.join(ROOT, '.devshots', 'demo-path');
 const HEADLESS = process.argv.includes('--headless');
+// SF_DEMO_SCALE_WATCH=1: instrument every asteroid body scale so a compounding writer is
+// caught with its stack (2026-09-25: a shared common rock reached -7.4e7 across the
+// Crucible -> adventure transition; second writer suspected after the swell fix).
+const SCALE_WATCH = process.env.SF_DEMO_SCALE_WATCH === '1';
 const { chromium } = await loadPlaywright();
 
 function cpuSnapshot() {
@@ -104,6 +108,8 @@ async function step(id, note, fn) {
   } catch { rec.shot = null; }
   steps.push(rec);
   console.log(`[step] ${rec.reached ? 'OK  ' : 'FAIL'} ${id} ${rec.seconds}s cpu=${rec.cpuPct}% frames>100ms=${rec.framesOver100}/${rec.frames}${rec.error ? ' err=' + rec.error : ''}`);
+  // SF_DEMO_STOP_AFTER=<step id> ends the walk there (a partial walk never reports clean).
+  if (process.env.SF_DEMO_STOP_AFTER === id) throw new Error(`stopped after ${id} (SF_DEMO_STOP_AFTER)`);
   return rec;
 }
 
@@ -139,6 +145,7 @@ const server = spawn(process.execPath, ['server.js', String(port)], {
 });
 let browser = null;
 const consoleErrors = [];
+let shaderErrors = 0;
 const t0 = Date.now();
 try {
   const baseUrl = `http://127.0.0.1:${port}/?demo=1`;
@@ -155,9 +162,206 @@ try {
   page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (error) => consoleErrors.push(`[pageerror] ${String(error).slice(0, 300)}`));
   page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(`[console] ${msg.text().slice(0, 300)}`);
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    // The isolated store has no save drawer mounted: that 404 is by design (scripts/lib/browser-issues.mjs).
+    if (text.includes('404') && /__spaceface_player_store/.test(msg.location()?.url || text)) return;
+    // A failed program link draws nothing: on 2026-09-24 one dropped GLSL declaration made every
+    // hull and rock invisible for a whole adventure leg and the walk still "reached" each step.
+    if (/Shader Error|Program Info Log|undeclared identifier|VALIDATE_STATUS false/i.test(text)) shaderErrors += 1;
+    consoleErrors.push(`[console] ${text.slice(0, 300)}`);
   });
   await page.addInitScript(() => {
+    // What the glass actually holds: is the player's hull in the scene and drawn, and how much of
+    // the world has a mesh at all. A HUD over an empty sky reads "reached" without this.
+    window.__SF_DEMO_RENDER_DIAG__ = () => {
+      const SF = window.SF;
+      const render = SF && SF.registry && SF.registry.get && SF.registry.get('render');
+      const st = SF && SF.state;
+      if (!render || !st) return { error: 'no render system' };
+      const inScene = (o) => { let n = o; while (n) { if (n.isScene) return true; if (n.visible === false) return false; n = n.parent; } return false; };
+      const player = render._meshes && render._meshes.get(st.playerId);
+      let meshes = 0; let drawn = 0; const states = {};
+      for (const [, m] of render._meshes || []) {
+        meshes += 1;
+        if (m && inScene(m)) drawn += 1;
+        const s = (m && m.userData && m.userData.authoredAssetState) || 'none';
+        states[s] = (states[s] || 0) + 1;
+      }
+      const rig = render.cam || null;
+      const cam = (rig && (rig.isCamera ? rig : (rig.obj || rig.camera || rig.cam))) || null;
+      let zoom = null;
+      try { zoom = rig && typeof rig.zoomDiagnostics === 'function' ? rig.zoomDiagnostics() : null; } catch (_) { zoom = null; }
+      const deathCam = rig && typeof rig.isDeathCam === 'function' ? rig.isDeathCam() : null;
+      const pe = st.entities.get(st.playerId);
+      let playerNdc = null; let playerWorld = null;
+      try {
+        if (player && cam && SF.THREE) {
+          const v = new SF.THREE.Vector3();
+          player.getWorldPosition(v);
+          playerWorld = [Math.round(v.x), Math.round(v.y), Math.round(v.z)];
+          cam.updateMatrixWorld();
+          v.project(cam);
+          playerNdc = [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(3)];
+        }
+      } catch (e) { playerNdc = String(e && e.message || e); }
+      const sceneRoot = render.scene;
+      // Whatever covers screen centre: name the translucent (or any) scene objects whose
+      // projected bounds hold NDC (0,0) plus the DOM stack under the pixel — 2026-09-25 the
+      // reticle held a ~210 px dark purple disc where the hull should draw.
+      const centerCoverers = [];
+      try {
+        if (cam && sceneRoot && SF.THREE) {
+          const v = new SF.THREE.Vector3();
+          sceneRoot.traverse((o) => {
+            if (centerCoverers.length >= 30) return;
+            if (!o.isMesh && !o.isInstancedMesh && !o.isPoints && !o.isSprite && !o.isLine) return;
+            const b = new SF.THREE.Box3().setFromObject(o);
+            if (b.isEmpty() || !Number.isFinite(b.min.x) || !Number.isFinite(b.max.x)) return;
+            let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity; let maxZ = -Infinity;
+            for (const cx of [b.min.x, b.max.x]) {
+              for (const cy of [b.min.y, b.max.y]) {
+                for (const cz of [b.min.z, b.max.z]) {
+                  v.set(cx, cy, cz).project(cam);
+                  if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+                  if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+                  if (v.z > maxZ) maxZ = v.z;
+                }
+              }
+            }
+            if (minX > 0.15 || maxX < -0.15 || minY > 0.15 || maxY < -0.15) return;
+            const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            const chain = []; let n = o; while (n && chain.length < 6) { chain.push(`${n.type}:${n.name || '-'}`); n = n.parent; }
+            const ws = o.getWorldScale(new SF.THREE.Vector3());
+            const wp = o.getWorldPosition(new SF.THREE.Vector3());
+            centerCoverers.push({
+              name: o.name, type: o.type, inScene: inScene(o), visible: o.visible,
+              transparent: mats.map((mt) => mt && (mt.transparent === true || mt.opacity < 1)),
+              material: mats.map((mt) => mt && `${mt.name || mt.type} op=${mt.opacity} blend=${mt.blending} dT=${mt.depthTest} dW=${mt.depthWrite} side=${mt.side}`).slice(0, 3),
+              ndc: [minX, maxX, minY, maxY].map((x) => +x.toPrecision(3)), maxZ: +maxZ.toPrecision(3),
+              worldPos: [Math.round(wp.x), Math.round(wp.y), Math.round(wp.z)],
+              worldScale: [ws.x, ws.y, ws.z].map((x) => +x.toPrecision(4)),
+              ud: Object.keys(o.userData || {}).slice(0, 8), chain,
+            });
+          });
+        }
+      } catch (e) { centerCoverers.push(String(e && e.message || e)); }
+      // The hull is opaque so it never enters centerCoverers — dump the player's own subtree
+      // (shield bubble, plume halo, engine glow) to name whatever draws the centre disc.
+      const playerTree = [];
+      try {
+        if (player && typeof player.traverse === 'function' && SF.THREE && cam) {
+          const v = new SF.THREE.Vector3();
+          player.traverse((o) => {
+            if (playerTree.length >= 40) return;
+            if (!o.isMesh && !o.isInstancedMesh && !o.isPoints && !o.isSprite && !o.isLine) return;
+            const b = new SF.THREE.Box3().setFromObject(o);
+            let minX = 0; let maxX = 0; let minY = 0; let maxY = 0; let maxZ = 0;
+            if (!b.isEmpty() && Number.isFinite(b.min.x) && Number.isFinite(b.max.x)) {
+              minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity; maxZ = -Infinity;
+              for (const cx of [b.min.x, b.max.x]) {
+                for (const cy of [b.min.y, b.max.y]) {
+                  for (const cz of [b.min.z, b.max.z]) {
+                    v.set(cx, cy, cz).project(cam);
+                    if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+                    if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+                    if (v.z > maxZ) maxZ = v.z;
+                  }
+                }
+              }
+            }
+            const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            const ws = o.getWorldScale(new SF.THREE.Vector3());
+            playerTree.push({
+              name: o.name, type: o.type, visible: o.visible, inScene: inScene(o),
+              material: mats.map((mt) => mt && `${mt.name || mt.type} op=${mt.opacity} blend=${mt.blending} tr=${mt.transparent} dW=${mt.depthWrite}`).slice(0, 3),
+              ndc: [minX, maxX, minY, maxY].map((x) => +(+x).toPrecision(3)), maxZ: +(+maxZ).toPrecision(3),
+              worldScale: [ws.x, ws.y, ws.z].map((x) => +x.toPrecision(4)),
+              localScale: [o.scale.x, o.scale.y, o.scale.z].map((x) => +x.toPrecision(4)),
+              frustumCulled: o.frustumCulled, renderOrder: o.renderOrder,
+              ud: Object.keys(o.userData || {}).slice(0, 8),
+            });
+          });
+        }
+      } catch (e) { playerTree.push(String(e && e.message || e)); }
+      const domAtCenter = [];
+      try {
+        const els = document.elementsFromPoint(innerWidth / 2, innerHeight / 2);
+        for (const el of els.slice(0, 14)) {
+          const cs = getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          domAtCenter.push({
+            tag: el.tagName, cls: String(el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className).slice(0, 60),
+            bg: String(cs.backgroundColor).slice(0, 40), op: cs.opacity,
+            rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
+          });
+        }
+      } catch (e) { domAtCenter.push(String(e && e.message || e)); }
+      const tallRoofs = [];
+      try {
+        const box = new SF.THREE.Box3();
+        for (const [id, m] of render._meshes || []) {
+          const kind = m && m.userData && m.userData.kind;
+          if (!['station', 'place', 'asteroid', 'wreck'].includes(kind)) continue;
+          box.setFromObject(m);
+          if (box.isEmpty() || box.max.y < 2000) continue;
+          let worst = null;
+          m.traverse((o) => {
+            if (!o.isMesh && !o.isInstancedMesh && !o.isPoints && !o.isSprite && !o.isLine) return;
+            const b = new SF.THREE.Box3().setFromObject(o);
+            if (!b.isEmpty() && (!worst || b.max.y > worst.maxY)) {
+              const g = o.geometry; const pos = g && g.attributes && g.attributes.position;
+              const s = o.getWorldScale(new SF.THREE.Vector3());
+              const chain = []; let n = o; while (n && chain.length < 6) { chain.push(`${n.type}:${n.name || '-'}`); n = n.parent; }
+              worst = {
+                name: o.name, type: o.type, maxY: Math.round(b.max.y), wy: Math.round(o.getWorldPosition(new SF.THREE.Vector3()).y),
+                worldScale: [s.x, s.y, s.z].map((v) => +v.toPrecision(4)),
+                localScale: [o.scale.x, o.scale.y, o.scale.z].map((v) => +v.toPrecision(4)),
+                geomBox: g && (g.boundingBox || (g.computeBoundingBox(), g.boundingBox)) ? [g.boundingBox.min.y, g.boundingBox.max.y].map((v) => +v.toPrecision(4)) : null,
+                pos: pos ? { count: pos.count, itemSize: pos.itemSize, normalized: pos.normalized, array: pos.array && pos.array.constructor.name, interleaved: !!pos.isInterleavedBufferAttribute } : null,
+                geomName: g && g.name, material: o.material && (o.material.name || o.material.type), chain,
+                ud: Object.keys(o.userData || {}).slice(0, 10),
+                // Forensics for the silent-writer hunt: is this the tracked body, is its scale
+                // vector sealed/proxied, and what do sibling meshes carry?
+                identity: {
+                  isInstanceBody: o === (m.userData && m.userData.asteroidInstanceBody),
+                  isChild0: o === m.children[0],
+                  childCount: m.children.length,
+                  scaleFrozen: Object.isFrozen(o.scale),
+                  xDescriptor: (() => { try { const d = Object.getOwnPropertyDescriptor(o.scale, 'x'); return d ? `${d.get ? 'accessor' : 'data'}${d.configurable ? '' : '-nonconf'}${d.writable === false ? '-ro' : ''}` : 'none'; } catch (e) { return String(e); } })(),
+                  matrixAutoUpdate: o.matrixAutoUpdate,
+                  matrixWorldAutoUpdate: o.matrixWorldAutoUpdate,
+                  watchState: typeof window.__SF_SCALE_WATCHED__ === 'function' ? window.__SF_SCALE_WATCHED__(o) : 'n/a',
+                  firstSeen: typeof window.__SF_SCALE_FIRST_OF__ === 'function' ? window.__SF_SCALE_FIRST_OF__(o) : null,
+                  scaleDescriptor: (() => { try { const d = Object.getOwnPropertyDescriptor(o, 'scale'); return d ? `${d.get ? 'accessor' : 'data'}${d.configurable ? '' : '-nonconf'}` : 'none'; } catch (e) { return String(e); } })(),
+                  siblings: m.children.map((c) => `${c.type}:${(c.scale && +c.scale.x.toPrecision(3))} mat=${c.material && (c.material.name || c.material.type)}`).slice(0, 8),
+                },
+              };
+            }
+          });
+          tallRoofs.push({ id, kind, name: m.name, maxY: Math.round(box.max.y), minY: Math.round(box.min.y), worst });
+          if (tallRoofs.length >= 6) break;
+        }
+      } catch (e) { tallRoofs.push(String(e && e.message || e)); }
+      const rigKeys = rig ? Object.keys(rig).slice(0, 12) : null;
+      return {
+        entities: st.entities.size, meshes, drawnInScene: drawn, states,
+        player: player ? {
+          visible: player.visible, inScene: inScene(player), state: player.userData && player.userData.authoredAssetState,
+          children: player.children ? player.children.length : 0, name: player.name,
+        } : 'no mesh',
+        playerPos: pe && pe.pos ? [Math.round(pe.pos.x), Math.round(pe.pos.z)] : null,
+        cameraPos: cam && cam.position ? [Math.round(cam.position.x), Math.round(cam.position.y), Math.round(cam.position.z)] : null,
+        cameraFar: cam ? cam.far : null, cameraNear: cam ? cam.near : null, cameraLayers: cam && cam.layers ? cam.layers.mask : null,
+        playerLayers: player && player.layers ? player.layers.mask : null,
+        playerWorld, playerNdc, deathCam, tallRoofs, centerCoverers, playerTree, domAtCenter,
+        zoom: zoom ? { dynamicZoom: zoom.dynamicZoom, holdS: zoom.holdS, focusX: zoom.focusX, focusZ: zoom.focusZ, director: zoom.director } : null,
+        sceneChildren: sceneRoot ? sceneRoot.children.length : null,
+        sceneVisible: sceneRoot ? sceneRoot.visible : null,
+        mode: st.mode, run: st.run ? { kind: st.run.kind, phase: st.run.phase } : null,
+        firstPlayableFrameAt: st.render && st.render.firstPlayableFrameAt,
+      };
+    };
     window.__SF_DEMO_FRAMES__ = { stamps: [], lastT: null };
     const tick = (t) => {
       const f = window.__SF_DEMO_FRAMES__;
@@ -177,6 +381,311 @@ try {
       }
     } catch (_) { /* storage unavailable */ }
   });
+  if (SCALE_WATCH) {
+    await page.addInitScript(() => {
+      // Compounding-scale watchdog (SF_DEMO_SCALE_WATCH=1): asteroid body meshes keep ending up
+      // at |scale| ~1e7-1e8 across the Crucible -> adventure transition. Three coverage layers:
+      //  1. Vector3 mutator wrappers catch anomalous values on ANY vector (covers writes made
+      //     before a body is registered, and replaced scale objects).
+      //  2. Per-body accessor instrumentation catches direct `.x =` writes.
+      //  3. Scene + _meshes scan finds bodies hidden inside authored boundaries and notices when
+      //     a body's scale object itself was swapped.
+      const writes = window.__SF_SCALE_WRITES__ = [];
+      const firstSeen = window.__SF_SCALE_FIRST__ = new Map();
+      const suspiciousVecs = new Set();
+      const instrumented = new WeakSet();
+      const watchedScale = new WeakMap();
+      const scaleVecs = new WeakSet();
+      const SFState = () => window.SF && window.SF.state;
+      const snap = (extra) => {
+        const st = SFState();
+        return {
+          simTime: st && st.simTime, mode: st && st.mode,
+          run: st && st.run ? { kind: st.run.kind, phase: st.run.phase } : null,
+          ...extra,
+        };
+      };
+      // `body.*` events are the gold channel — a dedicated list so position/bounds noise can
+      // never flood them out (that flood is exactly what hid the writer in earlier runs).
+      const bodyWrites = window.__SF_SCALE_BODY_WRITES__ = [];
+      const record = (entry) => {
+        if (entry && typeof entry.at === 'string' && entry.at.startsWith('body.')) {
+          if (bodyWrites.length < 200) bodyWrites.push(entry);
+          return;
+        }
+        if (writes.length < 400) writes.push(entry);
+      };
+      // Layer 1: wrap the mutators any writer must eventually call on a Vector3. window.SF is
+      // created after this init script runs, so install lazily from scan() once it exists.
+      let vecWrapped = false;
+      const wrapVector3 = () => {
+        if (vecWrapped) return;
+        const proto = window.SF && window.SF.THREE && window.SF.THREE.Vector3
+          && window.SF.THREE.Vector3.prototype;
+        if (!proto) return;
+        vecWrapped = true;
+        for (const name of ['set', 'setScalar', 'setX', 'setY', 'setZ', 'setComponent',
+          'copy', 'fromArray', 'multiplyScalar', 'multiply', 'divideScalar',
+          'applyMatrix4', 'setFromMatrixColumn', 'setFromMatrixScale', 'lerp']) {
+          if (typeof proto[name] !== 'function' || proto[name].__sfWatched) continue;
+          const orig = proto[name];
+          const wrapped = function wrappedScaleWatch(...args) {
+            const r = orig.apply(this, args);
+            try {
+              const big = Math.max(Math.abs(this.x), Math.abs(this.y), Math.abs(this.z));
+              const neg = Math.min(this.x, this.y, this.z);
+              // Position/bounds noise floods the record list (GLB quantized bboxes hit ±32767,
+              // world coords reach ±1e4) — uninstrumented vectors need an extreme threshold;
+              // a vector known to be an object's scale only needs |v|>1000 or a negative.
+              const hit = scaleVecs.has(this)
+                ? (big > 1000 || neg < 0)
+                : big > 1e5;
+              if (hit && !suspiciousVecs.has(this)) {
+                suspiciousVecs.add(this);
+                record(snap({
+                  at: `Vector3.${name}`, v: [this.x, this.y, this.z], vec: this,
+                  stack: (new Error()).stack.split('\n').slice(0, 14).join('\n'),
+                }));
+              }
+            } catch (_) { /* watch must never break the game */ }
+            return r;
+          };
+          wrapped.__sfWatched = true;
+          proto[name] = wrapped;
+        }
+      };
+      // Earliest possible install: window.SF is Object.assign'ed inside main.js during boot —
+      // wrapping Vector3 in its setter beats the first poll by the whole boot sequence.
+      let sfStore;
+      Object.defineProperty(window, 'SF', {
+        configurable: true,
+        enumerable: true,
+        get: () => sfStore,
+        set: (v) => {
+          sfStore = v;
+          try { wrapVector3(); wrapAdd(); } catch (_) { /* watch must never break boot */ }
+        },
+      });
+      // Layer 2: per-component accessors on the object's live scale vector. Every Object3D added
+      // anywhere gets instrumented (the add() wrap below), so the base is the build-time scale.
+      // Dedupe must be PER BODY: a writer that inflates many bodies shares one stack, and a
+      // global key would hide every victim after the first — which is exactly how the earlier
+      // runs lost the inflator's write.
+      const seenByBody = new WeakMap();
+      const instrument = (body, id) => {
+        const sc = body.scale;
+        if (!sc) return;
+        watchedScale.set(body, sc);
+        scaleVecs.add(sc);
+        let seen = seenByBody.get(body);
+        if (!seen) { seen = new Set(); seenByBody.set(body, seen); }
+        // Trap `body.scale = v` — the one write channel per-component accessors can't see.
+        // Redefine the property as an accessor; THREE only reads .scale in production code.
+        try {
+          const cur = Object.getOwnPropertyDescriptor(body, 'scale');
+          if (cur && cur.writable && !cur.get) {
+            let liveScale = sc;
+            Object.defineProperty(body, 'scale', {
+              configurable: true,
+              enumerable: cur.enumerable,
+              get: () => liveScale,
+              set: (v) => {
+                record(snap({
+                  id, at: 'body.scale=',
+                  value: liveScale ? [liveScale.x, liveScale.y, liveScale.z] : null,
+                  next: v ? [v.x, v.y, v.z] : null,
+                  stack: (new Error()).stack.split('\n').slice(0, 14).join('\n'),
+                }));
+                liveScale = v;
+                watchedScale.set(body, v);
+                if (v) scaleVecs.add(v);
+              },
+            });
+          }
+        } catch (_) { /* scale already sealed/getter — nothing can assign it anyway */ }
+        for (const axis of ['x', 'y', 'z']) {
+          let value = sc[axis];
+          const base = Math.abs(value) || 1;
+          const sign0 = value === 0 ? 0 : Math.sign(value);
+          // A body already anomalous at instrument time gets a hair trigger: the writer is
+          // likely still running, and every write it makes is evidence.
+          const watchAll = base > 500;
+          try {
+            Object.defineProperty(sc, axis, {
+              configurable: true,
+              enumerable: true,
+              get: () => value,
+              set: (v) => {
+                const anomalous = !Number.isFinite(v)
+                  || Math.abs(v) > Math.max(64 * base, 1000)
+                  || (v !== 0 && sign0 !== 0 && Math.sign(v) !== sign0);
+                if (anomalous || watchAll) {
+                  const stack = (new Error()).stack || '';
+                  const key = stack.split('\n').slice(1, 6).join('|');
+                  const cap = watchAll ? 60 : 40;
+                  if (!seen.has(key) && seen.size < cap) {
+                    seen.add(key);
+                    record(snap({
+                      id, axis, value: v, at: `body.scale.${axis}=`,
+                      stack: stack.split('\n').slice(0, 14).join('\n'),
+                    }));
+                  }
+                }
+                value = v;
+              },
+            });
+          } catch (_) { /* already instrumented by a clone */ }
+        }
+      };
+
+      const noteBody = (body, id) => {
+        if (!body || !body.scale) return;
+        if (!firstSeen.has(body)) {
+          firstSeen.set(body, snap({ id, scale: [body.scale.x, body.scale.y, body.scale.z] }));
+        }
+        if (watchedScale.has(body) && watchedScale.get(body) !== body.scale) {
+          const old = watchedScale.get(body);
+          watchedScale.delete(body);
+          record(snap({
+            id, at: 'body.scale-object-replaced',
+            value: old ? [old.x, old.y, old.z] : null,
+            next: [body.scale.x, body.scale.y, body.scale.z],
+          }));
+          instrumented.delete(body); // re-instrument the swapped-in vector
+        }
+        if (!instrumented.has(body)) {
+          instrumented.add(body);
+          instrument(body, id);
+        }
+      };
+      // The writer inflates bodies between construction and registry entry — firstSeen already
+      // holds ±4e8. THREE's 'added' event fires on the child, so an 'added' listener can never
+      // exist in time; wrapping Object3D.prototype.add instruments each object during the exact
+      // g.add(mesh) call that parents it — before any subsequent code can write scale.
+      let addWrapped = false;
+      const wrapAdd = () => {
+        if (addWrapped) return;
+        const O3D = window.SF && window.SF.THREE && window.SF.THREE.Object3D;
+        if (!O3D || !O3D.prototype || !O3D.prototype.add || O3D.prototype.add.__sfWatched) return;
+        addWrapped = true;
+        const origAdd = O3D.prototype.add;
+        const wrapped = function wrappedAddWatch(...objs) {
+          for (const o of objs) {
+            try {
+              if (o && o.isObject3D) {
+                noteBody(o, this.name || o.name || null);
+                if (o.children && o.children.length) {
+                  o.traverse((c) => noteBody(c, (c.parent && c.parent.name) || c.name || null));
+                }
+              }
+            } catch (_) { /* transient */ }
+          }
+          return origAdd.apply(this, objs);
+        };
+        wrapped.__sfWatched = true;
+        O3D.prototype.add = wrapped;
+      };
+      // Poll timeseries per tracked body — records the actual scale trajectory even if the
+      // write channel is invisible (e.g. defines a new data property over the accessor).
+      const trace = new Map();
+      const traceSample = (body, id) => {
+        const sc = body.scale;
+        if (!sc) return;
+        const k = [sc.x, sc.y, sc.z];
+        let arr = trace.get(body);
+        if (!arr) { arr = []; trace.set(body, arr); }
+        const last = arr[arr.length - 1];
+        const changed = !last || k.some((v, i) => {
+          const l = last.s[i];
+          return Math.abs(v - l) > Math.max(0.5, Math.abs(l) * 0.1) || Math.sign(v) !== Math.sign(l);
+        });
+        if (changed && arr.length < 24) arr.push({ ...snap({ id }), s: k });
+      };
+      const scan = () => {
+        try {
+          wrapVector3();
+          wrapAdd();
+          const SF = window.SF;
+          const render = SF && SF.registry && SF.registry.get && SF.registry.get('render');
+          if (render && render._meshes) {
+            for (const [id, m] of render._meshes) {
+              if (!m || !m.userData || m.userData.kind !== 'asteroid') continue;
+              const b = m.userData.asteroidInstanceBody || (m.children && m.children[0]);
+              noteBody(b, id);
+              traceSample(b, id);
+            }
+          }
+          if (render && render.scene && typeof render.scene.traverse === 'function') {
+            render.scene.traverse((o) => {
+              if (!o || !o.isMesh) return;
+              const ud = o.userData || {};
+              if (ud.asteroidInstanceTypeId || (o.parent && o.parent.name && /^Asteroid_/.test(o.parent.name))) {
+                const rootId = o.parent && o.parent.name;
+                noteBody(o, rootId);
+                traceSample(o, rootId);
+              }
+            });
+          }
+        } catch (_) { /* transient */ }
+      };
+      window.__SF_SCALE_TRACE__ = () => {
+        const out = [];
+        for (const [body, arr] of trace) {
+          const last = arr[arr.length - 1];
+          const s = last && last.s || [];
+          if (arr.length > 1 || s.some((x) => Math.abs(x) > 200 || x < 0)) {
+            out.push({ id: last ? last.id : null, ud: Object.keys(body.userData || {}).slice(0, 6), name: body.name || (body.parent && body.parent.name) || null, samples: arr });
+          }
+          if (out.length >= 200) break;
+        }
+        return out;
+      };
+      // Correlate recorded suspicious vectors to the scene object that owns them (o.scale === vec),
+      // and emit the first-seen scale list — serializable for the step detail.
+      window.__SF_SCALE_CORRELATE__ = () => {
+        const out = [];
+        const SF = window.SF;
+        const render = SF && SF.registry && SF.registry.get && SF.registry.get('render');
+        const scene = render && render.scene;
+        for (const entry of [...bodyWrites, ...writes]) {
+          const item = { ...entry };
+          delete item.vec;
+          if (entry.vec && scene) {
+            let owner = null;
+            scene.traverse((o) => { if (!owner && o.scale === entry.vec) owner = o; });
+            if (owner) {
+              const chain = []; let n = owner; while (n && chain.length < 6) { chain.push(`${n.type}:${n.name || '-'}`); n = n.parent; }
+              item.owner = { name: owner.name, type: owner.type, chain, ud: Object.keys(owner.userData || {}).slice(0, 8) };
+            }
+          }
+          out.push(item);
+        }
+        return out;
+      };
+      window.__SF_SCALE_FIRST_LIST__ = () => {
+        const out = [];
+        for (const [body, entry] of firstSeen) {
+          const sc = entry.scale || [];
+          const tagged = /Asteroid|asteroid/i.test(String(entry.id)) || !!(body.userData && body.userData.asteroidInstanceTypeId);
+          const anomalous = sc.some((x) => Math.abs(x) > 100 || x < 0);
+          if (tagged || anomalous) out.push(entry);
+          if (out.length >= 2000) break;
+        }
+        return out;
+      };
+      // Diag-time identity check: is the object's CURRENT scale vector the one the accessors sit
+      // on? A swap between polls shows watched !== o.scale.
+      window.__SF_SCALE_WATCHED__ = (o) => {
+        if (!o) return 'no-object';
+        const w = watchedScale.get(o);
+        if (!w) return 'unwatched';
+        return w === o.scale ? 'watched' : 'SWAPPED';
+      };
+      window.__SF_SCALE_FIRST_OF__ = (o) => firstSeen.get(o) || null;
+      setInterval(scan, 250);
+      scan();
+    });
+  }
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
 
@@ -458,7 +967,15 @@ try {
     }, null, { timeout: 240_000 });
     await page.waitForFunction(() => Number.isFinite(window.SF.state.render
       && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
-    return page.evaluate(() => ({ credits: window.SF.state.economy.credits, simTime: +window.SF.state.simTime.toFixed(1) }));
+    await sleep(8000);
+    return page.evaluate(() => ({
+      credits: window.SF.state.player.credits,
+      simTime: +window.SF.state.simTime.toFixed(1),
+      glass: window.__SF_DEMO_RENDER_DIAG__ ? window.__SF_DEMO_RENDER_DIAG__() : null,
+      scaleWrites: window.__SF_SCALE_CORRELATE__ ? window.__SF_SCALE_CORRELATE__() : null,
+      scaleFirstSeen: window.__SF_SCALE_FIRST_LIST__ ? window.__SF_SCALE_FIRST_LIST__() : null,
+      scaleTrace: window.__SF_SCALE_TRACE__ ? window.__SF_SCALE_TRACE__() : null,
+    }));
   });
 
   // ------------------------------------------- in-page adventure helpers (real seams only)
@@ -556,7 +1073,7 @@ try {
         const bp = best && (best.pos || best);
         return best ? { id: best.id, x: bp.x, z: bp.z, d: +bd.toFixed(0) } : null;
       },
-      credits: () => window.SF.state.economy.credits,
+      credits: () => window.SF.state.player.credits,
     };
   });
 
@@ -691,7 +1208,7 @@ try {
     if (!alreadyDocked) await dockAt(destId);
     // The settle may already have landed during an emergency dock inside the transit leg.
     await page.waitForFunction(() => window.__SF_DEMO_PAID__ != null, null, { timeout: 30_000 });
-    return page.evaluate(() => ({ paid: window.__SF_DEMO_PAID__, credits: window.SF.state.economy.credits }));
+    return page.evaluate(() => ({ paid: window.__SF_DEMO_PAID__, credits: window.SF.state.player.credits }));
   });
 
   // ---------------------------------------------------------------- step 10: fit one upgrade at a shipyard, fly out
@@ -701,26 +1218,42 @@ try {
     await dockAt('station_helios');
     const fit = await page.evaluate(() => {
       const st = window.SF.state;
-      const ship = st.ships && st.ships[1];
-      const credits = st.economy.credits;
+      const shipIndex = st.player.activeShipIndex | 0;
+      const ship = st.player.ownedShips[shipIndex];
+      const credits = st.player.credits;
       // Cheapest affordable def that fills an empty slot; prefer the Swing Drive first-haul toy.
       return window.SF.bus && (async () => {
         const { MODULES } = await import('/src/data/modules.js');
         const { SHIPS } = await import('/src/data/ships.js');
         const { buildSlotList, fits } = await import('/src/systems/ships.js');
-        const slots = buildSlotList(SHIPS[ship.shipId]);
+        const slots = buildSlotList(SHIPS.find((def) => def.id === ship.defId));
         const fittings = ship.fittings || [];
         const candidates = Object.values(MODULES)
           .map((def) => ({ def, offer: (def.shopOffers && def.shopOffers.station_helios) || { price: def.price } }))
           .filter((c) => c.def && c.def.id && Number.isFinite(c.offer.price) && c.offer.price <= credits)
+          // A free stock part is a swap, not an upgrade: paid parts first, stock only as a fallback.
           .sort((a, b) => (a.def.id === 'mod_swing_drive_s' ? -1 : 0) - (b.def.id === 'mod_swing_drive_s' ? -1 : 0)
+            || (a.offer.price > 0 ? 0 : 1) - (b.offer.price > 0 ? 0 : 1)
             || a.offer.price - b.offer.price);
+        // A starter hull arrives fully fitted, so a real first upgrade is a swap: fitModule returns
+        // the displaced part to the hold. Prefer an empty slot; never "upgrade" to the same part.
+        const fittedId = (i) => {
+          const f = fittings[i];
+          return f && typeof f === 'object' ? f.defId : f || null;
+        };
+        const pickSlot = (def) => {
+          const empty = slots.findIndex((slot, i) => !fittedId(i) && fits(slot, def));
+          if (empty >= 0) return empty;
+          return slots.findIndex((slot, i) => fittedId(i) !== def.id && fits(slot, def));
+        };
         for (const c of candidates) {
-          const idx = slots.findIndex((slot, i) => !fittings[i] && fits(slot, c.def));
+          const idx = pickSlot(c.def);
           if (idx >= 0) {
             const before = credits;
-            window.SF.bus.emit('ui:buyModule', { defId: c.def.id, fitSlotIndex: idx, shipIndex: 1 });
-            return { defId: c.def.id, price: c.offer.price, slot: idx, creditsBefore: before, creditsAfter: window.SF.state.economy.credits };
+            window.SF.bus.emit('ui:buyModule', { defId: c.def.id, fitSlotIndex: idx, shipIndex });
+            // A refused buy (research lock, fit blocker) charges nothing — try the next part.
+            if (c.offer.price > 0 && window.SF.state.player.credits >= before) continue;
+            return { defId: c.def.id, price: c.offer.price, slot: idx, creditsBefore: before, creditsAfter: window.SF.state.player.credits };
           }
         }
         return null;
@@ -754,10 +1287,15 @@ try {
       framesOver100: s.framesOver100, frames: s.frames, note: s.note,
       detail: s.detail, error: s.error, shot: s.shot && path.basename(s.shot),
     })),
+    shaderErrors,
+    clean: shaderErrors === 0 && steps.length > 0 && steps.every((s) => s.reached)
+      && steps.some((s) => s.id === 'end-card'),
     consoleErrors: consoleErrors.slice(0, 40),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
-  console.log(`\nreport: ${path.join(OUT_DIR, 'report.json')}`);
+  if (shaderErrors > 0) console.log(`\nFAIL: ${shaderErrors} shader compile/link error(s) — bodies with those programs drew nothing`);
+  console.log(`\n${report.clean ? 'CLEAN PASS' : 'NOT CLEAN'} — report: ${path.join(OUT_DIR, 'report.json')}`);
+  process.exitCode = report.clean ? 0 : 1;
   if (browser) await browser.close().catch(() => {});
   server.kill();
 }

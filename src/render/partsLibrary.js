@@ -107,6 +107,7 @@ import {
   takeCachedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
+import { canonicalizeAuthoredProgramState } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   entityRequiresAuthoredPresentation,
@@ -4021,6 +4022,14 @@ function backgroundUpgradePriority(job) {
   if (!liveState || liveState.mode !== 'flight') return 10;
   const entity = job && job.entity;
   if (!entity) return 10;
+  // The activity runtime's R0_GLASS tier is the strict "the player is already
+  // looking at this body" signal — an undrawn authored owner on the glass cannot
+  // wait behind a locked target, an off-glass hostile, or arrival dressing that
+  // merely enqueued first. Only the player, live fight-fit combatants and the
+  // critical-hub gate (checked above, in authoredUpgradePriority) stay ahead.
+  // Re-graded on every pick, so a body that crosses the glass while queued
+  // promotes itself instead of waiting out the background backlog.
+  if (entityIsOnReadableGlass(entity)) return 1.5;
   if (liveState.player && liveState.player.targetId === entity.id) return 2;
   if (entity.team === 1) return 3;
   if (entityIsOnscreen(entity, liveState)) return 4;
@@ -4278,7 +4287,21 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
     isResidencyOwnerActive: () => !!boundary && entity && entity.alive !== false,
     prepareAuthoredPipelines: liveState && liveState.render
       && typeof liveState.render.compileObjectPipelines === 'function'
-      ? (root) => liveState.render.compileObjectPipelines(root)
+      // A boundary whose owner sits on the readable glass when its compile is
+      // finally admitted is deadline work — it rides the urgent lane ahead of
+      // queued runway/prefetch compiles instead of joining the ambient FIFO
+      // behind them (D38). Evaluated at call time so a body that crossed the
+      // glass while its job waited still promotes; loading-mode admissions keep
+      // the ambient lane because the opening submission plan owns that order.
+      ? (root) => {
+          const st = authoredRuntimeState();
+          const onGlass = !!(st && st.mode === 'flight'
+            && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
+          return liveState.render.compileObjectPipelines(
+            root,
+            onGlass ? { urgent: true } : undefined,
+          );
+        }
       : null,
     touchAuthoredExactTarget: liveState && liveState.render
       && typeof liveState.render.touchSubjectExactTarget === 'function'
@@ -4286,9 +4309,18 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       : null,
     prepareAuthoredGpuResidency: liveState && liveState.render
       && typeof liveState.render.prepareAuthoredGpuResidency === 'function'
-      ? (root, admissionOptions = {}) => liveState.render.prepareAuthoredGpuResidency(root, {
-          isActive: admissionOptions.isResidencyOwnerActive,
-        })
+      ? (root, admissionOptions = {}) => {
+          const st = authoredRuntimeState();
+          // Same lane rule for the texture/geometry upload pass: unSliced puts
+          // the uploads on the urgent residency chain instead of behind ambient
+          // uploads already queued there.
+          const onGlass = !!(st && st.mode === 'flight'
+            && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
+          return liveState.render.prepareAuthoredGpuResidency(root, {
+            isActive: admissionOptions.isResidencyOwnerActive,
+            unSliced: admissionOptions.unSliced === true || onGlass,
+          });
+        }
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
     yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
@@ -4505,8 +4537,15 @@ function admitNextUpgradeJob(state) {
     );
     state.lateSkips = gate.skippedCount;
     if (!gate.start) {
-      scheduleNextUpgradeFrame(state);
-      return null;
+      // A queued job whose owner sits on the readable glass is a hole in the
+      // picture, not discretionary work: the late-present throttle exists to
+      // keep background admissions off a struggling frame, and a body the
+      // player is already looking at is exactly the trade the hole-filling law
+      // makes. Let the pick proceed — the R0 rung puts it first.
+      if (!state.jobs.some((job) => entityIsOnReadableGlass(job && job.entity))) {
+        scheduleNextUpgradeFrame(state);
+        return null;
+      }
     }
   }
   state.jobs.sort((a, b) => {
@@ -5363,6 +5402,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
+  canonicalizeAuthoredProgramState(root);
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);

@@ -17,6 +17,7 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 import { createChainBeam } from '../../orrery/chainBeam.js';
+import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { COMMODITY_GLYPHS } from '../../views/commodityGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
@@ -105,9 +106,26 @@ export function createIndustryScreen(ctx) {
   let chain = null;
   const stopDecrypt = [];
 
+  // the ladder's window ends on a whole rung: measured after paint, the list's height is snapped to the last rung
+  // that fits, so no rung is ever half-dissolved
+  function fitLadderWindow() {
+    try {
+      listEl.style.maxHeight = '';
+      const top = listEl.getBoundingClientRect().top;
+      const limit = top + listEl.clientHeight;
+      let cut = 0;
+      for (const row of listEl.querySelectorAll('.sx-ind-row')) {
+        const r = row.getBoundingClientRect();
+        if (r.bottom <= limit - 2) cut = r.bottom;
+        else { if (cut) listEl.style.maxHeight = `${Math.round(cut - top + 6)}px`; return; }
+      }
+    } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+
   function renderList(state) {
     renderListBody(state);
     syncScrollExtent(listEl);
+    fitLadderWindow();
   }
   function renderListBody(state) {
     const stn = stationType(ctx);
@@ -116,19 +134,29 @@ export function createIndustryScreen(ctx) {
         CAT_ORDER.map((category) => {
           const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);
           if (!blueprints.length) return '';
-          return `<section class="sx-ind-process" data-process="${category}">` +
-            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}</p>` +
-            `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp) => {
-              const r = industryReadiness(bp, state, stn);
+          // the group's state in light: how many rungs can be made here now, and the one reason when the station
+          // itself lacks the facility (printed once on the header, never on the rows)
+          const readiness = blueprints.map((bp) => industryReadiness(bp, state, stn));
+          const readyCount = readiness.filter((r) => r.state === 'ready').length;
+          const allStation = readiness.length > 0 && readiness.every((r) => r.state === 'station');
+          const facility = allStation ? (blueprints[0].stationType === 'fab' ? 'fabricator' : 'refinery') : '';
+          const it = items(state);
+          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(it[id] || 0); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
+          return `<section class="sx-ind-process${allStation ? ' is-blocked' : ''}" data-process="${category}">` +
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}<span class="sx-ind-process__count">${readyCount} of ${blueprints.length} ready</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : ''}</p>` +
+            `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp, bi) => {
+              const r = readiness[bi];
+              const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
+              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : (r.state === 'station' ? '' : shortBlockLabel(bp, r));
               const selected = bp.id === selectedId;
               const outputName = niceName(bp.outputs.id, bp.outputs.kind);
               const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
               const qtyHtml = bp.outputs.qty > 1 ? `<span class="sx-ind-row__qty">×${bp.outputs.qty}</span>` : '';
-              return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+              return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}${stateCls}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}</span>` +
-                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier}<span class="sx-ind-row__why"> · ${escapeHtml(shortBlockLabel(bp, r))}</span></span>` +
+                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier}${why ? `<span class="sx-ind-row__why"> · ${escapeHtml(why)}</span>` : ''}</span>` +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
               `</button></li>`;
@@ -230,10 +258,10 @@ export function createIndustryScreen(ctx) {
       }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
-      output: { qty: bp.outputs.qty || 1, unit: `${niceName(bp.outputs.id, bp.outputs.kind)} · per run`, glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
+      output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
-      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span>` } : null,
+      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" class="orr-chain__wayout" data-ind-chart="1">Find a refinery on the chart</button>` } : null,
       timeFrac: 1,
       progress: queue ? progress : null,
     });
@@ -281,6 +309,12 @@ export function createIndustryScreen(ctx) {
     select(rows[next].getAttribute('data-bp'), true);
   });
   stageEl.addEventListener('click', (ev) => {
+    const chart = ev.target.closest('[data-ind-chart]');
+    if (chart) {
+      openGalaxyMap(ctx, { focus: (MAP_FOCUS && (MAP_FOCUS.GALAXY || MAP_FOCUS.SYSTEM)) || undefined, source: 'station-industry:wayout' });
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
     const source = ev.target.closest('[data-source-cmdty]');
     if (source) {
       if (!ctx.bus) return;

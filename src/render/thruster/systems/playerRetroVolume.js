@@ -258,6 +258,7 @@ export class PlayerRetroJets {
       radiance: this.recipe.radiance,
       opacity: this.recipe.opacity,
       spool: 0,
+      wither: 0,
     };
     this._camObj = null;
     this._liveCount = 0;
@@ -268,6 +269,9 @@ export class PlayerRetroJets {
     this.spool = 0;
     // One-shot overpressure on brake engagement (see integrateRetroSpool).
     this.bite = 0;
+    // Hardware (iris/throat) this owner has driven hot — cooled back to idle on reset so a
+    // lost socket list can never leave a port glowing forever.
+    this._litHardware = new Set();
     this._disposed = false;
   }
 
@@ -357,6 +361,11 @@ export class PlayerRetroJets {
       this._plumes[i].reset();
       this._forges[i].update(null, null, this._shape);
     }
+    for (const hw of this._litHardware) {
+      hw.material.emissiveIntensity = hw.idle;
+      if (hw.heatMaterial) hw.heatMaterial.emissiveIntensity = hw.heatIdle;
+    }
+    this._litHardware.clear();
     if (this.group) this.group.visible = false;
   }
 
@@ -401,6 +410,17 @@ export class PlayerRetroJets {
     shape.opacity = opacity;
     shape.spool = p.drive;
 
+    // Cut-off lifecycle: below half drive the jet stops being a held column — coherence collapses
+    // so the sheets fray into drifting streamers and the tail keeps drifting while the glow dies,
+    // instead of the live jet shrinking into the throat like a dial. The same shred covers the
+    // first frames of ignition: a catching jet sputters before it stabilizes. One parameter
+    // feeds both ends of the life cycle.
+    const wither = Math.max(0, Math.min(1, 1 - shape.drive / 0.45));
+    shape.wither = wither;
+    shape.jetLength *= 1 + wither * 0.22;
+    shape.radiance *= 1 - wither * 0.3;
+    shape.opacity *= 1 - wither * 0.2;
+
     this.group.visible = true;
     this._liveCount = count;
 
@@ -414,12 +434,21 @@ export class PlayerRetroJets {
       }
       const sock = sockets[i];
       const u = plume.material.uniforms;
+      u.uCoherence.value = this.variant.coherence * (1 - wither * 0.78);
+      u.uWobble.value = 0.9 * (1 + wither * 1.1);
+      u.uSwirl.value = 1.15 * (1 + wither * 0.5);
+      u.uFlowRate.value = this.variant.flow * (1 - wither * 0.3);
       u.uWidthNear.value = shape.throatRadius * 0.52;
       u.uWidthFar.value = shape.throatRadius * 1.05;
       u.uEmbed.value = shape.throatRadius * 0.55;
       if (sock.retroIris && sock.retroIris.material) {
         sock.retroIris.material.emissiveIntensity = sock.retroIris.idle
           + shape.drive * (sock.retroIris.lit - sock.retroIris.idle);
+        if (sock.retroIris.heatMaterial) {
+          sock.retroIris.heatMaterial.emissiveIntensity = sock.retroIris.heatIdle
+            + shape.drive * (sock.retroIris.heatLit - sock.retroIris.heatIdle);
+        }
+        this._litHardware.add(sock.retroIris);
       }
       let ax = Number.isFinite(sock.ax) ? sock.ax : -1;
       let ay = Number.isFinite(sock.ay) ? sock.ay : 0;

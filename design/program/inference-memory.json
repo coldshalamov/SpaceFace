@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-23",
+  "updated": "2026-09-25",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,71 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "authored-discovery-audio",
-      "date": "2026-08-12",
-      "wf": "WF-13",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Authored discoveries now land with a distinct finite wonder stinger and a brief music duck instead of a generic UI click alone.",
-      "fingerprint": "verb=hear-discovery,subject=authored-poi,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "fbd65428",
-      "verification": "focused_green"
-    },
-    {
-      "id": "capital-broadside-audio",
-      "date": "2026-08-12",
-      "wf": "WF-13",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The live capital-broadside doctrine now has a distinct two-report low battery voice instead of generic weapon audio.",
-      "fingerprint": "verb=hear-broadside,subject=capital-broadside,sector=any,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "79d9209c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "quiessence-census-discovery",
-      "date": "2026-08-12",
-      "wf": "WF-10",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "A physical close approach to the Quiessence now identifies its archival signal and adds the seventeen-hull census to the durable exploration journal.",
-      "fingerprint": "verb=approach-and-record,subject=quiessence,sector=sector_pallas_drift,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "1282ac57",
-      "verification": "focused_green"
-    },
-    {
-      "id": "quiessence-census-hud",
-      "date": "2026-08-12",
-      "wf": "WF-14",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The live Band HUD now shows deduplicated Quiessence hull-census progress and refreshes accessibly after each scan.",
-      "fingerprint": "verb=track-census,subject=quiessence-hulls,sector=sector_pallas_drift,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "2706a7cc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "mission-silent-runner",
-      "date": "2026-08-17",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "High-risk covert missions now support the silent_runner physical condition rewarding unbroken cloak discipline",
-      "fingerprint": "verb=forbid-cloak-breach,subject=silent-runner,sector=any,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "cc96da92",
-      "verification": "focused_green"
-    },
     {
       "id": "thermal-sink-module",
       "date": "2026-08-17",
@@ -1635,6 +1570,71 @@
       "references": [],
       "integration": "live",
       "commit": "f1dcdffe9aaa42a0399ba119e1f3b21901336885",
+      "verification": "focused_green"
+    },
+    {
+      "id": "dock-spill-line",
+      "date": "2026-09-25",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The dock names the cargo you spilled on the way in",
+      "fingerprint": "verb=hear,subject=dock-spill,sector=any,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "1cdd92543",
+      "verification": "focused_green"
+    },
+    {
+      "id": "helios-candle-cache",
+      "date": "2026-09-25",
+      "wf": "WF-10",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A ropeable cache sits beside the Candle Fleet and spills iron",
+      "fingerprint": "verb=split-cache,subject=candle-fleet-pod,sector=sector_helios_prime,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "182476571",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pause-last-hit",
+      "date": "2026-09-25",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Pause names the latest hit and replaces it when a newer hit lands",
+      "fingerprint": "verb=name-last-hit,subject=pause-brief,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "61f1391ff",
+      "verification": "focused_green"
+    },
+    {
+      "id": "disabled-hull-rope-hail",
+      "date": "2026-09-25",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A disabled hull asks for a rope and heals only while the line is held",
+      "fingerprint": "verb=hail,subject=disabled-hull,sector=any,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "631165a2d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "helios-starter-miner-shift",
+      "date": "2026-09-25",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A Helios starter miner cuts one rock for a short shift, drops ore, and stops",
+      "fingerprint": "verb=cut,subject=starter-miner,sector=helios,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "a6cf28696",
       "verification": "focused_green"
     }
   ],

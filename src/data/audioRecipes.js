@@ -1182,6 +1182,76 @@ export const RECIPES = [
     pitchRange: [0.96, 1.08],
     dopplerEnabled: true,
   },
+
+  // --- Optic lattice contact cues (build_map §24 "the picture and the sound") ---
+  // One voice per response so the ear can call the material before the eye finishes the glance:
+  // stone (and a darkened prism) eats the bolt as a dull thud, metal throws it back as a ping,
+  // and a live diamond answers with a bright crack and ring of splinters. All ride the combat
+  // bus as positional one-shots; the audio system collapses same-kind repeats inside a tick so
+  // a lattice burst speaks once per response, not once per cell.
+  {
+    // The bolt dies inside the rock: a low, closed noise body with a short sub drop. No
+    // transient click and no top end — absorbed means the energy went nowhere.
+    id: 'sfx_optic_absorb',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 1.1,
+    distortionAmount: 0.45, distortionCurve: 'tanh',
+    subBass: { startFreq: 105, endFreq: 34, dur: 0.16, gain: 0.9 },
+  },
+  {
+    // Bolt off a mirror: a struck-bar ping — fast attack, narrow high band, a short ring tail.
+    // The pitch wobble keeps consecutive ricochets from phasing into one note.
+    id: 'sfx_optic_reflect',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1568, freqSweep: [1568, 1175], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1900, filterQ: 4.0,
+    transientClick: { gain: 0.35 },
+    pitchRange: [0.95, 1.07],
+  },
+  {
+    // Prism discharge layers a hard white crack under a rising crystal ring — the ring IS the
+    // eight splinters leaving the lattice, so it climbs instead of dying flat.
+    id: 'sfx_optic_split_ring',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 2093, freqSweep: [2093, 2794], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 2900, filterQ: 2.6,
+  },
+  {
+    id: 'sfx_optic_split_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.11 },
+    filterType: 'highpass', filterFreq: 2400, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_optic_split',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_optic_split_ring', 'sfx_optic_split_crack'],
+    gainMult: 1.0,
+  },
+  {
+    // A spent prism healing back to live crystal: a soft rising shimmer, deliberately under the
+    // contact cues — a field recovering off to the side is a whisper, not a hit.
+    id: 'sfx_optic_rekindle',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880, freqSweep: [880, 1760], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
+  },
+
   {
     id: 'sfx_kill_sine',
     category: 'explosion',

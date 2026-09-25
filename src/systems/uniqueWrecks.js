@@ -28,6 +28,7 @@ import {
   uniqueWreckForSource,
 } from '../data/uniqueWrecks.js';
 import { planEncounterShape } from './encounterDirector.js';
+import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   isPlayerWreckMarker,
   PLAYER_WRECK_ENCOUNTER_ID,
@@ -356,6 +357,8 @@ export const uniqueWrecks = {
   },
 
   _onGameStarted() {
+    // Crucible runs carry no adventure rumor/news surface — the arena is its own content.
+    if (isSurvivalRunLive(this.state && this.state.run)) return;
     this._gameStartDispatch = true;
     try {
       const own = this._ensureState();
@@ -512,6 +515,7 @@ export const uniqueWrecks = {
   },
 
   _recordRumor(payload) {
+    if (isSurvivalRunLive(this.state && this.state.run)) return null;
     const sourceRef = payload && payload.sourceRef;
     const def = uniqueWreckById(payload && payload.wreckId) || uniqueWreckForSource(sourceRef);
     if (!def || sourceRef !== def.bearingSourceRef) return null;
@@ -573,6 +577,7 @@ export const uniqueWrecks = {
 
   _surfaceRumorToast(def) {
     if (!def || !this.bus || tutorialOwnsOpeningPresentation(this.state)) return null;
+    if (isSurvivalRunLive(this.state && this.state.run)) return null;
     const toast = {
       text: `${def.name}: rumor charted. Search the amber bearing ring, then pulse scan.`,
       kind: 'objective',
@@ -709,6 +714,7 @@ export const uniqueWrecks = {
   },
 
   _onSectorEnter(payload) {
+    if (isSurvivalRunLive(this.state && this.state.run)) return;
     const sectorId = payload && typeof payload === 'object' ? payload.sectorId : payload;
     this._syncSector(sectorId);
     this._pumpComplications();

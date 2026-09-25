@@ -89,7 +89,7 @@ test('HUD uses one accessible announcement and a max-three reduced-effects chip 
     'only the shared fallback announcer may declare a live region');
   assert.match(section, /getMotionReduced\(\)/);
   assert.match(section, /getFlashReduced\(\)/);
-  assert.match(section, /dirEl\.style\.transform = `rotate\(/,
+  assert.match(section, /setStyle\(slot\.dirEl, 'transform', `rotate\(/,
     'off-screen direction glyph rotates toward the projected threat');
   assert.match(section, /resolveDoctrineTellPlacement\(/,
     'runtime uses the tested objective-safe placement helper');

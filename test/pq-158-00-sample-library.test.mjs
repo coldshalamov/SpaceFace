@@ -44,6 +44,9 @@ test('every binding resolves to a live recipe and a manifest sample, and shares 
     assert.ok(recipeIds.has(recipeId), `binding names unknown recipe "${recipeId}"`);
     assert.ok(SAMPLE_MANIFEST.has(raw.id), `binding "${recipeId}" names unknown sample "${raw.id}"`);
     const binding = resolveSampleBinding(recipeId);
+    // share 0 is the authored opt-out (audioSystem gates the sample layer on share > 0): the
+    // binding keeps recipe+sample provenance on record while the cue stays pure synth.
+    if (raw.share === 0) continue;
     assert.ok(binding.share > 0 && binding.share < 1, `"${recipeId}" share must split the hybrid, got ${binding.share}`);
     assert.ok(binding.gain > 0 && binding.gain <= 1.5, `"${recipeId}" sample gain out of range`);
     assert.ok(binding.rate > 0 && binding.rate < 4, `"${recipeId}" sample rate out of range`);

@@ -49,6 +49,7 @@ import {
   SHARD_BUFFER_BINDINGS,
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { massline2Flag } from '../data/featureFlags.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
@@ -546,6 +547,54 @@ const TETHER_SPARK_LOAD = 0.72;
 // The capture floor. Load below this is "the line just caught"; the visible-strain reads measure
 // how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
 const TETHER_CAPTURE_FLOOR = 0.35;
+// The blade is the line that cuts. 0.92 is tetherGameplay NPC_LINE_CUT_TAUT_RATIO — keep them equal.
+export const MONOFILAMENT_BLADE_HEAD = 'monofilament_sweep';
+export const MONOFILAMENT_BLADE_TAUT_RATIO = 0.92;
+const MONOFILAMENT_BLADE_HALF_WIDTH = 0.36;
+const MONOFILAMENT_BLADE_Y = 1.62;
+
+function monofilamentHeadFitted(state, tether, player) {
+  if (!massline2Flag('masslineHeadMonofilamentSweep', state && state.runtime && state.runtime.features)) {
+    return false;
+  }
+  const snapped = tether && tether.headId;
+  if (snapped === MONOFILAMENT_BLADE_HEAD) return true;
+  if (typeof snapped === 'string' && snapped.length > 0) return false;
+  const derived = player && player.data && player.data.derived;
+  return !!(derived && derived.masslineHeadId === MONOFILAMENT_BLADE_HEAD);
+}
+
+function monofilamentLineTaut(phase, span, rest) {
+  if (phase === 'loaded' || phase === 'overload') return true;
+  return Number.isFinite(rest) && rest > 0 && Number.isFinite(span)
+    && span >= rest * MONOFILAMENT_BLADE_TAUT_RATIO;
+}
+
+function hideMonofilamentBlade(blade) {
+  if (!blade) return false;
+  blade.present = false;
+  if (blade.world) blade.world.chord = 0;
+  const mesh = blade.mesh;
+  if (!mesh) return false;
+  const drawn = mesh.geometry && mesh.geometry.drawRange ? mesh.geometry.drawRange.count : 0;
+  if (mesh.visible || drawn !== 0 || (mesh.material && mesh.material.opacity !== 0)) {
+    mesh.visible = false;
+    if (mesh.material) mesh.material.opacity = 0;
+    if (mesh.geometry) mesh.geometry.setDrawRange(0, 0);
+  }
+  return false;
+}
+
+function paintMonofilamentBlade(colors) {
+  for (let i = 0; i < 4; i += 1) {
+    const hot = (i & 1) === 1;
+    const gain = hot ? 1.55 : 0.7;
+    const offset = i * 3;
+    colors[offset] = gain * 0.9;
+    colors[offset + 1] = gain * 0.98;
+    colors[offset + 2] = gain;
+  }
+}
 
 // Solid-slug weapon variants that shed armor spall on a hull hit. Energy/beam/explosive families
 // stay out — they have their own contact grammar and no metal-on-metal read.
@@ -882,6 +931,7 @@ function emptyVfxSubsystemDiag() {
     tetherCable: 0,
     masslineReleaseArc: 0,
     swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
+    monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
     apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
@@ -1482,6 +1532,7 @@ export const vfx = {
     }
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
     disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
+    disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._targetContour, 'target contour');
     this._targetContour = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
@@ -1596,6 +1647,7 @@ export const vfx = {
     this._tetherCable = null;
     this._arcPreview = null;
     this._masslineReleaseArc = null;
+    this._monofilamentBlade = null;
     this._targetContour = null;
     this._lights = [];
     this._freeLights = null;
@@ -1641,6 +1693,7 @@ export const vfx = {
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
+    add(this._monofilamentBlade && this._monofilamentBlade.mesh);
     add(this._targetContour && this._targetContour.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
@@ -1852,6 +1905,7 @@ export const vfx = {
     this._initArcPreview();
     this._initMasslineReleaseArc();
     this._initMasslineSwingTrace();
+    this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initApexFlare();
     this._initTargetContour();
@@ -2198,12 +2252,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -8636,6 +8690,7 @@ export const vfx = {
   // own history on the XZ plane, so the pilot can read the swing they are about to spend.
   // -------------------------------------------------------------------------
   _masslineSwingTrace: null,
+  _monofilamentBlade: null,
 
   _initMasslineSwingTrace() {
     if (!this._scene) return;
@@ -8752,6 +8807,98 @@ export const vfx = {
     st.mesh.geometry.attributes.color.needsUpdate = true;
     st.mesh.material.opacity = Math.min(0.8, trace.fade * 0.8);
     st.mesh.visible = true;
+    return true;
+  },
+
+  // Monofilament blade — the taut sweep itself, drawn beside the swing trace. One world-XZ
+  // segment along the chord. Slack, break, and release drop it this frame; it does not fade.
+  _initMonofilamentBlade() {
+    if (!this._scene || this._monofilamentBlade) return;
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(new Float32Array(12), 3);
+    const color = new THREE.BufferAttribute(new Float32Array(12), 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    paintMonofilamentBlade(color.array);
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(new Uint16Array([0, 1, 2, 1, 3, 2]), 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.35, 1.45, 1.55),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-monofilament-blade';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 12;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._monofilamentBlade = {
+      mesh,
+      positions: position.array,
+      world: { ax: 0, az: 0, bx: 0, bz: 0, dirX: 1, dirZ: 0, chord: 0, targetRadius: 4 },
+      present: false,
+    };
+  },
+
+  _resetMonofilamentBlade() {
+    hideMonofilamentBlade(this._monofilamentBlade);
+  },
+
+  _updateMonofilamentBlade() {
+    const blade = this._monofilamentBlade;
+    if (!blade) return false;
+    const state = this.state;
+    const tether = state && state.player && state.player.tether;
+    const player = this.helpers && typeof this.helpers.player === 'function'
+      ? this.helpers.player()
+      : (state && this._ent(state.playerId));
+    if (!tether || tether.active !== true || !player || player.alive === false || !player.pos) {
+      return hideMonofilamentBlade(blade);
+    }
+    if (!monofilamentHeadFitted(state, tether, player)) return hideMonofilamentBlade(blade);
+    const target = this._ent(tether.targetId);
+    if (!target || target.alive === false || !target.pos) return hideMonofilamentBlade(blade);
+    const span = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    if (!monofilamentLineTaut(tether.phase, span, Number(tether.restLength))) {
+      return hideMonofilamentBlade(blade);
+    }
+    const alpha = this._renderInterpolationAlpha();
+    if (!writeTetherVisualEndpoints(player, target, false, blade.world, alpha)) {
+      return hideMonofilamentBlade(blade);
+    }
+    const world = blade.world;
+    const px = -world.dirZ * MONOFILAMENT_BLADE_HALF_WIDTH;
+    const pz = world.dirX * MONOFILAMENT_BLADE_HALF_WIDTH;
+    const positions = blade.positions;
+    const y = MONOFILAMENT_BLADE_Y;
+    positions[0] = world.ax - px; positions[1] = y; positions[2] = world.az - pz;
+    positions[3] = world.ax + px; positions[4] = y; positions[5] = world.az + pz;
+    positions[6] = world.bx - px; positions[7] = y; positions[8] = world.bz - pz;
+    positions[9] = world.bx + px; positions[10] = y; positions[11] = world.bz + pz;
+    const scratch = this._spawnLocalXZ || (this._spawnLocalXZ = { x: 0, z: 0 });
+    for (let vertex = 0; vertex < 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], scratch);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    const mesh = blade.mesh;
+    mesh.geometry.setDrawRange(0, 6);
+    mesh.geometry.attributes.position.needsUpdate = true;
+    const accessibility = resolveMasslineAccessibilityPolicy(state && state.settings);
+    mesh.material.opacity = 0.92 * accessibility.opacityScale;
+    mesh.visible = true;
+    blade.present = true;
     return true;
   },
 
@@ -9692,7 +9839,7 @@ export const vfx = {
   _onTetherLatch(p) {
     this._resetMasslineReleaseArc();
     // A new hitch starts a fresh sweep history — the previous body's arc must never bleed in.
-    this._resetMasslineSwingTrace();
+    this._resetMasslineSwingTrace(); this._resetMonofilamentBlade();
     this._emitJuiceCue('presentation.tether.attach', p, 1);
     if (!this._scene) return;
     const target = p && p.targetId != null ? this._ent(p.targetId) : null;
@@ -11499,6 +11646,7 @@ export const vfx = {
       sub.tetherCable = 0;
     }
     sub.swingTrace = this._updateMasslineSwingTrace(dt) ? 1 : 0;
+    sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.

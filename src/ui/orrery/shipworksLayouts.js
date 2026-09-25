@@ -38,15 +38,23 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const end = from + span * Math.min(1.08, total / capacity);
     if (total > 0) ghostArc = `<path class="orr-power__ghost${total > capacity ? ' is-over' : ''}" d="${arcD(cx, cy, r + 9, from, Math.min(to + 10, end))}"/>`;
   }
-  // the systems round the arc: a tick each on the scale, the word outside it
+  // the systems round the arc: a segment each on an outer ring (lit when fitted, mid for a stock fit, faint when
+  // empty), a tick on the scale, the word outside it
   let sys = '';
   const list = Array.isArray(systems) ? systems.filter(Boolean) : [];
   const n = list.length;
   list.forEach((s, i) => {
+    const a0 = from + (span * i) / n + 2.5;
+    const a1 = from + (span * (i + 1)) / n - 2.5;
+    const segState = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
+    if (a1 > a0) {
+      if (segState !== 'is-empty') sys += `<path class="orr-power__seg-bloom ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+      sys += `<path class="orr-power__seg ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+    }
     const a = from + (span * (i + 0.5)) / n;
-    const [tx0, ty0] = polar(cx, cy, r + 12, a);
-    const [tx1, ty1] = polar(cx, cy, r + 17, a);
-    const [lx, ly] = polar(cx, cy, r + 13, a);
+    const [tx0, ty0] = polar(cx, cy, r + 11, a);
+    const [tx1, ty1] = polar(cx, cy, r + 14, a);
+    const [lx, ly] = polar(cx, cy, r + 16, a);
     const cos = Math.cos(((a - 90) * Math.PI) / 180);
     const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
@@ -400,6 +408,10 @@ ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:232px; h
 ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
+${W} .orr-power__seg { fill:none; stroke:rgb(${BONE} / .2); stroke-width:2.5; }
+${W} .orr-power__seg.is-fitted { stroke:rgb(248 244 234); }
+${W} .orr-power__seg.is-stock { stroke:rgb(${BONE} / .7); }
+${W} .orr-power__seg-bloom { fill:none; stroke:rgb(${BONE}); stroke-width:7; opacity:.18; }
 ${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
 ${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.8px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
 ${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
@@ -620,6 +632,86 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 @media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
 /* a short screen: the chosen module's sentence folds so its key stays above the fold */
 @media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
+
+/* ================================ ROUND 11 =================================================== */
+/* the mode words carry no underline: weight says which is open */
+${W} .sx-sw__mode .k-word::after, ${W} .sx-sw__modes .k-word::after, ${W} [data-sw-mode]::after, ${W} .sx-sw__hang > .k-words:first-child .k-word::after { display:none !important; }
+
+/* ================================ ROUND 11b ================================================== */
+/* the open mode word carries no bar under it: weight and light say which is open */
+${W} .sx-sw__rail .sx-seg__btn.is-on { background-image:none !important; background:transparent !important; }
+${W} .sx-sw__rail .sx-seg__btn { text-decoration:none !important; border-bottom:0 !important; }
+/* For Sale at 720: the hardpoints run inline and WRAP; a clipped "1× I" is not a reading */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li, ${W}.sx-sw--buying .sx-spec__hp { white-space:normal !important; }
+  ${W}.sx-sw--buying .sx-spec > li { line-height:1.35 !important; }
+}
+
+@media (max-height:800px) { ${W}.sx-sw--buying .sx-sw-bar { display:none !important; } }
+
+/* For Sale at 720: the hardpoints are inline blocks (they wrap between each other even with no spaces between them) */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec__hp { display:inline-block !important; white-space:nowrap !important; margin:0 10px 2px 0 !important; }
+  ${W}.sx-sw--buying .sx-spec__hp::after { content:none !important; }
+  ${W}.sx-sw--buying .sx-spec > li > .k-row__num { white-space:normal !important; display:block !important; }
+}
+
+/* For Sale at 720: the hardpoints row takes the whole column — its label above, its values in two lines with dots */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) { display:block !important; padding:4px 0 2px !important; }
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__name { display:block !important; margin-bottom:3px !important; }
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__num { display:block !important; line-height:1.35 !important; }
+  ${W}.sx-sw--buying .sx-spec__hp { display:inline !important; margin:0 !important; white-space:normal !important; }
+  ${W}.sx-sw--buying .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\00b7\\0020" !important; color:rgb(${BONE} / .45) !important; }
+}
+
+/* the value cell is a flex row under the kit: let it wrap, and let each hardpoint be its own item */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li > .k-row__num { flex-wrap:wrap !important; row-gap:2px; column-gap:0; }
+  ${W}.sx-sw--buying .sx-spec__hp { flex:none !important; }
+}
+
+/* the value cell took its text's natural width (441px in a 241px column): it is the column's width and wraps */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__num { width:auto !important; max-width:100% !important; min-width:0 !important; }
+}
+
+/* ================================ ROUND 12: one stage ring ==================================== */
+${W} .sx-sw__stage > .sx-sw__salering { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+${W} .sx-sw__salering-ring { stroke:rgb(${BONE} / .32); }
+${W} .sx-sw__salering-ticks { stroke:rgb(${BONE} / .22); }
+${W} text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9.5px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
+/* the glass under the hull for sale: the ship separates from the hangar; the old bone wash goes */
+${W} .sx-sw__stage.has-salering.has-poster:not(.is-live)::before { left:0 !important; right:0 !important; top:0 !important; bottom:0 !important; z-index:1 !important;
+  background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(6 8 11 / .62) 0, rgb(6 8 11 / .58) calc(var(--sw-ring-r, 280px) - 30px), rgb(6 8 11 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__poster { z-index:1; -webkit-mask-image:none !important; mask-image:none !important; }
+/* the view words are marks on the ring's upper arc; the current one lit */
+${W} .sx-sw__stage.has-salering .sx-sw__camera { position:absolute !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; width:0; height:0; margin:0 !important; padding:0 !important; overflow:visible; display:block !important; z-index:3; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera > li { position:absolute; left:0; top:0; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size:9px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(248 244 234) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:""; display:block; width:1.5px; height:8px; margin:0 auto 3px; background:rgb(${BONE} / .4); }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before { background:rgb(248 244 234); height:12px; }
+/* the verbs' one home is seated by the screen under the ring; the rack carries no layout of its own there */
+${W} .sx-sw-verbs { white-space:nowrap; }
+/* the For Sale ladder folds its last rung when more hang below */
+${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; }
+/* a short screen's chooser keeps the two delta lines and folds the sentence */
+@media (max-height:800px) {
+  ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; }
+  ${W} .sx-modrow:focus-within .sx-modrow__meta .sx-modrow__sentence { display:none !important; }
+}
+
+/* a ghost for the worse is dim bone; ice is the gain's colour alone */
+${W} .sx-sw-ghost.is-loss, ${W} .sx-sw-gauge .sx-sw-ghost.is-loss { color:rgb(146 143 135) !important; }
+
+/* the glass under the hull for sale stands in every sale state, live render included */
+${W} .sx-sw__stage.has-salering::before { content:""; position:absolute; left:0; right:0; top:0; bottom:0; z-index:1; pointer-events:none;
+  background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(6 8 11 / .62) 0, rgb(6 8 11 / .58) calc(var(--sw-ring-r, 280px) - 30px), rgb(6 8 11 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas { z-index:1; }
+
+/* For Sale: the stage stands full height (its readouts float over it), so the ring is the same dial the Fleet jig draws */
+${W}.sx-sw--buying .sx-sw__stage { flex:1 1 auto !important; min-height:0 !important; height:auto !important; max-height:none !important; }
 
 `;
 

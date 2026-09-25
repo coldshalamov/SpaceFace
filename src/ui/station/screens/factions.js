@@ -26,7 +26,7 @@ import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
 import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
-import { createCrestOrbit, standingScaleSvg } from '../../orrery/crestOrbit.js';
+import { createCrestOrbit, standingScaleSvg, crestUrl } from '../../orrery/crestOrbit.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
@@ -104,6 +104,9 @@ function signed(value) {
 function liveFaction(state, id) {
   return (state && state.factions && state.factions[id]) || null;
 }
+
+/** The standing as a linear position for the rim arcs: one unit per hundred points, so −120 draws longer than −50. */
+function bandPosOf(r) { return (Number(r) || 0) / 50; }
 
 function relationEntries(meta) {
   return Object.entries((meta && meta.relations) || {})
@@ -241,7 +244,7 @@ export function createFactionsScreen(ctx) {
 
     readingEl.innerHTML =
       `<div class="sx-fac-overview">` +
-        `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
+        `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true"><img src="${crestUrl(f.id)}" alt="" decoding="sync" draggable="false"></span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
         `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
@@ -257,8 +260,8 @@ export function createFactionsScreen(ctx) {
             // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
             standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: scaleWidth(), compact: compactHeight(), rungWords: !compactHeight(),
               brackets: [
-                ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: String(next.need) }] : []),
-                ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: String(buffer) }] : []),
+                ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: `${next.need} \u00b7 TO ${String(next.name).toUpperCase()}`, anchor: 'start' }] : []),
+                ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: `${buffer} \u00b7 ABOVE HOSTILE`, anchor: 'end' }] : []),
               ],
               rungs: factionContractLadderRows(rep).map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked' })) }) +
             ladderRows(standingLadder) +
@@ -275,7 +278,8 @@ export function createFactionsScreen(ctx) {
           `</div>` +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
-            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">Relations${relations.length ? ` · ${relations.length}` : ''}</button>` +
+            (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +
+            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">${relations.length ? 'Detail' : 'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
             (relations.length
               ? `<ul class="k-rows sx-fac-network__rows" hidden>${relationRows}</ul>`
               : `<p class="k-empty sx-fac-network__empty" hidden>No material relations recorded.</p>`) +
@@ -290,10 +294,11 @@ export function createFactionsScreen(ctx) {
     if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 118 });
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     orbit.set({
-      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4, hostile: r <= FACTION_AGGRO_THRESHOLD }; }),
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4, bandPos: bandPosOf(r), hostile: r <= FACTION_AGGRO_THRESHOLD }; }),
       selectedId: f.id,
       authorityId,
       swing: picked,
+      relations: relationEntries(f.meta).map((r) => ({ id: r.id, weight: r.weight })),
     });
     for (const stop of stopDecrypt.splice(0)) stop();
     if (reducedMotion()) return;

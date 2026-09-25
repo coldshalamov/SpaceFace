@@ -58,6 +58,7 @@ import {
   livingHullWithScar,
   normalizeLivingHull,
 } from '../core/livingHull.js';
+import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   normalizeStoryNewGamePlusRecord,
   storyNewGamePlusRecord,
@@ -201,6 +202,8 @@ export const story = {
   // ── Per-tick: ambient + trap comms scheduling (skips while docked/paused/menu). ─────────────
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    // The narrative overlay is adventure-only; a live Crucible run pumps no comms.
+    if (isSurvivalRunLive(state.run)) return;
     const s = state.story;
     if (!s) return;
     // Sealed testimony owns the channel until its final line has had time to be read. Sim-time
@@ -1566,6 +1569,8 @@ export const story = {
     // start comms + bulkhead graffiti are deferred so the open teaches ONE verb at a time. They are
     // released when the tutorial finishes (tutorial:finished → _releaseDeferredColdStart). For a
     // player who opted out of tutorial hints, onboarding is inactive and the cold start fires now.
+    // A Crucible launch reuses this dispatch: the arena has no adventure comms voice.
+    if (isSurvivalRunLive(this.state && this.state.run)) return;
     if (this._tutorialOwnsOpening()) {
       this._coldStartDeferred = true;
     } else {

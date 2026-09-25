@@ -151,6 +151,6 @@ test('the ordinary input bindings the route depends on are the shipped ones', ()
   // fact; a physical-controller pass is an open row, not a claim.
   const gamepad = read('src/systems/gamepad.js');
   assert.ok(gamepad.includes('Y / Triangle'), 'the gamepad map documents Y/Triangle');
-  assert.ok(/codex:\s*\[/.test(gamepad), 'codex is a mapped gamepad action');
+  assert.ok(/codex:\s*(?:Object\.freeze\()?\[/.test(gamepad), 'codex is a mapped gamepad action');
   assert.ok(input.includes('gp.actions.codex'), 'the gamepad Codex action opens the same screen');
 });

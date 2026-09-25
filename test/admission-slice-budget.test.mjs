@@ -119,6 +119,24 @@ test('live drain and upgrade consult the late-present gate', async () => {
   assert.match(parts, /lateSkips/);
 });
 
+test('the loading-shell mesh-build drain bypasses the late-present gate', async () => {
+  // The gate protects frames the player watches; under the shell every "present" is the
+  // spinner on a contended host, so it read >22 ms and refused 56 consecutive drain passes —
+  // live.meshBuilds1 logged 4.4 s / 0 built on the Crucible launch while the queue sat
+  // unbuildable anyway. Loading mode must skip the gate entirely.
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const drainDef = renderer.indexOf('_drainMeshBuildQueue(buildBudget) {');
+  assert.ok(drainDef > 0, 'the method definition, not a call site');
+  const block = renderer.slice(drainDef, drainDef + 2600);
+  assert.match(block, /mode\) === 'loading'/,
+    'the gate checks for loading mode');
+  assert.match(block, /!loadingDrain/,
+    'the late-present gate is bypassed while the shell owns the picture');
+  // The flight path keeps the gate: the predicate still gates non-loading drains.
+  assert.match(block, /shouldStartHeavyAdmissionEventually\(/);
+});
+
 test('hard-limit helper flags slices that already blew the hitch ceiling', () => {
   assert.equal(admissionSliceOverHardLimit({
     startedAtMs: 0,

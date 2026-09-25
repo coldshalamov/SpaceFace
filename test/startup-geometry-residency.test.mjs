@@ -604,6 +604,25 @@ test('flight GPU residency admission slices yields instead of yielding per item'
     'the slice window must stay at the admission slice target, not a per-item present');
 });
 
+// The end-of-cook seal walks the whole scene — hundreds of textures plus geometry batches —
+// behind the shell. A raw yield donated a full scheduling round-trip per item (~500 hops on a
+// contended host, most of the 7-11 s live.firstFramePoolCensus step); the sliced cadence shares
+// one frame gap across several uploads, matching the warm-roots stamp beside it.
+test('the first-frame census seals on a sliced yield, not one hop per item', () => {
+  const censusCall = RENDERER_SOURCE.indexOf(
+    'firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {');
+  assert.ok(censusCall >= 0, 'the end-of-cook scene seal must exist');
+  const block = RENDERER_SOURCE.slice(censusCall, censusCall + 700);
+  assert.match(block, /yieldToMain:\s*createSlicedYield\(yieldToBrowser/,
+    'the seal must share a frame gap across items instead of yielding per item');
+  const planCall = RENDERER_SOURCE.indexOf(
+    'prepareStartupGpuResidency(renderer, plan.residencySubjects');
+  assert.ok(planCall >= 0, 'the opening-plan residency pass must exist');
+  const planBlock = RENDERER_SOURCE.slice(planCall, planCall + 700);
+  assert.match(planBlock, /yieldToMain:\s*createSlicedYield\(yieldToBrowser/,
+    'the opening-plan residency pass slices the same way');
+});
+
 // A latched root is invisible until admitted, so it is deadline work — yet it used to ride the
 // ambient compile lane's quiet window and first-flight auto-flush hold, adding ~50-250 ms of pure
 // waiting to its time-to-visible. The explicit lane flushes the ambient queue and serializes the

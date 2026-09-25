@@ -26,6 +26,7 @@ import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '.
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -66,6 +67,11 @@ import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regio
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { compileOpticStructure, opticStructuresFor } from '../data/opticStructures.js';
+import {
+  OPTIC_SPEND_QUIET,
+  normalizeOpticSpendLedger,
+  recordOpticSpend,
+} from '../combat/opticField.js';
 import {
   FIELD_REGROWTH_BATCH_MAX,
   FIELD_REGROWTH_BATCH_MIN,
@@ -132,6 +138,7 @@ import {
   findLiveEntityForRecord,
   markRecordDestroyed,
   missionIdentityOf,
+  normalizeRecord,
   recordShouldRematerialize,
   recordsForSector,
   serializeRecordsBag,
@@ -1136,6 +1143,19 @@ export const world = {
         });
         if (!ent) continue;
         this._stampHomeSector(ent, sector.id);
+        // A cell the player burned is durable state: restore it dark mid-quiet, or let a
+        // lattice that healed while shelved come back live and forget the stale entry.
+        const spentCells = this.state.world.opticSpent && this.state.world.opticSpent[spec.id];
+        const spentAt = spentCells ? spentCells[`${body.ix},${body.iz}`] : null;
+        if (Number.isFinite(spentAt)) {
+          const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+          if (now - spentAt >= OPTIC_SPEND_QUIET) {
+            delete spentCells[`${body.ix},${body.iz}`];
+            if (!Object.keys(spentCells).length) delete this.state.world.opticSpent[spec.id];
+          } else {
+            recordOpticSpend(ent, spentAt); // entity side only — the ledger already holds it
+          }
+        }
         ids.push(ent.id);
       }
     }
@@ -1472,6 +1492,28 @@ export const world = {
       return captured ? upsertRecord(bag, captured) : null;
     }
     return null;
+  },
+
+  /**
+   * Public/test hook: drop the job anchor from a record whose npcJobs entry is gone. The
+   * anchor latched the record PERMANENT at assign() time (upsertWorldRecord above); once the
+   * job has completed/released, that latch is stale — without this, job churn pinned one
+   * permanent record (plus its exempt far row) per finished job, forever (PQ-033.02 D28
+   * residual). The caller owns the proof that the job no longer exists; other permanent
+   * identity markers (mission/named/player/wreck/terminal outcome) still win through
+   * deriveRetentionClass, so this can only ever demote a spent actor back to recent memory.
+   */
+  clearWorldRecordJobAnchor(worldRecordId, jobId) {
+    const bag = ensureWorldRecords(this.state.world);
+    const rec = bag && bag.byId && worldRecordId != null ? bag.byId[worldRecordId] : null;
+    if (!rec || rec.jobId == null) return false;
+    if (jobId != null && rec.jobId !== jobId) return false;
+    // upsertRecord's retention latch intentionally never relaxes; this hook is the one writer
+    // that may, and only for the job anchor it owns.
+    const demoted = normalizeRecord({ ...rec, jobId: null, retentionClass: null });
+    if (!demoted) return false;
+    bag.byId[demoted.recordId] = demoted;
+    return true;
   },
 
   /**
@@ -2324,6 +2366,48 @@ export const world = {
         }, { rot: part.rot, name: oneOff.name, radius: part.radius, worldOneOff: true });
       }
     }
+    this._spawnHeliosRopeCache(sector, active);
+  },
+
+  // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a
+  // payload without `anchored` is wiped on the same sector:enter that materializes it.
+  // `persistent` stays false so residency despawn still removes it and the next materialization
+  // places one pod again. A dead pod on this bag is not replaced until the bag itself is new.
+  _spawnHeliosRopeCache(sector, active) {
+    const cache = HELIOS_ROPE_CACHE;
+    if (!cache || !sector || cache.sectorId !== sector.id || !active) return;
+    const priorId = active.heliosRopeCacheId;
+    const prior = priorId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(priorId)
+      : null;
+    if (prior) return;
+    const anchorPos = this._oneOffAnchorPos(sector, cache.anchor);
+    if (!anchorPos) return;
+    const pos = this._toGlobal({
+      x: anchorPos.x + cache.offsetLocal.x,
+      z: anchorPos.z + cache.offsetLocal.z,
+    }, sector.id);
+    const pod = spawnJettisonedCargoPod(this.state, {
+      commodityId: cache.commodityId,
+      amount: cache.amount,
+      pos,
+      vel: { x: 0, z: 0 },
+      radius: cache.radius,
+      ownerId: cache.landmarkPoiId,
+      originId: cache.landmarkPoiId,
+      factionId: 'faction_scn',
+    }, this.helpers);
+    if (!pod) return;
+    pod.data.placeId = cache.placeId;
+    pod.data.name = cache.name;
+    pod.data.oneOffId = cache.id;
+    pod.data.worldOneOff = true;
+    pod.data.anchored = true;
+    pod.data.packagedPropFile = `places/${cache.placeId}.glb`;
+    pod.data.packagedPropSlot = 'place';
+    pod.flags = Object.assign({}, pod.flags, { persistent: false });
+    this._stampHomeSector(pod, sector.id);
+    active.heliosRopeCacheId = pod.id;
   },
 
   _trackOneOffSpin(active, entityId, spin) {
@@ -3220,17 +3304,20 @@ export const world = {
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
     this._tickUsedUpFieldOpportunity(state);
+    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
+    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
+    // Runs BEFORE tickFarActors so rows orphaned by this sweep are evicted by the far-row
+    // orphan pass in the SAME tick instead of lingering one tick (PQ-033.02: an orphan row
+    // observed mid-lag read as unbounded growth at every save boundary).
+    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
+      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+    }
     tickFarActors(state, this.helpers, this.bus);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
     requestDecodeRunwayPromote(state, this.helpers);
-    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
-    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
-    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
-      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
-    }
   },
 
   _tickAsteroidFieldInteractions(state) {
@@ -5421,6 +5508,10 @@ export const world = {
       // v9: entity/overlay positions are already galactic-global. Persist schema tag only —
       // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
       coordinateSchema: state.world.coordinateSchema || 'global_v1',
+      // Spent optic cells ride the world save: lattice bodies are recipe-spawned, so the dark
+      // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
+      // whose quiet stretch elapsed while the game was closed simply loads live.
+      opticSpent: cloneSaveTree(state.world.opticSpent || {}),
       sectorOwners: this._ownerOverlay(),
       jump: savedJump,
       fuel: { current: savedFuelCurrent, max: state.fuel.max },
@@ -5467,6 +5558,9 @@ export const world = {
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
     state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    // Dark optic cells come back through _ensureOpticStructures on the next materialize;
+    // absent (older saves) normalizes to an empty ledger.
+    state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
@@ -5525,6 +5619,7 @@ export const world = {
     state.world.arrangementVersion = ARRANGEMENT_VERSION;
     state.world.records = createEmptyRecordsBag();
     state.world.resourceBodies = createEmptyResourceBodyBag();
+    state.world.opticSpent = {};
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
     state.world.sectorContents = {};

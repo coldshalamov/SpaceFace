@@ -332,6 +332,112 @@ function saveLine(state) {
   return 'Unsaved run. Use Save or F5 before quitting; autosaves fire after dock, undock, sector entry, and completed jobs.';
 }
 
+// The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
+// scar list are the receipts that already record what hit the player. A gun's impulse row is
+// written after its damage row and must stay a gun — only a later receipt may replace it.
+const PAUSE_HIT_CAUSES = new Set(['gun', 'shove', 'slam', 'rock']);
+const PAUSE_HIT_LINES = Object.freeze({
+  gun: 'A gun hit you.',
+  shove: 'A shove hit you.',
+  slam: 'A slam hit you.',
+  rock: 'A rock hit you.',
+});
+const PAUSE_SHOVE_TAGS = new Set(['inertial_shunt', 'impulse_charge_blast', 'bomb_blast']);
+const PAUSE_SHOVE_ORIGINS = new Set(['impulse_charge', 'bomb', 'massline_whip']);
+
+function pauseHitWord(value) {
+  return typeof value === 'string' && PAUSE_HIT_CAUSES.has(value) ? value : '';
+}
+
+function causeFromTraceEvent(event) {
+  if (!event || typeof event !== 'object') return '';
+  const named = pauseHitWord(event.cause);
+  if (named) return named;
+  if (event.kind === 'collision.consequence') {
+    if (event.surface === 'terrain') return 'rock';
+    if (event.control === 'tumble' || event.surface === 'structure') return 'slam';
+    if (event.surface === 'craft' || event.surface === 'debris') return 'shove';
+    return '';
+  }
+  if (event.kind === 'physics.impulse') {
+    const tag = typeof event.provenance === 'string' ? event.provenance : '';
+    if (pauseHitWord(tag)) return pauseHitWord(tag);
+    if (PAUSE_SHOVE_TAGS.has(tag)) return 'shove';
+    if (event.reason === 'weapon_hit' || event.reason === 'damage') return 'gun';
+    return '';
+  }
+  if (event.kind !== 'damage.routed' && event.kind !== 'damage') return '';
+  const origin = event.origin && typeof event.origin === 'object' ? event.origin : null;
+  const kind = origin && typeof origin.kind === 'string' ? origin.kind : '';
+  if (kind === 'weapon' || kind === 'legacy') return 'gun';
+  if (PAUSE_SHOVE_ORIGINS.has(kind)) return 'shove';
+  if (kind === 'collision' || kind.startsWith('collision')) {
+    const surface = String((origin && origin.id) || kind);
+    if (surface === 'terrain' || surface.endsWith('terrain')) return 'rock';
+    return 'slam';
+  }
+  return '';
+}
+
+function causeFromScar(scar) {
+  if (!scar || typeof scar !== 'object') return '';
+  if (scar.cause === 'weapon') return 'gun';
+  if (scar.cause === 'slam') return scar.surface === 'terrain' ? 'rock' : 'slam';
+  return pauseHitWord(scar.cause);
+}
+
+function newestTraceHit(state) {
+  const events = state && state.combat && state.combat.trace && state.combat.trace.events;
+  const playerId = state && state.playerId;
+  if (!Array.isArray(events) || playerId == null) return null;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (!event || event.targetId !== playerId) continue;
+    const cause = causeFromTraceEvent(event);
+    if (!cause) continue;
+    return { tick: Number.isFinite(event.tick) ? event.tick : 0, cause };
+  }
+  return null;
+}
+
+function hullScarLists(state) {
+  const lists = [];
+  const playerId = state && state.playerId;
+  const ent = playerId != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(playerId)
+    : null;
+  const entScars = ent && ent.data && ent.data.livingHull && ent.data.livingHull.scars;
+  if (Array.isArray(entScars)) lists.push(entScars);
+  const player = state && state.player;
+  const index = player && Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+  const ownedScars = owned && owned.livingHull && owned.livingHull.scars;
+  if (Array.isArray(ownedScars) && ownedScars !== entScars) lists.push(ownedScars);
+  return lists;
+}
+
+function newestScarHit(state) {
+  let best = null;
+  for (const list of hullScarLists(state)) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const cause = causeFromScar(list[i]);
+      if (!cause) continue;
+      const tick = Number.isFinite(list[i].tick) ? list[i].tick : 0;
+      if (!best || tick > best.tick) best = { tick, cause };
+      break;
+    }
+  }
+  return best;
+}
+
+/** One plain line for the newest thing that hit the player, or '' when nothing has. */
+export function pauseLastImpactLine(state) {
+  const traced = newestTraceHit(state);
+  const scarred = newestScarHit(state);
+  const hit = scarred && (!traced || scarred.tick > traced.tick) ? scarred : traced;
+  return hit ? (PAUSE_HIT_LINES[hit.cause] || '') : '';
+}
+
 export function pauseStatusLines(state) {
   const active = (state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
     .filter((m) => m && (!m.status || m.status === 'active'));
@@ -339,6 +445,7 @@ export function pauseStatusLines(state) {
   const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
   if (tracked) {
     return {
+      hit: pauseLastImpactLine(state),
       objective: 'TRACKED · ' + missionTitle(tracked) + ' · ' + missionProgress(tracked) + deadlineText(state, tracked),
       objectiveMention: missionId(tracked)
         ? { ref: 'contract:' + missionId(tracked), label: missionTitle(tracked), pre: 'TRACKED · ', post: ' · ' + missionProgress(tracked) + deadlineText(state, tracked) }
@@ -350,6 +457,7 @@ export function pauseStatusLines(state) {
   if (active.length) {
     const candidate = active[0];
     return {
+      hit: pauseLastImpactLine(state),
       objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
       objectiveMention: missionId(candidate)
         ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
@@ -362,12 +470,14 @@ export function pauseStatusLines(state) {
   if (wp) {
     const mapAction = pauseMapAction(state);
     return {
+      hit: pauseLastImpactLine(state),
       objective: ((mapAction && mapAction.objectiveLabel) || 'NAV SET') + ' · ' + waypointText(wp),
       next: 'Next: ' + routeNextText(mapAction),
       save: saveLine(state),
     };
   }
   return {
+    hit: pauseLastImpactLine(state),
     objective: 'NO ACTIVE CONTRACT',
     next: 'Next: dock at a station, open Missions or the Bar, accept + track work, then undock.',
     save: saveLine(state),
@@ -392,11 +502,30 @@ let pauseRail = null;
 
 // Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
 // when a value actually changed.
-const briefLast = { objective: undefined, next: undefined, save: undefined };
+const briefLast = { objective: undefined, next: undefined, save: undefined, hit: undefined };
+
+function ensurePauseHitLine() {
+  if (!els || els.briefHit || !els.briefObjective) return els && els.briefHit;
+  const parent = els.briefObjective.parentElement;
+  if (!parent) return null;
+  const node = el('p', 'dp-copy sf-muted');
+  node.dataset.role = 'last-hit';
+  node.hidden = true;
+  if (els.briefNext && els.briefNext.parentElement === parent) parent.insertBefore(node, els.briefNext);
+  else parent.appendChild(node);
+  els.briefHit = node;
+  return node;
+}
 
 function renderFlightBrief(ctx) {
   if (!els || !els.briefObjective) return;
   const lines = pauseStatusLines(ctx && ctx.state);
+  const hitLine = ensurePauseHitLine();
+  if (hitLine && lines.hit !== briefLast.hit) {
+    briefLast.hit = lines.hit;
+    hitLine.textContent = lines.hit || '';
+    hitLine.hidden = !lines.hit;
+  }
   if (lines.objective !== briefLast.objective) {
     briefLast.objective = lines.objective;
     const mention = lines.objectiveMention;
@@ -831,6 +960,7 @@ export const pauseScreen = {
     briefLast.objective = undefined;
     briefLast.next = undefined;
     briefLast.save = undefined;
+    briefLast.hit = undefined;
     renderFlightBrief(ctx);
     this._loadVersion();
   },

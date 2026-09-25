@@ -1434,9 +1434,11 @@ export function resultRows(result) {
     ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
       ? `${progress.roundThreatResolved} / ${progress.roundThreatBudget}` : 'Not recorded'],
     ['Kills', String(result.kills || 0)],
-    // The chain only exists in a swarm run, so the row only exists there — an arc plate must not
-    // carry a figure that is always zero.
-    ...(result.ruleset === SWARM_RULESET ? [['Best chain', String(result.bestChain || 0)]] : []),
+    // The swarm chain counts KILLS on a clock (swarmChain.js), not the combo band's chained
+    // tricks — it gets its own honest word so the two never read as one figure. The chain only
+    // exists in a swarm run, so the row only exists there — an arc plate must not carry a
+    // figure that is always zero.
+    ...(result.ruleset === SWARM_RULESET ? [['Best kill chain', String(result.bestChain || 0)]] : []),
     ['Score', String(result.score || 0)],
     ['Salvage', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
@@ -1885,7 +1887,7 @@ export function featDiagram(result) {
   }
   const n = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
   const bestChain = n(result && result.bestChain);
-  if (bestChain > 0) return { kind: 'chain', text: `No stunts banked — best chain ${bestChain}.` };
+  if (bestChain > 0) return { kind: 'chain', text: `No stunts banked — best kill chain ${bestChain}.` };
   const kills = n(result && result.kills);
   if (kills > 0) {
     return { kind: 'kills', text: kills === 1 ? 'No stunts banked — 1 kill.' : `No stunts banked — ${kills} kills.` };
@@ -2133,26 +2135,37 @@ function renderBuild(band, result) {
    ------------------------------------------------------------------------------------------- */
 
 /** A kit-fine download link: a real anchor carrying a data URI, not a button. */
-function shareLink(band, label, text, filename, ariaLabel) {
+function shareLink(row, label, text, filename, ariaLabel) {
   const a = el('a', 'k-word k-word--fine sf-crres__share-link', label);
   const href = shareTextHref(text);
   if (!href) return;
   a.href = href;
   a.download = filename;
   a.setAttribute('aria-label', ariaLabel || label);
-  band.appendChild(a);
+  row.appendChild(a);
 }
 
-function selectableText(band, tag, className, value, ariaLabel) {
-  const field = el(tag, className);
-  if (tag === 'textarea') field.rows = 4;
-  else field.type = 'text';
+function selectableText(row, className, value, ariaLabel) {
+  // The field is one line that scrolls inside its own box — never wraps over a neighbour.
+  const field = el('input', className);
+  field.type = 'text';
   field.readOnly = true;
   field.value = value;
   field.setAttribute('aria-label', ariaLabel);
   field.addEventListener('focus', () => { try { field.select(); } catch { /* stub DOM */ } });
   field.addEventListener('click', () => { try { field.select(); } catch { /* stub DOM */ } });
-  band.appendChild(field);
+  row.appendChild(field);
+}
+
+/** One share item: a single aligned row — caption, field, save link. */
+function shareItem(band, { caption, value, ariaLabel, linkLabel, filename, linkAria }) {
+  const item = el('div', 'sf-crres__share-item');
+  const row = el('div', 'sf-crres__share-row');
+  row.appendChild(el('span', 'k-caps sf-crres__share-cap', caption));
+  selectableText(row, 'k-input sf-crres__share-code', value, ariaLabel);
+  shareLink(row, linkLabel, value + '\n', filename, linkAria);
+  item.appendChild(row);
+  band.appendChild(item);
 }
 
 function buildShareBand(result) {
@@ -2165,28 +2178,41 @@ function buildShareBand(result) {
   const code = runShareCodeForRun(setup, result, { ghostHash: ghost ? ghost.hash : null });
   if (!code && !(ghost && ghost.text)) return null;
 
-  const band = el('div', 'sf-crres__band');
+  const band = el('div', 'sf-crres__band sf-crres__share');
+  band.dataset.band = 'share';
   const title = el('p', 'k-caps sf-crres__band-title', 'Share');
   title.setAttribute('role', 'heading');
   title.setAttribute('aria-level', '2');
   band.appendChild(title);
 
+  if (code || (ghost && ghost.text)) {
+    // One explainer for the whole register — two per-item notes were what pushed the ghost row
+    // under the ledger's clip edge.
+    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note',
+      'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. '
+      + 'A code selects itself when you touch it.'));
+  }
+
   if (code) {
-    band.appendChild(el('p', 'k-t-fine k-38',
-      'Same seed, same build, same rules — another machine reproduces this run. '
-      + 'The code selects itself when you touch it.'));
-    selectableText(band, 'input', 'k-input sf-crres__share-code', code, 'Run share code');
-    shareLink(band, 'Save run code', code + '\n',
-      `spaceface-run-${result && Number.isInteger(result.seed) ? result.seed : 'share'}.txt`,
-      'Download the run code as a file');
+    shareItem(band, {
+      caption: 'Run code',
+      value: code,
+      ariaLabel: 'Run share code',
+      linkLabel: 'Save run code',
+      filename: `spaceface-run-${result && Number.isInteger(result.seed) ? result.seed : 'share'}.txt`,
+      linkAria: 'Download the run code as a file',
+    });
   }
 
   if (ghost && ghost.text) {
-    band.appendChild(el('p', 'k-t-fine k-38',
-      `The recorded hull — paste it on another machine's Crucible door and it races you.`));
-    selectableText(band, 'textarea', 'k-input sf-crres__ghost-code', ghost.text, 'Ghost share code');
-    shareLink(band, 'Save ghost file', ghost.text + '\n',
-      `spaceface-ghost-${ghost.hash}.txt`, 'Download the ghost as a file');
+    shareItem(band, {
+      caption: 'Ghost file',
+      value: ghost.text,
+      ariaLabel: 'Ghost share code',
+      linkLabel: 'Save ghost file',
+      filename: `spaceface-ghost-${ghost.hash}.txt`,
+      linkAria: 'Download the ghost as a file',
+    });
   }
   return band;
 }
@@ -2453,7 +2479,7 @@ function resultFigures(result) {
   const figures = [
     ['Wave', String(reached || 0)],
     ['Kills', String(result.kills || 0)],
-    swarm ? ['Best chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
+    swarm ? ['Best kill chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
     ['Salvage', `${result.credits || 0}`],
   ];
   const box = el('div', 'orr-crres-figures');

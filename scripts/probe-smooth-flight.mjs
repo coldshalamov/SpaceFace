@@ -110,7 +110,11 @@ try {
     ],
   });
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  const gpuBricks = [];
   page.on('console', (msg) => {
+    // GPU-brick warnings carry a host-wall stamp so a multi-second present stall can be named
+    // bloom/GPU-side even though it never shows up inside the game's own callback budget.
+    if (/\[GPU brick\]/.test(msg.text())) gpuBricks.push({ at: Date.now(), text: msg.text().slice(0, 80) });
     if (msg.type() === 'error' || /asteroid-pool|WebGLProgram|shader|\[loop\]/i.test(msg.text())) {
       const loc = msg.location && msg.location();
       const url = loc && loc.url ? ` (${String(loc.url).slice(-120)})` : '';
@@ -202,6 +206,25 @@ try {
       last: 0,
     };
     window.__SF_SMOOTH__ = record;
+    // Long tasks are the main-thread work that runs BETWEEN display callbacks — decode, parse,
+    // clone and reconcile bursts all land here. A multi-second interval with a quiet callback is
+    // unexplained without this list; attribution.name/container point at the responsible context.
+    record.longTasks = [];
+    try {
+      record.longTaskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          record.longTasks.push({
+            t: entry.startTime,
+            ms: entry.duration,
+            name: entry.name,
+            attribution: (entry.attribution || []).map((a) => (
+              `${a.name || '?'}:${(a.containerName || a.containerSrc || a.containerId || '').toString().slice(0, 80)}`
+            )),
+          });
+        }
+      });
+      record.longTaskObserver.observe({ entryTypes: ['longtask'] });
+    } catch { /* longtask unsupported */ }
     const scratch = {};
     // Program handles are released from renderer.info.programs when the last material using them
     // is disposed, so a link event looked up only at sample end can come back nameless. Track
@@ -219,6 +242,8 @@ try {
             scratch.callbackMs || 0, scratch.simFrameMs || 0, scratch.presentationMs || 0,
             scratch.renderMs || 0, scratch.vfxMs || 0, scratch.uiMs || 0, scratch.feelMs || 0,
             scratch.admissionMs || 0,
+            scratch.untrackedMs || 0, scratch.externalCallbackGapMs || 0,
+            scratch.callbackDispatchLagMs || 0, scratch.callbackIntervalMs || 0,
           ]);
         } else {
           record.costs.push(null);
@@ -253,9 +278,25 @@ try {
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+    // The in-game hitch classifier (opt-in; zero cost when off) names each >32 ms frame's owner
+    // — compile/upload/bloom/sim/externalScheduling — from phases only it can see. Its histogram
+    // is the report's authoritative owner tally for the whole window.
+    const perf = window.SF && window.SF.state && window.SF.state.perfRuntime;
+    if (perf) {
+      // Both flags: detailed owners (compile/upload/bloom/meshBuild) only accumulate when
+      // renderWork is on, and classification runs only when hitch attribution is on.
+      if (typeof perf.setRenderWorkEnabled === 'function') perf.setRenderWorkEnabled(true);
+      if (typeof perf.setHitchAttributionEnabled === 'function') perf.setHitchAttributionEnabled(true);
+      record.attributionRestorable = {
+        renderWork: perf.renderWorkEnabled === true,
+      };
+    }
   });
   const before = await page.evaluate(() => ({ ...window.SF.loop.getDiagnostics() }));
   const clockBefore = await page.evaluate(() => ({ sim: window.SF.state.simTime, wall: performance.now() }));
+  // Host wall-clock pair for the same instant: GPU-brick stamps (Date.now) map back onto the
+  // page's performance.now frame clock through this offset.
+  const clockBeforeHostAt = Date.now();
   // Tier-1 GL totals BEFORE the sampling loop: the report's link/upload deltas are only
   // meaningful against a pre-sample baseline, and a disabled counter set reads as null here.
   const countersBefore = await page.evaluate(() => {
@@ -429,6 +470,49 @@ try {
         ? render.pendingPipelineAdmissions() : null,
       pendingResidency: typeof render.pendingAuthoredGpuResidency === 'function'
         ? render.pendingAuthoredGpuResidency() : null,
+      // Which instance-pool chunks already exist when flight starts? A wave-1 hull pool
+      // present here means the launch warm promoted it; absent means the first live spawn
+      // still pays chunk creation (instanceMatrix bufferData) in-round.
+      shipPoolsAtFlight: (() => {
+        const diag = window.__THREE_GAME_DIAGNOSTICS__;
+        const dumpScenePools = (diag && typeof diag.scenePoolDump === 'function')
+          ? diag.scenePoolDump
+          : (render && typeof render.scenePoolDump === 'function' ? render.scenePoolDump : null);
+        if (!dumpScenePools) return null;
+        const dump = dumpScenePools();
+        if (!dump || !Array.isArray(dump.pools)) return null;
+        const shipPools = [];
+        for (const pool of dump.pools) {
+          for (const chunk of pool.chunks || []) {
+            const name = String(chunk.name || '');
+            if (!name.includes('WHOLESHIP') && !name.includes('WEAPON')) continue;
+            shipPools.push({
+              name: name.slice(0, 96),
+              inScene: !!chunk.inScene,
+              count: chunk.count,
+              slots: chunk.slots,
+              retired: !!chunk.retired,
+              owners: (chunk.slotOwners || []).slice(0, 4),
+            });
+          }
+        }
+        const candidates = [];
+        for (const candidate of dump.candidates || []) {
+          const key = String(candidate.key || '');
+          const label = String(candidate.label || '');
+          if (!key.includes('WHOLESHIP') && !key.includes('WEAPON')
+              && !label.includes('WHOLESHIP') && !label.includes('WEAPON')) continue;
+          candidates.push({ label: label.slice(0, 96), owner: String(candidate.owner || '').slice(0, 64) });
+        }
+        return {
+          pools: shipPools.length,
+          chunks: shipPools,
+          owners: (dump.owners || []).length,
+          candidateCount: (dump.candidates || []).length,
+          shipCandidates: candidates.slice(0, 16),
+          diag: dump.poolDiag || null,
+        };
+      })(),
     };
   });
 
@@ -669,6 +753,15 @@ try {
         t: ats[f.at + 30],
         ...Object.fromEntries(names.map((name, k) => [name, f.cost[k]])),
       })),
+      // Every frame over 50 ms with its full cost row: the report prints each one with a
+      // named owner and the nearest wave event, instead of only the top-10 freezes.
+      longFrameRows: (() => {
+        const rows = [];
+        for (let i = 1; i < dts.length; i++) {
+          if (dts[i] > 50 && costs[i - 1]) rows.push({ at: i, t: ats[i], dt: dts[i], cost: costs[i - 1] });
+        }
+        return rows;
+      })(),
       waves,
       frameClockStart: ats.length ? ats[0] : null,
       countersAfter,
@@ -720,6 +813,14 @@ try {
         return rows;
       })(),
       atsRaw: ats,
+      longTasks: (window.__SF_SMOOTH__ && Array.isArray(window.__SF_SMOOTH__.longTasks)
+        ? window.__SF_SMOOTH__.longTasks : []),
+      hitchHistogram: state.perfRuntime && typeof state.perfRuntime.getHitchHistogram === 'function'
+        ? state.perfRuntime.getHitchHistogram()
+        : null,
+      hitchVerdicts: state.perfRuntime && typeof state.perfRuntime.getHitchVerdicts === 'function'
+        ? state.perfRuntime.getHitchVerdicts()
+        : null,
       // Program → live owners: for every cacheKey still current on a material, which materials
       // and meshes hold it. A NOVEL link's cacheKey resolves here to the exact visual family
       // (material.name / mesh.name) that drew it, ending the "which variant" guesswork.
@@ -971,6 +1072,82 @@ try {
   }
   const uploadLines = [...uploadGroups.entries()].slice(0, 24)
     .map(([key, count]) => `    +${key.split('|')[0]}  ×${count}  ${key.split('|').slice(1).join('|')}`);
+  // Owner attribution for every frame over 50 ms. A long interval is paid by the frame before
+  // it: callback ms name the JS owner; a long interval with a quiet callback is work outside
+  // the game's callback (GPU process, compositor, GC, host scheduling). shaderLink and buffer
+  // upload events carry the same frame counter, so they pin compile/upload to the exact frame;
+  // GPU-brick warnings are wall-stamped and mapped back through the sample clock pair.
+  const eventKindsByFrame = new Map();
+  if (framesAtStart !== null && result.countersAfter && Array.isArray(result.countersAfter.events)) {
+    for (const e of result.countersAfter.events) {
+      if (!e || !Number.isFinite(e.frame) || e.frame < framesAtStart) continue;
+      const k = e.frame - framesAtStart;
+      if (!eventKindsByFrame.has(k)) eventKindsByFrame.set(k, []);
+      eventKindsByFrame.get(k).push(e.kind);
+    }
+  }
+  const brickFrames = new Set();
+  for (const brick of gpuBricks) {
+    const pageMs = (brick.at - clockBeforeHostAt) + clockBefore.wall;
+    let best = -1;
+    for (let k = 0; k < atsRaw.length; k++) {
+      if (Math.abs(atsRaw[k] - pageMs) < 1500 && (best < 0 || Math.abs(atsRaw[k] - pageMs) < Math.abs(atsRaw[best] - pageMs))) best = k;
+    }
+    if (best >= 0) brickFrames.add(best);
+  }
+  const ownerOf = (row) => {
+    const kinds = eventKindsByFrame.get(row.at) || [];
+    const c = row.cost;
+    const callback = c[0], sim = c[1], render = c[3], vfx = c[4], ui = c[5], admission = c[7];
+    const untracked = c[8] || 0, extGap = c[9] || 0, dispLag = c[10] || 0;
+    let owner;
+    if (kinds.includes('shaderLink')) {
+      owner = 'compile';
+    } else if (callback >= 25 || callback >= row.dt * 0.5) {
+      const js = [['sim', sim], ['render', render], ['vfx', vfx], ['ui', ui], ['admission', admission], ['untracked', untracked]];
+      js.sort((a, b) => b[1] - a[1]);
+      owner = js[0][1] >= 8 ? js[0][0] : 'unknown';
+    } else if (dispLag > extGap && dispLag >= 8) {
+      // The display callback fired on time but sat behind other main-thread work —
+      // that is OUR non-callback JS (build/clone/decode tasks), not host starvation.
+      owner = 'intraFrameTasks';
+    } else {
+      owner = 'externalScheduling';
+    }
+    if (kinds.includes('bufferFullUpload')) owner += '+upload';
+    if (brickFrames.has(row.at)) owner += '+bloom';
+    return owner;
+  };
+  const longFrameLines = (result.longFrameRows || []).map((row) => {
+    const t = result.frameClockStart != null ? (row.t - result.frameClockStart) / 1000 : NaN;
+    const rel = Number.isFinite(t) ? `+${t.toFixed(1)}s` : '+?s';
+    const c = row.cost;
+    const sched = (c[9] || c[10]) ? ` gap ${(c[9] || 0).toFixed(0)} disp ${(c[10] || 0).toFixed(0)}` : '';
+    return `    ${rel.padStart(7)} #${String(row.at).padStart(4)}  ${row.dt.toFixed(0).padStart(5)}  ${ownerOf(row).padEnd(24)} cb ${c[0].toFixed(0).padStart(4)} (sim ${c[1].toFixed(0)} ren ${c[3].toFixed(0)} vfx ${c[4].toFixed(0)} ui ${c[5].toFixed(0)} adm ${c[7].toFixed(0)} untr ${(c[8] || 0).toFixed(0)})${sched}  ${nearestWaveEventLabel(row.t, waves)}`;
+  });
+  // The in-game classifier's own verdict: aggregate owner tally over every hitch in the window
+  // plus the trailing verdict ring (atMs is the page-clock stamp of each hitch's callback).
+  const hh = result.hitchHistogram;
+  const hitchHistogramLine = !hh
+    ? 'n/a (hitch attribution unavailable)'
+    : `hitches ${hh.hitches} of ${hh.frames} frames, named ${hh.named} (coverage ${(100 * (hh.coverage || 0)).toFixed(0)} %) — `
+      + Object.entries(hh.counts || {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' | ')
+      + (hh.schedulingFrames ? `  (scheduling split: gap-dominant ${hh.schedulingGapDominant}, dispatch-dominant ${hh.schedulingDispatchDominant}, extGap ${(hh.schedulingExternalGapMsTotal || 0).toFixed(0)} ms, dispLag ${(hh.schedulingDispatchLagMsTotal || 0).toFixed(0)} ms)` : '')
+      + (hh.bySimSystem && Object.keys(hh.bySimSystem).length ? `  sim: ${Object.entries(hh.bySimSystem).map(([k, n]) => `${k}×${n}`).join(' ')}` : '');
+  const verdictLines = (result.hitchVerdicts || []).map((v) => {
+    const rel = result.frameClockStart != null && Number.isFinite(v.atMs) ? (v.atMs - result.frameClockStart) / 1000 : NaN;
+    return `    ${(Number.isFinite(rel) ? `+${rel.toFixed(1)}s` : '+?s').padStart(7)}  ${v.frameMs.toFixed(0).padStart(5)}  ${v.owner}  ${nearestWaveEventLabel(v.atMs, waves)}`;
+  });
+  // Long tasks between display callbacks — the otherwise-invisible decode/parse/clone bursts.
+  // Printed largest-first so a multi-second block names itself instead of reading as 'external'.
+  const longTaskLines = (result.longTasks || [])
+    .filter((t) => t.ms >= 100)
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 15)
+    .map((t) => {
+      const rel = result.frameClockStart != null ? (t.t - result.frameClockStart) / 1000 : NaN;
+      return `    ${(Number.isFinite(rel) ? `+${rel.toFixed(1)}s` : '+?s').padStart(7)}  ${t.ms.toFixed(0).padStart(6)} ms  ${t.name}  ${(t.attribution || []).join(' ')}`;
+    });
   const lines = [
     '',
     'SMOOTH-FLIGHT WITNESS',
@@ -987,6 +1164,13 @@ try {
     '  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...',
     ...result.worstFrames.map((f) => `    #${String(f.at).padStart(4)}  ${f.dt.toFixed(0).padStart(4)} <- callback ${f.callback.toFixed(0).padStart(4)}  sim ${f.sim.toFixed(0).padStart(4)}  present ${f.present.toFixed(0).padStart(4)}  (render ${f.render.toFixed(0)}, vfx ${f.vfx.toFixed(0)}, ui ${f.ui.toFixed(0)})  admission ${f.admission.toFixed(0)}  ${nearestWaveEventLabel(f.t, waves)}`),
     `  wave events (s into sample)   ${waveLine}`,
+    '  every frame >50 ms: +s into sample, interval ms, owner, callback breakdown, nearest wave',
+    ...longFrameLines,
+    `  hitch classifier (in-game)    ${hitchHistogramLine}`,
+    '  last hitch verdicts: +s into sample, frame ms, owner, nearest wave',
+    ...verdictLines,
+    '  long tasks ≥100 ms between callbacks (largest first)',
+    ...(longTaskLines.length ? longTaskLines : ['    none']),
     // PQ-210.00, 2026-09-21: read this line BEFORE the link count. The sample opens at flight
     // start, so whether a wave arrival lands inside the 30 s window depends on how long the
     // cook took — a slower build pushes wave 1 behind the loading shell and the window then
@@ -1027,6 +1211,39 @@ try {
       : []),
     ...(cookLedger && cookLedger.crucibleWarm
       ? [`  crucible warm at flight     ${JSON.stringify(cookLedger.crucibleWarm).slice(0, 900)}`]
+      : []),
+    ...(cookLedger && cookLedger.shipPoolsAtFlight
+      ? (() => {
+          const pools = cookLedger.shipPoolsAtFlight;
+          const lines = [`  ship pools at flight        ${pools.pools} chunks, ${pools.owners} slot owners, ${pools.candidateCount ?? 'n/a'} pending candidates`];
+          for (const chunk of (pools.chunks || []).slice(0, 24)) {
+            lines.push(`    ${chunk.name}${chunk.inScene ? '' : ' (off-scene)'} count=${chunk.count} slots=${chunk.slots}${chunk.retired ? ' RETIRED' : ''} owners=${(chunk.owners || []).join(',')}`);
+          }
+          for (const cand of (pools.shipCandidates || [])) {
+            lines.push(`    candidate ${cand.label} owner=${cand.owner}`);
+          }
+          // Pool-path forensics: which package records' composes got a node factory, which
+          // meshes the batch gate rejected, and what each label bucket did inside the pool
+          // admission. Filters to ship parts (WHOLESHIP/WEAPON/HULL) — the arena's place
+          // records churn the same counters without bearing on the fight.
+          const diag = pools.diag;
+          if (diag && Array.isArray(diag.admits)) {
+            for (const row of diag.admits.slice(0, 20)) {
+              lines.push(`    admit ${row.bucket}: calls=${row.calls} installs=${row.installs} dupOwner=${row.dupOwner} promotes=${row.promotes} errors=${row.errors} retires=${row.retires || 0}`);
+            }
+          }
+          if (diag && Array.isArray(diag.partCalls)) {
+            for (const row of diag.partCalls.slice(0, 24)) {
+              lines.push(`    part ${row.assetId}: calls=${row.calls} noFactory=${row.noFactory}`);
+            }
+          }
+          if (diag && Array.isArray(diag.poolRejects)) {
+            for (const row of diag.poolRejects.slice(0, 12)) {
+              lines.push(`    reject ${row.assetId}: ${row.count}× (${(row.names || []).join(',')})`);
+            }
+          }
+          return lines;
+        })()
       : []),
     ...(cookLedger && Array.isArray(cookLedger.steps) && cookLedger.steps.length
       ? [`  cook ledger                 ${cookLedger.steps.slice(-18).join(' | ')}`]

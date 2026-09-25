@@ -184,7 +184,9 @@ export function injectHudCss() {
   .sf-hudpanel { background:none; border:none; }
   .sf-target { width:100%; display:flex; flex-direction:column; gap:5px; text-align:right; contain:layout paint style; padding:2px 0; }
   .sf-target__head { display:flex; align-items:baseline; justify-content:flex-end; gap:8px; }
-  .sf-target__name { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* The target's name is a primary label: it wraps to a second line in the card rather than
+     ellipsising ("Relief-Freighter Choir-Tender" never fit the 232 px dock). */
+  .sf-target__name { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper); white-space:normal; overflow-wrap:break-word; overflow:hidden; }
   .sf-target__faction { font-family:var(--hud-data); font-size:var(--k-fs-data); }
   .sf-target__meta { display:flex; justify-content:flex-end; gap:14px; font-family:var(--hud-data); font-size:var(--k-fs-data);
     color:var(--hud-muted); }
@@ -941,8 +943,12 @@ export function injectHudCss() {
      own width is the basis, and because BAND/COMMS/HAIL cannot shrink below min-content the host
      absorbed the whole deficit — a headline truncated to "TR…" beside 200px of empty tape. */
   .sf-commtape__news { min-width:0; flex:1 1 0; overflow:hidden; }
-  .sf-news-ticker { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper); }
+  /* The headline is a primary label: it wraps to a second line inside the tape rather than
+     truncating. Below the legible floor the tape still hides instead of stubbing (renderTicker). */
+  .sf-news-ticker { overflow:hidden; overflow-wrap:anywhere;
+    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper);
+    line-height:1.25; }
+  .sf-news-ticker__item { display:block; }
   .sf-news-ticker__item--blockade, .sf-news-ticker__item--piracy { color:var(--hud-danger); }
   .sf-news-ticker__item--boom, .sf-news-ticker__item--freight_arrival { color:var(--hud-cyan); }
   .sf-commtape__slots { display:flex; align-items:center; gap:7px; pointer-events:auto; }
@@ -1031,7 +1037,8 @@ export function injectHudCss() {
   .sf-overview-row.selected {
     border-left:0;
   }
-  .sf-overview-row__name { max-width:92px; color:var(--hud-paper); }
+  /* Contact names are primary labels: they wrap inside the row instead of truncating. */
+  .sf-overview-row__name { min-width:0; overflow-wrap:anywhere; color:var(--hud-paper); }
   .sf-overview-row__right { color:var(--hud-muted); }
   .sf-overview-row__detail { color:var(--hud-muted); padding-left:14px; }
   .sf-overview-footer { background:transparent; color:var(--hud-muted); }
@@ -1109,7 +1116,7 @@ export function injectHudCss() {
      rather than shrink the type to fit them -- measured at 1440x900 and 1280x720. */
   #hud .sf-barrow__label { width:52px; }
   #hud .sf-barrow__num { width:46px; }
-  #hud .sf-overview-row__name { max-width:104px; }
+  #hud .sf-overview-row__name { max-width:none; }
   /* Second pass, from a re-measure: these six survived because they are set in their own modules'
      stylesheets rather than in this file. Measuring the rendered layer is the only way to find
      them -- reading any single stylesheet would have declared the job done at the first pass. */
@@ -1187,7 +1194,7 @@ export function injectHudCss() {
     #hud { --sf-dock-w:200px; --sf-radar-size:200px; }
     .sf-radar canvas { width:200px !important; height:200px !important; }
     .sf-rightdock { right:calc(10px + var(--sf-safe-inset-x, 0px)); bottom:72px; }
-    .sf-overview-row__name { max-width:64px; }
+    .sf-overview-row__name { max-width:none; }
     .sf-command-deck { bottom:8px; width:min(360px, calc(100vw - 24px)); min-width:0; }
     .sf-cluster { position:relative; left:auto; bottom:auto; width:auto; transform:none; }
   }
@@ -2286,7 +2293,9 @@ export function injectHudCss() {
 
   /* --- right dock: roster, target card, sector law --- */
   #hud .sf-overview { overflow:hidden; }
-  #hud .sf-radar-objective-key { white-space:pre; overflow:hidden; text-overflow:ellipsis; }
+  /* The legend is a primary label: it wraps to a second centred line under the dial rather than
+     ellipsising inside the 220 px column. */
+  #hud .sf-radar-objective-key { white-space:normal; overflow-wrap:break-word; overflow:hidden; }
   #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
   #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }

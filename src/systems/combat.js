@@ -14,6 +14,7 @@ import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/dama
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { opticBeamHit, opticMaterialOf } from '../combat/opticField.js';
 import { markDirty, isDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -1076,6 +1077,44 @@ export const combat = {
         const rr = (e.radius || 6) + 2;
         if (px * px + pz * pz <= rr * rr && t < bestT) { bestT = t; bestE = e; }
       }
+      // §24 "Beams and missiles": an energy beam also answers to the optic lattice — stone,
+      // metal, and diamond surfaces were never hulls, but the first optic body on the ray owns
+      // the contact (absorb/split — a beam never reflects) ahead of any hull beyond it. The
+      // weapons system settles the grammar on 'optic:beamContact' and marks the request
+      // handled; an unhandled request means the optic owner is absent and the beam keeps its
+      // legacy pass-through.
+      let opticT = Infinity, opticE = null, opticHit = null;
+      if ((beam.dmgType || 'energy') === 'energy') {
+        const optics = beamOpticCandidates(this, state, beam, dx, dz);
+        for (const e of optics) {
+          if (!e || e.alive === false || e.id === beam.ownerId) continue;
+          if (!opticMaterialOf(e)) continue;
+          const hit = opticBeamHit(beam, e);
+          if (hit && hit.t < opticT) { opticT = hit.t; opticE = e; opticHit = hit; }
+        }
+      }
+      if (opticE && bestE) {
+        // Same entry-crossing convention on both sides: whichever skin the ray meets first
+        // owns the contact — a hull in front of the lattice takes the hit, not the rock.
+        const hullHit = opticBeamHit(beam, bestE);
+        if (hullHit && hullHit.t < opticT) { opticE = null; opticHit = null; }
+      }
+      if (opticE) {
+        const req = {
+          beam,
+          targetId: opticE.id,
+          pos: opticHit.pos,
+          normal: opticHit.normal,
+          handled: false,
+        };
+        if (this.bus) this.bus.emit('optic:beamContact', req);
+        if (req.handled) {
+          // The surface ate the ray — the beam ends at the contact, never reaching hulls past it.
+          beam.to.x = opticHit.pos.x;
+          beam.to.z = opticHit.pos.z;
+          continue;
+        }
+      }
       if (bestE) {
         this.onHit({
           targetId: bestE.id,
@@ -1117,8 +1156,22 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
   return candidates;
 }
 
+// Optic terrain rides `collidables` (rocks are colliders, never damageables): same query
+// shape as the hull sweep, filtered by opticMaterialOf at the hit test. Runs only for
+// energy beams — a kinetic ray ignores the grammar exactly like a kinetic round does.
+function beamOpticCandidates(host, state, beam, dx, dz) {
+  ensureCombatRuntime(host);
+  const fallback = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+  return queryNearbyEntities(state, center, queryRadius, host._opticBeamScratch, fallback);
+}
+
 function ensureCombatRuntime(host) {
   if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
+  if (!host._opticBeamScratch) host._opticBeamScratch = [];
   if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
   if (!host._diag) {
     host._diag = {

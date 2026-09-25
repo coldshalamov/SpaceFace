@@ -17,6 +17,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { heat as heatProto } from '../src/systems/heat.js';
+import { addCargo } from '../src/systems/cargo.js';
 import { STORY_BRANCH_INTRO_TAG } from '../src/data/missions.js';
 import { COND, ENDGAME_CHOICES } from '../src/data/narrative.js';
 import {
@@ -81,6 +82,7 @@ function makeLiveHarness(seed = 47) {
   const loopBacks = [];
   const endgameOffers = [];
   const encounterReceipts = [];
+  const elroyResolved = [];
 
   bus.on('economy:grantCredits', (p) => grantCredits.push(p));
   bus.on('faction:repDelta', (p) => repDeltas.push(p));
@@ -90,6 +92,7 @@ function makeLiveHarness(seed = 47) {
   bus.on('endgame:loopBack', (p) => loopBacks.push(p || {}));
   bus.on('endgame:offer', (p) => endgameOffers.push(p));
   bus.on('encounter:receipt', (p) => encounterReceipts.push(p));
+  bus.on('story:elroyResolved', (p) => elroyResolved.push(p || {}));
 
   // Apply credits/rep intents so B7 gate and Ending A/E can be asserted on state.
   bus.on('economy:grantCredits', (p) => {
@@ -145,7 +148,7 @@ function makeLiveHarness(seed = 47) {
   return {
     state, bus, missions, story, heat,
     grantCredits, repDeltas, beatAdvances, heatClears, heatChanged,
-    loopBacks, endgameOffers, encounterReceipts,
+    loopBacks, endgameOffers, encounterReceipts, elroyResolved,
   };
 }
 
@@ -261,6 +264,13 @@ function completePhysicalMission(h, mission) {
     });
     return;
   }
+  if (mission.type === 'smuggling_run') {
+    const qty = Math.max(1, mission.params.qty || 1);
+    const loaded = addCargo(h.state, mission.params.cmdtyId, qty);
+    assert.equal(loaded, qty, `${mission.storyTag} contraband must fit the hold`);
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   h.missions.spawnTargetsForSector(mission.destSectorId);
@@ -361,6 +371,119 @@ function advanceToB7(h, branch = 'traders') {
   completeB5(h, outcome);
   completeB6(h, outcome);
   completeB7(h, outcome);
+}
+
+// ── Live route (PQ-032.02) ─────────────────────────────────────────────────────
+// The live B2 is `rescue_under_fire`: it never writes `elroy_outcome`. These helpers
+// walk the real player route — pod rescue, pending-branch pick, chain legs, drone
+// program, authored Ashfall operation — with no hand-set outcome token.
+const LIVE_ROUTE = Object.freeze({
+  patrol: Object.freeze({
+    introStationId: 'station_coalition', chainStationId: 'station_coalition',
+    program: 'patrol_guard', seedVariant: 'custody_watch',
+    opId: 'ashfall_blockade', opType: 'authored_set_piece',
+  }),
+  traders: Object.freeze({
+    introStationId: 'station_tethys', chainStationId: 'station_tethys',
+    program: 'mine_to_depot', seedVariant: 'force_logistics',
+    opId: 'ashfall_siege', opType: 'demolition',
+  }),
+  free: Object.freeze({
+    introStationId: 'station_reach', chainStationId: 'station_helios',
+    program: 'mine_to_depot', seedVariant: 'force_logistics',
+    opId: 'ashfall_evidence_tow', opType: 'tow_recovery',
+  }),
+});
+
+function assertLiveRouteClean(h, label) {
+  assert.equal(h.state.story.flags.elroy_outcome, undefined, `${label}: live route writes no outcome`);
+  assert.equal(h.state.story.flags.elroy_outcome_legacy, undefined, `${label}: live route writes no legacy mark`);
+  assert.equal(h.elroyResolved.length, 0, `${label}: live route emits no story:elroyResolved`);
+}
+
+function advanceEmbodiedB1B2Live(h) {
+  const { state } = h;
+  assert.equal(state.story.beatIndex, 1);
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  assert.equal(state.story.beatIndex, 2);
+  const rescue = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  assert.equal(rescue.type, 'rescue_under_fire', 'live B2 is the pod rescue, not a bounty hunt');
+  completeSpineSetPiece(h, rescue);
+  assert.equal(state.story.beatIndex, 3);
+  assert.equal(state.story.flags.embodied_route, 'rescue', 'authored B1–B3 settlement marks the live route');
+  assertLiveRouteClean(h, 'B2');
+}
+
+function completeB4Live(h, branch) {
+  const route = LIVE_ROUTE[branch];
+  const mission = acceptCurrentStoryOffer(h, route.introStationId, STORY_BRANCH_INTRO_TAG);
+  assert.equal(h.state.story.branch, null, 'accepting the live intro only pends the branch');
+  assert.equal(h.state.story.flags.pick_a_side_pending, branch);
+  completePhysicalMission(h, mission);
+  assert.equal(h.state.story.branch, branch);
+  assert.equal(h.state.story.beatIndex, 5);
+}
+
+function completeB5Live(h, branch) {
+  const route = LIVE_ROUTE[branch];
+  const count = BRANCH_CHAIN[branch].count;
+  for (let completed = 0; completed < count; completed++) {
+    const mission = acceptCurrentStoryOffer(
+      h, route.chainStationId, `campaign47a:b5:${branch}:${completed + 1}`,
+    );
+    completePhysicalMission(h, mission);
+    if (completed < count - 1) assert.equal(h.state.story.beatIndex, 5);
+  }
+  assert.equal(h.state.story.beatIndex, 6);
+}
+
+function completeB6Live(h, branch) {
+  const route = LIVE_ROUTE[branch];
+  h.bus.emit('asset:deployed', {
+    kind: 'drone', id: 'seed-live', defId: 'drone_mk1', sectorId: 'sector_helios_prime',
+  });
+  assert.equal(h.state.story.beatIndex, 6, 'deployment alone cannot settle B6');
+  h.bus.emit('automation:programAssigned', { kind: 'drone', id: 'seed-live', templateId: route.program });
+  assert.equal(h.state.story.beatIndex, 7);
+  assert.equal(h.state.story.flags.empire_seed_asset_id, 'seed-live');
+  assert.equal(h.state.story.flags.empire_seed_variant, route.seedVariant);
+}
+
+function completeB7Live(h, branch) {
+  const route = LIVE_ROUTE[branch];
+  // Fat wallet + high standing must NOT end a live save before the authored op runs.
+  h.state.player.credits = Math.max(250_000, h.state.player.credits || 0);
+  for (const factionId of ['faction_scn', 'faction_mts', 'faction_free']) {
+    h.state.factions[factionId].rep = Math.max(80, h.state.factions[factionId].rep || 0);
+  }
+  h.missions.update(0.016, h.state);
+  assert.equal(h.state.story.flags.endgame, undefined, 'legacy net-worth gate must not bypass the live climax');
+
+  const board = h.missions.ensureBoard('station_ashcache');
+  const ops = board.slots.filter((row) => String(row.storyTag || '').startsWith('campaign47a:b7:'));
+  assert.equal(ops.length, 1, `${branch}: exactly one authored Deep Reach op posts`);
+  const mission = acceptCurrentStoryOffer(h, 'station_ashcache', 'campaign47a:b7:');
+  assert.equal(mission.storyOperation, route.opId, `${branch} selects its authored operation`);
+  assert.equal(mission.type, route.opType);
+  completeSpineSetPiece(h, mission);
+  assert.equal(h.state.story.beatIndex, 7);
+  assert.equal(h.state.story.flags.deep_reach_operation_complete, true);
+  assert.equal(h.state.story.flags.deep_reach_variant, route.opId);
+  assert.equal(h.state.story.flags.endgame, true);
+}
+
+function advanceLiveToB7(h, branch) {
+  const { state, bus } = h;
+  assert.equal(state.story.beatIndex, 0);
+  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(state.story.beatIndex, 1, 'B0 completes on mine then dock');
+  advanceEmbodiedB1B2Live(h);
+  completeB3(h, null);
+  completeB4Live(h, branch);
+  completeB5Live(h, branch);
+  completeB6Live(h, branch);
+  completeB7Live(h, branch);
 }
 
 console.log('story-campaign47a-live (missions/story adapter)');
@@ -750,6 +873,71 @@ check('post-ending sandbox remains playable after Ending A', () => {
   h.missions.update(0.016, h.state);
   assert.equal(h.state.story.beatIndex, 7);
   assert.equal(h.state.mode, 'flight');
+});
+
+// ── PQ-032.02: the real live route ─────────────────────────────────────────────
+// `rescue_under_fire` settles B2 without an Elroy outcome token. These checks walk the
+// whole embodied route exactly as the live game produces it — no hand-set outcome.
+
+check('live route: B1–B3 authored contracts stamp embodied_route, never an Elroy outcome', () => {
+  const h = makeLiveHarness(57);
+  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.equal(h.state.story.beatIndex, 1);
+  advanceEmbodiedB1B2Live(h);
+  completeB3(h, null);
+  assert.equal(h.state.story.beatIndex, 4);
+  assertLiveRouteClean(h, 'B3');
+});
+
+check('live route: all three B4 doors open for a save with no outcome', () => {
+  const h = makeLiveHarness(58);
+  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  advanceEmbodiedB1B2Live(h);
+  completeB3(h, null);
+  assert.equal(h.state.story.beatIndex, 4);
+
+  const doors = {};
+  for (const [stationId, name] of [
+    ['station_coalition', 'patrol'],
+    ['station_tethys', 'traders'],
+    ['station_reach', 'free'],
+  ]) {
+    const board = h.missions.ensureBoard(stationId);
+    const row = board.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
+    assert.ok(row, `${name} intro must post at ${stationId} on the live route`);
+    doors[name] = `${stationId}:${row.type}`;
+  }
+  assert.deepEqual(doors, {
+    patrol: 'station_coalition:patrol_clear',
+    traders: 'station_tethys:bulk_trade',
+    free: 'station_reach:smuggling_run',
+  });
+  assertLiveRouteClean(h, 'B4 doors');
+});
+
+check('live route: pod-rescue B2 (no elroy_outcome) reaches the authored B7 op per branch', () => {
+  for (const branch of ['patrol', 'traders', 'free']) {
+    const h = makeLiveHarness(branch === 'patrol' ? 61 : branch === 'traders' ? 62 : 63);
+    advanceLiveToB7(h, branch);
+    assertLiveRouteClean(h, `live ${branch}`);
+    // Beat 7 is observeOnly — the sidecar mirrors the canonical beat without owning it.
+    assert.equal(
+      h.state.story.campaign47a.observedBeatIndex,
+      7,
+      `${branch}: sidecar tracks the canonical B7`,
+    );
+  }
+});
+
+check('live route: authored B7 completion mints no generic set-piece follow-on', () => {
+  const h = makeLiveHarness(64);
+  advanceLiveToB7(h, 'patrol');
+  const followOns = Object.values(h.state.missions.boards || {})
+    .flatMap((board) => (board && board.slots) || [])
+    .filter((row) => row && row.source === 'setPieceFollowOn');
+  assert.equal(followOns.length, 0, 'campaign climax must not spawn sandbox follow-on contracts');
 });
 
 if (failures) {

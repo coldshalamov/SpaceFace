@@ -43,13 +43,21 @@ export async function runEmbodiedStoryRoute(page, { root, routeName }) {
   b2 = await waitForStoryContract(page, 2, routeName);
   await acceptIfBoarded(page, b2, routeName);
   b2 = await waitForActiveStoryContract(page, 2, routeName);
-  const aftermath = await completeB2WithLiveTarget(page, b2, routeName);
+  assert.equal(b2.type, 'rescue_under_fire', `${routeName}: live B2 is the pod rescue under fire`);
+  const aftermath = await completeB2PodRescue(page, b2, routeName);
   assert.equal(aftermath.source, 'entity:killed', `${routeName}: aftermath source`);
   assert.ok(aftermath.markerId, `${routeName}: aftermath marker id`);
   await waitForBeat(page, 3, routeName);
 
   const drifter = await buyDrifterAtTethys(page, routeName);
   assert.equal(drifter.activeDefId, 'ship_drifter', `${routeName}: Drifter is active after purchase`);
+  const b3 = await waitForStoryContract(page, 3, routeName);
+  assertStoryContract(b3, 3, routeName);
+  assert.equal(b3.type, 'tow_recovery', `${routeName}: live B3 is the long slag-core tow`);
+  await acceptIfBoarded(page, b3, routeName);
+  const b3Active = await waitForActiveStoryContract(page, 3, routeName);
+  const tow = await completeLongTow(page, b3Active, routeName);
+  assert.equal(tow.completionMethod, 'tow_in', `${routeName}: B3 settles by towing the core in`);
   await waitForBeat(page, 4, routeName);
 
   const branch = {
@@ -74,12 +82,26 @@ export async function runEmbodiedStoryRoute(page, { root, routeName }) {
   const seedAsset = await buyAndProgramSeedDrone(page, routeName);
   assert.equal(seedAsset.templateId, 'mine_to_depot', `${routeName}: seed drone program`);
   await waitForBeat(page, 7, routeName);
+  // PQ-032.02: the legacy net-worth/standing gate must NOT close a live save — the run
+  // ends only by flying the authored Ashfall operation. Prove it with the sim actually
+  // ticking (undocked) while the old prerequisites are satisfied.
+  if (await page.evaluate(() => window.SF.state.ui?.docked === true)) {
+    await undockThroughUi(page, routeName);
+  }
   await satisfyEndgamePrerequisites(page, branch);
-  await acceptAndCompleteAuthoredTrade(page, {
-    stationId: branch.stationId,
+  const gateSimStart = await page.evaluate(() => window.SF.state.simTime || 0);
+  await page.waitForFunction((t0) => (
+    Number.isFinite(window.SF?.state?.simTime) && window.SF.state.simTime >= t0 + 0.75
+  ), gateSimStart, { timeout: STORY_TIMEOUT_MS });
+  assert.equal(await page.evaluate(() => window.SF.state.story.flags?.endgame === true), false,
+    `${routeName}: live route ignores the legacy net-worth gate`);
+  const op = await acceptAndCompleteDeepReachOperation(page, {
     storyTagPrefix: 'campaign47a:b7:force:',
+    operationId: 'ashfall_siege',
+    operationType: 'demolition',
     routeName,
   });
+  assert.equal(op.storyOperation, 'ashfall_siege', `${routeName}: traders branch runs the siege`);
   await undockThroughUi(page, routeName);
   await page.waitForFunction(() => {
     const story = window.SF?.state?.story;
@@ -94,6 +116,14 @@ export async function runEmbodiedStoryRoute(page, { root, routeName }) {
   const beforeSave = await storySnapshot(page);
   assert.equal(beforeSave.story.beatIndex, 7, `${routeName}: canonical B7 remains ending authority`);
   assert.equal(beforeSave.story.flags.endgame, true, `${routeName}: B7 gate reached`);
+  assert.equal(beforeSave.story.flags.elroy_outcome, undefined,
+    `${routeName}: live pod-rescue route never stamps an Elroy outcome`);
+  assert.equal(beforeSave.story.flags.elroy_outcome_legacy, undefined,
+    `${routeName}: live pod-rescue route never stamps the legacy mark`);
+  assert.equal(beforeSave.story.flags.embodied_route, 'rescue',
+    `${routeName}: authored B1–B3 settlement marked the live route`);
+  assert.equal(beforeSave.story.flags.deep_reach_variant, 'ashfall_siege',
+    `${routeName}: traders branch completed its authored operation`);
   assert.equal(beforeSave.sidecarOwnsBeatIndex, false, `${routeName}: sidecar cannot own beatIndex`);
   assert.equal(beforeSave.sidecarOwnsEnding, false, `${routeName}: sidecar cannot own ending`);
   assert.ok(beforeSave.contactBeatCount >= 6, `${routeName}: beat transitions must surface story contacts`);
@@ -327,42 +357,213 @@ async function failAndRecoverB2(page, contract, routeName) {
   }, failed.receipt.id);
 }
 
-async function completeB2WithLiveTarget(page, contract, routeName) {
+// PQ-032.02: the live B2 is a pod rescue under fire — escorts must be fought off the
+// pod line, then one life pod physically delivered to the authored destination dock.
+// It never resolves Elroy; `state.story.flags.elroy_outcome` must remain unset.
+async function completeB2PodRescue(page, contract, routeName) {
+  if (await page.evaluate(() => window.SF.state.ui?.docked === true)) {
+    await undockThroughUi(page, routeName);
+  }
   await page.evaluate((m) => {
     const sf = window.SF;
     const world = sf.registry.get('world');
-    if (world?.enterSector && m.destSectorId) world.enterSector(m.destSectorId, {
-      fromJump: true, via: 'proof', fromSectorId: sf.state.world.currentSectorId,
-    });
+    if (world?.enterSector && m.destSectorId && sf.state.world.currentSectorId !== m.destSectorId) {
+      world.enterSector(m.destSectorId, {
+        fromJump: true, via: 'proof', fromSectorId: sf.state.world.currentSectorId,
+      });
+    }
   }, contract);
   await page.waitForFunction((storyContractId) => {
-    const mission = (window.SF.state.missions.active || []).find((row) => row.storyContractId === storyContractId);
-    return !!mission?.targetEntityIds?.some((id) => window.SF.state.entities.get(id));
+    const mission = (window.SF.state.missions.active || [])
+      .find((row) => row.storyContractId === storyContractId);
+    if (!mission?.targetEntityIds?.length) return false;
+    const roles = mission.targetEntityIds
+      .map((id) => window.SF.state.entities.get(id))
+      .map((entity) => entity?.data?.physicalRole);
+    return roles.includes('life_pod') && roles.includes('rescue_escort');
   }, contract.storyContractId, { timeout: STORY_TIMEOUT_MS });
 
-  const target = await page.evaluate((storyContractId) => {
+  // Fight the escort cordon off the pod line — real kills, real aftermath wrecks.
+  const cordon = await page.evaluate((storyContractId) => {
     const sf = window.SF;
     const mission = sf.state.missions.active.find((row) => row.storyContractId === storyContractId);
-    const entity = mission.targetEntityIds.map((id) => sf.state.entities.get(id)).find(Boolean);
-    return {
-      id: entity.id,
-      type: entity.type,
-      pos: { x: entity.pos.x, z: entity.pos.z },
-      sectorId: mission.destSectorId,
-      victimLabel: entity.data?.name || entity.data?.callsign || null,
-    };
+    const escorts = mission.targetEntityIds
+      .map((id) => sf.state.entities.get(id))
+      .filter((entity) => entity && entity.data?.physicalRole === 'rescue_escort' && entity.alive !== false);
+    for (const escort of escorts) {
+      escort.alive = false;
+      sf.bus.emit('entity:killed', {
+        id: escort.id, type: escort.type,
+        pos: { x: escort.pos?.x || 0, z: escort.pos?.z || 0 },
+        sectorId: mission.destSectorId,
+        killerId: sf.state.playerId,
+        label: escort.data?.scanLabel || escort.data?.name || 'RESCUE ESCORT',
+      });
+    }
+    return { escortIds: escorts.map((row) => row.id) };
   }, contract.storyContractId);
-  assert.match(String(target.victimLabel || ''), /Elroy/i, `${routeName}: B2 must embody Elroy`);
-  await page.evaluate((victim) => window.SF.bus.emit('entity:killed', {
-    id: victim.id, type: victim.type, pos: victim.pos, sectorId: victim.sectorId,
-    killerId: window.SF.state.playerId, label: victim.victimLabel,
-  }), target);
+  assert.ok(cordon.escortIds.length > 0, `${routeName}: B2 must spawn a live escort cordon`);
+  const wreckVictimId = cordon.escortIds[0];
   await page.waitForFunction((victimId) => Object.values(window.SF.state.aftermathWrecks?.bySector || {})
-    .flat().some((row) => row?.victimId === victimId && row?.source === 'entity:killed'), target.id, {
+    .flat().some((row) => row?.victimId === victimId && row?.source === 'entity:killed'), wreckVictimId, {
     timeout: STORY_TIMEOUT_MS,
   });
-  return page.evaluate((victimId) => Object.values(window.SF.state.aftermathWrecks.bySector)
-    .flat().find((row) => row.victimId === victimId), target.id);
+  const aftermath = await page.evaluate((victimId) => Object.values(window.SF.state.aftermathWrecks.bySector)
+    .flat().find((row) => row.victimId === victimId), wreckVictimId);
+
+  // Latch a pod, put it on the destination dock the way a tow delivery ends, then dock.
+  const delivery = await page.evaluate((storyContractId) => {
+    const sf = window.SF;
+    const mission = sf.state.missions.active.find((row) => row.storyContractId === storyContractId);
+    if (!mission) return { missing: 'mission' };
+    const pod = mission.targetEntityIds
+      .map((id) => sf.state.entities.get(id))
+      .find((entity) => entity && entity.data?.physicalRole === 'life_pod' && entity.alive !== false);
+    const station = [...sf.state.entities.values()].find((entity) => (
+      entity?.data?.stationId === mission.destStationId && entity.pos
+    ));
+    if (!pod || !station) return { missing: !pod ? 'life_pod' : 'dest_station' };
+    const player = sf.state.entities.get(sf.state.playerId);
+    if (player?.pos && station.pos) player.pos = { x: station.pos.x, z: station.pos.z };
+    sf.state.player.tether = { active: true, targetId: pod.id, phase: 'loaded' };
+    sf.bus.emit('tether:latched', { targetId: pod.id });
+    pod.pos = { x: station.pos.x, z: station.pos.z };
+    sf.bus.emit('dock:docked', { stationId: mission.destStationId, source: 'm5-story-embodied-proof' });
+    return {
+      podId: pod.id,
+      podLabel: pod.data?.scanLabel || pod.data?.name || null,
+      completionMethod: mission.params?.completionMethod || null,
+      stillActive: mission.status === 'active',
+    };
+  }, contract.storyContractId);
+  assert.equal(delivery.missing, undefined, `${routeName}: B2 needs a live pod and the destination dock (${delivery.missing})`);
+  assert.match(String(delivery.podLabel || ''), /life pod/i, `${routeName}: B2 must embody a life pod, not Elroy`);
+  assert.equal(delivery.stillActive, false, `${routeName}: pod delivery completes the rescue`);
+  assert.equal(delivery.completionMethod, 'stage_tow', `${routeName}: pod arrives staged on the dock`);
+
+  const liveFlags = await page.evaluate(() => ({
+    elroyOutcome: window.SF.state.story?.flags?.elroy_outcome,
+    legacyMark: window.SF.state.story?.flags?.elroy_outcome_legacy,
+    embodiedRoute: window.SF.state.story?.flags?.embodied_route,
+  }));
+  assert.equal(liveFlags.elroyOutcome, undefined, `${routeName}: pod rescue writes no Elroy outcome`);
+  assert.equal(liveFlags.legacyMark, undefined, `${routeName}: pod rescue writes no legacy mark`);
+  assert.equal(liveFlags.embodiedRoute, 'rescue', `${routeName}: authored B2 settlement marks the live route`);
+  return aftermath;
+}
+
+// Live B3 is the long tow: latch the slag core and bring it to the authored yard dock.
+async function completeLongTow(page, contract, routeName) {
+  if (await page.evaluate(() => window.SF.state.ui?.docked === true)) {
+    await undockThroughUi(page, routeName);
+  }
+  await page.evaluate((m) => {
+    const sf = window.SF;
+    const world = sf.registry.get('world');
+    if (world?.enterSector && m.destSectorId && sf.state.world.currentSectorId !== m.destSectorId) {
+      world.enterSector(m.destSectorId, {
+        fromJump: true, via: 'proof', fromSectorId: sf.state.world.currentSectorId,
+      });
+    }
+  }, contract);
+  await page.waitForFunction((storyContractId) => {
+    const mission = (window.SF.state.missions.active || [])
+      .find((row) => row.storyContractId === storyContractId);
+    return !!mission?.targetEntityIds?.some((id) => (
+      window.SF.state.entities.get(id)?.data?.physicalRole === 'slag_core'
+    ));
+  }, contract.storyContractId, { timeout: STORY_TIMEOUT_MS });
+
+  const tow = await page.evaluate((storyContractId) => {
+    const sf = window.SF;
+    const mission = sf.state.missions.active.find((row) => row.storyContractId === storyContractId);
+    if (!mission) return { missing: 'mission' };
+    const core = mission.targetEntityIds
+      .map((id) => sf.state.entities.get(id))
+      .find((entity) => entity && entity.data?.physicalRole === 'slag_core' && entity.alive !== false);
+    const station = [...sf.state.entities.values()].find((entity) => (
+      entity?.data?.stationId === mission.destStationId && entity.pos
+    ));
+    if (!core || !station) return { missing: !core ? 'slag_core' : 'dest_station' };
+    const player = sf.state.entities.get(sf.state.playerId);
+    if (player?.pos && station.pos) player.pos = { x: station.pos.x, z: station.pos.z };
+    sf.state.player.tether = { active: true, targetId: core.id, phase: 'loaded' };
+    sf.bus.emit('tether:latched', { targetId: core.id });
+    core.pos = { x: station.pos.x, z: station.pos.z };
+    sf.bus.emit('dock:docked', { stationId: mission.destStationId, source: 'm5-story-embodied-proof' });
+    return {
+      completionMethod: mission.params?.completionMethod || null,
+      stillActive: mission.status === 'active',
+    };
+  }, contract.storyContractId);
+  assert.equal(tow.missing, undefined, `${routeName}: B3 needs the slag core and the yard dock (${tow.missing})`);
+  assert.equal(tow.stillActive, false, `${routeName}: delivering the core completes the long tow`);
+  return tow;
+}
+
+// Live B7 is the authored Ashfall operation posted by the recovered Empire Seed — a
+// physical contract on the station_ashcache board, not a trade and not a menu entry.
+async function acceptAndCompleteDeepReachOperation(page, { storyTagPrefix, operationId, operationType, routeName }) {
+  await travelAndDock(page, 'station_ashcache', 'sector_ashfall_reach', routeName);
+  await page.waitForFunction((prefix) => {
+    const board = window.SF?.state?.missions?.boards?.station_ashcache;
+    return !!board?.slots?.some((candidate) => String(candidate?.storyTag || '').startsWith(prefix));
+  }, storyTagPrefix, { timeout: STORY_TIMEOUT_MS });
+  const offers = await page.evaluate((prefix) => {
+    const board = window.SF.state.missions.boards.station_ashcache;
+    return board.slots
+      .filter((candidate) => String(candidate?.storyTag || '').startsWith(prefix))
+      .map((row) => ({
+        id: row.id, storyTag: row.storyTag, type: row.type,
+        storyOperation: row.storyOperation || null, destSectorId: row.destSectorId,
+      }));
+  }, storyTagPrefix);
+  assert.equal(offers.length, 1, `${routeName}: exactly one authored Deep Reach operation posts`);
+  const offer = offers[0];
+  assert.equal(offer.storyOperation, operationId, `${routeName}: authored operation id`);
+  assert.equal(offer.type, operationType, `${routeName}: ${offer.storyTag} keeps its authored physical verb`);
+
+  await acceptMissionThroughStationUi(page, offer.id, routeName);
+  await page.waitForFunction((storyTag) => (window.SF?.state?.missions?.active || [])
+    .some((row) => row?.storyTag === storyTag), offer.storyTag, { timeout: STORY_TIMEOUT_MS });
+  await undockThroughUi(page, routeName);
+
+  await page.waitForFunction((storyTag) => {
+    const mission = (window.SF.state.missions.active || []).find((row) => row.storyTag === storyTag);
+    return !!mission?.targetEntityIds?.some((id) => window.SF.state.entities.get(id));
+  }, offer.storyTag, { timeout: STORY_TIMEOUT_MS });
+  await page.evaluate(({ storyTag, sectorId }) => {
+    const sf = window.SF;
+    const world = sf.registry.get('world');
+    if (world?.enterSector && sectorId && sf.state.world.currentSectorId !== sectorId) {
+      world.enterSector(sectorId, {
+        fromJump: true, via: 'proof', fromSectorId: sf.state.world.currentSectorId,
+      });
+    }
+    const mission = sf.state.missions.active.find((row) => row.storyTag === storyTag);
+    const tower = mission.targetEntityIds
+      .map((id) => sf.state.entities.get(id))
+      .find((entity) => entity && entity.data?.physicalRole === 'demolition_tower' && entity.alive !== false);
+    if (tower) {
+      sf.bus.emit('tether:whipImpact', {
+        victimId: tower.id, targetId: sf.state.playerId, rating: 'solid', relSpeed: 80,
+      });
+    }
+  }, { storyTag: offer.storyTag, sectorId: offer.destSectorId });
+  await page.waitForFunction((storyTag) => {
+    const mission = (window.SF.state.missions.active || []).find((row) => row.storyTag === storyTag);
+    return !mission || mission.status !== 'active';
+  }, offer.storyTag, { timeout: STORY_TIMEOUT_MS });
+  // The ending desk is at the cache — dock back at Ashfall the way the live route does.
+  await page.evaluate(() => {
+    const sf = window.SF;
+    sf.bus.emit('dock:docked', { stationId: 'station_ashcache', source: 'm5-story-embodied-proof' });
+  });
+  await page.waitForFunction(() => (
+    window.SF?.state?.ui?.docked === true
+    && window.SF?.state?.ui?.dockedStationId === 'station_ashcache'
+  ), null, { timeout: STORY_TIMEOUT_MS });
+  return offer;
 }
 
 async function buyDrifterAtTethys(page, routeName) {

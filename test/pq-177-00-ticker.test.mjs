@@ -375,6 +375,8 @@ test('the live HUD BAND tape mounts one silent rotating ticker without duplicati
     'the feed owns no permanent interval loop');
   assert.match(hudStyles, /\.sf-commtape__news \{ min-width:0; flex:1 1 0; overflow:hidden; \}/,
     'the tape gives the long headline bounded horizontal space');
-  assert.match(hudStyles, /\.sf-news-ticker \{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap;/,
-    'a long headline stays one readable HUD line rather than obscuring flight instruments');
+  assert.match(hudStyles, /\.sf-news-ticker \{ overflow:hidden; overflow-wrap:anywhere;/,
+    'a long headline wraps inside its own bounded tape rather than truncating a primary label');
+  assert.doesNotMatch(hudStyles, /\.sf-news-ticker \{[^}]*text-overflow:ellipsis/,
+    'the headline strip must never ellipsize — demo bar: no truncated primary label');
 });

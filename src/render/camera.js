@@ -1820,11 +1820,19 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       let camY = offset.y;
       if (typeof clearanceAt === 'function') {
         const floor = clearanceAt(camX, camZ, camY);
-        if (Number.isFinite(floor) && floor > _clearanceY) {
-          _clearanceY = floor; // snap up — easing upward would traverse the structure's volume
+        // A roof above the far plane cannot be a real structure — only a broken bound (the
+        // 2026-09-25 compounded asteroid scale reported ~1.4e8 and orbited the camera). Refuse
+        // the snap, and drop any lift already above the ceiling in one step: easing down from
+        // orbit at the release rate would never return inside a session.
+        const clearanceCeiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+        const saneFloor = Number.isFinite(floor) && floor <= clearanceCeiling ? floor : -Infinity;
+        if (saneFloor > _clearanceY) {
+          _clearanceY = saneFloor; // snap up — easing upward would traverse the structure's volume
         } else if (_clearanceY > 0) {
-          const target = Number.isFinite(floor) ? floor : 0;
-          _clearanceY = Math.max(target, _clearanceY - CAMERA_CLEARANCE_RELEASE_WU_S * frameDt);
+          const target = saneFloor > -Infinity ? saneFloor : 0;
+          _clearanceY = _clearanceY > clearanceCeiling
+            ? target
+            : Math.max(target, _clearanceY - CAMERA_CLEARANCE_RELEASE_WU_S * frameDt);
         }
         if (_clearanceY > camY) camY = _clearanceY;
       }

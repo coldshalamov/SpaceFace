@@ -637,6 +637,16 @@ export function resolveObjectiveHudLayout(width, height) {
       width: rightWidth,
       height: rightHeight,
     },
+    // The bottom-centre command deck (speed readout, fire-control strip, travel tape) floats above
+    // the action row — its band is h-104..h-88 worst case plus up to ~180px of stacked instruments.
+    // In ORRERY the deck is hidden but the travel tape is re-seated on this same band above the
+    // receipt lane (~h-140..h-86), so the reservation still reaches the floor instruments.
+    commandDeck: {
+      x: safeLeft + (safeWidth - Math.min(360, Math.max(220, safeWidth - 640))) / 2,
+      y: h - 74 - 220,
+      width: Math.min(360, Math.max(220, safeWidth - 640)),
+      height: 220,
+    },
     centerSafe: {
       x: safeLeft + Math.max(objectiveWidth + edge + 32, safeWidth * 0.28),
       y: Math.max(72, h * 0.14),
@@ -936,7 +946,8 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   }
 
   const layout = resolveObjectiveHudLayout(w, h);
-  const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock];
+  const reserved = [layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]
+    .filter(Boolean);
   const asRect = (cx, cy) => ({
     x: cx - halfW,
     y: cy - halfH,
@@ -1208,13 +1219,18 @@ function injectTravelTapeStyle() {
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    font-family:var(--k-text); font-size:var(--k-fs-data); }
-  .sf-vtape__state { color:var(--vt-brass); }
+    flex-wrap:wrap; font-family:var(--k-text); font-size:var(--k-fs-data); }
+  .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
-  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data); }
+  /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
+     line rather than running over the neighbouring cluster readouts. */
+  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data);
+    min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
   /* --- the tape itself: a linear 0..headroom scale --- */
-  .sf-vtape__track { position:relative; height:2px; overflow:visible; background:var(--k-bone-38); }
+  /* margin-top reserves the caret-label lane: CAP / V-MAX sit between the head row and the
+     tape instead of overprinting the state and spool text. */
+  .sf-vtape__track { position:relative; height:2px; margin-top:13px; overflow:visible; background:var(--k-bone-38); }
   /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
   .sf-vtape__grat { position:absolute; inset:0;
     display:none; }
@@ -1227,7 +1243,12 @@ function injectTravelTapeStyle() {
   .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
     background:var(--vt-amber); transition:left .1s linear; }
   .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:var(--k-fs-fine); color:var(--vt-amber); }
+    font-size:var(--k-fs-fine); color:var(--vt-amber); white-space:nowrap; }
+  /* The caret labels share one lane above the tape (the track's margin-top reserves it). A CAP
+     mark that would run under the V-MAX label anchors left of its caret; one hugging the tape's
+     left edge anchors right of it instead of sliding off the instrument. */
+  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 3px); transform:none; }
+  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 3px); transform:none; }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
@@ -1253,6 +1274,12 @@ function injectTravelTapeStyle() {
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
   .sf-vtape__brakeglyph { font-size:var(--k-fs-data); }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
+  /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
+     visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
+     crescent (seen live over the RIG/BAY keys). In ORRERY the tape is re-parented to #hud and
+     takes the cleared bottom-centre band above the receipt lane. */
+  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:86px; margin:0;
+    transform:translateX(-50%); }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
   @media (prefers-reduced-motion: reduce) {
@@ -1878,6 +1905,10 @@ export function createHud(ctx, alerts) {
   const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
   // The radar keeps its canvas (contacts, rocks, trails); ORRERY takes its frame (rim, range, Hand).
   if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
+  // ORRERY hides the leftstack chassis, but the tape's --on class re-shows it through the hidden
+  // parent and it lands on the cluster's ordnance crescent. Re-seat it on #hud so it takes the
+  // cleared bottom-centre band (the data-hud="orrery" rule in injectTravelTapeStyle).
+  if (orreryCluster) root.appendChild(vtape);
   // Prompts borrow the number row rather than racing the rail for it.
   const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
   const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
@@ -4742,8 +4773,15 @@ export function createHud(ctx, alerts) {
     // --- tape: current speed against the per-family ceiling ---
     const scale = Math.max(1, ceiling * VTAPE_HEADROOM);
     setScaleX(vt.fill, clamp01(speed / scale));
-    setStyle(vt.cap, 'left', (clamp01((drive ? drive.cap : 0) / scale) * 100).toFixed(1) + '%');
-    setStyle(vt.vmax, 'left', (clamp01(ceiling / scale) * 100).toFixed(1) + '%');
+    const capPct = clamp01((drive ? drive.cap : 0) / scale) * 100;
+    const vmaxPct = clamp01(ceiling / scale) * 100;
+    setStyle(vt.cap, 'left', capPct.toFixed(1) + '%');
+    setStyle(vt.vmax, 'left', vmaxPct.toFixed(1) + '%');
+    // CAP and V-MAX share the label lane above the tape: the cap label centres on its caret until
+    // it would run under the V-MAX label (it moves left of the caret), and near the tape's left
+    // edge it anchors right of the caret instead of sliding off the instrument.
+    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 4 && capPct > 8);
+    setClass(vt.cap, 'sf-vtape__cap--label-right', capPct <= 8);
 
     if (slow) {
       setText(vt.vmaxText, 'V-MAX ' + Math.round(ceiling));
@@ -4752,7 +4790,8 @@ export function createHud(ctx, alerts) {
       let note = '';
       if (driveState === 'spooling') note = 'SPOOLING…';
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
-      else if (driveState === 'cooldown') note = 'COOLDOWN' + (drive && drive.breakReason ? ' · ' + String(drive.breakReason).toUpperCase() : '');
+      // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
+      else if (driveState === 'cooldown') note = drive && drive.breakReason ? String(drive.breakReason).toUpperCase() : '';
       else if (nearCeiling) note = 'AT CEILING';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));

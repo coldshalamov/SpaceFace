@@ -43,12 +43,15 @@ const CSS = `
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
 /* the key being charged stays the brightest filled shape; the travelling light is bigger than the field's edge */
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
-.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .55) !important; }
-/* a disabled key is its silhouette alone: no fill, the track at rest light, the verb dim; the amber returns with the enabled state */
-.orr-lampkey:disabled::before { background:transparent !important; box-shadow:none !important; }
+.orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .5) !important; opacity:1 !important; filter:none !important; }
+/* a disabled key is its silhouette alone: the field's cut shape as a 1px bone outline (the overlay hollows it), the verb in dim ink */
+.orr-lampkey:disabled::before { background:transparent !important; background-image:none !important; box-shadow:none !important; }
+.orr-lampkey__rim { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; display:none; z-index:1; }
+.orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.5; stroke-linejoin:miter; }
+.orr-lampkey:disabled .orr-lampkey__rim { display:block; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }
 .orr-lampkey:disabled .orr-lampkey__commit, .orr-lampkey:disabled .orr-lampkey__commit-bloom, .orr-lampkey:disabled .orr-lampkey__fill, .orr-lampkey:disabled .orr-lampkey__fillbloom { display:none; }
-.orr-lampkey:disabled::after { display:none !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .96) !important; background-size:auto !important;
+.orr-lampkey:disabled::after { display:none !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .92) !important; background-size:auto !important;
   clip-path:polygon(0 0, calc(100% - ${CUT - 0.4}px) 0, 100% ${CUT - 0.4}px, 100% 100%, 0 100%) !important; }
 /* the hold: the ring span becomes a drawing laid over the key's silhouette, a little outside the field */
 .orr-lampkey[data-hold] { margin-left:0 !important; margin-right:0 !important; }
@@ -58,7 +61,7 @@ const CSS = `
 .orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
 .orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 /* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
-.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1; }
+.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
 .orr-lampkey .orr-lampkey__commit { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; }
 .orr-lampkey .orr-lampkey__commit-bloom { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:8; opacity:.28; }
 .orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;
@@ -89,11 +92,30 @@ export function injectLampKey(doc = globalThis.document) {
 }
 
 /** The key's silhouette in the ring's own box (which stands RING_OUT outside the field on every side). */
+/** The key's own silhouette on the half-pixel grid, for the rim a disabled key shows. */
+export function rimPathD(width, height) {
+  const W = Math.max(1, width); const H = Math.max(1, height); const c = CUT;
+  return `M ${W - c + 0.75} 0.75 L ${W - 0.75} ${c + 0.75} L ${W - 0.75} ${H - 0.75} L 0.75 ${H - 0.75} L 0.75 0.75 Z`;
+}
+
+function layoutRim(button) {
+  const rim = button.querySelector && button.querySelector(':scope > .orr-lampkey__rim');
+  if (!rim || typeof button.getBoundingClientRect !== 'function') return;
+  const r = button.getBoundingClientRect();
+  if (!(r.width > 0) || !(r.height > 0)) return;
+  const W = Math.round(r.width); const H = Math.round(r.height);
+  rim.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const path = rim.querySelector('path');
+  if (path) path.setAttribute('d', rimPathD(W, H));
+}
+
 export function holdPathD(width, height) {
   const W = Math.max(1, width);
   const H = Math.max(1, height);
   const c = CUT + RING_OUT;
-  return `M ${W - c} 0 L ${W} ${c} L ${W} ${H} L 0 ${H} L 0 0 Z`;
+  // starts at the cut corner and runs clockwise (right edge, foot, left edge, top, the cut), on the half-pixel
+  // grid so a 1px track reads as one row
+  return `M ${W - 0.5} ${c + 0.5} L ${W - 0.5} ${H - 0.5} L 0.5 ${H - 0.5} L 0.5 0.5 L ${W - c + 0.5} 0.5 Z`;
 }
 
 function svgEl(doc, name, attrs) {
@@ -107,15 +129,15 @@ function layoutHold(button, ring) {
   if (!button || !ring || typeof button.getBoundingClientRect !== 'function') return;
   const r = button.getBoundingClientRect();
   if (!(r.width > 0) || !(r.height > 0)) return;
-  const W = r.width + RING_OUT * 2;
-  const H = r.height + RING_OUT * 2;
+  const W = Math.round(r.width + RING_OUT * 2);
+  const H = Math.round(r.height + RING_OUT * 2);
   const d = holdPathD(W, H);
   const svg = ring.querySelector('svg');
   if (svg) {
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     for (const p of svg.querySelectorAll('.orr-lampkey__track, .orr-lampkey__fillbloom, .orr-lampkey__fill')) p.setAttribute('d', d);
     const c = CUT + RING_OUT;
-    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0 L ${W - c} 0`);
+    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0.5 L ${W - c + 0.5} 0.5`);
   }
   if (ring.style && typeof ring.style.setProperty === 'function') ring.style.setProperty('--orr-hold-path', `path("${d}")`);
 }
@@ -137,6 +159,14 @@ export function dressLampKey(button, { hold = false, note = '' } = {}) {
     word.className = 'orr-lampkey__word';
     const first = [...button.childNodes].find((n) => n.nodeType === 3 ? n.textContent.trim() : (n.nodeType === 1 && !n.classList.contains('dp-holdring')));
     if (first) { button.insertBefore(word, first); word.appendChild(first); }
+  }
+  // the rim: the silhouette a disabled key shows instead of a field (drawn along the cut, which a box shadow cannot follow)
+  if (button.querySelector && !button.querySelector(':scope > .orr-lampkey__rim') && typeof doc.createElementNS === 'function') {
+    const rim = svgEl(doc, 'svg', { class: 'orr-lampkey__rim', 'aria-hidden': 'true', focusable: 'false', viewBox: '0 0 100 40' });
+    rim.appendChild(svgEl(doc, 'path', { d: rimPathD(100, 40), 'vector-effect': 'non-scaling-stroke' }));
+    button.appendChild(rim);
+    layoutRim(button);
+    if (typeof ResizeObserver === 'function') { try { new ResizeObserver(() => layoutRim(button)).observe(button); } catch (_) { /* no observer, no resize */ } }
   }
   if (hold) {
     button.setAttribute('data-hold', '1');

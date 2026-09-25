@@ -623,11 +623,13 @@ test('killing the champion first still leaves the rest of its round to defeat', 
 test('a refused champion remains owed until the spawn budget has room', () => {
   const h = boot(); beginSwarm(h);
   while (killOne(h)) {}
-  h.budget.request(h.budget.max(), 'test:occupied');
+  // During a live run the budget refuses non-wave requesters, so the hold must
+  // reserve under a survival-wave id to actually occupy every slot.
+  h.budget.request(h.budget.max(), 'survival-wave:9:test-hold');
   forceWave(h, 10); tick(h, 30);
   assert.equal(liveBosses(h, 10).length, 0);
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
-  h.budget.release('test:occupied'); tick(h, 60);
+  h.budget.release('survival-wave:9:test-hold'); tick(h, 60);
   assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
 });
 

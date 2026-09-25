@@ -74,7 +74,8 @@ import {
 } from '../data/heistFacilities.js';
 import { berthWorkerRecordId } from './heistFacilities.js';
 import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
-import { getAsteroidFieldRock } from '../world/asteroidField.js';
+import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { requestActivityReclassify } from '../world/activityRuntime.js';
 import {
   PRIORITY_COURIER_JOB_SCHEMA,
   PRIORITY_COURIER_SERVICE,
@@ -82,6 +83,8 @@ import {
 } from '../data/laneContacts.js';
 import { SECTORS } from '../data/sectors.js';
 import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
+import { BEAMS } from '../data/mining.js';
+import { barkFor } from '../data/barks.js';
 
 // INF: a hauler that loads against an empty shelf is the visible end of a broken feeder chain —
 // its miner died before posting a lot, and nothing in the world said so. The berth the run was
@@ -126,6 +129,16 @@ const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
 const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
 const NPC_MINER_BASE_WORK_S = 30;
 const NPC_MINER_THIN_WORK_S = 54;
+// One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
+// long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
+const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
+const HELIOS_STARTER_FIELD_ID = 'f_helios_starter';
+const HELIOS_STARTER_MINER_SHIFT_S = 6;
+const BEAM_MK1 = BEAMS.find((row) => row && row.id === 'beam_mk1') || {
+  dps: 18, range: 240, heatMax: 100, heatRate: 22, coolRate: 55,
+};
+// Drift already says this on the belt. One line, not a new voice.
+const HELIOS_STARTER_MINER_REASON = barkFor('faction_dmc', 'patrol-greeting', 1);
 
 /** PQ-045 targets include dressing FX and seam asteroids. Those types are excluded from
  *  forEachLivingWorldActor, so event-time refresh walks the live list. Not a 60 Hz owner loop. */
@@ -492,6 +505,40 @@ function isSweeperJob(entry, entity) {
     && occupationalRole(entity, entry) === 'sweeper';
 }
 
+function isHeliosCuttingMiner(entity) {
+  if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.data) return false;
+  if (entity.data.trafficRole !== 'miner') return false;
+  if (entity.data.ceresActivityCast || entity.data.activityActorSlotId) return false;
+  return typeof entity.data.worldRecordId === 'string' && entity.data.worldRecordId.length > 0;
+}
+
+// NPCs have no fitted mining laser. Install the existing mk1 tier on the hull so the live
+// beam path does not alias the player's beam object. directToCargo stays off: a stranger
+// should see ore leave the rock. Heat is recorded and never used as a shutdown.
+function ensureHeliosMinerBeam(entity) {
+  const data = entity.data || (entity.data = {});
+  if (data.miningBeam && Number(data.miningBeam.dps) > 0) return data.miningBeam;
+  data.miningBeam = {
+    tierId: 'beam_mk1',
+    dps: BEAM_MK1.dps,
+    range: BEAM_MK1.range,
+    directToCargo: false,
+    heat: 0,
+    heatMax: BEAM_MK1.heatMax,
+    heatRate: BEAM_MK1.heatRate,
+    coolRate: BEAM_MK1.coolRate,
+  };
+  return data.miningBeam;
+}
+
+function starterRockMineable(rock) {
+  if (!rock || rock.alive === false || rock.type !== 'asteroid' || !rock.pos || !rock.data) return false;
+  if (rock.data.fieldId !== HELIOS_STARTER_FIELD_ID) return false;
+  if (rock.data.siteAnchored || rock.data.opticMaterial || rock.data.respawnAt != null) return false;
+  if (rock.data.isChunk) return false;
+  return true;
+}
+
 function isPatrolJob(entry) {
   return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.PATROL;
 }
@@ -587,6 +634,21 @@ function stampJobOwnedPersistence(entity) {
   if (!d.trafficRole) return;
   if (jobPersistenceAnchorReason(entity)) return;
   entity.flags = Object.assign({}, entity.flags, { persistent: true });
+}
+
+// A job claim is a permanent-world marker: captureEntityRecord reads data.jobId, so the hull's
+// record goes PERMANENT at its next capture. But that capture walk only sees LIVE entities — a
+// hull shelved into the far table between assign() and the next capture pass kept a RECENT
+// record that gcExpiredRecentMemory dropped after 180 s, orphaning both the far row and the
+// job's rematerialization anchor on any route that never leaves the sector (PQ-033.02's
+// D28 residual). Pin the record through the world owner's public upsert hook at the moment
+// the job claims the hull — the identical seam traffic uses for its cast captures.
+function pinWorldRecordForJob(service, entity) {
+  const worldOwner = service && service.registry && service.registry.get
+    ? service.registry.get('world')
+    : null;
+  if (!worldOwner || typeof worldOwner.upsertWorldRecord !== 'function') return null;
+  return worldOwner.upsertWorldRecord(entity);
 }
 
 // Clear the job-owned persistence mark after the entity's job fields are already gone.
@@ -745,6 +807,8 @@ export const npcJobsRuntime = {
     this._threatQueryState = this.state;
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+    this._heliosStarterMinerRecordId = null;
+    this._heliosStarterRockId = null;
     this._jobIds = null;
     this._jobIdsById = null;
     this._jobIdsDirty = true;
@@ -1773,6 +1837,8 @@ export const npcJobsRuntime = {
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+    this._heliosStarterMinerRecordId = null;
+    this._heliosStarterRockId = null;
   },
 
   /**
@@ -1841,6 +1907,7 @@ export const npcJobsRuntime = {
         // a materialized same-id job, however, must still name this exact entity/data object.
         if (existing.entityId == null) {
           entity.data.jobId = jobId;
+          pinWorldRecordForJob(this, entity);
           return jobId;
         }
         const existingEntity = this.state.entities && this.state.entities.get(existing.entityId);
@@ -1854,6 +1921,7 @@ export const npcJobsRuntime = {
         }
         this._bindCeresFormationSlot(formationSlot, existing, entity);
         entity.data.jobId = jobId;
+        pinWorldRecordForJob(this, entity);
         return jobId;
       }
       if ((formationSlot.entityRef && formationSlot.entityRef !== entity)
@@ -1898,6 +1966,7 @@ export const npcJobsRuntime = {
         return jobId;
       }
       entity.data.jobId = jobId;
+      pinWorldRecordForJob(this, entity);
       return jobId; // unchanged ordinary idempotent assignment
     }
 
@@ -1934,6 +2003,7 @@ export const npcJobsRuntime = {
     this._invalidateJobIds();
     entity.data.jobId = jobId;
     stampJobOwnedPersistence(entity);
+    pinWorldRecordForJob(this, entity);
     this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
@@ -2615,10 +2685,53 @@ export const npcJobsRuntime = {
       }
       const flags = entity.flags;
       if (!flags || flags.persistent !== true) continue;
-      if (d && d.jobId != null) continue;
+      if (d && d.jobId != null) {
+        // A claim whose bag entry is gone AND whose record holds no live entry is provably
+        // dead: nothing can ever re-link this hull (release() cannot strip a virtualized
+        // hull — it has no entity to reach — so the claim rode the far row back). Left in
+        // place it keeps the persistence mark AND blinds traffic's idle-hull reuse gate
+        // (`ent.data.jobId`), so producers kept dispatching replacements: PQ-033.02 measured
+        // yard tugs piling up five-deep on one record this way after their jobs completed
+        // while shelved. Strip the dead claim so the hull returns to honest idle state; a
+        // hull whose record still anchors a live (virtual) entry stays claimable.
+        if (d.worldRecordId == null || !held.has(d.worldRecordId)) {
+          delete d.jobId;
+          if (d.jobPhase !== undefined) delete d.jobPhase;
+          if (d.jobProgress !== undefined) delete d.jobProgress;
+        } else {
+          continue; // re-link pending for this record — keep the claim and the mark
+        }
+      }
       if (d && d.worldRecordId != null && held.has(d.worldRecordId)) continue;
       releaseJobOwnedPersistence(entity);
     }
+  },
+
+  // The record-anchor half of the same invariant. assign() pins the hull's world record
+  // PERMANENT so a job survives the 180 s recent-memory window while its hull is shelved;
+  // when the job later leaves the bag (completed, released, restored-purged — every path,
+  // including paths this system does not run), that latch is stale. Left alone, job churn
+  // pinned one permanent record plus its durability-exempt far row per finished job,
+  // forever (PQ-033.02 D28 residual). Demote through the world owner's public hook — this
+  // system is the only one that knows whether a jobId is still live — on the same slow
+  // sim-clock sweep as the persistence mark, never per writer.
+  _reconcileStaleJobRecordPins() {
+    const bag = this.state.world && this.state.world.records;
+    const byRecord = bag && bag.byId;
+    if (!byRecord) return 0;
+    const worldOwner = this.registry && this.registry.get
+      ? this.registry.get('world') : null;
+    if (!worldOwner || typeof worldOwner.clearWorldRecordJobAnchor !== 'function') return 0;
+    const jobs = this._byId();
+    let demoted = 0;
+    for (const recordId of Object.keys(byRecord)) {
+      const rec = byRecord[recordId];
+      const jobId = rec && rec.jobId;
+      if (typeof jobId !== 'string' || jobId.indexOf('job:') !== 0) continue;
+      if (jobs[jobId] != null) continue; // live anchor — the pin is doing its job
+      if (worldOwner.clearWorldRecordJobAnchor(recordId, jobId)) demoted += 1;
+    }
+    return demoted;
   },
 
   // ── PQ-019B: control leases ──────────────────────────────────────────────────────────────────────────────────────
@@ -3000,6 +3113,142 @@ export const npcJobsRuntime = {
     return candidates[index].asteroid;
   },
 
+  // ── Helios starter field: one miner, one rock, the live beam ────────────────────────────
+  // Traffic commissions a miner job only when the nearest rock is already a live entity. The
+  // starter belt is mostly field-resident, so the barge keeps the label and never cuts. This
+  // owner points that one hull at one starter rock and holds mining.applyMining for a bounded
+  // slice of WORK. No second extractor, no heat shutdown, no site-anchored lock.
+  _ensureHeliosStarterMiner() {
+    if (this._heliosStarterMinerRecordId) return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId !== HELIOS_STARTER_SECTOR_ID) return;
+    const candidates = [];
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (isHeliosCuttingMiner(entity)) candidates.push(entity);
+    });
+    if (!candidates.length) return;
+    candidates.sort((a, b) => String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId)));
+    for (let i = 0; i < candidates.length; i++) {
+      if (this._commissionHeliosStarterMiner(candidates[i])) return;
+    }
+  },
+
+  _commissionHeliosStarterMiner(miner) {
+    const recordId = miner.data.worldRecordId;
+    const jobId = 'job:' + recordId;
+    const existing = this._byId()[jobId];
+    if (existing && existing.job && existing.job.kind !== NPC_JOB_KIND.MINER) return false;
+    let rock = existing && existing.job ? this._starterRockForMinerJob(existing) : null;
+    if (!rock) rock = this._pickHeliosStarterRock(miner.pos || { x: 0, z: 0 });
+    if (!rock) return false;
+    const live = this._promoteStarterRock(rock);
+    if (!live) return false;
+    if (existing && existing.job) {
+      if (!this._pointMinerJobAtRock(existing, live)) return false;
+    } else {
+      const home = this._heliosStationPos() || {
+        x: miner.pos.x, z: miner.pos.z,
+      };
+      const assigned = this.assign(miner, {
+        kind: NPC_JOB_KIND.MINER,
+        sectorId: HELIOS_STARTER_SECTOR_ID,
+        route: [
+          { id: 'home:station_helios', pos: { x: home.x, z: home.z }, label: 'Refinery' },
+          { id: 'field:' + live.id, pos: { x: live.pos.x, z: live.pos.z }, label: 'Belt' },
+        ],
+      });
+      if (!assigned) return false;
+    }
+    this._heliosStarterMinerRecordId = recordId;
+    this._heliosStarterRockId = live.id;
+    miner.data.minerShiftRockId = live.id;
+    requestActivityReclassify(this.state, miner);
+    return true;
+  },
+
+  _heliosStationPos() {
+    let pos = null;
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (pos || !entity || entity.type !== 'station' || !entity.pos) return;
+      const id = entity.data && (entity.data.stationId || entity.data.id);
+      if (id === 'station_helios') pos = { x: entity.pos.x, z: entity.pos.z };
+    });
+    return pos;
+  },
+
+  _pickHeliosStarterRock(anchor) {
+    const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
+    const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
+    let best = null;
+    forEachFieldRock(this.state, (rock) => {
+      if (!starterRockMineable(rock)) return;
+      const dx = rock.pos.x - ax;
+      const dz = rock.pos.z - az;
+      const d2 = dx * dx + dz * dz;
+      const id = String(rock.id);
+      if (!best || d2 < best.d2 || (d2 === best.d2 && id < best.id)) best = { rock, d2, id };
+    });
+    return best && best.rock;
+  },
+
+  _starterRockForMinerJob(entry) {
+    const field = this._fieldWaypointForMinerJob(entry && entry.job);
+    if (!field) return null;
+    const rock = this._asteroidForFieldWaypoint(field.waypoint);
+    return starterRockMineable(rock) ? rock : null;
+  },
+
+  _promoteStarterRock(rock) {
+    if (!rock) return null;
+    const live = promoteAsteroidFieldRock(this.state, rock.id, this.helpers, 'npc-mine');
+    return starterRockMineable(live) ? live : null;
+  },
+
+  _pointMinerJobAtRock(entry, rock) {
+    const field = this._fieldWaypointForMinerJob(entry && entry.job);
+    if (!field || !field.waypoint || !rock || !rock.pos) return false;
+    const id = 'field:' + rock.id;
+    if (field.waypoint.id === id) return true;
+    if (!this._minerFieldRetargetSafe(entry.job)) return false;
+    field.waypoint.id = id;
+    field.waypoint.label = 'Belt';
+    field.waypoint.pos = { x: rock.pos.x, z: rock.pos.z };
+    delete field.waypoint.targetRef;
+    return true;
+  },
+
+  _holdHeliosStarterMinerBeam(entry, entity, step) {
+    if (!this._heliosStarterMinerRecordId
+      || !entry || entry.worldRecordId !== this._heliosStarterMinerRecordId
+      || !entity || !entity.data) return;
+    const stop = () => { entity.data.minerShiftActive = false; };
+    if (entry.heliosShiftStopped || !(step > 0)) { stop(); return; }
+    const job = entry.job;
+    if (!job || job.corrupt || job.phase !== NPC_JOB_PHASE.WORK) { stop(); return; }
+    const workS = Math.max(finite(job.workS, NPC_MINER_BASE_WORK_S), 1e-3);
+    if (finite(job.progress, 0) >= HELIOS_STARTER_MINER_SHIFT_S / workS) { stop(); return; }
+    const rock = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this._heliosStarterRockId)
+      : null;
+    if (!starterRockMineable(rock)) {
+      entry.heliosShiftStopped = true;
+      stop();
+      return;
+    }
+    const mining = this.registry && this.registry.get && this.registry.get('mining');
+    if (!mining || typeof mining.applyMining !== 'function') { stop(); return; }
+    const beam = ensureHeliosMinerBeam(entity);
+    mining.applyMining(rock.id, beam.dps || BEAM_MK1.dps, step, entity.id);
+    entry.heliosBeamS = (entry.heliosBeamS || 0) + step;
+    entity.data.minerShiftBeamS = entry.heliosBeamS;
+    entity.data.minerShiftActive = true;
+    entity.data.minerShiftRockId = rock.id;
+    if (!entity.data.shiftReason) {
+      entity.data.shiftReason = HELIOS_STARTER_MINER_REASON;
+      if (!entity.data.gimmick) entity.data.gimmick = HELIOS_STARTER_MINER_REASON;
+    }
+  },
+
   // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
   update(dt, state) {
     if (state) this.state = state;
@@ -3048,7 +3297,9 @@ export const npcJobsRuntime = {
       || persistSweepT - lastPersistSweepT >= JOB_PERSIST_SWEEP_INTERVAL_S) {
       this._persistSweepLastSimT = persistSweepT;
       this._sweepJobOwnedPersistence();
+      this._reconcileStaleJobRecordPins();
     }
+    this._ensureHeliosStarterMiner();
     const byId = this._byId();
     const ids = this._jobIdList();
     const step = Math.max(0, finite(dt, 0));
@@ -3171,6 +3422,7 @@ export const npcJobsRuntime = {
         entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
       }
       const claimed = !!entry.control;
+      if (!claimed) this._holdHeliosStarterMinerBeam(entry, entity, step);
 
       // A tug's load is a real attachment owned by the combat/physics authority. Bind it only after
       // the finite freight job has left loading, and never while a controller lease owns the hull.
@@ -4115,6 +4367,8 @@ export const npcJobsRuntime = {
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+    this._heliosStarterMinerRecordId = null;
+    this._heliosStarterRockId = null;
   },
 };
 
