@@ -328,10 +328,9 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         if (box.l < 2 || box.r > W - 2 || box.t < 2 || box.b > H - capH - 2) continue;
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
         // a ring is a connector too: no name lies across one (its box must sit wholly inside or outside every ring)
-        if (ringCrosses(box)) continue;
         // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
         if (!isDest && destBox && boxesTouch(destBox, box, 24)) continue;
-        if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 1))) continue;
+        if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 2))) continue;
         if (beamSegs.some(([a, b]) => segmentTouches(a.x, a.y, b.x, b.y, box, 2))) continue;
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         return { box, anchor, ax, top: box.t, w, h };
@@ -358,7 +357,10 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         }
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
-        return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: ox, y2: oy } };
+        // the leader lands on the word: at the point of the label's box (3px out) nearest its node
+        const lx2 = Math.max(box.l - 3, Math.min(p.x, box.r + 3));
+        const ly2 = Math.max(box.t - 3, Math.min(p.y, box.b + 3));
+        return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: lx2, y2: ly2 } };
       }
       return null;
     }
@@ -390,7 +392,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
           ? [{ text: String(data.destName).toUpperCase(), cls: 'orr-route__name--berth', small: true }] : [])
       : null;
     // a destination on the rim hangs just outside its berth on a solid leader, never in a lane
-    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true, preferOutside: onRim(place.get(dest)) }) : null;
+    const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
     // then the rest, the route first, nearest ring first
     // a short host names only what it has room for: the route and the berth's own lane neighbours
     const compactNames = H < 340;
@@ -398,7 +400,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
-      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true, preferOutside: onRim(p) });
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true });
       if (spot) drawn.set(id, spot);
     }
 
@@ -417,7 +419,14 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         laneParts.push(`M ${f(p.x)} ${f(p.y)} L ${f(q.x)} ${f(q.y)}`);
       }
     }
-    if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4' }), 60));
+    // the dial's rule breaks for its numerals: rings and lanes are cut 4px round every placed name
+    const cutId = `orr-route-cut-${Math.random().toString(36).slice(2, 8)}`;
+    const mask = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
+    mask.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
+    for (const nb of nameBoxes) mask.appendChild(svg('rect', { x: f(nb.l - 4), y: f(nb.t - 4), width: f(nb.r - nb.l + 8), height: f(nb.b - nb.t + 8), fill: '#000' }));
+    const defs = svg('defs', {}); defs.appendChild(mask); layer.insertBefore(defs, layer.firstChild);
+    ringsG.setAttribute('mask', `url(#${cutId})`);
+    if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4', mask: `url(#${cutId})` }), 60));
 
     // the beam, its pulse, the hops and the hand ride in one group, so the arm can swing before they show
     const beamG = svg('g', { class: 'orr-route__beamg' });

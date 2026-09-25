@@ -118,7 +118,7 @@ export function createIndustryScreen(ctx) {
       for (const row of listEl.querySelectorAll('.sx-ind-row')) {
         const r = row.getBoundingClientRect();
         if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) { listEl.style.maxHeight = `${Math.round(cut - top + 4)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
+        else { if (cut) { listEl.style.maxHeight = `${Math.round(Math.min(cut + 4, r.top) - top)}px`; listEl.setAttribute('data-snapped', '1'); } return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
   }

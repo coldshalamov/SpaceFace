@@ -543,7 +543,7 @@ export function createContractsScreen(ctx) {
       for (const row of rows) {
         const r = row.getBoundingClientRect();
         if (r.bottom <= limit - 2) cut = r.bottom;
-        else { if (cut) boardEl.style.maxHeight = `${Math.round(cut - top + 4)}px`; return; }
+        else { if (cut) boardEl.style.maxHeight = `${Math.round(Math.min(cut, r.top) - top)}px`; return; }
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
   }
@@ -700,7 +700,7 @@ export function createContractsScreen(ctx) {
       const kr = key ? key.getBoundingClientRect() : null;
       const hide = () => { tether.style.display = 'none'; cap.style.display = 'none'; };
       if (!kr || !(dr.width > 0) || !(kr.width > 0)) { hide(); return; }
-      const kx = kr.right - dr.left + 12;
+      const kx = kr.right - dr.left + 20;
       // snapped to the pixel grid so the 1px core reads as one row, not two half rows
       const ky = Math.round(kr.top - dr.top + kr.height / 2) + 0.5;
       const ox = rr.left - dr.left + g.origin.x;
@@ -718,7 +718,8 @@ export function createContractsScreen(ctx) {
       cap.querySelector('.orr-route__via').textContent = g.viaText || '';
       cap.style.left = `${Math.round(kx + 22)}px`;
       // the reading hangs from the line (never up into the terms at a short height)
-      cap.style.top = `${Math.round(ky + 8)}px`;
+      // at 720 the reading stands above the line (the column's foot fades below it); at full size it hangs under the line
+      cap.style.top = `${Math.round(ky + (window.innerHeight <= 800 ? -30 : 15))}px`;
       tether.style.display = '';
       cap.style.display = '';
       // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the
@@ -740,6 +741,10 @@ export function createContractsScreen(ctx) {
           const board = document.querySelector('.sx-ct__board');
           const seam = board ? Math.max(0, yours.getBoundingClientRect().top - board.getBoundingClientRect().bottom) : 0;
           yours.style.setProperty('--ct-seam', `${Math.round(seam)}px`);
+          // the seam's ticks keep the ladder's own 8px pitch from its first tick
+          const railTop = (document.querySelector('.sx-ct__rows') || board).getBoundingClientRect().top;
+          const seamTop = yours.getBoundingClientRect().top - seam;
+          yours.style.setProperty('--ct-seam-phase', `${Math.round((((railTop - seamTop) % 8) + 8) % 8)}px`);
         }
       } catch (_) { /* cosmetic */ }
       // the dossier settles after the orrery's first layout (the scales land, the key seats): measure again on

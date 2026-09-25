@@ -107,13 +107,14 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
 .orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
 .orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:9px; font-weight:500; letter-spacing:.02em; fill:rgb(${BONE} / .42); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
-.orr-svg text.orr-standing__val.is-hostile { fill:rgb(255 80 56 / .55); }
+.orr-svg text.orr-standing__val.is-hostile { fill:rgb(215 68 48); }
 .orr-svg .orr-standing__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__cursor-bloom { stroke:rgb(248 244 234); opacity:.25; }
 .orr-svg .orr-standing__rung-leader { stroke:rgb(${BONE} / .32); }
 .orr-standing text.orr-standing__rung { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9px; letter-spacing:.12em; fill:rgb(248 244 234); }
-.orr-standing text.orr-standing__rung.is-locked { fill:rgb(${BONE} / .48); }
-.orr-standing text.orr-standing__rung.is-sealed { fill:rgb(${BONE} / .3); }
+.orr-standing text.orr-standing__rung.is-locked { fill:rgb(${BONE} / .62); }
+.orr-standing text.orr-standing__rung.is-locked.is-next { fill:rgb(${BONE} / .72); }
+.orr-standing text.orr-standing__rung.is-sealed { fill:rgb(${BONE} / .6); }
 .orr-svg .orr-standing__rung-tick { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__rung-tick.is-locked { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-standing__rung-tick.is-sealed { stroke:rgb(${BONE} / .28); }
@@ -514,8 +515,9 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   const xc = xAt(posOf(cur));
   // the pin: from the bracket line (when there is one) down through the rule; it runs behind the names
   const pinTop = brackets.length ? y - 42 : y - 8;
-  let pin = `<path class="orr-bloom orr-standing__cursor-bloom" d="M ${f(xc)} ${pinTop} L ${f(xc)} ${y + 14}" stroke-width="6"/>`;
-  pin += `<path class="orr-core orr-standing__cursor" d="M ${f(xc)} ${pinTop} L ${f(xc)} ${y + 14}" stroke-width="1.6"/>`;
+  const pinD = `M ${f(xc)} ${pinTop} L ${f(xc)} ${y - 24} M ${f(xc)} ${y - 9} L ${f(xc)} ${y + 14}`;
+  let pin = `<path class="orr-bloom orr-standing__cursor-bloom" d="${pinD}" stroke-width="6"/>`;
+  pin += `<path class="orr-core orr-standing__cursor" d="${pinD}" stroke-width="1.6"/>`;
   pin += `<path d="M ${f(xc - 4)} ${y + 18} L ${f(xc)} ${y + 14} L ${f(xc + 4)} ${y + 18}" class="orr-core orr-standing__cursor" stroke-width="1.2" fill="none"/>`;
   // dimension brackets: a line between two points of the rule with a drop at each end and the distance riding it
   brackets.forEach((b) => {
@@ -545,7 +547,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       const rowY = y + rungTop + row * pitch;
       // the leader: down from the rule, a 45-degree elbow of 12px, the word after it
       out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 10} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1"/>`;
-      out += `<text class="orr-standing__rung ${state}" x="${f(x + 15)}" y="${rowY}" text-anchor="start">${lines.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${l}</tspan>`).join('')}</text>`;
+      out += `<text class="orr-standing__rung ${state}${Array.isArray(rung.detail) && rung.detail.length ? ' is-next' : ''}" x="${f(x + 15)}" y="${rowY}" text-anchor="start">${lines.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${l}</tspan>`).join('')}</text>`;
       if (Array.isArray(rung.detail) && rung.detail.length) {
         out += `<text class="orr-standing__rung-detail" x="${f(x + 15)}" y="${rowY + lines.length * 11 + 4}" text-anchor="start">${rung.detail.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${String(l)}</tspan>`).join('')}</text>`;
       }

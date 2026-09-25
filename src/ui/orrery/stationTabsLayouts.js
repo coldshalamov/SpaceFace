@@ -1515,6 +1515,32 @@ ${T} .sx-fac-rung-next.is-on-scale { display:none !important; }
 /* a short screen's tier words keep their gaps */
 @media (max-height:800px) { ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { letter-spacing:.04em !important; } }
 
+/* rolling headline numerals keep the thin face's own proportion */
+${T} :is(.sx-ledger__read-num, .sx-fac-num).orr-counter .orr-counter__digit { width:.56em; }
+${T} .sx-fac-num.orr-counter { vertical-align:baseline; }
+
+/* ================================ ROUND 12: MISSIONS ======================================== */
+/* the seam is drawn with the rail's own stroke: a 1.5px spine, its faint band, its 4px ticks on the ladder's pitch */
+${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
+  background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .32) 3px, rgb(${BONE} / .32) 4.5px, transparent 4.5px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${BONE} / .07) 1px, rgb(${BONE} / .07) 6px, transparent 6px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 0 var(--ct-seam-phase, 0px) / 4px 100% no-repeat !important; }
+/* YOURS hangs off the ruler with a major tick like FEATURED; the tracked row carries its row tick */
+${T} .sx-ct__yours::after { content:""; position:absolute; left:2px; top:50%; width:12px; height:1.5px; margin-top:-.75px; background:rgb(${BONE} / .7); pointer-events:none; }
+${T} .sx-ct__jobs .sx-job { position:relative !important; }
+${T} .sx-ct__jobs .sx-job::before { content:""; position:absolute; left:-40px; top:.75em; width:8px; height:1.5px; background:rgb(${BONE} / .6); pointer-events:none; }
+/* the featured row's tick sits on its title, not on its badge */
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:48px !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:48px !important; }
+/* the board window's fade never cuts the spine: the window already ends on a whole row */
+@media (max-height:800px) {
+  ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:52px !important; }
+  /* a wider ladder measure and one-line YOURS rows so the tracked row lands above the tether */
+  ${T} .k-panel.sx-ct { grid-template-columns:345px minmax(0, 1fr) !important; }
+  ${T} .sx-ct__jobs .sx-job .k-row__name, ${T} .sx-ct__jobs .sx-job .k-row__sub { display:block; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:215px; }
+}
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
