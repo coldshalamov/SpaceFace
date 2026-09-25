@@ -9,16 +9,35 @@
 //
 // The instrument only observes; flight uses public controls (W thrust, A/D yaw).
 // The dock/interact key is never pressed.
-import { spawn } from 'node:child_process';
+//
+// Guard rail (the standing hitch/pop-in check):
+//   every run writes .devshots/frame-solid/<stamp>.json with longest frame, frame p99,
+//   time-to-appear, in-flight shader links, blinks and the host it ran on.
+//   node scripts/probe-frame-solid.mjs --compare=.devshots/frame-solid/<baseline>.json
+//     fails when any count (blinks, root swaps, regressions, stuck frames, in-flight shader
+//     links, bodies that left the frame undrawn) rises. Timing regressions warn; add
+//     --strict-timing to fail on them (only meaningful on a quiet machine).
+import { spawn, execSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpus, loadavg } from 'node:os';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { installFrameSolidSampler, summarizeFrameSolid } from './lib/frameSolidSampler.mjs';
+import {
+  compareFrameSolidMetrics,
+  frameSolidMetrics,
+  installFrameSolidSampler,
+  resolveFrameSolidLinks,
+  summarizeFrameSolid,
+} from './lib/frameSolidSampler.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
 const CENSUS = process.argv.includes('--census');
+const STRICT_TIMING = process.argv.includes('--strict-timing');
+const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
+const OUT_DIR = `${ROOT}.devshots/frame-solid`;
 const AWAY_WU = 2500;
 const AWAY_MS = 35_000;
 const BACK_MS = 45_000;
@@ -98,6 +117,9 @@ try {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
     } catch (_) { /* storage unavailable */ }
+    // Arm the production perf counters (read once at renderer construction) so in-flight
+    // shader links are counted and attributed. Unarmed, the counter reads 0 — a false pass.
+    window.__SPACEFACE_PERF_COUNTERS__ = true;
   });
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
@@ -111,6 +133,37 @@ try {
     return state && state.mode === 'flight'
       && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
   }, null, { timeout: 600_000 });
+  // { links, frame } from the armed perf seam; null when the seam is absent or unarmed.
+  const readShaderLinks = () => page.evaluate(() => {
+    const perf = window.__SPACEFACE_PERF__;
+    const snap = perf && typeof perf.getCounterSnapshot === 'function' ? perf.getCounterSnapshot() : null;
+    const links = snap && snap.enabled === true && snap.totals && snap.totals.shaderLinks;
+    return Number.isFinite(links) ? { links, frame: snap.framesObserved } : null;
+  });
+  // Who paid for each in-flight link: admission subject, drawn object, program name.
+  const readFlightLinkEvents = (sinceFrame) => page.evaluate((since) => {
+    const perf = window.__SPACEFACE_PERF__;
+    const snap = perf && typeof perf.getCounterSnapshot === 'function' ? perf.getCounterSnapshot() : null;
+    const events = (snap && Array.isArray(snap.events)) ? snap.events : [];
+    return events
+      .filter((e) => e && e.kind === 'shaderLink' && Number(e.frame) >= since)
+      .map((e) => ({
+        frame: e.frame,
+        name: e.name || null,
+        subject: e.subject == null ? null : String(e.subject),
+        drawObject: e.drawObject || null,
+        via: /compileAsync|compileObjectPipelines|admitSubjectPipelines/.test(e.stack || '') ? 'admission'
+          : (/shadow/i.test(e.stack || '') ? 'shadow-render' : 'presented-draw'),
+      }));
+  }, sinceFrame);
+  const shaderLinksAtFlight = await readShaderLinks();
+  const gpuRenderer = await page.evaluate(() => {
+    try {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : null;
+    } catch (_) { return null; }
+  });
   await page.evaluate(installFrameSolidSampler);
 
   const station = await page.evaluate(() => {
@@ -345,6 +398,33 @@ try {
   await page.evaluate(() => { window.__SF_FRAME_STOP__ = true; });
   const rec = await page.evaluate(() => window.__SF_FRAME__);
   const summary = summarizeFrameSolid(rec);
+  const shaderLinksAtEnd = await readShaderLinks();
+  const flightShaderLinks = shaderLinksAtFlight && shaderLinksAtEnd
+    ? shaderLinksAtEnd.links - shaderLinksAtFlight.links
+    : null;
+  // Prefer the sampler's own witness (every link, named by program); the perf ring is the fallback.
+  const resolvedLinks = await page.evaluate(resolveFrameSolidLinks).catch(() => []);
+  const flightLinkEvents = resolvedLinks.length
+    ? resolvedLinks
+    : (shaderLinksAtFlight ? await readFlightLinkEvents(shaderLinksAtFlight.frame) : []);
+  const metrics = frameSolidMetrics(summary, { flightShaderLinks });
+  // Authored-body composition jobs that ran in flight: service time per job (the lane is serial).
+  const upgradeJobs = await page.evaluate(() => {
+    const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
+    const diag = scene && scene.userData && scene.userData.authoredUpgradeDiagnostics;
+    const jobs = (diag && Array.isArray(diag.jobs) ? diag.jobs : [])
+      .filter((j) => j && j.modeAtStart === 'flight' && Number.isFinite(j.durationMs));
+    const sorted = jobs.map((j) => j.durationMs).sort((a, b) => a - b);
+    const pct = (p) => (sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.ceil(p * sorted.length) - 1)]) : null);
+    const byKind = {};
+    for (const j of jobs) {
+      const k = `${j.entityType || '?'}|${j.cacheStatus || '?'}|${j.status || '?'}`;
+      const row = byKind[k] || (byKind[k] = { n: 0, totalMs: 0, maxMs: 0 });
+      row.n++; row.totalMs += j.durationMs; row.maxMs = Math.max(row.maxMs, j.durationMs);
+    }
+    for (const row of Object.values(byKind)) { row.totalMs = Math.round(row.totalMs); row.maxMs = Math.round(row.maxMs); }
+    return { count: jobs.length, p50Ms: pct(0.5), p95Ms: pct(0.95), maxMs: sorted.length ? Math.round(sorted[sorted.length - 1]) : null, byKind };
+  }).catch(() => null);
 
   console.log('\nframe-solid audit — everything in the player frame stays drawn and solid');
   console.log(`  phases: ${JSON.stringify(phases.map((p) => ({ phase: p.phase, ms: p.ms, endDist: Math.round(p.endDist || 0), minDist: Math.round(p.minDist || 0), maxDist: Math.round(p.maxDist || 0) })))}`);
@@ -368,6 +448,62 @@ try {
       + ` reasons=${JSON.stringify(o.reasons || {}, null, 2)}`);
   }
 
+  const timing = summary && summary.timing;
+  if (timing) {
+    console.log(`  frames: count=${timing.frame.count} p50=${timing.frame.p50Ms}ms p95=${timing.frame.p95Ms}ms`
+      + ` p99=${timing.frame.p99Ms}ms longest=${timing.frame.longestMs}ms`
+      + ` >50ms=${timing.frame.over50Ms} >100ms=${timing.frame.over100Ms}`);
+    console.log(`  time-to-appear: episodes=${timing.appear.episodes} onTime=${timing.appear.onTime}`
+      + ` (${timing.appear.onTimeRate}) late=${timing.appear.late} leftUndrawn=${timing.appear.leftUndrawn}`
+      + ` lateP50=${timing.appear.lateP50Ms}ms lateP95=${timing.appear.lateP95Ms}ms lateMax=${timing.appear.lateMaxMs}ms`);
+    console.log(`  time-to-appear by type: ${JSON.stringify(timing.appear.byType)}`);
+  }
+  console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
+  console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
+  console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`);
+  for (const e of flightLinkEvents.slice(0, 40)) {
+    console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
+      + ` nearest=${e.nearestProgram || '-'}`
+      + ` differs=${JSON.stringify(e.differsFromNearest || null)}`
+      + `${e.stack ? `\n      ${e.stack.slice(-1)[0] || ''}` : ` via=${e.via}`}`);
+  }
+
+  let head = null;
+  try { head = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch (_) { /* no git */ }
+  const report = {
+    at: new Date().toISOString(),
+    head,
+    headless: HEADLESS,
+    host: {
+      cpu: (cpus()[0] && cpus()[0].model) || null,
+      logicalCores: cpus().length,
+      loadavg: loadavg(),
+      gpuRenderer,
+    },
+    metrics,
+    timing: timing || null,
+    lanes: (summary && summary.lanes) || null,
+    upgradeJobs,
+    flightLinkEvents,
+    offenders: (summary && summary.offenders) || [],
+    phases,
+  };
+  mkdirSync(OUT_DIR, { recursive: true });
+  const outPath = `${OUT_DIR}/${report.at.replace(/[:.]/g, '-')}.json`;
+  writeFileSync(outPath, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(`  report: ${outPath}`);
+
+  let comparePass = true;
+  if (COMPARE_PATH) {
+    const baseline = JSON.parse(readFileSync(COMPARE_PATH, 'utf8'));
+    const verdict = compareFrameSolidMetrics(baseline.metrics || {}, metrics, { strictTiming: STRICT_TIMING });
+    console.log(`  compare vs ${COMPARE_PATH} (baseline head ${baseline.head || '?'}):`);
+    for (const row of verdict.rows) console.log(`    ${row.key}: ${row.before} -> ${row.after}`);
+    for (const w of verdict.warnings) console.log(`    WARN ${w}`);
+    for (const f of verdict.failures) console.log(`    FAIL ${f}`);
+    comparePass = verdict.failures.length === 0;
+  }
+
   const pass = !!(summary && summary.frames > 0)
     && summary.blinks === 0
     && summary.rootSwaps === 0
@@ -376,7 +512,8 @@ try {
     && summary.stationNoCollider === 0;
   dumpErrors();
   console.log(pass ? 'RESULT: PASS' : 'RESULT: FAIL');
-  if (!pass) process.exitCode = 1;
+  if (COMPARE_PATH) console.log(comparePass ? 'COMPARE: PASS' : 'COMPARE: FAIL');
+  if (!pass || !comparePass) process.exitCode = 1;
 } catch (error) {
   dumpErrors();
   throw error;
