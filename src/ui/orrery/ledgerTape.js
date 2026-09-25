@@ -32,6 +32,9 @@ const CSS = `
 .orr-svg .orr-ltape__minor { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-ltape__major { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-ltape__stem { stroke:rgb(${BONE} / .62); }
+.orr-svg .orr-ltape__settle { transform-box:fill-box; transform-origin:center; animation:orr-ltape-settle 520ms cubic-bezier(.3,1.7,.5,1) both; animation-delay:var(--orr-delay, 0ms); }
+@keyframes orr-ltape-settle { from { transform:scale(0); opacity:0; } to { transform:none; opacity:1; } }
+html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-svg .orr-ltape__stem--fact { stroke:rgb(${BONE} / .42); }
 .orr-svg .orr-ltape__stem-bloom { stroke:rgb(${BONE} / .9); opacity:.16; }
 .orr-svg .orr-ltape__tip { fill:rgb(246 241 230); }
@@ -287,10 +290,14 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       const g = svg('g', { class: `orr-ltape__tick${isChosen ? ' is-chosen' : ''}`, 'data-id': e.id, tabindex: '-1' });
       // a wide invisible hit zone so a tick is not a two-pixel target
       g.appendChild(svg('rect', { x: f(x - 11), y: f(Math.min(y, tipY) - 8), width: 22, height: f(Math.abs(tipY - y) + 16), fill: 'transparent', stroke: 'none' }));
-      g.appendChild(svg('path', { d: `M ${f(x)} ${y} L ${f(x)} ${f(tipY)}`, class: 'orr-bloom orr-ltape__stem-bloom', 'stroke-width': 5 }));
-      g.appendChild(svg('path', { d: `M ${f(x)} ${y} L ${f(x)} ${f(tipY)}`, class: `orr-core orr-ltape__stem${amt == null ? ' orr-ltape__stem--fact' : ''}`, 'stroke-width': 1.4 }));
-      g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: 6, class: `orr-ltape__tip-bloom${threat ? ' orr-ltape__tip-bloom--threat' : ''}` }));
-      g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: amt == null ? 2 : 2.6, class: `orr-ltape__tip${threat ? ' orr-ltape__tip--threat' : ''}` }));
+      // on arrival each stem draws out of the tape to its tip, and the tip lands with a small settle
+      const drawIn = arriveNow ? { pathLength: 1, style: `--orr-delay:${140 + k * 50}ms` } : {};
+      const draw = arriveNow ? ' orr-draw' : '';
+      const settle = arriveNow ? { style: `--orr-delay:${140 + k * 50 + 380}ms` } : {};
+      g.appendChild(svg('path', { d: `M ${f(x)} ${y} L ${f(x)} ${f(tipY)}`, class: `orr-bloom orr-ltape__stem-bloom${draw}`, 'stroke-width': 5, ...drawIn }));
+      g.appendChild(svg('path', { d: `M ${f(x)} ${y} L ${f(x)} ${f(tipY)}`, class: `orr-core orr-ltape__stem${amt == null ? ' orr-ltape__stem--fact' : ''}${draw}`, 'stroke-width': 1.4, ...drawIn }));
+      g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: 6, class: `orr-ltape__tip-bloom${threat ? ' orr-ltape__tip-bloom--threat' : ''}${arriveNow ? ' orr-ltape__settle' : ''}`, ...settle }));
+      g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: amt == null ? 2 : 2.6, class: `orr-ltape__tip${threat ? ' orr-ltape__tip--threat' : ''}${arriveNow ? ' orr-ltape__settle' : ''}`, ...settle }));
       if (amt != null && !isChosen) {
         // neighbours closer than a figure's width take alternate heights
         const crowd = (k > 0 && xs[k] - xs[k - 1] < 58) || (k + 1 < xs.length && xs[k + 1] - xs[k] < 58);
