@@ -108,15 +108,24 @@ export function handlingProfileForShip(shipId, options = {}) {
     });
   });
   // What the profile predicts before the player commits (PQ-176.03): the speed the ship fights
-  // at, the speed it travels at, and how long a full reversal takes under its own reverse thrust.
+  // at, the speed it travels at, how long a full reversal takes under its own reverse thrust,
+  // and the turn radius at fight speed. The radius is the one the flight checks already use:
+  // governed fight speed divided by the yaw-rate ceiling on this same profile (combatSpeed /
+  // maxYawRate). Both numbers are the derived profile the bars read. The player feel envelope
+  // scales yaw only later, inside flight, and this helper does not reach in there.
   const combatSpeed = firstLive(propulsion, FIGHT_SPEED_FIELDS).value;
   const travelCeiling = firstLive(propulsion, ['travelCeiling', 'maxSpeed']).value;
   const reverseAccel = firstLive(propulsion, HANDLING_PROFILE_AXES[3].fields).value;
+  const maxYawRate = firstLive(propulsion, ['maxYawRate']).value;
   const predictions = Object.freeze({
     combatSpeed: Number.isFinite(combatSpeed) ? combatSpeed : null,
     travelCeiling: Number.isFinite(travelCeiling) ? travelCeiling : null,
     reversalTimeS: Number.isFinite(combatSpeed) && Number.isFinite(reverseAccel) && reverseAccel > 0
       ? round3((2 * combatSpeed) / reverseAccel)
+      : null,
+    maxYawRate: Number.isFinite(maxYawRate) ? maxYawRate : null,
+    turnRadiusWu: Number.isFinite(combatSpeed) && combatSpeed > 0 && Number.isFinite(maxYawRate) && maxYawRate > 0
+      ? round3(combatSpeed / maxYawRate)
       : null,
     massLoadFactor: propulsion ? finite(propulsion.massLoadFactor, 1) : 1,
   });
