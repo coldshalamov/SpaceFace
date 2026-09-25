@@ -81,6 +81,21 @@ export function isOpticEnergyBolt(projectile) {
   return damageType === 'energy';
 }
 
+// Missiles are ordnance, not light: the lattice still answers them (a diamond throws its ring,
+// stone eats the hull), but a mirror has no energy bolt to bounce — the missile just dies there.
+export function isOpticOrdnance(projectile) {
+  const data = projectile && projectile.data;
+  return !!(data && data.kind === 'missile');
+}
+
+// A continuous beam has no projectile body; weapons hands the grammar a bolt-shaped shim
+// (opticBeamBolt) stamped kind:'beam' so the contact can split or eat the ray, while a mirror
+// can never "reflect" a beam back — there is no travelling body to send home.
+export function isOpticBeamContact(projectile) {
+  const data = projectile && projectile.data;
+  return !!(data && data.kind === 'beam');
+}
+
 export function opticGenerationOf(projectile) {
   const generation = projectile && projectile.data && projectile.data.opticGeneration;
   return Number.isInteger(generation) && generation > 0 ? generation : 0;
@@ -316,8 +331,8 @@ export function traceOpticRay(bodies, originIndex, heading, reach = OPTIC_RAY_RA
 }
 
 /**
- * Decide one energy-bolt contact. Does not spawn and does not mark the book.
- * `book` is read ({ spawned, visited }).
+ * Decide one optic contact — energy bolt, continuous-beam shim, or missile ordnance.
+ * Does not spawn and does not mark the book. `book` is read ({ spawned, visited }).
  */
 export function planOpticContact({
   material,
@@ -326,12 +341,20 @@ export function planOpticContact({
   payload,
   book,
 } = {}) {
-  if (!material || !isOpticEnergyBolt(projectile) || !target) return null;
+  if (!material || !target) return null;
+  const bolt = isOpticEnergyBolt(projectile);
+  const ordnance = isOpticOrdnance(projectile);
+  if (!bolt && !ordnance) return null;
   const response = material.response;
   if (response === 'absorb') {
     return { kind: 'absorb', reason: material.id === 'spent' ? 'spent' : 'stone', materialId: material.id };
   }
   if (response === 'reflect') {
+    // The mirror bounces light, not mass: a missile detonates on the skin and a continuous
+    // beam has no body to send back — both end at the surface like a stone hit.
+    if (ordnance || isOpticBeamContact(projectile)) {
+      return { kind: 'absorb', reason: 'metal', materialId: material.id };
+    }
     const normal = payload && payload.normal
       ? { x: Number(payload.normal.x) || 0, z: Number(payload.normal.z) || 0 }
       : outwardNormal(target, payload && payload.pos);
@@ -509,4 +532,74 @@ export function settleOpticContact(projectile, target, payload, book, ctx) {
     if (spend) plan.spentAt = spend.spentAt;
   }
   return plan;
+}
+
+// ── Continuous-beam contacts ────────────────────────────────────────────────
+// A beam weapon pushes a transient from→to ray into state.combat.beams every firing tick;
+// combat owns "what does the ray meet first". When the first body on the ray is an optic
+// surface, weapons settles it through this module with the same book/spend rules as a bolt.
+
+/**
+ * Where a beam segment first crosses an optic body — the ENTRY point on the surface
+ * (radius + OPTIC_RAY_RADIUS), not the closest-approach point inside the rock, so a beam
+ * that terminates here visibly stops at the skin. Returns { t, pos, normal } or null.
+ */
+export function opticBeamHit(beam, target) {
+  if (!beam || !beam.from || !beam.to || !target || !target.pos) return null;
+  const fx = Number(beam.from.x) || 0;
+  const fz = Number(beam.from.z) || 0;
+  const tx = Number(beam.to.x) || 0;
+  const tz = Number(beam.to.z) || 0;
+  const cx = Number(target.pos.x) || 0;
+  const cz = Number(target.pos.z) || 0;
+  const radius = (Number(target.radius) || 0) + OPTIC_RAY_RADIUS;
+  // A muzzle already inside the skin contacts where it stands, not at the far exit.
+  const relX = fx - cx;
+  const relZ = fz - cz;
+  if (relX * relX + relZ * relZ <= radius * radius) {
+    const pos = { x: fx, z: fz };
+    return { t: 0, pos, normal: outwardNormal(target, pos) };
+  }
+  const t = segmentCircleT(fx, fz, tx, tz, cx, cz, radius);
+  if (t == null) return null;
+  const pos = { x: fx + (tx - fx) * t, z: fz + (tz - fz) * t };
+  return { t, pos, normal: outwardNormal(target, pos) };
+}
+
+/**
+ * The bolt-shaped shim a beam contact is settled with. A continuous beam has no projectile
+ * body; the grammar still needs the thing that arrived — position at the contact, velocity
+ * down the ray, the mount's burst family (`beam.opticFamilyId`, stamped by weapons when the
+ * ray is pushed). One mount-hold is one shot family: the first tick on a live diamond throws
+ * the ring and spends it, every later tick of that hold reads a spent/dark cell (and the same
+ * book.visited mark) and absorbs — never a per-tick splinter storm.
+ */
+export function opticBeamBolt(beam, contact, owner) {
+  const from = beam && beam.from ? beam.from : { x: 0, z: 0 };
+  const to = beam && beam.to ? beam.to : from;
+  const dx = (Number(to.x) || 0) - (Number(from.x) || 0);
+  const dz = (Number(to.z) || 0) - (Number(from.z) || 0);
+  const len = Math.hypot(dx, dz) || 1;
+  const pos = contact && contact.pos ? contact.pos : from;
+  return {
+    id: `beam:${beam && beam.beamKey != null ? beam.beamKey : (beam && beam.ownerId) || 'beam'}`,
+    type: 'projectile',
+    pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+    vel: { x: (dx / len) * OPTIC_RAY_SPEED, z: (dz / len) * OPTIC_RAY_SPEED },
+    radius: OPTIC_RAY_RADIUS,
+    ownerId: beam && beam.ownerId != null ? beam.ownerId : null,
+    team: owner && Number.isFinite(owner.team) ? owner.team : 0,
+    factionId: beam && beam.factionId != null ? beam.factionId : (owner ? owner.factionId : null),
+    data: {
+      damage: beam && Number.isFinite(beam.dpsThisTick) ? beam.dpsThisTick : 0,
+      damageType: beam && beam.dmgType ? beam.dmgType : 'energy',
+      damagePacket: beam && beam.damagePacket ? beam.damagePacket : null,
+      kind: 'beam',
+      weaponId: beam && beam.weaponId != null ? beam.weaponId : null,
+      opticFamilyId: beam && typeof beam.opticFamilyId === 'string' ? beam.opticFamilyId : undefined,
+      opticGeneration: 0,
+      spawnPos: { x: Number(from.x) || 0, z: Number(from.z) || 0 },
+      maxDistance: OPTIC_RAY_RANGE,
+    },
+  };
 }
