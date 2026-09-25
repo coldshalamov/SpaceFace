@@ -132,6 +132,10 @@ export function createWorksConduitMaterialScope() {
         .find((material) => material && typeof material.clone === 'function');
       if (!base) return null;
       const material = base.clone();
+      // clone() drops own-property shader patches — conduit material must keep the authored
+      // program key or the clone links an unpatched variant cold on the works renderer.
+      material.onBeforeCompile = base.onBeforeCompile;
+      material.customProgramCacheKey = base.customProgramCacheKey;
       material.userData = { ...(material.userData || {}), worksConduitComponentOwned: true };
       let flowSampler = null;
       if (family === 'lane' && material.map?.isTexture && typeof material.map.clone === 'function') {
@@ -1455,11 +1459,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       inclusionKit = handle;
       const base = handle.kit.material;
+      // clone() drops own-property shader patches — the atlas material carries the authored
+      // cache key, so a bare clone links an unpatched variant cold on the works renderer.
       const unlocked = base.clone();
+      unlocked.onBeforeCompile = base.onBeforeCompile;
+      unlocked.customProgramCacheKey = base.customProgramCacheKey;
       unlocked.userData = { ...(unlocked.userData || {}), worksInstanceOwned: true };
       // A LOCKED VEIN IS DULL, NOT DARK (law §5 / §3.5) — the same oxidised treatment oreMaterial
       // applies to procedural veins, through factors so the baked atlas keeps doing the coloring.
       const locked = base.clone();
+      locked.onBeforeCompile = base.onBeforeCompile;
+      locked.customProgramCacheKey = base.customProgramCacheKey;
       locked.userData = { ...(locked.userData || {}), worksInstanceOwned: true };
       locked.color.multiplyScalar(0.62);
       locked.roughness = Math.min(1, locked.roughness + 0.42);
@@ -1468,6 +1478,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // The lock plate fades in and out at the aim; its material must be owned by the stamp so the
       // shared inclusion surfacing never inherits the stamp's opacity.
       const plateFade = base.clone();
+      plateFade.onBeforeCompile = base.onBeforeCompile;
+      plateFade.customProgramCacheKey = base.customProgramCacheKey;
       plateFade.userData = { ...(plateFade.userData || {}), worksInstanceOwned: true };
       plateFade.transparent = true;
       plateFade.depthWrite = true;

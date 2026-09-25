@@ -1045,6 +1045,35 @@ export function createShipMicroMotionTracker() {
     }
   }
 
+  // Restore a bell node's authored material before its heat clones are disposed — disposing
+  // a material still installed on a live mesh frees the shared program the authored source
+  // is also using. In a same-node rescan entry.node still carries a clone (restore matches);
+  // after a repoint it holds the new node's authored material (prev.indexOf misses, no-op).
+  function releaseHeatSkin(entry) {
+    const prev = entry.heatMats;
+    if (prev) {
+      if (entry.node && entry.heatSrc) {
+        const cur = entry.node.material;
+        if (Array.isArray(cur) && Array.isArray(entry.heatSrc)) {
+          entry.node.material = cur.map((m) => {
+            const idx = prev.indexOf(m);
+            return idx >= 0 ? entry.heatSrc[idx] : m;
+          });
+        } else if (!Array.isArray(cur) && prev.indexOf(cur) >= 0) {
+          entry.node.material = entry.heatSrc;
+        }
+      }
+      for (const m of prev) {
+        if (m && typeof m.dispose === 'function') {
+          try { m.dispose(); } catch { /* best effort */ }
+        }
+      }
+    }
+    entry.heatMats = null;
+    entry.heatBase = null;
+    entry.heatSrc = null;
+  }
+
   function scanMountPivots(rec, mesh, hull) {
     rec.mountMesh = mesh;
     rec.mountHull = hull;
@@ -1114,31 +1143,8 @@ export function createShipMicroMotionTracker() {
               lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
               || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
             );
-            // Rescan on a new hull/mesh tree: release the previous heat-skin clones. A node
-            // still presenting one must be restored to its authored material first — disposing
-            // a material still installed on a live mesh frees the shared program the authored
-            // source is also using.
-            if (entry.heatMats) {
-              const prev = entry.heatMats;
-              if (entry.node && entry.heatSrc) {
-                const cur = entry.node.material;
-                if (Array.isArray(cur) && Array.isArray(entry.heatSrc)) {
-                  entry.node.material = cur.map((m) => {
-                    const idx = prev.indexOf(m);
-                    return idx >= 0 ? entry.heatSrc[idx] : m;
-                  });
-                } else if (!Array.isArray(cur) && prev.indexOf(cur) >= 0) {
-                  entry.node.material = entry.heatSrc;
-                }
-              }
-              for (const m of prev) {
-                if (m && typeof m.dispose === 'function') {
-                  try { m.dispose(); } catch { /* best effort */ }
-                }
-              }
-            }
-            entry.heatMats = null;
-            entry.heatBase = null;
+            // Rescan on a new hull/mesh tree: release the previous heat-skin clones.
+            releaseHeatSkin(entry);
             rec.bellCount++;
           }
         }
@@ -1147,6 +1153,15 @@ export function createShipMicroMotionTracker() {
           for (let i = 0; i < children.length; i++) stack.push(children[i]);
         }
       }
+    }
+    // Entries past the new count never re-enter the scan — release any heat clones they
+    // still hold (a scan-cap cut or a smaller repointed tree would otherwise leave clones
+    // installed and undisposed).
+    for (let i = rec.bellCount; i < rec.bells.length; i++) {
+      const entry = rec.bells[i];
+      if (!entry) continue;
+      releaseHeatSkin(entry);
+      entry.node = null;
     }
   }
 

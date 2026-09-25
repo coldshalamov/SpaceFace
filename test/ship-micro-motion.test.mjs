@@ -405,3 +405,54 @@ test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no 
   // C2's restore base baked warm).
   assert.equal(cloneCalls, 1, 'heat skin captured exactly once per node');
 });
+
+test('ship micro-motion: heat-skin recapture on authored-root repoint clones the new source', () => {
+  // scanMountPivots reruns when the entity's mesh/hull identity changes (authored upgrade
+  // swaps the root). The stale-heatSrc defect cloned the OLD node's material onto the new
+  // bell — a detached instance that re-links its program in a presented pass. The entry
+  // must release heatSrc with heatMats so recapture reads the live node's material.
+  const tracker = createShipMicroMotionTracker();
+  const src1 = new MeshStandardMaterial({ name: 'SF_Shared_mech_a' });
+  src1.onBeforeCompile = function hookA() {};
+  src1.customProgramCacheKey = () => 'src1-key';
+  const src2 = new MeshStandardMaterial({ name: 'SF_Shared_mech_b' });
+  src2.onBeforeCompile = function hookB() {};
+  src2.customProgramCacheKey = () => 'src2-key';
+  const mkBell = (material) => ({
+    name: 'LOD0_engine_fan_Mechanical',
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+    material,
+    children: [],
+  });
+  const mkHull = (bell) => ({
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    children: [bell],
+  });
+  const bell1 = mkBell(src1);
+  const hull1 = mkHull(bell1);
+  const mesh1 = { userData: { hull: hull1, weapons: [] }, children: [hull1] };
+  const bell2 = mkBell(src2);
+  const hull2 = mkHull(bell2);
+  const mesh2 = { userData: { hull: hull2, weapons: [] }, children: [hull2] };
+  const entity = { id: 8, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12, vel: { x: 60, z: 0 }, flags: { boosting: true } };
+
+  tracker.updateCraftMicroMotion(entity, mesh1, 1.0, 0.016);
+  assert.notEqual(bell1.material, src1, 'first capture installed a clone');
+  tracker.updateCraftMicroMotion(entity, mesh2, 1.016, 0.016);
+
+  assert.notEqual(bell2.material, src2, 'repointed bell captured a clone');
+  assert.equal(
+    bell2.material.customProgramCacheKey(),
+    'src2-key',
+    'the repointed clone must come from the new node material, not the stale heatSrc of the old tree',
+  );
+  assert.equal(
+    bell2.material.userData && bell2.material.userData.sfHeatSkinClone,
+    String(src2.uuid).slice(0, 8),
+    'clone lineage stamp names the new source',
+  );
+  assert.equal(bell2.material.onBeforeCompile, src2.onBeforeCompile, 'shader hook preserved on repoint clone');
+});

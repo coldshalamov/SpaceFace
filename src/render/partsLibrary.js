@@ -10435,7 +10435,7 @@ function normalizeWaspDomeGlass(root, entity) {
     const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
     const normalized = sourceMaterials.map((source) => {
       if (!source || source.userData?.spacefaceWaspCanopyNormalized) return source;
-      const material = source.clone();
+      const material = cloneMaterialPreservingShaderHooks(source);
       material.name = 'SF_Wasp_Canopy_Glass';
       material.userData = { ...(source.userData || {}), spacefaceWaspCanopyNormalized: true };
       material.color?.setHex?.(0x163849);
