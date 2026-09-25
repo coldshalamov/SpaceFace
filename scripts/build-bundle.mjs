@@ -23,6 +23,7 @@ import {
   validateReleaseBuildReceipt,
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
+import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -94,9 +95,12 @@ async function build() {
     target: ['chrome110'],    // Electron 31 = Chromium 126; chrome110 is a safe floor
     platform: 'browser',
     // Resolve bare specifiers to the npm packages (three/rapier ship ESM in node_modules).
-    // The vendor/ copies are only for the zero-build dev path; the bundle uses node_modules.
+    // The vendor/ copies are otherwise only for the zero-build dev path; the bundle uses node_modules...
     mainFields: ['browser', 'module', 'main'],
     conditions: ['browser', 'import'],
+    // ...except the vendor-patched modules the dev importmap already loads (GLTFLoader), so dev and
+    // retail parse render packages with the same code.
+    alias: retailBundleAliases(ROOT),
     logLevel: 'info',
     // Treat dynamic imports of literal strings as code-splittable chunks (default).
     legalComments: 'none',
