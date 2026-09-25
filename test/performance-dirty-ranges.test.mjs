@@ -496,6 +496,37 @@ test('dirty-range comparator refuses windows whose settings drifted mid-capture'
   assert.match(result.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
 });
 
+test('dirty-range comparator does not mistake hit-stop timeScale edges for settings drift', () => {
+  // combat_vfx_burst intrinsically produces hit-stop dilation (timeScale ~0.12) on kills, so
+  // window edges land at arbitrary dilation phases — the codebase itself classifies timeScale
+  // as authored transient runtime state, not a quality setting (releaseSoakProbe.mjs). The
+  // settings gate must still fire on real quality drift (video, dynResScale) while ignoring
+  // the transient field.
+  const ranged = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  ranged.settings.end = { ...ranged.settings.end, timeScale: 0.12 };
+  const fullSpan = windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+    requestedBytes: 12_000_000,
+    driverBytes: 12_200_000,
+  });
+  fullSpan.settings.start = { ...fullSpan.settings.start, timeScale: 0.12 };
+  const result = evaluateDirtyRangeComparison({ windows: [ranged, fullSpan] }, { runtimeKind: 'browser' });
+  assert.equal(
+    result.failures.some((f) => /quality\/settings/.test(f)), false,
+    `timeScale dilation must not trip the settings gate: ${result.failures.join(' | ')}`,
+  );
+  assert.equal(result.metrics.rangedTimeScaleEnd, 0.12, 'the transient stays on the record');
+  assert.equal(result.metrics.fullSpanTimeScaleStart, 0.12);
+  // A real quality change still fails even when timeScale is also dilated.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = { ...drifted.settings.end, dynResScale: 0.5, timeScale: 0.12 };
+  const strict = evaluateDirtyRangeComparison({
+    windows: [drifted, windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+      requestedBytes: 12_000_000, driverBytes: 12_200_000,
+    })],
+  }, { runtimeKind: 'browser' });
+  assert.match(strict.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
 test('paired dirty-range manifests bind one scenario and source candidate to distinct runtimes', async () => {
   for (const manifest of [browserManifest, electronManifest]) {
     assert.equal(manifest.mode, 'acceptance');

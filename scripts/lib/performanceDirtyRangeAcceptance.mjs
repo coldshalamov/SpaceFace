@@ -34,6 +34,17 @@ function windowByVariant(document, variantId) {
   )) || null;
 }
 
+// The settings slice also carries `timeScale`, which releaseSoakProbe itself classifies as
+// authored transient runtime state (hit-stop/focus), not a quality setting. combat_vfx_burst
+// intrinsically produces hit-stop on kills, so window edges land at arbitrary dilation phases
+// and the equality gate would fail on game feel rather than quality drift. The comparison
+// strips it; the recorded slice keeps it for inspection.
+function qualitySettingsJson(settingsSlice) {
+  if (!settingsSlice || typeof settingsSlice !== 'object') return stableJson(settingsSlice ?? null);
+  const { timeScale, ...quality } = settingsSlice;
+  return stableJson(quality);
+}
+
 export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser' } = {}) {
   const failures = [];
   const ranged = windowByVariant(document, 'baseline');
@@ -81,7 +92,7 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
     if (window?.restoration?.restored !== true) {
       failures.push(`${label} scenario or probe control did not restore exactly`);
     }
-    if (stableJson(window?.settings?.start) !== stableJson(window?.settings?.end)) {
+    if (qualitySettingsJson(window?.settings?.start) !== qualitySettingsJson(window?.settings?.end)) {
       failures.push(`${label} quality/settings changed inside the capture window`);
     }
     for (const field of ['shaderLinks', 'shaderCompiles', 'renderTargetAllocations']) {
@@ -90,7 +101,8 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
       }
     }
   }
-  if (ranged && fullSpan && stableJson(ranged.settings?.start) !== stableJson(fullSpan.settings?.start)) {
+  if (ranged && fullSpan
+      && qualitySettingsJson(ranged.settings?.start) !== qualitySettingsJson(fullSpan.settings?.start)) {
     failures.push('ranged and full-span windows do not share identical quality settings');
   }
   if (!(rangedLogical > 0) || !(fullLogical > 0)) {
@@ -132,6 +144,12 @@ export function evaluateDirtyRangeComparison(document, { runtimeKind = 'browser'
       rangedDriverBytesPerLogicalByte,
       fullSpanDriverBytesPerLogicalByte,
       driverUploadByteReductionFraction,
+      // Transient dilation at the window edges stays on the record even though it is exempt
+      // from the quality-equality gate — a grossly asymmetric hit-stop phase is still visible.
+      rangedTimeScaleStart: finite(ranged?.settings?.start?.timeScale),
+      rangedTimeScaleEnd: finite(ranged?.settings?.end?.timeScale),
+      fullSpanTimeScaleStart: finite(fullSpan?.settings?.start?.timeScale),
+      fullSpanTimeScaleEnd: finite(fullSpan?.settings?.end?.timeScale),
       rangedFrameP95,
       fullSpanFrameP95: fullFrameP95,
       frameP95DeltaMs: Number.isFinite(rangedFrameP95) && Number.isFinite(fullFrameP95)
