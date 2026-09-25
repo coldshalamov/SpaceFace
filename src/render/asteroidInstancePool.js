@@ -129,6 +129,38 @@ export function releaseAsteroidInstancesForEntity(pool, entityId) {
   return true;
 }
 
+/**
+ * Move one entity's pool membership onto a reissued id. Same-sector save restores keep GPU
+ * meshes while assigning fresh entity ids; the renderer rekeys its `_meshes` map and must rekey
+ * this record with it — otherwise the adopted leaf's record is stranded under a dead id: every
+ * release misses, the record keeps pinning ownerRoot+leaf, and the classified-record dirty check
+ * misses every frame (forcing a full matrix reclassify). Only the entity id changes — the record
+ * keeps the exact ownerRoot/leaf slot it already owns in its bucket.
+ */
+export function rekeyAsteroidInstanceEntity(pool, oldId, newId) {
+  if (!pool || pool.disposed || oldId == null || newId == null || oldId === newId) return false;
+  const owned = pool.byEntity.get(oldId);
+  if (!owned) return false;
+  pool.byEntity.delete(oldId);
+  if (pool.byEntity.has(newId)) {
+    // The new id already owns a different leaf's record — this one can never be reached through
+    // its entity again. Splice it out like a release so it cannot pin its mesh tree forever.
+    const { bucket, record } = owned;
+    const index = bucket.records.indexOf(record);
+    if (index >= 0) bucket.records.splice(index, 1);
+    if (record.leaf) {
+      record.leaf.visible = true;
+      if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
+    }
+    pool.dirty = true;
+    return false;
+  }
+  owned.record.entityId = newId;
+  pool.byEntity.set(newId, owned);
+  pool.dirty = true;
+  return true;
+}
+
 export function invalidateAsteroidInstancePool(pool) {
   if (pool && !pool.disposed) pool.dirty = true;
 }

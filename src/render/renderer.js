@@ -99,6 +99,7 @@ import {
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
+  rekeyAsteroidInstanceEntity,
   releaseAsteroidInstancesForEntity,
   reserveAsteroidInstanceCapacity,
   resolveAsteroidInstanceEntityId,
@@ -1307,6 +1308,10 @@ export function reattachResidentGpuMeshes(owner) {
     owner._meshes.delete(oldId);
     owner._meshes.set(entity.id, mesh);
     owner._meshesVersion = (owner._meshesVersion | 0) + 1;
+    // The instance pool keys its adopted-leaf records by entity id too; carry the record onto
+    // the restored id or it strands under the dead key — unreleasable, pinning the kept tree,
+    // and missing the classified dirty check every frame.
+    rekeyAsteroidInstanceEntity(owner._asteroidInstancePool, oldId, entity.id);
     entity.mesh = mesh;
     if (entity.view) entity.view.root = mesh;
     else entity.view = { root: mesh };
@@ -1572,6 +1577,92 @@ function entityIsOnReadableGlass(entity, state) {
     radius: entityVisualCullRadius(entity, entity.mesh),
   });
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+}
+
+/**
+ * The strict "on the readable glass right now" test used to ORDER deadline work.
+ * entityIsOnReadableGlass deliberately includes the runway — residency, disposal
+ * and overflow pacing all want the safe side — but an on-glass root can only
+ * outrank runway/prefetch work while the lanes stay distinct, so this classifier
+ * asks for the glass band alone. Priority: explicit render focus, the published
+ * activity frame's glass set, the sim-side R0 tier, then the geometric glass
+ * rectangle for entities the frame never names (ledger rows, just-promoted
+ * arrivals). Everything missing all four is ambient.
+ */
+function entityIsOnDeadlineGlass(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  if (entity.activity && entity.activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
+  const frame = state.render && state.render.activityFrame;
+  const glass = frame && frame.renderGlassIds;
+  const listed = glass && typeof glass.has === 'function'
+    ? glass.has(entity.id)
+    : Array.isArray(glass) && glass.includes(entity.id);
+  if (listed === true) return true;
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !entity.pos) return false;
+  const cam = liveTableCamera(state);
+  const g = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  return classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: g.halfX,
+    glassHalfZ: g.halfZ,
+    runwayWu: 0,
+    radius: entityVisualCullRadius(entity, entity.mesh),
+  }) === TABLE_BAND.GLASS;
+}
+
+/**
+ * The entity a pipeline-admission subject belongs to decides its lane. The bound
+ * mesh root carries `presentationEntityId`; detached subtrees and authored
+ * boundaries can stamp it on an ancestor, so walk up and take the first id that
+ * resolves. Subjects with no live owner are ambient — a caller that knows better
+ * (boundary admissions, latch lanes) passes `{ urgent: true }` itself.
+ */
+function admissionSubjectIsOnDeadlineGlass(subject, state) {
+  if (!subject || !state) return false;
+  for (let node = subject; node; node = node.parent) {
+    const data = node.userData;
+    if (!data) continue;
+    let id = data.presentationEntityId ?? data.entityId ?? data.sfEntityId;
+    if (typeof id === 'string' && /^\d+$/.test(id)) id = Number(id);
+    if (id == null) continue;
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id)
+      : null;
+    if (entity) return entityIsOnDeadlineGlass(entity, state);
+  }
+  return false;
+}
+
+/**
+ * Stable-partition the pending mesh-build tail so entities that reached the
+ * deadline glass since the queue was last ordered drain before the leftover
+ * runway/ambient backlog. Reconcile re-orders the queue every poll (~0.25 s);
+ * this runs once per _drainMeshBuildQueue call, and only when the count cap is
+ * about to stop the drain with glass work still buried — the inside-that-window
+ * promotion the poll cannot see yet.
+ */
+export function hoistDeadlineGlassMeshBuilds(owner) {
+  const queue = owner && owner._meshBuildQueue;
+  if (!queue) return false;
+  const head = owner._meshBuildQueueHead | 0;
+  let moved = 0;
+  let reordered = false;
+  for (let i = head; i < queue.length; i++) {
+    const entity = resolveWorldPresentationEntity(owner.state, queue[i]);
+    if (!entityIsOnDeadlineGlass(entity, owner.state)) continue;
+    const slot = head + moved;
+    if (i !== slot) {
+      const [id] = queue.splice(i, 1);
+      queue.splice(slot, 0, id);
+      reordered = true;
+    }
+    moved += 1;
+  }
+  return reordered;
 }
 
 /**
@@ -6008,9 +6099,20 @@ export const render = {
       // appearance. compileExplicit flushes the ambient queue and serializes
       // the subject on the shared compile tail — still present-sliced in
       // flight, so the link lands on its own beats rather than inside a draw.
+      // The urgent lane is the same idea one rung down: a subject whose owner is
+      // on the readable glass rides its own tail link ahead of everything still
+      // queued, instead of joining the ambient FIFO behind runway/prefetch
+      // compiles (D38). The classification is evaluated here, at compile time,
+      // so a subject that drifted off the glass while waiting stays ambient.
+      const urgent = (admissionOptions && admissionOptions.urgent === true)
+        || (state.mode === 'flight'
+          && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+          && admissionSubjectIsOnDeadlineGlass(subject, state));
       const compilation = admissionOptions && admissionOptions.explicit === true
         ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
-        : pipelineAdmissions.compile(subject);
+        : (urgent
+          ? pipelineAdmissions.compile(subject, { ...admissionOptions, urgent: true })
+          : pipelineAdmissions.compile(subject));
       return compilation
         .then((result) => {
           // A linked program still stalls inside the presented frame while its
@@ -9064,6 +9166,18 @@ export const render = {
         if (kept) {
           this._unbindPresentationMesh(id, kept);
           clearEntityMeshReference(still, kept);
+          // The kept boundary still owns its adopted pool leaf: its record must survive
+          // (rekeyed onto the restored id by reattachResidentGpuMeshes, or released with
+          // the mesh by the dead-id reconcile sweep when nothing claims it). Releasing it
+          // here would un-adopt the leaf with no re-registration path in this flow —
+          // the rock un-pools for the session and the classified dirty check misses
+          // every frame.
+        } else {
+          // The heavier prewarm abort stays skipped — an in-flight publish may still
+          // target a kept sibling boundary. But with no retained mesh under this id,
+          // a pool record keyed by it can never reattach; it would pin its
+          // ownerRoot+leaf under a dead key for the rest of the session.
+          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         }
         return;
       }
@@ -11742,11 +11856,13 @@ export const render = {
       globalAsteroidMotion.releaseMesh(mesh);
       globalInfrastructureMotion.releaseMesh(mesh);
     }
+    // The submit-lane reservation is keyed by entity id, not by the world handle: it must
+    // release even when the handle (or the world) is already gone, or the slot strands.
+    this._persistentSubmitLanes?.release(entityId);
     const world = this._presentationWorld;
     if (!world) return false;
     const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
     if (!handle) return false;
-    this._persistentSubmitLanes.release(entityId);
     return world.unbindMesh(handle, mesh);
   },
 
@@ -12241,13 +12357,23 @@ export const render = {
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
+    // Set when the late-present gate refused a start but deadline-glass work is
+    // pending: this drain admits the hoisted on-glass prefix only. Ambient and
+    // runway backlog still waits out the throttle — a hole in the picture does
+    // not (the same trade the un-sliced residency lane already makes: an
+    // invisible on-screen object is worse than one bounded build inside a late
+    // frame).
+    let deadlineGlassOnly = false;
     if (buildBudget !== Infinity && this._initialMeshReconcileComplete) {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,
       );
       this._meshBuildLateSkips = gate.skippedCount;
-      if (!gate.start) return 0;
+      if (!gate.start) {
+        if (!hoistDeadlineGlassMeshBuilds(this)) return 0;
+        deadlineGlassOnly = true;
+      }
     }
     const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -12256,11 +12382,15 @@ export const render = {
       ? performance.now()
       : Date.now());
     const simNow = Number(this.state && this.state.simTime) || 0;
+    let hoistedDeadlineBuilds = false;
     while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
       const peek = resolveWorldPresentationEntity(
         this.state,
         this._meshBuildQueue[this._meshBuildQueueHead],
       );
+      // Under a refused late-present start only the hoisted deadline-glass
+      // prefix may build; the first ambient head ends the drain.
+      if (deadlineGlassOnly && !entityIsOnDeadlineGlass(peek, this.state)) break;
       // A count cap of a few builds per frame is right for off-screen runway
       // filler. It is wrong for a body already on the glass: that is a hole in
       // the picture. On-glass builds ignore the count and stop on the time
@@ -12268,7 +12398,16 @@ export const render = {
       // yield) keeps that count.
       const onGlassOverflow = buildBudget > 1 && buildBudget !== Infinity
         && entityIsOnReadableGlass(peek, this.state);
-      if (built >= buildBudget && !onGlassOverflow) break;
+      if (built >= buildBudget && !onGlassOverflow) {
+        // The enqueue poll re-orders the queue every ~0.25 s. An entity that
+        // crossed the deadline glass inside that window is still buried behind
+        // off-glass backlog — hoist it to the head once per drain so the
+        // on-glass overflow arm above can finish it inside this slice instead
+        // of leaving a hole for the rest of the window.
+        if (hoistedDeadlineBuilds || !hoistDeadlineGlassMeshBuilds(this)) break;
+        hoistedDeadlineBuilds = true;
+        continue;
+      }
       if (!shouldContinueAdmissionSlice({
         buildBudget,
         startedAtMs,
