@@ -883,9 +883,17 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   const digestOf = async (candidate) => (
     candidate.byteLength === metadata.render.bytes ? sha256Hex(candidate) : null
   );
+  // First read: zero-copy worker hash. The bytes come back on the same buffer, so the only main-thread
+  // copy of each streamed package (the worker's private copy) is gone. A worker lost mid-hash takes
+  // the buffer with it; that read is then treated like a stale read and re-fetched below.
   let bytes = await read('no-cache');
-  let digest = await digestOf(bytes);
-  if (digest !== metadata.render.sha256) {
+  let digest = null;
+  if (bytes.byteLength === metadata.render.bytes) {
+    const kept = await sha256HexKeepingBytes(bytes);
+    bytes = kept.bytes;
+    digest = kept.hex;
+  }
+  if (!bytes || digest !== metadata.render.sha256) {
     bytes = await read('reload');
     digest = await digestOf(bytes);
   }
@@ -1043,4 +1051,9 @@ let renderPackageDigester = null;
 function sha256Hex(bytes) {
   renderPackageDigester ||= createRenderPackageDigester();
   return renderPackageDigester.sha256Hex(bytes);
+}
+
+function sha256HexKeepingBytes(bytes) {
+  renderPackageDigester ||= createRenderPackageDigester();
+  return renderPackageDigester.sha256HexKeepingBytes(bytes);
 }
