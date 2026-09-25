@@ -1611,6 +1611,29 @@ ${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .3) 0 1px,
 /* at 720 a title and its reward (glued by their last word) fit one line: the row gives up its right pad, the column 12px more */
 @media (max-height:800px) { ${T} .sx-ct__rows .sx-ct-row { padding-right:0 !important; } ${T} .k-panel.sx-ct { grid-template-columns:400px minmax(0, 1fr) !important; } }
 
+/* ================================ ROUND 13: BAR ============================================= */
+/* N1: the Hand's arm and bead on one whole row: the arm one pixel on it, the bead's five rows centred on it */
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:round(down, 50%, 1px) !important; margin-top:0 !important; height:1px !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(round(down, 50%, 1px) - 2px) !important; margin-top:0 !important; }
+/* N2: the key hints at the label size: 11px caps about 5:1 */
+${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:11px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
+/* N3: at 720 the leads keep room under the key so the spine's fade ends inside the box */
+@media (max-height:800px) { ${T} .sx-bar__leads { padding-bottom:28px !important; } }
+/* N4: one rhythm on a tall screen: the section break closes to about 60px */
+@media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__leads { margin-top:28px !important; } }
+
+/* ================================ ROUND 13: INDUSTRY ======================================== */
+/* a list that fits reports that it fits: the screen's snap already ends on whole rungs, so no bottom pad */
+${T} .sx-ind__list { padding-bottom:0 !important; }
+/* one separator grammar on the header: a dot before the count when the tier leads it */
+${T} .sx-ind-process__head .sx-ind-process__tier + .sx-ind-process__count::before { content:"·  "; color:rgb(${BONE} / .4); }
+/* every rung's tick (and the Hand) hangs on its name's line, not the middle of a two-line rung */
+${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx-ind-row::after { top:var(--ind-name-y, 14.5px) !important; }
+/* an augment rung says what it consumes, in the sub-line's voice, after its name */
+${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
+  font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
+@media (max-height:800px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

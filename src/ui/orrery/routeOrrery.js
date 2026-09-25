@@ -331,7 +331,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
         // a ring is a connector too: no name lies across one (its box must sit wholly inside or outside every ring)
         // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
-        if (!isDest && destBox && boxesTouch(destBox, box, 12)) continue;
+        if (!isDest && destBox && boxesTouch(destBox, box, 8)) continue;
         if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 2))) continue;
         if (beamSegs.some(([a, b]) => segmentTouches(a.x, a.y, b.x, b.y, box, 2))) continue;
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
@@ -354,7 +354,9 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
           const clearRings = !ringCrosses(box);
           const clearNodes = !nodeBoxes.some((nb) => boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 6));
           const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 12));
-          if (clearRings && clearNodes && clearNames) break;
+          const lx = Math.max(box.l - 3, Math.min(p.x, box.r + 3)); const ly = Math.max(box.t - 3, Math.min(p.y, box.b + 3));
+          const clearLeader = !nameBoxes.some((nb) => segmentTouches(p.x, p.y, lx, ly, nb, 4));
+          if (clearRings && clearNodes && clearNames && clearLeader) break;
           dist += 6;
         }
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
@@ -459,9 +461,13 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         const p = routePts[i];
         const prev = routePts[i - 1];
         const ang = Math.atan2(p.y - prev.y, p.x - prev.x) + Math.PI / 2;
-        const t = i === routePts.length - 1 ? 10 : 7;
+        const last = i === routePts.length - 1;
+        const t = last ? 18 : 7;
+        const c = Math.cos(ang); const s = Math.sin(ang);
         layer.appendChild(fade(svg('path', {
-          d: `M ${f(p.x + Math.cos(ang) * t)} ${f(p.y + Math.sin(ang) * t)} L ${f(p.x - Math.cos(ang) * t)} ${f(p.y - Math.sin(ang) * t)}`,
+          d: last
+            ? `M ${f(p.x + c * 13)} ${f(p.y + s * 13)} L ${f(p.x + c * t)} ${f(p.y + s * t)} M ${f(p.x - c * 13)} ${f(p.y - s * 13)} L ${f(p.x - c * t)} ${f(p.y - s * t)}`
+            : `M ${f(p.x + c * t)} ${f(p.y + s * t)} L ${f(p.x - c * t)} ${f(p.y - s * t)}`,
           class: 'orr-core orr-route__hop', 'stroke-width': 1.4,
         }), 300 + i * 60));
       }

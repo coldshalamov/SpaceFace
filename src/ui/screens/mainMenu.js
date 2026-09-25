@@ -398,7 +398,15 @@ export const mainMenuScreen = {
     if (arcRail) arcRail.dispose();
     injectOrreryScreens();
     rootEl.classList.add('orr-title');
-    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside] });
+    // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
+    // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
+    // and the choice are one object and the lower left goes back to the key art.
+    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
+      place: (W, H) => ({ pivot: { x: Math.round(H * 0.305), y: Math.round(H * 0.305) }, re: Math.round(H * 0.278), centerDeg: 112 }),
+      span: 74,
+      engraving: 'SpaceFace · Orrery of the Helios Reach',
+      engravingDeg: 292,
+    });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');

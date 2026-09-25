@@ -511,7 +511,8 @@ function ensurePauseHitLine() {
   const node = el('p', 'dp-copy sf-muted');
   node.dataset.role = 'last-hit';
   node.hidden = true;
-  if (els.briefNext && els.briefNext.parentElement === parent) parent.insertBefore(node, els.briefNext);
+  // a headless shim (the pause tests) may offer appendChild only: the line then simply joins the end
+  if (els.briefNext && els.briefNext.parentElement === parent && typeof parent.insertBefore === 'function') parent.insertBefore(node, els.briefNext);
   else parent.appendChild(node);
   els.briefHit = node;
   return node;
@@ -929,9 +930,10 @@ export const pauseScreen = {
     const brief = briefKicker.parentElement;
     if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
     if (pauseRail) pauseRail.dispose();
-    // Every verb on its own tick so the Hand always points at the actual choice; a group is a
-    // cluster with its name engraved on the rim beside it.
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 112, pivotY: 0.52 });
+    // One stop per group (ORRERY 3.2: an arc carries at most nine): Resume leads, then each group is one
+    // tick with its name as the row's legend and its verbs on one line after it. The Hand swings to the row;
+    // within it only the awake verb lights. Up/down steps between rows, left/right along one.
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56, pivotY: 0.57 });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

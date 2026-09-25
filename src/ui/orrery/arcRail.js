@@ -50,6 +50,16 @@ const CSS = `
 .orr-arcrail-host .dp-lit__item[data-awake][aria-disabled="true"] { color:rgb(232 226 212 / .7) !important; }
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
   text-shadow:0 0 22px rgb(255 80 56 / .36), 0 1px 0 rgb(0 0 0 / .6) !important; }
+/* a grouped dial: the group's name is a legend on its stop's line, quiet caps ahead of its verbs */
+.orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-size:10.5px; font-variation-settings:"wght" 600, "wdth" 112;
+  letter-spacing:.22em; fill:rgb(232 226 212 / .56); dominant-baseline:auto; }
+/* the emblem's lettering: its name round the rim, quiet wide capitals */
+.orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-variation-settings:"wght" 600, "wdth" 112;
+  letter-spacing:.3em; fill:rgb(232 226 212 / .5); }
+/* a grouped row runs out over the held world: each word carries its own halo of dark (light, not a box) */
+.orr-arcrail-host--grouped .orr-arcrail__glow { background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .6) 45%, rgb(4 6 9 / .5) 60%, rgb(4 6 9 / .18) 82%, transparent); }
+.orr-arcrail-host--grouped .dp-lit__item { text-shadow:0 0 8px rgb(4 6 9 / .95), 0 0 18px rgb(4 6 9 / .85), 0 0 32px rgb(4 6 9 / .6) !important; }
+.orr-arcrail-host--grouped .orr-svg text.orr-arcrail__legend { paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:5px; stroke-linejoin:round; }
 /* a dense dial (pause): smaller words, the primary a size up as the one lamp key */
 .orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.09em !important; }
 .orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.05em !important; }
@@ -117,24 +127,31 @@ const ROW_GAP = 26;
  * sits off the leading edge, the emblem fills most of the height, and the verbs spread
  * symmetrically about "east" (90 deg, 0 = up, clockwise) on a ring just outside the emblem.
  */
-export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps = null } = {}) {
-  const re = clamp(H * 0.33, 210, 420);
+export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps = null, place = null } = {}) {
+  // place(W, H) -> { pivot:{x,y}, re, centerDeg }: an emblem set where the screen wants it (the title's
+  // sits behind its logotype); by default the pivot sits just inside the leading edge
+  const at = typeof place === 'function' ? place(W, H) : null;
+  const re = at && at.re ? at.re : clamp(H * 0.33, 210, 420);
   // the hub sits just inside the leading edge: a needle needs a visible pivot to read as one
-  const pivot = { x: clamp(W * 0.056, 56, 112), y: clamp(H * pivotY, re * 0.7, H - re * 0.35) };
+  const pivot = at && at.pivot ? { x: at.pivot.x, y: at.pivot.y } : { x: clamp(W * 0.056, 56, 112), y: clamp(H * pivotY, re * 0.7, H - re * 0.35) };
   const ri = re + clamp(H * 0.046, 34, 56);
   const n = Math.max(1, count);
   const spread = span != null ? span : clamp(n * 12, 30, 80);
+  const center = at && Number.isFinite(at.centerDeg) ? at.centerDeg : 90;
   // Equal VERTICAL rhythm, not equal angles: words are set horizontally, so what must stay even is
   // the line spacing; equal angles bunch the lines where the arc turns steep at its ends. A group
   // change adds most of a line of air.
   const gapBefore = new Set(gaps || []);
   const units = (n - 1) + gapBefore.size * 0.7;
-  const yExtent = ri * Math.sin((spread / 2) * Math.PI / 180);
+  // the arc runs from center - spread/2 to center + spread/2 (0 = up, clockwise); its lines are evenly spaced in y
+  const rad = Math.PI / 180;
+  const yA = pivot.y - ri * Math.cos((center - spread / 2) * rad);
+  const yB = pivot.y - ri * Math.cos((center + spread / 2) * rad);
   const angles = [];
   let u = 0;
   for (let i = 0; i < n; i += 1) {
     if (i > 0) u += gapBefore.has(i) ? 1.7 : 1;
-    const y = n > 1 ? pivot.y - yExtent + (2 * yExtent * u) / units : pivot.y;
+    const y = n > 1 ? yA + ((yB - yA) * u) / units : pivot.y - ri * Math.cos(center * rad);
     angles.push(Math.acos(clamp((pivot.y - y) / ri, -1, 1)) * 180 / Math.PI);
   }
   const step = n > 1 ? spread / units : 0;
@@ -188,7 +205,7 @@ function drawFace(p, re) {
  *                                  name engraved over it (a long menu stays a readable dial)
  */
 export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
-  clustered = false, span = null, pivotY = 0.56 } = {}) {
+  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -203,6 +220,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   if (frame && host.parentNode !== frame) frame.appendChild(host);
   host.classList.add('orr-arcrail-host');
   if (dense) host.classList.add('orr-arcrail-host--dense');
+  if (grouped) host.classList.add('orr-arcrail-host--grouped');
   list.classList.add('orr-arcrail__list');
 
   const root = doc.createElement('div');
@@ -286,7 +304,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // engraved on the rim beside its cluster
     const gaps = [];
     if (clustered) all.forEach((row, i) => { if (i > 0 && (row.items[0].dataset.group || '') !== (all[i - 1].items[0].dataset.group || '')) gaps.push(i); });
-    geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps });
+    geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     layer.textContent = '';
     const { pivot, re, ri, angles } = geo;
@@ -345,8 +363,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         }
       }
     } else if (engraving) {
-      layer.appendChild(circularText(pivot.x, pivot.y, re + 22, engraving.toUpperCase(),
-        { startDeg: a1 + 34, size: 8, className: 'orr-micro', anchor: 'middle', upright: true }));
+      // the emblem's name on its rim: a chosen bearing (the title letters its upper-left quarter) or past the verbs
+      const big = engravingDeg != null;
+      layer.appendChild(circularText(pivot.x, pivot.y, re + (big ? 26 : 22), engraving.toUpperCase(),
+        { startDeg: big ? engravingDeg : a1 + 34, size: big ? 11 : 8, className: big ? 'orr-arcrail__lettering' : 'orr-micro', anchor: 'middle', upright: true }));
     }
     leader = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.2, opacity: '.9' });
     layer.appendChild(leader);
@@ -373,6 +393,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       const { x, y } = geo.anchors[i];
       let cursor = x + 6;
       let rowTop = y;
+      // grouped: the group's name is the row's legend, on the tick's own line, and its verbs follow it
+      if (grouped && row.group) {
+        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y + 4).toFixed(1), class: 'orr-arcrail__legend' });
+        legend.textContent = String(row.group).toUpperCase();
+        layer.appendChild(legend);
+        let lw = 0; try { lw = legend.getComputedTextLength(); } catch (_) { lw = 0; }
+        cursor = x + 8 + (lw > 0 ? lw : String(row.group).length * 9) + 20;
+      }
       row.items.forEach((li) => {
         const button = li.querySelector('button') || li;
         const bh = button.offsetHeight || 40;
@@ -380,14 +408,22 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         li.style.left = `${Math.round(cursor)}px`;
         li.style.top = `${Math.round(y - bh / 2)}px`;
         rowTop = Math.min(rowTop, y - bh / 2);
-        cursor += (li.offsetWidth || 120) + ROW_GAP;
+        cursor += (li.offsetWidth || 120) + (grouped ? 22 : ROW_GAP);
       });
-      if (row.group) {
+      if (row.group && !grouped) {
         const t = svg('text', { x: (x + 8).toFixed(1), y: (rowTop - 2).toFixed(1), 'font-size': 9, class: 'orr-arcrail__group' });
         t.textContent = String(row.group).toUpperCase();
         layer.appendChild(t);
       }
     });
+    // a grouped dial's rows run out over the held world: the shadow pool stretches into an ellipse whose
+    // dark core reaches the end of the longest row, so every verb reads over any world behind it
+    if (grouped) {
+      let maxRight = 0;
+      for (const li of items()) maxRight = Math.max(maxRight, (parseFloat(li.style.left) || 0) + (li.offsetWidth || 0));
+      const hx = Math.max(reach, (maxRight - pivot.x) / 0.6);
+      Object.assign(glow.style, { width: `${Math.round(hx * 2)}px`, height: `${Math.round(reach * 2)}px`, left: `${Math.round(pivot.x - hx)}px`, top: `${Math.round(pivot.y - reach)}px` });
+    }
     paintHand(handSpring.value);
     lightTick(handIndex);
   }
@@ -462,6 +498,27 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     pointAt(restIndex());
     wake(restButton());
   };
+  // a grouped dial is a grid of stops: up/down step between rows (to the row's first verb), left/right
+  // along a row and on into the next. Capture phase, so the list's one-dimensional roving never sees it.
+  const onKey = (e) => {
+    if (!grouped || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const active = doc.activeElement;
+    const all = rows();
+    const ri0 = active ? indexOf(active) : -1;
+    if (ri0 < 0) return;
+    const buttons = (row) => row.items.map((li) => li.querySelector('button') || li);
+    const flat = all.flatMap(buttons);
+    const at = flat.indexOf(buttonOf(active) || active);
+    let target = null;
+    if (e.key === 'ArrowDown' && ri0 < all.length - 1) target = buttons(all[ri0 + 1])[0];
+    else if (e.key === 'ArrowUp' && ri0 > 0) target = buttons(all[ri0 - 1])[0];
+    else if (e.key === 'ArrowRight' && at >= 0 && at < flat.length - 1) target = flat[at + 1];
+    else if (e.key === 'ArrowLeft' && at > 0) target = flat[at - 1];
+    e.preventDefault();
+    e.stopPropagation();
+    if (target && typeof target.focus === 'function') target.focus();
+  };
+  host.addEventListener('keydown', onKey, true);
   host.addEventListener('pointerover', onOver);
   host.addEventListener('focusin', onFocus);
   host.addEventListener('pointerleave', onLeave);
@@ -491,12 +548,13 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       clearTimeout(arrivalTimer);
       handSpring.stop();
       if (ro) ro.disconnect();
+      host.removeEventListener('keydown', onKey, true);
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('focusin', onFocus);
       host.removeEventListener('pointerleave', onLeave);
       root.remove();
       wake(null);
-      host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense');
+      host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped');
       if (frame && home && host.parentNode === frame) home.insertBefore(host, homeNext);
       list.classList.remove('orr-arcrail__list');
       for (const li of items()) { li.style.left = ''; li.style.top = ''; }

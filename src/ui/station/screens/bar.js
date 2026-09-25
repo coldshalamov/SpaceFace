@@ -505,7 +505,8 @@ export function createBarScreen(ctx) {
       if (rows && chosen) {
         const rr = rows.getBoundingClientRect(); const cr = chosen.getBoundingClientRect();
         const armY = Math.floor(cr.top + cr.height / 2);
-        rows.style.setProperty('--bar-tick-y', `${((((armY - rr.top) % 8) + 8) % 8).toFixed(2)}px`);
+        const top0 = Math.round(rr.top);
+        rows.style.setProperty('--bar-tick-y', `${(((armY - top0) % 8) + 8) % 8}px`);
       }
     } catch (_) { /* cosmetic */ }
   }

@@ -185,7 +185,9 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
     const len = lens[i];
     if (!len) continue;
     const [x0, y0] = polar(cx, cy, r + 3, a);
-    const [x1, y1] = polar(cx, cy, r + 3 + len * Math.min(1, r / 310), a);
+    const s = Math.min(1, r / 310);
+    const L = len <= 4 ? Math.max(3, Math.round(4 * s)) : len * s;
+    const [x1, y1] = polar(cx, cy, r + 3 + L, a);
     if (leaderFrom && nearLeader(x0, y0, x1, y1)) continue; // the bars part wherever the leader passes
     dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
   }

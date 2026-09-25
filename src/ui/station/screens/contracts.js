@@ -745,23 +745,25 @@ export function createContractsScreen(ctx) {
           // phased from the ladder's first tick, so the pitch never breaks at a joint
           const hang = yours.parentElement;
           const kids = hang ? [...hang.children] : [];
-          const origin = kids.length ? kids[0].getBoundingClientRect().top : yours.getBoundingClientRect().top;
-          const phase = (y) => (((origin - y) % 8) + 8) % 8;
+          // on whole pixels: a box's background is painted from its snapped top, so the phase is taken between
+          // rounded tops and every minor tick lands as one crisp row
+          const origin = Math.round(kids.length ? kids[0].getBoundingClientRect().top : yours.getBoundingClientRect().top);
+          const phase = (y) => (((origin - Math.round(y)) % 8) + 8) % 8;
           const snap = (y) => origin + Math.round((y - origin) / 8) * 8;
-          for (const kid of kids) kid.style.setProperty('--ct-tick-y', `${phase(kid.getBoundingClientRect().top).toFixed(2)}px`);
+          for (const kid of kids) kid.style.setProperty('--ct-tick-y', `${phase(kid.getBoundingClientRect().top)}px`);
           const yr = yours.getBoundingClientRect();
-          yours.style.setProperty('--ct-seam-phase', `${phase(yr.top - seam).toFixed(2)}px`);
+          yours.style.setProperty('--ct-seam-phase', `${phase(yr.top - seam)}px`);
           // YOURS's major tick on the series point nearest its label's centre (it replaces that minor tick)
           const padTop = parseFloat(getComputedStyle(yours).paddingTop) || 0;
           const labelMid = yr.top + padTop + (yr.height - padTop) / 2;
-          yours.style.setProperty('--ct-yours-major', `${(snap(labelMid) - yr.top).toFixed(2)}px`);
+          yours.style.setProperty('--ct-yours-major', `${snap(labelMid) - Math.round(yr.top)}px`);
           // each tracked row's tick on the series point nearest its title's first line
           for (const job of list.querySelectorAll('.sx-job')) {
             const name = job.querySelector('.k-row__name') || job;
             const nr = name.getBoundingClientRect();
             const lh = parseFloat(getComputedStyle(name).lineHeight) || nr.height;
             const mid = nr.top + Math.min(nr.height, lh) / 2;
-            job.style.setProperty('--ct-row-y', `${(snap(mid) - job.getBoundingClientRect().top).toFixed(2)}px`);
+            job.style.setProperty('--ct-row-y', `${snap(mid) - Math.round(job.getBoundingClientRect().top)}px`);
           }
         }
       } catch (_) { /* cosmetic */ }

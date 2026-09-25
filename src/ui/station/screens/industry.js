@@ -171,7 +171,7 @@ export function createIndustryScreen(ctx) {
               return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}${stateCls}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
-                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}</span>` +
+                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}${bp.category === 'augment' && bp.fromModule ? `<span class="sx-ind-row__from">from ${escapeHtml(niceName(bp.fromModule, 'module'))}</span>` : ''}</span>` +
                   ((!groupTier || why) ? `<span class="k-row__sub sx-ind-row__tier">${groupTier ? '' : `T${bp.tier}`}${why ? `<span class="sx-ind-row__why">${groupTier ? '' : ' · '}${escapeHtml(why)}</span>` : ''}</span>` : '') +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
