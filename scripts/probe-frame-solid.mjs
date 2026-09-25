@@ -106,7 +106,7 @@ try {
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(`[${msg.type()}] ${msg.text().slice(0, 300)}`);
   });
-  await page.addInitScript((noProgramCanon) => {
+  await page.addInitScript((flags) => {
     // CDP inlines console string args whole — one giant log line overflows the pipe
     // transport before any listener can trim it. Truncate at the source.
     for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
@@ -121,8 +121,12 @@ try {
     // Arm the production perf counters (read once at renderer construction) so in-flight
     // shader links are counted and attributed. Unarmed, the counter reads 0 — a false pass.
     window.__SPACEFACE_PERF_COUNTERS__ = true;
-    if (noProgramCanon) window.__SF_PROGRAM_CANON_OFF__ = true;
-  }, NO_CANON);
+    if (flags.noProgramCanon) window.__SF_PROGRAM_CANON_OFF__ = true;
+    // GPU driver resets are the failure this lane has hit on this host before; count them so a
+    // lost-context run cannot read as a clean measurement.
+    window.__SF_CONTEXT_LOSSES__ = 0;
+    document.addEventListener('webglcontextlost', () => { window.__SF_CONTEXT_LOSSES__++; }, true);
+  }, { noProgramCanon: NO_CANON });
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
   await page.bringToFront();
@@ -460,8 +464,10 @@ try {
       + ` lateP50=${timing.appear.lateP50Ms}ms lateP95=${timing.appear.lateP95Ms}ms lateMax=${timing.appear.lateMaxMs}ms`);
     console.log(`  time-to-appear by type: ${JSON.stringify(timing.appear.byType)}`);
   }
+  const contextLosses = await page.evaluate(() => window.__SF_CONTEXT_LOSSES__ || 0).catch(() => null);
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
+  console.log(`  context losses: ${contextLosses == null ? 'NOT MEASURED' : contextLosses}`);
   console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`);
   for (const e of flightLinkEvents.slice(0, 40)) {
     console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
@@ -477,6 +483,7 @@ try {
     head,
     headless: HEADLESS,
     programCanon: !NO_CANON,
+    contextLosses,
     host: {
       cpu: (cpus()[0] && cpus()[0].model) || null,
       logicalCores: cpus().length,
