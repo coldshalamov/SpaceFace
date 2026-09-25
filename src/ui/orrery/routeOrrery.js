@@ -291,6 +291,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const nameBoxes = [];
     const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
     const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
+    let destBox = null;
     const labelSize = (text, small) => ({ w: text.length * (small ? 6.6 : 7.2), h: small ? 11 : 12 });
     function placeName(p, lines, { isDest = false, reserve = false, outside = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
@@ -312,9 +313,11 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         const box = { l, r: l + w, t: cyText - h / 2, b: cyText + h / 2 };
         if (box.l < 2 || box.r > W - 2 || box.t < 2 || box.b > H - capH - 2) continue;
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
+        // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
+        if (!isDest && destBox && boxesTouch(destBox, box, 24)) continue;
         if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 1))) continue;
         if (beamSegs.some(([a, b]) => segmentTouches(a.x, a.y, b.x, b.y, box, 2))) continue;
-        if (reserve) nameBoxes.push(box);
+        if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
         return { box, anchor, ax, top: box.t, w, h };
       }
       if (isDest || outside) {
@@ -369,7 +372,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
-      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: !!p.onRoute });
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: true });
       if (spot) drawn.set(id, spot);
     }
 

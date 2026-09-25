@@ -300,6 +300,17 @@ export function createBarScreen(ctx) {
   }
 
   // ---------- rail: who is here tonight ----------
+  function leadsKeysHint() {
+    const rows = leadsEl.querySelector('.sx-lead__rows');
+    if (!rows || leadsEl.querySelector('.sx-bar__leadkeys')) return;
+    const first = rows.querySelector('.sx-lead');
+    if (first) first.classList.add('is-current');
+    const hint = document.createElement('p');
+    hint.className = 'k-caps sx-bar__keys sx-bar__leadkeys';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = 'Tab lead \u00b7 Enter inspects';
+    rows.insertAdjacentElement('afterend', hint);
+  }
   function railKeysHint() {
     const rows = railEl.querySelector('.sx-bar__rows');
     if (!rows || railEl.querySelector('.sx-bar__keys')) return;
@@ -465,6 +476,7 @@ export function createBarScreen(ctx) {
       `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
+    leadsKeysHint();
   }
 
   function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }

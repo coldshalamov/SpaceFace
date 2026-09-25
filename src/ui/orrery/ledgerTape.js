@@ -48,8 +48,16 @@ const CSS = `
 .orr-svg .orr-ltape__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.18; }
 .orr-svg .orr-ltape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-svg .orr-ltape__leader { stroke:rgb(${BONE} / .6); }
-.orr-svg .orr-ltape__base { stroke:rgb(${BONE} / .18); }
-.orr-svg .orr-ltape__base-bloom { stroke:rgb(${BONE}); opacity:.06; }
+.orr-svg .orr-ltape__axis-line { stroke:rgb(${BONE} / .42); }
+.orr-svg .orr-ltape__axis-minor { stroke:rgb(${BONE} / .28); }
+.orr-ltape text.orr-ltape__axis-n { fill:rgb(${BONE} / .6); font-size:9.5px; }
+.orr-svg .orr-ltape__ghost-stem { stroke:rgb(${BONE} / .4); }
+.orr-svg .orr-ltape__ghost-bead { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
+.orr-svg .orr-ltape__arc-headbloom { fill:rgb(248 244 234); opacity:.22; }
+.orr-svg .orr-ltape__arc-headbloom--out { fill:rgb(${BONE}); opacity:.14; }
+.orr-svg .orr-ltape__arc-bloom--out { opacity:.1; }
+.orr-ltape text.orr-ltape__foot-n { font-size:12.5px; }
+.orr-ltape text.orr-ltape__net-key { font-size:8.5px; }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
 .orr-ltape__pursehost { position:relative; display:block; }
 .orr-ltape__pursehost > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
@@ -59,12 +67,12 @@ const CSS = `
 .orr-svg .orr-ltape__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-ltape__cursor-bloom { stroke:rgb(248 244 234); opacity:.22; }
 .orr-ltape text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; fill:rgb(${BONE} / .6); paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
-.orr-ltape text.orr-ltape__figure { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:500; font-size:10.5px; letter-spacing:.02em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
+.orr-ltape text.orr-ltape__figure { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.02em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__figure--out { fill:rgb(${BONE}); }
 .orr-ltape text.orr-ltape__cycle--now { fill:rgb(248 244 234 / .8); }
 .orr-ltape text.orr-ltape__net { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:22px; letter-spacing:-.01em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:8.5px; }
-.orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .55); }
+.orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .66); font-size:10.5px; }
 .orr-svg .orr-ltape__arc-track { stroke:rgb(${BONE} / .22); fill:none; }
 .orr-svg .orr-ltape__arc-zero { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-ltape__arc { stroke:rgb(248 244 234); fill:none; }
@@ -215,18 +223,40 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       layer.appendChild(rise(ng, 90));
     }
 
-    // heights on a square-root scale, stated once: a faint reference tick of a round figure at the origin
+    // heights on a linear scale to a round ceiling, declared by an axis at the origin: majors above and
+    // below the tape with their figures, minors between, so every stem lands where the ticks say
     const maxAbs = Math.max(1, ...sorted.map((e) => Math.abs(Number(e.amount) || 0)));
-    const stemLen = (amt) => 14 + Math.sqrt(Math.abs(amt) / maxAbs) * (amt > 0 ? maxUp - 14 : maxDown - 14);
+    const niceCeil = (v) => { const p10 = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p10 >= v) return m * p10; return 10 * p10; };
+    const ceilCr = niceCeil(maxAbs);
+    const stemLen = (amt) => 14 + (Math.abs(amt) / ceilCr) * (amt > 0 ? maxUp - 14 : maxDown - 14);
     if (sorted.some((e) => Number.isFinite(e.amount) && e.amount !== 0)) {
-      const ref = Math.pow(10, Math.floor(Math.log10(maxAbs)));
-      const len = stemLen(ref);
-      const rg = svg('g', { class: 'orr-ltape__ref' });
-      rg.appendChild(svg('path', { d: `M ${f(x0)} ${y} L ${f(x0)} ${f(y - len)} M ${f(x0)} ${f(y - len)} L ${f(x0 + 5)} ${f(y - len)}`, class: 'orr-core orr-ltape__ref-line', 'stroke-width': 1 }));
-      const t = svg('text', { x: f(x0 + 8), y: f(y - len + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__ref-n' });
-      t.textContent = `${fmt(ref)} cr`;
-      rg.appendChild(t);
+      const rg = svg('g', { class: 'orr-ltape__axis' });
+      let majors = ''; let minors = '';
+      for (const sign of [1, -1]) {
+        for (let k = 1; k <= 4; k += 1) {
+          const v = (ceilCr * k) / 4;
+          const len = stemLen(v);
+          const yy = sign > 0 ? y - len : y + len;
+          if (k % 2 === 0) majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `;
+          else minors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 3)} ${f(yy)} `;
+          if (k % 2 === 0 && sign > 0) {
+            const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' });
+            t.textContent = `${fmt(v)}${k === 4 ? ' cr' : ''}`;
+            rg.appendChild(t);
+          }
+        }
+      }
+      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - stemLen(ceilCr))} L ${f(x0)} ${f(y + stemLen(ceilCr))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
+      rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
+      rg.appendChild(svg('path', { d: minors, class: 'orr-core orr-ltape__axis-minor', 'stroke-width': 1 }));
       layer.appendChild(rise(rg, 70));
+    } else if (!sorted.length) {
+      // the empty tape's ghost: a dashed stem with a hollow bead where the first receipt will stand
+      const gx = x0 + 44;
+      const gg = svg('g', { class: 'orr-ltape__ghost' });
+      gg.appendChild(svg('path', { d: `M ${f(gx)} ${y} L ${f(gx)} ${y - 22}`, class: 'orr-core orr-ltape__ghost-stem', 'stroke-width': 1, 'stroke-dasharray': '2 3' }));
+      gg.appendChild(svg('circle', { cx: f(gx), cy: y - 25, r: 3, class: 'orr-ltape__ghost-bead' }));
+      layer.appendChild(rise(gg, 70));
     }
     let chosen = null;
     sorted.forEach((e, k) => {
@@ -260,15 +290,10 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
     // ring's foot down, an elbow to the tape's origin edge, and out of the tape into the reading beneath
     if (chosen) {
       const hg = svg('g', { class: 'orr-ltape__hand' });
-      const foot = chosen.up ? chosen.tipY + 8 : chosen.tipY + 8;
-      const yBase = H - 8;
-      const leaderD = `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${yBase}`;
-      // the base rule: the tape's width, faint; the stem lands on it and the reading is its label at the origin
-      hg.append(
-        svg('path', { d: `M ${x0} ${yBase} L ${f(x1)} ${yBase}`, class: 'orr-bloom orr-ltape__base-bloom', 'stroke-width': 4 }),
-        svg('path', { d: `M ${x0} ${yBase} L ${f(x1)} ${yBase}`, class: 'orr-core orr-ltape__base', 'stroke-width': 1 }),
-        svg('path', { d: `M ${x0} ${yBase} L ${x0} ${H}`, class: 'orr-core orr-ltape__base', 'stroke-width': 1 }),
-      );
+      const foot = chosen.tipY + 8;
+      // a leader callout: down from the bead, a 45-degree elbow toward the origin, along to the reading's edge
+      const ex = Math.max(x0, chosen.x - 16);
+      const leaderD = `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${H - 24} L ${f(ex)} ${H - 8} L ${x0} ${H - 8} L ${x0} ${H}`;
       // a sold entry's stem crosses the tape through a break in its core
       if (chosen.up) hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${y - 3} L ${f(chosen.x)} ${y + 4}`, class: 'orr-ltape__break', 'stroke-width': 5 }));
       hg.append(
@@ -303,7 +328,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       defs.appendChild(grad);
       ag.appendChild(defs);
       ag.appendChild(svg('circle', { cx: f(acx), cy: f(acy), r: r + 44, fill: `url(#${gid})`, stroke: 'none' }));
-      ag.appendChild(svg('path', { d: arcD(acx, acy, r, -135, 135), class: 'orr-core orr-ltape__arc-track', 'stroke-width': 1 }));
+      ag.appendChild(svg('path', { d: arcD(acx, acy, r, -150, 150), class: 'orr-core orr-ltape__arc-track', 'stroke-width': 1 }));
       const [zx0, zy0] = polar(acx, acy, r - 5, 0); const [zx1, zy1] = polar(acx, acy, r + 5, 0);
       ag.appendChild(svg('path', { d: `M ${f(zx0)} ${f(zy0)} L ${f(zx1)} ${f(zy1)}`, class: 'orr-core orr-ltape__arc-zero', 'stroke-width': 1.2 }));
       const mx = Math.max(1, sold, bought);
@@ -311,28 +336,35 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       const boughtDeg = (bought / mx) * 135;
       if (soldDeg > 0.5) {
         const d = arcD(acx, acy, r, 0, soldDeg);
-        ag.appendChild(svg('path', { d, class: 'orr-bloom orr-ltape__arc-bloom', 'stroke-width': 6 }));
-        ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc', 'stroke-width': 2 }));
+        ag.appendChild(svg('path', { d, class: 'orr-bloom orr-ltape__arc-bloom', 'stroke-width': 8 }));
+        ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc', 'stroke-width': 3 }));
         const [bx, by] = polar(acx, acy, r, soldDeg);
-        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.6, class: 'orr-ltape__arc-head' }));
-        const t = svg('text', { x: f(acx + 10), y: f(acy + r + 14), 'text-anchor': 'start', class: 'orr-ltape__key' });
-        t.textContent = `SOLD ${fmt(sold)}`;
-        ag.appendChild(t);
+        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 7, class: 'orr-ltape__arc-headbloom' }));
+        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head' }));
+        const n = svg('text', { x: f(acx + 12), y: f(acy + r + 12), 'text-anchor': 'start', class: 'orr-ltape__figure orr-ltape__foot-n' });
+        n.textContent = fmt(sold);
+        const t = svg('text', { x: f(acx + 12), y: f(acy + r + 25), 'text-anchor': 'start', class: 'orr-ltape__key' });
+        t.textContent = 'SOLD';
+        ag.append(n, t);
       }
       if (boughtDeg > 0.5) {
         const d = arcD(acx, acy, r, -boughtDeg, 0);
-        ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc orr-ltape__arc--out', 'stroke-width': 2 }));
+        ag.appendChild(svg('path', { d, class: 'orr-bloom orr-ltape__arc-bloom orr-ltape__arc-bloom--out', 'stroke-width': 8 }));
+        ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc orr-ltape__arc--out', 'stroke-width': 3 }));
         const [bx, by] = polar(acx, acy, r, -boughtDeg);
-        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.2, class: 'orr-ltape__arc-head orr-ltape__arc-head--out' }));
-        const t = svg('text', { x: f(acx - 10), y: f(acy + r + 14), 'text-anchor': 'end', class: 'orr-ltape__key' });
-        t.textContent = `BOUGHT ${fmt(bought)}`;
-        ag.appendChild(t);
+        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 7, class: 'orr-ltape__arc-headbloom orr-ltape__arc-headbloom--out' }));
+        ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head orr-ltape__arc-head--out' }));
+        const n = svg('text', { x: f(acx - 12), y: f(acy + r + 12), 'text-anchor': 'end', class: 'orr-ltape__figure orr-ltape__foot-n' });
+        n.textContent = fmt(bought);
+        const t = svg('text', { x: f(acx - 12), y: f(acy + r + 25), 'text-anchor': 'end', class: 'orr-ltape__key' });
+        t.textContent = 'BOUGHT';
+        ag.append(n, t);
       }
       const label = sorted.length ? signed(net) : '\u2014';
       const fs = Math.min(22, Math.max(12, Math.floor((r * 1.1) / Math.max(1, label.length * 0.58))));
       const nt = svg('text', { x: f(acx), y: f(acy + fs * 0.36), 'text-anchor': 'middle', class: 'orr-ltape__net', style: `font-size:${fs}px` });
       nt.textContent = label;
-      const kt = svg('text', { x: f(acx), y: f(acy + r + 30), 'text-anchor': 'middle', class: 'orr-ltape__key' });
+      const kt = svg('text', { x: f(acx), y: f(acy + fs * 0.36 + 15), 'text-anchor': 'middle', class: 'orr-ltape__key orr-ltape__net-key' });
       kt.textContent = 'NET \u00b7 CR';
       ag.append(nt, kt);
       target.appendChild(rise(ag, 200));
