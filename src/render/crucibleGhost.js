@@ -12,6 +12,12 @@ export const CRUCIBLE_GHOST_OPACITY = 0.32;
 function applyGhostMaterial(material) {
   if (!material || typeof material.clone !== 'function') return material;
   const next = material.clone();
+  // Material.clone() drops own-property shader patches — without them the ghost keys the
+  // *unpatched* transparent variant and links it cold on its first presented frame. The
+  // ghost legitimately resolves a distinct program (transparent flips the `opaque` term),
+  // so sync() pays that link through the exact-target touch before root.visible opens.
+  next.onBeforeCompile = material.onBeforeCompile;
+  next.customProgramCacheKey = material.customProgramCacheKey;
   next.transparent = true;
   next.opacity = Math.min(CRUCIBLE_GHOST_OPACITY, Number.isFinite(next.opacity) ? next.opacity * CRUCIBLE_GHOST_OPACITY : CRUCIBLE_GHOST_OPACITY);
   next.depthWrite = false;
@@ -24,6 +30,7 @@ export function createCrucibleGhostPresentation() {
   let root = null;
   let clonedFrom = null;
   let clonedMaterials = [];
+  let warmPending = false;
 
   function hide() {
     if (root) root.visible = false;
@@ -40,6 +47,7 @@ export function createCrucibleGhostPresentation() {
     clonedMaterials = [];
     root = null;
     clonedFrom = null;
+    warmPending = false;
   }
 
   function ensureClone(playerMesh) {
@@ -69,6 +77,7 @@ export function createCrucibleGhostPresentation() {
     if (!root.userData) root.userData = {};
     root.userData.crucibleGhost = true;
     clonedFrom = playerMesh;
+    warmPending = true;
     if (scene && typeof scene.add === 'function') scene.add(root);
   }
 
@@ -94,6 +103,18 @@ export function createCrucibleGhostPresentation() {
       }
       ensureClone(playerMesh);
       if (!root) return;
+      // Link the ghost's transparent-variant programs on the exact target before the first
+      // presented frame — the clone is lazy, so without the warm the variant links inside
+      // the bloom pass the moment the pose tape starts replaying.
+      if (warmPending) {
+        warmPending = false;
+        const touch = state && state.render && typeof state.render.touchSubjectExactTarget === 'function'
+          ? state.render.touchSubjectExactTarget
+          : null;
+        if (touch) {
+          try { touch(root); } catch { /* warm is best-effort */ }
+        }
+      }
       root.visible = true;
       const y = playerMesh && playerMesh.position && Number.isFinite(playerMesh.position.y)
         ? playerMesh.position.y

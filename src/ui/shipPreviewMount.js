@@ -591,6 +591,10 @@ export function createShipPreviewMount(canvas, opts) {
         if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return material;
         if (materialClones.has(material)) return materialClones.get(material);
         const clone = material.clone();
+        // clone() drops own-property shader patches — the hangar preview would render the
+        // authored hull unpatched and key a cold program variant on the preview renderer.
+        clone.onBeforeCompile = material.onBeforeCompile;
+        clone.customProgramCacheKey = material.customProgramCacheKey;
         clone.dithering = true;
         if ('envMapIntensity' in clone) clone.envMapIntensity = Math.max(.72, Number(clone.envMapIntensity) || 0);
         if (!clone.transparent || clone.opacity >= .98) {

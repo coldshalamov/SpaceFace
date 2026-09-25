@@ -981,7 +981,9 @@ export function createShipMicroMotionTracker() {
     if (!entry || !entry.heatSkin || entry.heatMats) return;
     const node = entry.node;
     if (!node) return;
-    const src = node.material;
+    // Rescans re-enter here after heatMats is cleared — clone the authored source, not the
+    // detached clone still installed on the node, or the heat base bakes the last tint in.
+    const src = entry.heatSrc || node.material;
     const list = Array.isArray(src) ? src : (src ? [src] : []);
     const clones = new Array(list.length);
     const base = new Array(list.length);
@@ -1009,10 +1011,13 @@ export function createShipMicroMotionTracker() {
       };
       any = true;
     }
-    if (!any) return;
-    node.material = Array.isArray(src) ? clones.map((cloned, i) => cloned || list[i]) : clones[0];
+    // Even with nothing tintable, record the scan — a null-filled list skips the per-frame
+    // recapture attempt in applyBellThermal.
+    if (!entry.heatSrc) entry.heatSrc = src;
     entry.heatMats = clones;
     entry.heatBase = base;
+    if (!any) return;
+    node.material = Array.isArray(src) ? clones.map((cloned, i) => cloned || list[i]) : clones[0];
   }
 
   function applyBellThermal(rec, heat, flashReduce) {
@@ -1060,12 +1065,17 @@ export function createShipMicroMotionTracker() {
     const roots = [];
     if (hull) roots.push(hull);
     if (mesh && mesh !== hull) roots.push(mesh);
+    // hull is also a descendant of mesh — without a visited set every node under it registers
+    // twice: a duplicated bell entry clones the clone (detached C1 written forever, C2's base
+    // baked warm) and burns a MAX_BELL_PIVOTS slot.
+    const seen = new Set();
     let scanned = 0;
     for (let r = 0; r < roots.length; r++) {
       const stack = [roots[r]];
       while (stack.length > 0 && scanned < MOUNT_SCAN_NODE_CAP) {
         const node = stack.pop();
-        if (!node) continue;
+        if (!node || seen.has(node)) continue;
+        seen.add(node);
         scanned++;
         const name = typeof node.name === 'string' ? node.name : '';
         const lower = name.toLowerCase();
@@ -1103,6 +1113,29 @@ export function createShipMicroMotionTracker() {
               lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
               || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
             );
+            // Rescan on a new hull/mesh tree: release the previous heat-skin clones. A node
+            // still presenting one must be restored to its authored material first — disposing
+            // a material still installed on a live mesh frees the shared program the authored
+            // source is also using.
+            if (entry.heatMats) {
+              const prev = entry.heatMats;
+              if (entry.node && entry.heatSrc) {
+                const cur = entry.node.material;
+                if (Array.isArray(cur) && Array.isArray(entry.heatSrc)) {
+                  entry.node.material = cur.map((m) => {
+                    const idx = prev.indexOf(m);
+                    return idx >= 0 ? entry.heatSrc[idx] : m;
+                  });
+                } else if (!Array.isArray(cur) && prev.indexOf(cur) >= 0) {
+                  entry.node.material = entry.heatSrc;
+                }
+              }
+              for (const m of prev) {
+                if (m && typeof m.dispose === 'function') {
+                  try { m.dispose(); } catch { /* best effort */ }
+                }
+              }
+            }
             entry.heatMats = null;
             entry.heatBase = null;
             rec.bellCount++;

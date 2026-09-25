@@ -6137,6 +6137,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const wasArray = Array.isArray(node.material);
       const shells = (wasArray ? node.material : [node.material]).map((material) => {
         const shell = material.clone();
+        // clone() drops own-property shader patches — authored ghost shells would render
+        // the unpatched variant and link it cold on the preview renderer.
+        shell.onBeforeCompile = material.onBeforeCompile;
+        shell.customProgramCacheKey = material.customProgramCacheKey;
         shell.userData = { ...(shell.userData || {}), worksInstanceOwned: true };
         shell.transparent = true;
         shell.opacity = 0.45;

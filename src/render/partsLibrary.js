@@ -3156,7 +3156,10 @@ function specializeClaimRelayOpaqueMaterials(root, placeId) {
       if (!source) return source;
       let variant = variants.get(source);
       if (!variant) {
-        variant = source.clone();
+        // Preserve the source's shader hooks — a bare clone() drops own-property
+        // onBeforeCompile, and installSingleSamplePackedOrmShader would then capture the
+        // dropped default as its chain target instead of the real patch.
+        variant = cloneMaterialPreservingShaderHooks(source);
         variant.name = `${source.name || 'ClaimRelayMaterial'}_ClosedFrontPackedOrm`;
         variant.side = THREE.FrontSide;
         variant.userData = {
@@ -3541,7 +3544,10 @@ function specializeWreckCathedralClosedSurfaces(sources) {
       if (open) retainedDoubleSideRoles.add(role);
       let variant = variants.get(material);
       if (!variant) {
-        variant = material.clone();
+        // Preserve the source's shader hooks — a bare clone() drops own-property
+        // onBeforeCompile, and the packed-ORM installer would then capture the dropped
+        // default as its chain target instead of the real patch.
+        variant = cloneMaterialPreservingShaderHooks(material);
         variant.name = `${material.name || 'CathedralMaterial'}_${closed ? 'ClosedFront' : 'OpenDouble'}`;
         variant.side = closed ? THREE.FrontSide : THREE.DoubleSide;
         variant.depthFunc = closed ? THREE.EqualDepth : THREE.LessEqualDepth;
@@ -6895,7 +6901,7 @@ function cloneFlightTemplateMaterials(material, materials) {
   if (!material || typeof material.clone !== 'function') return material;
   let cloned = materials.get(material);
   if (!cloned) {
-    cloned = material.clone();
+    cloned = cloneMaterialPreservingShaderHooks(material);
     cloned.userData = {
       ...(cloned.userData || {}),
       spacefaceFlightTemplateMaterial: true,
@@ -6911,7 +6917,7 @@ function cloneFlightInstanceMaterials(material, materials) {
   if (!material || typeof material.clone !== 'function') return material;
   let cloned = materials.get(material);
   if (!cloned) {
-    cloned = material.clone();
+    cloned = cloneMaterialPreservingShaderHooks(material);
     cloned.userData = {
       ...(cloned.userData || {}),
       spacefaceFlightTemplateInstanceMaterial: true,
@@ -7827,7 +7833,7 @@ function applyFittedDriveGlow(bindings, mutableMaterials, glowHex) {
       if (!material || !material.isMaterial) return material;
       let owned = material;
       if (!material.userData || material.userData.spacefaceDriveGlowTint !== true) {
-        owned = material.clone();
+        owned = cloneMaterialPreservingShaderHooks(material);
         owned.userData = { ...(material.userData || {}), spacefaceDriveGlowTint: true };
         mutableMaterials.set(`driveGlow|${mesh.name || 'mesh'}|${index}|${mutableMaterials.size}`, owned);
       }

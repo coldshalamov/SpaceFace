@@ -358,7 +358,11 @@ test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no 
   // LOD0_engine_fan_Mechanical / LOD0_static_EngineCeramic GPU bricks). The thermal channel
   // only moves emissive uniforms, so the clone must share the source's already-linked program.
   const tracker = createShipMicroMotionTracker();
-  const src = new MeshStandardMaterial({ name: 'SF_Shared_mechanical_dark' });
+  let cloneCalls = 0;
+  class CountedMaterial extends MeshStandardMaterial {
+    clone() { cloneCalls += 1; return super.clone(); }
+  }
+  const src = new CountedMaterial({ name: 'SF_Shared_mechanical_dark' });
   src.onBeforeCompile = function authoredHook(shader) {
     shader.uniforms.uIllustratedPigment = { value: 1 };
   };
@@ -376,7 +380,10 @@ test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no 
     scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
     children: [bellNode],
   };
-  const mesh = { userData: { hull, weapons: [] } };
+  // mesh.children reaches hull too — the scan roots are [hull, mesh]; without the visited
+  // set every node under hull registers twice and the second entry clones the first clone
+  // (baking the hot tint into its restore base instead of the authored emissive).
+  const mesh = { userData: { hull, weapons: [] }, children: [hull] };
   const entity = { id: 7, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12, vel: { x: 60, z: 0 }, flags: { boosting: true } };
 
   tracker.updateCraftMicroMotion(entity, mesh, 1.0, 0.016);
@@ -393,4 +400,8 @@ test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no 
     'clone must reuse the authored cache key so the presented draw resolves the already-linked program',
   );
   assert.equal(bellNode.material.customProgramCacheKey(), 'spaceface-authored-heat-skin-key');
+  // One capture per mesh identity: the scan roots [hull, mesh] both reach the bell — without
+  // the visited set a second entry clones the first clone (detached C1 written every frame,
+  // C2's restore base baked warm).
+  assert.equal(cloneCalls, 1, 'heat skin captured exactly once per node');
 });
