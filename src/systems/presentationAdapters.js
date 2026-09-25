@@ -3,6 +3,7 @@
 // same contract is testable in headless replay.
 
 import { deriveVfxAdmissionMetadata } from '../presentation/vfxAdmissionPriority.js';
+import { isSurvivalRunLive } from './adventureMigration.js';
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
 
@@ -249,7 +250,8 @@ export const presentationAdapters = {
     if (this.state && (this.state.mode === 'loading'
       || this.state.ui?.docked === true
       || tutorialOwnsOpeningPresentation(this.state))) {
-      this._pendingRoleBriefing = { ...context };
+      // A live Crucible run never holds adventure fit narration for later.
+      if (!isSurvivalRunLive(this.state.run)) this._pendingRoleBriefing = { ...context };
       return null;
     }
 
@@ -331,6 +333,8 @@ export const presentationAdapters = {
     const roleLabel = String(context.roleLabel || '').trim();
     const signatureVerb = String(context.signatureVerb || '').trim();
     if (!name || !roleLabel || !signatureVerb) return null;
+    // Adventure fit narration never reaches the Crucible flight glass.
+    if (isSurvivalRunLive(this.state && this.state.run)) return null;
 
     const tick = currentTick(this.state);
     const key = [source, context.defId || '', context.role || '', tick].join('|');
