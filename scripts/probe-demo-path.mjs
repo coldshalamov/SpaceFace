@@ -104,6 +104,8 @@ async function step(id, note, fn) {
   } catch { rec.shot = null; }
   steps.push(rec);
   console.log(`[step] ${rec.reached ? 'OK  ' : 'FAIL'} ${id} ${rec.seconds}s cpu=${rec.cpuPct}% frames>100ms=${rec.framesOver100}/${rec.frames}${rec.error ? ' err=' + rec.error : ''}`);
+  // SF_DEMO_STOP_AFTER=<step id> ends the walk there (a partial walk never reports clean).
+  if (process.env.SF_DEMO_STOP_AFTER === id) throw new Error(`stopped after ${id} (SF_DEMO_STOP_AFTER)`);
   return rec;
 }
 
@@ -166,6 +168,92 @@ try {
     consoleErrors.push(`[console] ${text.slice(0, 300)}`);
   });
   await page.addInitScript(() => {
+    // What the glass actually holds: is the player's hull in the scene and drawn, and how much of
+    // the world has a mesh at all. A HUD over an empty sky reads "reached" without this.
+    window.__SF_DEMO_RENDER_DIAG__ = () => {
+      const SF = window.SF;
+      const render = SF && SF.registry && SF.registry.get && SF.registry.get('render');
+      const st = SF && SF.state;
+      if (!render || !st) return { error: 'no render system' };
+      const inScene = (o) => { let n = o; while (n) { if (n.isScene) return true; if (n.visible === false) return false; n = n.parent; } return false; };
+      const player = render._meshes && render._meshes.get(st.playerId);
+      let meshes = 0; let drawn = 0; const states = {};
+      for (const [, m] of render._meshes || []) {
+        meshes += 1;
+        if (m && inScene(m)) drawn += 1;
+        const s = (m && m.userData && m.userData.authoredAssetState) || 'none';
+        states[s] = (states[s] || 0) + 1;
+      }
+      const rig = render.cam || null;
+      const cam = (rig && (rig.isCamera ? rig : (rig.obj || rig.camera || rig.cam))) || null;
+      let zoom = null;
+      try { zoom = rig && typeof rig.zoomDiagnostics === 'function' ? rig.zoomDiagnostics() : null; } catch (_) { zoom = null; }
+      const deathCam = rig && typeof rig.isDeathCam === 'function' ? rig.isDeathCam() : null;
+      const pe = st.entities.get(st.playerId);
+      let playerNdc = null; let playerWorld = null;
+      try {
+        if (player && cam && SF.THREE) {
+          const v = new SF.THREE.Vector3();
+          player.getWorldPosition(v);
+          playerWorld = [Math.round(v.x), Math.round(v.y), Math.round(v.z)];
+          cam.updateMatrixWorld();
+          v.project(cam);
+          playerNdc = [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(3)];
+        }
+      } catch (e) { playerNdc = String(e && e.message || e); }
+      const sceneRoot = render.scene;
+      // Structures the chase camera must clear: any roof far above a sane chase height is a
+      // broken bound that lifts the camera off the world (2026-09-25: camY 139,426,817).
+      const tallRoofs = [];
+      try {
+        const box = new SF.THREE.Box3();
+        for (const [id, m] of render._meshes || []) {
+          const kind = m && m.userData && m.userData.kind;
+          if (!['station', 'place', 'asteroid', 'wreck'].includes(kind)) continue;
+          box.setFromObject(m);
+          if (box.isEmpty() || box.max.y < 2000) continue;
+          let worst = null;
+          m.traverse((o) => {
+            if (!o.isMesh && !o.isInstancedMesh && !o.isPoints && !o.isSprite && !o.isLine) return;
+            const b = new SF.THREE.Box3().setFromObject(o);
+            if (!b.isEmpty() && (!worst || b.max.y > worst.maxY)) {
+              const g = o.geometry; const pos = g && g.attributes && g.attributes.position;
+              const s = o.getWorldScale(new SF.THREE.Vector3());
+              const chain = []; let n = o; while (n && chain.length < 6) { chain.push(`${n.type}:${n.name || '-'}`); n = n.parent; }
+              worst = {
+                name: o.name, type: o.type, maxY: Math.round(b.max.y), wy: Math.round(o.getWorldPosition(new SF.THREE.Vector3()).y),
+                worldScale: [s.x, s.y, s.z].map((v) => +v.toPrecision(4)),
+                localScale: [o.scale.x, o.scale.y, o.scale.z].map((v) => +v.toPrecision(4)),
+                geomBox: g && (g.boundingBox || (g.computeBoundingBox(), g.boundingBox)) ? [g.boundingBox.min.y, g.boundingBox.max.y].map((v) => +v.toPrecision(4)) : null,
+                pos: pos ? { count: pos.count, itemSize: pos.itemSize, normalized: pos.normalized, array: pos.array && pos.array.constructor.name, interleaved: !!pos.isInterleavedBufferAttribute } : null,
+                geomName: g && g.name, material: o.material && (o.material.name || o.material.type), chain,
+                ud: Object.keys(o.userData || {}).slice(0, 10),
+              };
+            }
+          });
+          tallRoofs.push({ id, kind, name: m.name, maxY: Math.round(box.max.y), minY: Math.round(box.min.y), worst });
+          if (tallRoofs.length >= 6) break;
+        }
+      } catch (e) { tallRoofs.push(String(e && e.message || e)); }
+      const rigKeys = rig ? Object.keys(rig).slice(0, 12) : null;
+      return {
+        entities: st.entities.size, meshes, drawnInScene: drawn, states,
+        player: player ? {
+          visible: player.visible, inScene: inScene(player), state: player.userData && player.userData.authoredAssetState,
+          children: player.children ? player.children.length : 0, name: player.name,
+        } : 'no mesh',
+        playerPos: pe && pe.pos ? [Math.round(pe.pos.x), Math.round(pe.pos.z)] : null,
+        cameraPos: cam && cam.position ? [Math.round(cam.position.x), Math.round(cam.position.y), Math.round(cam.position.z)] : null,
+        cameraFar: cam ? cam.far : null, cameraNear: cam ? cam.near : null, cameraLayers: cam && cam.layers ? cam.layers.mask : null,
+        playerLayers: player && player.layers ? player.layers.mask : null,
+        playerWorld, playerNdc, deathCam, tallRoofs,
+        zoom: zoom ? { dynamicZoom: zoom.dynamicZoom, holdS: zoom.holdS, focusX: zoom.focusX, focusZ: zoom.focusZ, director: zoom.director } : null,
+        sceneChildren: sceneRoot ? sceneRoot.children.length : null,
+        sceneVisible: sceneRoot ? sceneRoot.visible : null,
+        mode: st.mode, run: st.run ? { kind: st.run.kind, phase: st.run.phase } : null,
+        firstPlayableFrameAt: st.render && st.render.firstPlayableFrameAt,
+      };
+    };
     window.__SF_DEMO_FRAMES__ = { stamps: [], lastT: null };
     const tick = (t) => {
       const f = window.__SF_DEMO_FRAMES__;
@@ -466,7 +554,12 @@ try {
     }, null, { timeout: 240_000 });
     await page.waitForFunction(() => Number.isFinite(window.SF.state.render
       && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
-    return page.evaluate(() => ({ credits: window.SF.state.player.credits, simTime: +window.SF.state.simTime.toFixed(1) }));
+    await sleep(8000);
+    return page.evaluate(() => ({
+      credits: window.SF.state.player.credits,
+      simTime: +window.SF.state.simTime.toFixed(1),
+      glass: window.__SF_DEMO_RENDER_DIAG__ ? window.__SF_DEMO_RENDER_DIAG__() : null,
+    }));
   });
 
   // ------------------------------------------- in-page adventure helpers (real seams only)
@@ -779,7 +872,8 @@ try {
       detail: s.detail, error: s.error, shot: s.shot && path.basename(s.shot),
     })),
     shaderErrors,
-    clean: shaderErrors === 0 && steps.length > 0 && steps.every((s) => s.reached),
+    clean: shaderErrors === 0 && steps.length > 0 && steps.every((s) => s.reached)
+      && steps.some((s) => s.id === 'end-card'),
     consoleErrors: consoleErrors.slice(0, 40),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
