@@ -147,6 +147,20 @@ function flankSurfaceAt(skinMesh, x, y, side) {
 // attaches share the bake instead of re-walking primitive triangles.
 const skinMeshCache = new WeakMap();
 
+// The finished pack geometry too: seats are raycast against the same skin soup and the profile
+// dimensions are fixed per engine profile, so a (hull record, engine profile, side) pack is one
+// deterministic bake. Sharing it means the launch-warm exemplar's stamp uploads the buffers once
+// and every in-round spawn draws resident geometry instead of paying mergeGeometries plus a
+// first-draw bufferData per pack mesh. Disposal-proof like the other shared bakes — a retiring
+// hull must not steal the buffers the next spawn still draws.
+const retroPackCache = new WeakMap(); // hullRecord -> Map<key, {geometries, pivot, socket}>
+
+function shareRetroPackGeometry(geometry) {
+  geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true };
+  geometry.dispose = () => {};
+  return geometry;
+}
+
 /** Add one paired retro assembly to an already normalized flyable hull. Idempotent on rebuild. */
 export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, hullRecord = null) {
   if (!hull || hull.getObjectByName('SOCKET_Retro_Port')) return null;
@@ -200,7 +214,10 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
   const axisX = Math.cos(splay);
   let skin = null;
   let skinOwned = false;
-  if (hullRecord && Array.isArray(hullRecord.primitives) && hullRecord.primitives.length) {
+  // The pack bake is only shareable when its seats are measured from the record's soup — the
+  // tree-scan fallback skin is per-hull, so that path must keep baking per attach.
+  const packCacheable = !!(hullRecord && Array.isArray(hullRecord.primitives) && hullRecord.primitives.length);
+  if (packCacheable) {
     if (skinMeshCache.has(hullRecord)) {
       skin = skinMeshCache.get(hullRecord);
     } else {
@@ -216,23 +233,10 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
     const r = profile.bell;
     const x = profile.station;
     const mouthX = x + 0.05 * axisX;
-    // Seat the pack on the measured skin: raycast the flank at the mouth and at the fairing's
-    // midpoint, take the tighter one — the pack embeds aft into the wider skin and its lip plane
-    // sits a hair inside the skin surface, like a flush port cut into a sloped flank. The
-    // halfSpan cap keeps the pack off appendage tips (fins, antennae) outboard of the body.
-    // Unmeasured hulls keep the authored halfSpan and height.
-    const seatMouth = skin ? flankSurfaceAt(skin, mouthX, mountY, side) : null;
-    const seatMid = skin ? flankSurfaceAt(skin, x - r * 2.5, mountY, side) : null;
-    const seat = seatMouth && seatMid
-      ? (Math.abs(seatMouth.z) < Math.abs(seatMid.z) ? seatMouth : seatMid)
-      : (seatMouth || seatMid);
-    const packY = seat ? seat.y : mountY;
-    const span = seat
-      ? Math.max(0.08, Math.min(profile.halfSpan + 0.10, Math.abs(seat.z) - 0.01))
-      : profile.halfSpan;
-    const z = side * span;
-    const mouthZ = z + 0.05 * axisZ;
     const sideName = side < 0 ? 'Port' : 'Starboard';
+    const packKey = `${engineProfileId}|${side < 0 ? 'P' : 'S'}`;
+    let packs = packCacheable ? retroPackCache.get(hullRecord) : null;
+    let baked = packs ? packs.get(packKey) : null;
     // The gimbal pivot stands on the jet axis at the fairing's root — steering the pack swings
     // the mouth around the mount point like a vectored nozzle, and the socket (a pivot child)
     // carries the plume with it.
@@ -245,60 +249,97 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
     (hull.userData.spacefaceArticulatingNodes
       || (hull.userData.spacefaceArticulatingNodes = []))
       .push({ node: pivot, demandScale: 0.55 });
-    const px = mouthX - axisX * r * 2.9;
-    const py = packY;
-    const pz = mouthZ - axisZ * r * 2.9;
-    pivot.position.set(px, py, pz);
-    // Positions along the jet axis, measured aft of the lip plane at the mouth.
-    const aftX = (t) => mouthX - axisX * t;
-    const aftZ = (t) => mouthZ - axisZ * t;
-    const parts = [[], [], [], [], []];
-    const bucket = { Shell: 0, Body: 1, Trim: 2, Throat: 3, Iris: 4 };
+    if (!baked) {
+      // Seat the pack on the measured skin: raycast the flank at the mouth and at the fairing's
+      // midpoint, take the tighter one — the pack embeds aft into the wider skin and its lip plane
+      // sits a hair inside the skin surface, like a flush port cut into a sloped flank. The
+      // halfSpan cap keeps the pack off appendage tips (fins, antennae) outboard of the body.
+      // Unmeasured hulls keep the authored halfSpan and height.
+      const seatMouth = skin ? flankSurfaceAt(skin, mouthX, mountY, side) : null;
+      const seatMid = skin ? flankSurfaceAt(skin, x - r * 2.5, mountY, side) : null;
+      const seat = seatMouth && seatMid
+        ? (Math.abs(seatMouth.z) < Math.abs(seatMid.z) ? seatMouth : seatMid)
+        : (seatMouth || seatMid);
+      const packY = seat ? seat.y : mountY;
+      const span = seat
+        ? Math.max(0.08, Math.min(profile.halfSpan + 0.10, Math.abs(seat.z) - 0.01))
+        : profile.halfSpan;
+      const z = side * span;
+      const mouthZ = z + 0.05 * axisZ;
+      const px = mouthX - axisX * r * 2.9;
+      const py = packY;
+      const pz = mouthZ - axisZ * r * 2.9;
+      // Positions along the jet axis, measured aft of the lip plane at the mouth.
+      const aftX = (t) => mouthX - axisX * t;
+      const aftZ = (t) => mouthZ - axisZ * t;
+      const parts = [[], [], [], [], []];
+      const bucket = { Shell: 0, Body: 1, Trim: 2, Throat: 3, Iris: 4 };
 
-    // A low wedge fairing grows out of the flank — a shallow tapering blister the size of the
-    // port it carries, its aft end buried in the hull. It stays hull-aligned; only the nozzle
-    // hardware carries the splay. Roughly 3 bell radii long, i.e. a fitting, not a spine.
-    parts[bucket.Shell].push(placed(
-      new THREE.CylinderGeometry(r * 1.05, r * 1.8, r * 3.3, 7, 1),
-      mouthX - axisX * r * 3.4, packY - r * 0.34, z - side * r * 0.35, -Math.PI / 2, 0, [1, 0.42, 1.1]));
-    // The aperture plate the jet fires through: a thin chamfered ring flush on the fairing's
-    // forward face, normal to the jet axis — the port surround, not a shroud.
-    parts[bucket.Shell].push(placed(
-      new THREE.CylinderGeometry(r * 1.55, r * 1.95, r * 0.22, 8, 1),
-      aftX(r * 2.55), packY, aftZ(r * 2.55), -Math.PI / 2, -side * splay));
-    // The gland: a short collar the bell bolts to — the visible valve body between plate and bell.
-    parts[bucket.Body].push(placed(
-      new THREE.CylinderGeometry(r * 0.70, r * 0.82, r * 1.0, profile.segments, 1),
-      aftX(r * 2.05), packY, aftZ(r * 2.05), -Math.PI / 2, -side * splay));
-    // The nozzle itself: a real diverging bell — narrow at the chamber joint, flaring to the lip.
-    // Total protrusion past the plate is about one bell diameter, like a Draco at the skin.
-    parts[bucket.Body].push(placed(
-      new THREE.CylinderGeometry(r * 1.0, r * 0.56, r * 1.7, profile.segments, 1, true),
-      aftX(r * 0.85), packY, aftZ(r * 0.85), -Math.PI / 2, -side * splay));
-    // Machined edges: the exit lip ring and the collar where the bell meets the gland.
-    parts[bucket.Trim].push(placed(
-      new THREE.TorusGeometry(r * 1.0, r * 0.08, 5, profile.segments),
-      mouthX + axisX * 0.004, packY, mouthZ + axisZ * 0.004, 0, Math.PI / 2 - side * splay));
-    parts[bucket.Trim].push(placed(
-      new THREE.TorusGeometry(r * 0.60, r * 0.07, 5, profile.segments),
-      aftX(r * 1.66), packY, aftZ(r * 1.66), 0, Math.PI / 2 - side * splay));
-    // Inside is a dark funnel that narrows to the iris — a designed aperture, not a glowing disc.
-    parts[bucket.Throat].push(placed(
-      new THREE.CylinderGeometry(r * 0.96, r * 0.26, r * 1.7, profile.segments, 1, true),
-      aftX(r * 0.86), packY, aftZ(r * 0.86), -Math.PI / 2, -side * splay));
-    parts[bucket.Iris].push(placed(
-      new THREE.CircleGeometry(r * 0.26, profile.segments),
-      aftX(r * 1.7), packY, aftZ(r * 1.7), 0, Math.PI / 2 - side * splay));
+      // A low wedge fairing grows out of the flank — a shallow tapering blister the size of the
+      // port it carries, its aft end buried in the hull. It stays hull-aligned; only the nozzle
+      // hardware carries the splay. Roughly 3 bell radii long, i.e. a fitting, not a spine.
+      parts[bucket.Shell].push(placed(
+        new THREE.CylinderGeometry(r * 1.05, r * 1.8, r * 3.3, 7, 1),
+        mouthX - axisX * r * 3.4, packY - r * 0.34, z - side * r * 0.35, -Math.PI / 2, 0, [1, 0.42, 1.1]));
+      // The aperture plate the jet fires through: a thin chamfered ring flush on the fairing's
+      // forward face, normal to the jet axis — the port surround, not a shroud.
+      parts[bucket.Shell].push(placed(
+        new THREE.CylinderGeometry(r * 1.55, r * 1.95, r * 0.22, 8, 1),
+        aftX(r * 2.55), packY, aftZ(r * 2.55), -Math.PI / 2, -side * splay));
+      // The gland: a short collar the bell bolts to — the visible valve body between plate and bell.
+      parts[bucket.Body].push(placed(
+        new THREE.CylinderGeometry(r * 0.70, r * 0.82, r * 1.0, profile.segments, 1),
+        aftX(r * 2.05), packY, aftZ(r * 2.05), -Math.PI / 2, -side * splay));
+      // The nozzle itself: a real diverging bell — narrow at the chamber joint, flaring to the lip.
+      // Total protrusion past the plate is about one bell diameter, like a Draco at the skin.
+      parts[bucket.Body].push(placed(
+        new THREE.CylinderGeometry(r * 1.0, r * 0.56, r * 1.7, profile.segments, 1, true),
+        aftX(r * 0.85), packY, aftZ(r * 0.85), -Math.PI / 2, -side * splay));
+      // Machined edges: the exit lip ring and the collar where the bell meets the gland.
+      parts[bucket.Trim].push(placed(
+        new THREE.TorusGeometry(r * 1.0, r * 0.08, 5, profile.segments),
+        mouthX + axisX * 0.004, packY, mouthZ + axisZ * 0.004, 0, Math.PI / 2 - side * splay));
+      parts[bucket.Trim].push(placed(
+        new THREE.TorusGeometry(r * 0.60, r * 0.07, 5, profile.segments),
+        aftX(r * 1.66), packY, aftZ(r * 1.66), 0, Math.PI / 2 - side * splay));
+      // Inside is a dark funnel that narrows to the iris — a designed aperture, not a glowing disc.
+      parts[bucket.Throat].push(placed(
+        new THREE.CylinderGeometry(r * 0.96, r * 0.26, r * 1.7, profile.segments, 1, true),
+        aftX(r * 0.86), packY, aftZ(r * 0.86), -Math.PI / 2, -side * splay));
+      parts[bucket.Iris].push(placed(
+        new THREE.CircleGeometry(r * 0.26, profile.segments),
+        aftX(r * 1.7), packY, aftZ(r * 1.7), 0, Math.PI / 2 - side * splay));
+
+      // Pivot-local bake: the translate makes the geometry owned by the pivot origin.
+      const geometries = parts.map((part) => {
+        const geometry = merged(part);
+        geometry.translate(-px, -py, -pz);
+        return geometry;
+      });
+      baked = {
+        geometries,
+        pivot: [px, py, pz],
+        socket: [mouthX + axisX * 0.01 - px, 0, mouthZ + axisZ * 0.01 - pz],
+      };
+      if (packCacheable) {
+        baked.geometries = baked.geometries.map(shareRetroPackGeometry);
+        if (!packs) {
+          packs = new Map();
+          retroPackCache.set(hullRecord, packs);
+        }
+        packs.set(packKey, baked);
+      }
+    }
+    pivot.position.set(baked.pivot[0], baked.pivot[1], baked.pivot[2]);
     for (let i = 0; i < MESH_PARTS.length; i++) {
-      const mesh = new THREE.Mesh(merged(parts[i]), MESH_PARTS[i][1]);
-      mesh.geometry.translate(-px, -py, -pz); // geometry was authored hull-local; pivot owns it
+      const mesh = new THREE.Mesh(baked.geometries[i], MESH_PARTS[i][1]);
       mesh.name = `Retro_${MESH_PARTS[i][0]}_${sideName}`;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       pivot.add(mesh);
     }
     const socket = addSocket(pivot, `SOCKET_Retro_${sideName}`,
-      [mouthX + axisX * 0.01 - px, 0, mouthZ + axisZ * 0.01 - pz], 'retro', [axisX, 0, axisZ]);
+      baked.socket, 'retro', [axisX, 0, axisZ]);
     socket.userData.engineProfileId = engineProfileId;
     // Driven hardware channels: the vfx owner raises the throat's heat emissive with spool and
     // the iris with live demand, and cools both on reset — the part carries its own heat sink.

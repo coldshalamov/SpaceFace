@@ -206,3 +206,67 @@ test('the high-speed brake has one subtle camera bite per engagement and respect
   vfx._updateRetroVolume.call(ctx, player, brake, 1 / 60, { reducedMotion: true });
   assert.equal(calls.length, 4, 'reduced motion keeps the force and jets without camera motion');
 });
+
+test('the pack bake is shared per hull record + engine profile, so wave spawns draw resident buffers', () => {
+  // A (hull record, engine profile, side) pack is one deterministic bake: the seats raycast the
+  // record's shared skin soup and the profile dims are fixed. Sharing the merged geometry is what
+  // lets a launch-warm exemplar stamp the buffers once so an in-round spawn pays no
+  // mergeGeometries and no first-draw bufferData — the +64 full uploads measured at the
+  // round-zero -> wave-1 pack boundary (seed 4242) were these per-compose Retro_* bakes.
+  const skin = new THREE.BoxGeometry(1.6, 0.4, 0.7);
+  const record = {
+    bounds: { size: [2, 1, 1] },
+    primitives: [{ geometry: skin, matrix: new THREE.Matrix4(), tags: { lod: 'lod0' } }],
+  };
+  const packMeshes = (hull) => {
+    const out = [];
+    hull.traverse((o) => { if (o.isMesh && /^Retro_/.test(o.name)) out.push(o); });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  };
+  const mount = (defId, rec = record) => {
+    const hull = new THREE.Group();
+    attachRetroMounts(hull, { data: { defId } }, {}, null, rec);
+    return hull;
+  };
+  const a = packMeshes(mount('ship_wasp'));
+  const b = packMeshes(mount('ship_wasp'));
+  assert.ok(a.length >= 10, 'five pack parts per side');
+  assert.equal(a.length, b.length);
+  for (let i = 0; i < a.length; i++) {
+    assert.equal(a[i].geometry, b[i].geometry,
+      `${a[i].name}: every spawn draws the same baked buffers`);
+    assert.equal(a[i].geometry.userData.spacefaceSharedAsset, true,
+      `${a[i].name}: flagged shared so a retiring hull cannot dispose the cache entry`);
+    assert.notEqual(a[i].material, b[i].material,
+      `${a[i].name}: materials stay per-ship — iris/throat are driven per socket`);
+  }
+  // The pivot-local bake must be identical too: same seats, same socket pose.
+  const hullA = mount('ship_wasp');
+  const hullB = mount('ship_wasp');
+  for (const side of ['Port', 'Starboard']) {
+    const pivotA = hullA.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    const pivotB = hullB.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    assert.deepEqual(pivotA, pivotB, `${side} pivot pose is deterministic`);
+    const sockA = hullA.getObjectByName(`SOCKET_Retro_${side}`).position.toArray();
+    const sockB = hullB.getObjectByName(`SOCKET_Retro_${side}`).position.toArray();
+    assert.deepEqual(sockA, sockB, `${side} socket pose is deterministic`);
+  }
+  // A different engine profile bakes its own pack instead of reusing the wasp's.
+  const other = packMeshes(mount('ship_leviathan'));
+  assert.notEqual(other[0].geometry, a[0].geometry, 'engine profiles keep distinct bakes');
+  // A different record is a different hull — never shares the bake.
+  const record2 = { ...record, primitives: [...record.primitives] };
+  const c = packMeshes(mount('ship_wasp', record2));
+  assert.notEqual(c[0].geometry, a[0].geometry, 'the cache is per hull record');
+  // And hulls without a record keep the per-attach bake: the live-tree skin is per-hull.
+  const bare = (hull) => packMeshes(hull);
+  const hullX = new THREE.Group();
+  hullX.add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.7), new THREE.MeshBasicMaterial()));
+  const hullY = new THREE.Group();
+  hullY.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.3, 0.5), new THREE.MeshBasicMaterial()));
+  attachRetroMounts(hullX, { data: { defId: 'ship_wasp' } });
+  attachRetroMounts(hullY, { data: { defId: 'ship_wasp' } });
+  const mx = bare(hullX).filter((m) => m.geometry.userData.spacefaceSharedAsset);
+  assert.equal(mx.length, 0, 'unmeasured hulls never enter the shared cache');
+  assert.ok(bare(hullY).length >= 10, 'unmeasured hulls still get a full pack');
+});
