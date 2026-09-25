@@ -2289,6 +2289,18 @@ export function isEnvironmentBlockedProbeError(errorText) {
 }
 
 /**
+ * Capture-integrity probe exits — a foreign commit or edit mutating the tree
+ * mid-capture — are environmental events in the same family as census blocks:
+ * the run produced no valid evidence, and no product fix can satisfy a
+ * regression gate keyed to them.
+ */
+export function isMeasurementIntegrityProbeError(errorText) {
+  return typeof errorText === 'string'
+    && (errorText.includes('worktree-not-clean-and-stable')
+      || errorText.includes('worktree changed during performance capture'));
+}
+
+/**
  * Direct-execution protection helper for expensive probes.
  * Fail-closed unless a valid one-use broker claim is present (or diagnostic mode).
  */
@@ -2615,14 +2627,17 @@ async function runProbeProcess({
     // An environment census block is a host-contention event, not a product
     // failure: it fires before any measurement exists, so persisting it as a
     // primary failure would wedge the manifest behind a regression-digest
-    // change no code fix can satisfy. Leave any prior failure record intact.
-    // For the same reason, refund the launch-count reservation minted with the
-    // claim — the quota bounds measured launches, not contested-host preflights.
+    // change no code fix can satisfy. Capture-integrity exits (a foreign tree
+    // mutation mid-capture) are the same family — the run produced no valid
+    // evidence. Leave any prior failure record intact and refund the
+    // launch-count reservation: the quota bounds measured launches, not
+    // contested-host or contested-tree events.
     const envBlocked = isEnvironmentBlockedProbeError(errorText);
-    if (envBlocked && !isDiagnostic) {
+    const integrityBlocked = isMeasurementIntegrityProbeError(errorText);
+    if ((envBlocked || integrityBlocked) && !isDiagnostic) {
       await decrementCandidateLaunchCount(outputRoot, digests.candidateDigest);
     }
-    const primaryAcceptance = !isDiagnostic && !envBlocked;
+    const primaryAcceptance = !isDiagnostic && !envBlocked && !integrityBlocked;
     const identity = manifest.normalizeFailure({
       runtimeKind: manifest.runtimeKind,
       phase: isDiagnostic ? 'diagnostic-probe' : 'acceptance-probe',

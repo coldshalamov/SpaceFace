@@ -26,6 +26,7 @@ import electronManifest from '../scripts/validation-manifests/performance-dirty-
 import {
   computeGateDigestsFromManifest,
   isEnvironmentBlockedProbeError,
+  isMeasurementIntegrityProbeError,
 } from '../scripts/lib/validationBroker.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
@@ -595,6 +596,25 @@ test('environment census blocks are not primary acceptance failures', () => {
   assert.equal(isEnvironmentBlockedProbeError(productFailureText), false);
   assert.equal(isEnvironmentBlockedProbeError(''), false);
   assert.equal(isEnvironmentBlockedProbeError(null), false);
+});
+
+test('mid-capture tree mutation exits are not primary acceptance failures', () => {
+  // A concurrent commit invalidates the capture before valid evidence exists;
+  // persisting it as primaryAcceptance wedges the manifest behind a regression
+  // change no product fix can satisfy — same family as the census block above.
+  const worktreeText = [
+    '[dirty-ranges] FAIL: worktree changed during performance capture | measurement invalid: worktree-not-clean-and-stable',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(worktreeText), true);
+
+  const productFailureText = [
+    '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(productFailureText), false);
+  assert.equal(isMeasurementIntegrityProbeError(''), false);
+  assert.equal(isMeasurementIntegrityProbeError(null), false);
 });
 
 test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
