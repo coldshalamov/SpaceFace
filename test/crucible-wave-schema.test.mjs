@@ -16,6 +16,22 @@ const ENEMY_IDS = new Set(ENEMY_TYPES.map((enemy) => enemy.id));
 const ARENA_IDS = COMBAT_LAB_ARENAS.map((arena) => arena.id);
 const DOCTRINE_BY_ENEMY = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy.combatDoctrineId || null]));
 
+// PQ-133.04 R5 product ruling: Foundry (helios_core) fields the committed ram mirrorjaw_foreman
+// in wave ten; the six other arenas retain the Iron Maw fortress dreadnought_boss. This map is
+// the pinned authored disposition (src/data/survivalWaves.js:817-824), not a restatement of the
+// data — a wave-ten elite that drifts from it must fail these tests.
+const AUTHORED_WAVE_TEN_BOSS = Object.freeze({
+  helios_core: 'mirrorjaw_foreman',
+  default: 'dreadnought_boss',
+});
+const authoredWaveTenBoss = (arenaId) => AUTHORED_WAVE_TEN_BOSS[arenaId] || AUTHORED_WAVE_TEN_BOSS.default;
+
+function waveTenElite(arenaId) {
+  return blockFor(arenaId)
+    .find((recipe) => recipe.wave === 10)
+    .packages.find((pkg) => pkg.role === 'elite');
+}
+
 function blockFor(arenaId) {
   return SURVIVAL_WAVES
     .filter((recipe) => recipe.arenaId === arenaId)
@@ -235,6 +251,11 @@ test('every legal combat doctrine is exercised at least once in a block', () => 
   // Six ids in src/ai/combatDoctrine.js. The pre-rewrite block reached only three of them, so a
   // whole tactical vocabulary (brawler_commit, tether_control_raider, field_anchor_controller)
   // was authored and never shipped to a player.
+  // PQ-133.04 R5 product ruling on the sixth: capital_broadside is keyed through
+  // AUTHORED_WAVE_TEN_BOSS instead of being demanded of every arena. The six Iron Maw arenas
+  // must still field it (their wave-ten fortress IS the doctrine); helios_core's authored
+  // substitution is the committed ram mirrorjaw_foreman (brawler_commit) in the same elite slot,
+  // pinned explicitly here rather than blanket-exempted. No doctrine is re-typed on any enemy.
   for (const arenaId of ARENA_IDS) {
     const doctrines = new Set();
     for (const recipe of blockFor(arenaId)) {
@@ -249,10 +270,24 @@ test('every legal combat doctrine is exercised at least once in a block', () => 
       'tether_control_raider',
       'field_anchor_controller',
       'ranged_disengager',
-      'capital_broadside',
     ]) {
       assert.ok(doctrines.has(required), `${arenaId} never fields a ${required} enemy`);
     }
+    const expectedBoss = authoredWaveTenBoss(arenaId);
+    const elite = waveTenElite(arenaId);
+    if (expectedBoss === 'dreadnought_boss') {
+      assert.ok(doctrines.has('capital_broadside'), `${arenaId} never fields a capital_broadside enemy`);
+    }
+    assert.equal(
+      elite.enemyId,
+      expectedBoss,
+      `${arenaId} wave-ten elite drifted from AUTHORED_WAVE_TEN_BOSS`,
+    );
+    assert.equal(
+      DOCTRINE_BY_ENEMY.get(elite.enemyId),
+      expectedBoss === 'mirrorjaw_foreman' ? 'brawler_commit' : 'capital_broadside',
+      `${arenaId} wave-ten elite doctrine drifted from the authored boss map`,
+    );
   }
 });
 
@@ -348,17 +383,31 @@ test('rewards rise smoothly across the block and never dip', () => {
   }
 });
 
-test('the three arenas differ only by their authored gate pair, never by content', () => {
-  // tenWaveBlock(arenaId, gateA, gateB) is called for three arenas. A wave that reads well for
+test('every arena shares authored content except the wave-ten boss pinned to AUTHORED_WAVE_TEN_BOSS', () => {
+  // tenWaveBlock(arenaId, gateA, gateB) is called for seven arenas. A wave that reads well for
   // one gate pair must read the same for the others, so roles, counts, batching and timing are
-  // identical across blocks and only gateGroup may vary.
+  // identical across blocks and only gateGroup may vary — with ONE authored PQ-133.04 R5 content
+  // exception: Foundry (helios_core) fields the committed ram mirrorjaw_foreman in wave ten
+  // where the other six arenas retain the Iron Maw fortress (src/data/survivalWaves.js:817-824).
+  // The exception is pinned, not blanket-exempted: waves 1-9 and the wave-ten mass package,
+  // phase and rewards still must match exactly, and every wave-ten elite must equal the map
+  // entry for its arena.
   const blocks = ARENA_IDS.map((arenaId) => blockFor(arenaId));
   const [first, ...rest] = blocks;
+  // The wave-ten elite enemyId is masked in the shape string (replaced by '*'); its identity is
+  // pinned per arena to AUTHORED_WAVE_TEN_BOSS below, so the mask cannot hide a drift.
+  const shape = (recipe) => recipe.packages.map(
+    (pkg) => `${pkg.atTick}:${pkg.role}:${recipe.wave === 10 && pkg.role === 'elite' ? '*' : pkg.enemyId}:${pkg.count}:${pkg.batchSize}:${pkg.batchGapTicks}`,
+  ).join('|');
+  for (const { arenaId, block } of ARENA_IDS.map((arenaId) => ({ arenaId, block: blockFor(arenaId) }))) {
+    assert.equal(
+      waveTenElite(arenaId).enemyId,
+      authoredWaveTenBoss(arenaId),
+      `${arenaId} wave-ten elite drifted from AUTHORED_WAVE_TEN_BOSS`,
+    );
+  }
   for (const block of rest) {
     for (let i = 0; i < first.length; i++) {
-      const shape = (recipe) => recipe.packages.map(
-        (pkg) => `${pkg.atTick}:${pkg.role}:${pkg.enemyId}:${pkg.count}:${pkg.batchSize}:${pkg.batchGapTicks}`,
-      ).join('|');
       assert.equal(shape(block[i]), shape(first[i]), `wave ${first[i].wave} differs between arenas`);
       assert.equal(block[i].arenaPhase, first[i].arenaPhase);
       assert.deepEqual(block[i].rewards, first[i].rewards);

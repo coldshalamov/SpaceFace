@@ -242,6 +242,11 @@ const SNAPSHOTS = {
       cleanupTicks: 180,
     },
   },
+  // PQ-133.04 authored the Foundry wave-ten replacement of the Iron Maw placeholder
+  // (src/data/survivalWaves.js:817-824): helios_core fields the committed ram mirrorjaw_foreman
+  // in the same elite slot; waves 1 and 5 are unchanged; no other golden is touched by this
+  // rebase. Everything else in this snapshot (gates, counts, ticks, phase, rewards, refit
+  // expectation, cleanup) is identical to the pre-rebase recording.
   10: {
     id: 'helios_core_w10_boss:w10:a0:2f',
     objective: { kind: 'boss' },
@@ -250,7 +255,7 @@ const SNAPSHOTS = {
         atTick: 0,
         gateGroup: 'diagonal_b',
         role: 'elite',
-        enemyId: 'dreadnought_boss',
+        enemyId: 'mirrorjaw_foreman',
         count: 1,
         batchSize: 1,
         batchGapTicks: 0,
@@ -270,7 +275,7 @@ const SNAPSHOTS = {
         atTick: 0,
         gateGroup: 'diagonal_b',
         role: 'elite',
-        enemyId: 'dreadnought_boss',
+        enemyId: 'mirrorjaw_foreman',
         count: 1,
         packageIndex: 0,
       },
