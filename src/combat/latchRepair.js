@@ -1,7 +1,8 @@
 // F17 — a disabled friendly or a marked derelict heals only while a rope on it is taut.
 // The player's line and a live tender's line both count. A slack line, a cut line, an enemy,
-// a rock, and the player's own hull do not. Finishing the hull restores the drive the
-// combat runtime already uses as "can thrust." No med-beam and no fail timer.
+// a rock, and the player's own hull do not. A recovery wreck counts only when it is marked
+// derelictHelp. Finishing the hull restores the drive the combat runtime already uses as
+// "can thrust." No med-beam and no fail timer.
 
 // Same taut test the NPC line-cut uses: a loaded/overload/capture phase, or a span that
 // has reached 92% of the rest length. A short slack span does not carry repair.
@@ -36,16 +37,17 @@ function isEnemy(state, target) {
 }
 
 export function latchRepairAllowed(state, target) {
-  if (!state || !target || target.alive === false || target.type !== 'ship') return false;
+  if (!state || !target || target.alive === false) return false;
   if (target.id === state.playerId) return false;
   if (target.data && target.data.latchRepair === false) return false;
   if (isEnemy(state, target)) return false;
+  const marked = !!(target.data && (target.data.latchRepair === true || target.data.derelictHelp === true));
+  if (target.type !== 'ship' && !(target.type === 'wreck' && marked)) return false;
   const player = entityOf(state, state.playerId);
   const playerTeam = player && player.team != null ? player.team : 0;
   const sameSide = target.team === playerTeam;
   const civilian = target.team === 2
     && target.data && target.data.ai && target.data.ai.passive === true;
-  const marked = !!(target.data && (target.data.latchRepair === true || target.data.derelictHelp === true));
   if (!sameSide && !civilian && !marked) return false;
   const hull = Number(target.hull);
   const hullMax = Number(target.hullMax);
