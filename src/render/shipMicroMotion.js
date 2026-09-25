@@ -994,6 +994,12 @@ export function createShipMicroMotionTracker() {
         continue;
       }
       const cloned = mat.clone();
+      // Material.clone() drops own-property shader patches — without these the heat-skin
+      // clone keys a fresh program and links it inside the first presented bloom pass (the
+      // measured LOD0_engine_fan/EngineCeramic bricks). The thermal channel only moves
+      // emissive uniforms, so the clone shares the source's already-linked program.
+      cloned.onBeforeCompile = mat.onBeforeCompile;
+      cloned.customProgramCacheKey = mat.customProgramCacheKey;
       clones[i] = cloned;
       base[i] = {
         r: cloned.emissive.r,

@@ -1418,6 +1418,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             rows.push({
               object: String(object.name || object.type || 'unnamed').slice(0, 48),
               material: String(material.name || material.type || 'unnamed').slice(0, 32),
+              mu: String(material.uuid || '').slice(0, 8),
+              ou: String(object.uuid || '').slice(0, 8),
               root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
               key: key.slice(0, 512),
               siblingKeys: siblings,

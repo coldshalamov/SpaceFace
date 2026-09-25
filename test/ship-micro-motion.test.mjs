@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { MeshStandardMaterial } from 'three';
 import {
   contactYieldImpulse,
   createShipMicroMotionTracker,
@@ -348,4 +349,48 @@ test('ship micro-motion: reduced motion suppresses high-frequency shudder', () =
   tracker.updateCraftMicroMotion(entity, mesh, 20.0, 0.016, { motionReduce: true });
   assert.equal(mesh.userData.hull.position.y, 0, 'reduced motion zeroes out idle heave and boost jitter Y');
   assert.equal(mesh.userData.hull.position.z, 0, 'reduced motion zeroes out lateral shudder Z');
+});
+
+test('ship micro-motion: engine-bell heat-skin clone preserves shader hooks (no cold program link)', () => {
+  // captureBellHeatSkin clones the bell material on the ship's first presented frame.
+  // Material.clone() drops own-property onBeforeCompile/customProgramCacheKey — without the
+  // restore the clone keys a fresh program and links it inside the bloom pass (the measured
+  // LOD0_engine_fan_Mechanical / LOD0_static_EngineCeramic GPU bricks). The thermal channel
+  // only moves emissive uniforms, so the clone must share the source's already-linked program.
+  const tracker = createShipMicroMotionTracker();
+  const src = new MeshStandardMaterial({ name: 'SF_Shared_mechanical_dark' });
+  src.onBeforeCompile = function authoredHook(shader) {
+    shader.uniforms.uIllustratedPigment = { value: 1 };
+  };
+  src.customProgramCacheKey = () => 'spaceface-authored-heat-skin-key';
+  const bellNode = {
+    name: 'LOD0_engine_fan_Mechanical',
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+    material: src,
+    children: [],
+  };
+  const hull = {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    children: [bellNode],
+  };
+  const mesh = { userData: { hull, weapons: [] } };
+  const entity = { id: 7, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12, vel: { x: 60, z: 0 }, flags: { boosting: true } };
+
+  tracker.updateCraftMicroMotion(entity, mesh, 1.0, 0.016);
+
+  assert.notEqual(bellNode.material, src, 'heat skin swapped to a per-ship clone');
+  assert.equal(
+    bellNode.material.onBeforeCompile,
+    src.onBeforeCompile,
+    'clone must reuse the authored shader hook so the program key matches the warmed variant',
+  );
+  assert.equal(
+    bellNode.material.customProgramCacheKey,
+    src.customProgramCacheKey,
+    'clone must reuse the authored cache key so the presented draw resolves the already-linked program',
+  );
+  assert.equal(bellNode.material.customProgramCacheKey(), 'spaceface-authored-heat-skin-key');
 });
