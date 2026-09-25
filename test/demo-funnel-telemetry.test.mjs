@@ -9,6 +9,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createTelemetry } from '../src/systems/telemetry.js';
 import { DEMO_FUNNEL_STEPS } from '../src/observability/sessionReport.js';
+import { runSession } from '../src/systems/runSession.js';
+import { requestSandboxGame } from '../src/ui/sandbox/sandboxSetup.js';
 
 function rig(t, demo) {
   const state = createGameState(4242);
@@ -18,18 +20,22 @@ function rig(t, demo) {
   return { state, bus, telemetry };
 }
 
-function walkDemoPath(bus) {
+function walkDemoPath(bus, state) {
   bus.emit('run:started', { schemaVersion: 1, kind: 'survival', ruleset: 'swarm', seed: 4242, phase: 'loadout' });
   bus.emit('run:wavePlanned', { wave: 1, plan: { arenaPhase: 'idle', schedule: [] }, tick: 10 });
   bus.emit('run:wavePlanned', { wave: 3, plan: { arenaPhase: 'shutter_slow', schedule: [] }, tick: 30 });
   bus.emit('run:resultsReady', { outcome: 'defeat', wave: 3, seed: 4242 });
+  // Belt handoff: a fresh ordinary game. runSession's envelope reads 'adventure' here,
+  // exactly as after the real menu teardown resets it.
+  if (state && state.run) state.run = { ...state.run, kind: 'adventure', phase: 'inactive' };
   bus.emit('game:new', { name: null, difficulty: 'standard' });
+  bus.emit('game:started', { newGamePlus: false });
   bus.emit('ui:pushScreen', { id: 'demoEnd' });
 }
 
 test('demo on: the six ordered events mark every step with non-decreasing offsets', (t) => {
-  const { bus, telemetry } = rig(t, true);
-  walkDemoPath(bus);
+  const { state, bus, telemetry } = rig(t, true);
+  walkDemoPath(bus, state);
 
   const steps = telemetry.getDemoFunnel();
   assert.deepEqual(steps.map((s) => s.step), DEMO_FUNNEL_STEPS);
@@ -80,9 +86,36 @@ test('demo on: a voluntary abort produces no resultsShown step', (t) => {
   assert.equal(telemetry.getDemoFunnel().find((s) => s.step === 'resultsShown').reached, true);
 });
 
+test('demo on: the real Crucible launch path does not stamp adventureEntered', (t) => {
+  const { state, bus, telemetry } = rig(t, true);
+  // The sole writer of state.run, exactly as the live route wires it.
+  const rs = Object.create(runSession);
+  rs.init({ state, bus });
+
+  // The REAL launch: requestSandboxGame emits game:new {seed} — the same event the belt
+  // and New Game emit, which is why the payload alone cannot discriminate.
+  requestSandboxGame(bus, { seed: 4242, survivalSetup: { seed: 4242, arenaId: 'helios_core' } });
+  // game:scenePrepared early-applies the survival setup on the live route; runSession's
+  // begin is what carries kind 'survival' into the envelope and publishes run:started.
+  bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: 4242, arenaId: 'helios_core' });
+  bus.emit('game:started', { newGamePlus: false });
+
+  let steps = telemetry.getDemoFunnel();
+  assert.equal(steps.find((s) => s.step === 'crucibleEntered').reached, true);
+  assert.equal(steps.find((s) => s.step === 'adventureEntered').reached, false,
+    'a survival run envelope must veto the adventure step');
+
+  // The belt handoff: menu teardown resets the envelope, then a plain new game starts.
+  rs.newGame();
+  bus.emit('game:new', { name: null, difficulty: 'standard' });
+  bus.emit('game:started', { newGamePlus: false });
+  steps = telemetry.getDemoFunnel();
+  assert.equal(steps.find((s) => s.step === 'adventureEntered').reached, true);
+});
+
 test('demo off: the same events record nothing and the report has no demo block', (t) => {
-  const { bus, telemetry } = rig(t, false);
-  walkDemoPath(bus);
+  const { state, bus, telemetry } = rig(t, false);
+  walkDemoPath(bus, state);
   const steps = telemetry.getDemoFunnel();
   assert.deepEqual(steps.map((s) => s.step), DEMO_FUNNEL_STEPS);
   for (const s of steps) assert.equal(s.reached, false, `${s.step} must stay unreached`);

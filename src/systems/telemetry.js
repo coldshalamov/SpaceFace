@@ -162,12 +162,16 @@ export function createTelemetry(bus, state, options) {
   }
 
   // Demo funnel (ZERO_TO_HERO §7.5): gated on demo mode so non-demo builds subscribe but
-  // never record. First reach latches the offset; repeats are no-ops.
+  // never record. First reach latches the offset; repeats are no-ops. Offsets measure from
+  // the sink's own boot mark — NOT startedSimMark, which the play-start rebase moves; the
+  // belt handoff itself triggers a new-game transition, so a rebased origin would stamp
+  // later steps before earlier ones.
   const demoOn = options && typeof options.demo === 'boolean' ? options.demo : IS_DEMO;
+  let demoOrigin = session.startedSimMark;
   function markDemo(step) {
     const f = session.demoFunnel;
     if (demoOn && f && f[step] < 0) {
-      f[step] = Math.max(0, now() - session.startedSimMark);
+      f[step] = Math.max(0, now() - demoOrigin);
     }
   }
   markDemo('boot');
@@ -728,8 +732,13 @@ export function createTelemetry(bus, state, options) {
   //   round3Reached       — run:wavePlanned carrying wave >= 3 (survivalRun publishes the plan).
   //   resultsShown        — run:resultsReady, minus the voluntary-abort payload uiRoot refuses
   //                         to plate (walkouts show no results surface; wave_plan_failed does).
-  //   adventureEntered    — game:new — the "Take it to the belt" handoff emits it, as does the
-  //                         ordinary new-game route.
+  //   adventureEntered    — game:started where the run envelope is not a scored run. The
+  //                         "Take it to the belt" handoff and ordinary New Game both land
+  //                         here. The Crucible launch emits game:new + game:started too —
+  //                         payload inspection cannot discriminate (its game:new is just
+  //                         {seed}) — but game:scenePrepared early-applies its survival
+  //                         setup, so state.run.kind is 'survival' by the time this
+  //                         dispatch reaches us. Plain adventure keeps 'adventure'.
   //   endCardShown        — ui:pushScreen id 'demoEnd' (onboarding's _maybeShowDemoEndCard).
   sub('run:started', (p) => {
     if (p && p.kind === 'survival') markDemo('crucibleEntered');
@@ -741,7 +750,10 @@ export function createTelemetry(bus, state, options) {
     if (!p || (p.outcome === 'aborted' && p.stopReason !== 'wave_plan_failed')) return;
     markDemo('resultsShown');
   });
-  sub('game:new', () => { markDemo('adventureEntered'); });
+  sub('game:started', () => {
+    const kind = state && state.run && state.run.kind;
+    if (!kind || kind === 'adventure') markDemo('adventureEntered');
+  });
   sub('ui:pushScreen', (p) => {
     if (p && p.id === 'demoEnd') markDemo('endCardShown');
   });
@@ -924,6 +936,7 @@ export function createTelemetry(bus, state, options) {
   // clear localStorage). A fresh session id is minted so the next persist() appends cleanly.
   function reset(clearStored) {
     session = emptyAggregates();
+    demoOrigin = session.startedSimMark;
     ring.length = 0;
     telegraphLog.length = 0;
     ringSeq = 0;
