@@ -15,6 +15,7 @@ import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
 import { createLedgerTape } from '../../orrery/ledgerTape.js';
 import { formatLedgerCycle } from '../../../systems/shipLedger.js';
 import { el } from '../../kit/index.js';
+import { rollTo } from '../../orrery/text.js';
 import { dressComms, watchComms } from './comms.js';
 import { dressEvents, watchEvents } from './events.js';
 import {
@@ -271,7 +272,7 @@ export function createLedgerScreen(ctx) {
     // bearing), then the thing it names; the cycle rides in the kicker so it is never said twice.
     const r = readingOf(entry);
     readKicker.textContent = r.kicker;
-    readHeroN.textContent = r.hero;
+    rollTo(readHeroN, r.hero);
     readHeroW.textContent = r.unit;
     readHero.hidden = !r.hero;
     readTitle.textContent = r.title;

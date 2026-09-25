@@ -142,3 +142,37 @@ export function createCounter(element, { format = (n) => Math.round(n).toLocaleS
     },
   };
 }
+
+/**
+ * Roll a headline numeral to `value`. The element keeps one counter; the first show rolls up from
+ * zero, later calls roll from the previous figure. `sign` is kept outside the digit columns (a true
+ * minus or a plus). Non-numeric values are written as plain text. Reduced motion sets it instantly.
+ * @param {HTMLElement} element
+ * @param {number|string} value
+ */
+export function rollTo(element, value) {
+  if (!element) return;
+  const raw = typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.\-\u2212]/g, '').replace('\u2212', '-'));
+  if (!Number.isFinite(raw) || (typeof value === 'string' && !/\d/.test(value))) {
+    element.__orrCounter = null;
+    element.classList.remove('orr-counter');
+    element.textContent = String(value == null ? '' : value);
+    return;
+  }
+  // the sign rides the value each call (a string with a leading sign keeps a plus; a negative always shows a true minus)
+  element.__orrSigned = typeof value === 'string' && /^[+\u2212-]/.test(value.trim());
+  const format = (n) => {
+    const r = Math.round(Math.abs(n)).toLocaleString('en-US');
+    if (n < 0) return `\u2212${r}`;
+    return element.__orrSigned && n > 0 ? `+${r}` : r;
+  };
+  let counter = element.__orrCounter;
+  const first = !counter;
+  if (!counter) { counter = createCounter(element, { format: (n) => element.__orrFormat(n) }); element.__orrCounter = counter; }
+  element.__orrFormat = format;
+  const target = Math.abs(raw);
+  const raf = globalThis.requestAnimationFrame;
+  const still = typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('sf-reduce-motion');
+  if (first && raf && !still) { counter.set(raw < 0 ? -0.4 : 0); raf(() => raf(() => counter.set(raw < 0 ? -target : target))); }
+  else counter.set(raw < 0 ? -target : target);
+}

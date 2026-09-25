@@ -717,6 +717,8 @@ ${W}.sx-sw--buying .sx-sw__stage { flex:1 1 auto !important; min-height:0 !impor
 /* the For Sale readouts stand out of flow (so the stage keeps its full height); the screen seats them from the stage's box */
 ${W}.sx-sw--buying .sx-sw__stats { position:absolute !important; left:258px !important; right:auto !important; top:auto !important; bottom:14px !important; transform:none !important; width:220px !important; max-width:220px !important; z-index:3; }
 
+${W} .sx-sw-side__hero .k-hero__n.orr-counter .orr-counter__digit { width:.56em; }
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

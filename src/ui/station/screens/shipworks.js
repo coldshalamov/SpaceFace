@@ -1,6 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { rollTo } from '../../orrery/text.js';
 import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar } from '../../orrery/svg.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
@@ -2273,6 +2274,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}${afford && availability.hullEnabled ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>`) +
         `</ul>`;
       dressSide();
+      const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
+      if (priceN && def.price > 0) rollTo(priceN, def.price);
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout

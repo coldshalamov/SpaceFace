@@ -28,7 +28,7 @@ import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
 import { createCrestOrbit, standingScaleSvg, crestUrl } from '../../orrery/crestOrbit.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
-import { decrypt } from '../../orrery/text.js';
+import { decrypt, rollTo } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 
 const STATION_FACTION = new Map();
@@ -262,7 +262,7 @@ export function createFactionsScreen(ctx) {
         // one figure: the standing, its tier above it; the two distances (to the next tier, above the
         // hostile line) are measured on the scale itself as brackets, not restated as a row of figures
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}: ${escapeHtml(tier.name)} ${signed(rep)}${next ? `, ${next.need} to ${escapeHtml(next.name)}` : ''}, ${buffer} above the hostile line">` +
-          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span>${signed(rep)}`, '', cls) +
+          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span><span class="sx-fac-num">${signed(rep)}</span>`, '', cls) +
         `</div>` +
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
@@ -296,6 +296,8 @@ export function createFactionsScreen(ctx) {
           `</div>` +
         `</div>` +
       `</div>`;
+    const facNum = readingEl.querySelector('.sx-fac-num');
+    if (facNum) rollTo(facNum, facNum.textContent);
     composeStage(state, f);
   }
 
