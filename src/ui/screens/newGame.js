@@ -20,6 +20,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
 import { createStopScale, createTurntable } from '../orrery/stopDial.js';
+import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -664,7 +665,7 @@ export const newGameScreen = {
     const ship = shipDefFor(ctx, DEFAULT_STARTER.shipId);
     // The hull card's name is a content header (the header voice, set by the sheet), not a title.
     const hullName = el('h2', 'k-display k-t-sub fh-title sf-slot-card-title', (ship && ship.name) || DEFAULT_STARTER.name);
-    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.blurb);
+    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.line);
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
     stage.appendChild(caption);
@@ -678,8 +679,21 @@ export const newGameScreen = {
       const stats = el('div', 'orr-ng-stats');
       stats.setAttribute('aria-hidden', 'true');
       caption.insertBefore(stats, loadoutField.wrap);
-      this._paintStats = (starter) => paintStarterStats(stats, starterAirCard(starter), scale,
-        NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
+      // one ring round the hull (ORRERY 6): mass left, thrust over the top, line right; the other starters as ghosts
+      const ringStats = (starter) => {
+        const card = starterAirCard(starter);
+        const others = NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s));
+        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']].map(([name, key, unit]) => {
+          const value = Number(card[key]) || 0;
+          return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
+            frac: value / scale[key], ghosts: others.map((o) => (Number(o[key]) || 0) / scale[key]) };
+        });
+      };
+      this._paintStats = (starter) => {
+        if (this._hullRing) this._hullRing.paint(ringStats(starter));
+        else paintStarterStats(stats, starterAirCard(starter), scale, NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
+        this._lastStarter = starter;
+      };
       // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
       // sit under the ship rather than across it
       // the hull choice as a turntable round the ship's base: the three hulls stand on its front arc
@@ -689,10 +703,21 @@ export const newGameScreen = {
       rootEl.appendChild(pick);
       const art = {};
       for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'hero'); if (url) art['starter:' + s.id] = url; }
-      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132 });
+      // a carousel: the chosen hull stands front-centre under its render, the others at the ring's rear ends
+      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132, carousel: true, hero: '.k-world--stage, .k-stage__poster' });
     }
     rootEl.appendChild(stage);
-    this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
+    // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
+    this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM, dock: !ORRERY });
+    if (ORRERY) {
+      const statsHost = stage.querySelector('.orr-ng-stats');
+      const heroBox = stage.querySelector('.k-world--stage') || stage.querySelector('.k-stage__poster');
+      if (statsHost && heroBox) {
+        statsHost.textContent = '';
+        this._hullRing = createHullRing({ host: statsHost, anchor: heroBox });
+        if (this._lastStarter) this._paintStats(this._lastStarter);
+      }
+    }
 
     // Foot: Back, then Launch (the one primary word) — Launch stays the LAST footer button because
     // the capture matrix, the atlas, the review probe and the localization check all reach it as
@@ -793,11 +818,11 @@ export const newGameScreen = {
       // reached by the Up/Down arrow bridges (or pointer) instead.
       b.tabIndex = -1;
     }
-    refs.starterDesc.textContent = starterAirCard(starter).sentence;
+    refs.starterDesc.textContent = starter.line;
     if (this._paintStats) this._paintStats(starter);
     const ship = shipDefFor(refs.ctx, starter.shipId);
     refs.hullName.textContent = (ship && ship.name) || starter.name;
-    refs.hullBlurb.textContent = starter.blurb;
+    refs.hullBlurb.textContent = starter.line;
     refs.renderLoadout(starter);
     if (this.hull && this.hull.hasMount()) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
@@ -878,6 +903,7 @@ export const newGameScreen = {
   dispose() {
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
     if (this.hull) { this.hull.dispose(); this.hull = null; }
+    if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }
     if (refs && refs.unsubStartFailed) { try { refs.unsubStartFailed(); } catch (e) {} }
     if (refs && refs.unsubLoading) { try { refs.unsubLoading(); } catch (e) {} }
     refs = null;

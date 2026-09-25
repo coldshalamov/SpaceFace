@@ -755,6 +755,71 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
   #screens .orr-newgame > .k-fine, #screens .orr-newgame .k-fine { max-width:380px; }
 }
 
+/* ================================ NEW GAME v2: two columns, one stage instrument ============= */
+/* the pilot's choices on the left (name, difficulty, seed, then LAUNCH under them); the hull's choice,
+   its numbers and the run it opens are one instrument on the right, round the hull */
+#screens .k-screen.orr-newgame { grid-template-columns:clamp(340px, 25vw, 470px) minmax(0, 1fr) !important;
+  grid-template-rows:auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-areas:"title stage" "hang stage" "foot stage" "note stage" ". stage" !important;
+  column-gap:clamp(40px, 4.4vw, 104px) !important; row-gap:clamp(16px, 2.6vh, 34px) !important; }
+#screens .orr-newgame > .sf-ng-header { grid-area:title !important; }
+#screens .orr-newgame > .sf-ng-body { grid-area:hang !important; overflow:visible !important; min-height:0; }
+#screens .orr-newgame > .sf-ng-footer { grid-area:foot !important; justify-content:flex-start !important; gap:32px !important; margin:0 !important; }
+#screens .orr-newgame > .k-fine { position:static !important; grid-area:note !important; max-width:420px !important; margin:0 !important; inset:auto !important; }
+#screens .orr-newgame > .k-stage { grid-area:stage !important; position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; }
+/* the hero render: centred in the stage, under the name block, over the ring's floor */
+/* (a canvas and an image are replaced elements: they take an explicit box, not left+right) */
+#screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { position:absolute !important; left:15% !important; top:27% !important; right:auto !important; bottom:auto !important;
+  width:74% !important; height:48% !important; max-width:none !important; max-height:none !important; object-fit:contain; }
+/* the hull alone has no dock's bounce light: its render is graded up so it leads its ring */
+#screens .orr-newgame > .k-stage > .k-world--stage { filter:brightness(1.55) contrast(1.06); }
+#screens .orr-newgame > .k-stage::before { content:""; position:absolute; left:22%; width:60%; top:69%; height:9%; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(2 3 5 / .7), rgb(2 3 5 / .38) 55%, transparent); }
+/* the caption is the stage's own layer: the hull's name and line top-left, the ring over the stage, the run along the foot */
+#screens .orr-newgame .k-stage__foot.orr-ng-caption { position:absolute !important; inset:0 !important; display:block !important; width:auto !important;
+  max-width:none !important; height:auto !important; padding:0 !important; margin:0 !important; background:none !important; border:0 !important; box-shadow:none !important; pointer-events:none; }
+#screens .orr-newgame .orr-ng-caption > .sf-slot-card-title { position:absolute !important; left:0; top:0; margin:0 !important; }
+#screens .orr-newgame .orr-ng-caption > .k-sentence { position:absolute !important; left:0; top:clamp(44px, 5.2vh, 60px); max-width:min(460px, 42%); margin:0 !important; }
+#screens .orr-newgame .orr-ng-caption > .orr-ng-stats { position:absolute !important; inset:0 !important; display:block !important; margin:0 !important; gap:0 !important; pointer-events:none; }
+/* what it carries: one line of its fittings under its sentence */
+#screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { position:absolute !important; left:0; top:clamp(116px, 13.4vh, 150px); margin:0 !important; pointer-events:auto; }
+#screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] { display:flex !important; flex-direction:row !important; flex-wrap:wrap; align-items:baseline; gap:4px 0 !important; width:max-content; max-width:min(540px, 28vw); }
+#screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li > * { white-space:nowrap !important; width:auto !important; max-width:none !important; }
+#screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { content:"·"; margin:0 10px; color:rgb(232 226 212 / .4); }
+#screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li { display:flex; align-items:baseline; }
+/* the first fifteen minutes: a scale along the stage's foot, four beads and their beats */
+#screens .orr-newgame .orr-ng-caption > .sf-ng-route { position:absolute !important; left:0; right:0; bottom:0; top:auto !important; margin:0 !important; padding:0 !important; pointer-events:auto; }
+#screens .orr-newgame .sf-ng-route > .k-caps { margin:0 0 12px !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__steps { display:flex !important; justify-content:space-between; gap:24px; position:relative; margin:0 !important; padding:18px 0 0 !important;
+  background:none !important; border:0 !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__steps::before { content:"" !important; position:absolute !important; inset:auto !important; left:0 !important; right:0 !important; top:4px !important;
+  width:auto !important; height:1px !important; background:rgb(232 226 212 / .34) !important; border:0 !important; box-shadow:none !important; transform:none !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__steps::after { content:"" !important; position:absolute !important; left:0 !important; right:0 !important; top:4px !important; height:4px !important;
+  background:repeating-linear-gradient(90deg, rgb(232 226 212 / .22) 0 1px, transparent 1px 16px) !important; pointer-events:none; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step { position:relative !important; display:block !important; flex:1 1 0; min-width:0; padding:0 !important; margin:0 !important;
+  background:none !important; border:0 !important; box-shadow:none !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step::before { content:"" !important; position:absolute !important; left:0 !important; top:-17px !important; width:7px !important; height:7px !important;
+  border-radius:50% !important; background:rgb(236 230 216 / .82) !important; box-shadow:none !important; border:0 !important; transform:none !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step::after { display:none !important; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__name { display:block; font-size:13px; line-height:1.3; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__sub { display:block !important; font-size:11.5px; line-height:1.35; margin-top:3px; color:rgb(232 226 212 / .62) !important;
+  opacity:0; transition:opacity .2s ease; }
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step:hover .k-row__sub { opacity:1; }
+html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__sub { transition:none; }
+@media (max-height:800px) {
+  #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { left:17% !important; top:31% !important; width:71% !important; height:36% !important; }
+  #screens .orr-newgame > .k-stage::before { top:62%; height:8%; }
+  /* the fittings wrap before the ring's top reading; the rear hulls go by name only (the hero fills the ring) */
+  #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] { flex-direction:column !important; gap:3px !important; width:auto !important; max-width:none !important; }
+  #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none; }
+  #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { left:23% !important; width:66% !important; }
+  #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { top:clamp(84px, 13.4vh, 100px); }
+  #screens .orr-newgame .orr-turntable--carousel > .orr-turntable__art { display:none; }
+  #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { top:clamp(96px, 16vh, 120px); }
+  #screens .orr-newgame .sf-ng-route > .k-caps { margin-bottom:8px !important; }
+  #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__name { font-size:12px; }
+}
+
 `;
 
 export function injectOrreryScreens(doc = globalThis.document) {

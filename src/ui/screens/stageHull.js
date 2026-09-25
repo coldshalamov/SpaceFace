@@ -27,9 +27,11 @@ function motionReduced(ctx) {
  * @param {number} [o.zoom]
  * @param {() => void} [o.onReady]  fires once the authored hull has drawn (the arrival moment)
  * @param {Function} [o.mountFactory]  the preview mount constructor; tests substitute a fake
+ * @param {boolean} [o.dock]  draw the hull in its dock interior (default); false draws the hull alone on a
+ *                              transparent canvas, for a stage that is its own instrument (New Game's ring)
  */
 export function createStageHull(stageEl, {
-  rootEl, zoom = STAGE_HULL_ZOOM, onReady, mountFactory = createShipPreviewMount,
+  rootEl, zoom = STAGE_HULL_ZOOM, onReady, mountFactory = createShipPreviewMount, dock = true,
 } = {}) {
   let canvas = null;
   let mount = null;
@@ -74,7 +76,7 @@ export function createStageHull(stageEl, {
     stageEl.prepend(canvas);
     try {
       mount = mountFactory(canvas, {
-        dockId: dockInteriorIdForArchetype(null),
+        dockId: dock ? dockInteriorIdForArchetype(null) : null,
         authoredShips: true,
         authoredWarmup: true,
         fastPreview: false,

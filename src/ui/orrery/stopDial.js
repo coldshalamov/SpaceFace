@@ -50,6 +50,10 @@ html.sf-reduce-motion .orr-turntable__art { transition:none; }
   background:center / contain no-repeat; transition:opacity .2s linear, transform .32s var(--dp-ease-out, ease-out), filter .2s linear; }
 .orr-stopscale__art.is-on { opacity:1; transform:translate(-50%, -50%) scale(1.14); filter:drop-shadow(0 0 12px rgb(223 238 255 / .4)); }
 html.sf-reduce-motion .orr-stopscale__art { transition:none; }
+.orr-turntable--carousel > .orr-turntable__row > li, .orr-turntable--carousel > .orr-turntable__art { transition:left .55s cubic-bezier(.2,.9,.25,1), top .55s cubic-bezier(.2,.9,.25,1), opacity .35s ease, transform .55s cubic-bezier(.2,.9,.25,1); }
+.orr-turntable--carousel > .orr-turntable__art { transform:translateX(-50%) scale(.7); transform-origin:50% 100%; opacity:.55; }
+.orr-turntable--carousel > .orr-turntable__art.is-on { opacity:0; transform:translateX(-50%) scale(.7); }
+html.sf-reduce-motion .orr-turntable--carousel > .orr-turntable__row > li, html.sf-reduce-motion .orr-turntable--carousel > .orr-turntable__art { transition:none; }
 `;
 
 function injectStyle(doc) {
@@ -404,7 +408,17 @@ export function createStationRow({ row } = {}) {
  * elements: it seats the screen's own buttons and follows aria-pressed. `anchor` is the element the
  * ring sits under; it is measured on build and on resize (no per-frame reads).
  */
-export function createTurntable({ row, host, anchor, art = null, artWidth = 150 } = {}) {
+// carousel: the chosen stands front-centre on the ring under the hero render (`hero`, a selector inside
+// `anchor`), the others ride the ring's rear ends smaller and dimmer; a pick turns the ring, not the Hand.
+/** A carousel's slots round its ring, in order: left rear ... front (0) ... right rear. */
+function slotAngles(n) {
+  if (n <= 1) return [0];
+  const half = Math.floor(n / 2);
+  const out = [];
+  for (let k = -half; k <= n - 1 - half; k += 1) out.push(k === 0 ? 0 : Math.sign(k) * Math.min(100, 70 + 30 * Math.abs(k)));
+  return out;
+}
+export function createTurntable({ row, host, anchor, art = null, artWidth = 150, carousel = false, hero = null } = {}) {
   const doc = (row && row.ownerDocument) || globalThis.document;
   if (!row || !host || !anchor || !doc || typeof doc.createElementNS !== 'function' || typeof anchor.getBoundingClientRect !== 'function') {
     return { el: null, update() {}, dispose() {} };
@@ -412,7 +426,7 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
   injectOrrery();
   injectStyle(doc);
   const wrap = doc.createElement('div');
-  wrap.className = 'orr-turntable';
+  wrap.className = carousel ? 'orr-turntable orr-turntable--carousel' : 'orr-turntable';
   const face = svg('svg', { class: 'orr-svg', 'aria-hidden': 'true' });
   wrap.appendChild(face);
   wrap.appendChild(row);
@@ -451,18 +465,28 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
   let current = -1;
   function build() {
     const hb = host.getBoundingClientRect();
-    const ab = anchor.getBoundingClientRect();
+    const heroEl = carousel && hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
+    const hr = heroEl ? heroEl.getBoundingClientRect() : null;
+    const ab = hr && hr.width ? hr : anchor.getBoundingClientRect();
     if (!hb.width || !ab.width) return;
     const W = hb.width; const H = hb.height;
+    if (carousel) {
+      // the ring lies on the floor just under the hero render, centred on it
+      const rx = Math.min(ab.width * 0.42, 420);
+      const ry = rx * 0.2;
+      g = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
+      T = Array.from({ length: items().length }, () => 0);
+    } else {
     // round the object's base: centred a little right of the cell (where the staged hull sits),
     // low enough that only the floor is under the front arc, never the object
     const rx = Math.min(ab.width * 0.3, 430);
     const ry = rx * 0.27;
     g = { cx: ab.left - hb.left + ab.width * 0.6, cy: Math.min(ab.top - hb.top + ab.height * 0.8, H - ry - 132), rx, ry };
+    }
     // Long words must not reach past the host: shrink the station fan until each edge label's
     // measured half-width sits inside the host box (D34 — pseudo-locale hull names clipped).
     const lis = items();
-    if (lis.length > 1) {
+    if (!carousel && lis.length > 1) {
       const half = (i) => Math.max(0, (lis[i] && lis[i].offsetWidth) || 0) / 2 + 10;
       const sMax = Math.max(0.1, Math.min(1, (g.cx - half(0)) / rx, (W - g.cx - half(lis.length - 1)) / rx));
       const spread = Math.min(56, Math.asin(sMax) * 180 / Math.PI);
@@ -476,7 +500,9 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
     for (let t = -100; t <= 100; t += 4) { const [x0, y0] = pt(t); f.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x0.toFixed(1)} ${(y0 - 4).toFixed(1)}`); }
     fine.setAttribute('d', f.join(' '));
     ticks.textContent = '';
-    T.forEach((t) => { const [x, y] = pt(t); ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${(y - 9).toFixed(1)} L ${x.toFixed(1)} ${(y + 9).toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5, opacity: '.55' })); });
+    const slots = carousel ? slotAngles(items().length) : T;
+    slots.forEach((t) => { const [x, y] = pt(t); ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${(y - 9).toFixed(1)} L ${x.toFixed(1)} ${(y + 9).toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5, opacity: '.55' })); });
+    if (carousel) { current = -1; update({ instant: true }); return; }
     items().forEach((li, i) => {
       const [x, y] = pt(T[i]);
       li.style.left = `${x.toFixed(1)}px`;
@@ -497,6 +523,34 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
     if (idx < 0) idx = 0;
     if (idx === current && !instant) return;
     current = idx;
+    if (carousel) {
+      if (!g) return;
+      // the ring turns: the chosen to the front (0), each other one to its slot by its distance round the ring
+      const lis = items();
+      const n = lis.length;
+      const slots = slotAngles(n);
+      lis.forEach((li, i) => {
+        let d = ((i - idx) % n + n) % n;
+        if (d > n / 2) d -= n;
+        const t = d === 0 ? 0 : slots[Math.min(slots.length - 1, Math.max(0, Math.floor(n / 2) + d))];
+        const [x, y] = pt(t);
+        // the front word hangs under its slot; a rear word stands outward beside its slot, off the ring's line
+        if (d === 0) { li.style.left = `${x.toFixed(1)}px`; li.style.top = `${(y + 18).toFixed(1)}px`; li.style.transform = ''; li.style.textAlign = ''; }
+        else { li.style.left = `${(x + (d < 0 ? -16 : 16)).toFixed(1)}px`; li.style.top = `${(y - 14).toFixed(1)}px`; li.style.transform = d < 0 ? 'translateX(-100%)' : 'none'; li.style.textAlign = d < 0 ? 'right' : 'left'; }
+        li.classList.toggle('is-front', d === 0);
+        const action = li.querySelector('button').dataset.action;
+        if (art && art[action]) {
+          let img = arts[i];
+          if (!img) { img = doc.createElement('div'); img.className = 'orr-turntable__art'; img.style.backgroundImage = `url("${art[action]}")`; wrap.insertBefore(img, row); arts[i] = img; }
+          const h = artWidth * 0.56;
+          Object.assign(img.style, { left: `${x.toFixed(1)}px`, top: `${(y - 8 - h).toFixed(1)}px`, width: `${artWidth}px`, height: `${h.toFixed(0)}px` });
+          img.classList.toggle('is-on', d === 0);
+        }
+      });
+      spring.set(0, { instant: true });
+      [...ticks.children].forEach((t, i) => { const front = i === Math.floor(slots.length / 2); t.setAttribute('class', `orr-core ${front ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', front ? '1' : '.55'); });
+      return;
+    }
     spring.set(T[idx], { instant });
     [...ticks.children].forEach((t, i) => { t.setAttribute('class', `orr-core ${i === idx ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', i === idx ? '1' : '.55'); });
     arts.forEach((img, i) => { if (img) img.classList.toggle('is-on', i === idx); });
