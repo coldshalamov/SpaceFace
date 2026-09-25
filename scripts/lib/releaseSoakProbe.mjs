@@ -97,9 +97,21 @@ export const PERFORMANCE_ACTIVITY_MAX_SYSTEM_CPU_FRACTION = 0.75;
 
 const PERFORMANCE_CONTAMINANT_PATTERN =
   /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
+// Host-saturation leg. Win32_Processor.LoadPercentage counts idle-priority work too, but an
+// Idle-priority process (e.g. a deprioritized git repack) only consumes cycles no normal thread
+// wants — it cannot starve the game under test. The honest load read sums per-process CPU deltas
+// for non-Idle-priority processes over short windows, normalized by logical core count.
 const PERFORMANCE_SYSTEM_LOAD_SCRIPT = [
+  "$cores=[double](Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors",
   "$r=@()",
-  "for($i=0;$i -lt 3;$i++){ $r += [double](Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average; if($i -lt 2){ Start-Sleep -Milliseconds 400 } }",
+  "for($i=0;$i -lt 3;$i++){",
+  "  $p1=@{}; Get-Process -ErrorAction SilentlyContinue | ForEach-Object { try { $p1[$_.Id]=@([double]$_.CPU,[string]$_.PriorityClass) } catch {} }",
+  "  Start-Sleep -Milliseconds 400",
+  "  $p2=@{}; Get-Process -ErrorAction SilentlyContinue | ForEach-Object { try { $p2[$_.Id]=[double]$_.CPU } catch {} }",
+  "  $busy=0.0",
+  "  foreach($id in $p2.Keys){ $row=$p1[$id]; if(-not $row){ continue }; if($row[1] -eq 'Idle'){ continue }; $d=$p2[$id]-$row[0]; if($d -gt 0){ $busy += $d } }",
+  "  $r += [math]::Round(($busy/0.4/[math]::Max(1,$cores))*100,1)",
+  "}",
   "ConvertTo-Json -Compress -InputObject ([pscustomobject]@{samples=@($r); loadPercent=(($r | Measure-Object -Average).Average)})",
 ].join(';');
 const PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT = [

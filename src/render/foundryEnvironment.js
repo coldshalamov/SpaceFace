@@ -34,8 +34,11 @@ export const IBL_SOURCE_REFLECTION_CARDS = 'reflection-cards';
 // re-links every standard material on the next presented pass — a multi-second GPU brick on the
 // live route, not just in probes. Equirect sources size their bake from the input width, so
 // renderer._bakeEnv routes them through a fixed-size scene capture instead of fromEquirectangular.
-// 512 matches the foundry 2k HDRI's native cube size (width/4), so no source loses resolution.
-export const IBL_PMREM_CUBE_SIZE = 512;
+// 256 is the card rig's tuned size: its 0.035 radian prefilter requests ~17 blur taps at 256px and
+// PMREM's blur shader caps at 20 — a larger pin would clip the kernel and log a THREE warning on
+// every bake (which the performance harness counts as a runtime error). The foundry 2k HDRI
+// downsamples to 256 cleanly; its structure survives because env lookups are mip-blurred anyway.
+export const IBL_PMREM_CUBE_SIZE = 256;
 
 // Priority for the PMREM source: the foundry HDRI wins once loaded; until then the existing
 // chain holds (sector-plate background texture, else the emissive card rig). scene.background

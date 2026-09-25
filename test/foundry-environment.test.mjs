@@ -177,7 +177,9 @@ test('renderer wires the foundry as env input only — the visible sky is never 
 // re-key and re-link every standard material inside a presented pass. All sources must go through
 // a fixed-size scene capture so the key never moves when the env texture is upgraded.
 test('every PMREM bake pins one cube size so env swaps never rekey lit programs', () => {
-  assert.equal(IBL_PMREM_CUBE_SIZE, 512, 'pin must match the 2k foundry HDRI cube size (width/4)');
+  // 256 is the card rig's tuned size: SPACE_REFLECTION_PMREM_SIGMA_RADIANS sits just under the
+  // 20-tap blur ceiling at 256px — a larger pin clips the kernel and warns on every bake.
+  assert.equal(IBL_PMREM_CUBE_SIZE, 256);
   const src = readFileSync(RENDERER_PATH, 'utf8');
   assert.doesNotMatch(src, /pmrem\.fromEquirectangular\(/,
     'equirect bakes must not size the PMREM target from the input width');
