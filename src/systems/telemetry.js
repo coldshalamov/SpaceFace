@@ -17,14 +17,17 @@
 //   - first-hour onboarding funnel (build_map.md §15.4 / PQ-167): first flight, first swing,
 //     first shove, first dock, first heat, plus difficulty-ramp and career progression milestones.
 //
-// Entry point: createTelemetry(bus, state). No-op-safe singleton (a second call disposes the prior
-// instance). Mirrors to window.__SF_TELEMETRY__ for dev.
+// Entry point: createTelemetry(bus, state, options). No-op-safe singleton (a second call disposes
+// the prior instance). Mirrors to window.__SF_TELEMETRY__ for dev. `options.demo` overrides the
+// bundle flag for tests; it defaults to IS_DEMO.
 
 import {
   buildSessionReportData,
   renderSessionReportMarkdown,
   exportSessionReportJson,
+  DEMO_FUNNEL_STEPS,
 } from '../observability/sessionReport.js';
+import { IS_DEMO } from '../core/demoMode.js';
 import {
   pairLeftoverDeathTelegraph,
   leftoverTelegraphKind,
@@ -107,11 +110,16 @@ function emptyAggregates() {
       first1000crAt: -1, firstModuleAt: -1,
     },
 
+    // Demo funnel (ZERO_TO_HERO §7.5): ordered demo-path steps keyed by DEMO_FUNNEL_STEPS,
+    // same -1/unreached contract as funnel. The object exists in every session so the schema
+    // stays uniform; non-demo sessions simply never reach a step.
+    demoFunnel: Object.fromEntries(DEMO_FUNNEL_STEPS.map((step) => [step, -1])),
+
     deathLog: [],   // [{ atMs, simTime, cause, killerId, killerType, killerFaction, pos:{x,z}, lifespanMs }]
   };
 }
 
-export function createTelemetry(bus, state) {
+export function createTelemetry(bus, state, options) {
   // No-op-safe singleton: dispose any prior instance before constructing a new one.
   if (_instance && typeof _instance.dispose === 'function') {
     try { _instance.dispose(); } catch (_err) { /* ignore */ }
@@ -152,6 +160,17 @@ export function createTelemetry(bus, state) {
       session.funnel[key] = Math.max(0, now() - session.startedSimMark);
     }
   }
+
+  // Demo funnel (ZERO_TO_HERO §7.5): gated on demo mode so non-demo builds subscribe but
+  // never record. First reach latches the offset; repeats are no-ops.
+  const demoOn = options && typeof options.demo === 'boolean' ? options.demo : IS_DEMO;
+  function markDemo(step) {
+    const f = session.demoFunnel;
+    if (demoOn && f && f[step] < 0) {
+      f[step] = Math.max(0, now() - session.startedSimMark);
+    }
+  }
+  markDemo('boot');
 
   // ----------------------------------------------------------------------------------------------
   // persistence — debounced; flush also bound to page lifecycle below
@@ -204,7 +223,8 @@ export function createTelemetry(bus, state) {
       startedAt: s.startedAt, endedAt: s.endedAt || end, durationMs: s.durationMs || dur,
       trades: s.trades, credits: s.credits, kills: s.kills, deaths: s.deaths,
       ore: s.ore, missions: s.missions, progression: s.progression,
-      navigation: s.navigation, verbs: s.verbs || {}, funnel: s.funnel, deathLog: s.deathLog,
+      navigation: s.navigation, verbs: s.verbs || {}, funnel: s.funnel,
+      demoFunnel: s.demoFunnel, deathLog: s.deathLog,
     };
   }
 
@@ -702,6 +722,30 @@ export function createTelemetry(bus, state) {
     scheduleSave();
   });
 
+  // DEMO FUNNEL (ZERO_TO_HERO §7.5) — real bus events only, in funnel order:
+  //   boot                — latched at construction above (the sink boots with the app).
+  //   crucibleEntered     — run:started kind 'survival' (runSession commits the Crucible begin).
+  //   round3Reached       — run:wavePlanned carrying wave >= 3 (survivalRun publishes the plan).
+  //   resultsShown        — run:resultsReady, minus the voluntary-abort payload uiRoot refuses
+  //                         to plate (walkouts show no results surface; wave_plan_failed does).
+  //   adventureEntered    — game:new — the "Take it to the belt" handoff emits it, as does the
+  //                         ordinary new-game route.
+  //   endCardShown        — ui:pushScreen id 'demoEnd' (onboarding's _maybeShowDemoEndCard).
+  sub('run:started', (p) => {
+    if (p && p.kind === 'survival') markDemo('crucibleEntered');
+  });
+  sub('run:wavePlanned', (p) => {
+    if (p && Number.isInteger(p.wave) && p.wave >= 3) markDemo('round3Reached');
+  });
+  sub('run:resultsReady', (p) => {
+    if (!p || (p.outcome === 'aborted' && p.stopReason !== 'wave_plan_failed')) return;
+    markDemo('resultsShown');
+  });
+  sub('game:new', () => { markDemo('adventureEntered'); });
+  sub('ui:pushScreen', (p) => {
+    if (p && p.id === 'demoEnd') markDemo('endCardShown');
+  });
+
   // ----------------------------------------------------------------------------------------------
   // page-lifecycle flush — there is NO session-end gameplay event (see EVENT_TAXONOMY gaps), so we
   // lean on the browser to flush a final snapshot. These are browser listeners, not file edits.
@@ -794,6 +838,16 @@ export function createTelemetry(bus, state) {
       ['firstModule', f.firstModuleAt],
     ];
     return steps.map(([key, at]) => ({ step: key, reached: at >= 0, atMs: at >= 0 ? at : null }));
+  }
+
+  // Demo funnel: ordered DEMO_FUNNEL_STEPS with reached-flag + first-reach offset.
+  function getDemoFunnel() {
+    const f = session.demoFunnel || {};
+    return DEMO_FUNNEL_STEPS.map((step) => {
+      const at = f[step];
+      const reached = Number.isFinite(at) && at >= 0;
+      return { step, reached, atMs: reached ? at : null };
+    });
   }
 
   // Death heatmap: world positions + cause for a spatial overlay. CAREER-WIDE (persisted sessions +
@@ -905,7 +959,7 @@ export function createTelemetry(bus, state) {
 
   const api = {
     name: 'telemetry',
-    getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
+    getSessionStats, getCareerStats, getFunnel, getDemoFunnel, getDeathHeatmap,
     getRecentEvents, getStorySoFar, reset, dispose,
     getTelegraphCoverage,
     recordVerb, getSessionReport, exportSessionReport,
