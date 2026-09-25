@@ -1041,12 +1041,23 @@ export function createShipMicroMotionTracker() {
     rec.rcsNozzleCount = 0;
     rec.flareApplied = 1;
     // Capture the hull's authored base scale — the materialize/breath/ripple channels write
-    // multiplicatively on top of it every frame.
+    // multiplicatively on top of it every frame. A live scale beyond a plausible authored range
+    // is corruption, not the base: recover the recipe's authored scale (instantiateRenderPackagePart
+    // stores it) or identity rather than perpetuating ±1e7+ (2026-09-25: kestrel/atlas/mule hulls
+    // and boundaries were all captured at −7.9e6..−2.4e8 and stayed invisible-or-monster).
+    const HULL_SCALE_LIMIT = 2000;
     if (hull && hull.scale) {
-      rec.hullScaleX = Number.isFinite(hull.scale.x) ? hull.scale.x : 1;
-      rec.hullScaleY = Number.isFinite(hull.scale.y) ? hull.scale.y : 1;
-      rec.hullScaleZ = Number.isFinite(hull.scale.z) ? hull.scale.z : 1;
-      rec.hullScaleDirty = false;
+      const recipe = hull.userData && hull.userData.spacefaceFlightPackageRecipe;
+      const authored = recipe && Array.isArray(recipe.scale) ? recipe.scale : null;
+      const sane = (v, fallback, i) => (Number.isFinite(v) && Math.abs(v) <= HULL_SCALE_LIMIT)
+        ? v
+        : (authored && Number.isFinite(authored[i]) ? authored[i] : fallback);
+      rec.hullScaleX = sane(hull.scale.x, 1, 0);
+      rec.hullScaleY = sane(hull.scale.y, 1, 1);
+      rec.hullScaleZ = sane(hull.scale.z, 1, 2);
+      // Force one write this frame so a corrupted live scale is restored to the authored base
+      // even when no scale channel is active; it clears to scaleActive on the next pass.
+      rec.hullScaleDirty = true;
     }
     // Authored hull yaw (packaged hulls can carry one) — the impact swing writes relative to it.
     rec.hullYawBase = hull && hull.rotation && Number.isFinite(hull.rotation.y) ? hull.rotation.y : 0;
@@ -1438,7 +1449,10 @@ export function createShipMicroMotionTracker() {
     let swingStretch = 0;
     if (rec.swingDashT0 >= 0) {
       const sk = (simTime - rec.swingDashT0) / SWING_DASH_S;
-      if (sk >= 1) {
+      // sk < 0 = stale T0 from a dead sim epoch: recs outlive game transitions and simTime
+      // resets to ~0; a retrograde envelope must expire, never evaluate (see materialize below —
+      // its cubic produced the −1.3e7 hull scales seen live 2026-09-25).
+      if (!Number.isFinite(sk) || sk < 0 || sk >= 1) {
         rec.swingDashT0 = -1;
       } else {
         const env = Math.sin(sk * Math.PI) * (reducedMotion ? 0.5 : 1);
@@ -1510,7 +1524,7 @@ export function createShipMicroMotionTracker() {
     let rebootRock = 0;
     if (rec.rebootT0 >= 0) {
       const rk = (simTime - rec.rebootT0) / REBOOT_S;
-      if (rk >= 1) {
+      if (!Number.isFinite(rk) || rk < 0 || rk >= 1) {
         rec.rebootT0 = -1;
       } else {
         const renv = 1 - rk;
@@ -1695,7 +1709,10 @@ export function createShipMicroMotionTracker() {
     let scaleX = 1, scaleY = 1, scaleZ = 1;
     if (rec.materializeT0 >= 0) {
       const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
-      if (k >= 1) {
+      // k < 0 means T0 belongs to a previous game epoch (recs survive Crucible→adventure while
+      // simTime restarts at ~0): (1−k)³ explodes to −1e7 and hull.scale inherits it — the exact
+      // −12,566,739.59 seen on every authored boundary. Expire retrograde envelopes.
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.materializeT0 = -1;
       } else {
         const e = 1 - Math.pow(1 - k, 3);
@@ -1705,7 +1722,7 @@ export function createShipMicroMotionTracker() {
     }
     if (rec.cloakWaveT0 >= 0) {
       const k = (simTime - rec.cloakWaveT0) / CLOAK_WAVE_S;
-      if (k >= 1) {
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.cloakWaveT0 = -1;
       } else {
         const w = Math.sin(k * Math.PI * 3) * CLOAK_WAVE_AMP * (1 - k);
@@ -1718,7 +1735,7 @@ export function createShipMicroMotionTracker() {
     scaleZ *= rec.yieldPose.z * rec.haulPose.z;
     if (rec.shieldBreathT0 >= 0) {
       const k = (simTime - rec.shieldBreathT0) / SHIELD_BREATH_S;
-      if (k >= 1) {
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.shieldBreathT0 = -1;
       } else {
         const w = Math.sin(k * Math.PI) * SHIELD_BREATH_AMP * rec.shieldBreathDir;
@@ -1883,7 +1900,7 @@ export function createShipMicroMotionTracker() {
     }
     if (rec.materializeT0 >= 0 && mesh.scale) {
       const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
-      if (k >= 1) {
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.materializeT0 = -1;
         if (typeof mesh.scale.set === 'function') {
           mesh.scale.set(rec.wreckScaleBaseX, rec.wreckScaleBaseY, rec.wreckScaleBaseZ);
@@ -1938,7 +1955,9 @@ export function createShipMicroMotionTracker() {
     }
     const reduced = !!(a11y && a11y.reducedMotion === true);
     const age = simTime - rec.spiralT0;
-    if (age >= DEATH_SPIRAL_S) {
+    // age < 0: spiralT0 from a dead sim epoch (rec survives a game transition, simTime reset) —
+    // a frozen start-rate spin forever. Treat retrograde as finished.
+    if (!Number.isFinite(age) || age < 0 || age >= DEATH_SPIRAL_S) {
       rec.spiralState = 2;
       return true;
     }

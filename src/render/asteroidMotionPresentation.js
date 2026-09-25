@@ -130,10 +130,27 @@ const VEIN_EMBER = 0xff9a3c;
 // and lets dead bodies collect.
 const pristineBodyScales = new WeakMap();
 
-function pristineScaleFor(body) {
+// buildAsteroid sets leaf scale to entity.radius (~4–120 WU); authored part fits stay within a
+// few hundred. A live scale beyond this is corruption, never the authored base — the tracker
+// must not adopt it as pristine and perpetuate it.
+const PRISTINE_BODY_SCALE_LIMIT = 2000;
+
+function plausibleBodyScale(v) {
+  return Number.isFinite(v) && Math.abs(v) <= PRISTINE_BODY_SCALE_LIMIT;
+}
+
+function pristineScaleFor(body, entity) {
   let p = pristineBodyScales.get(body);
   if (!p) {
-    p = { x: body.scale.x, y: body.scale.y, z: body.scale.z };
+    const sx = body.scale.x, sy = body.scale.y, sz = body.scale.z;
+    if (plausibleBodyScale(sx) && plausibleBodyScale(sy) && plausibleBodyScale(sz)) {
+      p = { x: sx, y: sy, z: sz };
+    } else {
+      // Live scale is already corrupt: recover the authored value the factory wrote
+      // (mesh.scale.setScalar(entity.radius)) instead of poisoning the base forever.
+      const R = Number.isFinite(entity && entity.radius) && entity.radius > 0 ? entity.radius : 12;
+      p = { x: R, y: R, z: R };
+    }
     pristineBodyScales.set(body, p);
   }
   return p;
@@ -516,7 +533,7 @@ export function createAsteroidMotionTracker() {
     // 4b. Rich-core charge tremor — a lower, slower shudder that ramps with charge time and
     //     stops the instant the charge resolves or fizzles (chargeT0 cleared by the done events).
     if (!reducedMotion && rec.chargeT0 >= 0) {
-      const ramp = Math.min(1, (simTime - rec.chargeT0) / 1.6);
+      const ramp = Math.min(1, Math.max(0, (simTime - rec.chargeT0) / 1.6));
       const cm = ramp * 0.035;
       jitterX += Math.sin(simTime * 63.0 + rec.rotY) * cm;
       jitterZ += Math.cos(simTime * 57.0 + rec.rotX) * cm;
@@ -525,9 +542,14 @@ export function createAsteroidMotionTracker() {
     // 4c. Arrival materialize + rich-core breach: transient scale envelopes multiplied onto the
     //     fracture swell base — absolute application, no drift.
     let scaleMul = 1;
+    // k < 0 means the armed T0 sits AHEAD of the clock: tracker recs outlive game transitions
+    // (entity ids recycle Crucible→adventure) and simTime resets to ~0, so a stale T0 from the
+    // dead epoch evaluates (1−k)³ ≈ −5e7 and the swell stamps ±1e8 onto the body — the
+    // Asteroid_330/331 inflation seen live 2026-09-25. A retrograde T0 can never legitimately
+    // resume, so it expires exactly like a finished envelope.
     if (rec.materializeT0 >= 0) {
       const k = (simTime - rec.materializeT0) / 0.45;
-      if (k >= 1) {
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.materializeT0 = -1;
       } else {
         const e = 1 - Math.pow(1 - k, 3);
@@ -536,7 +558,7 @@ export function createAsteroidMotionTracker() {
     }
     if (rec.breachT0 >= 0) {
       const k = (simTime - rec.breachT0) / 1.1;
-      if (k >= 1) {
+      if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.breachT0 = -1;
       } else {
         scaleMul *= 1 + Math.sin(k * Math.PI) * 0.055 * (1 - k * 0.4);
@@ -588,7 +610,7 @@ export function createAsteroidMotionTracker() {
     if (body.scale && typeof body.scale.set === 'function') {
       if (rec.scaleBodyRef !== body) {
         rec.scaleBodyRef = body;
-        const pristine = pristineScaleFor(body);
+        const pristine = pristineScaleFor(body, entity);
         rec.baseScaleX = pristine.x;
         rec.baseScaleY = pristine.y;
         rec.baseScaleZ = pristine.z;

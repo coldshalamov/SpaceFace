@@ -141,6 +141,75 @@ test('strain swell never compounds the base scale across release/reacquire cycle
   }
 });
 
+// 2026-09-25 live walk: an adopted common-rock leaf arrived at the tracker already corrupted
+// (local scale −1.5e8 while the factory wrote 12). The pristine-WeakMap trusted that first
+// sighting and the swell then re-applied the corrupt base every frame — permanent, screen-filling
+// rocks. A captured "pristine" beyond plausible authored range must recover entity.radius —
+// the value buildAsteroid wrote with setScalar(R) — never perpetuate the corruption.
+test('strain swell recovers authored radius when first-seen body scale is already corrupt', () => {
+  const tracker = createAsteroidMotionTracker();
+  tracker.bindEvents({ on: () => () => {} });
+
+  const body = {
+    rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
+    scale: {
+      x: -1.5e8, y: -1.5e8, z: -1.5e8,
+      set(x, y, z) { this.x = x; this.y = y; this.z = z; },
+    },
+  };
+  const mesh = { userData: { asteroidInstanceBody: body }, children: [body] };
+  const asteroid = { id: 'ast_corrupt_1', type: 'asteroid', radius: 44, data: {} };
+
+  for (let i = 0; i < 10; i += 1) tracker.updateAsteroidMotion(asteroid, mesh, 0.4 + i * 0.016, 0.016);
+
+  for (const axis of ['x', 'y', 'z']) {
+    const ratio = Math.abs(body.scale[axis] / 44);
+    assert.ok(
+      ratio >= 0.5 && ratio <= 1.2,
+      `corrupt-seeded body: scale.${axis} stayed at ${body.scale[axis]} (should recover ~radius 44)`,
+    );
+  }
+});
+
+// 2026-09-25 live walk, the actual originator: Asteroid_331's tracker rec survived the
+// Crucible→adventure transition with materializeT0/breachT0 armed at the old game's simTime
+// (~165 s). The new game's simTime restarts near zero, so k = (0.2 − 165)/0.45 ≈ −366 and
+// e = 1 − (1−k)³ ≈ −4.9e7 → scaleMul ≈ −2e7 → the swell stamped 12 × −2e7 = −2.4e8 onto the
+// body every frame (tallRoofs, camera to orbit, the dark disc at belt arrival). A retrograde
+// T0 belongs to a dead epoch and must expire like a finished envelope, never evaluate.
+test('stale T0 from a previous sim epoch cannot inflate body scale', () => {
+  const tracker = createAsteroidMotionTracker();
+  const handlers = {};
+  tracker.bindEvents({ on: (event, fn) => { handlers[event] = fn; return () => {}; } });
+
+  const body = {
+    rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
+    scale: { x: 12, y: 12, z: 12, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+  };
+  const mesh = { userData: { asteroidInstanceBody: body }, children: [body] };
+  body.parent = mesh;
+  const asteroid = { id: 'ast_epoch_1', type: 'asteroid', radius: 12, data: {} };
+
+  // Epoch 1 (the Crucible): the rec is created and its envelopes armed at simTime ≈ 165.
+  tracker.updateAsteroidMotion(asteroid, mesh, 165, 0.016);
+  handlers['entity:spawned']({ id: 'ast_epoch_1', type: 'asteroid' });
+  handlers['mining:richCoreExposed']({ asteroidId: 'ast_epoch_1' });
+  tracker.updateAsteroidMotion(asteroid, mesh, 165.2, 0.016);
+
+  // Epoch 2 (the new adventure): simTime restarts near zero — rec and armed T0s persist.
+  for (let i = 0; i < 120; i += 1) {
+    tracker.updateAsteroidMotion(asteroid, mesh, 0.2 + i * 0.016, 0.016);
+    for (const axis of ['x', 'y', 'z']) {
+      assert.ok(
+        Math.abs(body.scale[axis]) <= 2000,
+        `frame ${i}: scale.${axis} = ${body.scale[axis]} — retrograde T0 inflated the body`,
+      );
+    }
+  }
+});
+
 test('asteroid motion: pebbles visibly out-turn mountains with identical spin seeds', () => {
   // Same entity id in fresh trackers => identical hashed spin; only the radius differs.
   const pebbleTracker = createAsteroidMotionTracker();
