@@ -26,6 +26,8 @@
     "src/render/presentPhaseTimers.js": "Instrumentation staged for the hitch campaign, not yet on the player path. Gated by test/present-phase-timers.test.mjs; landed 2026-08-14.",
     "src/render/renderPackageDigestWorker.js": "Worker loaded via new URL() from renderPackageDigest.js; the static import graph cannot see that wire.",
     "src/ui/commandDeckRefit.js": "Off-route additive presentation lab; production does not import or auto-mount. Tests and commandDeckRefitHooks remain on the station path.",
+    "src/ui/orrery/flightInstruments.js": "ORRERY flight-instrument cluster staged by the live frontend refactor (Title/Bar/Industry rows landing on master); wire to the default route when the cluster mounts.",
+    "src/ui/orrery/flightPreview.js": "ORRERY flight preview staged alongside flightInstruments.js by the same live refactor; wire with the cluster or retire it.",
     "src/ui/virtualList.js": "PQ-184.01 list windowing kernel; long screens have not mounted it yet. Keep until that leaf wires market/contracts/ledger/codex or retires the component."
   },
   "recordedAt": "2026-09-16"

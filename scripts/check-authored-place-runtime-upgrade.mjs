@@ -125,8 +125,20 @@ for (const fixture of CASES) {
   assertVectorWithinEnvelope(authoredSize, expectedVisibleSize,
     `${fixture.id}: visible authored body remains dominant inside its published visual envelope`);
   assertVectorNear(boundarySize, authoredSize, `${fixture.id}: boundary AABB is authored-dominant`);
-  assert.ok(Math.max(fallbackSize.x, fallbackSize.y, fallbackSize.z) > 0,
-    `${fixture.id}: hidden diagnostic substrate remains structurally inspectable without publishing pixels`);
+  if (fixture.type === 'station') {
+    assert.ok(Math.max(fallbackSize.x, fallbackSize.y, fallbackSize.z) > 0,
+      `${fixture.id}: hidden diagnostic substrate remains structurally inspectable without publishing pixels`);
+  } else {
+    // PIC-11 (da2abd5f1) deliberately mounts an EMPTY admission substrate for a missing place
+    // prop: the named hidden group keeps its diagnostic userData, and no geometry exists to
+    // publish a cube. The inspectable contract is the node itself, not an AABB.
+    assert.equal(mounted.fallback.visible, false,
+      `${fixture.id}: place admission substrate stays hidden before publication`);
+    assert.equal(mounted.fallback.userData.kind, 'place',
+      `${fixture.id}: place admission substrate carries its diagnostic kind`);
+    assert.equal(mounted.fallback.children.length, 0,
+      `${fixture.id}: missing place prop mounts no cube geometry (PIC-11)`);
+  }
   silhouetteKeys.set(fixture.id, silhouetteKey(authoredSize));
 
   for (const count of cleanup.materialDisposeCounts.values()) {
