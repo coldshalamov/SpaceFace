@@ -3846,6 +3846,9 @@ function invalidateScheduledUpgradeFrame(state) {
   state.frameScheduleToken = (Number(state.frameScheduleToken) || 0) + 1;
   const invalidated = state.frameScheduled === true;
   state.frameScheduled = false;
+  // The pending callback that would have consumed this marker is being dropped — a stale bypass
+  // flag must not reorder the next unrelated admission.
+  state.stallBypassShipPass = false;
   return invalidated;
 }
 
@@ -3908,6 +3911,8 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
+  if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
+  state.stalledHogWakeTimer = null;
   state.loadingHullsOnly = false;
   scheduleNextUpgradeFrame(state);
   return held;
@@ -3922,6 +3927,8 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
+  if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
+  state.stalledHogWakeTimer = null;
   state.loadingHullsOnly = true;
   scheduleNextUpgradeFrame(state);
   return true;
@@ -3953,9 +3960,11 @@ function upgradeQueueState(scene) {
       frameScheduled: false,
       frameScheduleToken: 0,
       heldShipWakeTimer: null,
+      stalledHogWakeTimer: null,
       firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
+      stallBypassShipPass: false,
       loadingHullsOnly: false,
       lateSkips: 0,
       byBoundary: new Map(),
@@ -4064,59 +4073,80 @@ function firstFlightShipCanPassBusyPlace(state) {
   return active.length === 1 && active[0].entity?.type !== 'ship';
 }
 
-// Steady flight runs the serial lane at concurrency 1, so a non-ship job whose inner await
-// never settles (a wedged decode/transcode/residency park — the critical-hub job sat in flight
-// ~11 min behind place_station_trade_hub.glb and starved every combat ship queued behind it)
-// would block the lane for the rest of the session. Past this bound the same one-extra-slot
-// escape the first-flight hold grants applies in steady flight too.
+// Steady flight runs the serial lane at concurrency 1, so a job whose inner await never settles
+// (a wedged decode/transcode/residency park — the critical-hub job sat in flight ~11 min behind
+// place_station_trade_hub.glb and starved every combat ship queued behind it) would block the
+// lane for the rest of the session. Past this bound the same one-extra-slot escape the
+// first-flight hold grants applies in steady flight too — for every in-flight job, ship or not,
+// that has outlived any plausible upload window.
 const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
 const STALLED_HOG_WAKE_MS = 5000;
 
-function stalledNonShipHogCanPassShip(state) {
+function jobIsStalledInFlight(job, nowMs) {
+  if (!job || job.lifecycle !== 'in-flight') return false;
+  const startedAt = Number(job.inFlightAtMs);
+  return Number.isFinite(startedAt) && nowMs - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+}
+
+function queuedShipJobStillNeeded(state, job) {
+  return !!(job && job.entity && job.entity.type === 'ship' && jobStillNeeded(state, job));
+}
+
+/**
+ * One queued ship may pass the concurrency cap while every unreleased in-flight job is stalled
+ * past the bound. The admit path hoists needed ships to the head when it fires (the
+ * stallBypassShipPass marker), so a stale hog can never farm the lane behind ordinary dressing
+ * jobs, and a live ship admission still blocks the bypass — the serial ship invariant only
+ * yields to dead lanes.
+ */
+function stalledHogsCanPassShip(state) {
   if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true) {
     return false;
   }
-  if (!state.jobs.some((job) => job.entity && job.entity.type === 'ship'
-      && jobStillNeeded(state, job))) return false;
+  if (!state.jobs.some((job) => queuedShipJobStillNeeded(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
-  if (active.length !== 1 || active[0].entity?.type === 'ship') return false;
-  const startedAt = Number(active[0].inFlightAtMs);
-  return Number.isFinite(startedAt) && monotonicNow() - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+  if (!active.length) return false;
+  const now = monotonicNow();
+  return active.every((job) => jobIsStalledInFlight(job, now));
 }
 
 /**
  * The queue only re-enters on a scheduled frame, and a wedged in-flight job never schedules one —
- * poll at a slow cadence while an unreleased non-ship hog holds the lane so the stall bypass can
- * fire once the bound is crossed.
+ * poll at a slow cadence while any in-flight job exists so the stall bypass can fire once the
+ * bound is crossed and its diagnostic can close on schedule.
  */
 function armStalledHogWake(state) {
-  if (!state || state.heldShipWakeTimer != null) return;
+  // Owns its own timer field: scheduleHeldShipWake's 100ms wake must never wait behind this
+  // slow poll, and either callback re-arms what it still needs via scheduleNextUpgradeFrame.
+  if (!state || state.stalledHogWakeTimer != null) return;
+  // Poll only while an in-flight job still has work the wake can do: an open diagnostic to
+  // close, or a held serial slot a ship may need to pass. A GPU-detached job whose record the
+  // watchdog already closed can park forever without keeping this timer (and through it the
+  // queue state) alive.
   const active = [...state.byBoundary.values()].filter((job) =>
-    job.lifecycle === 'in-flight');
-  if (!active.some((job) => job.entity?.type !== 'ship')) return;
-  state.heldShipWakeTimer = setTimeout(() => {
-    state.heldShipWakeTimer = null;
-    settleStalledNonShipDiagnostics(state);
+    job.lifecycle === 'in-flight'
+    && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null));
+  if (!active.length) return;
+  state.stalledHogWakeTimer = setTimeout(() => {
+    state.stalledHogWakeTimer = null;
+    settleStalledUpgradeDiagnostics(state);
     scheduleNextUpgradeFrame(state);
   }, STALLED_HOG_WAKE_MS);
-  state.heldShipWakeTimer.unref?.();
+  state.stalledHogWakeTimer.unref?.();
 }
 
 /**
- * Close the 'running' diagnostic of a non-ship job whose inner await has outlived the stall
- * bound. The job stays lifecycle 'in-flight' and keeps its serial slot accounting — its promise
- * may still resolve and publish — but quiet-window gates that read activeJobs must not wait on
- * a dead lane. finishUpgradeDiagnostic is idempotent, so the job's own settle path is a no-op
- * whenever it eventually unwinds.
+ * Close the 'running' diagnostic of any job whose inner await has outlived the stall bound. The
+ * job stays lifecycle 'in-flight' and keeps its serial slot accounting — its promise may still
+ * resolve and publish — but quiet-window gates that read activeJobs must not wait on a dead
+ * lane. finishUpgradeDiagnostic is idempotent, so the job's own settle path is a no-op whenever
+ * it eventually unwinds.
  */
-function settleStalledNonShipDiagnostics(state) {
+function settleStalledUpgradeDiagnostics(state) {
   const now = monotonicNow();
   for (const job of state.byBoundary.values()) {
-    if (!job || job.lifecycle !== 'in-flight') continue;
-    if (job.entity?.type === 'ship') continue;
-    const startedAt = Number(job.inFlightAtMs);
-    if (!Number.isFinite(startedAt) || now - startedAt < AUTHORED_UPGRADE_NONSHIP_STALL_MS) continue;
+    if (!jobIsStalledInFlight(job, now)) continue;
     if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
       job.upgradeDiagnostic.status = 'stalled-slot-released';
     }
@@ -4426,14 +4456,19 @@ function scheduleNextUpgradeFrame(state) {
   if (state.firstFlightHandoffHold === true
       && !state.jobs.some(firstFlightReadableShipJob)) {
     scheduleHeldShipWake(state);
+    // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
+    // diagnostic closed on schedule.
+    armStalledHogWake(state);
     return;
   }
   if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
-  if (state.inFlight >= authoredUpgradeConcurrencyLimit()
-      && !firstFlightShipCanPassBusyPlace(state)
-      && !stalledNonShipHogCanPassShip(state)) {
-    armStalledHogWake(state);
-    return;
+  if (state.inFlight >= authoredUpgradeConcurrencyLimit()) {
+    const firstFlightPass = firstFlightShipCanPassBusyPlace(state);
+    if (!firstFlightPass && !stalledHogsCanPassShip(state)) {
+      armStalledHogWake(state);
+      return;
+    }
+    if (!firstFlightPass) state.stallBypassShipPass = true;
   }
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
@@ -4446,6 +4481,7 @@ function scheduleNextUpgradeFrame(state) {
         && !state.jobs.some(firstFlightReadableShipJob)) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
+      armStalledHogWake(state);
       return;
     }
     admitNextUpgradeJob(state);
@@ -4454,6 +4490,8 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
+  const stallBypassShipPass = state.stallBypassShipPass === true;
+  state.stallBypassShipPass = false;
   const live = authoredRuntimeState();
   if (live && live.mode === 'flight') {
     const gate = shouldStartHeavyAdmissionEventually(
@@ -4467,6 +4505,13 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
+    // The stall bypass exists to feed the ship lane; a queued needed ship must take the freed
+    // slot ahead of ordinary dressing or the hog's own kind could keep re-winning the escape.
+    if (stallBypassShipPass) {
+      const stallDelta = Number(queuedShipJobStillNeeded(state, b))
+        - Number(queuedShipJobStillNeeded(state, a));
+      if (stallDelta) return stallDelta;
+    }
     if (state.firstFlightHandoffHold === true) {
       const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
       if (urgentDelta) return urgentDelta;
@@ -4485,6 +4530,7 @@ function admitNextUpgradeJob(state) {
   });
   if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
     scheduleHeldShipWake(state);
+    armStalledHogWake(state);
     return null;
   }
   if (state.loadingHullsOnly === true) {
@@ -4492,6 +4538,7 @@ function admitNextUpgradeJob(state) {
     if (hullIndex < 0) {
       state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
       publishUpgradeDiagnostics(state);
+      armStalledHogWake(state);
       return null;
     }
     if (hullIndex > 0) {
@@ -4504,6 +4551,7 @@ function admitNextUpgradeJob(state) {
   if (!job) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
+    armStalledHogWake(state);
     return null;
   }
   if (!jobStillNeeded(state, job)) {
@@ -4563,14 +4611,18 @@ function admitNextUpgradeJob(state) {
     }
   }).catch((error) => {
     failure = error;
-    diagnostic.status = 'fallback-after-error';
-    diagnostic.error = error && error.message ? error.message : String(error);
+    // A stall-released record keeps its verdict; the boundary recovery below still runs — only
+    // the closed diagnostic is immutable.
+    if (diagnostic.endedAtMs == null) {
+      diagnostic.status = 'fallback-after-error';
+      diagnostic.error = error && error.message ? error.message : String(error);
+    }
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
     if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
       // The job's owner died under a kept boundary (save recook) — a terminal verdict would
       // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
       markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
-      diagnostic.status = 'awaiting-authored-admission';
+      if (diagnostic.endedAtMs == null) diagnostic.status = 'awaiting-authored-admission';
       console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
     } else {
       job.boundary.userData.authoredAssetState = 'fallback-after-error';

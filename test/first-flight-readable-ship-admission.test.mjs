@@ -171,6 +171,10 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
   station.userData.authoredAssetState = 'loading';
   scene.add(station);
   const stationEntity = { id: 'station', type: 'station', alive: true, mesh: station };
+  const dressing = new THREE.Group();
+  dressing.userData.authoredAssetState = 'loading';
+  scene.add(dressing);
+  const dressingEntity = { id: 'dressing', type: 'place', alive: true, mesh: dressing };
   const ship = new THREE.Group();
   ship.userData.authoredAssetState = 'loading';
   scene.add(ship);
@@ -181,6 +185,7 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
   };
   globalThis.window.SF.state.entities.set('ship', shipEntity);
   let shipStarted = false;
+  let dressingStarted = false;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   try {
     // No first-flight hold: steady flight, serial lane, the station goes in flight and never settles.
@@ -192,26 +197,47 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
     assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 1);
+    // Dressing joins the queue before the ship: enqueued earlier at the same priority it would
+    // win the freed slot unless the bypass explicitly hoists a needed ship.
+    enqueueBoundaryUpgrade(scene, {
+      boundary: dressing, entity: dressingEntity, options: {},
+      run: () => { dressingStarted = true; dressing.userData.authoredAssetState = 'authored'; },
+    });
     enqueueBoundaryUpgrade(scene, {
       boundary: ship, entity: shipEntity, options: {},
       run: () => { shipStarted = true; ship.userData.authoredAssetState = 'authored'; },
     });
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(shipStarted, false, 'the serial lane must not overlap a fresh admission');
-    // The hog crosses the stall bound; the wake poll then releases its diagnostic and bypasses it.
+    assert.equal(describeAuthoredUpgradeQueue(scene).pending, 2,
+      'dressing must actually sit queued ahead of the ship or the hoist assertion is vacuous');
+    // The hog crosses the stall bound; the wake poll then releases its diagnostic and bypasses
+    // it. Poll instead of sleeping a fixed span — the wake timer is real and a starved host may
+    // fire it late.
     fakeNow += 121_000;
-    await sleep(5_600);
-    while (scheduled.length) {
-      scheduled.shift()(0);
-      await new Promise((resolve) => setImmediate(resolve));
+    const deadline = Date.now() + 30_000;
+    while (!shipStarted && Date.now() < deadline) {
+      await sleep(250);
+      while (scheduled.length) {
+        scheduled.shift()(0);
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
     assert.equal(shipStarted, true, 'a stalled non-ship hog cannot starve the serial ship lane');
-    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 0,
+    assert.equal(dressingStarted, false,
+      'the freed slot belongs to the queued ship, not to earlier dressing work');
+    const diagnostics = scene.userData.authoredUpgradeDiagnostics;
+    const stationRecord = diagnostics.jobs.find((j) => j.entityId === 'station');
+    assert.equal(stationRecord?.status, 'stalled-slot-released',
+      'the wedged job keeps its watchdog verdict in the diagnostic record');
+    assert.equal(diagnostics.activeJobs, 0,
       'the stalled job diagnostic must not hold upload-quiet gates open');
     // The wedged promise still settles late — bookkeeping must not double-count its release.
     finishStation();
     await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 0);
+    assert.equal(diagnostics.activeJobs, 0);
+    assert.equal(stationRecord.status, 'stalled-slot-released',
+      'the late settle must not overwrite the watchdog verdict');
   } finally {
     finishStation?.();
     performance.now = previousNow;

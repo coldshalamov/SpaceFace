@@ -891,22 +891,27 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
     detail.timeScaleRequests = sf.timeEffects?.describeRequests?.() || null;
     const diagJobs = state.render?.scene?.userData?.authoredUpgradeDiagnostics?.jobs;
     if (Array.isArray(diagJobs)) {
-      detail.runningJobs = diagJobs.filter((j) => j && j.status === 'running').slice(-4).map((j) => {
-        // A running job that never settles is the starvation signature. Name the await it is
-        // parked on: the boundary stamps authoredAssetState per stage and authoredPreparePhase
-        // when it parks on the opening-publication gate.
-        const jobEntity = j.entityId != null ? state.entities.get(j.entityId) : null;
-        const jobUd = jobEntity?.mesh?.userData || null;
-        return {
-          key: j.key,
-          entityId: j.entityId ?? null,
-          assets: (j.assetUrls || []).slice(-3).map((u) => String(u).split('/').pop()),
-          runningForMs: j.startedAtMs != null ? Math.round(performance.now() - j.startedAtMs) : null,
-          boundaryState: jobUd?.authoredAssetState || null,
-          preparePhase: jobUd?.authoredPreparePhase || null,
-          graphFrozen: state.render?.openingGraphPublicationFrozen === true || null,
-        };
-      });
+      detail.runningJobs = diagJobs
+        // 'stalled-slot-released' is the watchdog's close of a still-parked job — it must stay
+        // visible here or a starvation dump would hide the hog it just rescued the lane from.
+        .filter((j) => j && (j.status === 'running' || j.status === 'stalled-slot-released'))
+        .slice(-4).map((j) => {
+          // A running job that never settles is the starvation signature. Name the await it is
+          // parked on: the boundary stamps authoredAssetState per stage and authoredPreparePhase
+          // when it parks on the opening-publication gate.
+          const jobEntity = j.entityId != null ? state.entities.get(j.entityId) : null;
+          const jobUd = jobEntity?.mesh?.userData || null;
+          return {
+            key: j.key,
+            entityId: j.entityId ?? null,
+            status: j.status === 'stalled-slot-released' ? j.status : undefined,
+            assets: (j.assetUrls || []).slice(-3).map((u) => String(u).split('/').pop()),
+            runningForMs: j.startedAtMs != null ? Math.round(performance.now() - j.startedAtMs) : null,
+            boundaryState: jobUd?.authoredAssetState || null,
+            preparePhase: jobUd?.authoredPreparePhase || null,
+            graphFrozen: state.render?.openingGraphPublicationFrozen === true || null,
+          };
+        });
     }
     const shipIds = snapshot.liveInjectedIds.filter((id) => state.entities.get(id)?.type === 'ship');
     if (!['legacy-current', 'rebase'].includes(snapshot.presentationWorldMode) && !shipIds.length) {
