@@ -7596,8 +7596,12 @@ export const render = {
         // batches — it only moves the uploads into the first presented frames. Always seal.
         let firstFrameResidency = null;
         try {
+          // A raw yield makes the seal O(items x task latency): the texture loop and every
+          // geometry batch each paid a full scheduling round-trip (~500 hops on a busy host).
+          // The sliced cadence matches the warm-roots stamp above — real uploads still interleave
+          // with the shell presenter, just without donating a frame per item.
           firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
-            yieldToMain: yieldToBrowser,
+            yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
             includeEmpty: true,
             onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           });
@@ -8278,6 +8282,10 @@ export const render = {
       let crucibleWarmRoot = crucibleWarm && crucibleWarm.root ? crucibleWarm.root : null;
       this._earlyCrucibleWarm = null;
       this._earlyCrucibleWarmMenu = false;
+      // An early-opening warm held its whole-ship decodes back (deferFleetDecodes) so the
+      // library/visuals gates keep the decode thread; the cook claim is where the mid-cook
+      // begin used to start them — fire them now for the same runway.
+      this._startDeferredWarmDecodes(crucibleWarm);
       if (!crucibleWarm && warmFirstFlightFx && !cookOverBudget()) {
         try {
           crucibleWarm = this._beginCrucibleBoundedRosterWarm({
@@ -9002,7 +9010,9 @@ export const render = {
         }
         openingStepStarted = openingNow();
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
-          yieldToMain: yieldToBrowser,
+          // Same sliced cadence as the end-of-cook census: per-item task hops
+          // cost more than the small uploads themselves on a contended host.
+          yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
           includeEmpty: true,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
@@ -10908,7 +10918,19 @@ export const render = {
         .map((file) => ({ file, slot: 'place' })),
       ...spawnableShipArchetypePrewarmUrls().map((file) => ({ file, slot: 'hull' })),
     ];
+    // options.deferFleetDecodes (the early opening warm): the whole-ship 'hull' entries are the
+    // multi-MB share of this list, and on the opening route there is no menu dwell to hide them —
+    // starting ~100 MB of meshopt decodes at scenePrepared just steals the single decode thread
+    // from the authored-library/visuals gates. Keep them for the cook claim so their runway
+    // matches the mid-cook begin they replace. The small place/pod bodies still start now:
+    // their packaged-body attaches are exactly what the roster settle used to time out on.
+    const deferFleetDecodes = options.deferFleetDecodes === true;
+    warm.deferredDecodes = [];
     for (const { file, slot } of explicitFiles) {
+      if (deferFleetDecodes && slot === 'hull') {
+        warm.deferredDecodes.push({ file, slot });
+        continue;
+      }
       warm.decodes.push(track(loadAuthoredPart(`${releaseRoot}${file}`, {
         renderer,
         slot,
@@ -10919,6 +10941,32 @@ export const render = {
       }), `decode:${file}`));
     }
     return warm;
+  },
+
+  /**
+   * Fire the hull-slot decodes an early-opening warm held back at begin() (see
+   * deferFleetDecodes). Idempotent: the cook's claim site and the finish() backstop both
+   * call it; a crucible warm never has a deferred list, so it is a no-op there.
+   */
+  _startDeferredWarmDecodes(warm) {
+    const files = warm && warm.deferredDecodes;
+    if (!Array.isArray(files) || files.length === 0) return;
+    warm.deferredDecodes = [];
+    const { renderer, state } = this;
+    if (!renderer || !warm.track) return;
+    const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+      || 'assets/ships/release/parts/';
+    const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    for (const { file, slot } of files) {
+      warm.decodes.push(warm.track(loadAuthoredPart(`${releaseRoot}${file}`, {
+        renderer,
+        slot,
+        optional: true,
+        residencyRole: 'crucible-roster-warm',
+        sectorId,
+        isResidencyOwnerActive: () => warm.building === true,
+      }), `decode:${file}`));
+    }
   },
 
   /**
@@ -10941,14 +10989,15 @@ export const render = {
       // not the Crucible leaves it orphaned: discard it now so its hidden root never reaches
       // the ordinary cook's censuses.
       if (!survivalRunHoldsArena(state)) {
+        // A door-staged crucible warm belongs to no launch the player took —
+        // discard it, then let the ordinary New Game claim the same slot for
+        // its opening-species cohort below instead of returning empty.
         this._discardEarlyCrucibleWarm();
-        return;
-      }
-      // The door staged this warm before a run existed, so it scoped to the default ruleset
-      // (swarm, wave-1 eligibility). A scored/boss_circuit launch can field the whole roster —
-      // the scoped cohort would leave its hulls cold. Restart unscoped and let the cook's own
-      // begin take the whole-roster branch.
-      if (state.run.ruleset !== SWARM_RULESET) {
+      } else if (state.run.ruleset !== SWARM_RULESET) {
+        // The door staged this warm before a run existed, so it scoped to the default ruleset
+        // (swarm, wave-1 eligibility). A scored/boss_circuit launch can field the whole roster —
+        // the scoped cohort would leave its hulls cold. Restart unscoped and let the cook's own
+        // begin take the whole-roster branch.
         this._discardEarlyCrucibleWarm();
       } else {
         this._earlyCrucibleWarmMenu = false;
@@ -10957,11 +11006,21 @@ export const render = {
       }
     }
     if (state.mode !== 'loading') return;
-    if (!survivalRunHoldsArena(state)) return;
     try {
+      const openingProfile = !survivalRunHoldsArena(state);
       const warm = this._beginCrucibleBoundedRosterWarm({
         yieldToMain: yieldToBrowser,
-        profile: 'crucible',
+        // The opening profile is deterministic at scenePrepared — the scripted-intro species
+        // manifest needs no run. Beginning here starts the packaged-body attaches during the
+        // library/visuals/GPU waits; the cook used to begin the warm mid-cook, so the roster
+        // settle still found ten decodes and the drone attach in flight at the shell-release
+        // boundary (the 8 s open-route timeout). The heavy fleet decodes stay deferred to the
+        // cook claim (deferFleetDecodes) — starting ~100 MB of meshopt work at scenePrepared
+        // measured as pure contention on the authored-library/visuals gates (+8 s) because
+        // decode shares the one main thread, and it tripled the finish() cohort's compile
+        // sweep inside the shell (+10 s on live.postOpeningPipelines).
+        profile: openingProfile ? 'opening' : 'crucible',
+        deferFleetDecodes: openingProfile,
       });
       if (!warm || !warm.root) return;
       if (warm.root.parent !== scene) scene.add(warm.root);
@@ -11066,6 +11125,9 @@ export const render = {
       ? options.budgetRemainingMs
       : () => Infinity;
     const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    // Backstop: an early-opening warm's deferred fleet decodes fire at the cook claim; if a
+    // path skipped that claim they must still start here rather than never decoding.
+    this._startDeferredWarmDecodes(warm);
     // The explicit decodes and packaged-body attaches get the share of the cook budget that is
     // actually left — never an unbounded wait: an unbounded one once held the shell for the
     // whole 360 s gate and drained the warm's own compiles into flight (the
