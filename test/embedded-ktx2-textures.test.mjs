@@ -142,3 +142,89 @@ test('registered on the vendored GLTFLoader it replaces the built-in KHR_texture
     'the parser resolves KHR_texture_basisu to this plugin',
   );
 });
+
+test('a plain bufferView is sliced once straight off the GLB body, without touching the bufferView cache', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const body = new Uint8Array(64);
+  for (let i = 0; i < body.length; i += 1) body[i] = (i * 7 + 3) & 0xff;
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 1, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  });
+  parser.json.bufferViews = [
+    { buffer: 0, byteOffset: 0, byteLength: 8 },
+    { buffer: 0, byteOffset: 17, byteLength: 21 },
+  ];
+  const received = [];
+  ktx2Loader.parse = (buffer, onLoad) => {
+    received.push(new Uint8Array(buffer.slice(0)));
+    structuredClone(buffer, { transfer: [buffer] });
+    onLoad(new THREE.CompressedTexture([], 4, 4));
+  };
+  parser.getDependency = (type, index) => {
+    parser.dependencyCalls.push([type, index]);
+    assert.equal(type, 'buffer', 'only the binary body is requested');
+    return Promise.resolve(body.buffer);
+  };
+
+  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+
+  assert.deepEqual(parser.dependencyCalls, [['buffer', 0]]);
+  assert.deepEqual(received, [body.slice(17, 38)], 'the transcoder gets exactly body[byteOffset, byteOffset + byteLength)');
+  assert.equal(body.buffer.byteLength, 64, 'the parser-cached GLB body is not detached');
+});
+
+test('extension-decoded bufferViews keep the parser bufferView path and its copy', async () => {
+  const ktx2Loader = fakeKtx2Loader();
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ bufferView: 0, mimeType: 'image/ktx2' }],
+    textures: [{ source: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+  });
+  parser.json.bufferViews = [
+    { buffer: 0, byteLength: 5, extensions: { EXT_meshopt_compression: { buffer: 1, byteLength: 5 } } },
+  ];
+
+  await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+
+  assert.deepEqual(parser.dependencyCalls, [['bufferView', 0]]);
+  assert.deepEqual(ktx2Loader.parsed, [5]);
+  assert.equal(parser.cachedBufferView(0).byteLength, 5, 'the parser-cached bufferView is not detached');
+});
+
+test('real render package: KTX2 bytes handed to the transcoder are identical with the direct slice on and off', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { setEmbeddedKtx2DirectSliceForBench } = await import('../src/render/embeddedKtx2Textures.js');
+  const glbUrl = new URL('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb', import.meta.url);
+  const glb = readFileSync(glbUrl);
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  await MeshoptDecoder.ready;
+
+  async function collect(on) {
+    setEmbeddedKtx2DirectSliceForBench(on);
+    const seen = [];
+    const ktx2Loader = {
+      parse(buffer, onLoad) {
+        seen.push(Buffer.from(buffer.slice(0)).toString('base64'));
+        structuredClone(buffer, { transfer: [buffer] });
+        onLoad(new THREE.CompressedTexture([], 4, 4));
+      },
+    };
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.register(registerEmbeddedKtx2Textures);
+    loader.setKTX2Loader(ktx2Loader);
+    const ab = glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength);
+    await loader.parseAsync(ab, '');
+    return seen.sort();
+  }
+  try {
+    const off = await collect(false);
+    const on = await collect(true);
+    assert.ok(off.length > 0, 'the package carries embedded KTX2 images');
+    assert.deepEqual(on, off);
+  } finally {
+    setEmbeddedKtx2DirectSliceForBench(true);
+  }
+});
