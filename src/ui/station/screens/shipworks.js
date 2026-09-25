@@ -82,7 +82,7 @@ import {
   sanitizePresetSelectionMap,
 } from '../../ship/loadoutPresets.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
-import { createStagePoster } from '../../ship/hullPoster.js';
+import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -763,9 +763,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     previewSettleTimer = setTimeout(() => watchPreviewSettlement(defId, generation, startedAt), 50);
   }
 
+  // The preview's bay has one owner: For Sale draws the hull alone on the stage ring's glass, so the
+  // hangar set leaves the render there; every other state keeps the docked station's bay.
+  function syncStageDock() {
+    if (!mount) return;
+    if (host === 'dock' && mode === 'buy') { if (typeof mount.setDockId === 'function') mount.setDockId(null); return; }
+    syncShipworksDockForState(mount, ctx.state);
+  }
+
   function ensureMount() {
     if (mount) {
-      syncShipworksDockForState(mount, ctx.state);
+      syncStageDock();
       return mount;
     }
     if (previewMountFailed) return null;
@@ -825,6 +833,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     delete canvas.dataset.previewBlocked;
     stageEl.classList.remove('is-preview-unavailable');
+    syncStageDock();
     // Read-only hook used by the live browser acceptance probe. It exposes the preview's rendered
     // scene facts without giving UI code permission to mutate Three.js objects.
     Object.defineProperty(canvas, '__sfPreviewDiagnostics', {
@@ -1631,59 +1640,187 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // The hardpoint buttons stay the controls (focus, Enter, the chooser, the checks); a node or its
   // name is a way to the same button. Where a hull has no drawing the schematic stands down and the
   // live stage shows as before.
-  // the stage ring's geometry: the same formula the hull jig uses, so the hull for sale sits in the same dial
+  // ONE STAGE RING: the dial the Fleet jig draws and the For Sale ring are one box. The band under the
+  // dial (the verbs' row, and on a short screen the caption) is reserved from the stage's size alone, so
+  // the jig's ring never chases the verbs and the verbs never chase the ring; For Sale reuses the ring the
+  // jig last drew at this stage size, so switching modes reloads the same dial.
+  const RING_EDGE = 40; const RING_GAP = 30; const RING_LABEL = 220;
+  const ringShort = () => (typeof window !== 'undefined' ? window.innerHeight : 1080) <= 800;
+  // the jig's own radius rule for a band [top, bottom] (src/ui/orrery/hullSchematic.js)
+  function ringRadius(W, top, bottom) {
+    const bandMargin = Math.min(52, Math.round((bottom - top) * 0.11));
+    return Math.max(110, Math.min(W / 2 - RING_EDGE - RING_GAP - RING_LABEL, (bottom - top) / 2 - bandMargin));
+  }
+  // where the verbs' row stands (stage px): under the dial's engraving on a tall stage; on a short
+  // dock stage its words stand on the stage's foot, clear of the dial's caption and of the dock rail
+  function verbRowTop(W, H) {
+    if (ringShort() && host === 'dock') return H - 13;
+    return H / 2 + ringRadius(W, 28, H - 28) + 42;
+  }
+  // the top of the jig's band: nameplate lines crossing the stage's middle third push it down (the jig's rule)
+  function jigBandTop(W, H) {
+    const sr = stageEl.getBoundingClientRect();
+    let top = 28;
+    for (const e of [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), el.querySelector('.sx-sw__gauges')]) {
+      if (!e) continue;
+      const r = e.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0)) continue;
+      const ob = { left: r.left - sr.left - 12, right: r.right - sr.left + 12, top: r.top - sr.top - 12, bottom: r.bottom - sr.top + 12 };
+      if (ob.right <= W * 0.34 || ob.left >= W * 0.66) continue;
+      if ((ob.top + ob.bottom) / 2 < H / 2) top = Math.max(top, ob.bottom);
+    }
+    return top;
+  }
+  // the bottom of the dial's band (stage px): the verbs' row less its clearance; on a short dock stage
+  // the dial's foot stands 27px above the stage's foot, so its caption and the verbs both clear it
+  function ringBandBottom(W, H, top) {
+    if (!(ringShort() && host === 'dock')) return Math.min(H - 28, verbRowTop(W, H) - 12);
+    let bottom = H - 28;
+    for (let i = 0; i < 3; i++) bottom = Math.min(H - 28, 2 * (H - 27 - ringRadius(W, top, bottom)) - top);
+    return bottom;
+  }
+  // the band under the dial as the jig's obstacle: the dial's own width, from the band to the stage's foot
+  // (it spans the middle third, so the jig's band ends on it; it stays out of the label columns)
+  const ringBandObstacle = {
+    getBoundingClientRect() {
+      const sr = stageEl.getBoundingClientRect();
+      const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
+      const top = sr.top + ringBandBottom(W, H, jigBandTop(W, H)) + 12;
+      const left = sr.left + W / 2 - 110;
+      const bottom = Math.max(top + 1, sr.top + H);
+      return { left, right: left + 220, top, bottom, width: 220, height: bottom - top, x: left, y: top };
+    },
+  };
+  // the ring the jig drew last, read off its own dial path, with the stage size it was drawn for
+  let jigRing = null;
+  function readJigRing() {
+    if (!jigHost || !jigHost.classList.contains('orr-hull--on')) return null;
+    for (const p of jigHost.querySelectorAll('path.orr-rest')) {
+      const m = /^M (-?[\d.]+) (-?[\d.]+) A (-?[\d.]+) \3 0 1 1 [^A]+A /.exec(p.getAttribute('d') || '');
+      const vb = p.ownerSVGElement && String(p.ownerSVGElement.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      if (m && vb && vb.length === 4) return { hx: Number(m[1]), hy: Number(m[2]) + Number(m[3]), R: Number(m[3]), W: Math.round(vb[2]), H: Math.round(vb[3]) };
+    }
+    return null;
+  }
+  // the stage ring's geometry: the jig's own ring at this stage size, else the jig's formula over the same band
   function stageRingGeo() {
     const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
     if (W < 240 || H < 160) return null;
-    const edge = 40; const gap = 30; const labelWidth = 220;
-    const bandMargin = Math.min(52, Math.round((H - 56) * 0.11));
-    const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (H - 56) / 2 - bandMargin));
-    return { hx: W / 2, hy: H / 2, R, W, H };
+    if (mode !== 'buy') { const r = readJigRing(); if (r) jigRing = r; }
+    if (jigRing && Math.abs(jigRing.W - W) <= 1 && Math.abs(jigRing.H - H) <= 1) return { hx: jigRing.hx, hy: jigRing.hy, R: jigRing.R, W, H };
+    const top = mode === 'buy' ? 28 : jigBandTop(W, H);
+    const bottom = ringBandBottom(W, H, top);
+    const R = ringRadius(W, top, bottom);
+    // For Sale reached before the jig has drawn at this size: on a short dock stage the Fleet dial stands
+    // on its foot line (the nameplate's lines push it there), so the sale dial stands there too
+    const hy = mode === 'buy' && ringShort() && host === 'dock' ? Math.max((top + bottom) / 2, H - 27 - R) : (top + bottom) / 2;
+    return { hx: W / 2, hy, R, W, H };
+  }
+  // the render manifest: a hull's length for the caption (four hulls carry one; the rest say none)
+  let posterManifest = null;
+  loadHullPosterManifest().then((m) => { if (m) { posterManifest = m; scheduleSpatialProjection(); } }).catch(() => {});
+  function hullLengthM(defId) {
+    const hull = posterManifest && posterManifest.hulls && posterManifest.hulls[defId];
+    const view = hull && (hull.hero || hull.top || hull.side);
+    const n = view && Array.isArray(view.hullSize) ? Number(view.hullSize[view.longAxis || 0]) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  // a caption on the dial's lower arc, reading left to right, baseline `r` out from the centre
+  function captionArc(svgEl, g, r, text, id) {
+    const f = (n) => Math.round(n * 100) / 100;
+    const [x0, y0] = orrPolar(g.hx, g.hy, r, 240);
+    const [x1, y1] = orrPolar(g.hx, g.hy, r, 120);
+    svgEl.appendChild(orrSvg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${f(r)} ${f(r)} 0 0 0 ${f(x1)} ${f(y1)}`, fill: 'none', stroke: 'none' }));
+    const t = orrSvg('text', { class: 'sx-sw__salering-cap' });
+    const tp = orrSvg('textPath', { href: `#${id}`, startOffset: '50%', 'text-anchor': 'middle' });
+    tp.textContent = text;
+    t.appendChild(tp);
+    svgEl.appendChild(t);
+  }
+  // the caption's radius: the jig engraving's on a tall stage, tucked under the foot on a short one
+  const captionRadius = (g) => g.R + (ringShort() ? 16 : 38);
+  // the Fleet dial's caption where the jig could not engrave one (its leaders cross both arcs on a short stage)
+  let jigCaption = null;
+  let fleetCap = null;
+  function drawFleetCaption(g) {
+    const want = g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
+      && !jigHost.querySelector('.orr-micro');
+    if (!want) { if (fleetCap) { fleetCap.remove(); fleetCap = null; } return; }
+    if (!fleetCap) { fleetCap = orrSvg('svg', { class: 'orr-svg sx-sw__fleetcap', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(fleetCap); }
+    fleetCap.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
+    fleetCap.textContent = '';
+    const len = hullLengthM(jigCaption.defId);
+    const text = [jigCaption.name, len ? `${len.toFixed(1)} m` : ''].filter(Boolean).join(' · ').toUpperCase();
+    if (text) captionArc(fleetCap, g, captionRadius(g), text, 'sx-sw-fleetcap');
   }
   let saleRing = null;
+  let saleZoomKey = '';
   // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
   // words as marks on the upper arc, a glass under the render so the ship separates from the hangar
   function drawSaleRing(g) {
-    if (!g) { if (saleRing) { saleRing.remove(); saleRing = null; } stageEl.classList.remove('has-salering'); return; }
+    if (!g) {
+      if (saleRing) { saleRing.remove(); saleRing = null; }
+      saleZoomKey = '';
+      stageEl.classList.remove('has-salering', 'has-viewmarks');
+      return;
+    }
     if (!saleRing) { saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(saleRing); }
     saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
     saleRing.textContent = '';
     const f = (n) => Math.round(n * 100) / 100;
     saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'orr-core sx-sw__salering-ring', 'stroke-width': 1 }));
     saleRing.appendChild(orrSvg('path', { d: orrTicksD(g.hx, g.hy, g.R + 6, 72, { len: 4, major: 6, majorLen: 8 }), class: 'orr-core sx-sw__salering-ticks', 'stroke-width': 1 }));
-    // the caption on the lower arc, reading left to right: name, class, tier, mass
-    const side = el.querySelector('.sx-sw__side');
-    const nameEl = side && [...side.querySelectorAll('h2, .k-display, .k-t-title')].find((e) => /[A-Za-z]{3,}/.test(e.textContent || '') && !/^[\d,\s]+$/.test((e.textContent || '').trim()));
-    const specs = side ? [...side.querySelectorAll('.sx-spec > li')] : [];
-    const val = (label) => { const li = specs.find((x) => (x.querySelector('.k-row__name') || {}).textContent && x.querySelector('.k-row__name').textContent.trim().toLowerCase().startsWith(label)); return li ? String((li.querySelector('.k-row__num') || {}).textContent || '').replace(/\s+/g, ' ').trim() : ''; };
-    const parts = [nameEl ? nameEl.textContent.trim() : '', val('class'), val('mass')].filter(Boolean);
-    if (parts.length) {
-      const id = 'sx-sw-salecap';
-      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 24, 215);
-      const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 24, 145);
-      saleRing.appendChild(orrSvg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${f(g.R + 24)} ${f(g.R + 24)} 0 0 0 ${f(x1)} ${f(y1)}`, fill: 'none', stroke: 'none' }));
-      const t = orrSvg('text', { class: 'sx-sw__salering-cap' });
-      const tp = orrSvg('textPath', { href: `#${id}`, startOffset: '50%', 'text-anchor': 'middle' });
-      tp.textContent = parts.join(' \u00b7 ').toUpperCase();
-      t.appendChild(tp);
-      saleRing.appendChild(t);
+    // the caption on the lower arc leads with the hull's name, then what the column beside does not say:
+    // its length and its role
+    const def = SHIP_BY_ID.get(buyId);
+    if (def) {
+      const len = hullLengthM(def.id);
+      const role = (describeHullRole(def.id) || {}).roleLabel || def.role || '';
+      const text = [def.name, len ? `${len.toFixed(1)} m` : '', role].filter(Boolean).join(' \u00b7 ').toUpperCase();
+      if (text) captionArc(saleRing, g, captionRadius(g), text, 'sx-sw-salecap');
     }
     stageEl.classList.add('has-salering');
-    // the live render fits the ring: its long axis at four fifths of the dial
-    try { if (mount && typeof mount.setZoom === 'function' && poster.isLive && poster.isLive()) mount.setZoom(Math.max(0.2, Math.min(1, (2 * g.R * 0.82) / g.W))); } catch (_) { /* a mount without zoom keeps its own fit */ }
+    // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale):
+    // at zoom 1 its bounding sphere fills 0.95 of the ring, so the hull stays inside it at every bearing
+    const zoomKey = `${buyId}|${Math.round(g.R)}`;
+    if (mount && typeof mount.setZoom === 'function' && zoomKey !== saleZoomKey) {
+      saleZoomKey = zoomKey;
+      try { mount.setZoom(1); } catch (_) { /* a mount without zoom keeps its own fit */ }
+    }
     stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
     stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
     stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
-    // the view words stand on the upper arc as marks: left 300, centre 0, right 60 degrees
+    // the view words are marks on the upper arc (left 300, centre 0, right 60 degrees): a tick across the
+    // ring's stroke at each bearing, the word seated beyond it by its nearest corner at R + 12. They stand
+    // wherever a live hull exists or is on its way (the poster yields to it); with no preview they would
+    // be dead controls, so they stand down.
     const cam = el.querySelector('.sx-sw__camera');
-    if (cam) {
-      const angles = { left: 300, reset: 0, right: 60 };
-      for (const b of cam.querySelectorAll('[data-camera]')) {
-        const a = angles[b.getAttribute('data-camera')] ?? 0;
-        const [x, y] = orrPolar(g.hx, g.hy, g.R + 22, a);
-        b.style.left = `${Math.round(x)}px`; b.style.top = `${Math.round(y)}px`;
-      }
-      if (!cam.querySelector('.is-current')) { const c = cam.querySelector('[data-camera="reset"]'); if (c) c.classList.add('is-current'); }
+    const marks = !!(cam && mount);
+    stageEl.classList.toggle('has-viewmarks', marks);
+    if (!marks) return;
+    const angles = { left: 300, reset: 0, right: 60 };
+    if (!cam.querySelector('.is-current')) { const c = cam.querySelector('[data-camera="reset"]'); if (c) c.classList.add('is-current'); }
+    const current = cam.querySelector('[data-camera].is-current');
+    const currentKey = current ? current.getAttribute('data-camera') : 'reset';
+    for (const [key, a] of Object.entries(angles)) {
+      const on = key === currentKey;
+      const [ix, iy] = orrPolar(g.hx, g.hy, g.R - (on ? 7 : 5), a);
+      const [ox, oy] = orrPolar(g.hx, g.hy, g.R + (on ? 8 : 6), a);
+      saleRing.appendChild(orrSvg('path', { d: `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`, class: `orr-core sx-sw__salering-mark${on ? ' is-current' : ''}`, 'stroke-width': on ? 1.5 : 1 }));
+    }
+    for (const b of cam.querySelectorAll('[data-camera]')) {
+      const a = angles[b.getAttribute('data-camera')] ?? 0;
+      const [px, py] = orrPolar(g.hx, g.hy, g.R + 12, a);
+      const cs = getComputedStyle(b);
+      const pl = parseFloat(cs.paddingLeft) || 0; const pr = parseFloat(cs.paddingRight) || 0;
+      const pt = parseFloat(cs.paddingTop) || 0; const pb = parseFloat(cs.paddingBottom) || 0;
+      const cw = Math.max(0, (b.offsetWidth || 0) - pl - pr); const ch = Math.max(0, (b.offsetHeight || 0) - pt - pb);
+      const sx = Math.sin((a * Math.PI) / 180); const sy = -Math.cos((a * Math.PI) / 180);
+      // the corner of the word's text box nearest the ring sits on P
+      const fx = sx > 0.1 ? 0 : sx < -0.1 ? 1 : 0.5;
+      const fy = sy < -0.1 ? 1 : sy > 0.1 ? 0 : 0.5;
+      b.style.left = `${Math.round(px - pl - fx * cw)}px`;
+      b.style.top = `${Math.round(py - pt - fy * ch)}px`;
     }
   }
   // the verbs' one home, both modes and both sizes: centred under the ring's caption
@@ -1693,9 +1830,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
     if (!g || !el.classList.contains('sx-sw--buying')) { for (const k of props) stats.style.removeProperty(k); return; }
     const sr = stageEl.getBoundingClientRect();
-    const w = Math.max(170, Math.min(250, g.hx - g.R - 28));
+    // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
+    const tight = ringShort();
+    const w = Math.max(170, Math.min(250, g.hx - g.R - (tight ? 18 : 28)));
     stats.style.setProperty('position', 'fixed', 'important');
-    stats.style.setProperty('left', `${Math.round(sr.left + 16)}px`, 'important');
+    stats.style.setProperty('left', `${Math.round(sr.left + (tight ? 6 : 16))}px`, 'important');
     stats.style.setProperty('width', `${Math.round(w)}px`, 'important');
     stats.style.setProperty('max-width', `${Math.round(w)}px`, 'important');
     stats.style.setProperty('right', 'auto', 'important');
@@ -1706,16 +1845,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const short = sr.height < 600;
     stats.style.setProperty('top', `${Math.round(short ? sr.top + 6 : sr.bottom - h - 14)}px`, 'important');
   }
+  // the verbs' one home, both modes: one row centred on the dial, at the band reserved under it
   function seatVerbs(g) {
     seatSaleStats(g);
     const rack = el.querySelector('.sx-sw-verbs');
     if (!rack) return;
     if (!g) { rack.style.cssText = ''; return; }
     const sr = stageEl.getBoundingClientRect();
-    const short = window.innerHeight <= 800;
     const w = rack.offsetWidth || 300;
     const rh = rack.offsetHeight || 29;
-    const top = short ? sr.bottom - rh + 4 : sr.top + g.hy + g.R + 42;
+    const top = ringShort() && host !== 'dock' ? sr.bottom - rh + 4 : sr.top + verbRowTop(g.W, g.H);
     rack.style.cssText = `position:fixed !important; left:${Math.round(sr.left + g.hx - w / 2)}px !important; top:${Math.round(top)}px !important; margin:0 !important; z-index:4;`;
   }
   let jig = null;
@@ -1729,7 +1868,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     jig = createHullSchematic({
       host: jigHost,
       // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
-      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), el.querySelector('.sx-sw-verbs'), el.querySelector('.sx-sw__gauges')],
+      // (the verbs' band is reserved from the stage's size, so the ring never chases the verbs)
+      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
       labelWidth: 220,
       gap: 30,
       edge: 40,
@@ -1742,6 +1882,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         if (anchor) openChooser(index, anchor);
       },
     });
+    // the stage ring and the Fleet caption follow the jig's dial wherever it lays out
+    if (typeof MutationObserver !== 'undefined') new MutationObserver(() => scheduleSpatialProjection()).observe(jigHost, { childList: true, subtree: true });
     jigHost.addEventListener('click', (ev) => {
       const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
       if (!node) return;
@@ -1801,6 +1943,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     for (const stale of existing.values()) stale.remove();
     const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
     j.setHull(def ? def.id : null);
+    jigCaption = def ? { defId: def.id, name: shipName || def.name || '' } : null;
     j.setNodes(nodes, { engraving: def ? `${shipName || def.name || ''} \u00b7 ${fittedCount} of ${nodes.length} fitted` : '' });
     j.light(selectedSlot >= 0 && selectedSlot < nodes.length ? selectedSlot : -1, { swing: false });
   }
@@ -2015,12 +2158,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       const ringG = el.classList.contains('sx-sw--buying') ? stageRingGeo() : null;
       if (ringG) {
-        // the hull for sale sits inside the stage ring, its long axis 80% of the dial
+        // the hull for sale sits inside the stage ring by its own ink: its long side at four fifths of the
+        // dial, the ink box's corners inside the ring, the ink centred on the ring's centre
         const asp = poster.aspect() || 1.6;
-        const long = 2 * ringG.R * 0.8;
-        const w = asp >= 1 ? long : long * asp; const h = asp >= 1 ? long / asp : long;
-        const rect = { left: ringG.hx - w / 2, top: ringG.hy - h / 2, width: w, height: h };
-        fit = { imgRect: rect, inkRect: { left: rect.left, top: rect.top, right: rect.left + w, bottom: rect.top + h } };
+        const ink = poster.ink() || { x0: 0, y0: 0, x1: 1, y1: 1 };
+        const iw = Math.max(0.05, ink.x1 - ink.x0); const ih = Math.max(0.05, ink.y1 - ink.y0);
+        const inkAspect = (iw * asp) / ih;
+        let inkW = 2 * ringG.R * 0.8; let inkH = inkW / inkAspect;
+        if (inkH > inkW) { inkH = 2 * ringG.R * 0.8; inkW = inkH * inkAspect; }
+        const reach = Math.hypot(inkW, inkH) / (2 * ringG.R * 0.94);
+        if (reach > 1) { inkW /= reach; inkH /= reach; }
+        const w = inkW / iw; const h = w / asp;
+        const left = ringG.hx - (ink.x0 + iw / 2) * w; const top = ringG.hy - (ink.y0 + ih / 2) * h;
+        fit = { imgRect: { left, top, width: w, height: h }, inkRect: { left: left + ink.x0 * w, top: top + ink.y0 * h, right: left + ink.x1 * w, bottom: top + ink.y1 * h } };
       }
       poster.place(fit.imgRect);
       drawSaleRing(ringG);
@@ -2030,7 +2180,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
     if (!el.classList.contains('sx-sw--buying')) drawSaleRing(null);
     else if (!posterOn) drawSaleRing(stageRingGeo());
-    seatVerbs(stageRingGeo());
+    const ringNow = stageRingGeo();
+    seatVerbs(ringNow);
+    drawFleetCaption(ringNow);
 
     const pointOf = (index) => {
       if (livePath) {
@@ -3046,6 +3198,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!chooserEl.hidden) closeChooser({ silent: true });
     mode = m;
     selectedSlot = -1;
+    syncStageDock();
     rememberShipView();
     syncModeWords();
     renderRail(); renderCenter(); renderSide();
@@ -3433,7 +3586,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // Flight host: no station bay behind the hull — the screen's own backdrop shows instead.
       if (mount && typeof mount.setDockId === 'function') mount.setDockId(null);
     } else {
-      syncShipworksDockForState(mount, ctx.state);
+      syncStageDock();
     }
     // The shell owns its 18-frame status cadence. Shipworks is event-driven; repainting its full
     // body on that cadence destroys live pointer targets and wastes the authored preview frame.

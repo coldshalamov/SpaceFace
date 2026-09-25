@@ -719,6 +719,53 @@ ${W}.sx-sw--buying .sx-sw__stats { position:absolute !important; left:258px !imp
 
 ${W} .sx-sw-side__hero .k-hero__n.orr-counter .orr-counter__digit { width:.56em; }
 
+/* ================================ ROUND 13: the stage as instrument =========================== */
+/* For Sale: the live hull alone on the ring's glass. The canvas is the dial's own square (the preview
+   frames its hull to it), its black is lost in the glass under it, and its edge dissolves before the ring */
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas { inset:auto !important; left:calc(var(--sw-ring-x, 50%) - var(--sw-ring-r, 280px) * .93) !important; top:calc(var(--sw-ring-y, 50%) - var(--sw-ring-r, 280px) * .93) !important;
+  width:calc(var(--sw-ring-r, 280px) * 1.86) !important; height:calc(var(--sw-ring-r, 280px) * 1.86) !important; mix-blend-mode:lighten;
+  -webkit-mask-image:radial-gradient(circle closest-side, #000 calc(100% - 14px), transparent) !important; mask-image:radial-gradient(circle closest-side, #000 calc(100% - 14px), transparent) !important; }
+/* the real-time hull is lit for a bay it no longer stands in: lifted to the render's exposure (the poster's own lift) */
+${W} .sx-sw__stage.has-salering.is-live > .sx-sw__canvas { filter:brightness(1.6) contrast(1.04); }
+/* the glass: full density out to the ring, gone 40px past it, in every sale state */
+${W} .sx-sw__stage.has-salering::before, ${W} .sx-sw__stage.has-salering.has-poster:not(.is-live)::before {
+  background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(8 11 16 / .62) 0, rgb(8 11 16 / .62) var(--sw-ring-r, 280px), rgb(8 11 16 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
+/* the view marks: shown whenever a live hull exists or is on its way, the render still on the glass included */
+${W} .sx-sw__stage.has-salering.has-viewmarks > .sx-sw__camera { display:block !important; visibility:visible !important; }
+${W} .sx-sw__stage.has-salering:not(.has-viewmarks) > .sx-sw__camera { display:none !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transform:none !important; translate:none !important; scale:none !important; line-height:1 !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:none !important; display:none !important; }
+${W} .sx-sw__salering-mark { stroke:rgb(${BONE} / .5); }
+${W} .sx-sw__salering-mark.is-current { stroke:rgb(248 244 234); }
+/* the Fleet dial's caption where the jig could not engrave one */
+${W} .sx-sw__stage > .sx-sw__fleetcap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9.5px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
+@media (max-height:800px) {
+  ${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-size:9px; letter-spacing:.18em; }
+}
+/* a short stage: the dial's foot, its caption and the verbs share 50px, so the jig's outer drifting ticks
+   (which would cross the verb words) stand down there; the For Sale ring has none either */
+@media (max-height:800px) { ${W} .orr-sw-jig .orr-drift { display:none !important; } }
+/* one verb row in both modes: the words inline, centred on the dial by the screen */
+${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { width:max-content !important; max-width:none !important; flex-direction:row !important; flex-wrap:nowrap !important;
+  align-items:baseline !important; gap:0 18px !important; }
+/* For Sale readouts: each pair on one line at the Fleet cell's size and width, their tops level */
+${W}.sx-sw--buying .sx-sw-bands { grid-template-columns:96px 96px !important; column-gap:18px !important; align-items:start !important; }
+${W}.sx-sw--buying .sx-sw-bands > .sx-sw-hero:not(:first-child) .k-hero__n { font-size:22px !important; line-height:1 !important; white-space:nowrap !important; }
+${W}.sx-sw--buying .sx-sw-bands > .sx-sw-hero .k-hero__w { white-space:nowrap !important; }
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-sw__stats { padding-left:12px !important; padding-right:10px !important; }
+  ${W}.sx-sw--buying .sx-sw-bands { grid-template-columns:max-content max-content !important; column-gap:16px !important; }
+}
+/* the handling scales end short of their values (the Fleet rule): the track fills its own column */
+${W}.sx-sw--buying .sx-sw-bar__track { width:auto !important; min-width:0 !important; max-width:none !important; justify-self:stretch !important; }
+/* the price stands once as the hero figure over the key: the key carries the verb alone */
+${W} .sx-buybar .orr-lampkey small, ${W} .sx-buybar .sx-btn-primary small { display:none !important; }
+/* the For Sale ladder's fold is one rung tall on a tall screen, so the last rung's title enters it */
+@media (min-height:801px) {
+  ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 62px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 62px), transparent) !important; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {
