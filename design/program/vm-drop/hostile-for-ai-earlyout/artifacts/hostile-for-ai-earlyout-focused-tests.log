@@ -1,0 +1,166 @@
+TAP version 13
+# Subtest: offensive action detection follows effects/tags instead of one action id
+ok 1 - offensive action detection follows effects/tags instead of one action id
+  ---
+  duration_ms: 2.043748
+  ...
+# Subtest: missing motive, trigger, zone, telegraph, or doctrine fails closed
+ok 2 - missing motive, trigger, zone, telegraph, or doctrine fails closed
+  ---
+  duration_ms: 2.116049
+  ...
+# Subtest: response/telegraph window and exact doctrine fire phase are authoritative
+ok 3 - response/telegraph window and exact doctrine fire phase are authoritative
+  ---
+  duration_ms: 3.536322
+  ...
+# Subtest: station protection uses the live station index without scanning unrelated entities
+ok 4 - station protection uses the live station index without scanning unrelated entities
+  ---
+  duration_ms: 0.653363
+  ...
+# Subtest: lawful jump-gate proxies do not grant station protection
+ok 5 - lawful jump-gate proxies do not grant station protection
+  ---
+  duration_ms: 0.523066
+  ...
+# Subtest: sub-second response windows fail closed at the production engagement seam
+ok 6 - sub-second response windows fail closed at the production engagement seam
+  ---
+  duration_ms: 0.498395
+  ...
+# Subtest: late-spawned threats start their response clock when they enter the live scene
+ok 7 - late-spawned threats start their response clock when they enter the live scene
+  ---
+  duration_ms: 5.96741
+  ...
+# Subtest: first-session combat permits at most two simultaneous attackers on the player
+ok 8 - first-session combat permits at most two simultaneous attackers on the player
+  ---
+  duration_ms: 1.658018
+  ...
+# Subtest: four offensive actors receive two stable ownership slots across ingress, cooldown, and reform
+ok 9 - four offensive actors receive two stable ownership slots across ingress, cooldown, and reform
+  ---
+  duration_ms: 1.70563
+  ...
+# Subtest: prepared ownership slots still fail closed when an actor leaves the ship authority
+ok 10 - prepared ownership slots still fail closed when an actor leaves the ship authority
+  ---
+  duration_ms: 0.822855
+  ...
+# Subtest: death and disengage release immediately and promote overflow in stable order without starvation
+ok 11 - death and disengage release immediately and promote overflow in stable order without starvation
+  ---
+  duration_ms: 1.04939
+  ...
+# Subtest: between-decision maintenance releases invalid owners without rebuilding the decision batch
+ok 12 - between-decision maintenance releases invalid owners without rebuilding the decision batch
+  ---
+  duration_ms: 0.842509
+  ...
+# Subtest: live deauthorization releases ownership and promotes every queued attacker in order
+ok 13 - live deauthorization releases ownership and promotes every queued attacker in order
+  ---
+  duration_ms: 0.942165
+  ...
+# Subtest: target changes and the end of the first-session window cannot leak ownership slots
+ok 14 - target changes and the end of the first-session window cannot leak ownership slots
+  ---
+  duration_ms: 0.777923
+  ...
+# Subtest: actors absent from a complete tactical batch release stale target ownership
+ok 15 - actors absent from a complete tactical batch release stale target ownership
+  ---
+  duration_ms: 0.572268
+  ...
+# Subtest: CONTROL-dispatched security responders fire outside the novice cap without consuming slots
+ok 16 - CONTROL-dispatched security responders fire outside the novice cap without consuming slots
+  ---
+  duration_ms: 1.263475
+  ...
+# Subtest: authorized fire records a deterministic motive and doctrine trace on the attacker
+ok 17 - authorized fire records a deterministic motive and doctrine trace on the attacker
+  ---
+  duration_ms: 1.864513
+  ...
+# Subtest: fresh hostility is mandatory even if a stale decision names the player
+ok 18 - fresh hostility is mandatory even if a stale decision names the player
+  ---
+  duration_ms: 0.525812
+  ...
+# Subtest: profit-motive fire requires a resolved escalation while vendettas remain distinct
+ok 19 - profit-motive fire requires a resolved escalation while vendettas remain distinct
+  ---
+  duration_ms: 0.548253
+  ...
+# Subtest: Helios station protection blocks criminal fire but permits lawful wanted enforcement
+ok 20 - Helios station protection blocks criminal fire but permits lawful wanted enforcement
+  ---
+  duration_ms: 0.887024
+  ...
+# Subtest: the full Helios starter sanctuary is protected even beyond the station patrol ring
+ok 21 - the full Helios starter sanctuary is protected even beyond the station patrol ring
+  ---
+  duration_ms: 0.524278
+  ...
+# Subtest: run cohorts use arena combat rules even when pursuit crosses Adventure station coordinates
+ok 22 - run cohorts use arena combat rules even when pursuit crosses Adventure station coordinates
+  ---
+  duration_ms: 0.405311
+  ...
+# Subtest: passive and hold-fire transitions clear stale weapon intent in the live AI port sweep
+ok 23 - passive and hold-fire transitions clear stale weapon intent in the live AI port sweep
+  ---
+  duration_ms: 0.624149
+  ...
+# Subtest: lawful AI applies WANTED gating to wingmen the same way as the clean player
+ok 24 - lawful AI applies WANTED gating to wingmen the same way as the clean player
+  ---
+  duration_ms: 0.336351
+  ...
+# Subtest: armed NPC burst opens its firing window without extra instant damage or double payment
+ok 25 - armed NPC burst opens its firing window without extra instant damage or double payment
+  ---
+  duration_ms: 18.436772
+  ...
+# Subtest: production SG-03 rejects anonymous damage action
+ok 26 - production SG-03 rejects anonymous damage action
+  ---
+  duration_ms: 1.595584
+  ...
+# Subtest: production SG-03 rejects criminal damage action inside Helios protection
+ok 27 - production SG-03 rejects criminal damage action inside Helios protection
+  ---
+  duration_ms: 1.355831
+  ...
+# [hunter-origin] running isolated M3 candidate checks…
+#   PASS isolated hunter* / hunter-origin* files exist; package.json unwired
+#   PASS three meaningful steps with teach tags
+#   PASS save schema migrate/serialize/deserialize deterministic and non-exclusive
+#   PASS first dock offers, decline re-offers, accept is non-binding/non-exclusive
+#   PASS classification uses scanner contact words, isHostileToPlayer, heat, combat doctrines
+#   PASS accepted warrant stamps exact mission target HOSTILE without widening lawful patrols
+#   PASS identify step: lawful/civilian fail+recover; HOSTILE advances to pursuit
+#   PASS three-step happy path with pursuit recovery; reward via economy:grantCredits
+#   PASS counterplay clean-kill path; illegal kill fails with recovery
+#   PASS heat spike fails lawfully; recovery requires isPlayerWanted false
+#   PASS illegal fire on pursuit fails with recovery
+#   PASS doctrine picks are rngSeed-deterministic and from live CombatDoctrineId pool
+#   PASS system shape init/dock/abandon/presentation; no registry registration required
+#   PASS source forbids unseeded PRNG / wall clock calls
+# [hunter-origin] PASS — 14 sections green
+# Subtest: /workspace/spaceface-scratch/hostile-for-ai-earlyout/test/hunter-origin.test.mjs
+ok 3 - /workspace/spaceface-scratch/hostile-for-ai-earlyout/test/hunter-origin.test.mjs
+  ---
+  duration_ms: 363.903463
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 387.171003

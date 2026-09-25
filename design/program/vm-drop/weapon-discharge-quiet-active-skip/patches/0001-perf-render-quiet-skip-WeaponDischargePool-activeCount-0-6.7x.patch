@@ -1,0 +1,92 @@
+From 459ccd4026b95583d09e4cf6b360d4492b64da41 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:48:11 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20WeaponDischargePoo?=
+ =?UTF-8?q?l=20when=20activeCount=3D=3D=3D0=20(~6.7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight always walked CAP slots and paid batch.begin/end
+commit(0) every frame. Trust activeCount (spawn ++ / retire --); picture
+unchanged when idle.
+---
+ .../forceLanguage/weaponDischargePool.js      | 24 ++++++++++++++++---
+ 1 file changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/src/render/forceLanguage/weaponDischargePool.js b/src/render/forceLanguage/weaponDischargePool.js
+index 714014a48..6eb5084ad 100644
+--- a/src/render/forceLanguage/weaponDischargePool.js
++++ b/src/render/forceLanguage/weaponDischargePool.js
+@@ -67,6 +67,9 @@ export class WeaponDischargePool {
+   constructor(scene,{capacity=DISCHARGE_CAPACITY}={}){
+     this.batch=new SweptSurfaceBatch(scene,{capacity:capacity*8,name:'SF_WeaponDischargeSurfaces'});
+     this.mesh=this.batch.mesh;this.time=0;this.sequence=0;this.disposed=false;this.dropped=0;
++    // Quiet settled flight: update always walked CAP slots + begin/end commit(0).
++    // Trust activeCount (spawn ++ / retire -- / dispose clear); picture unchanged when 0.
++    this.activeCount=0;
+     this.slots=Array.from({length:capacity},()=>({
+       alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
+       age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
+@@ -100,7 +103,9 @@ export class WeaponDischargePool {
+     // ignition peak, which reads as one continuous glow rather than a machine cycling.
+     slot.cadence=coalesced?slot.age:Infinity;
+     slot.beat=coalesced?(slot.beat+1)%12:0;
++    const wasAlive=slot.alive===true;
+     slot.alive=true;slot.role=SURFACE_ROLE.SOURCE;slot.age=0;slot.life=Math.max(.035,flash.life);
++    if(!wasAlive) this.activeCount++;
+     slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;slot.angle=Math.atan2(pose.az,pose.ax);
+     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
+     slot.width=Math.max(.55,flash.size0);slot.length=Math.max(2.8,flash.size1*2.1);
+@@ -123,7 +128,9 @@ export class WeaponDischargePool {
+       for(const s of this.slots)if(s.priority<=priority&&(!slot||s.age/s.life>slot.age/slot.life))slot=s;
+     }
+     if(!slot){this.dropped++;return false;}
++    const wasAlive=slot.alive===true;
+     slot.alive=true;slot.role=SURFACE_ROLE.IMPACT;slot.kind=kind;
++    if(!wasAlive) this.activeCount++;
+     slot.age=0;slot.life=Math.max(.06,flash.life);
+     slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;
+     slot.angle=Math.atan2(pose.az,pose.ax);
+@@ -309,6 +316,9 @@ export class WeaponDischargePool {
+   }
+   update(dt,resolvePose=null,a11y=null){
+     if(this.disposed)return 0;
++    // Quiet path: capacity walk + begin/end commit(0) when activeCount===0 was pure CPU;
++    // mesh already count=0/visible=false after the frame that retired the last slot.
++    if(!(this.activeCount>0)) return 0;
+     const step=Math.max(0,Number.isFinite(dt)?dt:0);
+     this.time+=step;
+     const reducedMotion=a11y?.id?.includes('motion')===true;
+@@ -318,11 +328,19 @@ export class WeaponDischargePool {
+     for(const s of this.slots){
+       if(!s.alive)continue;
+       s.age+=step;
+-      if(s.age>=s.life){s.alive=false;continue;}
++      if(s.age>=s.life){
++        s.alive=false;
++        this.activeCount=Math.max(0,this.activeCount-1);
++        continue;
++      }
+       if(resolvePose){
+         const pose=resolvePose(s);
+         // A missing/dead owner or detached target must not stick a surface in mid-air.
+-        if(!pose){s.alive=false;continue;}
++        if(!pose){
++          s.alive=false;
++          this.activeCount=Math.max(0,this.activeCount-1);
++          continue;
++        }
+         s.x=pose.x;s.y=pose.y;s.z=pose.z;
+         s.angle=Math.atan2(pose.az,pose.ax);s.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
+       }
+@@ -340,5 +358,5 @@ export class WeaponDischargePool {
+     this.batch.end();return live;
+   }
+   reproject(dx,dz){for(const s of this.slots)if(s.alive){s.x+=dx;s.z+=dz;}this.batch.reproject(dx,dz);}
+-  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots)s.alive=false;}
++  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots)s.alive=false;this.activeCount=0;}
+ }
+-- 
+2.47.3
+

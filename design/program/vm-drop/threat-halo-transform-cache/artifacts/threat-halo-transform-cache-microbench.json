@@ -1,0 +1,25 @@
+{
+  "name": "threat-halo-transform-cache",
+  "calls": 200000,
+  "elements": 8,
+  "modes": {
+    "settled": {
+      "beforeMs": 52.591,
+      "afterMs": 3.477,
+      "speedup": 15.127,
+      "writesBefore": 8,
+      "writesAfter": 8,
+      "sampleMatch": true,
+      "sample": "translate3d(120.3px,40.5px,0) translate(-50%,-50%)"
+    },
+    "motion": {
+      "beforeMs": 58.307,
+      "afterMs": 40.127,
+      "speedup": 1.453,
+      "writesBefore": 200000,
+      "writesAfter": 200000,
+      "sampleMatch": false,
+      "sample": "translate3d(139.5px,44.7px,0) translate(-50%,-50%)"
+    }
+  }
+}

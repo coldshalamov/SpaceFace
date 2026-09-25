@@ -1,0 +1,18 @@
+{
+  "label": "hud-settext-cache",
+  "elements": 48,
+  "ticks": 20000,
+  "changeEvery": 200,
+  "before": {
+    "ms": 36.546,
+    "reads": 960000,
+    "writes": 9600
+  },
+  "after": {
+    "ms": 26.177,
+    "reads": 0,
+    "writes": 9600
+  },
+  "speedup": 1.396,
+  "readReduction": 1
+}

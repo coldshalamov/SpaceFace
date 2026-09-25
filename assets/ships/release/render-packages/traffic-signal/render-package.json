@@ -993,7 +993,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 9,
+      "hull": 7,
+      "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
@@ -1025,7 +1026,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1045,7 +1046,7 @@
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 14,
@@ -1325,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "0bd919402c4dc1aff56e3d076d2e3042f34397f270250f004531d31a838022d5",
+  "runtimeHash": "2b20d0a5aaa34145b266d8c748e07c5e5d2b132542cc5d484459ea6eefb7a34c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

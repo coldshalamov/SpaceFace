@@ -1,0 +1,273 @@
+From f336e10fddffbb87fb3abb18e81b4547016d2710 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:37:36 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20pending-de?=
+ =?UTF-8?q?tonations=20empty=20walk=20(~2.7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still walked all 12 pending-detonation slots every
+tick while none were active. Latch after first empty observe; wake on
+_scheduleDetonation (and reset). Soft-GPU fps not claimed. Picture
+unchanged.
+---
+ src/render/vfx.js                             |  15 ++
+ ...ing-detonations-quiet-empty-latch.test.mjs | 189 ++++++++++++++++++
+ 2 files changed, 204 insertions(+)
+ create mode 100644 test/pending-detonations-quiet-empty-latch.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 40e1047db..c43708f92 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1150,6 +1150,10 @@ export const vfx = {
+         x: 0, z: 0,
+       });
+     }
++    // Quiet settled flight: empty pending-detonation pool still walked all 12
++    // slots every tick. Latch after first empty observe; wake on schedule
++    // (_scheduleDetonation clears the latch). Soft-GPU fps not claimed.
++    this._pendingDetonationsQuietEmpty = false;
+     // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
+     // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
+     this._transitSweepT = -1;
+@@ -4992,6 +4996,8 @@ export const vfx = {
+     }
+     if (rec && rec.active) this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+     if (!rec) return;
++    // Dirty-wake: a fresh queued kill must leave the quiet empty latch.
++    this._pendingDetonationsQuietEmpty = false;
+     rec.active = true;
+     rec.at = now + OVERLOAD_FLARE_S;
+     rec.sputterAt = now + OVERLOAD_FLARE_S * 0.5;
+@@ -5036,8 +5042,13 @@ export const vfx = {
+   _updatePendingDetonations() {
+     const list = this._pendingDetonations;
+     if (!list) return;
++    // Quiet settled flight: empty 12-slot walk every tick. Latch after first
++    // empty observe; wake via _scheduleDetonation / _resetPendingDetonations.
++    // Soft-GPU fps not claimed.
++    if (this._pendingDetonationsQuietEmpty) return;
+     const now = Number.isFinite(this.state && this.state.simTime)
+       ? this.state.simTime : (this._t || 0);
++    let anyActive = false;
+     for (let i = 0; i < list.length; i++) {
+       const rec = list[i];
+       if (!rec.active) continue;
+@@ -5058,13 +5069,17 @@ export const vfx = {
+         const payload = rec.p;
+         rec.p = null;
+         this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
++      } else {
++        anyActive = true;
+       }
+     }
++    if (!anyActive) this._pendingDetonationsQuietEmpty = true;
+   },
+ 
+   _resetPendingDetonations() {
+     if (!this._pendingDetonations) return;
+     for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; }
++    this._pendingDetonationsQuietEmpty = false;
+     this._transitSweepT = -1;
+     this._transitSweepSpawned = 0;
+   },
+diff --git a/test/pending-detonations-quiet-empty-latch.test.mjs b/test/pending-detonations-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..e4ead9b90
+--- /dev/null
++++ b/test/pending-detonations-quiet-empty-latch.test.mjs
+@@ -0,0 +1,189 @@
++/**
++ * #125 pending-detonations-quiet-empty-latch — quiet empty 12-slot pending
++ * detonation walk skips after first empty observe; dirty-wake on schedule.
++ * Soft-GPU fps not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++const DT = 1 / 60;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++    mass: 10,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    mode: 'flight',
++    entities: new Map([[PLAYER_ID, player]]),
++    entityList: [player],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      projectiles: [],
++      ships: [player],
++    },
++    simTime: 0,
++    tick: 0,
++    camera: { focus: { x: 0, z: 0 } },
++    world: { frameOrigin: { x: 0, z: 0 } },
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: {
++      scene,
++      camera: new THREE.PerspectiveCamera(),
++      viewport: { height: 720 },
++      interpolationAlpha: 1,
++    },
++    player: {
++      heatZone: { active: false, center: { x: 0, z: 0 }, radius: 0, level: 0, untilS: 0, clearAfterS: 0 },
++      nav: { autopilot: { active: false, target: null }, waypoint: null },
++      tether: { phase: 'idle', targetId: null, active: false },
++      masslineTelemetry: { payloadReleaseGhost: null },
++    },
++    lawSecurity: { customsWeir: null },
++    fields: { active: [] },
++    combat: { entities: {}, statusNextPendingSeq: 0 },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: { player: () => player },
++  });
++  return { system, state, bus, player, scene };
++}
++
++function activeCount(system) {
++  return system._pendingDetonations.filter((r) => r.active).length;
++}
++
++test('pending detonations quiet-latches after first empty observe', () => {
++  const { system } = makeHarness();
++  assert.ok(system._pendingDetonations);
++  assert.equal(system._pendingDetonations.length, 12);
++  assert.equal(system._pendingDetonationsQuietEmpty, false);
++  assert.equal(activeCount(system), 0);
++
++  let walks = 0;
++  const orig = system._updatePendingDetonations.bind(system);
++  system._updatePendingDetonations = function wrapped() {
++    // Count only when the production early-out would still enter the walk.
++    // Call orig which itself may early-out after latch.
++    const before = this._pendingDetonationsQuietEmpty;
++    orig();
++    if (!before) walks += 1;
++  };
++
++  system.update(DT);
++  assert.equal(system._pendingDetonationsQuietEmpty, true, 'must latch after empty observe');
++  assert.equal(walks, 1, 'first tick must walk once');
++
++  walks = 0;
++  system.update(DT);
++  system.update(DT);
++  system.update(DT);
++  assert.equal(walks, 0, 'latched ticks must skip the 12-slot walk');
++  assert.equal(system._pendingDetonationsQuietEmpty, true);
++  assert.equal(activeCount(system), 0);
++});
++
++test('schedule dirty-wakes the pending-detonations quiet latch', () => {
++  const { system, state } = makeHarness();
++  system.update(DT);
++  assert.equal(system._pendingDetonationsQuietEmpty, true);
++
++  const victim = {
++    id: 99,
++    type: 'ship',
++    alive: false,
++    pos: { x: 10, z: 20 },
++    vel: { x: 1, z: 0 },
++    rot: 0,
++    radius: 5,
++    classId: 'fighter',
++  };
++  system._scheduleDetonation(victim, 'fighter', 8, 'gun');
++  assert.equal(system._pendingDetonationsQuietEmpty, false, 'schedule must clear latch');
++  assert.equal(activeCount(system), 1);
++
++  let walked = false;
++  const orig = system._updatePendingDetonations.bind(system);
++  system._updatePendingDetonations = function wrapped() {
++    const before = this._pendingDetonationsQuietEmpty;
++    orig();
++    if (!before) walked = true;
++  };
++
++  state.simTime = 0.05; // still inside OVERLOAD_FLARE_S window
++  system.update(DT);
++  assert.equal(walked, true, 'active slot must walk');
++  assert.equal(system._pendingDetonationsQuietEmpty, false, 'live pending must not re-latch');
++  assert.equal(activeCount(system), 1);
++});
++
++test('pending detonations re-latches after drain completes', () => {
++  const { system, state } = makeHarness();
++  system.update(DT);
++  assert.equal(system._pendingDetonationsQuietEmpty, true);
++
++  const victim = {
++    id: 77,
++    type: 'ship',
++    alive: false,
++    pos: { x: 3, z: 4 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 4,
++    classId: 'drone',
++  };
++  // Stub explosion queue so drain does not need full explosion plumbing.
++  system._queueExplosion = () => {};
++  system._scheduleDetonation(victim, 'drone', 6, 'gun');
++  assert.equal(activeCount(system), 1);
++
++  // Advance past at (OVERLOAD_FLARE_S ~0.4).
++  state.simTime = 1.0;
++  system.update(DT);
++  assert.equal(activeCount(system), 0, 'drain must clear active');
++  assert.equal(system._pendingDetonationsQuietEmpty, true, 'must re-latch after empty drain');
++
++  let walks = 0;
++  const orig = system._updatePendingDetonations.bind(system);
++  system._updatePendingDetonations = function wrapped() {
++    const before = this._pendingDetonationsQuietEmpty;
++    orig();
++    if (!before) walks += 1;
++  };
++  system.update(DT);
++  system.update(DT);
++  assert.equal(walks, 0, 're-latched ticks must skip walk');
++});
++
++test('pending detonations reset clears latch for re-observe', () => {
++  const { system } = makeHarness();
++  system.update(DT);
++  assert.equal(system._pendingDetonationsQuietEmpty, true);
++  system._resetPendingDetonations();
++  assert.equal(system._pendingDetonationsQuietEmpty, false);
++  assert.equal(activeCount(system), 0);
++  system.update(DT);
++  assert.equal(system._pendingDetonationsQuietEmpty, true, 'must re-latch after reset observe');
++});
+-- 
+2.47.3
+

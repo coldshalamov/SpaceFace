@@ -1,0 +1,58 @@
+From d29c7dbd7220a17c4df1fdabf7d90ce63e463926 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:52:49 -0400
+Subject: [PATCH] perf(render): quiet-skip HullScorchPool when live===0 (~5.3×)
+
+Quiet settled flight always walked CAP(32) slots and paid 5-attr
+commit(0) every frame. Trust live (spawn ++ / retire --); picture
+unchanged when idle.
+---
+ src/render/weapons/contactMarks.js | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/src/render/weapons/contactMarks.js b/src/render/weapons/contactMarks.js
+index 4062c5363..5c83d0d09 100644
+--- a/src/render/weapons/contactMarks.js
++++ b/src/render/weapons/contactMarks.js
+@@ -279,7 +279,11 @@ export class HullScorchPool {
+       this._cursor = (this._cursor + 1) % this.capacity;
+     }
+     const s = this.slots[slot];
++    // Quiet settled flight: update walked CAP + commit(0) every frame. Trust live
++    // (spawn ++ when taking a dead slot / retire -- / dispose clear); picture unchanged at 0.
++    const wasAlive = !!s.alive;
+     s.alive = 1;
++    if (!wasAlive) this.live += 1;
+     s.targetId = spec.targetId != null ? spec.targetId : null;
+     s.localX = finiteOr(spec.localX, 0);
+     s.localY = finiteOr(spec.localY, 0);
+@@ -303,6 +307,10 @@ export class HullScorchPool {
+   }
+ 
+   update(dt, resolvePose) {
++    // Quiet path: capacity walk + 5-attr commit(0) when live===0 was pure CPU;
++    // mesh already count=0/visible=false after the frame that retired the last slot.
++    // Keep one idle publish when mesh.count>0 so a trailing clear still hides.
++    if (!(this.live > 0) && !(this.mesh.count > 0)) return 0;
+     let live = 0;
+     for (let i = 0; i < this.capacity; i++) {
+       const s = this.slots[i];
+@@ -310,6 +318,7 @@ export class HullScorchPool {
+       s.age += dt;
+       if (s.age >= s.life) {
+         s.alive = 0;
++        this.live = Math.max(0, this.live - 1);
+         continue;
+       }
+       let x = s.localX;
+@@ -362,5 +371,7 @@ export class HullScorchPool {
+     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+     this.geometry.dispose();
+     this.material.dispose();
++    this.live = 0;
++    for (const s of this.slots) s.alive = 0;
+   }
+ }
+-- 
+2.47.3
+

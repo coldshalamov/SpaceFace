@@ -44,6 +44,8 @@ const CSS = `
 .orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
 .orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
 .orr-svg .orr-route__node { fill:rgb(6 8 11 / .9); stroke:rgb(${BONE} / .8); stroke-width:1.2; }
+.orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
+.orr-svg .orr-route__dot-bloom { fill:rgb(${BONE}); opacity:.1; }
 .orr-svg .orr-route__node--here { stroke:rgb(248 244 234); }
 .orr-svg .orr-route__here-core { fill:rgb(248 244 234); }
 .orr-svg .orr-route__hop { stroke:rgb(${BONE} / .88); }
@@ -361,7 +363,9 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       : null;
     const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
     // then the rest, the route first, nearest ring first
-    const others = [...place].filter(([id]) => id !== data.origin && id !== dest)
+    // a short host names only what it has room for: the route and the berth's own lane neighbours
+    const compactNames = H < 340;
+    const others = [...place].filter(([id, p]) => id !== data.origin && id !== dest && (!compactNames || p.onRoute || p.d <= 1))
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
@@ -441,7 +445,10 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       const spot = drawn.get(id);
       if (!spot) continue;
       if (p.onRoute) layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 5, class: 'orr-route__node' }), 200 + li * 40));
-      else layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 2.2, class: 'orr-route__dot' }), 200 + li * 40));
+      else {
+        layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 6, class: 'orr-route__dot-bloom' }), 200 + li * 40));
+        layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 3.4, class: 'orr-route__dot' }), 200 + li * 40));
+      }
       if (spot.leader) layer.appendChild(fade(svg('path', { d: leaderD(spot.leader), class: 'orr-core orr-route__leader', 'stroke-width': 1, 'stroke-dasharray': '2 3' }), 240 + li * 40));
       layer.appendChild(fade(textLines(spot, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }]), 260 + li * 40));
       li += 1;

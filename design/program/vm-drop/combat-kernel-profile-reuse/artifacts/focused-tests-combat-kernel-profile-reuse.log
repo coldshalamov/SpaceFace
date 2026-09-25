@@ -1,0 +1,393 @@
+TAP version 13
+# Subtest: broken attachment history stays bounded during a long tether session
+ok 1 - broken attachment history stays bounded during a long tether session
+  ---
+  duration_ms: 8.838873
+  ...
+# Subtest: §1 CANONICAL VECTORS
+    # Subtest: pins stableStringify encodings and cumulative digests for a fixed 4-event sequence
+    ok 1 - pins stableStringify encodings and cumulative digests for a fixed 4-event sequence
+      ---
+      duration_ms: 1.922519
+      ...
+    1..1
+ok 2 - §1 CANONICAL VECTORS
+  ---
+  duration_ms: 3.193161
+  type: 'suite'
+  ...
+# Subtest: §2 EVENT ORDER
+    # Subtest: starts seq at 1 and increments monotonically; read order equals append order
+    ok 1 - starts seq at 1 and increments monotonically; read order equals append order
+      ---
+      duration_ms: 1.449933
+      ...
+    # Subtest: interleaved kinds preserve global append order
+    ok 2 - interleaved kinds preserve global append order
+      ---
+      duration_ms: 0.36949
+      ...
+    1..2
+ok 3 - §2 EVENT ORDER
+  ---
+  duration_ms: 1.985235
+  type: 'suite'
+  ...
+# Subtest: §3 FILTERS
+    # Subtest: filters by sinceSeq (boundary sinceSeq == seq pinned from both sides)
+    ok 1 - filters by sinceSeq (boundary sinceSeq == seq pinned from both sides)
+      ---
+      duration_ms: 0.425194
+      ...
+    # Subtest: filters by kinds
+    ok 2 - filters by kinds
+      ---
+      duration_ms: 2.524221
+      ...
+    # Subtest: filters by actorId
+    ok 3 - filters by actorId
+      ---
+      duration_ms: 0.272017
+      ...
+    # Subtest: filters by targetId
+    ok 4 - filters by targetId
+      ---
+      duration_ms: 0.280097
+      ...
+    # Subtest: filters by limit
+    ok 5 - filters by limit
+      ---
+      duration_ms: 0.285687
+      ...
+    # Subtest: applies combined sinceSeq + kinds + actorId + targetId + limit
+    ok 6 - applies combined sinceSeq + kinds + actorId + targetId + limit
+      ---
+      duration_ms: 0.323321
+      ...
+    # Subtest: returns schema envelope with nextSeq, dropped, digest
+    ok 7 - returns schema envelope with nextSeq, dropped, digest
+      ---
+      duration_ms: 0.224221
+      ...
+    1..7
+ok 4 - §3 FILTERS
+  ---
+  duration_ms: 4.765514
+  type: 'suite'
+  ...
+# Subtest: §4 RING/DROP
+    # Subtest: capacity 4 + 6 appends drops oldest 2; digest still reflects all 6
+    ok 1 - capacity 4 + 6 appends drops oldest 2; digest still reflects all 6
+      ---
+      duration_ms: 0.614625
+      ...
+    1..1
+ok 5 - §4 RING/DROP
+  ---
+  duration_ms: 0.908078
+  type: 'suite'
+  ...
+# Subtest: §5 RESET/RESUME REALITY: save/load starts a fresh trace (current intentional semantics)
+    # Subtest: serializeCombatState omits trace; restoreCombatState yields a fresh empty trace
+    ok 1 - serializeCombatState omits trace; restoreCombatState yields a fresh empty trace
+      ---
+      duration_ms: 1.707549
+      ...
+    1..1
+ok 6 - §5 RESET/RESUME REALITY: save/load starts a fresh trace (current intentional semantics)
+  ---
+  duration_ms: 2.022308
+  type: 'suite'
+  ...
+# Subtest: §6 REPEATED-RUN EQUALITY
+    # Subtest: same append sequence on two fresh bags yields byte-equal readCombatTrace and equal digests
+    ok 1 - same append sequence on two fresh bags yields byte-equal readCombatTrace and equal digests
+      ---
+      duration_ms: 0.591373
+      ...
+    # Subtest: field insertion order is irrelevant for event encoding and digest
+    ok 2 - field insertion order is irrelevant for event encoding and digest
+      ---
+      duration_ms: 0.495805
+      ...
+    # Subtest: float rounding: deltas <= 1e-7 collapse equal; 1e-5 stays distinct (hard-coded)
+    ok 3 - float rounding: deltas <= 1e-7 collapse equal; 1e-5 stays distinct (hard-coded)
+      ---
+      duration_ms: 0.329097
+      ...
+    # Subtest: float rounding half-step: hard-coded probes around the real 5e-7 Math.round boundary
+    ok 4 - float rounding half-step: hard-coded probes around the real 5e-7 Math.round boundary
+      ---
+      duration_ms: 0.361076
+      ...
+    # Subtest: finite extreme magnitudes: 1e308 and Number.MAX_VALUE stay deterministic across two runs
+    ok 5 - finite extreme magnitudes: 1e308 and Number.MAX_VALUE stay deterministic across two runs
+      ---
+      duration_ms: 0.65658
+      ...
+    1..5
+ok 7 - §6 REPEATED-RUN EQUALITY
+  ---
+  duration_ms: 2.810189
+  type: 'suite'
+  ...
+# Subtest: §7 CANONICALIZE EDGES
+    # Subtest: non-finite numbers become string form (pinned literals)
+    ok 1 - non-finite numbers become string form (pinned literals)
+      ---
+      duration_ms: 0.288442
+      ...
+    # Subtest: Map and Set produce sorted canonical output (pinned)
+    ok 2 - Map and Set produce sorted canonical output (pinned)
+      ---
+      duration_ms: 2.391489
+      ...
+    # Subtest: undefined fields are dropped; nested object keys are sorted (pinned)
+    ok 3 - undefined fields are dropped; nested object keys are sorted (pinned)
+      ---
+      duration_ms: 0.303673
+      ...
+    # Subtest: integerTick clamps tick -3 and 2.7 to 0; tick 3 stays 3 (both sides)
+    ok 4 - integerTick clamps tick -3 and 2.7 to 0; tick 3 stays 3 (both sides)
+      ---
+      duration_ms: 0.230506
+      ...
+    1..4
+ok 8 - §7 CANONICALIZE EDGES
+  ---
+  duration_ms: 3.423378
+  type: 'suite'
+  ...
+# Subtest: §8 PURITY (static)
+    # Subtest: trace module has no ambient time/random/DOM, no three import, no NUL bytes
+    ok 1 - trace module has no ambient time/random/DOM, no three import, no NUL bytes
+      ---
+      duration_ms: 0.965317
+      ...
+    1..1
+ok 9 - §8 PURITY (static)
+  ---
+  duration_ms: 1.155452
+  type: 'suite'
+  ...
+# Subtest: §9 API SURFACE HONESTY
+    # Subtest: exports exactly the known public set and has NO reset export
+    ok 1 - exports exactly the known public set and has NO reset export
+      ---
+      duration_ms: 0.1619
+      ...
+    1..1
+ok 10 - §9 API SURFACE HONESTY
+  ---
+  duration_ms: 0.24583
+  type: 'suite'
+  ...
+# Subtest: PIC-09: starter weapon IDs map to named scorch heat instead of unknown default
+ok 11 - PIC-09: starter weapon IDs map to named scorch heat instead of unknown default
+  ---
+  duration_ms: 4.899768
+  ...
+# Subtest: a continuous beam on one common rock runs it to empty through a pegged gauge (seed 4242)
+ok 12 - a continuous beam on one common rock runs it to empty through a pegged gauge (seed 4242)
+  ---
+  duration_ms: 16.045444
+  ...
+# Subtest: pegging forfeits nothing: a release at the peg pays the bonus and radiators run at full rate
+ok 13 - pegging forfeits nothing: a release at the peg pays the bonus and radiators run at full rate
+  ---
+  duration_ms: 4.118545
+  ...
+# Subtest: releasing inside the amber band still pays the vent bonus
+ok 14 - releasing inside the amber band still pays the vent bonus
+  ---
+  duration_ms: 3.903506
+  ...
+# Subtest: new traits validate and compile without disturbing a bare Pulse Laser
+ok 15 - new traits validate and compile without disturbing a bare Pulse Laser
+  ---
+  duration_ms: 7.087489
+  ...
+# Subtest: orbit nodes are bounded by the shared proc budget
+ok 16 - orbit nodes are bounded by the shared proc budget
+  ---
+  duration_ms: 3.959249
+  ...
+# Subtest: orbit node cap refuses a third family beyond the hard bound
+ok 17 - orbit node cap refuses a third family beyond the hard bound
+  ---
+  duration_ms: 0.68742
+  ...
+# Subtest: orbit placement is deterministic in simTime and index, not insertion of targets
+ok 18 - orbit placement is deterministic in simTime and index, not insertion of targets
+  ---
+  duration_ms: 0.16481
+  ...
+# Subtest: parked host has zero orbit efficacy; flying a node onto a target is required
+ok 19 - parked host has zero orbit efficacy; flying a node onto a target is required
+  ---
+  duration_ms: 0.251576
+  ...
+# Subtest: Cryo Lock preserves translational momentum and reduces control authority
+ok 20 - Cryo Lock preserves translational momentum and reduces control authority
+  ---
+  duration_ms: 0.275976
+  ...
+# Subtest: NEGATIVE: a Cryo Lock that zeroes velocity fails the momentum invariant
+ok 21 - NEGATIVE: a Cryo Lock that zeroes velocity fails the momentum invariant
+  ---
+  duration_ms: 1.262171
+  ...
+# Subtest: presented orbit pass applies Cryo Lock without stealing velocity; ignored ring does not
+ok 22 - presented orbit pass applies Cryo Lock without stealing velocity; ignored ring does not
+  ---
+  duration_ms: 1.048259
+  ...
+# Subtest: orbit contact order is score / distance / id, not insertion order
+ok 23 - orbit contact order is score / distance / id, not insertion order
+  ---
+  duration_ms: 1.847947
+  ...
+# Subtest: NEGATIVE: insertion-order contact selection disagrees with score/distance/id
+ok 24 - NEGATIVE: insertion-order contact selection disagrees with score/distance/id
+  ---
+  duration_ms: 0.305578
+  ...
+# Subtest: Thermal Shock reacts off Cryo Lock + Burning, consumes freeze, does not zero velocity
+ok 25 - Thermal Shock reacts off Cryo Lock + Burning, consumes freeze, does not zero velocity
+  ---
+  duration_ms: 0.436599
+  ...
+# Subtest: Thermal Shock order is score / distance / id across shuffled insertion
+ok 26 - Thermal Shock order is score / distance / id across shuffled insertion
+  ---
+  duration_ms: 0.702097
+  ...
+# Subtest: Thermal Shock pays the shared reaction proc and stops when it cannot
+ok 27 - Thermal Shock pays the shared reaction proc and stops when it cannot
+  ---
+  duration_ms: 0.370759
+  ...
+# Subtest: Cryo Lock is a real status in the combat catalog
+ok 28 - Cryo Lock is a real status in the combat catalog
+  ---
+  duration_ms: 1.758202
+  ...
+# Subtest: untraited weapons and unfielded ships do nothing in the orbit kernel
+ok 29 - untraited weapons and unfielded ships do nothing in the orbit kernel
+  ---
+  duration_ms: 0.637165
+  ...
+# Subtest: scheduling ionized status applies on the next tick and emits the combat receipt
+ok 30 - scheduling ionized status applies on the next tick and emits the combat receipt
+  ---
+  duration_ms: 3.140961
+  ...
+# Subtest: an unknown status id is refused and an immune tag blocks application
+ok 31 - an unknown status id is refused and an immune tag blocks application
+  ---
+  duration_ms: 0.394591
+  ...
+# Subtest: weapon-blocking catalog statuses block bursts only after runtime recompute
+ok 32 - weapon-blocking catalog statuses block bursts only after runtime recompute
+  ---
+  duration_ms: 3.114653
+  ...
+# Subtest: custom runtime blockedActionTags participate in burst blocking
+ok 33 - custom runtime blockedActionTags participate in burst blocking
+  ---
+  duration_ms: 0.466917
+  ...
+# Subtest: destroying power disables dependent drive and weapons
+ok 34 - destroying power disables dependent drive and weapons
+  ---
+  duration_ms: 3.341846
+  ...
+# Subtest: a lone weapon kill does not take the drive offline
+ok 35 - a lone weapon kill does not take the drive offline
+  ---
+  duration_ms: 0.569271
+  ...
+# Subtest: sensor destruction blocks weapon bursts through derived runtime capabilities
+ok 36 - sensor destruction blocks weapon bursts through derived runtime capabilities
+  ---
+  duration_ms: 0.628546
+  ...
+# Subtest: missing runtime does not block weapons or mutate combat tables
+ok 37 - missing runtime does not block weapons or mutate combat tables
+  ---
+  duration_ms: 0.326641
+  ...
+1..37
+# tests 51
+# suites 9
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 267.855625
+TAP version 13
+# Subtest: chain candidates use live hostility rather than treating every team mismatch as an enemy
+ok 1 - chain candidates use live hostility rather than treating every team mismatch as an enemy
+  ---
+  duration_ms: 4.06409
+  ...
+# Subtest: inertial shunt ignores a tangential impact with zero radial closure
+ok 2 - inertial shunt ignores a tangential impact with zero radial closure
+  ---
+  duration_ms: 2.70083
+  ...
+# Subtest: inertial shunt uses the impact normal and radial closure, not tangent speed
+ok 3 - inertial shunt uses the impact normal and radial closure, not tangent speed
+  ---
+  duration_ms: 0.504655
+  ...
+# Subtest: WANTED heat does not rise when the player damages themselves
+ok 4 - WANTED heat does not rise when the player damages themselves
+  ---
+  duration_ms: 1.715742
+  ...
+# Subtest: WANTED heat does not rise for shooting a mine or mass-seed
+ok 5 - WANTED heat does not rise for shooting a mine or mass-seed
+  ---
+  duration_ms: 0.280423
+  ...
+# Subtest: WANTED heat still rises for an unprovoked hit on a civilian ship
+ok 6 - WANTED heat still rises for an unprovoked hit on a civilian ship
+  ---
+  duration_ms: 0.502834
+  ...
+# Subtest: allowRealtimeShadowCast keeps player + nearby LOD0; drops far and low LOD
+ok 7 - allowRealtimeShadowCast keeps player + nearby LOD0; drops far and low LOD
+  ---
+  duration_ms: 1.410872
+  ...
+# Subtest: live key-light shadow camera uses the neighborhood ortho, not the old 1400 box
+ok 8 - live key-light shadow camera uses the neighborhood ortho, not the old 1400 box
+  ---
+  duration_ms: 12.15068
+  ...
+# Subtest: distance cast band clears far ship casters while nearby opaque hulls still cast
+ok 9 - distance cast band clears far ship casters while nearby opaque hulls still cast
+  ---
+  duration_ms: 3.24659
+  ...
+# Subtest: combat-like fleet count gate: local cast policy cuts casters by ≥50% vs everyone-casts
+ok 10 - combat-like fleet count gate: local cast policy cuts casters by ≥50% vs everyone-casts
+  ---
+  duration_ms: 20.311534
+  ...
+# Subtest: crossing cast band refreshes policy without requiring LOD change
+ok 11 - crossing cast band refreshes policy without requiring LOD change
+  ---
+  duration_ms: 0.794689
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 289.359971

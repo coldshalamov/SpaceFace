@@ -1,0 +1,190 @@
+TAP version 13
+# Subtest: lifetimeSweep does not recycle or drop the current player wreck
+ok 1 - lifetimeSweep does not recycle or drop the current player wreck
+  ---
+  duration_ms: 7.705136
+  ...
+# Subtest: lifetimeSweep does not expire the current player via TTL
+ok 2 - lifetimeSweep does not expire the current player via TTL
+  ---
+  duration_ms: 0.896806
+  ...
+# Subtest: flag OFF (node golden default) → deploy is a strict no-op
+ok 3 - flag OFF (node golden default) → deploy is a strict no-op
+  ---
+  duration_ms: 9.560163
+  ...
+# Subtest: Well PULLS a light body toward its center (consumer 1)
+ok 4 - Well PULLS a light body toward its center (consumer 1)
+  ---
+  duration_ms: 136.526944
+  ...
+# Subtest: Repulsor PUSHES a light body outward (consumer 2)
+ok 5 - Repulsor PUSHES a light body outward (consumer 2)
+  ---
+  duration_ms: 16.242726
+  ...
+# Subtest: Cone CLEARS forward and ignores bodies behind it (consumer 3)
+ok 6 - Cone CLEARS forward and ignores bodies behind it (consumer 3)
+  ---
+  duration_ms: 17.75952
+  ...
+# Subtest: Repulsor dropped at the ship never shoves the deploying player
+ok 7 - Repulsor dropped at the ship never shoves the deploying player
+  ---
+  duration_ms: 12.623668
+  ...
+# Subtest: Well deployed beside the ship never pulls the deploying player
+ok 8 - Well deployed beside the ship never pulls the deploying player
+  ---
+  duration_ms: 9.458504
+  ...
+# Subtest: heavy ship moves a small fraction of a light body under the same well
+ok 9 - heavy ship moves a small fraction of a light body under the same well
+  ---
+  duration_ms: 13.379789
+  ...
+# Subtest: a field alone (no physics system) never mutates a body velocity directly
+ok 10 - a field alone (no physics system) never mutates a body velocity directly
+  ---
+  duration_ms: 3.679973
+  ...
+# Subtest: a deployed Well expires on its bounded lifetime and starts a cooldown
+ok 11 - a deployed Well expires on its bounded lifetime and starts a cooldown
+  ---
+  duration_ms: 9.212932
+  ...
+# Subtest: shooting down the emitter unregisters its field the same tick (no orphan force)
+ok 12 - shooting down the emitter unregisters its field the same tick (no orphan force)
+  ---
+  duration_ms: 1.800213
+  ...
+# Subtest: simultaneous fields never exceed FIELD_MAX_ACTIVE
+ok 13 - simultaneous fields never exceed FIELD_MAX_ACTIVE
+  ---
+  duration_ms: 2.4865
+  ...
+# Subtest: save:loaded normalizes fields away (no orphan field, emitter, or runtime)
+ok 14 - save:loaded normalizes fields away (no orphan field, emitter, or runtime)
+  ---
+  duration_ms: 2.277376
+  ...
+# Subtest: state.fields is not a serialized top-level key (runtime-only, sidesteps save-schema)
+ok 15 - state.fields is not a serialized top-level key (runtime-only, sidesteps save-schema)
+  ---
+  duration_ms: 0.703938
+  ...
+# Subtest: two identical field runs produce identical body trajectories
+ok 16 - two identical field runs produce identical body trajectories
+  ---
+  duration_ms: 12.500624
+  ...
+# Subtest: Well publishes accumulated field-caused delta-V onto the hitstun path
+ok 17 - Well publishes accumulated field-caused delta-V onto the hitstun path
+  ---
+  duration_ms: 9.658197
+  ...
+# Subtest: register / unregister / clear lifecycle is authoritative
+ok 18 - register / unregister / clear lifecycle is authoritative
+  ---
+  duration_ms: 2.374588
+  ...
+# Subtest: list() is id-sorted regardless of insertion order (stable summation)
+ok 19 - list() is id-sorted regardless of insertion order (stable summation)
+  ---
+  duration_ms: 1.403742
+  ...
+# Subtest: expire() drops only fields past their bounded lifetime
+ok 20 - expire() drops only fields past their bounded lifetime
+  ---
+  duration_ms: 0.356229
+  ...
+# Subtest: falloff is 1 at center, 0 at/beyond radius, monotonic between
+ok 21 - falloff is 1 at center, 0 at/beyond radius, monotonic between
+  ---
+  duration_ms: 0.376916
+  ...
+# Subtest: well pulls toward center, repulsor pushes away
+ok 22 - well pulls toward center, repulsor pushes away
+  ---
+  duration_ms: 0.882083
+  ...
+# Subtest: exact center produces no NaN force
+ok 23 - exact center produces no NaN force
+  ---
+  duration_ms: 0.200832
+  ...
+# Subtest: cone drives along dir inside the wedge and is silent outside it
+ok 24 - cone drives along dir inside the wedge and is silent outside it
+  ---
+  duration_ms: 0.244126
+  ...
+# Subtest: heavy ship Δv is a small fraction of a light body Δv under the same field
+ok 25 - heavy ship Δv is a small fraction of a light body Δv under the same field
+  ---
+  duration_ms: 0.371028
+  ...
+# Subtest: projectiles bend more than light bodies; marked heavy grabs harder but still shrugs
+ok 26 - projectiles bend more than light bodies; marked heavy grabs harder but still shrugs
+  ---
+  duration_ms: 0.262317
+  ...
+# Subtest: summed acceleration is clamped to FIELD_MAX_ACCEL
+ok 27 - summed acceleration is clamped to FIELD_MAX_ACCEL
+  ---
+  duration_ms: 1.29606
+  ...
+# Subtest: filters gate coupling by type / team / id
+ok 28 - filters gate coupling by type / team / id
+  ---
+  duration_ms: 0.368754
+  ...
+# Subtest: sampleFieldAcceleration is a pure function (identical inputs → identical output)
+ok 29 - sampleFieldAcceleration is a pure function (identical inputs → identical output)
+  ---
+  duration_ms: 0.349334
+  ...
+# Subtest: field summation is order-independent given id-sorted lists
+ok 30 - field summation is order-independent given id-sorted lists
+  ---
+  duration_ms: 0.198619
+  ...
+# Subtest: replay hash: integrating a body under a well twice is byte-identical
+ok 31 - replay hash: integrating a body under a well twice is byte-identical
+  ---
+  duration_ms: 2.283904
+  ...
+# Subtest: timestep decomposition: one dt step equals two dt/2 steps for a fixed-accel tick
+ok 32 - timestep decomposition: one dt step equals two dt/2 steps for a fixed-accel tick
+  ---
+  duration_ms: 0.234568
+  ...
+# Subtest: all three consumer defs normalize to their declared kinds
+ok 33 - all three consumer defs normalize to their declared kinds
+  ---
+  duration_ms: 0.343627
+  ...
+# Subtest: a continuous beam on one common rock runs it to empty through a pegged gauge (seed 4242)
+ok 34 - a continuous beam on one common rock runs it to empty through a pegged gauge (seed 4242)
+  ---
+  duration_ms: 15.081086
+  ...
+# Subtest: pegging forfeits nothing: a release at the peg pays the bonus and radiators run at full rate
+ok 35 - pegging forfeits nothing: a release at the peg pays the bonus and radiators run at full rate
+  ---
+  duration_ms: 4.143954
+  ...
+# Subtest: releasing inside the amber band still pays the vent bonus
+ok 36 - releasing inside the amber band still pays the vent bonus
+  ---
+  duration_ms: 5.396594
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 563.681254

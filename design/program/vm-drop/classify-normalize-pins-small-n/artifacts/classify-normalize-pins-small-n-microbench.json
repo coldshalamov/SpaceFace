@@ -1,0 +1,36 @@
+{
+  "label": "classify-normalize-pins-small-n",
+  "N": 200,
+  "ITERS": 50000,
+  "RUNS": 11,
+  "isolatedPairs": 5,
+  "hist": {
+    "0": 178,
+    "1": 18,
+    "2": 2,
+    "more": 2
+  },
+  "beforeMedMs": 870.454,
+  "afterMedMs": 453.44,
+  "minSpeedup": 1.91,
+  "medSpeedup": 1.92,
+  "maxSpeedup": 1.92,
+  "beforeRuns": [
+    860.279,
+    864.768,
+    870.454,
+    870.959,
+    874.054
+  ],
+  "afterRuns": [
+    450.451,
+    451.216,
+    453.44,
+    455.758,
+    456.501
+  ],
+  "admitParity": true,
+  "primary": "~1.92×",
+  "ship_bar": 1.5,
+  "clears_bar": true
+}

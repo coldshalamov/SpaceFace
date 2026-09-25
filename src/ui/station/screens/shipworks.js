@@ -1,6 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
@@ -401,10 +402,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       statsEl.parentElement.appendChild(verbsRack);
     }
     pinKeyrack(verbsRack);
-    // at rest, taking the ship to the range is the screen's Lamp Key
+    // at rest no verb is the Lamp Key: the amber key appears with BUY & FIT when a socket is chosen;
+    // taking the ship to the range stays a chevron word beside RECORD
     const range = verbsRack && verbsRack.querySelector('[data-verb="range"]');
-    if (range && host === 'dock' && mode === 'fleet') dressLampKey(range);
-    else if (range) range.classList.remove('orr-lampkey');
+    if (range) { range.classList.remove('orr-lampkey'); const ring = range.querySelector('.dp-holdring'); if (ring) ring.remove(); }
     // a hull for sale has no slot to select: the verb stands down while the For Sale rail is open
     el.classList.toggle('sx-sw--buying', mode === 'buy');
     for (const btn of statsEl.querySelectorAll('[data-verb]')) {
@@ -441,6 +442,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function dressChooser() {
+    // the list is the scroller (the panel around it never overflows), so the extent measures the list
+    syncScrollExtent(chooserEl.querySelector('.sx-chooser__list:last-of-type') || chooserEl);
     ensureInteriorStyle();
     if (chooserEl.querySelector('.sf-state')) { dressState(chooserEl); return; }
     for (const label of chooserEl.querySelectorAll('.sx-chooser__kicker, .k-caps, h3')) paintLegend(label, true);
@@ -2083,6 +2086,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }).join('');
     }
     dressRail();
+    syncScrollExtent(railListEl);
     requestAnimationFrame(updateRailControls);
   }
 
@@ -2134,7 +2138,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) { sideEl.innerHTML = ''; return; }
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
-        .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}× ${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
+        .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
@@ -2154,7 +2158,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<ul class="k-words k-words--row sx-buybar">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}${afford && availability.hullEnabled ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>`) +
         `</ul>`;
       dressSide();
       return;

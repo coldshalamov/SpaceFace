@@ -1,0 +1,325 @@
+TAP version 13
+# Subtest: materials are known zero-byte wrappers and package bytes never enter GPU pressure
+ok 1 - materials are known zero-byte wrappers and package bytes never enter GPU pressure
+  ---
+  duration_ms: 5.789336
+  ...
+# Subtest: CPU package pressure is independently evictable and never aliases GPU bytes
+ok 2 - CPU package pressure is independently evictable and never aliases GPU bytes
+  ---
+  duration_ms: 1.868573
+  ...
+# Subtest: compressed mip payloads use exact bytes instead of an RGBA estimate
+ok 3 - compressed mip payloads use exact bytes instead of an RGBA estimate
+  ---
+  duration_ms: 0.545208
+  ...
+# Subtest: distinct DataTextures do not dedupe GPU allocations through one source array
+ok 4 - distinct DataTextures do not dedupe GPU allocations through one source array
+  ---
+  duration_ms: 7.358205
+  ...
+# Subtest: ordinary RGBA mip chain accounts every level from its dimensions
+ok 5 - ordinary RGBA mip chain accounts every level from its dimensions
+  ---
+  duration_ms: 0.40545
+  ...
+# Subtest: manual mipmaps replace the base image allocation
+ok 6 - manual mipmaps replace the base image allocation
+  ---
+  duration_ms: 0.211189
+  ...
+# Subtest: cube, array, and multisample render-target multipliers are represented
+ok 7 - cube, array, and multisample render-target multipliers are represented
+  ---
+  duration_ms: 7.359803
+  ...
+# Subtest: render-target accounting follows the renderer backend layout decision
+ok 8 - render-target accounting follows the renderer backend layout decision
+  ---
+  duration_ms: 1.896542
+  ...
+# Subtest: separate BufferAttributes count uploaded view bytes, not the global backing buffer
+ok 9 - separate BufferAttributes count uploaded view bytes, not the global backing buffer
+  ---
+  duration_ms: 3.080081
+  ...
+# Subtest: interleaved attributes share one Three upload while ordinary attributes do not
+ok 10 - interleaved attributes share one Three upload while ordinary attributes do not
+  ---
+  duration_ms: 0.883107
+  ...
+# Subtest: detached unclaimed boundary owners release; claimed and attached owners survive
+ok 11 - detached unclaimed boundary owners release; claimed and attached owners survive
+  ---
+  duration_ms: 9.836463
+  ...
+# Subtest: a detached boundary under a detached wrapper is swept via custom isDetached
+ok 12 - a detached boundary under a detached wrapper is swept via custom isDetached
+  ---
+  duration_ms: 0.864203
+  ...
+# Subtest: non-Object3D owners are never swept
+ok 13 - non-Object3D owners are never swept
+  ---
+  duration_ms: 0.417992
+  ...
+# Subtest: canonicalDiagnostics reuses the same object while residency is quiet
+ok 14 - canonicalDiagnostics reuses the same object while residency is quiet
+  ---
+  duration_ms: 13.470691
+  ...
+# Subtest: canonicalDiagnostics rebuilds after retain/release mutation
+ok 15 - canonicalDiagnostics rebuilds after retain/release mutation
+  ---
+  duration_ms: 1.538367
+  ...
+# Subtest: cacheSweepCount alone invalidates the canonical snapshot
+ok 16 - cacheSweepCount alone invalidates the canonical snapshot
+  ---
+  duration_ms: 0.778436
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 261.871329
+TAP version 13
+# Subtest: exact owner refcounts restore and call original disposer only after the last release
+ok 1 - exact owner refcounts restore and call original disposer only after the last release
+  ---
+  duration_ms: 4.279387
+  ...
+# Subtest: resources shared across assets survive cross-owner release and dispose exactly once
+ok 2 - resources shared across assets survive cross-owner release and dispose exactly once
+  ---
+  duration_ms: 0.596137
+  ...
+# Subtest: a live cache key cannot be replaced by a second decoded resource generation
+ok 3 - a live cache key cannot be replaced by a second decoded resource generation
+  ---
+  duration_ms: 0.763965
+  ...
+# Subtest: queued and in-flight requests cancel before decode or reject residency after departure
+ok 4 - queued and in-flight requests cancel before decode or reject residency after departure
+  ---
+  duration_ms: 0.605563
+  ...
+# Subtest: release-before-first-retain is a durable owner tombstone
+ok 5 - release-before-first-retain is a durable owner tombstone
+  ---
+  duration_ms: 0.239519
+  ...
+# Subtest: bootstrap ownership hands off atomically only after every boot asset has a live owner
+ok 6 - bootstrap ownership hands off atomically only after every boot asset has a live owner
+  ---
+  duration_ms: 0.963553
+  ...
+# Subtest: same-sector save restore keeps one decoded generation until rebuilt boundaries cover it
+ok 7 - same-sector save restore keeps one decoded generation until rebuilt boundaries cover it
+  ---
+  duration_ms: 7.96351
+  ...
+# Subtest: explicit preview leases plateau across root cycles and release to zero
+ok 8 - explicit preview leases plateau across root cycles and release to zero
+  ---
+  duration_ms: 33.540307
+  ...
+# Subtest: cache-only render-package owners are reclaimed without double disposal
+ok 9 - cache-only render-package owners are reclaimed without double disposal
+  ---
+  duration_ms: 1.205987
+  ...
+# Subtest: mixed render-package cache and presentation owners stay pinned until the presentation owner leaves
+ok 10 - mixed render-package cache and presentation owners stay pinned until the presentation owner leaves
+  ---
+  duration_ms: 0.64182
+  ...
+# Subtest: active render-package cache requests block cache-only cleanup until the request finishes
+ok 11 - active render-package cache requests block cache-only cleanup until the request finishes
+  ---
+  duration_ms: 0.319114
+  ...
+# Subtest: one departed waiter cannot evict a shared decode before a surviving waiter commits
+ok 12 - one departed waiter cannot evict a shared decode before a surviving waiter commits
+  ---
+  duration_ms: 0.257693
+  ...
+# Subtest: context loss never calls an old-context disposer and later generations dispose normally
+ok 13 - context loss never calls an old-context disposer and later generations dispose normally
+  ---
+  duration_ms: 0.271649
+  ...
+# Subtest: canonical diagnostics ignore clocks and insertion order, dedupe backing stores, and stay bounded
+ok 14 - canonical diagnostics ignore clocks and insertion order, dedupe backing stores, and stay bounded
+  ---
+  duration_ms: 1.317304
+  ...
+# Subtest: thirty-sector traversal plateaus at current plus one warm generation
+ok 15 - thirty-sector traversal plateaus at current plus one warm generation
+  ---
+  duration_ms: 4.189997
+  ...
+TAP version 13
+# Subtest: exact owner refcounts restore and call original disposer only after the last release
+ok 1 - exact owner refcounts restore and call original disposer only after the last release
+  ---
+  duration_ms: 6.30493
+  ...
+# Subtest: resources shared across assets survive cross-owner release and dispose exactly once
+ok 2 - resources shared across assets survive cross-owner release and dispose exactly once
+  ---
+  duration_ms: 0.910129
+  ...
+# Subtest: a live cache key cannot be replaced by a second decoded resource generation
+ok 3 - a live cache key cannot be replaced by a second decoded resource generation
+  ---
+  duration_ms: 1.145692
+  ...
+# Subtest: queued and in-flight requests cancel before decode or reject residency after departure
+ok 4 - queued and in-flight requests cancel before decode or reject residency after departure
+  ---
+  duration_ms: 0.918517
+  ...
+# Subtest: release-before-first-retain is a durable owner tombstone
+ok 5 - release-before-first-retain is a durable owner tombstone
+  ---
+  duration_ms: 0.35659
+  ...
+# Subtest: bootstrap ownership hands off atomically only after every boot asset has a live owner
+ok 6 - bootstrap ownership hands off atomically only after every boot asset has a live owner
+  ---
+  duration_ms: 1.215753
+  ...
+# Subtest: same-sector save restore keeps one decoded generation until rebuilt boundaries cover it
+ok 7 - same-sector save restore keeps one decoded generation until rebuilt boundaries cover it
+  ---
+  duration_ms: 12.666333
+  ...
+# Subtest: explicit preview leases plateau across root cycles and release to zero
+ok 8 - explicit preview leases plateau across root cycles and release to zero # SKIP test name does not match pattern
+  ---
+  duration_ms: 0.204251
+  ...
+# Subtest: cache-only render-package owners are reclaimed without double disposal
+ok 9 - cache-only render-package owners are reclaimed without double disposal
+  ---
+  duration_ms: 1.234482
+  ...
+# Subtest: mixed render-package cache and presentation owners stay pinned until the presentation owner leaves
+ok 10 - mixed render-package cache and presentation owners stay pinned until the presentation owner leaves
+  ---
+  duration_ms: 0.917931
+  ...
+# Subtest: active render-package cache requests block cache-only cleanup until the request finishes
+ok 11 - active render-package cache requests block cache-only cleanup until the request finishes
+  ---
+  duration_ms: 0.691314
+  ...
+# Subtest: one departed waiter cannot evict a shared decode before a surviving waiter commits
+ok 12 - one departed waiter cannot evict a shared decode before a surviving waiter commits
+  ---
+  duration_ms: 0.564076
+  ...
+# Subtest: context loss never calls an old-context disposer and later generations dispose normally
+ok 13 - context loss never calls an old-context disposer and later generations dispose normally
+  ---
+  duration_ms: 0.720875
+  ...
+# Subtest: canonical diagnostics ignore clocks and insertion order, dedupe backing stores, and stay bounded
+ok 14 - canonical diagnostics ignore clocks and insertion order, dedupe backing stores, and stay bounded
+  ---
+  duration_ms: 2.548579
+  ...
+# Subtest: thirty-sector traversal plateaus at current plus one warm generation
+ok 15 - thirty-sector traversal plateaus at current plus one warm generation
+  ---
+  duration_ms: 5.317055
+  ...
+# Subtest: headless real release-GLB traversal plateaus through live sector events and preview leases
+ok 16 - headless real release-GLB traversal plateaus through live sector events and preview leases # SKIP test name does not match pattern
+  ---
+  duration_ms: 1.013754
+  ...
+# Subtest: byte budget reclaims oldest-idle soft-held packages past the cap while hot entries stay warm
+ok 17 - byte budget reclaims oldest-idle soft-held packages past the cap while hot entries stay warm
+  ---
+  duration_ms: 1.07091
+  ...
+# Subtest: runtime-cache session pins stay warm under the idle gate but release under byte pressure
+ok 18 - runtime-cache session pins stay warm under the idle gate but release under byte pressure
+  ---
+  duration_ms: 0.7467
+  ...
+# Subtest: byte pressure never evicts an entry while a live presentation owner still holds it
+ok 19 - byte pressure never evicts an entry while a live presentation owner still holds it
+  ---
+  duration_ms: 0.46764
+  ...
+# Subtest: inline package-cache cap evicts oldest strict cache-only entry at release, no sweep needed
+ok 20 - inline package-cache cap evicts oldest strict cache-only entry at release, no sweep needed
+  ---
+  duration_ms: 0.82172
+  ...
+# Subtest: inline tier-A cap leaves decode-cache and mixed entries to the soft tier
+ok 21 - inline tier-A cap leaves decode-cache and mixed entries to the soft tier
+  ---
+  duration_ms: 0.368379
+  ...
+# Subtest: inline tier-B cap reclaims oldest runtime-cache session pins past the soft budget
+ok 22 - inline tier-B cap reclaims oldest runtime-cache session pins past the soft budget
+  ---
+  duration_ms: 0.465149
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 1168.095578
+# Subtest: headless real release-GLB traversal plateaus through live sector events and preview leases
+not ok 16 - headless real release-GLB traversal plateaus through live sector events and preview leases
+  ---
+  duration_ms: 120002.47744
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/asset-residency-refcounts.test.mjs:414:1'
+  failureType: 'testTimeoutFailure'
+  error: 'test timed out after 120000ms'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: byte budget reclaims oldest-idle soft-held packages past the cap while hot entries stay warm
+ok 17 - byte budget reclaims oldest-idle soft-held packages past the cap while hot entries stay warm
+  ---
+  duration_ms: 3.48643
+  ...
+# Subtest: runtime-cache session pins stay warm under the idle gate but release under byte pressure
+ok 18 - runtime-cache session pins stay warm under the idle gate but release under byte pressure
+  ---
+  duration_ms: 0.72629
+  ...
+# Subtest: byte pressure never evicts an entry while a live presentation owner still holds it
+ok 19 - byte pressure never evicts an entry while a live presentation owner still holds it
+  ---
+  duration_ms: 0.344968
+  ...
+# Subtest: inline package-cache cap evicts oldest strict cache-only entry at release, no sweep needed
+ok 20 - inline package-cache cap evicts oldest strict cache-only entry at release, no sweep needed
+  ---
+  duration_ms: 0.56963
+  ...
+# Subtest: inline tier-A cap leaves decode-cache and mixed entries to the soft tier
+ok 21 - inline tier-A cap leaves decode-cache and mixed entries to the soft tier
+  ---
+  duration_ms: 0.310644
+  ...
+# Subtest: inline tier-B cap reclaims oldest runtime-cache session pins past the soft budget
+ok 22 - inline tier-B cap reclaims oldest runtime-cache session pins past the soft budget
+  ---
+  duration_ms: 0.350623
+  ...

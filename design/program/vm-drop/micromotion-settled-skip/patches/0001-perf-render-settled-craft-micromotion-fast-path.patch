@@ -1,0 +1,224 @@
+From 8b280fb144ca725cbff9c009f3dc3bfb97dda790 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:54:21 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20settled=20craft=20micromotion?=
+ =?UTF-8?q?=20fast-path=20(~1.81=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet parked craft keep zero-G idle breath but skip RCS/gimbal/bell/haul
+springs. Observed-motion RCS still runs when angVel/yaw changes. Portable
+microbench ~1.81× median (80 ships × 4k frames); focused micro-motion
+suites 35/35.
+---
+ src/render/shipMicroMotion.js | 186 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 186 insertions(+)
+
+diff --git a/src/render/shipMicroMotion.js b/src/render/shipMicroMotion.js
+index 7b60d2f39..d6cb6030e 100644
+--- a/src/render/shipMicroMotion.js
++++ b/src/render/shipMicroMotion.js
+@@ -71,6 +71,72 @@ import {
+   sampleBellThermal,
+ } from '../presentation/flightOverheadMath.js';
+ 
++// Quiet parked craft still paid full RCS/gimbal/bell/haul springs every closure tick.
++// Settled fast-path keeps zero-G idle breath (Massline UVP) and skips the rest.
++// Bench-only toggle restores the always-full path for A/B.
++let CRAFT_MICROMOTION_SETTLED_SKIP = true;
++export function setCraftMicroMotionSettledSkipForBench(enabled) {
++  CRAFT_MICROMOTION_SETTLED_SKIP = enabled !== false;
++}
++export function getCraftMicroMotionSettledSkipForBench() {
++  return CRAFT_MICROMOTION_SETTLED_SKIP !== false;
++}
++
++const SETTLED_SPRING_EPS = 1e-4;
++const SETTLED_SPEED_MAX = 12;
++
++function craftCosmeticSettled(rec, entity, options, speed, isBoosting) {
++  if (!rec) return false;
++  if (isBoosting || speed >= SETTLED_SPEED_MAX) return false;
++  if (rec.inHazard || rec.jumpCharging || rec.jumpKick) return false;
++  if (rec.deathSlideT >= 0 || rec.dockClampAt > 0) return false;
++  if (rec.swingDashT0 >= 0 || rec.rebootT0 >= 0) return false;
++  if (rec.materializeT0 >= 0 || rec.cloakWaveT0 >= 0 || rec.shieldBreathT0 >= 0) return false;
++  if (rec.isVenting || rec.boostFlashT > 0) return false;
++  if ((rec.weaponHeat || 0) > SETTLED_SPRING_EPS) return false;
++  if ((rec.bellHeat || 0) >= 0.004) return false;
++  if (Math.abs(rec.recoilX) > SETTLED_SPRING_EPS || Math.abs(rec.recoilVelX) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.recoilPitch) > SETTLED_SPRING_EPS || Math.abs(rec.recoilVelPitch) > SETTLED_SPRING_EPS) return false;
++  if ((rec.recoilShudder || 0) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.flinchX) > SETTLED_SPRING_EPS || Math.abs(rec.flinchZ) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.flinchRoll) > SETTLED_SPRING_EPS || Math.abs(rec.flinchPitch) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.flinchVelRoll) > SETTLED_SPRING_EPS || Math.abs(rec.flinchVelPitch) > SETTLED_SPRING_EPS) return false;
++  if ((rec.flinchShudder || 0) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.impactYaw) > SETTLED_SPRING_EPS || Math.abs(rec.impactVelYaw) > SETTLED_SPRING_EPS) return false;
++  if ((rec.yieldAmt || 0) > SETTLED_SPRING_EPS || Math.abs(rec.yieldVel || 0) > SETTLED_SPRING_EPS) return false;
++  if ((rec.lineLean || 0) > SETTLED_SPRING_EPS || (rec.lineStrain || 0) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.accelSurge || 0) > SETTLED_SPRING_EPS) return false;
++  if (Math.abs(rec.gimbalYaw || 0) > SETTLED_SPRING_EPS || Math.abs(rec.gimbalPitch || 0) > SETTLED_SPRING_EPS) return false;
++  if (options && options.tetherActive
++      && (entity.id === options.playerId || entity.id === options.tetherTargetId)) {
++    return false;
++  }
++  const hullMax = Number.isFinite(entity.hullMax) && entity.hullMax > 0 ? entity.hullMax : 0;
++  if (hullMax > 0 && Number.isFinite(entity.hull) && entity.hull / hullMax < CRIT_HULL_FRAC) return false;
++  const frame = entity._flightFrame || null;
++  const actuators = frame && frame.actuators ? frame.actuators : null;
++  if (actuators) {
++    const lat = Number.isFinite(actuators.lateral) ? actuators.lateral : 0;
++    const yaw = Number.isFinite(actuators.yaw) ? actuators.yaw : 0;
++    const main = Number.isFinite(actuators.main) ? actuators.main : 0;
++    const reverse = Number.isFinite(actuators.reverse) ? actuators.reverse : 0;
++    if (Math.abs(lat) > 1e-3 || Math.abs(yaw) > 1e-3 || main > 1e-3 || reverse > 1e-3) return false;
++  } else {
++    // No actuator block: observed-motion fallback synthesizes RCS from yaw/lat change.
++    const angVel = Number.isFinite(entity.angVel) ? entity.angVel : 0;
++    if (Math.abs(angVel) > 1e-3) return false;
++    if (rec.prevRot != null) {
++      const rot = Number.isFinite(entity.rot) ? entity.rot : 0;
++      let dRot = rot - rec.prevRot;
++      if (dRot > Math.PI) dRot -= Math.PI * 2;
++      if (dRot < -Math.PI) dRot += Math.PI * 2;
++      if (Math.abs(dRot) > 1e-4) return false;
++    }
++  }
++  return true;
++}
++
++
+ function wrapAngle(a) {
+   let res = (a + Math.PI) % (Math.PI * 2);
+   if (res < 0) res += Math.PI * 2;
+@@ -1221,6 +1287,126 @@ export function createShipMicroMotionTracker() {
+       pendingDeathSlide = null;
+     }
+ 
++    // Quiet settled craft: keep zero-G idle breath, skip RCS/gimbal/bell/haul springs.
++    {
++      const speed0 = entity.vel ? Math.hypot(entity.vel.x, entity.vel.z) : 0;
++      const boosting0 = !!(entity.flags && entity.flags.boosting);
++      if (CRAFT_MICROMOTION_SETTLED_SKIP
++          && craftCosmeticSettled(rec, entity, options, speed0, boosting0)) {
++        lastSimTime = simTime;
++        if (rec.prevSpeed == null) rec.prevSpeed = speed0;
++        rec.prevSpeed = speed0;
++        const rot0 = Number.isFinite(entity.rot) ? entity.rot : 0;
++        const bank0 = Number.isFinite(entity.bank) ? entity.bank : 0;
++        if (rec.prevRot == null) {
++          rec.prevRot = rot0;
++          rec.prevBank = bank0;
++          rec.prevFwdV = 0;
++          rec.prevLatV = 0;
++          rec.prevYawRate = 0;
++        } else {
++          rec.prevRot = rot0;
++          rec.prevBank = bank0;
++        }
++        rec.prevBoosting = false;
++        rec.rcsMax = 0;
++        rec.rcsLat = 0;
++        rec.rcsYaw = 0;
++        rec.rcsMain = 0;
++        if (!rec.rcsFirings) rec.rcsFirings = [];
++        else rec.rcsFirings.length = 0;
++        let idleBreathRoll = 0;
++        let idleBreathPitch = 0;
++        let idleBreathHeave = 0;
++        if (!reducedMotion) {
++          const bScale = Math.max(0, 1 - speed0 / SETTLED_SPEED_MAX);
++          const tBreath = simTime * 1.4 + rec.idlePhase;
++          idleBreathRoll = Math.sin(tBreath * 0.85) * 0.007 * bScale;
++          idleBreathPitch = Math.cos(tBreath * 1.15) * 0.005 * bScale;
++          idleBreathHeave = Math.sin(tBreath * 1.6) * 0.035 * bScale;
++        }
++        // Absolute writes — do not rely on pose-apply having just reset bank/pitch.
++        const baseBank = Number.isFinite(entity.bank) ? entity.bank : 0;
++        const basePitch = Number.isFinite(entity.pitch) ? entity.pitch : 0;
++        hull.position.x = 0;
++        hull.position.y = idleBreathHeave;
++        hull.position.z = 0;
++        hull.rotation.x = baseBank + idleBreathRoll;
++        hull.rotation.z = basePitch + idleBreathPitch;
++        hull.rotation.y = rec.hullYawBase || 0;
++        if (hull.scale && rec.hullScaleDirty) {
++          if (typeof hull.scale.set === 'function') {
++            hull.scale.set(rec.hullScaleX, rec.hullScaleY, rec.hullScaleZ);
++          } else {
++            hull.scale.x = rec.hullScaleX;
++            hull.scale.y = rec.hullScaleY;
++            hull.scale.z = rec.hullScaleZ;
++          }
++          rec.hullScaleDirty = false;
++        }
++        // Turret idle sweep + barrel settle still run so parked armed craft keep UVP.
++        const weapons = (mesh.userData && mesh.userData.weapons)
++          || (hull.userData && hull.userData.weapons);
++        if (weapons && Array.isArray(weapons)) {
++          let targetEntity = null;
++          if (options.entities && typeof options.entities.get === 'function') {
++            const targetId = (options.playerId === entity.id)
++              ? options.playerTargetId
++              : (entity.data && (entity.data.targetId || (entity.data.ai && entity.data.ai.targetId)));
++            if (targetId) targetEntity = options.entities.get(targetId);
++          }
++          for (let i = 0; i < weapons.length; i++) {
++            const wProp = weapons[i];
++            if (!wProp || !wProp.userData) continue;
++            const barrel = wProp.userData.barrel;
++            if (barrel) {
++              if (wProp.userData.barrelBaseX == null) {
++                wProp.userData.barrelBaseX = barrel.position.x;
++                wProp.userData.barrelRecoilX = 0;
++              }
++              if (Math.abs(wProp.userData.barrelRecoilX) > 0.001) {
++                wProp.userData.barrelRecoilX *= Math.exp(-22.0 * dt);
++                barrel.position.x = wProp.userData.barrelBaseX + wProp.userData.barrelRecoilX;
++              } else if (wProp.userData.barrelRecoilX !== 0) {
++                wProp.userData.barrelRecoilX = 0;
++                barrel.position.x = wProp.userData.barrelBaseX;
++              }
++            }
++            if (wProp.userData.isTurret && wProp.userData.turretHead) {
++              const turretHead = wProp.userData.turretHead;
++              let desiredYaw = 0;
++              let inArc = false;
++              if (targetEntity && targetEntity.pos && entity.pos) {
++                const dx = targetEntity.pos.x - entity.pos.x;
++                const dz = targetEntity.pos.z - entity.pos.z;
++                const worldAngle = Math.atan2(dz, dx);
++                const shipRot = Number.isFinite(entity.rot) ? entity.rot : mesh.rotation.y;
++                const relYaw = wrapAngle(worldAngle - shipRot);
++                const mountYaw = wProp.rotation.y || 0;
++                desiredYaw = wrapAngle(relYaw - mountYaw);
++                if (Math.abs(desiredYaw) <= 1.31) inArc = true;
++              }
++              if (!inArc) desiredYaw = Math.sin(simTime * 0.85 + i * 1.6) * 0.45;
++              const currentYaw = turretHead.rotation.y;
++              const diff = wrapAngle(desiredYaw - currentYaw);
++              const slewRate = inArc ? 3.4 : 1.6;
++              const maxStep = slewRate * dt;
++              turretHead.rotation.y += Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
++            }
++          }
++          rec.lastFiredHardpoint = -999;
++        }
++        const drill = (mesh.userData && mesh.userData.drill)
++          || (hull.userData && hull.userData.drill);
++        if (drill && drill.userData && drill.userData.drillBit) {
++          const isMining = (entity.data && entity.data.miningBeamActive)
++            || (options.playerMiningActive && entity.id === options.playerId);
++          if (isMining) drill.userData.drillBit.rotation.x += dt * 32.0;
++        }
++        return;
++      }
++    }
++
+     // 1. Recoil spring integration (Hooke's law + damping)
+     const kRecoil = 240.0;
+     const cRecoil = 22.0;
+-- 
+2.47.3
+

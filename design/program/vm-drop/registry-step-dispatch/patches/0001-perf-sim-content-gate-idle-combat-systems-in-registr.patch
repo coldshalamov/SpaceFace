@@ -1,0 +1,490 @@
+From 324ad3dd3833588f10c9c0e894d9c3a5569a5e7f Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 00:59:18 -0400
+Subject: [PATCH] perf(sim): content-gate idle combat systems in registry.step
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Skip quiet-idle combat-island owners (run/dock/wing/capital/massline/heat/
+cloak/machinery/planet/law) via a cheap wake mask, and move chronicler,
+difficultyDirector, titles, npcJobsRuntime, and traffic to the 2 Hz calendar.
+Preserves update order with a reused scratch queue. Fair quiet harness ~1.7–2.9×.
+---
+ src/core/catchupPolicy.js                  | 127 ++++++++++++++++++++-
+ src/core/registry.js                       |   8 +-
+ src/runtime/authoritativeSystemManifest.js |  56 ++++++++-
+ test/sim-clock-catchup.test.mjs            | 116 +++++++++++++++++--
+ 4 files changed, 291 insertions(+), 16 deletions(-)
+
+diff --git a/src/core/catchupPolicy.js b/src/core/catchupPolicy.js
+index a97bc6371..cc8ce47d7 100644
+--- a/src/core/catchupPolicy.js
++++ b/src/core/catchupPolicy.js
+@@ -1,16 +1,31 @@
+ // Catch-up and clock policy. Extra fixed steps keep the table clock only.
+ // Calendar owners run at 2 Hz (or on clockWake.calendar). Glass/HUD/voice never
+ // run on extra catch-up steps. Near owners run on the primary tick, not catch-up.
++// Content-gated combat-island owners are omitted from the production primary queue
++// while their wake mask bit is clear (idle skip / dirty-set for registry.step).
+ 
+ import {
+   CALENDAR_CLOCK_PERIOD_TICKS,
++  CONTENT_GATE,
++  getContentGate,
+   SYSTEM_CLOCK,
+   getSystemCapability,
+   getSystemClock,
+ } from '../runtime/authoritativeSystemManifest.js';
+ 
+ export const CATCHUP_SKIP_CAPABILITIES = Object.freeze(['hud', 'voice']);
+-export { CALENDAR_CLOCK_PERIOD_TICKS, SYSTEM_CLOCK };
++export { CALENDAR_CLOCK_PERIOD_TICKS, SYSTEM_CLOCK, CONTENT_GATE };
++
++/** Sectors where environmentalMachinery does real work (Ceres / Pallas / weather). */
++const MACHINERY_SECTOR_IDS = new Set([
++  'sector_ceres_belt',
++  'sector_pallas_drift',
++  'sector_veil_nebula',
++  'sector_vesta_forge',
++]);
++
++/** Sole authored planet site sector (PQ-013). */
++const PLANET_SECTOR_ID = 'sector_tethys_junction';
+ 
+ export function isCatchupPresentationSkip(state) {
+   return !!(state && (state.simCatchupIndex | 0) > 0);
+@@ -32,17 +47,91 @@ export function shouldSkipSystemOnCatchup(systemName, state) {
+ /**
+  * Single skip used by createSimulation and createRegistry.
+  * Catch-up extra steps: table only. Primary ticks: calendar at 2 Hz; table/near/glass run.
++ * Content-gated owners also skip on production primary ticks while their wake bit is clear.
+  */
+ function isProductionClockState(state) {
+   return !!(state && state.runtime && state.runtime.profileId === 'production');
+ }
+ 
++function hasOwnEnumKey(obj) {
++  if (!obj) return false;
++  for (const _key in obj) return true;
++  return false;
++}
++
++/**
++ * Cheap wake mask for content-gated combat-island owners. No allocation, no entity walks.
++ * Sticky bits (massline telemetry/threats still `.active`, remoteMassline still `.active`)
++ * keep the family on the queue for the settle tick that clears them.
++ */
++export function contentWakeMask(state) {
++  if (!state) return 0;
++  let mask = 0;
++
++  const run = state.run;
++  if (run && run.phase && run.phase !== 'inactive') mask |= CONTENT_GATE.RUN;
++
++  const dockPlayer = state.stationServices && state.stationServices.player;
++  if (dockPlayer && dockPlayer.stationId) mask |= CONTENT_GATE.DOCK;
++
++  const fleet = state.automation && state.automation.fleet;
++  if (fleet && fleet.length > 0) mask |= CONTENT_GATE.WING;
++
++  const capital = state.capitalBossEncounters;
++  if (capital && (hasOwnEnumKey(capital.fights) || hasOwnEnumKey(capital.orders))) {
++    mask |= CONTENT_GATE.CAPITAL;
++  }
++
++  const player = state.player;
++  if (player) {
++    if (player.tether && player.tether.active) mask |= CONTENT_GATE.MASSLINE;
++    const tel = player.masslineTelemetry;
++    if (tel && tel.active) mask |= CONTENT_GATE.MASSLINE;
++    const threats = player.masslineThreats;
++    if (threats && threats.active) mask |= CONTENT_GATE.MASSLINE;
++    const remote = player.remoteMassline;
++    if (remote && remote.active) mask |= CONTENT_GATE.MASSLINE;
++    const throwRt = player.masslineThrow;
++    if (throwRt && throwRt.active) mask |= CONTENT_GATE.MASSLINE;
++    if (player.heat) {
++      mask |= CONTENT_GATE.HEAT;
++      mask |= CONTENT_GATE.LAW;
++    }
++  }
++  if (state.lawSecurity && state.lawSecurity.wanted) mask |= CONTENT_GATE.LAW;
++
++  const m2 = state.massline2;
++  const cloak = m2 && m2.cloak;
++  if (cloak && (cloak.active || (cloak.energy != null && cloak.energy < 1))) {
++    mask |= CONTENT_GATE.CLOAK;
++  }
++  const acts = state.input && state.input.actions;
++  if (acts && acts.cloakToggle) mask |= CONTENT_GATE.CLOAK;
++
++  const sectorId = state.world && state.world.currentSectorId;
++  if (sectorId && MACHINERY_SECTOR_IDS.has(sectorId)) mask |= CONTENT_GATE.MACHINERY;
++  if (sectorId === PLANET_SECTOR_ID) mask |= CONTENT_GATE.PLANET;
++  if (state.planet && state.planet.active) mask |= CONTENT_GATE.PLANET;
++
++  return mask;
++}
++
++export function isContentGatedIdle(systemName, wakeMask) {
++  const gate = getContentGate(systemName);
++  if (!gate) return false;
++  return (wakeMask & gate) === 0;
++}
++
+ export function shouldSkipSystemThisStep(systemName, state) {
+   const clock = getSystemClock(systemName);
+   if (isCatchupPresentationSkip(state) && clock !== SYSTEM_CLOCK.TABLE) return true;
+   if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state) && !isCalendarTick(state)) {
+     return true;
+   }
++  if (isProductionClockState(state) && getContentGate(systemName)) {
++    const wake = contentWakeMask(state);
++    if (isContentGatedIdle(systemName, wake)) return true;
++  }
+   return false;
+ }
+ 
+@@ -50,6 +139,8 @@ export function shouldSkipSystemThisStep(systemName, state) {
+  * Partition an update list once at host init. Production primary ticks iterate `combat`
+  * (table + near + glass) so calendar names are not even visited. Calendar ticks and
+  * non-production profiles keep `all`. Catch-up extra steps keep `table`.
++ * Content-gated names stay inside `combat` (order preserved); `updateQueueForThisStep`
++ * filters them into a reused scratch queue while idle.
+  */
+ export function partitionUpdateSystems(systems) {
+   const all = [];
+@@ -66,14 +157,42 @@ export function partitionUpdateSystems(systems) {
+     if (clock === SYSTEM_CLOCK.CALENDAR) calendar.push(system);
+     else combat.push(system);
+   }
+-  return { all, table, combat, calendar };
++  return {
++    all,
++    table,
++    combat,
++    calendar,
++    _quiet: [],
++    _wake: -1,
++  };
++}
++
++function fillContentFilteredQueue(source, state, partitions) {
++  const wake = contentWakeMask(state);
++  if (wake === partitions._wake && partitions._quiet.length >= 0 && partitions._source === source) {
++    return partitions._quiet;
++  }
++  const q = partitions._quiet;
++  q.length = 0;
++  for (let i = 0; i < source.length; i++) {
++    const system = source[i];
++    if (isContentGatedIdle(system.name, wake)) continue;
++    q.push(system);
++  }
++  partitions._wake = wake;
++  partitions._source = source;
++  return q;
+ }
+ 
+ export function updateQueueForThisStep(partitions, state) {
+   if (!partitions) return [];
+   if (isCatchupPresentationSkip(state)) return partitions.table;
+-  if (isProductionClockState(state) && !isCalendarTick(state)) return partitions.combat;
+-  return partitions.all;
++  if (!isProductionClockState(state)) return partitions.all;
++  if (isCalendarTick(state)) {
++    // Calendar tick: full `all` order, still omit idle content-gated owners.
++    return fillContentFilteredQueue(partitions.all, state, partitions);
++  }
++  return fillContentFilteredQueue(partitions.combat, state, partitions);
+ }
+ 
+ export function shouldRunSystemThisStep(systemName, state) {
+diff --git a/src/core/registry.js b/src/core/registry.js
+index 986131a5f..4e338bdb8 100644
+--- a/src/core/registry.js
++++ b/src/core/registry.js
+@@ -813,7 +813,9 @@ export function createRegistry(ctx) {
+             tickBoundary.publishInputCommand(state.input, state.tick,
+               typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
+           }
+-          for (const s of updateQueueForThisStep(postInputPartitions, state)) {
++          const quietQueue = updateQueueForThisStep(postInputPartitions, state);
++          for (let qi = 0; qi < quietQueue.length; qi++) {
++            const s = quietQueue[qi];
+             if (countSystems) tier1.countSystemInvocation(s.name);
+             s.update(dt, state);
+           }
+@@ -839,7 +841,9 @@ export function createRegistry(ctx) {
+         tickBoundary.publishInputCommand(state.input, state.tick,
+           typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
+       }
+-      for (const s of updateQueueForThisStep(postInputPartitions, state)) {
++      const measuredQueue = updateQueueForThisStep(postInputPartitions, state);
++      for (let qi = 0; qi < measuredQueue.length; qi++) {
++        const s = measuredQueue[qi];
+         if (countSystems) tier1.countSystemInvocation(s.name);
+         t = perfNow();
+         try { s.update(dt, state); }
+diff --git a/src/runtime/authoritativeSystemManifest.js b/src/runtime/authoritativeSystemManifest.js
+index 35cef0183..794e3d2d0 100644
+--- a/src/runtime/authoritativeSystemManifest.js
++++ b/src/runtime/authoritativeSystemManifest.js
+@@ -182,12 +182,16 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
+   'aftermathWrecks', 'wingMorale',
+   // Event-driven owners whose update() is an empty registry placeholder.
+   'terrainAnchors', 'jettisonImpulse', 'masslineImpactDamage',
++  // Narrative / pacing owners that read simTime (not dt). 2 Hz is enough; keeps them off the
++  // quiet combat island that registry.step otherwise visits every tick.
++  'chronicler', 'difficultyDirector',
++  // Witness / ambient job / freighter maintainers: simTime or internal cadence, not 60 Hz.
++  'titles', 'npcJobsRuntime', 'traffic',
+ ]);
+ 
+ export const NEAR_CLOCK_IDS = Object.freeze([
+   'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
+-  'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
+-  'npcJobsRuntime',
++  'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'planetRuntime',
+   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
+   // must not rescan the island just to notice a flee flag.
+   'combatOutcome',
+@@ -199,6 +203,54 @@ const CLOCK_BY_ID = new Map();
+ for (const id of CALENDAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.CALENDAR);
+ for (const id of NEAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.NEAR);
+ 
++
++/**
++ * Content-gated combat-island owners. They stay TABLE/NEAR/GLASS for catch-up policy, but the
++ * production primary queue omits them while their wake predicate is false. Order is preserved by
++ * filtering the prebuilt combat list into a reused scratch array (see catchupPolicy).
++ *
++ * Wake predicates must be cheap state reads only — never allocate, never walk entities.
++ */
++export const CONTENT_GATE = Object.freeze({
++  RUN: 1 << 0,
++  DOCK: 1 << 1,
++  WING: 1 << 2,
++  CAPITAL: 1 << 3,
++  MASSLINE: 1 << 4,
++  HEAT: 1 << 5,
++  CLOAK: 1 << 6,
++  MACHINERY: 1 << 7,
++  PLANET: 1 << 8,
++  LAW: 1 << 9,
++});
++
++export const CONTENT_GATED_IDS = Object.freeze({
++  survivalArena: CONTENT_GATE.RUN,
++  swarmArena: CONTENT_GATE.RUN,
++  survivalWave: CONTENT_GATE.RUN,
++  survivalRun: CONTENT_GATE.RUN,
++  swarmChain: CONTENT_GATE.RUN,
++  stationServices: CONTENT_GATE.DOCK,
++  wingmen: CONTENT_GATE.WING,
++  capitalBossEncounters: CONTENT_GATE.CAPITAL,
++  masslineTelemetry: CONTENT_GATE.MASSLINE,
++  masslineThreats: CONTENT_GATE.MASSLINE,
++  masslineImpacts: CONTENT_GATE.MASSLINE,
++  masslineSnares: CONTENT_GATE.MASSLINE,
++  masslineThrow: CONTENT_GATE.MASSLINE,
++  heat: CONTENT_GATE.HEAT,
++  cloak: CONTENT_GATE.CLOAK,
++  environmentalMachinery: CONTENT_GATE.MACHINERY,
++  planetRuntime: CONTENT_GATE.PLANET,
++  pirateDisguise: CONTENT_GATE.LAW,
++  pirateParley: CONTENT_GATE.LAW,
++  pirateDisengage: CONTENT_GATE.LAW,
++});
++
++export function getContentGate(id) {
++  return CONTENT_GATED_IDS[id] || 0;
++}
++
+ export function getSystemClock(id) {
+   // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
+   // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
+diff --git a/test/sim-clock-catchup.test.mjs b/test/sim-clock-catchup.test.mjs
+index db7a0bd7e..cf27ffc8a 100644
+--- a/test/sim-clock-catchup.test.mjs
++++ b/test/sim-clock-catchup.test.mjs
+@@ -4,17 +4,22 @@ import test from 'node:test';
+ import { createSimulation } from '../src/core/sim.js';
+ import {
+   CALENDAR_CLOCK_PERIOD_TICKS,
++  contentWakeMask,
++  isContentGatedIdle,
++  partitionUpdateSystems,
+   shouldSkipSystemThisStep,
++  updateQueueForThisStep,
+ } from '../src/core/catchupPolicy.js';
+ import {
+   CALENDAR_CLOCK_IDS,
++  CONTENT_GATE,
+   PRODUCTION_CALENDAR_UPDATE_ORDER,
+   PRODUCTION_COMBAT_UPDATE_ORDER,
+   PRODUCTION_UPDATE_ORDER,
+   SYSTEM_CLOCK,
++  getContentGate,
+   getSystemClock,
+ } from '../src/runtime/authoritativeSystemManifest.js';
+-import { partitionUpdateSystems, updateQueueForThisStep } from '../src/core/catchupPolicy.js';
+ 
+ function stub(name, ran) {
+   return {
+@@ -31,8 +36,11 @@ test('clock membership: table / near / calendar / glass', () => {
+   assert.equal(getSystemClock('mining'), SYSTEM_CLOCK.TABLE);
+   assert.equal(getSystemClock('tetherGameplay'), SYSTEM_CLOCK.TABLE);
+   assert.equal(getSystemClock('lawSecurity'), SYSTEM_CLOCK.NEAR);
+-  assert.equal(getSystemClock('traffic'), SYSTEM_CLOCK.NEAR);
+-  assert.equal(getSystemClock('npcJobsRuntime'), SYSTEM_CLOCK.NEAR);
++  assert.equal(getSystemClock('traffic'), SYSTEM_CLOCK.CALENDAR);
++  assert.equal(getSystemClock('npcJobsRuntime'), SYSTEM_CLOCK.CALENDAR);
++  assert.equal(getSystemClock('titles'), SYSTEM_CLOCK.CALENDAR);
++  assert.equal(getSystemClock('chronicler'), SYSTEM_CLOCK.CALENDAR);
++  assert.equal(getSystemClock('difficultyDirector'), SYSTEM_CLOCK.CALENDAR);
+   assert.equal(getSystemClock('barkDirector'), SYSTEM_CLOCK.CALENDAR);
+   assert.equal(getSystemClock('missions'), SYSTEM_CLOCK.CALENDAR);
+   assert.equal(getSystemClock('aftermathWrecks'), SYSTEM_CLOCK.CALENDAR);
+@@ -46,6 +54,7 @@ test('clock membership: table / near / calendar / glass', () => {
+   assert.equal(getSystemClock('masslineHud'), SYSTEM_CLOCK.GLASS);
+   assert.equal(getSystemClock('voiceArbiter'), SYSTEM_CLOCK.GLASS);
+   assert.ok(CALENDAR_CLOCK_IDS.includes('barkDirector'));
++  assert.ok(CALENDAR_CLOCK_IDS.includes('chronicler'));
+ });
+ 
+ test('selected AI backends retain their slot clock on catch-up steps', () => {
+@@ -123,8 +132,16 @@ test('createSimulation calendar owners run at 2 Hz, not every tick', () => {
+ test('production combat order excludes calendar owners', () => {
+   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('physics'));
+   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('weapons'));
+-  assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('npcJobsRuntime'));
+-  assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('traffic'));
++  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('npcJobsRuntime'), false);
++  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('traffic'), false);
++  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('titles'), false);
++  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('chronicler'), false);
++  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('difficultyDirector'), false);
++  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('npcJobsRuntime'));
++  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('traffic'));
++  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('titles'));
++  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('chronicler'));
++  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('difficultyDirector'));
+   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('heat'));
+   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('survivalRun'));
+   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('swarmChain'));
+@@ -169,20 +186,22 @@ test('production primary ticks iterate the combat queue, not calendar names', ()
+     stub('barkDirector', ran),
+     stub('missions', ran),
+     stub('npcJobsRuntime', ran),
++    stub('weapons', ran),
+   ];
+   const partitions = partitionUpdateSystems(systems);
+   const combatState = { runtime: { profileId: 'production' }, tick: 2, simCatchupIndex: 0 };
+   const names = updateQueueForThisStep(partitions, combatState).map((s) => s.name);
+-  assert.deepEqual(names, ['physics', 'npcJobsRuntime']);
++  // npcJobsRuntime is calendar; combat primary keeps table/near/glass only.
++  assert.deepEqual(names, ['physics', 'weapons']);
+   const calendarState = { runtime: { profileId: 'production' }, tick: 30, simCatchupIndex: 0 };
+   assert.deepEqual(
+     updateQueueForThisStep(partitions, calendarState).map((s) => s.name),
+-    ['physics', 'barkDirector', 'missions', 'npcJobsRuntime'],
++    ['physics', 'barkDirector', 'missions', 'npcJobsRuntime', 'weapons'],
+   );
+   const catchupState = { runtime: { profileId: 'production' }, tick: 30, simCatchupIndex: 1 };
+   assert.deepEqual(
+     updateQueueForThisStep(partitions, catchupState).map((s) => s.name),
+-    ['physics'],
++    ['physics', 'weapons'],
+   );
+ });
+ 
+@@ -208,3 +227,84 @@ test('legacy47a and unprofiled hosts still walk calendar every tick', () => {
+     ['physics', 'barkDirector'],
+   );
+ });
++
++test('content gates: quiet open flight omits idle owners; wake restores them', () => {
++  const ran = [];
++  const systems = [
++    stub('physics', ran),
++    stub('weapons', ran),
++    stub('survivalRun', ran),
++    stub('stationServices', ran),
++    stub('masslineTelemetry', ran),
++    stub('heat', ran),
++    stub('wingmen', ran),
++  ];
++  const partitions = partitionUpdateSystems(systems);
++  const quiet = {
++    runtime: { profileId: 'production' },
++    tick: 2,
++    simCatchupIndex: 0,
++    mode: 'flight',
++    run: { phase: 'inactive' },
++    stationServices: { player: {} },
++    automation: { fleet: [] },
++    player: {
++      heat: null,
++      tether: null,
++      masslineTelemetry: { active: false },
++      masslineThreats: { active: false },
++      remoteMassline: { active: false },
++      masslineThrow: { active: false },
++    },
++    world: { currentSectorId: 'sector_deep_black' },
++    planet: { active: false },
++    capitalBossEncounters: { fights: {}, orders: {} },
++    massline2: { cloak: { active: false, energy: 1 } },
++    input: { actions: {} },
++  };
++  assert.equal(contentWakeMask(quiet), 0);
++  assert.deepEqual(
++    updateQueueForThisStep(partitions, quiet).map((s) => s.name),
++    ['physics', 'weapons'],
++  );
++
++  const woken = {
++    ...quiet,
++    run: { phase: 'active', kind: 'survival' },
++    stationServices: { player: { stationId: 'st_a' } },
++    automation: { fleet: [{ id: 'w1' }] },
++    player: {
++      ...quiet.player,
++      heat: { value: 3 },
++      tether: { active: true, targetId: 'rock' },
++    },
++  };
++  assert.ok(contentWakeMask(woken) & CONTENT_GATE.RUN);
++  assert.ok(contentWakeMask(woken) & CONTENT_GATE.DOCK);
++  assert.ok(contentWakeMask(woken) & CONTENT_GATE.WING);
++  assert.ok(contentWakeMask(woken) & CONTENT_GATE.HEAT);
++  assert.ok(contentWakeMask(woken) & CONTENT_GATE.MASSLINE);
++  assert.deepEqual(
++    updateQueueForThisStep(partitions, woken).map((s) => s.name),
++    ['physics', 'weapons', 'survivalRun', 'stationServices', 'masslineTelemetry', 'heat', 'wingmen'],
++  );
++});
++
++test('content gate sticky massline settles then drops', () => {
++  assert.equal(getContentGate('masslineTelemetry'), CONTENT_GATE.MASSLINE);
++  assert.equal(isContentGatedIdle('physics', 0), false);
++  assert.equal(isContentGatedIdle('masslineTelemetry', 0), true);
++  assert.equal(isContentGatedIdle('masslineTelemetry', CONTENT_GATE.MASSLINE), false);
++  const sticky = {
++    runtime: { profileId: 'production' },
++    mode: 'flight',
++    player: {
++      tether: { active: false },
++      masslineTelemetry: { active: true },
++      masslineThreats: { active: false },
++      remoteMassline: { active: false },
++      masslineThrow: { active: false },
++    },
++  };
++  assert.ok(contentWakeMask(sticky) & CONTENT_GATE.MASSLINE);
++});
+-- 
+2.47.3
+

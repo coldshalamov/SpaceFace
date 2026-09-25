@@ -1520,9 +1520,10 @@
       }
     ],
     "materialProfileRoles": {
-      "mechanical": 12,
+      "mechanical": 11,
       "radiator": 1,
       "service": 1,
+      "signal": 1,
       "warning": 2
     },
     "materialProfiles": [
@@ -1604,7 +1605,7 @@
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "signal"
       }
     ],
     "nodeCount": 21,
@@ -2046,7 +2047,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid.glb"
   },
-  "runtimeHash": "a22689fb6416c058397e0a9d946374ada2577fb7cf69613f4735b82038268e7a",
+  "runtimeHash": "0db95a2cd59aa38ee2f3f56ff9dd959c0040ce1871eddaa51ae342771d53157e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,0 +1,17 @@
+{
+  "label": "syncEntityViews-micro-motion-closure-gate",
+  "entities": 400,
+  "frames": 240,
+  "middleFraction": 0.72,
+  "lod2Fraction": 0.15,
+  "before": {
+    "calls": 81600,
+    "ms": 55.665
+  },
+  "after": {
+    "calls": 29940,
+    "ms": 21.748
+  },
+  "callReduction": 0.6331,
+  "speedup": 2.56
+}

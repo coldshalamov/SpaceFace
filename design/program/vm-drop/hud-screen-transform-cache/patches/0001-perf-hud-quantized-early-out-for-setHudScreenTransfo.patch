@@ -1,0 +1,62 @@
+From 792186592a5111263b5126f8fad3264c3d4c1b75 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:01:19 -0400
+Subject: [PATCH] perf(hud): quantized early-out for setHudScreenTransform
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Settled overlays rebuilt a translate3d template every call only to strcmp it
+against _sfHudTransform. Cache tenths-of-a-px / tenths-of-a-deg keys so a still
+overlay skips toFixed + template alloc. Same rounding → same picture.
+---
+ src/ui/hud.js | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/src/ui/hud.js b/src/ui/hud.js
+index 6859b72bb..44614db98 100644
+--- a/src/ui/hud.js
++++ b/src/ui/hud.js
+@@ -1008,16 +1008,35 @@ export function setHidden(el, hidden) {
+   el.hidden = next;
+ }
+ // Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
++// Quantized numeric early-out: the settled path used to rebuild the transform string every call
++// just to strcmp it against _sfHudTransform. Cache tenths-of-a-px / tenths-of-a-deg keys so a
++// still overlay skips toFixed + template alloc entirely. Picture unchanged (same rounding).
+ function setHudScreenTransform(el, x, y, opts = null) {
+   if (!el) return;
+   const nx = Number(x);
+   const ny = Number(y);
+   if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+   const center = !opts || opts.center !== false;
+-  const rotate = opts && Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
+-  const offset = (opts && opts.offset) || (center ? 'translate(-50%,-50%)' : '');
+-  const next = `translate3d(${nx.toFixed(1)}px,${ny.toFixed(1)}px,0) ${offset}${rotate}`.trim();
+-  if (el._sfHudTransform === next) return;
++  const hasRotate = !!(opts && Number.isFinite(opts.rotate));
++  const customOffset = (opts && opts.offset) || '';
++  const qx = Math.round(nx * 10);
++  const qy = Math.round(ny * 10);
++  const qr = hasRotate ? Math.round(opts.rotate * 10) : 0;
++  if (
++    el._sfHudTx === qx
++    && el._sfHudTy === qy
++    && el._sfHudTr === qr
++    && el._sfHudTc === center
++    && el._sfHudTo === customOffset
++  ) return;
++  el._sfHudTx = qx;
++  el._sfHudTy = qy;
++  el._sfHudTr = qr;
++  el._sfHudTc = center;
++  el._sfHudTo = customOffset;
++  const rotate = hasRotate ? ` rotate(${(qr / 10).toFixed(1)}deg)` : '';
++  const offset = customOffset || (center ? 'translate(-50%,-50%)' : '');
++  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) ${offset}${rotate}`.trim();
+   el._sfHudTransform = next;
+   el.style.transform = next;
+ }
+-- 
+2.47.3
+

@@ -38,8 +38,10 @@ implementers are busy.
 
 1. **See.** What makes this still feel unfinished on the default route? Code, a live boot, a
    chase-camera look. `--ready` is one source. Your eyes are another. A closed receipt is not proof.
-2. **Partition.** Name 4–8 lanes with disjoint files. Hitch, title, HUD, station, toys in the
-   world, leftover chrome, one INFERENCE cut, one ready leaf if it is actually player-facing.
+2. **Partition.** The standing partition is [`FINISH_LANES.md`](./FINISH_LANES.md) — nine lanes
+   with disjoint files. Fill workers from the lane whose area is weakest on the default route; a
+   lane's own file lists its named checklist. If you need a finer split inside one lane, split by
+   file, never by worktree.
 3. **Spawn.** Captains launch workers. Workers play or look, then change the thing. First green
    draft is a draft.
 4. **Look.** A teammate (different model) checks unfinished, bugs, cheap. Fix what’s real. No

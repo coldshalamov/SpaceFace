@@ -52,6 +52,14 @@ assert.equal(typeof listeners.get('keydown'), 'function', 'createUiInput should 
 assert.equal(typeof windowListeners.get('wheel'), 'function', 'createUiInput should register flight zoom wheel passthrough');
 
 function dispatchKey(key, code = key, target = { tagName: 'DIV', isContentEditable: false }) {
+  // Real DOM elements carry closest(); the text-entry gate in src/ui/input.js routes through it
+  // (1d1d1c23e: bubbled keys from labelled wrappers must count as typing). The stub target gets
+  // the same contract so the fixture matches what a browser delivers.
+  target.closest = (selector) => (
+    /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)
+      || target.isContentEditable === true
+      || target.getAttribute?.('data-text-input') != null
+  ) && /input|textarea|select|contenteditable|data-text-input/.test(selector) ? target : null;
   const ev = {
     key,
     code,

@@ -13,12 +13,12 @@ import {
 import {
   COLLISION_LOOKAHEAD_S,
   DEFAULT_GRACE_S,
-  NEAR_ENTER_PAD_WU,
   NEAR_EXIT_PAD_WU,
   PHYSICS_SAFETY_PAD_WU,
   PRESENTATION_TIER,
   SIM_TIER,
   classifyActivity,
+  entityPresenceRadius,
   physicsReachWu,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
@@ -211,6 +211,7 @@ function ensureRuntime(state) {
       unstampedScratch: [],
       classifyOutScratch: [],
       classifySeenScratch: new Set(),
+      requestedReclassifyIds: new Set(),
       lastLiveCount: 0,
       pinResolveScratch: [],
       pinNormalizeScratch: { out: [], seen: new Set() },
@@ -637,6 +638,19 @@ export function skipUnstampedRescan(membershipVersion, lastMembershipVersion) {
 }
 
 /**
+ * Ask the next classify pass to re-stamp an entity that may sit outside the incremental visit
+ * set (for example a far ambient patrol that a law dispatch just enlisted). Without the request
+ * the actor keeps its shelved tier until the player-side discovery walk reaches it — physics-
+ * unmaterialized hulls are invisible to the spatial-hash radius query and only the walk's
+ * discovery disc can pick them up on its own.
+ */
+export function requestActivityReclassify(state, entity) {
+  const runtime = state && RUNTIMES.get(state);
+  if (!runtime || !entity || entity.id == null) return;
+  runtime.requestedReclassifyIds.add(entity.id);
+}
+
+/**
  * Weapons fire mid-tick and bump the entity-index version. Re-running classifyWorld
  * for those shots is the crowded-combat hitch. Projectiles always need physics
  * without an activity stamp; append them to this tick's dynamics and keep the
@@ -679,7 +693,7 @@ export function admitSameTickProjectiles(state, runtime, membership) {
   return true;
 }
 
-function selectClassifyEntities(state, runtime, list, origin, reach) {
+function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu) {
   if (!runtime.ready || runtime.seenEntityIds.size === 0) {
     return { mode: 'full', entities: list };
   }
@@ -691,7 +705,13 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   if (!skipUnstampedRescan(entityIndexVersion(state), runtime.classifiedMembership)) {
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
-      if (entity && entity.alive !== false && !runtime.seenEntityIds.has(entity.id)) {
+      // Entity ids are recycled through state.freeIds, so a live entity can carry an id that
+      // seenEntityIds still holds from its previous holder — the end-of-pass cleanup retains it
+      // because entities.get(id) answers live. "Unstamped" therefore has to mean the object has
+      // no stamp, not merely that its id is new; otherwise the recycled actor is never visited,
+      // never enters the owner views or physics dynamics, and drifts inert (D38 wave wasps).
+      if (entity && entity.alive !== false
+        && (!runtime.seenEntityIds.has(entity.id) || entity.activity == null)) {
         unstamped.push(entity);
       }
     }
@@ -708,6 +728,15 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
     out.push(entity);
   };
   for (let i = 0; i < unstamped.length; i++) add(unstamped[i]);
+  // Owner systems can promote a shelved actor mid-tick (a law dispatch enlisting a far ambient
+  // patrol is the live case): the incremental visit set would never reach it again, so the
+  // request queue forces one re-stamp on the next classify pass.
+  if (runtime.requestedReclassifyIds.size) {
+    for (const id of runtime.requestedReclassifyIds) {
+      add(state.entities && state.entities.get(id));
+    }
+    runtime.requestedReclassifyIds.clear();
+  }
   for (let i = 0; i < runtime.exactIds.length; i++) {
     add(state.entities && state.entities.get(runtime.exactIds[i]));
   }
@@ -739,24 +768,25 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
     queryNearbyEntities(state, origin, radius, scratch, runtime.classifyEmptyFallback);
   }
   for (let i = 0; i < scratch.length; i++) add(scratch[i]);
-  // The spatial hash only indexes physics bodies. Closed-form movers that opted out of
-  // physics (travel-lane traffic stamps `physicsBody: false` and repositions itself every
-  // tick at 420 WU/s) are invisible to the radius query, so without this scan an S3/R3
-  // stamp from spawn time survives the whole pass through the player's glass and the hull
-  // never earns a mesh. Restrict the catch-up walk to the explicit opt-out stamp — walking
-  // the entire live list every incremental classify was ~60–100 ms self in
-  // cpu-profile-flight (classifyWorld), and physics-backed rows are already in `seen`
-  // from the hash query above.
+  // The spatial hash is rebuilt each tick from the PREVIOUS pass's physics set
+  // (physics._rebuildSpatialHash -> spatialHashLayersFromState reads runtime.physicsStatics/
+  // physicsDynamics). Anything that dropped out of that set — a station or rock shelved to
+  // S3/R3 when the player flew past reach — is not in the hash, so the radius query can
+  // never find it again no matter how close the player returns. The hash query is therefore
+  // only a cache of last pass's neighbourhood; THIS walk is the discovery authority: every
+  // live, positioned entity whose presence envelope reaches inside the discovery disc
+  // (physics reach + exit pad, the residency prefetch radius, or the submit-cull corner —
+  // whichever reaches furthest) is re-stamped this pass. The per-entity test is two
+  // subtracts and a compare against scratch state — no allocation.
   if (origin) {
-    const enter = reach + NEAR_ENTER_PAD_WU;
-    const enter2 = enter * enter;
+    const discover = Math.max(0, finite(discoverWu));
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
-      if (entity.physicsBody !== false) continue;
+      const limit = discover + entityPresenceRadius(entity);
       const dx = finite(entity.pos.x) - origin.x;
       const dz = finite(entity.pos.z) - origin.z;
-      if (dx * dx + dz * dz <= enter2) add(entity);
+      if (dx * dx + dz * dz <= limit * limit) add(entity);
     }
   }
   return { mode: 'incremental', entities: out };
@@ -788,7 +818,18 @@ function classifyWorld(state, runtime) {
   runtime.runwayHalfZ = submit.halfZ;
   runtime.prefetchRadiusWu = prefetchR;
 
-  const selection = selectClassifyEntities(state, runtime, list, origin, reach);
+  // The incremental visit set must be able to rediscover anything whose footprint could
+  // matter to this pass: inside physics reach (plus the near exit pad), inside the
+  // residency prefetch disc, or inside the submit-cull corner. The widest of those is the
+  // discovery radius; entityPresenceRadius then keeps big-hulled bodies (a station's dock
+  // envelope) discoverable while their centre is still outside it.
+  const discoverWu = Math.max(
+    reach + NEAR_EXIT_PAD_WU,
+    prefetchR,
+    Math.hypot(submit.halfX, submit.halfZ),
+  );
+
+  const selection = selectClassifyEntities(state, runtime, list, origin, reach, discoverWu);
   runtime.classifyMode = selection.mode;
   runtime.classifyVisits = 0;
 
@@ -850,7 +891,7 @@ function classifyWorld(state, runtime) {
     const dx = px - origin.x;
     const dz = pz - origin.z;
     const dist2 = dx * dx + dz * dz;
-    const visual = Math.max(0, finite(entity.radius));
+    const visual = entityPresenceRadius(entity);
     const onGlass = Math.abs(dx) <= glass.halfX + visual && Math.abs(dz) <= glass.halfZ + visual;
     const submitRunway = Math.abs(dx) <= submit.halfX + visual && Math.abs(dz) <= submit.halfZ + visual;
     const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
@@ -904,6 +945,12 @@ function classifyWorld(state, runtime) {
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
       || (entity.flags && entity.flags.missionPinned)
+      // A lawful ship answering a law-security incident — chasing an aggressor or holding a
+      // witnessed wreck — is mission-critical even when it began as far ambient traffic; without
+      // this the aggregate gate below shelved the enlisted patrol in S4_AGGREGATE where it could
+      // never think or move (seed 8008 witnessed-kill chaser frozen at 250 WU with pins:[]).
+      // Mirrors the pin rule in activityClassification.classifyEntityPins.
+      || (ai && (ai.securityTargetId != null || ai.witnessRole != null))
       // K1 authored active presence is a named, durable combat actor even when its global sector
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.

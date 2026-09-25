@@ -11,6 +11,7 @@ import {
   ensureActivityClassified,
   entityNeedsAiThink,
   entityNeedsPhysics,
+  simGlassHalfExtentsFromState,
   skipUnstampedRescan,
 } from '../src/world/activityRuntime.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
@@ -440,6 +441,61 @@ test('activity manager publishes glass and exact sets from the live classifier',
   assert.equal(far.alive, true);
 });
 
+test('a recycled entity id is stamped when its holder is replaced between passes', () => {
+  // Entity ids recycle through state.freeIds: a dead actor's id can land on a fresh spawn before
+  // the classifier's end-of-pass cleanup runs, so the new object sits in seenEntityIds with no
+  // stamp. If "unstamped" meant only "id unseen" the replacement would be skipped forever —
+  // survival wasps drifted inert outside every owner view (D38). The rescan must treat a live
+  // entity with no activity stamp as unstamped regardless of its id's history.
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const nearRock = rock(2, 20);
+  const farRocks = [];
+  for (let i = 0; i < 40; i++) farRocks.push(rock(100 + i, 4000 + i * 10));
+  // The previous holder of id 50: a far dormant rock, stamped then culled off-screen.
+  const staleHolder = rock(50, 6000);
+  const state = makeState([player, nearRock, staleHolder, ...farRocks], {
+    runtime: { profileId: 'production' },
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 3,
+      ready: true,
+      shipLike: [player],
+      asteroids: [nearRock, staleHolder, ...farRocks],
+      projectiles: [],
+    },
+  });
+  const first = ensureActivityClassified(state);
+  assert.equal(first.classifyMode, 'full');
+  assert.equal(staleHolder.activity.simTier, SIM_TIER.S3_DORMANT);
+  // Despawn the holder and respawn a hostile reusing its id before the next classify pass —
+  // the cleanup never sees a dead entity at id 50, so the stale "seen" record survives.
+  staleHolder.alive = false;
+  state.entities.delete(50);
+  state.entityList.splice(state.entityList.indexOf(staleHolder), 1);
+  const recycled = ship(50, 120, {
+    team: 1,
+    data: {
+      ai: {
+        combatant: true, passive: false,
+        activity: { kind: 'attack_run', targetId: 1 },
+      },
+    },
+  });
+  state.entityList.push(recycled);
+  state.entities.set(50, recycled);
+  state.entityIndex.shipLike.push(recycled);
+  state.entityIndex.version = 4;
+  state.tick = (state.tick | 0) + 1;
+  state.simTime = (state.simTime || 0) + 1 / 60;
+  const second = ensureActivityClassified(state);
+  assert.equal(second.classifyMode, 'incremental');
+  assert.ok(recycled.activity, 'recycled-id spawn must receive an activity stamp');
+  assert.equal(recycled.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.ok(second.exactIds.includes(50));
+  assert.ok(second.activeAiEntities.includes(recycled),
+    'a stamped hostile must be visible to the tactical owner view');
+});
+
 test('incremental classify revisits fast non-physics movers the hash cannot see', () => {
   // Travel-lane traffic repositions itself every tick at 420 WU/s and opted out of physics
   // bodies, so the production broad-phase hash never contains it. The incremental classifier
@@ -477,4 +533,80 @@ test('incremental classify revisits fast non-physics movers the hash cannot see'
   assert.equal(second.classifyMode, 'incremental');
   assert.equal(laneHauler.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
   assert.ok(second.glassIds.includes(7), 'revisited hauler joins the glass set');
+});
+
+test('incremental classify rediscovers a station and a rock the player flies back to', () => {
+  // The production loop feeds the spatial hash from the PREVIOUS pass's physics
+  // set. An entity that drops to S3/R3 leaves the hash, so the hash radius query
+  // can never find it again — the classifier's list walk is the only authority
+  // that can rediscover it when the player returns. Player flies away from a
+  // station at the origin, dwells on a rock at x=3000, then comes back.
+  const player = {
+    id: 1, type: 'ship', alive: true, collides: true, radius: 8, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const station = {
+    id: 2, type: 'station', alive: true, collides: true, radius: 260,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const farRock = {
+    id: 3, type: 'asteroid', alive: true, collides: true, radius: 30,
+    pos: { x: 3000, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const state = makeState([player, station, farRock], {
+    tick: 1,
+    simTime: 1 / 60,
+    runtime: { profileId: 'production' },
+    entityIndex: { __spacefaceEntityIndexV1: true, version: 1, ready: true, physicsStaticVersion: 0 },
+    spatialHash: new SpatialHash(64),
+  });
+  const step = (x) => {
+    player.pos.x = x;
+    state.tick += 180;
+    state.simTime += 3;
+    const runtime = ensureActivityClassified(state);
+    const layers = spatialHashLayersFromState(state);
+    state.spatialHash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
+    return runtime;
+  };
+  let runtime = null;
+  // The runtime arrays are reused scratch — membership must be sampled inside
+  // the step, not from the returned object after later passes overwrite it.
+  let rockStaticAt3000 = false;
+  let rockGlassAt3000 = false;
+  for (const x of [0, 500, 1500, 3000, 3000, 1500, 500, 100, 0]) {
+    runtime = step(x);
+    if (x === 3000) {
+      rockStaticAt3000 = runtime.physicsStatics.includes(farRock);
+      rockGlassAt3000 = runtime.glassIds.has(3);
+    }
+  }
+  assert.equal(runtime.classifyMode, 'incremental');
+  assert.ok(rockStaticAt3000,
+    'the rock under the player at x=3000 must be a physics static');
+  assert.ok(rockGlassAt3000, 'the rock under the player must be on the glass');
+  assert.ok(
+    station.activity.simTier === SIM_TIER.S0_EXACT || station.activity.simTier === SIM_TIER.S1_NEAR,
+    `station must be exact on return, got ${station.activity.simTier}`,
+  );
+  assert.ok(runtime.physicsStatics.includes(station),
+    'the station the player returned to must be a physics static');
+  assert.ok(runtime.glassIds.has(2), 'the station the player returned to must be on the glass');
+});
+
+test('station glass membership uses its dock envelope', () => {
+  // The drawn station extends to data.dockRadius (60-90) while its collision
+  // radius is 26-42. A hull whose centre sits just off the glass but whose dock
+  // envelope reaches it is on screen — it must classify R0_GLASS or the
+  // renderer evicts a visible body.
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const glass = simGlassHalfExtentsFromState(makeState([player]));
+  const station = {
+    id: 2, type: 'station', alive: true, collides: true, radius: 34,
+    pos: { x: glass.halfX + 60, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    data: { dockRadius: 90 }, flags: {},
+  };
+  const runtime = ensureActivityClassified(makeState([player, station]));
+  assert.equal(station.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
+  assert.ok(runtime.glassIds.has(2));
 });

@@ -1,0 +1,169 @@
+{
+  "name": "docking-corridor-far-quiet-latch-floor",
+  "packageRuns": 5,
+  "medians": [
+    18.254,
+    17.838,
+    18.13,
+    18.618,
+    17.691
+  ],
+  "mins": [
+    7.248,
+    7.874,
+    7.649,
+    7.82,
+    8.149
+  ],
+  "floorMinSpeedup": 7.248,
+  "medianOfMedians": 18.13,
+  "clears15x": true,
+  "dirtyWakeOk": true,
+  "runs": [
+    {
+      "name": "docking-corridor-far-quiet-latch",
+      "iters": 60000,
+      "stations": 3,
+      "stationR": 1800,
+      "medianSpeedup": 18.254,
+      "minSpeedup": 7.248,
+      "maxSpeedup": 19.234,
+      "pairs": [
+        7.248,
+        15.768,
+        17.002,
+        17.998,
+        18.044,
+        18.254,
+        18.351,
+        18.41,
+        18.438,
+        19.039,
+        19.234
+      ],
+      "latched": true,
+      "wake": {
+        "beforeWake": true,
+        "afterApproachLatched": false,
+        "distCenter": 60,
+        "dirtyWakeOk": true
+      }
+    },
+    {
+      "name": "docking-corridor-far-quiet-latch",
+      "iters": 60000,
+      "stations": 3,
+      "stationR": 1800,
+      "medianSpeedup": 17.838,
+      "minSpeedup": 7.874,
+      "maxSpeedup": 18.926,
+      "pairs": [
+        7.874,
+        15.234,
+        17.482,
+        17.528,
+        17.645,
+        17.838,
+        17.863,
+        18.44,
+        18.453,
+        18.63,
+        18.926
+      ],
+      "latched": true,
+      "wake": {
+        "beforeWake": true,
+        "afterApproachLatched": false,
+        "distCenter": 60,
+        "dirtyWakeOk": true
+      }
+    },
+    {
+      "name": "docking-corridor-far-quiet-latch",
+      "iters": 60000,
+      "stations": 3,
+      "stationR": 1800,
+      "medianSpeedup": 18.13,
+      "minSpeedup": 7.649,
+      "maxSpeedup": 19.132,
+      "pairs": [
+        7.649,
+        15.461,
+        17.423,
+        17.49,
+        18.02,
+        18.13,
+        18.349,
+        18.509,
+        18.543,
+        18.971,
+        19.132
+      ],
+      "latched": true,
+      "wake": {
+        "beforeWake": true,
+        "afterApproachLatched": false,
+        "distCenter": 60,
+        "dirtyWakeOk": true
+      }
+    },
+    {
+      "name": "docking-corridor-far-quiet-latch",
+      "iters": 60000,
+      "stations": 3,
+      "stationR": 1800,
+      "medianSpeedup": 18.618,
+      "minSpeedup": 7.82,
+      "maxSpeedup": 19.509,
+      "pairs": [
+        7.82,
+        16.169,
+        17.948,
+        18.026,
+        18.506,
+        18.618,
+        18.737,
+        19.218,
+        19.281,
+        19.393,
+        19.509
+      ],
+      "latched": true,
+      "wake": {
+        "beforeWake": true,
+        "afterApproachLatched": false,
+        "distCenter": 60,
+        "dirtyWakeOk": true
+      }
+    },
+    {
+      "name": "docking-corridor-far-quiet-latch",
+      "iters": 60000,
+      "stations": 3,
+      "stationR": 1800,
+      "medianSpeedup": 17.691,
+      "minSpeedup": 8.149,
+      "maxSpeedup": 18.644,
+      "pairs": [
+        8.149,
+        14.992,
+        17.456,
+        17.489,
+        17.579,
+        17.691,
+        18.139,
+        18.189,
+        18.298,
+        18.606,
+        18.644
+      ],
+      "latched": true,
+      "wake": {
+        "beforeWake": true,
+        "afterApproachLatched": false,
+        "distCenter": 60,
+        "dirtyWakeOk": true
+      }
+    }
+  ]
+}

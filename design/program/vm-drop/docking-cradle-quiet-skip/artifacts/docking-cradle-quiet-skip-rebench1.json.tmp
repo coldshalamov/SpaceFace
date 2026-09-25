@@ -1,0 +1,15 @@
+{
+  "median": 2.153,
+  "minSpeedup": 1.758,
+  "dirtyWake": {
+    "ok": true
+  },
+  "sample": {
+    "beforeMs": 7.769140000000007,
+    "afterMs": 3.333196000000001,
+    "speedup": 2.3308380305268592,
+    "beforeWalks": 200001,
+    "afterWalks": 1,
+    "afterSkips": 200000
+  }
+}

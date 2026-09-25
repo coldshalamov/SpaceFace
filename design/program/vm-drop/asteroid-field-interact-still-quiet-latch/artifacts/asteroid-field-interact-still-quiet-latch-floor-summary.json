@@ -1,0 +1,21 @@
+{
+  "name": "asteroid-field-interact-still-quiet-latch-floor",
+  "packageRuns": 5,
+  "medians": [
+    13.779,
+    13.765,
+    13.679,
+    13.836,
+    13.985
+  ],
+  "mins": [
+    7.19,
+    7.385,
+    8.269,
+    7.489,
+    7.171
+  ],
+  "floorMinSpeedup": 7.171,
+  "medianOfMedians": 13.779,
+  "clears15x": true
+}

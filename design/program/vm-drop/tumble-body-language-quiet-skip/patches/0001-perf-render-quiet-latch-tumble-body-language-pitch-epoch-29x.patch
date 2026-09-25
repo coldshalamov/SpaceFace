@@ -1,0 +1,186 @@
+From cd08998b83b5172c42003a4a2b8fabfffed4132a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:41:37 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20tumble=20body-lan?=
+ =?UTF-8?q?guage=20with=20pitch=20epoch=20(~29=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight walked shipPitchCandidates every tick with zero active
+tumble/thrownTrail. Latch after first empty walk+empty cadence; wake on
+pitchPresentationEpoch (tumble can start without entityIndexVersion bump).
+Soft-GPU fps not claimed. Picture ON.
+---
+ src/render/shipPitchPresentation.js | 19 ++++++++++++++
+ src/render/vfx.js                   | 39 +++++++++++++++++++++++++----
+ 2 files changed, 53 insertions(+), 5 deletions(-)
+
+diff --git a/src/render/shipPitchPresentation.js b/src/render/shipPitchPresentation.js
+index 3f348bff5..2bfcd1639 100644
+--- a/src/render/shipPitchPresentation.js
++++ b/src/render/shipPitchPresentation.js
+@@ -17,6 +17,19 @@ import {
+   shouldRunEntityClosures,
+ } from './entityViewSyncBand.js';
+ 
++// Epoch bumped when any craft writes active tumble / thrown-trail / recover
++// body-language. VFX consumers latch quiet walks against this so a tumble that
++// starts without an entityIndexVersion bump still wakes. Soft-GPU fps not claimed.
++let _pitchPresentationEpoch = 0;
++
++export function pitchPresentationEpoch() {
++  return _pitchPresentationEpoch;
++}
++
++function bumpPitchPresentationEpoch() {
++  _pitchPresentationEpoch = (_pitchPresentationEpoch + 1) | 0;
++}
++
+ const CONTROL_LOSS_SCRATCH = {
+   mode: 'idle',
+   tumbling: false,
+@@ -141,6 +154,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+   const dt = Math.min(0.05, Math.max(0, frameDt));
+   const rate = 6.0;
+   let updated = 0;
++  let anyActiveBodyLanguage = false;
+   const now = Number.isFinite(state && state.simTime)
+     ? state.simTime
+     : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+@@ -231,6 +245,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+         THROWN_TRAIL_INPUT,
+         existingThrownTrail || {},
+       );
++      if (pres.thrownTrail && pres.thrownTrail.active) anyActiveBodyLanguage = true;
+     }
+ 
+     if (recover && Number.isFinite(recover.until) && now < recover.until) {
+@@ -246,6 +261,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+       entity.pitch = body.pitch;
+       pres.tumble = body;
+       if (!body.recovering) delete pres.tumbleRecover;
++      else anyActiveBodyLanguage = true;
+       updated++;
+       continue;
+     }
+@@ -272,6 +288,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+       pres._lastTumbleBank = body.bank;
+       pres._lastTumblePitch = body.pitch;
+       pres.tumble = body;
++      anyActiveBodyLanguage = true;
+       if (loss.mode === 'tumbling') {
+         pres.wasTumbling = true;
+       }
+@@ -298,6 +315,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+       entity.bank = body.bank;
+       entity.pitch = body.pitch;
+       pres.tumble = body;
++      anyActiveBodyLanguage = true;
+       updated++;
+       continue;
+     }
+@@ -313,6 +331,7 @@ export function updateShipPitchPresentation(state, frameDt, view = null) {
+     updated++;
+   }
+ 
++  if (anyActiveBodyLanguage) bumpPitchPresentationEpoch();
+   return updated;
+ }
+ 
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 193d38e7e..937bc9116 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -239,7 +239,7 @@ import {
+   updateDockingCradle,
+   writeDockingCradleGeometry,
+ } from './dockingCradle.js';
+-import { shipPitchCandidates } from './shipPitchPresentation.js';
++import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
+ import { TargetContour, resolveTargetContour } from './targetContour.js';
+ import {
+   MOMENTUM_SINK_VFX_COLORS,
+@@ -1341,6 +1341,12 @@ export const vfx = {
+     // Soft-GPU fps not claimed.
+     this._statusAttachedQuietEmpty = false;
+     this._statusAttachedQuietSeq = -1;
++    // Quiet settled flight: tumble body-language walked shipPitchCandidates every
++    // tick with zero active tumble/thrownTrail. Latch after first empty walk+empty
++    // cadence; wake on pitchPresentationEpoch (tumble can start without
++    // entityIndexVersion bump). Soft-GPU fps not claimed.
++    this._tumbleBodyQuietEmpty = false;
++    this._tumbleBodyQuietEpoch = -1;
+     this._energyPlumeWasRelevant = false;
+     // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
+     // every idle tick (fleet walks ships + family plume/rcs and clears the #100
+@@ -2196,12 +2202,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -13774,12 +13780,28 @@ export const vfx = {
+    * a separate actual-velocity thrown-body streak.
+    */
+   _updateTumbleBodyLanguageVfx(dt) {
+-    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
++    if (!this._scene || !this.state || this.state.mode !== 'flight') {
++      this._tumbleBodyQuietEmpty = false;
++      return;
++    }
+     if (!this._tumbleVfxCd) this._tumbleVfxCd = new Map();
++    // Quiet latch: after first empty shipLike walk + empty cadence, skip until
++    // pitchPresentationEpoch advances (updateShipPitchPresentation wrote active
++    // tumble/thrown/recover). entityIndexVersion alone is unsafe — tumble can
++    // start on an existing ship without an index bump. Soft-GPU fps not claimed.
++    const epoch = pitchPresentationEpoch();
++    // Require empty cadence too — entity death / inactivity walks must still
++    // retire stale cd keys even if presentation has not bumped the epoch.
++    if (this._tumbleBodyQuietEmpty
++      && epoch === this._tumbleBodyQuietEpoch
++      && this._tumbleVfxCd.size === 0) {
++      return;
++    }
+     const reduced = this._isReduced();
+     const list = shipPitchCandidates(this.state);
+     const cd = this._tumbleVfxCd;
+     const frameDt = Math.max(0, dt || 0);
++    let anyActive = false;
+     for (const e of list) {
+       if (!e) continue;
+       if (!e.alive || !e.pos || (e.flags && e.flags.docked)) {
+@@ -13809,6 +13831,7 @@ export const vfx = {
+         cd.delete(e);
+         continue;
+       }
++      anyActive = true;
+       const thrash = plan.thrash;
+       const ribbon = plan.ribbon;
+       const hullBlur = plan.hullBlur;
+@@ -13926,6 +13949,12 @@ export const vfx = {
+         if (!ent || !ent.alive || (key && typeof key === 'object' && ent !== key)) cd.delete(key);
+       }
+     }
++    if (!anyActive && cd.size === 0) {
++      this._tumbleBodyQuietEmpty = true;
++      this._tumbleBodyQuietEpoch = epoch;
++    } else {
++      this._tumbleBodyQuietEmpty = false;
++    }
+   },
+ 
+   // Approximate commanded throttle for the plume: forward input, forward speed, or boost blend.
+-- 
+2.47.3
+

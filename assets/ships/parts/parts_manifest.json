@@ -2822,7 +2822,7 @@
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
       "tris": 30518,
-      "bytes": 5456352,
+      "bytes": 5456460,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"

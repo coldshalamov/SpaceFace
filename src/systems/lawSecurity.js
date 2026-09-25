@@ -57,6 +57,7 @@ import {
 } from '../law/authorityResponse.js';
 import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { requestActivityReclassify } from '../world/activityRuntime.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -1229,6 +1230,11 @@ export const lawSecurity = {
     combat.targetId = attacker.id;
     const intent = data.intent || (data.intent = {});
     intent.fire = false;
+    // An enlisted ambient patrol can sit outside the incremental activity-classify visit set as
+    // S4_AGGREGATE — shelved, never in the AI owner view, and physics-unmaterialized so it can
+    // never move. Its new security fields make it mission-critical, but only a re-stamp sees
+    // them; request one so the responder wakes instead of freezing where it was claimed.
+    requestActivityReclassify(state, responder);
   },
 
   _updateIncident(key, incident) {
@@ -1659,6 +1665,9 @@ export const lawSecurity = {
       holderAi.roe = RulesOfEngagement.DEFENSIVE;
       holderAi.activity = holderActivityFor(existingStartedTick);
       clearTarget(holder, null);
+      // Same enlistment wake as _authorizeResponder: a holder picked from shelved ambient
+      // traffic must be re-stamped or it stands over the body only on paper.
+      requestActivityReclassify(state, holder);
 
       for (const chaser of chasers) {
         const chaserData = chaser.data || (chaser.data = {});

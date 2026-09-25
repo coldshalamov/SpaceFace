@@ -62,8 +62,12 @@ const SURFACE_VERTEX = /* glsl */`
     // A material front travels along the fold; the sheet itself opens and shears with age.
     float time = aSpritePhase.x;
     float phase = aSurfaceSection.x + aSpritePhase.y;
-    p.y += 0.045 * sin(uv.x*5.1-time*6.5+phase*6.28318) * aSurfaceSection.y;
-    p.xz *= 0.86 + 0.14 * sin(uv.x*2.0+time*1.5+phase);
+    float rollup=uv.x*7.5-time*5.2+phase*6.28318;
+    p.y += (0.075*sin(rollup)+0.025*sin(rollup*1.7+uv.y*4.0))*aSurfaceSection.y;
+    // Independent reach, curl and cooling per sheet: repeated explosions share a material,
+    // not a stamped silhouette. Seed is fixed for the lifetime, never position-hashed.
+    p.xz *= (0.88+0.16*sin(phase*17.3))*(0.89+0.11*sin(uv.x*3.0-time*2.2+phase));
+    p.z += 0.045*sin(time*4.0+phase*9.0)*aSurfaceSection.y;
     p = rotateHeading(p * instanceScale(), aSpriteAxis);
     vec4 world = modelMatrix * vec4(aSpritePosition + p, 1.0);
     vWorld = world.xyz;
@@ -88,17 +92,19 @@ const SURFACE_FRAGMENT = /* glsl */`
     vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
     float grazing = pow(1.0-abs(dot(n, normalize(cameraPosition-vWorld))), 2.0);
     float crossSection = vUv.y*2.0-1.0;
-    float ridge = exp(-pow((crossSection-0.20*sin(vUv.x*5.0+vSection*6.28-vPhase.x*4.0))*5.6,2.0));
+    float crease=crossSection-0.28*sin(vUv.x*7.0+(vSection+vPhase.y)*6.28-vPhase.x*5.0);
+    float creaseWidth=max(0.14,fwidth(crease)*1.1);
+    float ridge = exp(-pow(crease/creaseWidth,2.0));
     float lip = exp(-pow((abs(crossSection)-0.78)*11.0,2.0));
     float body = 0.10 + 0.87*ridge + 0.48*lip;
-    float transport = 0.60 + 0.40*sin(vUv.x*11.0-vPhase.x*10.0+vSection*6.28);
+    float transport = 0.60 + 0.40*sin(vUv.x*11.0-vPhase.x*10.0+(vSection+vPhase.y)*6.28);
     float tips = smoothstep(0.0,0.10,vUv.x)*(1.0-smoothstep(0.79,1.0,vUv.x));
     float edge = 1.0-smoothstep(0.86,1.0,abs(crossSection));
     float release = 1.0-smoothstep(0.53+0.14*vSection,1.0,vPhase.x+vUv.x*0.13);
     float alpha = vSpriteOpacity * tips * edge * release;
     if (alpha < 0.004) discard;
     vec3 heat = mix(vSpriteColor*0.32, vSpriteColor, body);
-    heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*0.22*ridge*transport;
+    heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*0.85*ridge*transport;
     gl_FragColor = vec4(heat*uRadiance*(body+0.32*grazing)*(0.65+0.35*transport), alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -165,18 +171,25 @@ const VOLUME_FRAGMENT = /* glsl */`
     if (end<=begin) discard;
     float film=clamp(vPhase.x,0.0,1.0)*11.0;
     float f0=floor(film), f1=min(11.0,f0+1.0);
-    float stride=(end-begin)/20.0;
+    float stride=(end-begin)/28.0;
     vec3 sum=vec3(0.0);
     float transmittance=1.0;
     float first=-1.0;
-    for (int i=0;i<20;i++) {
+    for (int i=0;i<28;i++) {
       float distanceAlong=begin+(float(i)+0.5)*stride;
       vec3 p=vLocalCamera+ray*distanceAlong;
       // Roll the internal flow about its force axis, never about the camera. This changes
       // cavity silhouettes without randomly moving the contact or inventing a new force.
-      float flowRoll=vPhase.y*6.2831853;
+      float flowRoll=vPhase.y*6.2831853+vPhase.x*(0.18+vPhase.y*0.26);
       vec3 filmPoint=vec3(p.x,cos(flowRoll)*p.y-sin(flowRoll)*p.z,
         sin(flowRoll)*p.y+cos(flowRoll)*p.z);
+      // Low-frequency divergence-free shear advects the source bake. It changes lobes and
+      // cavities per event without magnifying texels, scrolling a flat mask or adding hash grain.
+      vec3 q=filmPoint;
+      float seed=vPhase.y*6.2831853;
+      filmPoint+=vec3(sin(q.y*9.0+seed+vPhase.x*2.0),
+        sin(q.z*8.0+seed*1.7-vPhase.x*1.6),sin(q.x*8.5-seed+vPhase.x*1.8))
+        *(0.018+0.018*sin(seed)*sin(seed))*sin(vPhase.x*3.14159);
       vec2 field=mix(frameDensity(filmPoint+0.5,f0),frameDensity(filmPoint+0.5,f1),fract(film));
       float edge=1.0-smoothstep(0.40,0.495,max(abs(p.x),max(abs(p.y),abs(p.z))));
       float density=field.r*edge;
@@ -200,7 +213,7 @@ const VOLUME_FRAGMENT = /* glsl */`
       // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
       float peak=pow(hot,3.0)*(0.25+0.75*light);
       float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
-      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*2.4,peak*.66);
+      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*3.8,peak*.72);
       fire*=0.24+0.76*paintedLight;
       sum+=transmittance*absorb*mix(soot,fire,uCombustion);
       transmittance*=1.0-absorb;

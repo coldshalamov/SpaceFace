@@ -1,0 +1,97 @@
+{
+  "label": "presentation-query-zero-dirty-retain",
+  "n": 180,
+  "iters": 20000,
+  "settled": {
+    "pairs": [
+      {
+        "beforeMs": 934.9145629999999,
+        "afterMs": 129.76092,
+        "speedup": 7.204900851504443,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 933.4674050000001,
+        "afterMs": 135.146032,
+        "speedup": 6.907101830411123,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 918.0217339999999,
+        "afterMs": 156.660525,
+        "speedup": 5.859942917975029,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 928.92109,
+        "afterMs": 137.236715,
+        "speedup": 6.768750549005782,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 923.002753,
+        "afterMs": 136.682795,
+        "speedup": 6.752881758088134,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 927.2600009999999,
+        "afterMs": 133.662788,
+        "speedup": 6.937308542449375,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      },
+      {
+        "beforeMs": 936.3470530000001,
+        "afterMs": 130.267357,
+        "speedup": 7.18788708517361,
+        "beforeVisible": 98,
+        "afterVisible": 98,
+        "beforeCandidates": 143,
+        "afterCandidates": 143
+      }
+    ],
+    "medianSpeedup": 6.907101830411123,
+    "minSpeedup": 5.859942917975029,
+    "maxSpeedup": 7.204900851504443,
+    "medianBeforeMs": 928.92109,
+    "medianAfterMs": 135.146032
+  },
+  "movingInformational": {
+    "pairs": [
+      {
+        "beforeMs": 490.15896699999996,
+        "afterMs": 516.6225549999999,
+        "speedup": 0.9487757788662557
+      },
+      {
+        "beforeMs": 484.60467900000003,
+        "afterMs": 481.87712300000004,
+        "speedup": 1.0056602728575683
+      },
+      {
+        "beforeMs": 485.20287300000007,
+        "afterMs": 491.962531,
+        "speedup": 0.9862598113188422
+      }
+    ],
+    "medianSpeedup": 0.9862598113188422
+  }
+}

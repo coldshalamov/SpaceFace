@@ -1,0 +1,417 @@
+{
+  "when": "2026-09-23T01:01:23.332Z",
+  "host": "grok-bot-vm-257014980",
+  "platform": "Linux 6.12.94+",
+  "cpus": 8,
+  "model": "Intel(R) Xeon(R) Processor",
+  "loadavg": [
+    2.51,
+    2.48,
+    2.11
+  ],
+  "node": "v20.19.2",
+  "runs": [
+    {
+      "run": 1,
+      "navWallIso": "2026-09-23T01:00:03.868Z",
+      "totalMs": 24030,
+      "totalS": 24.03,
+      "bootToMenuMs": 6070,
+      "bootToFirstControlMs": 20388,
+      "firstTitleControl": {
+        "action": "newGame",
+        "label": "New Game"
+      },
+      "longestStage": {
+        "name": "loading:entering-flight → first-playable",
+        "from": "loading:entering-flight",
+        "to": "first-playable",
+        "ms": 8540
+      },
+      "phases": [
+        {
+          "name": "domcontentloaded → sf-ready",
+          "from": "domcontentloaded",
+          "to": "sf-ready",
+          "ms": 5779
+        },
+        {
+          "name": "sf-ready → main-menu-visible",
+          "from": "sf-ready",
+          "to": "main-menu-visible",
+          "ms": 291
+        },
+        {
+          "name": "main-menu-visible → first-title-control",
+          "from": "main-menu-visible",
+          "to": "first-title-control",
+          "ms": 97
+        },
+        {
+          "name": "first-title-control → new-game-visible",
+          "from": "first-title-control",
+          "to": "new-game-visible",
+          "ms": 683
+        },
+        {
+          "name": "new-game-visible → loading:preparing-run",
+          "from": "new-game-visible",
+          "to": "loading:preparing-run",
+          "ms": 365
+        },
+        {
+          "name": "loading:preparing-run → launch-clicked",
+          "from": "loading:preparing-run",
+          "to": "launch-clicked",
+          "ms": 34
+        },
+        {
+          "name": "launch-clicked → loading:authored-library",
+          "from": "launch-clicked",
+          "to": "loading:authored-library",
+          "ms": 153
+        },
+        {
+          "name": "loading:authored-library → loading:authored-visuals",
+          "from": "loading:authored-library",
+          "to": "loading:authored-visuals",
+          "ms": 1615
+        },
+        {
+          "name": "loading:authored-visuals → loading:entering-flight",
+          "from": "loading:authored-visuals",
+          "to": "loading:entering-flight",
+          "ms": 2832
+        },
+        {
+          "name": "loading:entering-flight → first-playable",
+          "from": "loading:entering-flight",
+          "to": "first-playable",
+          "ms": 8540
+        }
+      ],
+      "marks": [
+        {
+          "name": "domcontentloaded",
+          "tMs": 0
+        },
+        {
+          "name": "sf-ready",
+          "tMs": 5779
+        },
+        {
+          "name": "main-menu-visible",
+          "tMs": 6070
+        },
+        {
+          "name": "first-title-control",
+          "tMs": 6168
+        },
+        {
+          "name": "new-game-visible",
+          "tMs": 6850
+        },
+        {
+          "name": "loading:preparing-run",
+          "tMs": 7215
+        },
+        {
+          "name": "launch-clicked",
+          "tMs": 7248
+        },
+        {
+          "name": "loading:authored-library",
+          "tMs": 7401
+        },
+        {
+          "name": "loading:authored-visuals",
+          "tMs": 9016
+        },
+        {
+          "name": "loading:entering-flight",
+          "tMs": 11848
+        },
+        {
+          "name": "first-playable",
+          "tMs": 20388
+        }
+      ],
+      "gpu": {
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      },
+      "hostBusyPct": 48.3,
+      "consoleNoise": [
+        "[console] Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "run": 2,
+      "navWallIso": "2026-09-23T01:00:30.072Z",
+      "totalMs": 26100,
+      "totalS": 26.1,
+      "bootToMenuMs": 6110,
+      "bootToFirstControlMs": 22157,
+      "firstTitleControl": {
+        "action": "newGame",
+        "label": "New Game"
+      },
+      "longestStage": {
+        "name": "loading:entering-flight → first-playable",
+        "from": "loading:entering-flight",
+        "to": "first-playable",
+        "ms": 7746
+      },
+      "phases": [
+        {
+          "name": "domcontentloaded → sf-ready",
+          "from": "domcontentloaded",
+          "to": "sf-ready",
+          "ms": 5792
+        },
+        {
+          "name": "sf-ready → main-menu-visible",
+          "from": "sf-ready",
+          "to": "main-menu-visible",
+          "ms": 319
+        },
+        {
+          "name": "main-menu-visible → first-title-control",
+          "from": "main-menu-visible",
+          "to": "first-title-control",
+          "ms": 75
+        },
+        {
+          "name": "first-title-control → new-game-visible",
+          "from": "first-title-control",
+          "to": "new-game-visible",
+          "ms": 640
+        },
+        {
+          "name": "new-game-visible → loading:preparing-run",
+          "from": "new-game-visible",
+          "to": "loading:preparing-run",
+          "ms": 272
+        },
+        {
+          "name": "loading:preparing-run → launch-clicked",
+          "from": "loading:preparing-run",
+          "to": "launch-clicked",
+          "ms": 105
+        },
+        {
+          "name": "launch-clicked → loading:authored-library",
+          "from": "launch-clicked",
+          "to": "loading:authored-library",
+          "ms": 157
+        },
+        {
+          "name": "loading:authored-library → loading:authored-visuals",
+          "from": "loading:authored-library",
+          "to": "loading:authored-visuals",
+          "ms": 260
+        },
+        {
+          "name": "loading:authored-visuals → loading:entering-flight",
+          "from": "loading:authored-visuals",
+          "to": "loading:entering-flight",
+          "ms": 6792
+        },
+        {
+          "name": "loading:entering-flight → first-playable",
+          "from": "loading:entering-flight",
+          "to": "first-playable",
+          "ms": 7746
+        }
+      ],
+      "marks": [
+        {
+          "name": "domcontentloaded",
+          "tMs": 0
+        },
+        {
+          "name": "sf-ready",
+          "tMs": 5792
+        },
+        {
+          "name": "main-menu-visible",
+          "tMs": 6110
+        },
+        {
+          "name": "first-title-control",
+          "tMs": 6185
+        },
+        {
+          "name": "new-game-visible",
+          "tMs": 6825
+        },
+        {
+          "name": "loading:preparing-run",
+          "tMs": 7096
+        },
+        {
+          "name": "launch-clicked",
+          "tMs": 7201
+        },
+        {
+          "name": "loading:authored-library",
+          "tMs": 7358
+        },
+        {
+          "name": "loading:authored-visuals",
+          "tMs": 7618
+        },
+        {
+          "name": "loading:entering-flight",
+          "tMs": 14410
+        },
+        {
+          "name": "first-playable",
+          "tMs": 22157
+        }
+      ],
+      "gpu": {
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      },
+      "hostBusyPct": 47.5,
+      "consoleNoise": [
+        "[console] Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "run": 3,
+      "navWallIso": "2026-09-23T01:00:58.340Z",
+      "totalMs": 22915,
+      "totalS": 22.91,
+      "bootToMenuMs": 6242,
+      "bootToFirstControlMs": 19915,
+      "firstTitleControl": {
+        "action": "newGame",
+        "label": "New Game"
+      },
+      "longestStage": {
+        "name": "loading:entering-flight → first-playable",
+        "from": "loading:entering-flight",
+        "to": "first-playable",
+        "ms": 7315
+      },
+      "phases": [
+        {
+          "name": "domcontentloaded → sf-ready",
+          "from": "domcontentloaded",
+          "to": "sf-ready",
+          "ms": 5944
+        },
+        {
+          "name": "sf-ready → main-menu-visible",
+          "from": "sf-ready",
+          "to": "main-menu-visible",
+          "ms": 297
+        },
+        {
+          "name": "main-menu-visible → first-title-control",
+          "from": "main-menu-visible",
+          "to": "first-title-control",
+          "ms": 75
+        },
+        {
+          "name": "first-title-control → new-game-visible",
+          "from": "first-title-control",
+          "to": "new-game-visible",
+          "ms": 596
+        },
+        {
+          "name": "new-game-visible → loading:preparing-run",
+          "from": "new-game-visible",
+          "to": "loading:preparing-run",
+          "ms": 324
+        },
+        {
+          "name": "loading:preparing-run → launch-clicked",
+          "from": "loading:preparing-run",
+          "to": "launch-clicked",
+          "ms": 102
+        },
+        {
+          "name": "launch-clicked → loading:authored-library",
+          "from": "launch-clicked",
+          "to": "loading:authored-library",
+          "ms": 117
+        },
+        {
+          "name": "loading:authored-library → loading:authored-visuals",
+          "from": "loading:authored-library",
+          "to": "loading:authored-visuals",
+          "ms": 1712
+        },
+        {
+          "name": "loading:authored-visuals → loading:entering-flight",
+          "from": "loading:authored-visuals",
+          "to": "loading:entering-flight",
+          "ms": 3432
+        },
+        {
+          "name": "loading:entering-flight → first-playable",
+          "from": "loading:entering-flight",
+          "to": "first-playable",
+          "ms": 7315
+        }
+      ],
+      "marks": [
+        {
+          "name": "domcontentloaded",
+          "tMs": 0
+        },
+        {
+          "name": "sf-ready",
+          "tMs": 5944
+        },
+        {
+          "name": "main-menu-visible",
+          "tMs": 6242
+        },
+        {
+          "name": "first-title-control",
+          "tMs": 6316
+        },
+        {
+          "name": "new-game-visible",
+          "tMs": 6912
+        },
+        {
+          "name": "loading:preparing-run",
+          "tMs": 7236
+        },
+        {
+          "name": "launch-clicked",
+          "tMs": 7338
+        },
+        {
+          "name": "loading:authored-library",
+          "tMs": 7455
+        },
+        {
+          "name": "loading:authored-visuals",
+          "tMs": 9167
+        },
+        {
+          "name": "loading:entering-flight",
+          "tMs": 12600
+        },
+        {
+          "name": "first-playable",
+          "tMs": 19915
+        }
+      ],
+      "gpu": {
+        "vendor": "Google Inc. (Google)",
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      },
+      "hostBusyPct": 50.6,
+      "consoleNoise": [
+        "[console] Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  ]
+}

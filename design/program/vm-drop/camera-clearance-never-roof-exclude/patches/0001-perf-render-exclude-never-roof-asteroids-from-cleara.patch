@@ -1,0 +1,112 @@
+From 31e445654c759f143815865c4dc097a00b37ae68 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:50:53 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20exclude=20never-roof=20asteroid?=
+ =?UTF-8?q?s=20from=20clearance=20walk=20(~1.78=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After #63 span-reject, quiet field rocks still re-entered cameraClearanceFloorAt
+every WU (pos-keyed cache miss → re-reject). Sticky never-roof + structural
+exclude keeps undersized asteroids off the per-frame walk until scale changes.
+Soft-GPU fps not claimed.
+---
+ src/render/renderer.js | 46 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 44 insertions(+), 2 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 6316ae097..3cb5d0227 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1598,6 +1598,10 @@ const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : n
+ // span bar, skip setFromObject — drifting rocks re-invalidate the numeric cache every WU
+ // and otherwise re-enter updateWorldMatrix under camera.follow (quiet profile).
+ let CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = true;
++// After span-reject: undersized field rocks still re-entered the floor walk every WU
++// (pos-keyed cache miss → re-reject). Sticky never-roof + structural exclude keeps them
++// off the per-frame walk until scale/asset changes. Soft-GPU fps not claimed.
++let CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = true;
+ export function setCameraClearanceAsteroidSpanRejectForBench(enabled) {
+   CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT = enabled !== false;
+   return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT;
+@@ -1605,6 +1609,13 @@ export function setCameraClearanceAsteroidSpanRejectForBench(enabled) {
+ export function getCameraClearanceAsteroidSpanRejectForBench() {
+   return CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT !== false;
+ }
++export function setCameraClearanceAsteroidNeverRoofExcludeForBench(enabled) {
++  CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE = enabled !== false;
++  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE;
++}
++export function getCameraClearanceAsteroidNeverRoofExcludeForBench() {
++  return CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE !== false;
++}
+ 
+ function asteroidClearanceSpanHint(data) {
+   const body = data && data.asteroidBody;
+@@ -1616,6 +1627,15 @@ function asteroidClearanceSpanHint(data) {
+ function cameraClearanceBoxForMesh(mesh) {
+   const data = mesh && mesh.userData;
+   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
++  // Sticky never-roof: undersized asteroids cannot clear the span bar at any position.
++  // Do not invalidate on drift — only on scale change (capital promotion / authoring).
++  if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid'
++      && data.cameraClearanceNeverRoof === true) {
++    const body = data.asteroidBody;
++    const scaleX = body && body.scale ? Math.abs(Number(body.scale.x) || 0) : 0;
++    if (data.cameraClearanceNeverRoofScale === scaleX) return null;
++    data.cameraClearanceNeverRoof = false;
++  }
+   // Numeric cache stamp — a per-frame string key here meant an allocation per structural mesh
+   // per camera query. Field equality covers the same invalidation inputs.
+   const assetState = data.authoredAssetState || '';
+@@ -1630,6 +1650,10 @@ function cameraClearanceBoxForMesh(mesh) {
+   if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
+     const hint = asteroidClearanceSpanHint(data);
+     if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
++      const body = data.asteroidBody;
++      data.cameraClearanceNeverRoof = true;
++      data.cameraClearanceNeverRoofScale = body && body.scale
++        ? Math.abs(Number(body.scale.x) || 0) : 0;
+       const rec = cached || (data.cameraClearanceBox = {});
+       rec.assetState = assetState;
+       rec.compositionId = compositionId;
+@@ -1638,6 +1662,7 @@ function cameraClearanceBoxForMesh(mesh) {
+       rec.box = null;
+       return null;
+     }
++    data.cameraClearanceNeverRoof = false;
+   }
+   _clearanceBoxScratch.setFromObject(mesh);
+   let box = null;
+@@ -1672,8 +1697,25 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+     if (!structural) structural = owner._clearanceMeshes = [];
+     structural.length = 0;
+     for (const mesh of meshes.values()) {
+-      const kind = mesh && mesh.userData && mesh.userData.kind;
+-      if (CAMERA_CLEARANCE_KINDS.has(kind)) structural.push(mesh);
++      const data = mesh && mesh.userData;
++      const kind = data && data.kind;
++      if (!CAMERA_CLEARANCE_KINDS.has(kind)) continue;
++      // Quiet Ceres: dozens of field rocks can never roof. Keep them off the per-frame
++      // structural walk (rebuild only on _meshesVersion). Scale growth clears the sticky bit.
++      if (CAMERA_CLEARANCE_ASTEROID_NEVER_ROOF_EXCLUDE
++          && CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT
++          && kind === 'asteroid') {
++        const hint = asteroidClearanceSpanHint(data);
++        if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
++          const body = data.asteroidBody;
++          data.cameraClearanceNeverRoof = true;
++          data.cameraClearanceNeverRoofScale = body && body.scale
++            ? Math.abs(Number(body.scale.x) || 0) : 0;
++          continue;
++        }
++        data.cameraClearanceNeverRoof = false;
++      }
++      structural.push(mesh);
+     }
+     owner._clearanceMeshesVersion = owner._meshesVersion;
+   }
+-- 
+2.47.3
+

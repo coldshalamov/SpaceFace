@@ -9684,8 +9684,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 19,
-      "mechanical": 85
+      "hull": 10,
+      "mechanical": 85,
+      "signal": 9
     },
     "materialProfiles": [
       {
@@ -9721,7 +9722,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -9731,7 +9732,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -9751,7 +9752,7 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -10156,7 +10157,7 @@
       {
         "allowTextures": true,
         "planIndex": 95,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10166,7 +10167,7 @@
       {
         "allowTextures": true,
         "planIndex": 97,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10186,7 +10187,7 @@
       {
         "allowTextures": true,
         "planIndex": 101,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10196,7 +10197,7 @@
       {
         "allowTextures": true,
         "planIndex": 103,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10206,7 +10207,7 @@
       {
         "allowTextures": true,
         "planIndex": 105,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10226,7 +10227,7 @@
       {
         "allowTextures": true,
         "planIndex": 109,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 119,
@@ -13314,7 +13315,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span_reach.glb"
   },
-  "runtimeHash": "0ff839e9e40910c6244764a3d94e021c3cf1d6bb926796a63ef722ee3085f5ed",
+  "runtimeHash": "d73317681c611bc1f3da78ea97438cafbfc7ce690779f52e51184eb75f10aca8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

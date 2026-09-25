@@ -1,0 +1,68 @@
+{
+  "name": "continuous-plume-fleet-quiet-asleep",
+  "primary": "quiet-6family-all-asleep-endFrame",
+  "iterations": 200000,
+  "runs": 11,
+  "families": 6,
+  "layers": 5,
+  "pairs": [
+    {
+      "beforeMs": 18.228467999999992,
+      "afterMs": 6.822680000000005,
+      "speedup": 2.6717460001055273
+    },
+    {
+      "beforeMs": 18.918293000000006,
+      "afterMs": 7.055765999999991,
+      "speedup": 2.6812528930239505
+    },
+    {
+      "beforeMs": 19.40334,
+      "afterMs": 7.004586000000003,
+      "speedup": 2.7700909090130366
+    },
+    {
+      "beforeMs": 21.364406000000002,
+      "afterMs": 7.474153000000001,
+      "speedup": 2.8584384076697384
+    },
+    {
+      "beforeMs": 18.60784000000001,
+      "afterMs": 6.1220519999999965,
+      "speedup": 3.039477613061768
+    },
+    {
+      "beforeMs": 18.669364,
+      "afterMs": 6.033469999999994,
+      "speedup": 3.094299631886795
+    },
+    {
+      "beforeMs": 20.231552000000008,
+      "afterMs": 6.453367,
+      "speedup": 3.1350381901416746
+    },
+    {
+      "beforeMs": 19.20501,
+      "afterMs": 5.996289999999995,
+      "speedup": 3.2028154075269906
+    },
+    {
+      "beforeMs": 19.82816100000001,
+      "afterMs": 6.175083000000001,
+      "speedup": 3.2109950586899005
+    },
+    {
+      "beforeMs": 18.993917999999994,
+      "afterMs": 5.898419000000004,
+      "speedup": 3.2201710322715256
+    },
+    {
+      "beforeMs": 19.556973999999997,
+      "afterMs": 6.070134000000003,
+      "speedup": 3.221835629987738
+    }
+  ],
+  "medianSpeedup": 3.094,
+  "minSpeedup": 2.672,
+  "maxSpeedup": 3.222
+}

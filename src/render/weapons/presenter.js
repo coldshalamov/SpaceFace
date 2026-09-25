@@ -16,8 +16,8 @@ import {
   shouldDrawTableVfx,
   tableLookAtDelta,
   tableVfxDrawWuFromState,
+  projectileOnReadableFrame,
 } from '../tabletopPolicy.js';
-import { projectileOnReadableFrame } from '../../combat/projectileFlight.js';
 import {
   FLIGHT_MODE,
   WEAPON_SOCKET_NAME,
@@ -360,7 +360,7 @@ export class WeaponVfxPresenter {
     this.distortion.update(dt);
     this.lights.update(dt);
     this.ribbons.setCamera(camera, viewportHeight);
-    this.ribbons.update(dt, camera && camera.position);
+    this.ribbons.update(dt, camera && camera.position, accessibilityProfile);
     if (this.quarks) this.quarks.update(dt);
   }
 

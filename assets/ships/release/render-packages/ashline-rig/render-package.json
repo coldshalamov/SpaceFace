@@ -4104,8 +4104,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 14,
-      "mechanical": 12
+      "hull": 4,
+      "mechanical": 12,
+      "signal": 10
     },
     "materialProfiles": [
       {
@@ -4141,7 +4142,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4151,12 +4152,12 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4176,7 +4177,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4186,7 +4187,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4196,12 +4197,12 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4226,7 +4227,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4236,12 +4237,12 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5241,7 +5242,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig.glb"
   },
-  "runtimeHash": "dc14de264550a31145155dbf8b6f61bc6c73ab666a7ad112bea57fee5f158bcb",
+  "runtimeHash": "4713ac3dd35cd9bb8c5ed81f415f7830c3e8db3a749fc9d57a4cacc1907cbb82",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

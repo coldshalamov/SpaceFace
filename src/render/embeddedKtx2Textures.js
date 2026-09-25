@@ -99,11 +99,9 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
     return parser.sourceCache[sourceIndex].then((texture) => texture.clone());
   }
 
-  const promise = parser.getDependency('bufferView', sourceDef.bufferView)
-    .then((bufferView) => new Promise((resolve, reject) => {
-      // KTX2Loader transfers its buffer to the transcoder worker, and the parser caches this bufferView,
-      // so hand over a copy and keep the cached bytes intact. The stock path copied them into a Blob.
-      loader.parse(bufferView.slice(0), resolve, reject);
+  const promise = transferableSourceBytes(parser, sourceDef.bufferView)
+    .then((bytes) => new Promise((resolve, reject) => {
+      loader.parse(bytes, resolve, reject);
     }))
     .then((texture) => {
       if (sourceDef.extras !== undefined) {
@@ -121,6 +119,40 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
   parser.sourceCache[sourceIndex] = promise;
   return promise;
 }
+
+// KTX2Loader transfers the buffer it is given to the transcoder worker, so it needs bytes nobody else
+// holds. The previous path took the parser's cached bufferView (itself a fresh slice of the GLB body)
+// and sliced it again: two main-thread copies of every embedded texture, the second ~0.2 s over 10 s of
+// flight streaming on the quiet VM. A plain bufferView (no extension decoding it) is exactly
+// body[byteOffset, byteOffset + byteLength), so slicing that range straight off the binary buffer gives
+// the transcoder the same bytes with one copy, and the parser's bufferView cache is never touched.
+// Extension-decoded bufferViews (e.g. EXT_meshopt_compression) keep the parser path.
+function transferableSourceBytes(parser, bufferViewIndex) {
+  const bufferViews = parser.json && parser.json.bufferViews;
+  const def = bufferViews && bufferViews[bufferViewIndex];
+  const plain = embeddedKtx2DirectSliceEnabled && def
+    && Number.isInteger(def.buffer) && Number.isInteger(def.byteLength) && def.byteLength >= 0
+    && !(def.extensions && Object.keys(def.extensions).length > 0);
+  if (!plain) {
+    return parser.getDependency('bufferView', bufferViewIndex).then((bufferView) => bufferView.slice(0));
+  }
+  // With the vendored loader's in-place GLB body (#168), slice the same range straight off the fetched
+  // GLB so the body itself is never materialized; ArrayBuffer.prototype.slice clamping is preserved.
+  const range = typeof parser.glbBodySliceRange === 'function'
+    ? parser.glbBodySliceRange(def.buffer, def.byteOffset || 0, def.byteLength)
+    : null;
+  if (range) {
+    return Promise.resolve(range).then((r) => r.source.slice(r.byteOffset, r.byteOffset + r.byteLength));
+  }
+  return parser.getDependency('buffer', def.buffer).then((buffer) => {
+    const byteOffset = def.byteOffset || 0;
+    return buffer.slice(byteOffset, byteOffset + def.byteLength);
+  });
+}
+
+let embeddedKtx2DirectSliceEnabled = true;
+/** Bench/proof toggle: false restores the bufferView-then-copy path. Production default ON. */
+export function setEmbeddedKtx2DirectSliceForBench(on) { embeddedKtx2DirectSliceEnabled = on !== false; }
 
 /** Stable callback for GLTFLoader.register(): the loader de-duplicates registrations by identity. */
 export function registerEmbeddedKtx2Textures(parser) {

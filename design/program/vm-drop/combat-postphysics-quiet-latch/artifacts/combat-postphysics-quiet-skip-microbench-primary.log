@@ -1,0 +1,19 @@
+pair 1: 13.876×  before=11.405µs after=0.822µs
+pair 2: 15.051×  before=11.842µs after=0.787µs
+pair 3: 14.253×  before=11.954µs after=0.839µs
+pair 4: 14.003×  before=12.054µs after=0.861µs
+pair 5: 9.157×  before=12.115µs after=1.323µs
+pair 6: 13.093×  before=12.425µs after=0.949µs
+pair 7: 15.897×  before=13.260µs after=0.834µs
+pair 8: 10.702×  before=12.684µs after=1.185µs
+pair 9: 14.454×  before=12.270µs after=0.849µs
+pair 10: 14.790×  before=11.704µs after=0.791µs
+pair 11: 14.844×  before=12.992µs after=0.875µs
+{
+  "medianSpeedup": 14.253086317207163,
+  "minSpeedup": 9.157339991075522,
+  "maxSpeedup": 15.897209412780697,
+  "absBeforeUsMedian": 12.11507885,
+  "absAfterUsMedian": 0.848887066666667,
+  "dirtyWakeOk": true
+}

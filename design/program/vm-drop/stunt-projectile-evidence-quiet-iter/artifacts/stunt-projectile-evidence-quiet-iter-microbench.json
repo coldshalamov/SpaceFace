@@ -1,0 +1,47 @@
+{
+  "label": "stunt-projectile-evidence-quiet-iter",
+  "primary": {
+    "n": 400,
+    "plates": 0,
+    "ticks": 4000,
+    "beforeMs": 0.6238270000000057,
+    "afterMs": 0.35303500000000554,
+    "speedup": 1.7670400951746879,
+    "minSpeedup": 1.6391902599958332,
+    "maxSpeedup": 4.7132227148378645
+  },
+  "runs": [
+    {
+      "n": 400,
+      "plates": 0,
+      "ticks": 4000,
+      "beforeMs": 0.6238270000000057,
+      "afterMs": 0.35303500000000554,
+      "speedup": 1.7670400951746879,
+      "minSpeedup": 1.6391902599958332,
+      "maxSpeedup": 4.7132227148378645
+    },
+    {
+      "n": 800,
+      "plates": 0,
+      "ticks": 3000,
+      "beforeMs": 0.5730100000000107,
+      "afterMs": 0.30112099999999486,
+      "speedup": 1.9029227453416415,
+      "minSpeedup": 1.7717184667216503,
+      "maxSpeedup": 2.0217665570921177
+    },
+    {
+      "n": 400,
+      "plates": 2,
+      "ticks": 4000,
+      "beforeMs": 0.6373949999999979,
+      "afterMs": 0.3491600000000119,
+      "speedup": 1.8255097949363506,
+      "minSpeedup": 1.61385712033913,
+      "maxSpeedup": 1.893958508342678
+    }
+  ],
+  "ship_bar": 1.5,
+  "clears_bar": true
+}

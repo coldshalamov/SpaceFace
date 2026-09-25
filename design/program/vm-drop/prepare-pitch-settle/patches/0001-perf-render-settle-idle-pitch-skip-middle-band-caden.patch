@@ -1,0 +1,192 @@
+From 847e893e3b280a6353e321a4314ec1d11bfd4f48 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:25:16 -0400
+Subject: [PATCH] perf(render): settle-idle pitch skip + middle-band cadence
+
+Parked craft with level pitch skip the thrust-lean integrator each
+prepareFrame. Middle-band runway lean shares entity-view closure
+cadence when prepareFrame supplies view extents; tumble/drift/recover
+and the player stay every frame (Massline UVP).
+---
+ src/render/renderer.js                | 19 ++++++++-
+ src/render/shipPitchPresentation.js   | 59 ++++++++++++++++++++++++++-
+ test/ship-pitch-presentation.test.mjs | 39 ++++++++++++++++++
+ 3 files changed, 114 insertions(+), 3 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..d3ff4c431 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -12737,7 +12737,24 @@ export const render = {
+       this._openingPictureHoldSinceMs = null;
+     }
+     if (!holdOpeningPicture) {
+-      updateShipPitchPresentation(this.state, frameDt);
++      // Same band extents as syncEntityViews — middle-band runway pitch shares closure cadence.
++      let pitchView = null;
++      if (this.cam && this.cam.obj && this.cam.obj.position) {
++        const inner = viewHalfExtents(
++          this.state && this.state.camera && this.state.camera.zoom,
++          this.cam.obj.fov,
++          this.cam.obj.aspect,
++          INNER_VIEW_BAND_SCALE,
++        );
++        pitchView = {
++          camX: this.cam.obj.position.x,
++          camZ: this.cam.obj.position.z,
++          innerHalfX: inner.halfX,
++          innerHalfZ: inner.halfZ,
++          tick: this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0,
++        };
++      }
++      updateShipPitchPresentation(this.state, frameDt, pitchView);
+       this.syncEntityViews(alpha);
+       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
+       if (this.cam && typeof this.cam.follow === 'function') {
+diff --git a/src/render/shipPitchPresentation.js b/src/render/shipPitchPresentation.js
+index 3a859a4a5..3f348bff5 100644
+--- a/src/render/shipPitchPresentation.js
++++ b/src/render/shipPitchPresentation.js
+@@ -1,5 +1,7 @@
+ // Render-only craft pitch lean over CoreSystem's maintained ship/drone domain.
+-// Every craft remains updated while far-culled so returning to presentation cannot reveal stale lean.
++// Inner-band and player craft update every frame. Middle-band (runway) thrust lean shares the
++// entity-view closure cadence so returning to the glass never waits more than one middle period
++// for a fresh lean — tumble/drift/recover always run (Massline UVP).
+ //
+ // Massline UVP: when combat reports status_tumbling or drive-disabled, bank/pitch are driven by
+ // pure tumble body language (multi-axis thrash) instead of thrust lean. Physics is not written here.
+@@ -9,6 +11,11 @@ import {
+   resolveTumbleBodyLanguage,
+   resolveTumbleRecoverPose,
+ } from './masslinePresentation.js';
++import {
++  ENTITY_VIEW_BAND,
++  classifyEntityViewBand,
++  shouldRunEntityClosures,
++} from './entityViewSyncBand.js';
+ 
+ const CONTROL_LOSS_SCRATCH = {
+   mode: 'idle',
+@@ -126,8 +133,11 @@ function ensurePresentation(entity) {
+ /**
+  * Update cosmetic pitch/bank. Thrust lean for normal flight; multi-axis thrash for tumble/drift.
+  * Attaches entity.presentation.tumble intent for VFX consumers (RCS thrash, dead thruster, ribbons).
++ *
++ * @param {object} [view] optional presentation band context from prepareFrame:
++ *   { camX, camZ, innerHalfX, innerHalfZ, tick }. When omitted, every craft updates (tests / legacy).
+  */
+-export function updateShipPitchPresentation(state, frameDt) {
++export function updateShipPitchPresentation(state, frameDt, view = null) {
+   const dt = Math.min(0.05, Math.max(0, frameDt));
+   const rate = 6.0;
+   let updated = 0;
+@@ -139,6 +149,14 @@ export function updateShipPitchPresentation(state, frameDt) {
+   const accessibility = state && state.settings && state.settings.accessibility;
+   const reduced = !!((video && (video.motionReduce || video.flashReduce))
+     || (accessibility && accessibility.flashReduce));
++  const bandEnabled = !!(view
++    && Number.isFinite(view.camX) && Number.isFinite(view.camZ)
++    && Number.isFinite(view.innerHalfX) && Number.isFinite(view.innerHalfZ));
++  const tick = bandEnabled
++    ? (Number.isInteger(view.tick) ? view.tick
++      : (Number.isInteger(state && state.tick) ? state.tick : 0))
++    : 0;
++  const playerId = state && state.playerId;
+ 
+   for (const entity of shipPitchCandidates(state)) {
+     if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+@@ -156,6 +174,43 @@ export function updateShipPitchPresentation(state, frameDt) {
+     const pres = ensurePresentation(entity);
+     const recover = pres.tumbleRecover;
+     const existingThrownTrail = pres.thrownTrail;
++    const controlLossActive = loss.mode === 'tumbling' || loss.mode === 'drifting';
++    // Settled idle craft: no lean target, no tumble/trail work. Near-zero residual still
++    // snaps to exact 0 (legacy contract); already-level craft skip the integrator entirely.
++    if (!controlLossActive
++        && !recover
++        && !pres.wasTumbling
++        && !existingThrownTrail
++        && Math.abs(flightPitch) < 0.0005
++        && Math.abs(entity.pitch) < 0.0005) {
++      if (entity.pitch !== 0) {
++        entity.pitch = 0;
++        if (pres.tumble) {
++          TUMBLE_IDLE_OPTS.flightBank = entity.bank;
++          TUMBLE_IDLE_OPTS.flightPitch = 0;
++          pres.tumble = resolveTumbleBodyLanguage(TUMBLE_IDLE_OPTS);
++        }
++        updated++;
++      }
++      continue;
++    }
++    // Middle-band runway: cadence thrust lean with entity closures. Tumble/drift/recover and
++    // the player always run so Massline UVP and own-ship lean stay frame-fresh.
++    if (bandEnabled && !controlLossActive && !recover && !pres.wasTumbling && entity.id !== playerId) {
++      const dx = (entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : 0) - view.camX;
++      const dz = (entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : 0) - view.camZ;
++      const band = classifyEntityViewBand({
++        dx,
++        dz,
++        innerHalfX: view.innerHalfX,
++        innerHalfZ: view.innerHalfZ,
++        isPlayer: false,
++      });
++      const slot = Number.isInteger(entity.id) ? entity.id : 0;
++      if (band === ENTITY_VIEW_BAND.MIDDLE && !shouldRunEntityClosures(band, tick, slot)) {
++        continue;
++      }
++    }
+     const thrownCandidate = loss.mode === 'tumbling'
+       && loss.cause === 'thrown'
+       && loss.playerCaused === true;
+diff --git a/test/ship-pitch-presentation.test.mjs b/test/ship-pitch-presentation.test.mjs
+index 4a3480314..870e6d5fc 100644
+--- a/test/ship-pitch-presentation.test.mjs
++++ b/test/ship-pitch-presentation.test.mjs
+@@ -128,3 +128,42 @@ test('ship pitch writes and clears a separate resident thrown-trail plan from li
+   assert.equal(updateShipPitchPresentation(state, 1 / 60), 0);
+   assert.equal(trailRecord.active, false, 'death clears stale trail intent without replacing it');
+ });
++
++test('settled idle craft skip the thrust-lean integrator', () => {
++  const parked = craft('ship', { id: 7, pitch: 0, pos: { x: 0, z: 0 } });
++  const boosting = craft('ship', {
++    id: 8,
++    flags: { boosting: true, docked: false },
++    vel: { x: 100, z: 0 },
++    pos: { x: 10, z: 0 },
++  });
++  const state = {
++    entityList: [parked, boosting],
++    entityIndex: { __spacefaceEntityIndexV1: true, shipLike: [parked, boosting] },
++  };
++  assert.equal(updateShipPitchPresentation(state, 1 / 60), 1, 'only the boosting craft counts as updated');
++  assert.equal(parked.pitch, 0);
++  assert.ok(boosting.pitch < 0, 'boosting craft still leans');
++});
++
++test('middle-band thrust lean shares entity closure cadence when view is supplied', () => {
++  const runway = craft('ship', {
++    id: 3, // (tick + 3) % 4 === 0 only on ticks 1,5,...
++    flags: { boosting: true, docked: false },
++    vel: { x: 100, z: 0 },
++    pos: { x: 5000, z: 0 }, // well outside a ~100-unit glass
++  });
++  const state = {
++    playerId: 1,
++    tick: 0,
++    entityList: [runway],
++    entityIndex: { __spacefaceEntityIndexV1: true, shipLike: [runway] },
++  };
++  const view = { camX: 0, camZ: 0, innerHalfX: 80, innerHalfZ: 50, tick: 0 };
++  assert.equal(updateShipPitchPresentation(state, 1 / 60, view), 0, 'tick 0 skips middle slot 3');
++  assert.equal(runway.pitch, 0);
++  view.tick = 1;
++  state.tick = 1;
++  assert.equal(updateShipPitchPresentation(state, 1 / 60, view), 1, 'tick 1 hits middle cadence slot');
++  assert.ok(runway.pitch < 0);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,16 @@
+{
+  "label": "classify-physics-partition-cache",
+  "n": 180,
+  "iters": 80000,
+  "runs": 11,
+  "beforeMedMs": 230.253,
+  "afterMedMs": 55.272,
+  "minSpeedup": 3.701,
+  "medSpeedup": 4.166,
+  "maxSpeedup": 5.262,
+  "admitParity": true,
+  "dynamics": 91,
+  "statics": 7,
+  "primary": "~4.17×",
+  "clears_bar": true
+}

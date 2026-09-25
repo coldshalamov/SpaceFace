@@ -1,0 +1,323 @@
+From 83b816338517cfddaaae191716e6b8d3b2693c4b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:23:08 -0400
+Subject: [PATCH] =?UTF-8?q?perf(bombs):=20quiet-latch=20empty=20bombs=20ba?=
+ =?UTF-8?q?y=20(~11=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid ensureRuntime rack normalize + collect/sort
++ empty tick every frame with a ready empty bombs bucket. Latch when the
+typed bombs lane is empty and no drop/cycle/detonate edges fire; wake on
+those edges, entity-index membership, or a 0.5s rescan. Without a versioned
+bombs bucket the latch refuses so entityList fallback stays live. Soft-GPU
+fps not claimed.
+---
+ src/systems/bombs.js                  |  94 +++++++++++++++-
+ test/bombs-empty-quiet-latch.test.mjs | 155 ++++++++++++++++++++++++++
+ 2 files changed, 243 insertions(+), 6 deletions(-)
+ create mode 100644 test/bombs-empty-quiet-latch.test.mjs
+
+diff --git a/src/systems/bombs.js b/src/systems/bombs.js
+index 601cc1b20..9ac8072cd 100644
+--- a/src/systems/bombs.js
++++ b/src/systems/bombs.js
+@@ -42,6 +42,46 @@ function liveBombList(state) {
+   return index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
+     ? index.bombs : state?.entityList || EMPTY;
+ }
++
++/** Bench A/B: production default ON. Quiet latch skips collect/tick when no live bombs. */
++let BOMBS_EMPTY_QUIET_LATCH = true;
++export function setBombsEmptyQuietLatchForBench(enabled) {
++  BOMBS_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getBombsEmptyQuietLatchForBench() {
++  return BOMBS_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const BOMBS_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version
++    : null;
++}
++
++/** True when a ready typed bombs bucket exists (latch refuses entityList fallback). */
++function readyBombsBucket(state) {
++  const index = state && state.entityIndex;
++  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs));
++}
++
++function anyLiveBomb(state) {
++  if (!readyBombsBucket(state)) return true; // refuse latch — fall through to full path
++  const list = state.entityIndex.bombs;
++  for (let i = 0; i < list.length; i++) {
++    const e = list[i];
++    if (e && e.alive !== false && e.type === BOMB_TYPE && e.data) return true;
++  }
++  return false;
++}
++
++function publishBombsQuiet(state, latched) {
++  const rt = state.bombsRuntime || (state.bombsRuntime = {});
++  rt.quietLatched = !!latched;
++}
+ // Typed buckets whose union is exactly the population the target predicate can accept:
+ // DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload) for the
+ // movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union cannot
+@@ -184,6 +224,7 @@ export const bombs = {
+     this._motion = {};
+     this._viscosity = { x: 0, y: 0, z: 0 };
+     this._ownerCooldowns = new Map();
++    this._bombsQuiet = null;
+     ensureRuntime(ctx.state);
+     // Rack work is dock-side only: every ui: intent is gated by the same berth authority
+     // the Shipworks module verbs use. Direct method calls stay open to internal callers
+@@ -227,24 +268,63 @@ export const bombs = {
+   newGame() { this._resetRuntime('new_game'); },
+   update(dt, state) {
+     if (state.mode !== 'flight' || !(dt > 0) || !Number.isFinite(dt)) return;
+-    const rt = ensureRuntime(state), actions = state.input?.actions;
++    const actions = state.input && state.input.actions;
++    const dropEdge = !!(actions && actions.dropBomb);
++    const detonateEdge = !!(actions && actions.chargeDetonate);
++    const cycleEdge = !!(actions && actions.cycleBomb);
++    // Quiet settled flight: empty typed bombs bucket still paid ensureRuntime normalize +
++    // collect+sort+empty tick every frame. Latch when the ready bombs lane is empty and no
++    // bay edges fire; wake on drop/cycle/detonate, entity-index membership, or a 0.5 s rescan.
++    // Without a versioned bombs bucket the latch refuses so the entityList fallback stays live.
++    // ensureRuntime (rack normalize) stays AFTER the latch so quiet ticks skip it too.
++    if (BOMBS_EMPTY_QUIET_LATCH !== false && !dropEdge && !detonateEdge && !cycleEdge) {
++      const membership = entityIndexVersion(state);
++      if (membership != null && readyBombsBucket(state)) {
++        const tick = state.tick | 0;
++        const quiet = this._bombsQuiet;
++        if (quiet
++          && quiet.membership === membership
++          && ((tick - (quiet.armedTick | 0)) < BOMBS_EMPTY_QUIET_RESCAN_TICKS)) {
++          publishBombsQuiet(state, true);
++          return;
++        }
++        if (!anyLiveBomb(state)) {
++          this._bombsQuiet = { membership, armedTick: tick };
++          publishBombsQuiet(state, true);
++          return;
++        }
++        this._bombsQuiet = null;
++      } else if (this._bombsQuiet) {
++        this._bombsQuiet = null;
++      }
++    } else if (this._bombsQuiet) {
++      this._bombsQuiet = null;
++    }
++    const rt = ensureRuntime(state);
+     const player = state.entities.get(state.playerId);
+-    if (actions?.cycleBomb) {
++    // Rack cycle is dock/flight UI even with zero live bombs.
++    if (cycleEdge) {
+       actions.cycleBomb = false;
+       if (!blocked(state, player)) this.cycleSelection(state);
+     }
+     this._collect(state);
+     // R is the existing shared ordnance command. Read it BEFORE impulseCharges consumes it;
+     // never clear another owner's edge. Both consumers are pinned by a manifest-order test.
+-    if (actions?.chargeDetonate && !blocked(state, player)) this.commandDetonate(player.id, state);
++    if (detonateEdge && !blocked(state, player)) this.commandDetonate(player.id, state);
+     this._tickBombs(dt, state);
+-    if (actions?.dropBomb) {
++    if (dropEdge) {
+       actions.dropBomb = false;
+       if (!blocked(state, player)) {
+-        if (rt.selectedId) this.drop(player, rt.selectedId, state);
+-        else this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
++        if (rt.selectedId) {
++          this.drop(player, rt.selectedId, state);
++          // A live bomb means the empty latch must not re-arm until the bay drains.
++          this._bombsQuiet = null;
++        } else {
++          this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
++        }
+       }
+     }
++    publishBombsQuiet(state, false);
+   },
+ 
+   // In-flight cycle walks only LOADED rack sockets — the catalogue order (BOMB_IDS) is the
+@@ -813,6 +893,8 @@ export const bombs = {
+       count++;
+     }
+     this._ownerCooldowns?.clear();
++    this._bombsQuiet = null;
++    if (this.state) publishBombsQuiet(this.state, false);
+     if (count) this.bus?.emit('bombs:released', { count, reason });
+     return count;
+   },
+diff --git a/test/bombs-empty-quiet-latch.test.mjs b/test/bombs-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..29d3770c3
+--- /dev/null
++++ b/test/bombs-empty-quiet-latch.test.mjs
+@@ -0,0 +1,155 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  bombs,
++  setBombsEmptyQuietLatchForBench,
++  getBombsEmptyQuietLatchForBench,
++  BOMB_TYPE,
++} from '../src/systems/bombs.js';
++
++function makeState(opts = {}) {
++  const ships = [];
++  const n = opts.ships || 32;
++  for (let i = 0; i < n; i++) {
++    ships.push({
++      id: i + 1,
++      type: 'ship',
++      alive: true,
++      isPlayer: i === 0,
++      pos: { x: i * 40, z: i * 13 },
++      vel: { x: 0, z: 0 },
++      rot: 0,
++      flags: {},
++      data: {},
++    });
++  }
++  const bombsList = Array.isArray(opts.bombs) ? opts.bombs : [];
++  const entities = new Map(ships.map((s) => [s.id, s]));
++  for (const b of bombsList) entities.set(b.id, b);
++  return {
++    mode: 'flight',
++    tick: 1,
++    simTime: 1,
++    playerId: 1,
++    entities,
++    entityList: [...ships, ...bombsList],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: opts.version == null ? 1 : opts.version,
++      ships,
++      bombs: bombsList,
++      projectiles: [],
++      drones: [],
++      stations: [],
++      asteroids: [],
++      wrecks: [],
++      pickups: [],
++      payloads: [],
++    },
++    input: { actions: {} },
++    ui: { screenStack: [] },
++    bombs: null,
++  };
++}
++
++function makeHost(state) {
++  const host = Object.create(bombs);
++  host.init({
++    state,
++    bus: { on() { return () => {}; }, emit() {} },
++    helpers: {},
++    registry: null,
++  });
++  host.state = state;
++  return host;
++}
++
++function step(host, state) {
++  state.tick++;
++  state.simTime += 1 / 60;
++  host.update(1 / 60, state);
++  return state.bombsRuntime;
++}
++
++test('quiet latch engages when typed bombs bucket is empty', () => {
++  setBombsEmptyQuietLatchForBench(true);
++  assert.equal(getBombsEmptyQuietLatchForBench(), true);
++  const state = makeState();
++  const host = makeHost(state);
++  const rt = step(host, state);
++  assert.equal(rt.quietLatched, true);
++  assert.ok(host._bombsQuiet);
++  const rt2 = step(host, state);
++  assert.equal(rt2.quietLatched, true);
++});
++
++test('membership bump wakes empty quiet latch', () => {
++  setBombsEmptyQuietLatchForBench(true);
++  const state = makeState();
++  const host = makeHost(state);
++  step(host, state);
++  assert.equal(state.bombsRuntime.quietLatched, true);
++  const armed = host._bombsQuiet.armedTick;
++  state.entityIndex.version++;
++  step(host, state);
++  // Rescan arms a fresh latch (still empty) but must observe the bump (new armedTick).
++  assert.equal(state.bombsRuntime.quietLatched, true);
++  assert.notEqual(host._bombsQuiet.armedTick, armed);
++  assert.equal(host._bombsQuiet.membership, state.entityIndex.version);
++});
++
++test('dropBomb edge refuses latch and consumes edge', () => {
++  setBombsEmptyQuietLatchForBench(true);
++  const state = makeState();
++  const host = makeHost(state);
++  step(host, state);
++  assert.equal(state.bombsRuntime.quietLatched, true);
++  // Dry the rack so drop takes the toast path (no spawn) while still proving the edge wakes.
++  state.bombs.rack.cells = state.bombs.rack.cells.map(() => null);
++  state.bombs.selectedId = null;
++  state.input.actions.dropBomb = true;
++  step(host, state);
++  assert.equal(state.input.actions.dropBomb, false);
++  // Toast path still clears latch for the edge tick.
++  assert.equal(state.bombsRuntime.quietLatched, false);
++});
++
++test('live bomb in bucket refuses latch', () => {
++  setBombsEmptyQuietLatchForBench(true);
++  const bomb = {
++    id: 900,
++    type: BOMB_TYPE,
++    alive: true,
++    pos: { x: 10, z: 10 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    prevPos: { x: 10, z: 10 },
++    data: { bombId: 'bomb_frag', phase: 'drift', ownerId: 1, spinRadS: 0 },
++  };
++  const state = makeState({ bombs: [bomb] });
++  const host = makeHost(state);
++  const rt = step(host, state);
++  assert.equal(rt.quietLatched, false);
++  assert.equal(host._bombsQuiet, null);
++});
++
++test('bench toggle OFF keeps quietLatched false on empty', () => {
++  setBombsEmptyQuietLatchForBench(false);
++  const state = makeState();
++  const host = makeHost(state);
++  const rt = step(host, state);
++  assert.equal(rt.quietLatched, false);
++  assert.equal(host._bombsQuiet, null);
++  setBombsEmptyQuietLatchForBench(true);
++});
++
++test('without ready bombs bucket latch refuses', () => {
++  setBombsEmptyQuietLatchForBench(true);
++  const state = makeState();
++  delete state.entityIndex.bombs;
++  state.entityIndex.ready = true;
++  const host = makeHost(state);
++  const rt = step(host, state);
++  assert.equal(rt.quietLatched, false);
++});
+-- 
+2.47.3
+

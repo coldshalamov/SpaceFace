@@ -1,0 +1,120 @@
+TAP version 13
+# Subtest: dynamic turret tracking: articulates toward active target within arc and sweeps when idle
+ok 1 - dynamic turret tracking: articulates toward active target within arc and sweeps when idle
+  ---
+  duration_ms: 6.332351
+  ...
+# Subtest: cooling fins thermal blackbody: glows on weapon fire and dumps on weapons:vent
+ok 2 - cooling fins thermal blackbody: glows on weapon fire and dumps on weapons:vent
+  ---
+  duration_ms: 1.078212
+  ...
+# Subtest: environmental hazard buffet: injects atmospheric roll/pitch jitter
+ok 3 - environmental hazard buffet: injects atmospheric roll/pitch jitter
+  ---
+  duration_ms: 0.632431
+  ...
+# Subtest: hyperspace jump dynamics: spool-up reactor tremor and warp release snap
+ok 4 - hyperspace jump dynamics: spool-up reactor tremor and warp release snap
+  ---
+  duration_ms: 0.900039
+  ...
+# Subtest: docking clamp: produces mechanical contact shudder on latch
+ok 5 - docking clamp: produces mechanical contact shudder on latch
+  ---
+  duration_ms: 0.665532
+  ...
+# Subtest: projectile motion: guided missile attitude oscillation and torpedo warhead pulse
+ok 6 - projectile motion: guided missile attitude oscillation and torpedo warhead pulse
+  ---
+  duration_ms: 0.567956
+  ...
+# Subtest: player and forced roots stay submitted; only true off-screen roots drop
+ok 7 - player and forced roots stay submitted; only true off-screen roots drop
+  ---
+  duration_ms: 1.343443
+  ...
+# Subtest: uncompiled ordinary roots stay off the submit list; the player still submits
+ok 8 - uncompiled ordinary roots stay off the submit list; the player still submits
+  ---
+  duration_ms: 0.161455
+  ...
+# Subtest: ordinary roots still decoding an authored body stay off the submit list
+ok 9 - ordinary roots still decoding an authored body stay off the submit list
+  ---
+  duration_ms: 0.129993
+  ...
+# Subtest: ordinary roots wait for 1x1 geometry residency before the first bloom submit
+ok 10 - ordinary roots wait for 1x1 geometry residency before the first bloom submit
+  ---
+  duration_ms: 0.117376
+  ...
+# Subtest: missing fenced poses retain protected roots but fail closed for ordinary roots
+ok 11 - missing fenced poses retain protected roots but fail closed for ordinary roots
+  ---
+  duration_ms: 0.18142
+  ...
+# Subtest: the completed activity frame owns glass submission while runway stays resident-only
+ok 12 - the completed activity frame owns glass submission while runway stays resident-only
+  ---
+  duration_ms: 0.237451
+  ...
+# Subtest: a root inside the live glass submits even when the sim frame still classes it runway
+ok 13 - a root inside the live glass submits even when the sim frame still classes it runway
+  ---
+  duration_ms: 0.231362
+  ...
+# Subtest: visibility helper only writes when the flag changes
+ok 14 - visibility helper only writes when the flag changes
+  ---
+  duration_ms: 0.195352
+  ...
+# Subtest: authored station and place commits merge static plates before freeze
+ok 15 - authored station and place commits merge static plates before freeze
+  ---
+  duration_ms: 10.278453
+  ...
+# Subtest: default video settings still request full picture quality
+ok 16 - default video settings still request full picture quality
+  ---
+  duration_ms: 3.560323
+  ...
+# Subtest: live entity view sync hides off-runway roots through the helper
+ok 17 - live entity view sync hides off-runway roots through the helper
+  ---
+  duration_ms: 8.172248
+  ...
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 18 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.413233
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 19 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.281959
+  ...
+# Subtest: a late present skips one shadow refresh, then the map must update again
+ok 20 - a late present skips one shadow refresh, then the map must update again
+  ---
+  duration_ms: 1.295498
+  ...
+# Subtest: a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+ok 21 - a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+  ---
+  duration_ms: 0.149138
+  ...
+# Subtest: live shadow follow consults the late-present cadence
+ok 22 - live shadow follow consults the late-present cadence
+  ---
+  duration_ms: 9.346124
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 172.128121

@@ -1,0 +1,26 @@
+run1 { median: 5.828, min: 3.948, max: 6.341 }
+run2 { median: 5.817, min: 5.289, max: 6.196 }
+run3 { median: 5.864, min: 5.595, max: 6.334 }
+run4 { median: 5.871, min: 5.524, max: 6.5 }
+run5 { median: 5.697, min: 5.564, max: 6.017 }
+{
+  "label": "radar-asteroid-still-layer-floor",
+  "runs": 5,
+  "pairsPerRun": 11,
+  "medians": [
+    5.828,
+    5.817,
+    5.864,
+    5.871,
+    5.697
+  ],
+  "mins": [
+    3.948,
+    5.289,
+    5.595,
+    5.524,
+    5.564
+  ],
+  "medianOfMedians": 5.828,
+  "floorMinSpeedup": 3.948
+}

@@ -358,14 +358,20 @@ export const bandRadio = {
     }
 
     const sectorId = this.state.world && this.state.world.currentSectorId;
+    const sectorEntries = LIVE_LANDMARK_SOURCE_ENTRIES.filter(([, source]) => source.sectorId === sectorId);
+    if (sectorEntries.length === 0) {
+      const own = this._ensureState();
+      for (const [sourceId] of LIVE_LANDMARK_SOURCE_ENTRIES) setProximityValue(own.proximitySources, sourceId, 0);
+      return true;
+    }
     const strengths = Object.fromEntries(LIVE_LANDMARK_SOURCE_ENTRIES.map(([sourceId]) => [sourceId, 0]));
     for (const entity of entities.values()) {
       if (!entity || entity === player || entity.alive === false || !finitePoint(entity.pos)) continue;
       const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
       const entitySectorId = stringOrNull(entity.sectorId) || stringOrNull(data.sectorId);
       if (entitySectorId && entitySectorId !== sectorId) continue;
-      for (const [sourceId, source] of LIVE_LANDMARK_SOURCE_ENTRIES) {
-        if (source.sectorId !== sectorId || data[source.dataKey] !== source.dataValue) continue;
+      for (const [sourceId, source] of sectorEntries) {
+        if (data[source.dataKey] !== source.dataValue) continue;
         const configuredRadius = finite(data.bandProximityRadius, source.falloffRadius);
         const falloffRadius = configuredRadius > 0 ? configuredRadius : source.falloffRadius;
         const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);

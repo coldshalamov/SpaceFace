@@ -1750,7 +1750,8 @@
     ],
     "materialProfileRoles": {
       "hull": 2,
-      "mechanical": 13,
+      "mechanical": 12,
+      "signal": 1,
       "warning": 4
     },
     "materialProfiles": [
@@ -1847,7 +1848,7 @@
       {
         "allowTextures": false,
         "planIndex": 23,
-        "role": "mechanical"
+        "role": "signal"
       }
     ],
     "nodeCount": 24,
@@ -2370,7 +2371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "26ec0e61913819bdcb5c42927d84dbe070ab96fb608daaa5a4e70a6a372ced8d",
+  "runtimeHash": "bcfd072f4b64416f12174c9dd662c348dd61209d53b8b8320b12858d7ee8fe2d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

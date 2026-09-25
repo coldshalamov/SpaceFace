@@ -1,0 +1,46 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: quiet empty callsite skips pool.update while activeCount===0
+ok 1 - quiet empty callsite skips pool.update while activeCount===0
+  ---
+  duration_ms: 115.392309
+  ...
+# Subtest: dirty-wake: upsert raises activeCount and resumes call-site update
+ok 2 - dirty-wake: upsert raises activeCount and resumes call-site update
+  ---
+  duration_ms: 24.370605
+  ...
+# Subtest: dirty-wake: stop last beam returns to quiet skip
+ok 3 - dirty-wake: stop last beam returns to quiet skip
+  ---
+  duration_ms: 20.219312
+  ...
+# Subtest: persistent combat beams update in place with a bounded two-draw pool
+ok 4 - persistent combat beams update in place with a bounded two-draw pool
+  ---
+  duration_ms: 4.412577
+  ...
+# Subtest: persistent combat beams retire on bounded timeout if a stop event is lost
+ok 5 - persistent combat beams retire on bounded timeout if a stop event is lost
+  ---
+  duration_ms: 0.669471
+  ...
+# Subtest: persistent beam pool rejects ownerless updates instead of aliasing them under an undefined key
+ok 6 - persistent beam pool rejects ownerless updates instead of aliasing them under an undefined key
+  ---
+  duration_ms: 0.409096
+  ...
+# Subtest: persistent beam uploads retain sparse slots and publish only the changed quads
+ok 7 - persistent beam uploads retain sparse slots and publish only the changed quads
+  ---
+  duration_ms: 3.537896
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 546.907829

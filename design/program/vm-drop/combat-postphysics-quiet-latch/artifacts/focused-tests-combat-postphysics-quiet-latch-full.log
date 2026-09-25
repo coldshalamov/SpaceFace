@@ -1,0 +1,258 @@
+TAP version 13
+# Subtest: broken attachment history stays bounded during a long tether session
+ok 1 - broken attachment history stays bounded during a long tether session
+  ---
+  duration_ms: 8.783374
+  ...
+# Subtest: chain candidates use live hostility rather than treating every team mismatch as an enemy
+ok 2 - chain candidates use live hostility rather than treating every team mismatch as an enemy
+  ---
+  duration_ms: 2.454442
+  ...
+# Subtest: inertial shunt ignores a tangential impact with zero radial closure
+ok 3 - inertial shunt ignores a tangential impact with zero radial closure
+  ---
+  duration_ms: 2.473828
+  ...
+# Subtest: inertial shunt uses the impact normal and radial closure, not tangent speed
+ok 4 - inertial shunt uses the impact normal and radial closure, not tangent speed
+  ---
+  duration_ms: 0.389249
+  ...
+# Subtest: postPhysics quiet skip engages when prePhysics latch armed
+ok 5 - postPhysics quiet skip engages when prePhysics latch armed
+  ---
+  duration_ms: 12.300635
+  ...
+# Subtest: membership bump wakes prePhysics latch then postPhysics skip re-arms
+ok 6 - membership bump wakes prePhysics latch then postPhysics skip re-arms
+  ---
+  duration_ms: 3.982842
+  ...
+# Subtest: routeDamage clears postPhysics quiet skip
+ok 7 - routeDamage clears postPhysics quiet skip
+  ---
+  duration_ms: 8.043177
+  ...
+# Subtest: bench toggle disables postPhysics quiet skip
+ok 8 - bench toggle disables postPhysics quiet skip
+  ---
+  duration_ms: 1.096751
+  ...
+# Subtest: dirtyWakeOk: heat then cool re-arms postPhysics skip
+ok 9 - dirtyWakeOk: heat then cool re-arms postPhysics skip
+  ---
+  duration_ms: 2.68446
+  ...
+# Subtest: quiet latch engages on idle combat roster
+ok 10 - quiet latch engages on idle combat roster
+  ---
+  duration_ms: 10.430396
+  ...
+# Subtest: membership bump wakes quiet latch then re-arms
+ok 11 - membership bump wakes quiet latch then re-arms
+  ---
+  duration_ms: 4.276756
+  ...
+# Subtest: combat action request wakes quiet latch
+ok 12 - combat action request wakes quiet latch
+  ---
+  duration_ms: 5.378862
+  ...
+# Subtest: routeDamage wakes quiet latch
+ok 13 - routeDamage wakes quiet latch
+  ---
+  duration_ms: 3.672415
+  ...
+# Subtest: bench toggle disables latch
+ok 14 - bench toggle disables latch
+  ---
+  duration_ms: 1.064665
+  ...
+# Subtest: §1 CANONICAL VECTORS
+    # Subtest: pins stableStringify encodings and cumulative digests for a fixed 4-event sequence
+    ok 1 - pins stableStringify encodings and cumulative digests for a fixed 4-event sequence
+      ---
+      duration_ms: 2.666644
+      ...
+    1..1
+ok 15 - §1 CANONICAL VECTORS
+  ---
+  duration_ms: 3.784328
+  type: 'suite'
+  ...
+# Subtest: §2 EVENT ORDER
+    # Subtest: starts seq at 1 and increments monotonically; read order equals append order
+    ok 1 - starts seq at 1 and increments monotonically; read order equals append order
+      ---
+      duration_ms: 2.049527
+      ...
+    # Subtest: interleaved kinds preserve global append order
+    ok 2 - interleaved kinds preserve global append order
+      ---
+      duration_ms: 0.567398
+      ...
+    1..2
+ok 16 - §2 EVENT ORDER
+  ---
+  duration_ms: 2.825686
+  type: 'suite'
+  ...
+# Subtest: §3 FILTERS
+    # Subtest: filters by sinceSeq (boundary sinceSeq == seq pinned from both sides)
+    ok 1 - filters by sinceSeq (boundary sinceSeq == seq pinned from both sides)
+      ---
+      duration_ms: 0.76423
+      ...
+    # Subtest: filters by kinds
+    ok 2 - filters by kinds
+      ---
+      duration_ms: 0.927824
+      ...
+    # Subtest: filters by actorId
+    ok 3 - filters by actorId
+      ---
+      duration_ms: 0.264862
+      ...
+    # Subtest: filters by targetId
+    ok 4 - filters by targetId
+      ---
+      duration_ms: 0.273345
+      ...
+    # Subtest: filters by limit
+    ok 5 - filters by limit
+      ---
+      duration_ms: 0.281688
+      ...
+    # Subtest: applies combined sinceSeq + kinds + actorId + targetId + limit
+    ok 6 - applies combined sinceSeq + kinds + actorId + targetId + limit
+      ---
+      duration_ms: 0.318127
+      ...
+    # Subtest: returns schema envelope with nextSeq, dropped, digest
+    ok 7 - returns schema envelope with nextSeq, dropped, digest
+      ---
+      duration_ms: 0.253878
+      ...
+    1..7
+ok 17 - §3 FILTERS
+  ---
+  duration_ms: 3.505894
+  type: 'suite'
+  ...
+# Subtest: §4 RING/DROP
+    # Subtest: capacity 4 + 6 appends drops oldest 2; digest still reflects all 6
+    ok 1 - capacity 4 + 6 appends drops oldest 2; digest still reflects all 6
+      ---
+      duration_ms: 0.372122
+      ...
+    1..1
+ok 18 - §4 RING/DROP
+  ---
+  duration_ms: 0.545753
+  type: 'suite'
+  ...
+# Subtest: §5 RESET/RESUME REALITY: save/load starts a fresh trace (current intentional semantics)
+    # Subtest: serializeCombatState omits trace; restoreCombatState yields a fresh empty trace
+    ok 1 - serializeCombatState omits trace; restoreCombatState yields a fresh empty trace
+      ---
+      duration_ms: 1.123036
+      ...
+    1..1
+ok 19 - §5 RESET/RESUME REALITY: save/load starts a fresh trace (current intentional semantics)
+  ---
+  duration_ms: 1.314284
+  type: 'suite'
+  ...
+# Subtest: §6 REPEATED-RUN EQUALITY
+    # Subtest: same append sequence on two fresh bags yields byte-equal readCombatTrace and equal digests
+    ok 1 - same append sequence on two fresh bags yields byte-equal readCombatTrace and equal digests
+      ---
+      duration_ms: 0.35809
+      ...
+    # Subtest: field insertion order is irrelevant for event encoding and digest
+    ok 2 - field insertion order is irrelevant for event encoding and digest
+      ---
+      duration_ms: 0.272675
+      ...
+    # Subtest: float rounding: deltas <= 1e-7 collapse equal; 1e-5 stays distinct (hard-coded)
+    ok 3 - float rounding: deltas <= 1e-7 collapse equal; 1e-5 stays distinct (hard-coded)
+      ---
+      duration_ms: 0.18975
+      ...
+    # Subtest: float rounding half-step: hard-coded probes around the real 5e-7 Math.round boundary
+    ok 4 - float rounding half-step: hard-coded probes around the real 5e-7 Math.round boundary
+      ---
+      duration_ms: 0.159286
+      ...
+    # Subtest: finite extreme magnitudes: 1e308 and Number.MAX_VALUE stay deterministic across two runs
+    ok 5 - finite extreme magnitudes: 1e308 and Number.MAX_VALUE stay deterministic across two runs
+      ---
+      duration_ms: 0.32902
+      ...
+    1..5
+ok 20 - §6 REPEATED-RUN EQUALITY
+  ---
+  duration_ms: 1.506551
+  type: 'suite'
+  ...
+# Subtest: §7 CANONICALIZE EDGES
+    # Subtest: non-finite numbers become string form (pinned literals)
+    ok 1 - non-finite numbers become string form (pinned literals)
+      ---
+      duration_ms: 0.300417
+      ...
+    # Subtest: Map and Set produce sorted canonical output (pinned)
+    ok 2 - Map and Set produce sorted canonical output (pinned)
+      ---
+      duration_ms: 0.167135
+      ...
+    # Subtest: undefined fields are dropped; nested object keys are sorted (pinned)
+    ok 3 - undefined fields are dropped; nested object keys are sorted (pinned)
+      ---
+      duration_ms: 1.421197
+      ...
+    # Subtest: integerTick clamps tick -3 and 2.7 to 0; tick 3 stays 3 (both sides)
+    ok 4 - integerTick clamps tick -3 and 2.7 to 0; tick 3 stays 3 (both sides)
+      ---
+      duration_ms: 0.264997
+      ...
+    1..4
+ok 21 - §7 CANONICALIZE EDGES
+  ---
+  duration_ms: 2.317426
+  type: 'suite'
+  ...
+# Subtest: §8 PURITY (static)
+    # Subtest: trace module has no ambient time/random/DOM, no three import, no NUL bytes
+    ok 1 - trace module has no ambient time/random/DOM, no three import, no NUL bytes
+      ---
+      duration_ms: 0.933949
+      ...
+    1..1
+ok 22 - §8 PURITY (static)
+  ---
+  duration_ms: 1.115233
+  type: 'suite'
+  ...
+# Subtest: §9 API SURFACE HONESTY
+    # Subtest: exports exactly the known public set and has NO reset export
+    ok 1 - exports exactly the known public set and has NO reset export
+      ---
+      duration_ms: 0.149458
+      ...
+    1..1
+ok 23 - §9 API SURFACE HONESTY
+  ---
+  duration_ms: 0.232067
+  type: 'suite'
+  ...
+1..23
+# tests 37
+# suites 9
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 275.847827

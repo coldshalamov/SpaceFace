@@ -2970,9 +2970,9 @@
     ],
     "materialProfileRoles": {
       "glass": 4,
-      "hull": 9,
+      "hull": 4,
       "mechanical": 9,
-      "signal": 1
+      "signal": 6
     },
     "materialProfiles": [
       {
@@ -3008,7 +3008,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3018,7 +3018,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3038,12 +3038,12 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3068,7 +3068,7 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3863,7 +3863,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/survey_pin.glb"
   },
-  "runtimeHash": "45ec4c10727d94957d27661c3fe11e50b8c5a9204d501f4afdf370cffdf9249e",
+  "runtimeHash": "0bc07fcd2953ced87c109e7c61b85311d22a2f4c171bbe61dac1685c5f158993",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -2619,8 +2619,9 @@
       "accent": 3,
       "ceramic": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 10
+      "hull": 3,
+      "mechanical": 10,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -2651,7 +2652,7 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2676,7 +2677,7 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2701,7 +2702,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3472,7 +3473,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb"
   },
-  "runtimeHash": "8d0eccfb940c5692d2a047fbb64146c83a42f03ff1bdde648e1a429c3d1f8c1c",
+  "runtimeHash": "ed875ec13f805280da738feab6b5e08222f18da2869a8a498cd9400ce7959dcb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

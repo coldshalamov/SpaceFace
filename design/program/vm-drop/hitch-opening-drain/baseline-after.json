@@ -1,0 +1,18 @@
+{
+  "scratch": "d6a1c419e96bf5e6422cbdada63615816e60e9b9",
+  "probe": "probe:smooth-flight:crucible --seed=4242",
+  "gpu": "software/SwiftShader",
+  "launchToFlightSec": 11.7,
+  "prepareOpeningGpuResourcesMs": 67,
+  "planWaitMs": 0,
+  "planWaitOutcome": "skipped soft-gpu-self-build",
+  "drainWaitOutcome": "skipped soft-gpu-no-await (not reached; plan incomplete)",
+  "hitchCallbacks": "45/362",
+  "gameSpeedPct": 62.2,
+  "worstFrameMs": 800,
+  "p50_p95_p99_ms": [
+    66.7,
+    116.7,
+    200.0
+  ]
+}

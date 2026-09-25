@@ -1,0 +1,28 @@
+{
+  "n": 800,
+  "iters": 30000,
+  "before": {
+    "label": "prune-every-incremental-tick",
+    "ms": 198.788,
+    "iters": 30000
+  },
+  "after": {
+    "label": "prune-membership-gated-quiet",
+    "ms": 1.115,
+    "iters": 30000
+  },
+  "ratio": 178.3,
+  "miss": {
+    "before": {
+      "label": "prune-miss-walk",
+      "ms": 25.761,
+      "iters": 200
+    },
+    "after": {
+      "label": "prune-miss-gated",
+      "ms": 1.578,
+      "iters": 200
+    }
+  },
+  "note": "Quiet incremental signature prune. Same hit semantics when membership bumps. Soft-GPU fps not claimed."
+}

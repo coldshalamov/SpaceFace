@@ -1,0 +1,328 @@
+From b27b6a3456b6624da87bcbe49eec5f2184fb2036 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:11:02 -0400
+Subject: [PATCH 2/4] feat(perf): add zero-shader-links-after-first-frame check
+
+Pure evaluators in scripts/lib/guardTheWins.mjs plus an offline/live check that
+fails when renderer-info records mid-flight shader compilations after first present.
+---
+ ...ck-zero-shader-links-after-first-frame.mjs | 111 +++++++++++
+ scripts/lib/guardTheWins.mjs                  | 188 ++++++++++++++++++
+ 2 files changed, 299 insertions(+)
+ create mode 100644 scripts/check-zero-shader-links-after-first-frame.mjs
+ create mode 100644 scripts/lib/guardTheWins.mjs
+
+diff --git a/scripts/check-zero-shader-links-after-first-frame.mjs b/scripts/check-zero-shader-links-after-first-frame.mjs
+new file mode 100644
+index 000000000..3e4123c5f
+--- /dev/null
++++ b/scripts/check-zero-shader-links-after-first-frame.mjs
+@@ -0,0 +1,111 @@
++#!/usr/bin/env node
++// check:zero-shader-links-after-first-frame — backlog #70 guardrail.
++//
++// Fails when any shader program links after the first presented frame. Built on the
++// mid-flight compile detector in src/testing/perf/rendererInfoMonitor.js (same signal
++// perf:renderer-info already surfaces).
++//
++// Modes:
++//   default             short headed/headless flight via probe-renderer-info, then evaluate
++//   --anomalies-json=P  evaluate a saved anomalies/summary JSON (no browser)
++//   --duration-s=N      flight sample window for live mode (default 15)
++//   --json              print the evaluation record
++
++import { spawn } from 'node:child_process';
++import { readFile, mkdir, writeFile } from 'node:fs/promises';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++import {
++  evaluateZeroShaderLinksAfterFirstFrame,
++  rendererInfoSummaryToShaderGuardInput,
++  MID_FLIGHT_SHADER_ANOMALY,
++} from './lib/guardTheWins.mjs';
++
++const ROOT = fileURLToPath(new URL('../', import.meta.url));
++const OUT_DIR = path.join(ROOT, '.devshots', 'guard-the-wins');
++
++function argValue(name) {
++  const hit = process.argv.find((a) => a.startsWith(`${name}=`));
++  return hit ? hit.slice(name.length + 1) : null;
++}
++
++const ANOMALIES_JSON = argValue('--anomalies-json');
++const DURATION_S = Number(argValue('--duration-s') || 15);
++const WANT_JSON = process.argv.includes('--json');
++const HELP = process.argv.includes('--help') || process.argv.includes('-h');
++
++if (HELP) {
++  console.log(`Usage:
++  node scripts/check-zero-shader-links-after-first-frame.mjs [--duration-s=15]
++  node scripts/check-zero-shader-links-after-first-frame.mjs --anomalies-json=path.json
++
++Fails (exit 1) when any ${MID_FLIGHT_SHADER_ANOMALY} anomaly is present — i.e. a shader
++linked after the first presented frame.`);
++  process.exit(0);
++}
++
++async function evaluateFromPayload(payload) {
++  const anomalies = payload.anomalies || payload.summary?.anomalies || [];
++  const summary = payload.summary || payload;
++  const input = rendererInfoSummaryToShaderGuardInput(summary, anomalies);
++  if (Number.isFinite(payload.shaderLinksAfterFirstPresentedFrame)) {
++    input.shaderLinksAfterFirstPresentedFrame = payload.shaderLinksAfterFirstPresentedFrame;
++  }
++  if (payload.firstPresentedFrameIndex != null) {
++    input.firstPresentedFrameIndex = payload.firstPresentedFrameIndex;
++  }
++  return evaluateZeroShaderLinksAfterFirstFrame(input);
++}
++
++async function runLiveProbe() {
++  await mkdir(OUT_DIR, { recursive: true });
++  const probePath = path.join(ROOT, 'scripts', 'probe-renderer-info.mjs');
++  const child = spawn(process.execPath, [probePath, `--duration=${DURATION_S}`], {
++    cwd: ROOT,
++    stdio: ['ignore', 'pipe', 'pipe'],
++    env: { ...process.env, SPACEFACE_RENDERER_INFO_EXIT_ON_SHADER: '1' },
++  });
++  let stdout = '';
++  let stderr = '';
++  child.stdout.on('data', (chunk) => { stdout += chunk; process.stdout.write(chunk); });
++  child.stderr.on('data', (chunk) => { stderr += chunk; process.stderr.write(chunk); });
++  const code = await new Promise((resolve) => child.on('close', resolve));
++
++  const telemetryPath = path.join(ROOT, '.devshots', 'renderer-info', 'telemetry.json');
++  let payload = null;
++  try {
++    payload = JSON.parse(await readFile(telemetryPath, 'utf8'));
++  } catch {
++    payload = { anomalies: [], summary: {}, probeExitCode: code, stdoutTail: stdout.slice(-2000) };
++  }
++  payload.probeExitCode = code;
++  const verdict = await evaluateFromPayload(payload);
++  const outPath = path.join(OUT_DIR, 'zero-shader-links.json');
++  await writeFile(outPath, `${JSON.stringify({ verdict, telemetryPath, probeExitCode: code }, null, 2)}\n`);
++  return { verdict, code, stderr };
++}
++
++async function main() {
++  let verdict;
++  if (ANOMALIES_JSON) {
++    const payload = JSON.parse(await readFile(path.resolve(ANOMALIES_JSON), 'utf8'));
++    verdict = await evaluateFromPayload(payload);
++  } else {
++    const live = await runLiveProbe();
++    verdict = live.verdict;
++  }
++
++  if (WANT_JSON) {
++    process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
++  } else {
++    const tag = verdict.pass ? 'PASS' : 'FAIL';
++    console.log(`[check:zero-shader-links-after-first-frame] ${tag}: ${verdict.reason}`);
++  }
++  process.exitCode = verdict.pass ? 0 : 1;
++}
++
++main().catch((err) => {
++  console.error('[check:zero-shader-links-after-first-frame]', err);
++  process.exitCode = 1;
++});
+diff --git a/scripts/lib/guardTheWins.mjs b/scripts/lib/guardTheWins.mjs
+new file mode 100644
+index 000000000..4c44cd0d9
+--- /dev/null
++++ b/scripts/lib/guardTheWins.mjs
+@@ -0,0 +1,188 @@
++// Guard-the-wins (#70) — pure evaluators for the three guardrails.
++//
++// 1. Zero shader links after the first presented frame (renderer-info mid-flight detector).
++// 2. Scoreboard phase plan (one command wrapping the witness instruments).
++// 3. Resource-count plateau over a long soak (geometries / textures / programs).
++//
++// Kept dependency-free so node:test can drive the exact production logic without a browser.
++
++/** @typedef {{ type: string, frame?: number, newPrograms?: number, totalPrograms?: number, description?: string }} RendererAnomaly */
++/** @typedef {{ geometries: number, textures: number, programs: number, atMs?: number, label?: string }} ResourceSample */
++
++export const MID_FLIGHT_SHADER_ANOMALY = 'mid_flight_shader_compilation';
++
++/**
++ * Scoreboard phases from design/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md.
++ * One command runs these in order; individual probes stay the instruments of record.
++ */
++export const SCOREBOARD_PHASES = Object.freeze([
++  Object.freeze({
++    id: 'launch-to-flight',
++    title: 'Launch click to flying (main-thread profile)',
++    npmScript: null,
++    command: 'node',
++    args: Object.freeze(['scripts/probe-main-thread-profile.mjs', '--from-launch', '--flight-ms=10000']),
++    feels: Object.freeze(['Launch click to flying', 'Long freezes while loading', 'Freeze as flight begins']),
++  }),
++  Object.freeze({
++    id: 'sector-entry-witness',
++    title: 'Jump charge / busy scene (runtime witness)',
++    npmScript: 'probe:runtime-witness',
++    command: 'node',
++    args: Object.freeze(['scripts/probe-runtime-witness.mjs', '--sector-entry', '--no-sample-shots']),
++    feels: Object.freeze(['Jump charge', 'Busy scene (Ceres after the jump)']),
++  }),
++  Object.freeze({
++    id: 'zero-shader-links-after-first-frame',
++    title: 'Zero shader links after first presented frame',
++    npmScript: 'check:zero-shader-links-after-first-frame',
++    command: 'node',
++    args: Object.freeze(['scripts/check-zero-shader-links-after-first-frame.mjs', '--duration-s=15']),
++    feels: Object.freeze(['Freeze 20 s into every run', 'mid-flight shader compile hitch']),
++  }),
++]);
++
++/**
++ * Fail if renderer-info recorded any mid-flight shader compilation after the first presented frame.
++ *
++ * @param {{ anomalies?: RendererAnomaly[], shaderLinksAfterFirstPresentedFrame?: number, firstPresentedFrameIndex?: number|null }} input
++ */
++export function evaluateZeroShaderLinksAfterFirstFrame(input = {}) {
++  const anomalies = Array.isArray(input.anomalies) ? input.anomalies : [];
++  const midFlight = anomalies.filter((a) => a && a.type === MID_FLIGHT_SHADER_ANOMALY);
++  const explicit = input.shaderLinksAfterFirstPresentedFrame;
++  const explicitCount = Number.isFinite(explicit) ? Math.max(0, Number(explicit)) : null;
++  const linkedAfter = midFlight.reduce((sum, a) => sum + (Number(a.newPrograms) || 0), 0);
++  const totalLinks = explicitCount != null ? explicitCount : linkedAfter;
++  const pass = midFlight.length === 0 && totalLinks === 0;
++  return {
++    pass,
++    midFlightAnomalyCount: midFlight.length,
++    shaderLinksAfterFirstPresentedFrame: totalLinks,
++    firstPresentedFrameIndex: input.firstPresentedFrameIndex ?? null,
++    anomalies: midFlight,
++    reason: pass
++      ? 'no shader links after the first presented frame'
++      : `${midFlight.length} mid-flight shader anomal${midFlight.length === 1 ? 'y' : 'ies'}; `
++        + `${totalLinks} program(s) linked after first present`,
++  };
++}
++
++/**
++ * Decide whether a time series of renderer resource counts has plateaued.
++ *
++ * @param {ResourceSample[]} samples
++ * @param {{ warmupFraction?: number, maxGeometryDelta?: number, maxTextureDelta?: number, maxProgramDelta?: number, minSamples?: number }} [options]
++ */
++export function evaluateResourcePlateau(samples = [], options = {}) {
++  const minSamples = Number.isFinite(options.minSamples) ? options.minSamples : 6;
++  const warmupFraction = Number.isFinite(options.warmupFraction) ? options.warmupFraction : 0.35;
++  const maxGeometryDelta = Number.isFinite(options.maxGeometryDelta) ? options.maxGeometryDelta : 8;
++  const maxTextureDelta = Number.isFinite(options.maxTextureDelta) ? options.maxTextureDelta : 8;
++  const maxProgramDelta = Number.isFinite(options.maxProgramDelta) ? options.maxProgramDelta : 0;
++
++  if (!Array.isArray(samples) || samples.length < minSamples) {
++    return {
++      pass: false,
++      plateau: false,
++      reason: `need at least ${minSamples} resource samples (got ${samples?.length ?? 0})`,
++      window: null,
++      deltas: null,
++      failures: [`need at least ${minSamples} samples`],
++    };
++  }
++
++  const warmupCount = Math.min(
++    samples.length - 2,
++    Math.max(1, Math.floor(samples.length * warmupFraction)),
++  );
++  const window = samples.slice(warmupCount);
++  if (window.length < 2) {
++    return {
++      pass: false,
++      plateau: false,
++      reason: 'plateau window too short after warmup trim',
++      window: { startIndex: warmupCount, count: window.length },
++      deltas: null,
++      failures: ['plateau window too short'],
++    };
++  }
++
++  const first = window[0];
++  const last = window[window.length - 1];
++  const deltas = {
++    geometries: last.geometries - first.geometries,
++    textures: last.textures - first.textures,
++    programs: last.programs - first.programs,
++  };
++
++  const rangeOf = (key) => {
++    let min = Infinity;
++    let max = -Infinity;
++    for (const sample of window) {
++      const value = sample[key];
++      if (!Number.isFinite(value)) return { min: NaN, max: NaN, span: Infinity };
++      if (value < min) min = value;
++      if (value > max) max = value;
++    }
++    return { min, max, span: max - min };
++  };
++  const geometryRange = rangeOf('geometries');
++  const textureRange = rangeOf('textures');
++  const programRange = rangeOf('programs');
++
++  const failures = [];
++  if (!(Number.isFinite(deltas.geometries) && deltas.geometries <= maxGeometryDelta
++      && geometryRange.span <= maxGeometryDelta * 2)) {
++    failures.push(`geometries delta ${deltas.geometries} / span ${geometryRange.span} (max delta ${maxGeometryDelta})`);
++  }
++  if (!(Number.isFinite(deltas.textures) && deltas.textures <= maxTextureDelta
++      && textureRange.span <= maxTextureDelta * 2)) {
++    failures.push(`textures delta ${deltas.textures} / span ${textureRange.span} (max delta ${maxTextureDelta})`);
++  }
++  if (!(Number.isFinite(deltas.programs) && deltas.programs <= maxProgramDelta
++      && programRange.span <= maxProgramDelta)) {
++    failures.push(`programs delta ${deltas.programs} / span ${programRange.span} (max delta ${maxProgramDelta})`);
++  }
++
++  const pass = failures.length === 0;
++  return {
++    pass,
++    plateau: pass,
++    reason: pass
++      ? `resource counts plateaued over ${window.length} post-warmup samples`
++      : `resource counts did not plateau: ${failures.join('; ')}`,
++    window: { startIndex: warmupCount, count: window.length, first, last },
++    deltas,
++    ranges: { geometries: geometryRange, textures: textureRange, programs: programRange },
++    failures,
++  };
++}
++
++/**
++ * @param {{ include?: string[]|null, exclude?: string[]|Set<string> }} [options]
++ */
++export function planScoreboardPhases(options = {}) {
++  const include = options.include ? new Set(options.include) : null;
++  const exclude = options.exclude instanceof Set
++    ? options.exclude
++    : new Set(options.exclude || []);
++  return SCOREBOARD_PHASES.filter((phase) => {
++    if (exclude.has(phase.id)) return false;
++    if (include && !include.has(phase.id)) return false;
++    return true;
++  });
++}
++
++export function rendererInfoSummaryToShaderGuardInput(summary, anomalies) {
++  const list = Array.isArray(anomalies)
++    ? anomalies
++    : (Array.isArray(summary?.anomalies) ? summary.anomalies : []);
++  return {
++    anomalies: list,
++    shaderLinksAfterFirstPresentedFrame: list
++      .filter((a) => a && a.type === MID_FLIGHT_SHADER_ANOMALY)
++      .reduce((sum, a) => sum + (Number(a.newPrograms) || 0), 0),
++    firstPresentedFrameIndex: summary?.firstPresentedFrameIndex ?? null,
++  };
++}
+-- 
+2.47.3
+

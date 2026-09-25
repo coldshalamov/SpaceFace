@@ -11,14 +11,10 @@
 // not live forever: the clock runs out, and a live cap retires the oldest
 // rounds so a firefight cannot fill the sector with projectiles.
 //
-// Drawing is a different question. projectileOnReadableFrame is the frame test.
-// Off-frame rounds stay in the sim and are not submitted.
-
-import {
-  shouldDrawTableVfx,
-  tableLookAtDelta,
-  tableVfxDrawWuFromState,
-} from '../render/tabletopPolicy.js';
+// Drawing is a different question. The frame test (projectileOnReadableFrame) lives in
+// src/render/tabletopPolicy.js — combat grammar forbids sim code importing presentation —
+// and the render side imports this module's PROJECTILE_DRAW_PAD_WU. Off-frame rounds stay
+// in the sim and are not submitted.
 
 /** Minimum time a fired round keeps its collision body, in seconds. */
 export const PROJECTILE_FLIGHT_SECONDS = 16;
@@ -38,8 +34,6 @@ export const PROJECTILE_LIVE_CAP = 420;
  * behind the body; without this they vanish while the tip is still on glass.
  */
 export const PROJECTILE_DRAW_PAD_WU = 64;
-
-const _frameLook = { x: 0, z: 0 };
 
 function finiteSpeed(speed) {
   const value = Number(speed);
@@ -162,16 +156,4 @@ export function reserveProjectileCapacity(state, incoming = 1) {
     retired += 1;
   }
   return retired;
-}
-
-/**
- * True when a world position should be drawn this frame. Missing player
- * position does not cull: a fixture with no pilot still has to show the shot.
- * The pad keeps a round visible until its body and dash have left the glass.
- */
-export function projectileOnReadableFrame(state, pos, playerPos, drawWu, out) {
-  if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return true;
-  const base = Number.isFinite(drawWu) && drawWu > 0 ? drawWu : tableVfxDrawWuFromState(state);
-  const look = tableLookAtDelta(state, playerPos, pos, out || _frameLook);
-  return shouldDrawTableVfx(look.x, look.z, base + PROJECTILE_DRAW_PAD_WU);
 }

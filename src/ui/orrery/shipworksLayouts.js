@@ -4,6 +4,7 @@
 // of light, the circuit as a column of readings. It styles the shared stage's existing nodes in the
 // dock host only (`.orr-station .sx-sw`; THE SHIP keeps its own sheet) and pins nothing.
 import { injectOrrery } from './tokens.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 import { arcD, polar, ticksD } from './svg.js';
 
 const f2 = (n) => Math.round(n * 100) / 100;
@@ -45,7 +46,7 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const a = from + (span * (i + 0.5)) / n;
     const [tx0, ty0] = polar(cx, cy, r + 12, a);
     const [tx1, ty1] = polar(cx, cy, r + 17, a);
-    const [lx, ly] = polar(cx, cy, r + 23, a);
+    const [lx, ly] = polar(cx, cy, r + 13, a);
     const cos = Math.cos(((a - 90) * Math.PI) / 180);
     const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
@@ -400,7 +401,7 @@ ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
 ${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
-${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8px; letter-spacing:.16em; fill:rgb(${BONE} / .42); }
+${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.8px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
 ${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
 ${W} text.orr-power__syslabel.is-stock { fill:rgb(${BONE} / .82); }
 ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
@@ -475,12 +476,12 @@ ${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
 
 /* ================================ ROUND 8 ==================================================== */
 /* the readouts: one ruled ledger column (name left, figure right); a name never truncates */
-${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr !important; gap:0 !important; }
+${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr !important; gap:0 !important; width:100% !important; max-width:none !important; min-width:0 !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:auto minmax(0, 1fr) !important; column-gap:12px; padding:4px 0 !important; align-items:baseline !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { overflow:visible !important; text-overflow:clip !important; white-space:nowrap !important; max-width:none !important; min-width:0; }
 ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { justify-self:end; white-space:nowrap; }
 /* For Sale: the hardpoints one per line; the rendered hull lit as an object on the jig, not a shadow in the bay */
-${W} .sx-spec__hp { display:block; }
+${W} .sx-spec__hp { display:block; white-space:nowrap; }
 ${W} .sx-sw__stage > .sx-sw__poster { filter:brightness(1.32) contrast(1.06); }
 ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absolute; left:14%; right:14%; top:14%; bottom:16%; z-index:0; pointer-events:none;
   background:radial-gradient(ellipse at 50% 56%, rgb(${BONE} / .15), rgb(${BONE} / .05) 42%, transparent 68%); }
@@ -528,6 +529,97 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
   ${W}.sx-sw--buying .sx-sw-hero { padding:0 0 4px !important; }
   ${W}.sx-sw--buying .sx-sw-bands { gap:6px 28px !important; }
 }
+
+${W} .orr-lampkey:disabled::after { display:block !important; }
+
+/* ================================ ROUND 9 ==================================================== */
+${SCROLL_EXTENT_CSS}
+/* a fitted column wears no fold: the fade only stands over a list that overflows */
+${W} .sx-sw__side, ${W} .sx-sw__stats { -webkit-mask-image:none !important; mask-image:none !important; }
+${W} .sx-sw__chooser[data-overflow="0"], ${W} .sx-sw__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+/* For Sale: the price is the number; the stage's second title goes; the render sits on a contact shadow */
+${W}.sx-sw--buying .sx-sw__stage > .sx-sw__nameplate { display:none !important; }
+${W}.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:clamp(56px, 7vh, 76px) !important; letter-spacing:-.02em !important; white-space:nowrap; }
+${W}.sx-sw--buying .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:40px !important; }
+${W} .sx-sw__stage.has-poster:not(.is-live)::after { content:""; position:absolute; left:26%; right:26%; bottom:20%; height:9%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / .55), rgb(0 0 0 / .2) 55%, transparent 75%); }
+/* one Lamp Key height; the price rides the Buy key as it rides Buy & Fit */
+${W} .sx-buybar .orr-lampkey, ${W} .sx-buybar .sx-btn-primary.orr-lampkey { min-height:38px !important; padding:0 22px 0 18px !important; font-size:13px !important; letter-spacing:.14em !important; }
+${W} .sx-buybar .orr-lampkey small { color:#3a2c0a !important; margin-left:10px; font-size:12px; font-weight:650; }
+/* an empty socket says nothing twice */
+${W} .sx-sw-rack__cell.is-empty .k-row__sub { display:none !important; }
+/* a name is ink; only a moving figure is ice */
+${W} .orr-sw-node.is-preview .orr-sw-node__name { color:rgb(248 244 234) !important; }
+${W} .orr-sw-node.is-preview .orr-sw-node__state { color:rgb(${BONE} / .62) !important; }
+/* the hardpoint separator stays with its item, so a wrap starts on an item */
+${W} .sx-spec__hp:not(:last-child)::after { content:none !important; }
+@media (max-height:800px) {
+  /* Save fit stays reachable at 720: the band folds to its verb */
+  ${W} .sx-sw-band--presets { display:block !important; }
+  ${W} .sx-sw-band--presets > .sx-sw-band__label, ${W} .sx-sw-band--presets .sx-sw-preset:not(.sx-sw-preset--save) { display:none !important; }
+}
+
+/* the readouts are a fitted column: no fold across the last row */
+${W} .orr-sw-readouts { -webkit-mask-image:none !important; mask-image:none !important; }
+
+/* ================================ ROUND 10 =================================================== */
+/* the price fits its column against the widest catalogue price; never wider than the gutter */
+${W}.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:clamp(40px, 3.1vw, 60px) !important; }
+/* the dial is bigger, its words at label size with the ticks; at 720 the ticks alone say it */
+${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:240px; height:155px; }
+${W} .sx-sw-circuit__core .k-hero__n { top:62px; }
+${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
+/* the hardpoint list: inline with a separator only on a short screen; one per line otherwise, nothing dangling */
+@media (max-height:800px) {
+  ${W} .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\b7 " !important; color:rgb(${BONE} / .45); }
+  ${W} text.orr-power__syslabel { display:none; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:184px; height:119px; }
+  ${W} .sx-sw-circuit__core .k-hero__n { top:44px; }
+  ${W} .sx-sw-circuit__core .k-hero__w { top:82px; }
+}
+/* an empty rack socket is its ring; the header already counts them */
+${W} .sx-sw-rack__cell.is-empty .k-row__name { display:none !important; }
+${W} .sx-sw-rack__cell.is-empty { flex-direction:row !important; align-items:center !important; gap:8px; }
+/* a loss is dim bone with its sign; ice is the moving figure that gains */
+${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(${BONE} / .62) !important; }
+/* the chosen module reads as a hero: its lead figure at reading size, the rest at label size */
+${W} .sx-modrow:focus-within .sx-modrow__metrics { display:flex !important; flex-wrap:wrap; align-items:baseline; gap:2px 14px; margin-top:4px; }
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child { display:flex; flex-direction:column-reverse; flex-basis:100%; gap:0; margin-bottom:2px; }
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
+  font-size:46px !important; line-height:1 !important; letter-spacing:-.01em; color:rgb(248 244 234) !important; }
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-style:normal; font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
+/* the chooser's list runs to the rail on a short screen; the fold sits on its last visible row */
+@media (max-height:800px) {
+  ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; }
+  ${W} .sx-chooser__list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; overflow:hidden auto !important; }
+  ${W} .sx-chooser__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; }
+  ${W} .sx-chooser__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${W} .sx-sw__chooser { -webkit-mask-image:none !important; mask-image:none !important; }
+}
+/* For Sale: the stats stand under the render; at 720 the render fills the stage */
+${W}.sx-sw--buying.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { left:50% !important; right:auto !important; transform:translateX(-50%); top:auto !important; bottom:4% !important; width:min(520px, 80%) !important; max-height:none !important; }
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-sw__stage > .sx-sw__poster { max-height:92% !important; height:92% !important; width:auto !important; max-width:none !important; }
+  ${W}.sx-sw--buying .sx-sw__stats { bottom:2% !important; width:min(460px, 84%) !important; }
+}
+/* one width for the handling scales wherever they stand */
+${W} .sx-sw-bands { display:grid !important; grid-template-columns:repeat(2, minmax(0, 200px)) !important; gap:10px 24px !important; align-items:end; }
+${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 1fr) auto !important; align-items:center; column-gap:10px; }
+/* the label floor at 720 is 11px: no tracked 8px caps */
+@media (max-height:800px) {
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:10px !important; letter-spacing:.08em !important; }
+  ${W} .sx-sw-gauge .k-row__name { font-size:10px !important; letter-spacing:.1em !important; }
+  ${W} .sx-chooser__kicker { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${W} .sx-spec > li > .k-row__name { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${W} .sx-sw-side__hero .k-hero__w { font-size:10.5px !important; letter-spacing:.14em !important; }
+}
+
+/* the dial's words stay inside the column: the dial sits a little left of its axis on a tall screen */
+/* the side column takes the width the dial's words need on a tall screen; the dial sits near its axis */
+@media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
+/* a short screen: the chosen module's sentence folds so its key stays above the fold */
+@media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
 
 `;
 

@@ -1,0 +1,251 @@
+From 16332ab5c62d570598593b7a7cc7ecfd723459d4 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 14:36:13 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-skip=20idle=20postPhysics?=
+ =?UTF-8?q?=20ensure+sync=20walk=20(~14=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still paid combat kernel postPhysics ensureCombatant +
+syncCombatantBounds across every living combatant every tick after #154
+prePhysics latch already armed idle. Attachments empty-early-out; vitals
+clamp at mutation sites. Skip the walk while the prePhysics quiet latch is
+armed; same wake set (spawn/destroy, action, status, damage, repair,
+scaled physics, 0.5 s rescan). Soft-GPU fps not claimed. Picture unchanged.
+
+Fresh combat residual after #154 prePhysics; abs before ~11.4–11.8 µs/call
+clears thin-abs band. Isolated median ~13.5–14.1× / floorMin ≥9.32×;
+dirtyWakeOk (routeDamage heat → skip clears); focused latch + combat
+suites green.
+---
+ src/combat/kernel.js                        |  35 +++++
+ test/combat-postphysics-quiet-skip.test.mjs | 140 ++++++++++++++++++++
+ 2 files changed, 175 insertions(+)
+ create mode 100644 test/combat-postphysics-quiet-skip.test.mjs
+
+diff --git a/src/combat/kernel.js b/src/combat/kernel.js
+index 5be10de85..5528fad09 100644
+--- a/src/combat/kernel.js
++++ b/src/combat/kernel.js
+@@ -24,6 +24,18 @@ export function getCombatPrePhysicsQuietLatchForBench() {
+   return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
+ }
+ 
++// Quiet residual after #154 prePhysics latch: postPhysics still walked every
++// living combatant for ensureCombatant + syncCombatantBounds even though
++// attachments already empty-early-out and vitals clamp at mutation sites.
++// Skip that walk while the prePhysics quiet latch is armed; same wake set.
++let COMBAT_POSTPHYSICS_QUIET_SKIP = true;
++export function setCombatPostPhysicsQuietSkipForBench(enabled) {
++  COMBAT_POSTPHYSICS_QUIET_SKIP = enabled !== false;
++}
++export function getCombatPostPhysicsQuietSkipForBench() {
++  return COMBAT_POSTPHYSICS_QUIET_SKIP !== false;
++}
++
+ const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
+ 
+ function publishCombatPrePhysicsQuiet(state, latched) {
+@@ -31,6 +43,11 @@ function publishCombatPrePhysicsQuiet(state, latched) {
+   rt.quietLatched = !!latched;
+ }
+ 
++function publishCombatPostPhysicsQuiet(state, skipped) {
++  const rt = state.combatRuntime || (state.combatRuntime = {});
++  rt.postPhysicsQuietSkipped = !!skipped;
++}
++
+ function combatRuntimeBusy(runtime) {
+   if (!runtime) return false;
+   if (runtime.heat > 0) return true;
+@@ -138,10 +155,12 @@ export function createCombatKernel(ctx, options = {}) {
+   function noteCombatPrePhysicsWake() {
+     if (!quietLatch) {
+       publishCombatPrePhysicsQuiet(state, false);
++      publishCombatPostPhysicsQuiet(state, false);
+       return;
+     }
+     quietLatch = null;
+     publishCombatPrePhysicsQuiet(state, false);
++    publishCombatPostPhysicsQuiet(state, false);
+   }
+ 
+   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
+@@ -265,11 +284,27 @@ export function createCombatKernel(ctx, options = {}) {
+   function postPhysics() {
+     reconcilePhysicsAttachments();
+     attachments.updateTelemetryAndBreak();
++    const indexVersion = combatTickIndexVersion(state);
++    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
++    if (
++      COMBAT_POSTPHYSICS_QUIET_SKIP !== false
++      && COMBAT_PREPHYSICS_QUIET_LATCH !== false
++      && quietLatch
++      && quietLatch.membership === indexVersion
++      && quietLatch.cacheRevision === sortedCacheRevision
++      && now < quietLatch.rescanAt
++    ) {
++      // PrePhysics already armed quiet latch this cadence — bounds synced on the
++      // preceding busy walk / mutation sites; attachment pair already early-out.
++      publishCombatPostPhysicsQuiet(state, true);
++      return;
++    }
+     for (const entity of sortedEntitiesForTick()) {
+       if (!entity.alive || !isCombatantType(entity.type)) continue;
+       const runtime = ensureCombatant(state, entity, catalog);
+       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
+     }
++    publishCombatPostPhysicsQuiet(state, false);
+   }
+ 
+   function reconcilePhysicsAttachments() {
+diff --git a/test/combat-postphysics-quiet-skip.test.mjs b/test/combat-postphysics-quiet-skip.test.mjs
+new file mode 100644
+index 000000000..3bf9d71f9
+--- /dev/null
++++ b/test/combat-postphysics-quiet-skip.test.mjs
+@@ -0,0 +1,140 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createBus } from '../src/core/eventBus.js';
++import { createGameState } from '../src/core/gameState.js';
++import { core } from '../src/core/coreSystem.js';
++import { actions } from '../src/systems/actions.js';
++import {
++  getCombatKernel,
++  setCombatPrePhysicsQuietLatchForBench,
++  setCombatPostPhysicsQuietSkipForBench,
++  getCombatPostPhysicsQuietSkipForBench,
++} from '../src/combat/kernel.js';
++
++function boot(n = 24) {
++  const state = createGameState(1550 + n);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  state.runtime = { profileId: 'production' };
++  state.meta = { seed: 1550 + n };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const ships = [player];
++  for (let i = 0; i < n; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 400 + i * 20, z: (i % 5) * 30 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 10, hull: 80, hullMax: 80, collides: true, team: 0,
++      data: { ai: { passive: true } },
++    });
++    e.physicsSleeping = true;
++    ships.push(e);
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++  const ctx = { state, bus, helpers, registry: null };
++  const act = Object.assign({}, actions);
++  act.init(ctx);
++  const kernel = getCombatKernel(ctx);
++  return { state, bus, helpers, player, ships, act, kernel, ctx };
++}
++
++function step(act, kernel, state) {
++  state.tick++;
++  state.simTime += 1 / 60;
++  act.update(1 / 60, state);
++  kernel.postPhysics();
++  return state.combatRuntime;
++}
++
++test('postPhysics quiet skip engages when prePhysics latch armed', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  setCombatPostPhysicsQuietSkipForBench(true);
++  assert.equal(getCombatPostPhysicsQuietSkipForBench(), true);
++  const { state, act, kernel } = boot();
++  const rt = step(act, kernel, state);
++  assert.equal(rt.quietLatched, true);
++  assert.equal(rt.postPhysicsQuietSkipped, true);
++  const rt2 = step(act, kernel, state);
++  assert.equal(rt2.quietLatched, true);
++  assert.equal(rt2.postPhysicsQuietSkipped, true);
++});
++
++test('membership bump wakes prePhysics latch then postPhysics skip re-arms', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  setCombatPostPhysicsQuietSkipForBench(true);
++  const { state, act, kernel } = boot();
++  step(act, kernel, state);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
++  state.entityIndex.version++;
++  step(act, kernel, state);
++  // Quiet rescan re-arms both.
++  assert.equal(state.combatRuntime.quietLatched, true);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
++});
++
++test('routeDamage clears postPhysics quiet skip', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  setCombatPostPhysicsQuietSkipForBench(true);
++  const { state, act, kernel, helpers, ships } = boot();
++  step(act, kernel, state);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
++  const target = ships[1];
++  helpers.routeCombatDamage({
++    attackerId: state.playerId,
++    targetId: target.id,
++    packet: { channels: { kinetic: 1 }, heat: 2 },
++  });
++  assert.equal(state.combatRuntime.quietLatched, false);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, false);
++  // postPhysics after wake must walk (not skip)
++  state.tick++;
++  state.simTime += 1 / 60;
++  act.update(1 / 60, state);
++  // heat still present → latch not re-armed → skip false
++  kernel.postPhysics();
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, false);
++});
++
++test('bench toggle disables postPhysics quiet skip', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  setCombatPostPhysicsQuietSkipForBench(false);
++  const { state, act, kernel } = boot(8);
++  step(act, kernel, state);
++  assert.equal(state.combatRuntime?.quietLatched, true);
++  assert.equal(state.combatRuntime?.postPhysicsQuietSkipped, false);
++  setCombatPostPhysicsQuietSkipForBench(true);
++});
++
++test('dirtyWakeOk: heat then cool re-arms postPhysics skip', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  setCombatPostPhysicsQuietSkipForBench(true);
++  const { state, act, kernel, helpers, ships } = boot();
++  step(act, kernel, state);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
++  helpers.routeCombatDamage({
++    attackerId: state.playerId,
++    targetId: ships[1].id,
++    packet: { channels: { kinetic: 0.1 }, heat: 0.5 },
++  });
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, false);
++  // Drain heat by stepping many quiet ticks
++  for (let i = 0; i < 120; i++) step(act, kernel, state);
++  assert.equal(state.combatRuntime.quietLatched, true);
++  assert.equal(state.combatRuntime.postPhysicsQuietSkipped, true);
++});
+-- 
+2.47.3
+

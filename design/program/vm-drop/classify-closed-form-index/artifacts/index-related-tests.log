@@ -1,0 +1,125 @@
+TAP version 13
+# Subtest: analytic drift has the zero-drag limit and a timestep-partition oracle
+ok 1 - analytic drift has the zero-drag limit and a timestep-partition oracle
+  ---
+  duration_ms: 2.718937
+  ...
+# Subtest: the relative sweep catches crossings, tangencies and arming-boundary cases
+ok 2 - the relative sweep catches crossings, tangencies and arming-boundary cases
+  ---
+  duration_ms: 0.302538
+  ...
+# Subtest: drift bombs stay out of Rapier and keep bomb-owned kinematics, but join the spatial-dynamic layer so the projectile-sweep hash follows them
+ok 3 - drift bombs stay out of Rapier and keep bomb-owned kinematics, but join the spatial-dynamic layer so the projectile-sweep hash follows them
+  ---
+  duration_ms: 4.851457
+  ...
+# Subtest: a fast hostile crossing trips a swept fuze even with both endpoints outside
+ok 4 - a fast hostile crossing trips a swept fuze even with both endpoints outside
+  ---
+  duration_ms: 2.735635
+  ...
+# Subtest: remote command leaves safe bombs, enemy bombs and live fields alone; is idempotent
+ok 5 - remote command leaves safe bombs, enemy bombs and live fields alone; is idempotent
+  ---
+  duration_ms: 2.309285
+  ...
+# Subtest: the shared R edge reaches bombs before charges consume it and is never stolen
+ok 6 - the shared R edge reaches bombs before charges consume it and is never stolen
+  ---
+  duration_ms: 1.122976
+  ...
+# Subtest: mixed payloads share a short release latch, not the singularity cooldown
+ok 7 - mixed payloads share a short release latch, not the singularity cooldown
+  ---
+  duration_ms: 1.10723
+  ...
+# Subtest: the deployed cap refuses a drop without deleting traps or charging cooldown
+ok 8 - the deployed cap refuses a drop without deleting traps or charging cooldown
+  ---
+  duration_ms: 3.672359
+  ...
+# Subtest: a refused physics impulse creates no shove or hitstun receipt
+ok 9 - a refused physics impulse creates no shove or hitstun receipt
+  ---
+  duration_ms: 1.82052
+  ...
+# Subtest: surface falloff includes large hulls; loose dynamic mass shoves but static rock does not
+ok 10 - surface falloff includes large hulls; loose dynamic mass shoves but static rock does not
+  ---
+  duration_ms: 1.742819
+  ...
+# Subtest: station damage is not accidentally excluded by the shipLike index
+ok 11 - station damage is not accidentally excluded by the shipLike index
+  ---
+  duration_ms: 1.177043
+  ...
+# Subtest: goo queues frame-relative damping without writing velocity or commanding reverse motion
+ok 12 - goo queues frame-relative damping without writing velocity or commanding reverse motion
+  ---
+  duration_ms: 1.568189
+  ...
+# Subtest: overlapping goo fields do not multiply the per-tick brake past the reference frame
+ok 13 - overlapping goo fields do not multiply the per-tick brake past the reference frame
+  ---
+  duration_ms: 1.183852
+  ...
+# Subtest: goo rupture slows the moving cloud, while the capsule keeps the release drift law
+ok 14 - goo rupture slows the moving cloud, while the capsule keeps the release drift law
+  ---
+  duration_ms: 1.853335
+  ...
+# Subtest: singularity decays, uses dt, and never pulls after expiry or collapses on sector cleanup
+ok 15 - singularity decays, uses dt, and never pulls after expiry or collapses on sector cleanup
+  ---
+  duration_ms: 1.933169
+  ...
+# Subtest: the new Havoc shove contains a real tangential component at unchanged total impulse
+ok 16 - the new Havoc shove contains a real tangential component at unchanged total impulse
+  ---
+  duration_ms: 1.444818
+  ...
+# Subtest: HUD exposes live payload, readiness, occupancy and armed remote availability
+ok 17 - HUD exposes live payload, readiness, occupancy and armed remote availability
+  ---
+  duration_ms: 2.718954
+  ...
+# Subtest: keyboard teaching, controller mapping and rebind settings cover all three bay verbs
+ok 18 - keyboard teaching, controller mapping and rebind settings cover all three bay verbs
+  ---
+  duration_ms: 1.138093
+  ...
+# Subtest: all eight definitions travel through the same lifecycle, damage and cleanup path
+ok 19 - all eight definitions travel through the same lifecycle, damage and cleanup path
+  ---
+  duration_ms: 4.173379
+  ...
+# Subtest: the production Rapier owner applies goo braking with the real status mass response
+ok 20 - the production Rapier owner applies goo braking with the real status mass response
+  ---
+  duration_ms: 134.766751
+  ...
+# Subtest: residency demotion recycles an entity id without creating an index ghost
+ok 21 - residency demotion recycles an entity id without creating an index ghost
+  ---
+  duration_ms: 11.835613
+  ...
+# Subtest: repeated civilian manifest cap disposal does not retain dead payload index entries
+ok 22 - repeated civilian manifest cap disposal does not retain dead payload index entries
+  ---
+  duration_ms: 4.579876
+  ...
+# Subtest: traffic salvor payload disposal uses the core lifecycle indexes
+ok 23 - traffic salvor payload disposal uses the core lifecycle indexes
+  ---
+  duration_ms: 3.257605
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 520.917869

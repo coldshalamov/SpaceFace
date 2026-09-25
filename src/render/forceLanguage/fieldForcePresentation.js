@@ -8,6 +8,12 @@ export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the pu
 const TAU=Math.PI*2;
 const clamp01=(v)=>Math.max(0,Math.min(1,v));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
+// Stable per-deployment character, independent of sim RNG and render cadence.
+function character(id, born) {
+  const text=String(id);let h=2166136261;
+  for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);
+  h=Math.imul(h^Math.round(born*1000),0x45d9f3b);return (h>>>0)/4294967296;
+}
 const COLORS=new Map();
 // Allocate colors once; recipes never parse CSS or allocate Color objects in the frame loop.
 for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0])COLORS.set(value,new THREE.Color(value));
@@ -19,7 +25,7 @@ export class FieldForcePresentation {
     this.mesh=this.batch.mesh;this.toLocal=toLocal;
     this.local={x:0,z:0};this.descriptor=new Float32Array(SURFACE_FLOATS);
     this.slots=Array.from({length:10},()=>({
-      id:null,seedId:null,kind:null,born:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,
+      id:null,seedId:null,kind:null,born:0,character:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,
       // The producer REUSES its records. Keep value snapshots, not foreign record references,
       // so a retiring Well cannot become the Cone subsequently stored in the same array cell.
       field:{engaged:false,halfAngleRad:0.56,halfWidth:52},
@@ -48,6 +54,7 @@ export class FieldForcePresentation {
       if(!slot)for(const candidate of this.slots)if(!candidate.reserved){slot=candidate;break;}
       if(!slot){this.stats.dropped++;return;}
       slot.id=field.id;slot.kind=field.kind;slot.seedId=seedId;slot.born=this.time;
+      slot.character=character(field.kind==='seed'?seedId:field.id,this.time);
     }
     slot.seen=true;slot.release=-1;slot.lastSeen=this.time;
     slot.field.engaged=field.engaged===true;
@@ -142,10 +149,12 @@ export class FieldForcePresentation {
     d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;
     d[8]=r1;d[9]=width;d[10]=lift;d[11]=bow;
     d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=alpha*this.alpha;
-    d[16]=flow;d[17]=phase;d[18]=travel;d[19]=style;
+    const working=this.role!==FIELD_ROLE.BOUNDARY;
+    const variation=working?this.slot.character:0;
+    d[16]=flow*(working?0.88+variation*0.24:1);d[17]=phase+variation;d[18]=travel;d[19]=style;
     d[20]=this.reveal;d[21]=taper;d[22]=1;d[23]=0;
     d[24]=this.slot.born;d[25]=this.cycle.attack;d[26]=this.slot.release;d[27]=this.cycle.release;
-    d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset;d[31]=this.material.flex;
+    d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset+variation;d[31]=this.material.flex;
     d[32]=this.local.x;d[33]=this.local.z;d[34]=this.material.ribs;d[35]=this.material.heat;
     this.batch.add(d);
   }
@@ -169,7 +178,7 @@ export class FieldForcePresentation {
     this._member('membrane');
     for(let i=0;i<5;i++){
       const a=i*TAU/5;this.phaseOffset=i/5;
-      this._surface(0,a,a+1.8+(i%2)*0.3,r*0.96,r*0.082,r*(0.035+(i%2)*0.008),r*0.025,0,i*0.193,0,1,0.88);
+      this._surface(0,a,a+1.8+(i%2)*0.3,r*0.93,r*0.082,r*(0.064+(i%2)*0.014),r*0.052,0,i*0.193,0,1,0.88);
       this._member('filament');
       this._surface(0,a+0.16,a+2.00,r*0.72,r*0.11,r*0.009,r*0.047,0,i*.19,0,1,0.78);
       this._member('membrane');
@@ -194,7 +203,7 @@ export class FieldForcePresentation {
     for(let front=0;front<3;front++)for(let sector=0;sector<4;sector++){
       const a=sector*TAU/4+0.09+front*.19;this.phaseOffset=front/3+sector/4;
       const r0=r*(0.45+0.15*front),r1=r*(0.63+0.15*front);
-      this._surface(0,a,a+1.19,r0,r1,r*.038,r*.05,0,front/3,this.moving?1:0,0,.92);
+      this._surface(0,a,a+1.19,r0,r1,r*.055,r*.075,0,front/3,this.moving?1:0,0,.92);
     }
     // The splayed ribs are the emitter's hardware: they hold the shells apart and do not breathe.
     this._member('spar');

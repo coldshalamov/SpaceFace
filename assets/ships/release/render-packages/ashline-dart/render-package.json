@@ -3633,8 +3633,9 @@
     ],
     "materialProfileRoles": {
       "glass": 3,
-      "hull": 11,
-      "mechanical": 12
+      "hull": 4,
+      "mechanical": 12,
+      "signal": 7
     },
     "materialProfiles": [
       {
@@ -3665,7 +3666,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3675,7 +3676,7 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3695,7 +3696,7 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3705,7 +3706,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3715,7 +3716,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3740,7 +3741,7 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3750,7 +3751,7 @@
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4626,7 +4627,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "843d240dfff5d7c84da765638e27476131dc3277b7a98de336e0942e4168942c",
+  "runtimeHash": "d1be088fe7e4a1202770ce559344b84759db234e6135a90c5a3e18053a20b633",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

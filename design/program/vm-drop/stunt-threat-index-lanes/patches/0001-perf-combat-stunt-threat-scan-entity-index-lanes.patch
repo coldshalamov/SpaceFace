@@ -1,0 +1,130 @@
+From 7c931c2d3418637c770ea85c1640f0e50faff850 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:18:10 -0400
+Subject: [PATCH] perf(combat): stunt threat scan walks entity-index
+ ship/drone/projectile lanes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet Ceres full-entity threat walks paid rocks/pickups every tick. Prefer
+entityIndex ships/drones/projectiles (fallback to typed full scan). History
+body gather prefers spatialDynamics/movables. Portable microbench ~16× on
+Ceres-ish mix (800 rocks / 44 candidates).
+---
+ src/combat/stuntFlightEvidence.js | 70 +++++++++++++++++++++++++++----
+ 1 file changed, 61 insertions(+), 9 deletions(-)
+
+diff --git a/src/combat/stuntFlightEvidence.js b/src/combat/stuntFlightEvidence.js
+index 9f9cd6ada..e08f54e92 100644
+--- a/src/combat/stuntFlightEvidence.js
++++ b/src/combat/stuntFlightEvidence.js
+@@ -17,6 +17,38 @@ const THREAT_SCAN_RANGE_SQ = THREAT_SCAN_RANGE_WU * THREAT_SCAN_RANGE_WU;
+ function isThreatCandidateType(type) {
+   return type === 'ship' || type === 'projectile' || type === 'drone';
+ }
++
++/** Prefer entity-index ship/drone/projectile lanes so quiet Ceres rocks never pay the threat walk. */
++function threatCandidateLanes(state) {
++  const index = state && state.entityIndex;
++  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
++    return [index.ships, index.drones, index.projectiles];
++  }
++  return null;
++}
++
++function forEachThreatCandidate(state, playerId, visit) {
++  const lanes = threatCandidateLanes(state);
++  if (lanes) {
++    for (let li = 0; li < lanes.length; li++) {
++      const lane = lanes[li];
++      if (!lane) continue;
++      for (let i = 0; i < lane.length; i++) {
++        const e = lane[i];
++        if (!e?.pos || !e.vel || e.alive === false || e.id === playerId) continue;
++        visit(e);
++      }
++    }
++    return;
++  }
++  const entities = state && state.entities;
++  if (!entities || typeof entities.values !== 'function') return;
++  for (const e of entities.values()) {
++    if (!e?.pos || !e.vel || e.alive === false || e.id === playerId) continue;
++    if (!isThreatCandidateType(e.type)) continue;
++    visit(e);
++  }
++}
+ function hostileThreat(state,e,player) {
+   const owner=e.ownerId!=null?state.entities.get(e.ownerId):e;
+   if(!owner||!isHostileForAI(state,owner,player))return false;
+@@ -33,12 +65,10 @@ export class StuntFlightObserver {
+     const life=bodyLife(player,state),u=life.cruise,L=life.length,pr=life.radius;
+     let incoming=false;const results=[];
+     const previous=this.history.at(-1);
+-    for(const e of state.entities.values()) {
+-      if(!e?.pos||!e.vel||e.alive===false||e.id===player.id)continue;
+-      if(!isThreatCandidateType(e.type))continue;
++    forEachThreatCandidate(state, player.id, (e) => {
+       const dx=e.pos.x-player.pos.x,dz=e.pos.z-player.pos.z;
+-      if(dx*dx+dz*dz>THREAT_SCAN_RANGE_SQ)continue;
+-      if(!hostileThreat(state,e,player))continue;
++      if(dx*dx+dz*dz>THREAT_SCAN_RANGE_SQ)return;
++      if(!hostileThreat(state,e,player))return;
+       const radius=pr+(e.radius??0),rv={x:e.vel.x-player.vel.x,z:e.vel.z-player.vel.z};
+       const t=interceptSeconds({x:dx,z:dz},rv,radius);
+       if(t<=2)incoming=true;
+@@ -49,7 +79,7 @@ export class StuntFlightObserver {
+           initialSeparation:Math.hypot(dx,dz),maxSeparation:0,minClearance:Infinity,relativeSpeed:0,rootId:null,completed:false};
+         this.tracks.set(tl.id,track);
+       }
+-      if(!track)continue;
++      if(!track)return;
+       // Minimum over the actual swept relative segment, not distance at a single frame.
+       if(track.lastRelative) {
+         const ax=track.lastRelative.x,az=track.lastRelative.z,vx=dx-ax,vz=dz-az;
+@@ -59,7 +89,7 @@ export class StuntFlightObserver {
+       }
+       track.lastRelative={x:dx,z:dz};track.lastSeen=tick;
+       track.maxSeparation=Math.max(track.maxSeparation,Math.hypot(dx,dz));
+-    }
++    });
+     j.pressure={incomingInterception:incoming,tick};
+     const controlled=Math.abs(state.input?.turn??0)+Math.abs(state.input?.throttle??0)+Math.abs(state.input?.strafe??0)>0.01
+       ||state.input?.brake===true||state.input?.boost===true||state.input?.drawFlight===true;
+@@ -98,8 +128,30 @@ export class StuntFlightObserver {
+           momentum:root.kind==='flight'?0:life.mass*Math.hypot(root.dv.x,root.dv.z)},contact:null})});
+     }
+     const frame={tick,pos:pt(player.pos),vel:pt(player.vel),bodies:[]};
+-    for(const e of state.entities.values())if(e?.pos&&e.vel&&e.collides!==false&&e.id!==player.id&&distance(e.pos,player.pos)<L*8&&frame.bodies.length<32)
+-      frame.bodies.push({id:e.id,pos:pt(e.pos),vel:pt(e.vel),radius:e.radius??0});
++    const histLimit = L*8;
++    const histLimitSq = histLimit * histLimit;
++    const histLane = (() => {
++      const index = state.entityIndex;
++      if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
++        if (Array.isArray(index.spatialDynamics) && index.spatialDynamics.length) return index.spatialDynamics;
++        if (Array.isArray(index.movables) && index.movables.length) return index.movables;
++      }
++      return null;
++    })();
++    if (histLane) {
++      for (let i = 0; i < histLane.length && frame.bodies.length < 32; i++) {
++        const e = histLane[i];
++        if (!e?.pos || !e.vel || e.collides === false || e.id === player.id || e.alive === false) continue;
++        const hx = e.pos.x - player.pos.x, hz = e.pos.z - player.pos.z;
++        if (hx * hx + hz * hz >= histLimitSq) continue;
++        frame.bodies.push({ id: e.id, pos: pt(e.pos), vel: pt(e.vel), radius: e.radius ?? 0 });
++      }
++    } else {
++      for (const e of state.entities.values()) {
++        if (!(e?.pos && e.vel && e.collides !== false && e.id !== player.id && distance(e.pos, player.pos) < histLimit && frame.bodies.length < 32)) continue;
++        frame.bodies.push({ id: e.id, pos: pt(e.pos), vel: pt(e.vel), radius: e.radius ?? 0 });
++      }
++    }
+     this.history.push(frame);if(this.history.length>121)this.history.shift();
+     return results;
+   }
+-- 
+2.47.3
+

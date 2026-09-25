@@ -1,0 +1,95 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: weapon lights are a dedicated pool and do not steal the six event lights
+ok 1 - weapon lights are a dedicated pool and do not steal the six event lights
+  ---
+  duration_ms: 43.683102
+  ...
+# Subtest: shield contact writes four bubble hit slots instead of a spark in empty space
+ok 2 - shield contact writes four bubble hit slots instead of a spark in empty space
+  ---
+  duration_ms: 16.698498
+  ...
+# Subtest: distortion is a graph pass and stays off when nothing is live
+ok 3 - distortion is a graph pass and stays off when nothing is live
+  ---
+  duration_ms: 15.382659
+  ...
+# Subtest: weapon depth binding follows the active graph route rather than a retained graph object
+ok 4 - weapon depth binding follows the active graph route rather than a retained graph object
+  ---
+  duration_ms: 0.223211
+  ...
+# Subtest: pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+ok 5 - pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+  ---
+  duration_ms: 22.801244
+  ...
+# Subtest: reduced-flash and reduced-motion keep the dash and contact mark, not haze
+ok 6 - reduced-flash and reduced-motion keep the dash and contact mark, not haze
+  ---
+  duration_ms: 20.172347
+  ...
+# Subtest: energy-card recipes never fall back to a cylinder identity
+ok 7 - energy-card recipes never fall back to a cylinder identity
+  ---
+  duration_ms: 0.466962
+  ...
+# Subtest: distortion encodes signed offsets around neutral and composite decodes them
+ok 8 - distortion encodes signed offsets around neutral and composite decodes them
+  ---
+  duration_ms: 9.514692
+  ...
+# Subtest: presenter clears stale depth and carries recipe pixel floors per bolt
+ok 9 - presenter clears stale depth and carries recipe pixel floors per bolt
+  ---
+  duration_ms: 9.302823
+  ...
+# Subtest: normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+ok 10 - normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+  ---
+  duration_ms: 2.650835
+  ...
+# Subtest: equal-depth bolts retain write order and a reused pool handles partial and full volleys
+ok 11 - equal-depth bolts retain write order and a reused pool handles partial and full volleys
+  ---
+  duration_ms: 1.160965
+  ...
+# Subtest: shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+ok 12 - shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+  ---
+  duration_ms: 9.811301
+  ...
+# Subtest: ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+ok 13 - ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+  ---
+  duration_ms: 0.410661
+  ...
+# Subtest: weapon ribbons stay on WebGL1-compatible uint16 indices
+ok 14 - weapon ribbons stay on WebGL1-compatible uint16 indices
+  ---
+  duration_ms: 3.567962
+  ...
+# Subtest: weapon pose and velocity preserve zero components
+ok 15 - weapon pose and velocity preserve zero components
+  ---
+  duration_ms: 9.528454
+  ...
+# Subtest: accessibility scales flash geometry and reproject keeps target-local marks
+ok 16 - accessibility scales flash geometry and reproject keeps target-local marks
+  ---
+  duration_ms: 9.629425
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 562.657662
+
+--- wake-proof (manual) ---
+quiet latch defers begin; writeBolt wakes; mesh.count 0→1 OK
+check:vfx-techniques 9/9 PASS; check:vfx-force-language 92/92 pass

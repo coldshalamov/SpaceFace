@@ -1,0 +1,200 @@
+From 53a4414063f875ee51a15bb9e3697f35a8305866 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:12:34 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20skip=20quiet=20combat-beam=20ca?=
+ =?UTF-8?q?llsite=20prep=20when=20activeCount=3D=3D=3D0=20(~5.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After #91 pool early-out, prepareFrame still paid camDist + a11y resolve +
+worldSizeForPixels every idle tick. Gate the call site on activeCount so empty
+flight skips prep; upsert/stop/clear keep the counter truthful (dirty-wake).
+Soft-GPU fps not claimed. Picture contract ON / unchanged.
+---
+ src/render/vfx.js                             |  29 ++--
+ ...sistent-beams-quiet-callsite-skip.test.mjs | 132 ++++++++++++++++++
+ 2 files changed, 151 insertions(+), 10 deletions(-)
+ create mode 100644 test/persistent-beams-quiet-callsite-skip.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index b24419e7c..bbf0d96ed 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -11712,16 +11712,25 @@ export const vfx = {
+     }
+     this._tetherWebFx?.update(this.state);
+     if (this._combatBeams) {
+-      const camDist = cam && cam.position
+-        ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
+-        : 144;
+-      sub.combatBeams = this._combatBeams.update(
+-        this._t,
+-        this._combatBeamLocalizer,
+-        resolveVfxAccessibilityProfile(this.state && this.state.settings),
+-        worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
+-        this._beamOriginResolver,
+-      ) > 0 ? 1 : 0;
++      // Quiet open-flight residual after #91: call site still paid camDist +
++      // resolveVfxAccessibilityProfile + worldSizeForPixels every tick while
++      // activeCount===0 (pool update already early-outs). Skip prep while empty;
++      // upsert/_release keep activeCount truthful so the next live beam wakes.
++      // Soft-GPU fps not claimed.
++      if (!(this._combatBeams.activeCount > 0)) {
++        sub.combatBeams = 0;
++      } else {
++        const camDist = cam && cam.position
++          ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
++          : 144;
++        sub.combatBeams = this._combatBeams.update(
++          this._t,
++          this._combatBeamLocalizer,
++          resolveVfxAccessibilityProfile(this.state && this.state.settings),
++          worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
++          this._beamOriginResolver,
++        ) > 0 ? 1 : 0;
++      }
+     } else {
+       sub.combatBeams = 0;
+     }
+diff --git a/test/persistent-beams-quiet-callsite-skip.test.mjs b/test/persistent-beams-quiet-callsite-skip.test.mjs
+new file mode 100644
+index 000000000..43a6aa84e
+--- /dev/null
++++ b/test/persistent-beams-quiet-callsite-skip.test.mjs
+@@ -0,0 +1,132 @@
++/**
++ * #121 persistent-beams-quiet-callsite-skip — quiet empty activeCount skips
++ * camDist+a11y+worldSize prep; dirty-wake when upsert raises activeCount.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const DT = 1 / 60;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: 1,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++  };
++  const state = {
++    playerId: 1,
++    player: {},
++    mode: 'flight',
++    simTime: 1,
++    settings: { video: { motionReduce: false, flashReduce: false }, accessibility: {} },
++    entities: new Map([[1, player]]),
++    entityList: [player],
++    render: {
++      scene,
++      camera: { position: { x: 0, y: 40, z: 80 }, fov: 50 },
++      viewport: { height: 1000 },
++      interpolationAlpha: 1,
++    },
++    fields: { active: [] },
++    combat: { entities: {}, statusNextPendingSeq: 0 },
++  };
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus: createBus(),
++    helpers: {
++      player: () => player,
++      socketWorldPose: () => ({ x: 0, y: 0.4, z: 0 }),
++    },
++  });
++  if (typeof system._initCombatBeams === 'function') system._initCombatBeams();
++  assert.ok(system._combatBeams, 'combat beam pool must exist');
++  return { system, state, player };
++}
++
++function upsertBeam(pool, beamKey, timeS = 1) {
++  return pool.upsert({
++    beamKey,
++    ownerId: 1,
++    from: { x: 0, z: 0 },
++    to: { x: 20, z: 0 },
++  }, timeS);
++}
++
++test('quiet empty callsite skips pool.update while activeCount===0', () => {
++  const { system } = makeHarness();
++  const pool = system._combatBeams;
++  assert.equal(pool.activeCount, 0);
++  let updates = 0;
++  const orig = pool.update.bind(pool);
++  pool.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++
++  system.update(DT);
++  system.update(DT);
++  system.update(DT);
++  assert.equal(updates, 0, 'empty activeCount must skip call-site pool.update');
++  assert.equal(pool.activeCount, 0);
++});
++
++test('dirty-wake: upsert raises activeCount and resumes call-site update', () => {
++  const { system } = makeHarness();
++  const pool = system._combatBeams;
++  let updates = 0;
++  const orig = pool.update.bind(pool);
++  pool.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++
++  system.update(DT);
++  assert.equal(updates, 0);
++
++  assert.equal(upsertBeam(pool, 'beam-a', system._t || 1), true);
++  assert.ok(pool.activeCount > 0, 'upsert must raise activeCount');
++
++  updates = 0;
++  system.update(DT);
++  assert.ok(updates >= 1, 'live activeCount wakes call-site pool.update');
++
++  pool.clear();
++  assert.equal(pool.activeCount, 0);
++  updates = 0;
++  system.update(DT);
++  system.update(DT);
++  assert.equal(updates, 0, 're-skips after clear');
++});
++
++test('dirty-wake: stop last beam returns to quiet skip', () => {
++  const { system } = makeHarness();
++  const pool = system._combatBeams;
++  assert.equal(upsertBeam(pool, 'beam-b', system._t || 1), true);
++  assert.ok(pool.activeCount > 0);
++
++  let updates = 0;
++  const orig = pool.update.bind(pool);
++  pool.update = (...args) => {
++    updates += 1;
++    return orig(...args);
++  };
++  system.update(DT);
++  assert.ok(updates >= 1);
++
++  assert.equal(pool.stop({ beamKey: 'beam-b' }), true);
++  assert.equal(pool.activeCount, 0);
++  updates = 0;
++  system.update(DT);
++  system.update(DT);
++  assert.equal(updates, 0, 'stop last beam returns to quiet callsite skip');
++});
+-- 
+2.47.3
+

@@ -1,0 +1,415 @@
+TAP version 13
+# Subtest: encounter telemetry honors the sensor hostility verdict instead of team mismatch
+ok 1 - encounter telemetry honors the sensor hostility verdict instead of team mismatch
+  ---
+  duration_ms: 2.427065
+  ...
+# Subtest: the real arena roster commits its whole pack instead of reserving all but two firing lanes
+ok 2 - the real arena roster commits its whole pack instead of reserving all but two firing lanes
+  ---
+  duration_ms: 19.117206
+  ...
+# Subtest: actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+ok 3 - actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+  ---
+  duration_ms: 22.836821
+  ...
+# Subtest: production roster carries deterministic activity metadata into tactical cadence
+ok 4 - production roster carries deterministic activity metadata into tactical cadence
+  ---
+  duration_ms: 1.138334
+  ...
+# Subtest: production sensor batches reuse ephemeral containers without changing durable sensor truth
+ok 5 - production sensor batches reuse ephemeral containers without changing durable sensor truth
+  ---
+  duration_ms: 3.248488
+  ...
+# Subtest: squad command aggregation leaves member-only hazard perception untouched
+ok 6 - squad command aggregation leaves member-only hazard perception untouched
+  ---
+  duration_ms: 0.389536
+  ...
+# Subtest: production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+ok 7 - production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+  ---
+  duration_ms: 2.049521
+  ...
+# Subtest: production firing scans the ready ship-like index instead of the full dense world
+ok 8 - production firing scans the ready ship-like index instead of the full dense world
+  ---
+  duration_ms: 0.772689
+  ...
+# Subtest: maneuver contact indexing preserves decisions while reducing repeated contact visits
+ok 9 - maneuver contact indexing preserves decisions while reducing repeated contact visits
+  ---
+  duration_ms: 10.633971
+  ...
+# Subtest: fresh snapshots rebuild safely across six sensor ticks
+ok 10 - fresh snapshots rebuild safely across six sensor ticks
+  ---
+  duration_ms: 1.142313
+  ...
+# Subtest: snapshot revision invalidates a retained index after same-array replacement and reclassification
+ok 11 - snapshot revision invalidates a retained index after same-array replacement and reclassification
+  ---
+  duration_ms: 0.958551
+  ...
+# Subtest: live perception snapshots advance their revision for every accepted sensor batch
+ok 12 - live perception snapshots advance their revision for every accepted sensor batch
+  ---
+  duration_ms: 1.160165
+  ...
+# Subtest: recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+ok 13 - recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+  ---
+  duration_ms: 25.478418
+  ...
+# Subtest: tactical AI lifecycle subscriptions are idempotent and teardown-safe
+ok 14 - tactical AI lifecycle subscriptions are idempotent and teardown-safe
+  ---
+  duration_ms: 0.467406
+  ...
+# Subtest: a deferred destroy receipt cannot invalidate a same-tick replacement decision
+ok 15 - a deferred destroy receipt cannot invalidate a same-tick replacement decision
+  ---
+  duration_ms: 4.635158
+  ...
+# Subtest: production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+ok 16 - production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+  ---
+  duration_ms: 1.440227
+  ...
+# Subtest: injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+ok 17 - injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+  ---
+  duration_ms: 0.191894
+  ...
+# Subtest: off-table passive tactical actors sleep while near and hostile actors stay awake
+ok 18 - off-table passive tactical actors sleep while near and hostile actors stay awake
+  ---
+  duration_ms: 36.203412
+  ...
+# Subtest: skipped decision ticks revoke cached fire immediately when the live target dies
+ok 19 - skipped decision ticks revoke cached fire immediately when the live target dies
+  ---
+  duration_ms: 21.28546
+  ...
+# Subtest: one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+ok 20 - one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+  ---
+  duration_ms: 11.218821
+  ...
+1..20
+# tests 20
+# suites 0
+# pass 20
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 372.557209
+TAP version 13
+# Subtest: default squad tactic dwell mechanically caps churn at four transitions per ten seconds
+ok 1 - default squad tactic dwell mechanically caps churn at four transitions per ten seconds
+  ---
+  duration_ms: 1.295016
+  ...
+# Subtest: an identical blocked action is attempted at most three times until tactical context changes
+ok 2 - an identical blocked action is attempted at most three times until tactical context changes
+  ---
+  duration_ms: 0.872322
+  ...
+# Subtest: a time-gated action retries exactly when its authoritative gate becomes ready
+ok 3 - a time-gated action retries exactly when its authoritative gate becomes ready
+  ---
+  duration_ms: 0.662488
+  ...
+# Subtest: offensive action detection follows effects/tags instead of one action id
+ok 4 - offensive action detection follows effects/tags instead of one action id
+  ---
+  duration_ms: 1.364842
+  ...
+# Subtest: missing motive, trigger, zone, telegraph, or doctrine fails closed
+ok 5 - missing motive, trigger, zone, telegraph, or doctrine fails closed
+  ---
+  duration_ms: 1.464728
+  ...
+# Subtest: response/telegraph window and exact doctrine fire phase are authoritative
+ok 6 - response/telegraph window and exact doctrine fire phase are authoritative
+  ---
+  duration_ms: 3.281037
+  ...
+# Subtest: station protection uses the live station index without scanning unrelated entities
+ok 7 - station protection uses the live station index without scanning unrelated entities
+  ---
+  duration_ms: 0.393137
+  ...
+# Subtest: lawful jump-gate proxies do not grant station protection
+ok 8 - lawful jump-gate proxies do not grant station protection
+  ---
+  duration_ms: 0.323503
+  ...
+# Subtest: sub-second response windows fail closed at the production engagement seam
+ok 9 - sub-second response windows fail closed at the production engagement seam
+  ---
+  duration_ms: 0.250637
+  ...
+# Subtest: late-spawned threats start their response clock when they enter the live scene
+ok 10 - late-spawned threats start their response clock when they enter the live scene
+  ---
+  duration_ms: 4.692346
+  ...
+# Subtest: first-session combat permits at most two simultaneous attackers on the player
+ok 11 - first-session combat permits at most two simultaneous attackers on the player
+  ---
+  duration_ms: 1.109013
+  ...
+# Subtest: four offensive actors receive two stable ownership slots across ingress, cooldown, and reform
+ok 12 - four offensive actors receive two stable ownership slots across ingress, cooldown, and reform
+  ---
+  duration_ms: 1.05516
+  ...
+# Subtest: prepared ownership slots still fail closed when an actor leaves the ship authority
+ok 13 - prepared ownership slots still fail closed when an actor leaves the ship authority
+  ---
+  duration_ms: 0.584676
+  ...
+# Subtest: death and disengage release immediately and promote overflow in stable order without starvation
+ok 14 - death and disengage release immediately and promote overflow in stable order without starvation
+  ---
+  duration_ms: 0.639832
+  ...
+# Subtest: between-decision maintenance releases invalid owners without rebuilding the decision batch
+ok 15 - between-decision maintenance releases invalid owners without rebuilding the decision batch
+  ---
+  duration_ms: 0.515833
+  ...
+# Subtest: live deauthorization releases ownership and promotes every queued attacker in order
+ok 16 - live deauthorization releases ownership and promotes every queued attacker in order
+  ---
+  duration_ms: 0.631408
+  ...
+# Subtest: target changes and the end of the first-session window cannot leak ownership slots
+ok 17 - target changes and the end of the first-session window cannot leak ownership slots
+  ---
+  duration_ms: 0.47436
+  ...
+# Subtest: actors absent from a complete tactical batch release stale target ownership
+ok 18 - actors absent from a complete tactical batch release stale target ownership
+  ---
+  duration_ms: 0.344246
+  ...
+# Subtest: CONTROL-dispatched security responders fire outside the novice cap without consuming slots
+ok 19 - CONTROL-dispatched security responders fire outside the novice cap without consuming slots
+  ---
+  duration_ms: 0.744058
+  ...
+# Subtest: authorized fire records a deterministic motive and doctrine trace on the attacker
+ok 20 - authorized fire records a deterministic motive and doctrine trace on the attacker
+  ---
+  duration_ms: 1.164625
+  ...
+# Subtest: fresh hostility is mandatory even if a stale decision names the player
+ok 21 - fresh hostility is mandatory even if a stale decision names the player
+  ---
+  duration_ms: 0.308548
+  ...
+# Subtest: profit-motive fire requires a resolved escalation while vendettas remain distinct
+ok 22 - profit-motive fire requires a resolved escalation while vendettas remain distinct
+  ---
+  duration_ms: 0.339348
+  ...
+# Subtest: Helios station protection blocks criminal fire but permits lawful wanted enforcement
+ok 23 - Helios station protection blocks criminal fire but permits lawful wanted enforcement
+  ---
+  duration_ms: 0.533522
+  ...
+# Subtest: the full Helios starter sanctuary is protected even beyond the station patrol ring
+ok 24 - the full Helios starter sanctuary is protected even beyond the station patrol ring
+  ---
+  duration_ms: 0.324673
+  ...
+# Subtest: run cohorts use arena combat rules even when pursuit crosses Adventure station coordinates
+ok 25 - run cohorts use arena combat rules even when pursuit crosses Adventure station coordinates
+  ---
+  duration_ms: 0.286766
+  ...
+# Subtest: passive and hold-fire transitions clear stale weapon intent in the live AI port sweep
+ok 26 - passive and hold-fire transitions clear stale weapon intent in the live AI port sweep
+  ---
+  duration_ms: 0.417313
+  ...
+# Subtest: lawful AI applies WANTED gating to wingmen the same way as the clean player
+ok 27 - lawful AI applies WANTED gating to wingmen the same way as the clean player
+  ---
+  duration_ms: 0.202855
+  ...
+# Subtest: armed NPC burst opens its firing window without extra instant damage or double payment
+ok 28 - armed NPC burst opens its firing window without extra instant damage or double payment
+  ---
+  duration_ms: 18.565979
+  ...
+# Subtest: production SG-03 rejects anonymous damage action
+ok 29 - production SG-03 rejects anonymous damage action
+  ---
+  duration_ms: 1.501538
+  ...
+# Subtest: production SG-03 rejects criminal damage action inside Helios protection
+ok 30 - production SG-03 rejects criminal damage action inside Helios protection
+  ---
+  duration_ms: 1.298104
+  ...
+# Subtest: a strafing NPC aims at a stationary target without compensating lateral velocity twice
+ok 31 - a strafing NPC aims at a stationary target without compensating lateral velocity twice
+  ---
+  duration_ms: 6.085724
+  ...
+# Subtest: NPC lead intersects a moving target using the shipped projectile velocity
+ok 32 - NPC lead intersects a moving target using the shipped projectile velocity
+  ---
+  duration_ms: 0.771708
+  ...
+# Subtest: a tracked attack actually steers and brakes around the collider between it and its flight point
+ok 33 - a tracked attack actually steers and brakes around the collider between it and its flight point
+  ---
+  duration_ms: 3.874525
+  ...
+# Subtest: retreat steering ignores a different-team contact the sensor oracle marks neutral
+ok 34 - retreat steering ignores a different-team contact the sensor oracle marks neutral
+  ---
+  duration_ms: 0.569879
+  ...
+# Subtest: PD screen rejects a projectile explicitly marked non-hostile
+ok 35 - PD screen rejects a projectile explicitly marked non-hostile
+  ---
+  duration_ms: 1.352885
+  ...
+# Subtest: PD screen still admits a projectile whose hostility is unknown
+ok 36 - PD screen still admits a projectile whose hostility is unknown
+  ---
+  duration_ms: 0.221333
+  ...
+# Subtest: encounter telemetry honors the sensor hostility verdict instead of team mismatch
+ok 37 - encounter telemetry honors the sensor hostility verdict instead of team mismatch
+  ---
+  duration_ms: 3.829275
+  ...
+# Subtest: SG-03 action-port caches can be released when an entity leaves the tactical roster
+ok 38 - SG-03 action-port caches can be released when an entity leaves the tactical roster
+  ---
+  duration_ms: 13.335869
+  ...
+# Subtest: the tactical stack releases action-port state when a roster entity disappears
+ok 39 - the tactical stack releases action-port state when a roster entity disappears
+  ---
+  duration_ms: 2.237326
+  ...
+# Subtest: a temporary resource denial cannot permanently latch an AI action off
+ok 40 - a temporary resource denial cannot permanently latch an AI action off
+  ---
+  duration_ms: 2.755215
+  ...
+# Subtest: the real arena roster commits its whole pack instead of reserving all but two firing lanes
+ok 41 - the real arena roster commits its whole pack instead of reserving all but two firing lanes
+  ---
+  duration_ms: 21.035658
+  ...
+# Subtest: actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+ok 42 - actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile
+  ---
+  duration_ms: 29.473124
+  ...
+# Subtest: production roster carries deterministic activity metadata into tactical cadence
+ok 43 - production roster carries deterministic activity metadata into tactical cadence
+  ---
+  duration_ms: 1.642491
+  ...
+# Subtest: production sensor batches reuse ephemeral containers without changing durable sensor truth
+ok 44 - production sensor batches reuse ephemeral containers without changing durable sensor truth
+  ---
+  duration_ms: 3.496399
+  ...
+# Subtest: squad command aggregation leaves member-only hazard perception untouched
+ok 45 - squad command aggregation leaves member-only hazard perception untouched
+  ---
+  duration_ms: 0.397279
+  ...
+# Subtest: production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+ok 46 - production firing adapter holds fire for an ally in the predicted lane and recovers cleanly
+  ---
+  duration_ms: 2.165945
+  ...
+# Subtest: production firing scans the ready ship-like index instead of the full dense world
+ok 47 - production firing scans the ready ship-like index instead of the full dense world
+  ---
+  duration_ms: 0.813527
+  ...
+# Subtest: maneuver contact indexing preserves decisions while reducing repeated contact visits
+ok 48 - maneuver contact indexing preserves decisions while reducing repeated contact visits
+  ---
+  duration_ms: 9.310375
+  ...
+# Subtest: fresh snapshots rebuild safely across six sensor ticks
+ok 49 - fresh snapshots rebuild safely across six sensor ticks
+  ---
+  duration_ms: 1.706149
+  ...
+# Subtest: snapshot revision invalidates a retained index after same-array replacement and reclassification
+ok 50 - snapshot revision invalidates a retained index after same-array replacement and reclassification
+  ---
+  duration_ms: 1.21974
+  ...
+# Subtest: live perception snapshots advance their revision for every accepted sensor batch
+ok 51 - live perception snapshots advance their revision for every accepted sensor batch
+  ---
+  duration_ms: 1.282407
+  ...
+# Subtest: recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+ok 52 - recycled tactical AI ids do not inherit the prior actor decision or fire revalidation
+  ---
+  duration_ms: 29.689094
+  ...
+# Subtest: tactical AI lifecycle subscriptions are idempotent and teardown-safe
+ok 53 - tactical AI lifecycle subscriptions are idempotent and teardown-safe
+  ---
+  duration_ms: 0.493567
+  ...
+# Subtest: a deferred destroy receipt cannot invalidate a same-tick replacement decision
+ok 54 - a deferred destroy receipt cannot invalidate a same-tick replacement decision
+  ---
+  duration_ms: 5.76682
+  ...
+# Subtest: production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+ok 55 - production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz
+  ---
+  duration_ms: 1.444321
+  ...
+# Subtest: injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+ok 56 - injected Tactical AI fixtures retain every-tick decisions unless explicitly configured
+  ---
+  duration_ms: 0.216091
+  ...
+# Subtest: off-table passive tactical actors sleep while near and hostile actors stay awake
+ok 57 - off-table passive tactical actors sleep while near and hostile actors stay awake
+  ---
+  duration_ms: 36.003212
+  ...
+# Subtest: skipped decision ticks revoke cached fire immediately when the live target dies
+ok 58 - skipped decision ticks revoke cached fire immediately when the live target dies
+  ---
+  duration_ms: 14.116931
+  ...
+# Subtest: one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+ok 59 - one cohort reuses its same-tick inspection while every member keeps its maneuver lookup
+  ---
+  duration_ms: 6.028356
+  ...
+1..59
+# tests 59
+# suites 0
+# pass 59
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 680.14902

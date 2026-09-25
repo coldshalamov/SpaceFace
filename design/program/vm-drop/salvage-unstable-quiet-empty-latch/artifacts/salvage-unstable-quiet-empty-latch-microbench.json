@@ -1,0 +1,86 @@
+{
+  "name": "salvage-unstable-quiet-empty-latch",
+  "primary": "quiet-salvage-no-unstable-reactor-walk",
+  "iterations": 60000,
+  "shipN": 48,
+  "asteroidN": 80,
+  "wreckN": 12,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 26.846096999999986,
+      "afterMs": 6.724710999999999,
+      "speedup": 3.9921562428482043,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 28.46761700000002,
+      "afterMs": 7.015757000000008,
+      "speedup": 4.05766861651565,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 29.44990899999999,
+      "afterMs": 6.69509699999999,
+      "speedup": 4.398727755550074,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 27.891549999999995,
+      "afterMs": 7.653352999999996,
+      "speedup": 3.644356924344142,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 27.128717999999992,
+      "afterMs": 6.404922999999997,
+      "speedup": 4.235604081422994,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 36.205320000000015,
+      "afterMs": 6.494811999999996,
+      "speedup": 5.574498538217894,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 28.39712499999999,
+      "afterMs": 6.423303000000004,
+      "speedup": 4.420953674456891,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 31.47347400000001,
+      "afterMs": 6.909581000000003,
+      "speedup": 4.555048128099228,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 29.03436699999999,
+      "afterMs": 6.487752999999998,
+      "speedup": 4.475257766440861,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 30.100500999999994,
+      "afterMs": 6.379411000000005,
+      "speedup": 4.7183824650896415,
+      "afterLatched": true
+    },
+    {
+      "beforeMs": 31.85540900000001,
+      "afterMs": 6.444451999999998,
+      "speedup": 4.943074911567348,
+      "afterLatched": true
+    }
+  ],
+  "median": 4.420953674456891,
+  "minSpeedup": 3.644356924344142,
+  "maxSpeedup": 5.574498538217894,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "burst": true
+  }
+}

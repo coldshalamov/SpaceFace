@@ -1,0 +1,320 @@
+TAP version 13
+# Subtest: still-player latch engages with nearby non-touching rocks
+ok 1 - still-player latch engages with nearby non-touching rocks
+  ---
+  duration_ms: 6.165905
+  ...
+# Subtest: asteroidField.version bump wakes still-player latch
+ok 2 - asteroidField.version bump wakes still-player latch
+  ---
+  duration_ms: 0.904484
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.706577
+  ...
+# Subtest: player unpark (speed) clears latch and re-queries
+ok 4 - player unpark (speed) clears latch and re-queries
+  ---
+  duration_ms: 0.713807
+  ...
+# Subtest: touching rock promotes on first probe before latch
+ok 5 - touching rock promotes on first probe before latch
+  ---
+  duration_ms: 1.541109
+  ...
+# Subtest: bench toggle off restores always-query (no latch)
+ok 6 - bench toggle off restores always-query (no latch)
+  ---
+  duration_ms: 0.530729
+  ...
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 7 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 9.831271
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 8 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.647171
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 9 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.71537
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 10 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.29223
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 11 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 2.444479
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 12 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 40.368435
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 13 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.855442
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 14 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 1.631795
+  ...
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 15 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 2.269549
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 16 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.497519
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+ok 17 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 0.597453
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 18 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.548087
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 19 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.283144
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 20 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.343814
+  ...
+# Subtest: quiet latch engages when far table empty
+ok 21 - quiet latch engages when far table empty
+  ---
+  duration_ms: 6.341245
+  ...
+# Subtest: farActors.version bump wakes empty quiet latch
+ok 22 - farActors.version bump wakes empty quiet latch
+  ---
+  duration_ms: 0.794509
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 23 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.70158
+  ...
+# Subtest: far rows present refuse empty latch and still query
+ok 24 - far rows present refuse empty latch and still query
+  ---
+  duration_ms: 3.000553
+  ...
+# Subtest: bench toggle off restores always-walk (no latch)
+ok 25 - bench toggle off restores always-walk (no latch)
+  ---
+  duration_ms: 0.622375
+  ...
+# Subtest: queryFarActors empty early-return matches empty grid result
+ok 26 - queryFarActors empty early-return matches empty grid result
+  ---
+  duration_ms: 0.550375
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 27 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 10.701647
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 28 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.811015
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 29 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.69186
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 30 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 2.048171
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 31 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 2.369282
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 32 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 2.723863
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 33 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 1.697756
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 34 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.757428
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 35 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 2.567526
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 36 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 3.829243
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 37 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 1.448352
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 38 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.450283
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 39 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 10.581155
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 40 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 1.669908
+  ...
+# Subtest: bench toggle off refuses latch
+ok 41 - bench toggle off refuses latch
+  ---
+  duration_ms: 1.252458
+  ...
+# Subtest: far rows present never skip restore path
+ok 42 - far rows present never skip restore path
+  ---
+  duration_ms: 3.531104
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 43 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 1.307878
+  ...
+# Subtest: rescan clears latch after window
+ok 44 - rescan clears latch after window
+  ---
+  duration_ms: 0.79201
+  ...
+# Subtest: the far shelf gives the wreck cathedral and the cinder sluice back on approach
+ok 45 - the far shelf gives the wreck cathedral and the cinder sluice back on approach
+  ---
+  duration_ms: 125.080476
+  ...
+# Subtest: quiet latch engages on idle flight with no field interest
+ok 46 - quiet latch engages on idle flight with no field interest
+  ---
+  duration_ms: 5.509958
+  ...
+# Subtest: membership bump wakes idle quiet latch
+ok 47 - membership bump wakes idle quiet latch
+  ---
+  duration_ms: 4.573557
+  ...
+# Subtest: player cone deploy leaves idle and clears latch
+ok 48 - player cone deploy leaves idle and clears latch
+  ---
+  duration_ms: 1.202934
+  ...
+# Subtest: bench toggle restores always-walk idle path
+ok 49 - bench toggle restores always-walk idle path
+  ---
+  duration_ms: 0.676545
+  ...
+# Subtest: latched idle skips discover until rescan window
+ok 50 - latched idle skips discover until rescan window
+  ---
+  duration_ms: 0.714064
+  ...
+# Subtest: quiet latch engages when no optic interest nearby
+ok 51 - quiet latch engages when no optic interest nearby
+  ---
+  duration_ms: 7.122262
+  ...
+# Subtest: field.version bump wakes optic quiet latch
+ok 52 - field.version bump wakes optic quiet latch
+  ---
+  duration_ms: 0.679789
+  ...
+# Subtest: membership bump wakes optic quiet latch
+ok 53 - membership bump wakes optic quiet latch
+  ---
+  duration_ms: 0.442713
+  ...
+# Subtest: player move beyond wake radius clears optic quiet latch path
+ok 54 - player move beyond wake radius clears optic quiet latch path
+  ---
+  duration_ms: 0.449819
+  ...
+# Subtest: nearby optic field rock prevents latch and promotes on approach
+ok 55 - nearby optic field rock prevents latch and promotes on approach
+  ---
+  duration_ms: 2.366714
+  ...
+# Subtest: bench toggle off restores always-walk
+ok 56 - bench toggle off restores always-walk
+  ---
+  duration_ms: 0.46016
+  ...
+# Subtest: all-identified quiet latch engages
+ok 57 - all-identified quiet latch engages
+  ---
+  duration_ms: 5.730078
+  ...
+# Subtest: unidentified POI prevents latch
+ok 58 - unidentified POI prevents latch
+  ---
+  duration_ms: 1.102744
+  ...
+# Subtest: dirty-wake on pois.length
+ok 59 - dirty-wake on pois.length
+  ---
+  duration_ms: 0.875377
+  ...
+# Subtest: dirty-wake on sector change
+ok 60 - dirty-wake on sector change
+  ---
+  duration_ms: 0.694531
+  ...
+# Subtest: proximity identify still works when unlatched
+ok 61 - proximity identify still works when unlatched
+  ---
+  duration_ms: 1.010227
+  ...
+# Subtest: bench toggle off disables latch
+ok 62 - bench toggle off disables latch
+  ---
+  duration_ms: 0.651483
+  ...
+1..62
+# tests 62
+# suites 0
+# pass 62
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 608.603759

@@ -1717,8 +1717,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1749,7 +1750,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1774,7 +1775,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1799,7 +1800,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 21,
@@ -2244,7 +2245,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "5a45b9e49424c0df1dad7af4d237578ff0dbbdbb75985303ac42d4f6a2646b51",
+  "runtimeHash": "ce62926e8da773b8843bd77593a9cbaa3bab702d028f3c3ba0e8fc401a02469c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,0 +1,14 @@
+{
+  "probe": "probe:smooth-flight:crucible --seed=4242",
+  "stack": "origin/master + opening-plan-complete + hitch-opening-drain",
+  "gpu": "software-swiftshader",
+  "metrics": {
+    "launchToFlightS": 11.7,
+    "worstFrameMs": 317.0,
+    "hitchCallbacks": 64,
+    "hitchFrames": 317,
+    "gameSpeedPct": 47.8,
+    "noveltyNovel": 9,
+    "cookLedger": "cook ledger                 opening.rockSurfaceLibrary 56ms resolved | opening.firstPresentAdmission 14ms resolved | opening.planWait 0ms skipped (budgetMs=0,reason=soft-gpu-self-build) | opening.residency 1254ms resolved (subjects=57,textureRefs=68,textures=68) | opening.postResources 1ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms skipped (budgetMs=0,reason=soft-gpu-no-await) | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 1390ms resolved"
+  }
+}

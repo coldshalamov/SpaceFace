@@ -1,0 +1,33 @@
+{
+  "label": "radar-asteroid-still-layer",
+  "rocks": 211,
+  "pixelWu": 38.1,
+  "latchDefault": true,
+  "parked": {
+    "scenario": "parked",
+    "beforeUs": 8.7021,
+    "afterUs": 1.4605,
+    "speedup": 5.958,
+    "skippedShare": null
+  },
+  "drift": {
+    "scenario": "drift",
+    "beforeUs": 6.1055,
+    "afterUs": 1.0249,
+    "speedup": 5.957
+  },
+  "fly": {
+    "scenario": "fly",
+    "beforeUs": 5.2894,
+    "afterUs": 1.1542,
+    "speedup": 4.583,
+    "skippedShare": 0.81
+  },
+  "wake": {
+    "firstSkip": true,
+    "versionWakeWalk": true,
+    "afterWakeSkip": false,
+    "moveWakeWalk": true,
+    "dirtyWakeOk": false
+  }
+}

@@ -72,8 +72,13 @@ assert.match(appSource, /screenMemory\.read\('station', 'firstDockHandoffDismiss
   'handoff dismissal must use the existing per-save Station screen-memory bag');
 assert.ok(appSource.includes('data-handoff-dismiss'),
   'handoff rail must provide a user-operable dismissal control');
-assert.match(appSource, /aria-label="Dismiss getting started guidance"/,
-  'handoff dismissal must have an accessible name');
+// The accessible name moved onto the shared binding map (stationBindingMap 'dismiss-handoff'):
+// the template composes `<label> getting started guidance`, and the map entry pins the verb.
+assert.match(appSource, /aria-label="\$\{stationControlLabel\('dismiss-handoff'\)\} getting started guidance"/,
+  'handoff dismissal must have an accessible name from the binding map');
+assert.match(readFileSync(join(ROOT, 'src/ui/station/stationBindingMap.js'), 'utf8'),
+  /'dismiss-handoff': \{ label: 'Dismiss' \}/,
+  'binding map must give the dismissal its accessible verb');
 assert.match(appSource, /screenMemory\.set\('station', \{ firstDockHandoffDismissed: true \}\)/,
   'handoff dismissal must persist a benign UI preference rather than bypass onboarding state');
 assert.match(appSource, /function renderHandoff\(\)/,
@@ -87,10 +92,8 @@ for (const [label, source] of [['onboarding', onboardingSource], ['first-use cop
   assert.doesNotMatch(source, /tab labels at top/i,
     `${label} must not describe the old top-tab layout`);
 }
-assert.match(firstUseCopySource, /left rail/,
-  'first dock onboarding copy must teach the actual station left rail');
-assert.match(firstUseCopySource, /Use the left rail\. Departure Check owns undock\./,
-  'firstHub copy must point at the handoff owner without repeating its full checklist');
+assert.match(firstUseCopySource, /firstHub: "Pick a service above\. Undock when you're ready\."/,
+  'firstHub copy must point at the station services and the undock verb without repeating the handoff checklist');
 assert.match(onboardingSource, /_tutorialRailOwnsVoice\(\)/,
   'firstHub hint must yield while the staged B0-B5 tutorial is active');
 

@@ -1,0 +1,10 @@
+assets/ships/release/render-packages/helios-span-reach/render.glb
+assets/ships/release/render-packages/helios-span/render.glb
+assets/ships/release/render-packages/helios-lark/render.glb
+assets/ships/release/render-packages/helios-cradle/render.glb
+assets/ships/release/render-packages/seamed-asteroid/render.glb
+assets/ships/release/render-packages/graffiti/render.glb
+assets/ships/release/render-packages/kestrel-lod2/render.glb
+assets/ships/release/render-packages/kestrel-lod1/render.glb
+assets/ships/release/render-packages/helios-trade-hub/render.glb
+assets/ships/release/render-packages/kestrel/render.glb

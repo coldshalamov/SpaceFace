@@ -138,9 +138,16 @@ export function makeGreebleTexture(opts = {}) {
     const p = Math.round((i / grid) * size);
     ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
+    // recessed conduit channels along select primary seams
+    if (i % 2 === 1) {
+      ctx.strokeStyle = 'rgba(12,15,22,0.85)';
+      ctx.strokeRect(p - 1.5, 0, 3, size);
+      ctx.strokeRect(0, p - 1.5, size, 3);
+      ctx.strokeStyle = line;
+    }
   }
 
-  // scattered raised plates
+  // scattered raised plates with chamfered inner bevels
   const plates = Math.round(26 * density);
   for (let i = 0; i < plates; i++) {
     const w = (0.06 + rnd() * 0.20) * size;
@@ -151,8 +158,15 @@ export function makeGreebleTexture(opts = {}) {
     ctx.globalAlpha = 0.55 + rnd() * 0.4;
     ctx.fillRect(x, y, w, h);
     ctx.globalAlpha = 1;
+
+    // plate perimeter seam & inner light bevel
     ctx.strokeStyle = line; ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(x + 1, y + h - 1); ctx.lineTo(x + 1, y + 1); ctx.lineTo(x + w - 1, y + 1);
+    ctx.stroke();
+
     // vent slats on some plates
     if (rnd() > 0.6) {
       ctx.strokeStyle = line;
@@ -160,19 +174,30 @@ export function makeGreebleTexture(opts = {}) {
       for (let s = 1; s < slats; s++) {
         const sy = y + (s / slats) * h;
         ctx.beginPath(); ctx.moveTo(x + 2, sy); ctx.lineTo(x + w - 2, sy); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath(); ctx.moveTo(x + 2, sy + 1); ctx.lineTo(x + w - 2, sy + 1); ctx.stroke();
+        ctx.strokeStyle = line;
       }
+    } else if (rnd() > 0.75) {
+      // circular access port / pressure cap
+      const pr = Math.min(w, h) * 0.28;
+      const pcx = x + w * 0.5, pcy = y + h * 0.5;
+      ctx.fillStyle = line;
+      ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.arc(pcx, pcy, pr * 0.5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // rivets
-  ctx.globalAlpha = 0.5;
+  // dual-tone rivets: dark hole collar + metallic highlight pin
   const rivets = Math.round(60 * density);
   for (let i = 0; i < rivets; i++) {
     const x = rnd() * size, y = rnd() * size, r = Math.max(0.8, size / 256 * (0.8 + rnd()));
-    ctx.fillStyle = rnd() > 0.5 ? accent : line;
+    ctx.fillStyle = line;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rnd() > 0.4 ? 'rgba(235,242,255,0.45)' : accent;
+    ctx.beginPath(); ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.45, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.globalAlpha = 1;
   return finalize(canvas, { srgb });
 }
 
@@ -219,53 +244,119 @@ export function makeHullPanelTexture(opts = {}) {
   g.addColorStop(1, '#' + bot.getHexString());
   ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
 
-  // panel plates of slightly varied shade
+  // panel plates of varied shade with directional plate-curvature gradients and chamfered inner bevels
   const cols = Math.max(2, Math.round(Math.sqrt(panelCount)));
   const cw = size / cols;
   for (let cx = 0; cx < cols; cx++) {
     for (let cy = 0; cy < cols; cy++) {
       const jitter = 0.86 + rnd() * 0.30;
       const c = base.clone().multiplyScalar(jitter);
-      ctx.fillStyle = '#' + c.getHexString();
       const px = cx * cw, py = cy * cw;
       const inset = cw * 0.06;
-      ctx.fillRect(px + inset, py + inset, cw - inset * 2, cw - inset * 2);
+      const pw = cw - inset * 2, ph = cw - inset * 2;
+
+      // plate body gradient (slight ambient curvature)
+      const pg = ctx.createLinearGradient(px + inset, py + inset, px + inset + pw, py + inset + ph);
+      const cLight = c.clone().multiplyScalar(1.06);
+      const cShade = c.clone().multiplyScalar(0.94);
+      pg.addColorStop(0, '#' + cLight.getHexString());
+      pg.addColorStop(1, '#' + cShade.getHexString());
+      ctx.fillStyle = pg;
+      ctx.fillRect(px + inset, py + inset, pw, ph);
+
+      // inner plate bevel: highlight on top/left, shadow on bottom/right
+      ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+      ctx.lineWidth = Math.max(1, size / 384);
+      ctx.beginPath();
+      ctx.moveTo(px + inset, py + inset + ph);
+      ctx.lineTo(px + inset, py + inset);
+      ctx.lineTo(px + inset + pw, py + inset);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+      ctx.beginPath();
+      ctx.moveTo(px + inset + pw, py + inset);
+      ctx.lineTo(px + inset + pw, py + inset + ph);
+      ctx.lineTo(px + inset, py + inset + ph);
+      ctx.stroke();
+
+      // subtle sub-panel access hatch on select plates
+      if (rnd() > 0.72) {
+        const hw = pw * (0.28 + rnd() * 0.22);
+        const hh = ph * (0.24 + rnd() * 0.18);
+        const hx = px + inset + pw * 0.5 - hw * 0.5;
+        const hy = py + inset + ph * 0.5 - hh * 0.5;
+        ctx.fillStyle = '#' + cShade.clone().multiplyScalar(0.92).getHexString();
+        ctx.fillRect(hx, hy, hw, hh);
+        ctx.strokeStyle = 'rgba(0,0,0,0.38)';
+        ctx.strokeRect(hx, hy, hw, hh);
+        // latch fastener
+        ctx.fillStyle = 'rgba(235,240,250,0.55)';
+        ctx.fillRect(hx + hw * 0.5 - 1, hy + hh * 0.5 - 1, 2, 2);
+      }
     }
   }
 
-  // seam lines (darker) + highlight edge for depth
+  // subtle anisotropic brushed metal micro-grain
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let gy = 2; gy < size; gy += 4) {
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(size, gy); ctx.stroke();
+  }
+
+  // seam lines (darker crevice) + highlight shoulder for depth
   ctx.lineWidth = Math.max(1, size / 256);
   for (let i = 0; i <= cols; i++) {
     const p = Math.round(i * cw);
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.48)';
     ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.beginPath(); ctx.moveTo(p + 1, 0); ctx.lineTo(p + 1, size); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, p + 1); ctx.lineTo(size, p + 1); ctx.stroke();
   }
 
-  // a couple of accent-painted panels (faction color)
+  // a couple of accent-painted panels (faction color) with micro stencil details
   const accentPanels = 1 + Math.floor(rnd() * 2);
   for (let i = 0; i < accentPanels; i++) {
     const cx = Math.floor(rnd() * cols), cy = Math.floor(rnd() * cols);
     ctx.fillStyle = accent;
-    ctx.globalAlpha = 0.5 + rnd() * 0.3;
+    ctx.globalAlpha = 0.52 + rnd() * 0.28;
     const px = cx * cw, py = cy * cw, inset = cw * 0.18;
     ctx.fillRect(px + inset, py + inset, cw - inset * 2, cw - inset * 2);
     ctx.globalAlpha = 1;
+    // micro chevron or designation tick
+    ctx.fillStyle = 'rgba(240,245,255,0.65)';
+    ctx.fillRect(px + inset + 3, py + inset + 3, 5, 2);
+    ctx.fillRect(px + inset + 3, py + inset + 7, 3, 2);
   }
 
-  // rivets along seams
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  // dual-tone rivets along seams: dark recessed socket + light-catching pin head
+  const rivetRadius = Math.max(0.85, size / 300);
   for (let i = 0; i <= cols; i++) {
     for (let j = 0; j < size; j += Math.max(6, cw / 4)) {
       const p = Math.round(i * cw);
-      ctx.beginPath(); ctx.arc(p, j, Math.max(0.8, size / 320), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(8,12,18,0.55)';
+      ctx.beginPath(); ctx.arc(p, j, rivetRadius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(220,230,245,0.40)';
+      ctx.beginPath(); ctx.arc(p - rivetRadius * 0.3, j - rivetRadius * 0.3, rivetRadius * 0.45, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // wear / grime pass: scattered translucent dark blotches
+  // wear / grime pass: edge-wear along seams + scattered translucent dark blotches
   if (wear > 0) {
+    // seam micro-chipping (paint wear along panel borders)
+    ctx.fillStyle = 'rgba(16,18,24,0.35)';
+    const chips = Math.round(30 * wear);
+    for (let c = 0; c < chips; c++) {
+      const alongX = rnd() > 0.5;
+      const seamP = Math.round((Math.floor(rnd() * (cols + 1))) * cw);
+      const coord = rnd() * size;
+      const cx = alongX ? coord : seamP + (rnd() - 0.5) * 4;
+      const cy = alongX ? seamP + (rnd() - 0.5) * 4 : coord;
+      ctx.beginPath(); ctx.arc(cx, cy, Math.max(0.7, size / 350 * (1 + rnd())), 0, Math.PI * 2); ctx.fill();
+    }
+    // surface blotches and grease runs
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     const blotches = Math.round(40 * wear);
     for (let i = 0; i < blotches; i++) {
@@ -314,25 +405,52 @@ export function makeHullNormalMap(opts = {}) {
   const cols = Math.max(2, Math.round(Math.sqrt(panelCount)));
   const cw = size / cols;
 
-  // Build a height field: each plate sits at +bow near its center, drops to 0 in the seam grooves.
-  // Groove width as a fraction of cell; bow amplitude scales with bevel.
+  // Precompute stepped plate height offsets so adjacent panels have subtle physical depth steps
+  const cellSteps = new Float32Array(cols * cols);
+  for (let i = 0; i < cellSteps.length; i++) {
+    cellSteps[i] = (rnd() - 0.5) * bevel * 3.2;
+  }
+
+  // Build a height field: each plate sits at +bow near its center, drops through a beveled
+  // shoulder into the seam grooves, with rivet indentations along seam tracks.
   const groove = cw * 0.10;
+  const bevelWidth = Math.max(1.2, cw * 0.04);
   const bow = bevel * 14; // height units
-  const half = size / 2;
+  const seamSpacing = Math.max(6, cw / 4);
   const field = new Float32Array(size * size);
+
   for (let y = 0; y < size; y++) {
+    const cy = Math.floor(y / cw);
+    const fy = y / cw;
+    const ly = fy - cy;
+    const dy = Math.min(ly, 1 - ly) * cw;
+    const nearHSeam = dy <= groove + 1;
+
     for (let x = 0; x < size; x++) {
-      // distance from nearest seam line (in cell space)
-      const fx = x / cw, fy = y / cw;
-      const lx = fx - Math.floor(fx), ly = fy - Math.floor(fy);
-      const dx = Math.min(lx, 1 - lx) * cw; // px from nearest vertical seam
-      const dy = Math.min(ly, 1 - ly) * cw; // px from nearest horizontal seam
+      const cx = Math.floor(x / cw);
+      const fx = x / cw;
+      const lx = fx - cx;
+      const dx = Math.min(lx, 1 - lx) * cw;
+      const edgeDist = Math.min(dx, dy);
+
       let h = 0;
-      if (dx > groove && dy > groove) {
-        // inside a plate: gentle convex bow, peak at plate center, slight per-plate jitter
+      if (edgeDist > groove) {
+        // Inside a plate: beveled shoulder + gentle convex bow + stepped plate offset
         const px = lx - 0.5, py = ly - 0.5;
-        const plateJitter = (rnd() - 0.5) * bow * 0.15; // deterministic-ish via row stepping
-        h = bow * (1 - (px * px + py * py) * 2.2) + plateJitter;
+        const shoulder = Math.min(1.0, (edgeDist - groove) / bevelWidth);
+        const cellIdx = Math.min(cols * cols - 1, Math.max(0, cy * cols + cx));
+        h = shoulder * (bow * (1 - (px * px + py * py) * 2.2) + cellSteps[cellIdx]);
+      } else {
+        // Seam groove channel: add spherical fastener dimples along regular intervals
+        const nearVSeam = dx <= groove + 1;
+        if (nearHSeam || nearVSeam) {
+          const posAlong = nearHSeam ? x : y;
+          const rivetPhase = Math.abs(posAlong - Math.round(posAlong / seamSpacing) * seamSpacing);
+          if (rivetPhase < 2.2) {
+            const rivetRad = 1.0 - rivetPhase / 2.2;
+            h -= rivetRad * rivetRad * bevel * 2.4; // fastener indentation in tangent space
+          }
+        }
       }
       field[y * size + x] = h;
     }
@@ -373,37 +491,68 @@ export function makeGreebleDetailTexture(opts = {}) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, size, size); // transparent base
 
-  // fine vent slats (small horizontal grille clusters)
+  // fine vent slats (small horizontal grille clusters with highlight shoulders)
   const vents = Math.round(10 * density);
   for (let i = 0; i < vents; i++) {
     const w = (0.05 + rnd() * 0.10) * size, h = (0.03 + rnd() * 0.05) * size;
     const x = rnd() * (size - w), y = rnd() * (size - h);
-    ctx.fillStyle = 'rgba(20,24,32,0.85)';
+    ctx.fillStyle = 'rgba(16,20,28,0.92)';
     ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = 'rgba(10,14,20,0.9)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(8,10,16,0.95)'; ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
     const slats = 3 + Math.floor(rnd() * 4);
-    for (let s = 1; s < slats; s++) { const sy = y + (s / slats) * h; ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(x + w, sy); ctx.stroke(); }
+    for (let s = 1; s < slats; s++) {
+      const sy = y + (s / slats) * h;
+      ctx.strokeStyle = 'rgba(6,8,12,0.95)';
+      ctx.beginPath(); ctx.moveTo(x + 1.5, sy); ctx.lineTo(x + w - 1.5, sy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      ctx.beginPath(); ctx.moveTo(x + 1.5, sy + 1); ctx.lineTo(x + w - 1.5, sy + 1); ctx.stroke();
+    }
   }
-  // small access hatches (square with a handle dot)
+
+  // small access hatches (square with chamfered rim, micro handle & corner bolts)
   const hatches = Math.round(8 * density);
   for (let i = 0; i < hatches; i++) {
     const s = (0.04 + rnd() * 0.06) * size;
     const x = rnd() * (size - s), y = rnd() * (size - s);
-    ctx.fillStyle = 'rgba(40,46,58,0.8)'; ctx.fillRect(x, y, s, s);
-    ctx.strokeStyle = 'rgba(8,12,18,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, s, s);
-    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x + s * 0.5, y + s * 0.78, s * 0.10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(38,44,56,0.85)'; ctx.fillRect(x, y, s, s);
+    ctx.strokeStyle = 'rgba(8,12,18,0.95)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, s, s);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 1, y + s - 1); ctx.lineTo(x + 1, y + 1); ctx.lineTo(x + s - 1, y + 1); ctx.stroke();
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x + s * 0.5, y + s * 0.78, s * 0.09, 0, Math.PI * 2); ctx.fill();
+    // tiny bolt pins at corners
+    ctx.fillStyle = 'rgba(220,230,245,0.6)';
+    ctx.fillRect(x + 1, y + 1, 1, 1);
+    ctx.fillRect(x + s - 2, y + 1, 1, 1);
   }
-  // cable runs (thin slightly-curving lines)
-  ctx.strokeStyle = 'rgba(60,66,78,0.7)'; ctx.lineWidth = Math.max(1, size / 256);
+
+  // cable runs (thin slightly-curving lines with junction brackets)
+  ctx.lineWidth = Math.max(1, size / 256);
   const cables = Math.round(6 * density);
   for (let i = 0; i < cables; i++) {
     const x0 = rnd() * size, y0 = rnd() * size;
+    ctx.strokeStyle = 'rgba(52,58,70,0.75)';
     ctx.beginPath(); ctx.moveTo(x0, y0);
+    const x1 = x0 + (rnd() - 0.5) * size * 0.4;
+    const y1 = y0 + size * (0.1 + rnd() * 0.2);
     ctx.bezierCurveTo(x0 + (rnd() - 0.5) * size * 0.3, y0 + rnd() * size * 0.3,
                       x0 + (rnd() - 0.5) * size * 0.3, y0 + rnd() * size * 0.3,
-                      x0 + (rnd() - 0.5) * size * 0.4, y0 + size * (0.1 + rnd() * 0.2));
+                      x1, y1);
     ctx.stroke();
+    // clamp/bracket mark
+    ctx.fillStyle = 'rgba(180,195,215,0.7)';
+    ctx.fillRect(x0 + (x1 - x0) * 0.5 - 1.5, y0 + (y1 - y0) * 0.5 - 1.5, 3, 3);
   }
+
+  // micro technical stencils & maintenance tags
+  ctx.fillStyle = 'rgba(230,200,90,0.75)';
+  const tags = Math.round(4 * density);
+  for (let i = 0; i < tags; i++) {
+    const tx = rnd() * (size - 18), ty = rnd() * (size - 8);
+    ctx.fillRect(tx, ty, 8, 2);
+    ctx.fillRect(tx, ty + 3, 5, 2);
+  }
+
   return finalize(canvas, { srgb: true });
 }
 
@@ -494,24 +643,26 @@ export function makeGrimeTexture(opts = {}) {
     ctx.fillStyle = grad;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
   }
-  // soot/smoke blackening near vents and the rear (engines belch)
+  // soot/smoke blackening near vents and the rear (with subtle heat temper fringes)
   for (let i = 0; i < Math.round(intensity * 6); i++) {
     const cx = rnd() * size, cy = rnd() * size, r = (0.06 + rnd() * 0.12) * size;
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, `rgba(10,10,12,${0.35 * intensity})`);
+    grad.addColorStop(0, `rgba(10,10,12,${0.38 * intensity})`);
+    grad.addColorStop(0.7, `rgba(45,35,32,${0.18 * intensity})`);
+    grad.addColorStop(0.9, `rgba(65,48,75,${0.08 * intensity})`); // subtle violet/blue temper ring
     grad.addColorStop(1, 'rgba(10,10,12,0)');
     ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
   }
-  // oil streaks — vertical runs from a source point (gravity-dripped oil)
+  // oil streaks — vertical and angled runs from a source point (gravity and slipstream drag)
   ctx.strokeStyle = `rgba(20,18,16,${0.3 + intensity * 0.3})`;
   ctx.lineWidth = Math.max(1, size / 200);
   for (let i = 0; i < Math.round(intensity * 8); i++) {
     const x = rnd() * size, y0 = rnd() * size * 0.7, len = (0.1 + rnd() * 0.25) * size;
     ctx.beginPath(); ctx.moveTo(x, y0);
-    ctx.lineTo(x + (rnd() - 0.5) * size * 0.05, y0 + len);
+    ctx.lineTo(x + (rnd() - 0.45) * size * 0.08, y0 + len);
     ctx.stroke();
     // a dab at the top (the leak source)
-    ctx.fillStyle = `rgba(15,13,12,${0.4 * intensity})`;
+    ctx.fillStyle = `rgba(15,13,12,${0.45 * intensity})`;
     ctx.beginPath(); ctx.arc(x, y0, size * 0.012, 0, Math.PI * 2); ctx.fill();
   }
   // fine dust haze — a near-uniform low-alpha brown wash for the dull, sun-baked look
@@ -538,15 +689,31 @@ export function makePatchTexture(opts = {}) {
     const rot = (rnd() - 0.5) * 0.4;
     ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
     // plate body — slightly different metal tone than the hull (a welded-on repair)
-    ctx.fillStyle = 'rgba(55,58,66,0.9)';
+    ctx.fillStyle = 'rgba(55,58,66,0.92)';
     ctx.fillRect(-w / 2, -h / 2, w, h);
-    // weld bead around the edge
-    ctx.strokeStyle = 'rgba(28,30,34,0.95)'; ctx.lineWidth = Math.max(1, size / 220);
-    ctx.strokeRect(-w / 2, -h / 2, w, h);
-    // bolt heads at the corners
-    ctx.fillStyle = 'rgba(18,20,24,0.95)';
+    // inner plate highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 1, h / 2 - 1); ctx.lineTo(-w / 2 + 1, -h / 2 + 1); ctx.lineTo(w / 2 - 1, -h / 2 + 1);
+    ctx.stroke();
+    // beaded weld tracks around the perimeter (overlapping circular weld dabs)
+    const beadRadius = Math.max(1.2, size / 200);
+    ctx.fillStyle = 'rgba(25,28,34,0.92)';
+    for (let bx = -w / 2; bx <= w / 2; bx += beadRadius * 1.5) {
+      ctx.beginPath(); ctx.arc(bx, -h / 2, beadRadius, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx, h / 2, beadRadius, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let by = -h / 2; by <= h / 2; by += beadRadius * 1.5) {
+      ctx.beginPath(); ctx.arc(-w / 2, by, beadRadius, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(w / 2, by, beadRadius, 0, Math.PI * 2); ctx.fill();
+    }
+    // bolt heads at the corners with light-catching pin
+    const boltR = Math.max(1.2, size / 240);
     for (const [bx, by] of [[-w/2+3,-h/2+3],[w/2-3,-h/2+3],[-w/2+3,h/2-3],[w/2-3,h/2-3]]) {
-      ctx.beginPath(); ctx.arc(bx, by, Math.max(1.2, size/240), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(14,16,20,0.95)';
+      ctx.beginPath(); ctx.arc(bx, by, boltR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(220,230,245,0.6)';
+      ctx.beginPath(); ctx.arc(bx - boltR * 0.3, by - boltR * 0.3, boltR * 0.4, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }

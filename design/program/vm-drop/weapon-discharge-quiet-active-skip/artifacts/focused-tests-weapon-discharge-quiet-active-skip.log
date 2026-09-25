@@ -1,0 +1,320 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: pulse muzzle is a socket-tracked split aperture, without stacked glow cards
+ok 1 - pulse muzzle is a socket-tracked split aperture, without stacked glow cards
+  ---
+  duration_ms: 51.186546
+  ...
+# Subtest: live pulse fire skips the legacy SPR_FLASH muzzle path
+ok 2 - live pulse fire skips the legacy SPR_FLASH muzzle path
+  ---
+  duration_ms: 0.593528
+  ...
+# Subtest: pulse hull hits keep a cyan spark cone; shield hits write bubble contact instead
+ok 3 - pulse hull hits keep a cyan spark cone; shield hits write bubble contact instead
+  ---
+  duration_ms: 1.134526
+  ...
+# Subtest: reduced destruction prunes cost without replacing or disabling phased identity
+ok 4 - reduced destruction prunes cost without replacing or disabling phased identity
+  ---
+  duration_ms: 5.461928
+  ...
+# Subtest: continuous beam muzzle ignition follows the pool start transition instead of receipt spelling
+ok 5 - continuous beam muzzle ignition follows the pool start transition instead of receipt spelling
+  ---
+  duration_ms: 75.997532
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: five tool signatures are distinct; unknown tools never impersonate gravity
+ok 6 - five tool signatures are distinct; unknown tools never impersonate gravity
+  ---
+  duration_ms: 1.222146
+  ...
+# Subtest: seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 7 - seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 3.378956
+  ...
+# Subtest: well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 8 - well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.271463
+  ...
+# Subtest: repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 9 - repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.44263
+  ...
+# Subtest: cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 10 - cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.081719
+  ...
+# Subtest: sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 11 - sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 0.848074
+  ...
+# Subtest: empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+ok 12 - empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+  ---
+  duration_ms: 5.220403
+  ...
+# Subtest: six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+ok 13 - six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+  ---
+  duration_ms: 3.365443
+  ...
+# Subtest: Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+ok 14 - Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+  ---
+  duration_ms: 1.033999
+  ...
+# Subtest: removal retires perimeter immediately; authored body breaks up, then uploads sleep
+ok 15 - removal retires perimeter immediately; authored body breaks up, then uploads sleep
+  ---
+  duration_ms: 0.971938
+  ...
+# Subtest: deployment born at simTime zero does not reset; origin shifts update local positions
+ok 16 - deployment born at simTime zero does not reset; origin shifts update local positions
+  ---
+  duration_ms: 0.569529
+  ...
+# Subtest: reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+ok 17 - reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+  ---
+  duration_ms: 0.477358
+  ...
+# Subtest: malformed/unknown records are skipped and do not poison GPU attributes
+ok 18 - malformed/unknown records are skipped and do not poison GPU attributes
+  ---
+  duration_ms: 0.556377
+  ...
+# Subtest: surface batch is bounded and precompile material is the runtime program
+ok 19 - surface batch is bounded and precompile material is the runtime program
+  ---
+  duration_ms: 0.607726
+  ...
+# Subtest: mechanical, rail and coherent sources have different geometry, not just different colors
+ok 20 - mechanical, rail and coherent sources have different geometry, not just different colors
+  ---
+  duration_ms: 2.24424
+  ...
+# Subtest: muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+ok 21 - muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+  ---
+  duration_ms: 1.274462
+  ...
+# Subtest: every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+ok 22 - every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+  ---
+  duration_ms: 2.713629
+  ...
+# Subtest: live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+ok 23 - live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+  ---
+  duration_ms: 36.013295
+  ...
+# Subtest: starter discharge flow stays steady until the shot ends and crosses the muzzle
+ok 24 - starter discharge flow stays steady until the shot ends and crosses the muzzle
+  ---
+  duration_ms: 1.553816
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: every weapon family emits source geometry whose identity survives grayscale
+ok 25 - every weapon family emits source geometry whose identity survives grayscale
+  ---
+  duration_ms: 7.039209
+  ...
+# Subtest: ballistic sources run a real breech cycle; coherent sources align before they release
+ok 26 - ballistic sources run a real breech cycle; coherent sources align before they release
+  ---
+  duration_ms: 0.791514
+  ...
+# Subtest: electrical branches bridge a real junction and extinguish together
+ok 27 - electrical branches bridge a real junction and extinguish together
+  ---
+  duration_ms: 0.413527
+  ...
+# Subtest: maximum-rate fire keeps a beat and never accumulates a second source
+ok 28 - maximum-rate fire keeps a beat and never accumulates a second source
+  ---
+  duration_ms: 1.01148
+  ...
+# Subtest: weapon wakes are world-anchored sheets, not a camera-facing cross-frame
+ok 29 - weapon wakes are world-anchored sheets, not a camera-facing cross-frame
+  ---
+  duration_ms: 2.892731
+  ...
+# Subtest: wake cross-sections are authored per family and phased on distance, not on a clock
+ok 30 - wake cross-sections are authored per family and phased on distance, not on a clock
+  ---
+  duration_ms: 1.349016
+  ...
+# Subtest: a released wake unravels from the head, and idle slots stop re-uploading
+ok 31 - a released wake unravels from the head, and idle slots stop re-uploading
+  ---
+  duration_ms: 0.913112
+  ...
+# Subtest: projectile drawn extent is a directional smear, never a damage footprint
+ok 32 - projectile drawn extent is a directional smear, never a damage footprint
+  ---
+  duration_ms: 1.09531
+  ...
+# Subtest: every bolt dialect has its own silhouette, not one dart at seven widths
+ok 33 - every bolt dialect has its own silhouette, not one dart at seven widths
+  ---
+  duration_ms: 0.657182
+  ...
+# Subtest: the weapons lane draws nothing at the contact point
+ok 34 - the weapons lane draws nothing at the contact point
+  ---
+  duration_ms: 1.473011
+  ...
+# Subtest: an arming warhead stays legible under reduced flash without strobing
+ok 35 - an arming warhead stays legible under reduced flash without strobing
+  ---
+  duration_ms: 0.789087
+  ...
+# Subtest: a sustained beam can follow a moving socket without inventing its contact point
+ok 36 - a sustained beam can follow a moving socket without inventing its contact point
+  ---
+  duration_ms: 1.101824
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 502.407889
+TAP version 13
+# Subtest: INF-006: relevant hostile is framed with the player
+ok 1 - INF-006: relevant hostile is framed with the player
+  ---
+  duration_ms: 4.185672
+  ...
+# Subtest: INF-006: reacquisition does not ping-pong between equidistant attackers
+ok 2 - INF-006: reacquisition does not ping-pong between equidistant attackers
+  ---
+  duration_ms: 3.59286
+  ...
+# Subtest: INF-006: dead or distant contacts drop immediately instead of staying sticky
+ok 3 - INF-006: dead or distant contacts drop immediately instead of staying sticky
+  ---
+  duration_ms: 0.455936
+  ...
+# Subtest: INF-006: manual zoom intent and established constraints are preserved
+ok 4 - INF-006: manual zoom intent and established constraints are preserved
+  ---
+  duration_ms: 0.211819
+  ...
+# Subtest: INF-007: fresh profile with OS reduced-motion is asked once
+ok 5 - INF-007: fresh profile with OS reduced-motion is asked once
+  ---
+  duration_ms: 0.369369
+  ...
+# Subtest: INF-007: explicit prior choices and migration are preserved
+ok 6 - INF-007: explicit prior choices and migration are preserved
+  ---
+  duration_ms: 0.171034
+  ...
+# Subtest: INF-007: the choice explains both options and is headless-safe
+ok 7 - INF-007: the choice explains both options and is headless-safe
+  ---
+  duration_ms: 0.338329
+  ...
+# Subtest: INF-008: run:wavePlanned reaches the combo transition exactly once
+ok 8 - INF-008: run:wavePlanned reaches the combo transition exactly once
+  ---
+  duration_ms: 1.149164
+  ...
+# Subtest: INF-009: default-kit muzzle flow evolves on the effect clock, then stops cleanly
+not ok 9 - INF-009: default-kit muzzle flow evolves on the effect clock, then stops cleanly
+  ---
+  duration_ms: 1.283012
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/inf-006-014.test.mjs:246:1'
+  failureType: 'testCodeFailure'
+  error: 'the flow evolves from the shot, not a static shape'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 18
+  actual: 18
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/inf-006-014.test.mjs:255:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: INF-009: starter pulse-bolt (split-aperture) flow evolves, then stops cleanly
+not ok 10 - INF-009: starter pulse-bolt (split-aperture) flow evolves, then stops cleanly
+  ---
+  duration_ms: 0.417335
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/inf-006-014.test.mjs:271:1'
+  failureType: 'testCodeFailure'
+  error: 'the flow evolves from the shot'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 14
+  actual: 14
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/inf-006-014.test.mjs:281:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: INF-010: retry preserves seed and kit without touching campaign state
+ok 11 - INF-010: retry preserves seed and kit without touching campaign state
+  ---
+  duration_ms: 1.210757
+  ...
+# Subtest: INF-011: the cue holds until a challenger is decisively better
+ok 12 - INF-011: the cue holds until a challenger is decisively better
+  ---
+  duration_ms: 0.616307
+  ...
+# Subtest: INF-011: dead, out-of-range, or disallowed bodies drop at once
+ok 13 - INF-011: dead, out-of-range, or disallowed bodies drop at once
+  ---
+  duration_ms: 0.232738
+  ...
+# Subtest: INF-012: shape and label name the exit owner
+ok 14 - INF-012: shape and label name the exit owner
+  ---
+  duration_ms: 0.446634
+  ...
+# Subtest: INF-012: arming the throw swaps the cue without overlap or stale targets
+ok 15 - INF-012: arming the throw swaps the cue without overlap or stale targets
+  ---
+  duration_ms: 1.086772
+  ...
+# Subtest: INF-013: the readout names which body moves from live masses
+ok 16 - INF-013: the readout names which body moves from live masses
+  ---
+  duration_ms: 0.328425
+  ...
+# Subtest: INF-014: tightening reads differently from steady towing, without chatter
+ok 17 - INF-014: tightening reads differently from steady towing, without chatter
+  ---
+  duration_ms: 0.170821
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 15
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 796.020766

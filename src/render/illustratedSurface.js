@@ -30,6 +30,10 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // Geometric normals, not normal-map scratches: contours belong to the hull form.
   float sfFacing = abs(dot(nonPerturbedNormal, geometryViewDir));
   float sfContour = 1.0 - 0.57 * (1.0 - smoothstep(0.09, 0.38, sfFacing));
+  // Optical edge sheen: polished lacquer, ceramic coating and machined bevels catch a narrow starlight
+  // rim highlight just inside the ink contour, defining physical 3D curvature against deep space.
+  float sfGlance = pow(clamp(1.0 - sfFacing, 0.0, 1.0), 3.5) * (1.0 - clamp(roughnessFactor, 0.0, 1.0) * 0.48);
+  vec3 sfEdgeSheen = mix(vec3(0.75, 0.85, 1.10), vec3(1.15, 1.05, 0.92), sfBodyLight) * (sfGlance * 0.22 * (0.35 + 0.65 * sfShaped));
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([
@@ -168,7 +172,8 @@ export function installIllustratedSurface(material) {
         float sfNeutralPaint = 1.0 - smoothstep(0.70, 1.45, sfChroma / max(sfAlbedoY, 0.02));
         // Pigment carries its own value. Normalizing it to the source's white roof value
         // clips the coloured channels into pastel under the sector key light.
-        vec3 sfLacquer = sfPaintPigment * (1.65 * sfAlbedoY / (0.32 + sfAlbedoY));
+        float sfDepthTone = 1.0 - 0.10 * smoothstep(0.12, 0.60, 1.0 - sfAlbedoY);
+        vec3 sfLacquer = sfPaintPigment * ((1.65 * sfAlbedoY / (0.32 + sfAlbedoY)) * sfDepthTone);
         diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
         if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
       `)
@@ -190,7 +195,7 @@ export function installIllustratedSurface(material) {
       .replace(LIGHT_NEEDLE, LIGHT_NEEDLE + '\n' + ILLUSTRATED_SURFACE_GLSL)
       // Ink belongs to paint. Keeping the optical highlight outside it lets a polished edge
       // catch a thin bright accent over the dark contour instead of becoming dead black.
-      .replace(OUTPUT_NEEDLE, 'vec3 outgoingLight = totalDiffuse * sfContour + totalSpecular + totalEmissiveRadiance;');
+      .replace(OUTPUT_NEEDLE, 'vec3 outgoingLight = (totalDiffuse * sfContour + sfEdgeSheen) + totalSpecular + totalEmissiveRadiance;');
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   illustratedSurfaceShader[TAG] = ILLUSTRATED_SURFACE_KEY;

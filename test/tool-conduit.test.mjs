@@ -71,3 +71,20 @@ test('tool shutdown releases briefly, hides both draws and supports a new attack
   system._onMiningStart({ targetId: 2 });
   assert.equal(beam.attack, 0);
 });
+
+test('every supported reduced-flash setting reaches both tool attack and release', () => {
+  for (const settings of [
+    { video: { flashReduce: true } },
+    { accessibility: { flashReduce: true } },
+    { accessibility: { reducedFlash: true } },
+  ]) {
+    const { system, beam } = fixture();
+    system.state.settings = settings;
+    system._onMiningStart({ targetId: 2, verb: 'repair' });
+    system._updateMiningBeam(0.1);
+    assert.equal(beam.shaderShared.power.value, 0.58);
+    system._onMiningStop();
+    system._updateMiningBeam(MINING_BEAM_RELEASE_S * 0.5);
+    assert.equal(beam.shaderShared.power.value, 0.29);
+  }
+});

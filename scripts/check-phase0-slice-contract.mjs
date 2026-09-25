@@ -57,6 +57,15 @@ const allowedRandomFiles = new Map([
   ['src/render/shipMicroMotion.js', 'cosmetic hit-flinch recoil variation (renderer-local motion recs)'],
   ['src/systems/telemetry.js', 'local telemetry session id only'],
   ['src/ui/floatingText.js', 'cosmetic floating text drift'],
+  // ORRERY decrypt/scramble text reveal: the draws only pick NOISE glyphs for a display
+  // string written to element.textContent; nothing authoritative reads them (see the file's
+  // own header: "Cosmetic randomness only (Math.random is fine here; the sim's rng is never
+  // touched by presentation)").
+  ['src/ui/orrery/text.js', 'cosmetic decrypt text reveal (UI string only)'],
+  // ORRERY station waveform bars: every draw lands in a `--orr-wave-*` CSS custom property
+  // (rest offset, animation duration/delay/spread, opacity range) on the bar element —
+  // presentation variance only; no sim state reads or writes it.
+  ['src/ui/orrery/waveform.js', 'cosmetic waveform bar CSS variance'],
   ['src/ui/screens/drill.js', 'cosmetic drill screen particles and rover shake'],
   // The Band's carrier beds own only cosmetic Web Audio nodes. createBandBedRuntime's RNG is an
   // injected seam (`options.random`) whose ambient default feeds a procedural noise buffer only;

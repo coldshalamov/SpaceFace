@@ -1,0 +1,369 @@
+TAP version 13
+# Subtest: the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+ok 1 - the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+  ---
+  duration_ms: 1.894568
+  ...
+# Subtest: only tumble/drift presentation may forward owner.angVel into the helix
+ok 2 - only tumble/drift presentation may forward owner.angVel into the helix
+  ---
+  duration_ms: 0.256205
+  ...
+# Subtest: a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+ok 3 - a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+  ---
+  duration_ms: 28.714192
+  ...
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 4 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.527941
+  ...
+# Subtest: INF-022: targeting a tracking wing member names the wing and its rough role
+ok 5 - INF-022: targeting a tracking wing member names the wing and its rough role
+  ---
+  duration_ms: 1.334049
+  ...
+# Subtest: INF-022: the line degrades gracefully without wing facts
+ok 6 - INF-022: the line degrades gracefully without wing facts
+  ---
+  duration_ms: 0.223101
+  ...
+# Subtest: INF-022: a wing holds one actor per slot and the same shape for seconds
+ok 7 - INF-022: a wing holds one actor per slot and the same shape for seconds
+  ---
+  duration_ms: 2.700949
+  ...
+# Subtest: smoothstep is monotonic on unit interval
+ok 8 - smoothstep is monotonic on unit interval
+  ---
+  duration_ms: 1.335976
+  ...
+# Subtest: path sampler retains equal-spacing history
+ok 9 - path sampler retains equal-spacing history
+  ---
+  duration_ms: 0.997571
+  ...
+# Subtest: the exhaust is swept ribbon sheets, not points, sprites or a density field
+ok 10 - the exhaust is swept ribbon sheets, not points, sprites or a density field
+  ---
+  duration_ms: 30.422964
+  ...
+# Subtest: the live plume and immutable history are separate objects
+ok 11 - the live plume and immutable history are separate objects
+  ---
+  duration_ms: 16.234375
+  ...
+# Subtest: sheets are wide enough to carry a crease, not one-normal wire strips
+ok 12 - sheets are wide enough to carry a crease, not one-normal wire strips
+  ---
+  duration_ms: 1.161494
+  ...
+# Subtest: the jet is nozzle-local and about two hull lengths, never a dragged tail
+ok 13 - the jet is nozzle-local and about two hull lengths, never a dragged tail
+  ---
+  duration_ms: 10.160129
+  ...
+# Subtest: gas flows through the live jet: its form is not a still image
+ok 14 - gas flows through the live jet: its form is not a still image
+  ---
+  duration_ms: 0.527974
+  ...
+# Subtest: throttle moves live-jet length and never its opacity
+ok 15 - throttle moves live-jet length and never its opacity
+  ---
+  duration_ms: 0.242462
+  ...
+# Subtest: every contrail center sample is an exact position the emitting nozzle occupied
+ok 16 - every contrail center sample is an exact position the emitting nozzle occupied
+  ---
+  duration_ms: 3.697809
+  ...
+# Subtest: the contrail retains a volume of curved overlapping energy sheets
+ok 17 - the contrail retains a volume of curved overlapping energy sheets
+  ---
+  duration_ms: 0.999791
+  ...
+# Subtest: distance and speed cannot trim young history
+ok 18 - distance and speed cannot trim young history
+  ---
+  duration_ms: 2.663234
+  ...
+# Subtest: a parked ship thrusting lays down no spatial trail
+ok 19 - a parked ship thrusting lays down no spatial trail
+  ---
+  duration_ms: 1.909861
+  ...
+# Subtest: sub-step jitter never rewrites or densely resamples the newest fact
+ok 20 - sub-step jitter never rewrites or densely resamples the newest fact
+  ---
+  duration_ms: 3.036063
+  ...
+# Subtest: cutting thrust leaves every young sample fixed in space; age alone removes it
+ok 21 - cutting thrust leaves every young sample fixed in space; age alone removes it
+  ---
+  duration_ms: 12.166002
+  ...
+# Subtest: the history and forge have no pulse clock, travelling bands or live-nozzle override
+ok 22 - the history and forge have no pulse clock, travelling bands or live-nozzle override
+  ---
+  duration_ms: 7.874558
+  ...
+# Subtest: emission gaps and teleports start disconnected segments without deleting history
+ok 23 - emission gaps and teleports start disconnected segments without deleting history
+  ---
+  duration_ms: 1.1969
+  ...
+# Subtest: a full history buffer skips births instead of evicting young facts
+ok 24 - a full history buffer skips births instead of evicting young facts
+  ---
+  duration_ms: 0.466852
+  ...
+# Subtest: cutting thrust puts the live jet out while recorded light fades in place
+ok 25 - cutting thrust puts the live jet out while recorded light fades in place
+  ---
+  duration_ms: 11.790301
+  ...
+# Subtest: plasma stream reuses one fallback identity without sockets or owner
+ok 26 - plasma stream reuses one fallback identity without sockets or owner
+  ---
+  duration_ms: 4.47043
+  ...
+# Subtest: full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+ok 27 - full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+  ---
+  duration_ms: 0.319497
+  ...
+# Subtest: zero throttle is dark and speed contributes only while the throttle is open
+ok 28 - zero throttle is dark and speed contributes only while the throttle is open
+  ---
+  duration_ms: 0.210568
+  ...
+# Subtest: ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+ok 29 - ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+  ---
+  duration_ms: 16.991951
+  ...
+# Subtest: dash is a one-shot supernova with a long cooling tail
+ok 30 - dash is a one-shot supernova with a long cooling tail
+  ---
+  duration_ms: 0.38695
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: the paired mouths are physical hull parts, separated and mounted on every profile family
+ok 31 - the paired mouths are physical hull parts, separated and mounted on every profile family
+  ---
+  duration_ms: 19.303472
+  ...
+# Subtest: mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+ok 32 - mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+  ---
+  duration_ms: 1.893088
+  ...
+# Subtest: installed engine changes retro heat, axial flow and scale while staying two jets
+ok 33 - installed engine changes retro heat, axial flow and scale while staying two jets
+  ---
+  duration_ms: 3.026569
+  ...
+# Subtest: the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+ok 34 - the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+  ---
+  duration_ms: 2.706448
+  ...
+# Subtest: ribbon trail rebuild holds visibility while pipelines are pending
+ok 35 - ribbon trail rebuild holds visibility while pipelines are pending
+  ---
+  duration_ms: 3.173574
+  ...
+# Subtest: ribbon trail rebuild reveals once pipelines settle
+ok 36 - ribbon trail rebuild reveals once pipelines settle
+  ---
+  duration_ms: 1.763467
+  ...
+# Subtest: ribbon trail without a latch behaves as before
+ok 37 - ribbon trail without a latch behaves as before
+  ---
+  duration_ms: 0.538827
+  ...
+# ribbon-trail-head-glue: characterization + glue contract PASS
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/ribbon-trail-head-glue.test.mjs
+ok 7 - /workspace/spaceface-scratch/hillclimb-20260924h/test/ribbon-trail-head-glue.test.mjs
+  ---
+  duration_ms: 167.987594
+  ...
+# Subtest: the live forge follows the current nozzle axis, never the recorded-history tangent
+ok 39 - the live forge follows the current nozzle axis, never the recorded-history tangent
+  ---
+  duration_ms: 2.864935
+  ...
+# Subtest: a legacy reel hint has zero authority over recorded world-space history
+ok 40 - a legacy reel hint has zero authority over recorded world-space history
+  ---
+  duration_ms: 15.99946
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+ok 41 - a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+  ---
+  duration_ms: 25.513649
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the field itself changes, every family
+ok 42 - a stationary firing ship shows moving exhaust: the field itself changes, every family
+  ---
+  duration_ms: 6.579184
+  ...
+# Subtest: reduced motion calms the exhaust without freezing it
+ok 43 - reduced motion calms the exhaust without freezing it
+  ---
+  duration_ms: 2.333915
+  ...
+# Subtest: the hot core never ends short of the cold sheath wrapped around it
+ok 44 - the hot core never ends short of the cold sheath wrapped around it
+  ---
+  duration_ms: 0.981922
+  ...
+# Subtest: creases darken the interior but never open a hole between sheets (B19)
+ok 45 - creases darken the interior but never open a hole between sheets (B19)
+  ---
+  duration_ms: 3.226007
+  ...
+# Subtest: per-instance extent varies and can only ever shorten (B18, B9)
+ok 46 - per-instance extent varies and can only ever shorten (B18, B9)
+  ---
+  duration_ms: 0.647482
+  ...
+# Subtest: two ships of one family do not animate in lockstep
+ok 47 - two ships of one family do not animate in lockstep
+  ---
+  duration_ms: 1.493472
+  ...
+# Subtest: every live family pair differs on several construction axes
+ok 48 - every live family pair differs on several construction axes
+  ---
+  duration_ms: 0.49967
+  ...
+# Subtest: disciplined and loaded drives are opposites, not neighbours
+ok 49 - disciplined and loaded drives are opposites, not neighbours
+  ---
+  duration_ms: 0.495718
+  ...
+# Subtest: the unusual families do not read as reaction drives
+ok 50 - the unusual families do not read as reaction drives
+  ---
+  duration_ms: 0.344461
+  ...
+# Subtest: the three-silhouette prototype record is complete and one candidate is wired per group
+ok 51 - the three-silhouette prototype record is complete and one candidate is wired per group
+  ---
+  duration_ms: 0.313484
+  ...
+# Subtest: construction values are clamped to their stated limits
+ok 52 - construction values are clamped to their stated limits
+  ---
+  duration_ms: 0.438573
+  ...
+# Subtest: an RCS pulse throws a packet: the head leaves while the collar shuts
+ok 53 - an RCS pulse throws a packet: the head leaves while the collar shuts
+  ---
+  duration_ms: 0.230476
+  ...
+# Subtest: an RCS jet holds its reach and does not retract into its nozzle
+ok 54 - an RCS jet holds its reach and does not retract into its nozzle
+  ---
+  duration_ms: 8.495795
+  ...
+# Subtest: two RCS taps carry two independent clocks
+ok 55 - two RCS taps carry two independent clocks
+  ---
+  duration_ms: 1.827715
+  ...
+# Subtest: a shutting valve blows down rather than dimming at a constant rate
+ok 56 - a shutting valve blows down rather than dimming at a constant rate
+  ---
+  duration_ms: 0.520178
+  ...
+# Subtest: the brake bites on engagement and relaxes into the held jet
+ok 57 - the brake bites on engagement and relaxes into the held jet
+  ---
+  duration_ms: 0.478747
+  ...
+# Subtest: the bite is heat and collimation, never reach: the jet-likeness contract holds
+ok 58 - the bite is heat and collimation, never reach: the jet-likeness contract holds
+  ---
+  duration_ms: 0.600664
+  ...
+# Subtest: lighting a drive is an event, not the first part of a ramp
+ok 59 - lighting a drive is an event, not the first part of a ramp
+  ---
+  duration_ms: 0.384531
+  ...
+# Subtest: the ignition transient is spent on structure, so reduced flash still sees the engine commit
+ok 60 - the ignition transient is spent on structure, so reduced flash still sees the engine commit
+  ---
+  duration_ms: 1.048122
+  ...
+# Subtest: boost drives the arrangement harder rather than just brighter
+ok 61 - boost drives the arrangement harder rather than just brighter
+  ---
+  duration_ms: 4.097362
+  ...
+# Subtest: the fold clock is integrated, so a throttle change can never scrub the creases
+ok 62 - the fold clock is integrated, so a throttle change can never scrub the creases
+  ---
+  duration_ms: 60.769253
+  ...
+# Subtest: fleet drives follow their sockets through turns, stops and restarts
+ok 63 - fleet drives follow their sockets through turns, stops and restarts
+  ---
+  duration_ms: 3.627776
+  ...
+# Subtest: a crowd of ships all draw, all differ, and cost no per-frame allocation
+ok 64 - a crowd of ships all draw, all differ, and cost no per-frame allocation
+  ---
+  duration_ms: 1.843845
+  ...
+# Subtest: the GLSL mirror carries every term the JS law does
+ok 65 - the GLSL mirror carries every term the JS law does
+  ---
+  duration_ms: 0.347585
+  ...
+# Subtest: each family binds its own construction, and the distortion encoder stays flat
+ok 66 - each family binds its own construction, and the distortion encoder stays flat
+  ---
+  duration_ms: 3.497703
+  ...
+# Subtest: the shell arc never exceeds the span the vertex stage can place
+ok 67 - the shell arc never exceeds the span the vertex stage can place
+  ---
+  duration_ms: 0.323602
+  ...
+# Subtest: the fold profile bake is deterministic and tells the families apart
+ok 68 - the fold profile bake is deterministic and tells the families apart
+  ---
+  duration_ms: 4.060948
+  ...
+# Subtest: the nozzle shock train stays near the lip instead of laddering the jet
+ok 69 - the nozzle shock train stays near the lip instead of laddering the jet
+  ---
+  duration_ms: 0.341685
+  ...
+# Subtest: the jet/history boundary is allocation-free and tracks the live jet
+ok 70 - the jet/history boundary is allocation-free and tracks the live jet
+  ---
+  duration_ms: 0.625827
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# trail-streak-instancing: spawn, recycle, cap, packing, attributes, and retirement PASS
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/trail-streak-instancing.test.mjs
+ok 10 - /workspace/spaceface-scratch/hillclimb-20260924h/test/trail-streak-instancing.test.mjs
+  ---
+  duration_ms: 824.029553
+  ...
+1..71
+# tests 71
+# suites 0
+# pass 71
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1043.735449

@@ -1,0 +1,277 @@
+From f265f0ecbb2965fb2ab1aa0521c9bd1907af2c3d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:08:51 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20skip=20unchanged=20presentation?=
+ =?UTF-8?q?=20refresh=20(~1.6=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet syncEntityViews → refreshVisibleEntity: when the entity ref and all
+pose/metadata scalars already match the slot, skip re-assigns and dirty
+bookkeeping. writePoseScalars also skips identical pose writes. Bench
+toggle restores always-write for A/B. Soft-GPU fps not claimed.
+---
+ src/render/presentationWorld.js               |  54 +++++-
+ ...tion-world-unchanged-refresh-skip.test.mjs | 157 ++++++++++++++++++
+ 2 files changed, 209 insertions(+), 2 deletions(-)
+ create mode 100644 test/presentation-world-unchanged-refresh-skip.test.mjs
+
+diff --git a/src/render/presentationWorld.js b/src/render/presentationWorld.js
+index b39c4b477..d1d51dedc 100644
+--- a/src/render/presentationWorld.js
++++ b/src/render/presentationWorld.js
+@@ -37,6 +37,18 @@ function clampCellIndex(value) {
+ }
+ const EMPTY_OBJECT = Object.freeze({});
+ 
++// Quiet syncEntityViews → refreshVisibleEntity: when the entity ref and all pose /
++// metadata scalars already match the slot, skip re-assigns and dirty bookkeeping.
++// Bench-only toggle restores the always-write path for A/B microbench.
++let PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP = true;
++export function setPresentationWorldUnchangedRefreshSkipForBench(enabled) {
++  PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP = enabled !== false;
++  return PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP;
++}
++export function getPresentationWorldUnchangedRefreshSkipForBench() {
++  return PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP !== false;
++}
++
+ function finite(value) {
+   return Number.isFinite(value) ? value : 0;
+ }
+@@ -372,6 +384,13 @@ export function createPresentationWorld(options = {}) {
+       || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch
+       || world.prevRot[slot] !== nextPrevRot || world.prevBank[slot] !== nextPrevBank
+       || world.prevPitch[slot] !== nextPrevPitch;
++    // When the skip path is on, identical pose scalars skip re-assigns (and
++    // refreshVisibleEntity may have already returned). Toggle off restores the
++    // prior always-write behavior for A/B microbench.
++    if (PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP && !changed) {
++      if (world.yawSin[slot] === 0 && world.yawCos[slot] === 0) world.yawCos[slot] = 1;
++      return false;
++    }
+     const gridChanged = world.x[slot] !== nextX || world.z[slot] !== nextZ;
+     world.prevX[slot] = nextPrevX;
+     world.prevY[slot] = nextPrevY;
+@@ -387,14 +406,13 @@ export function createPresentationWorld(options = {}) {
+       world.yawSin[slot] = Math.sin(half);
+       world.yawCos[slot] = Math.cos(half);
+     } else if (world.yawSin[slot] === 0 && world.yawCos[slot] === 0) {
+-      // Slot grown/zero-filled; identity yaw still needs cos=1 for fence packing.
+       world.yawCos[slot] = 1;
+     }
+     world.rot[slot] = nextRot;
+     world.bank[slot] = nextBank;
+     world.pitch[slot] = nextPitch;
+     if (gridChanged && world.alive[slot]) insertIntoGrid(slot);
+-    return changed;
++    return true;
+   }
+ 
+   function writePoseValues(slot, source) {
+@@ -734,6 +752,38 @@ export function createPresentationWorld(options = {}) {
+ 
+   function refreshVisibleEntity(slot, entity, visualRadius = null) {
+     if (slot < 0 || slot >= world.capacity || world.alive[slot] !== 1 || !entity) return false;
++    if (PRESENTATION_WORLD_UNCHANGED_REFRESH_SKIP && world.entityRefs[slot] === entity) {
++      const value = entity;
++      const pos = value.pos && typeof value.pos === 'object' ? value.pos : EMPTY_OBJECT;
++      const prevPos = value.prevPos && typeof value.prevPos === 'object' ? value.prevPos : pos;
++      const nextX = finite(pos.x);
++      const nextY = finite(pos.y);
++      const nextZ = finite(pos.z);
++      const nextPrevX = Number.isFinite(prevPos.x) ? prevPos.x : nextX;
++      const nextPrevY = Number.isFinite(prevPos.y) ? prevPos.y : nextY;
++      const nextPrevZ = Number.isFinite(prevPos.z) ? prevPos.z : nextZ;
++      const nextRot = finite(value.rot);
++      const nextBank = finite(value.bank);
++      const nextPitch = finite(value.pitch);
++      const nextPrevRot = Number.isFinite(value.prevRot) ? value.prevRot : nextRot;
++      const nextPrevBank = Number.isFinite(value.prevBank) ? value.prevBank : nextBank;
++      const nextPrevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : nextPitch;
++      const nextType = typeCode(entity.type);
++      const nextFlags = presentationFlags(entity);
++      const candidateRadius = Number.isFinite(visualRadius) ? visualRadius : Number(entity.radius);
++      const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
++      if (world.x[slot] === nextX && world.y[slot] === nextY && world.z[slot] === nextZ
++        && world.prevX[slot] === nextPrevX && world.prevY[slot] === nextPrevY
++        && world.prevZ[slot] === nextPrevZ && world.rot[slot] === nextRot
++        && world.bank[slot] === nextBank && world.pitch[slot] === nextPitch
++        && world.prevRot[slot] === nextPrevRot && world.prevBank[slot] === nextPrevBank
++        && world.prevPitch[slot] === nextPrevPitch
++        && world.typeCodes[slot] === nextType && world.flags[slot] === nextFlags
++        && world.radii[slot] === nextRadius) {
++        if (world.yawSin[slot] === 0 && world.yawCos[slot] === 0) world.yawCos[slot] = 1;
++        return false;
++      }
++    }
+     const changed = writeEntityPose(slot, entity);
+     refreshMetadata(slot, entity, visualRadius);
+     if (changed) {
+diff --git a/test/presentation-world-unchanged-refresh-skip.test.mjs b/test/presentation-world-unchanged-refresh-skip.test.mjs
+new file mode 100644
+index 000000000..1532541b7
+--- /dev/null
++++ b/test/presentation-world-unchanged-refresh-skip.test.mjs
+@@ -0,0 +1,157 @@
++import assert from 'node:assert/strict';
++import { describe, it } from 'node:test';
++import {
++  createPresentationWorld,
++  PRESENTATION_DIRTY,
++  setPresentationWorldUnchangedRefreshSkipForBench,
++  getPresentationWorldUnchangedRefreshSkipForBench,
++} from '../src/render/presentationWorld.js';
++
++function makeEntity(id, overrides = {}) {
++  return {
++    id,
++    type: 'asteroid',
++    alive: true,
++    isPlayer: false,
++    pos: { x: id * 10, y: 0, z: id * 3 },
++    prevPos: { x: id * 10, y: 0, z: id * 3 },
++    rot: 0.25,
++    bank: 0,
++    pitch: 0,
++    prevRot: 0.25,
++    prevBank: 0,
++    prevPitch: 0,
++    radius: 8,
++    flags: {},
++    ...overrides,
++  };
++}
++
++describe('presentation-world-unchanged-refresh-skip', () => {
++  it('skip is on by default and bench toggle restores always-write', () => {
++    assert.equal(getPresentationWorldUnchangedRefreshSkipForBench(), true);
++    setPresentationWorldUnchangedRefreshSkipForBench(false);
++    assert.equal(getPresentationWorldUnchangedRefreshSkipForBench(), false);
++    setPresentationWorldUnchangedRefreshSkipForBench(true);
++    assert.equal(getPresentationWorldUnchangedRefreshSkipForBench(), true);
++  });
++
++  it('unchanged refresh returns false and does not mark TRANSFORM dirty', () => {
++    setPresentationWorldUnchangedRefreshSkipForBench(true);
++    const world = createPresentationWorld({ capacity: 8 });
++    const entity = makeEntity(1);
++    world.allocateEntity(entity);
++    const slot = world.getSlotForEntityId(1);
++    world.clearDirty(slot);
++
++    assert.equal(world.refreshVisibleEntity(slot, entity, entity.radius), false);
++    assert.equal(world.dirtyMasks[slot] & PRESENTATION_DIRTY.TRANSFORM, 0);
++    assert.equal(world.x[slot], entity.pos.x);
++    assert.equal(world.z[slot], entity.pos.z);
++    assert.equal(world.rot[slot], entity.rot);
++  });
++
++  it('pose change returns true, updates scalars, and marks TRANSFORM dirty', () => {
++    setPresentationWorldUnchangedRefreshSkipForBench(true);
++    const world = createPresentationWorld({ capacity: 8 });
++    const entity = makeEntity(2);
++    world.allocateEntity(entity);
++    const slot = world.getSlotForEntityId(2);
++    world.clearDirty(slot);
++
++    entity.prevPos.x = entity.pos.x;
++    entity.prevPos.z = entity.pos.z;
++    entity.pos.x += 1.5;
++    entity.pos.z += 0.5;
++    entity.prevRot = entity.rot;
++    entity.rot += 0.1;
++
++    assert.equal(world.refreshVisibleEntity(slot, entity, entity.radius), true);
++    assert.ok(world.dirtyMasks[slot] & PRESENTATION_DIRTY.TRANSFORM);
++    assert.equal(world.x[slot], entity.pos.x);
++    assert.equal(world.z[slot], entity.pos.z);
++    assert.equal(world.rot[slot], entity.rot);
++  });
++
++  it('radius / flag metadata change is observed without a pose delta', () => {
++    setPresentationWorldUnchangedRefreshSkipForBench(true);
++    const world = createPresentationWorld({ capacity: 8 });
++    const entity = makeEntity(3);
++    world.allocateEntity(entity);
++    const slot = world.getSlotForEntityId(3);
++    world.clearDirty(slot);
++
++    // First refresh with new radius should update metadata (pose unchanged → false).
++    assert.equal(world.refreshVisibleEntity(slot, entity, 22), false);
++    assert.equal(world.radii[slot], 22);
++
++    // Same again is a true unchanged hit.
++    assert.equal(world.refreshVisibleEntity(slot, entity, 22), false);
++    assert.equal(world.radii[slot], 22);
++
++    entity.flags = { forceRender: true };
++    assert.equal(world.refreshVisibleEntity(slot, entity, 22), false);
++    // flags packed into world.flags — forceRender bit must be set
++    assert.ok(world.flags[slot] !== 0);
++  });
++
++  it('entity ref replacement forces a refresh path', () => {
++    setPresentationWorldUnchangedRefreshSkipForBench(true);
++    const world = createPresentationWorld({ capacity: 8 });
++    const first = makeEntity(4);
++    world.allocateEntity(first);
++    const slot = world.getSlotForEntityId(4);
++    world.clearDirty(slot);
++    assert.equal(world.refreshVisibleEntity(slot, first, first.radius), false);
++
++    const twin = makeEntity(4); // new object, same id/pose
++    assert.equal(world.entityRefs[slot] === twin, false);
++    // New ref with identical scalars: early-out requires same ref, so we enter
++    // write path; pose unchanged → writePoseScalars returns false.
++    assert.equal(world.refreshVisibleEntity(slot, twin, twin.radius), false);
++    assert.equal(world.entityRefs[slot], twin);
++  });
++
++  it('toggle off agrees with toggle on for a mover+static mix (oracle)', () => {
++    const movers = 3;
++    const n = 24;
++
++    function run(skipOn) {
++      setPresentationWorldUnchangedRefreshSkipForBench(skipOn);
++      const world = createPresentationWorld({ capacity: n + 4 });
++      const entities = [];
++      for (let i = 0; i < n; i++) {
++        const e = makeEntity(i + 1, { type: i % 5 === 0 ? 'ship' : 'asteroid' });
++        entities.push(e);
++        world.allocateEntity(e);
++      }
++      const slots = entities.map((e) => world.getSlotForEntityId(e.id));
++      for (let pass = 0; pass < 12; pass++) {
++        for (let i = 0; i < n; i++) {
++          const e = entities[i];
++          if (i < movers) {
++            e.prevPos.x = e.pos.x;
++            e.prevPos.z = e.pos.z;
++            e.prevRot = e.rot;
++            e.pos.x += 0.25;
++            e.pos.z += 0.1;
++            e.rot += 0.01;
++          }
++          world.refreshVisibleEntity(slots[i], e, e.radius);
++        }
++      }
++      return slots.map((slot) => ({
++        x: world.x[slot],
++        z: world.z[slot],
++        rot: world.rot[slot],
++        radius: world.radii[slot],
++        flags: world.flags[slot],
++        type: world.typeCodes[slot],
++      }));
++    }
++
++    const a = run(false);
++    const b = run(true);
++    assert.deepEqual(b, a);
++  });
++});
+-- 
+2.47.3
+

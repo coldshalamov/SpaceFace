@@ -1,0 +1,275 @@
+From c9d3972c9b74cb47ac175165436f6f726cdfe3e9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 09:19:02 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20projectile?=
+ =?UTF-8?q?-trails=20empty=20bag=20(~6.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Empty projectile index still paid indexedTypeScan + cache check +
+resetProjectileTrailDiag every tick. Latch after first empty observe;
+wake on entityIndexVersion or _projectileCacheDirty. Soft-GPU fps not
+claimed. Picture unchanged.
+---
+ src/render/vfx.js                             |  50 +++++-
+ ...ojectile-trails-quiet-empty-latch.test.mjs | 160 ++++++++++++++++++
+ 2 files changed, 205 insertions(+), 5 deletions(-)
+ create mode 100644 test/projectile-trails-quiet-empty-latch.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index bbf0d96ed..3dd426529 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1350,6 +1350,12 @@ export const vfx = {
+     this._projectileTrailDiag = emptyProjectileTrailDiag();
+     this._projectileTrailPlanScratch = createProjectileTrailSpawnPlanScratch();
+     this._projectileTrailsWereRelevant = false;
++    // Quiet settled flight: empty projectile bag still paid indexedTypeScan +
++    // entityIndexVersion + candidate cache check + resetProjectileTrailDiag
++    // every tick. Latch after first empty observe; wake on entityIndexVersion
++    // or _projectileCacheDirty. Soft-GPU fps not claimed.
++    this._projectileTrailsQuietEmpty = false;
++    this._projectileTrailsQuietIndexVersion = -1;
+     this._seamMarkersWereRelevant = false;
+     // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
+     // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
+@@ -2244,12 +2250,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -11570,7 +11576,8 @@ export const vfx = {
+       }
+     } else {
+       this._projectileTrailsWereRelevant = false;
+-      resetProjectileTrailDiag(this._projectileTrailDiag);
++      // Diag reset owned by `_projectileTrailsRelevant` on first empty observe
++      // (quiet latch). Soft-GPU fps not claimed.
+       sub.projectileTrails = 0;
+     }
+     if (this._miningBeamActive()) {
+@@ -14567,9 +14574,42 @@ export const vfx = {
+     this._projectileCacheDirty = false;
+   },
+ 
++  // Cheap dirty wake for quiet projectile-trails empty latch —
++  // entityIndexVersion or explicit projectile cache dirty. No index (version
++  // null) refuses the latch so entityList fallback stays truthful.
++  // Soft-GPU fps not claimed.
++  _projectileTrailsQuietMaybeAwake() {
++    if (this._projectileCacheDirty) return true;
++    const version = entityIndexVersion(this.state);
++    if (version == null) return true;
++    return version !== this._projectileTrailsQuietIndexVersion;
++  },
++
+   _projectileTrailsRelevant() {
++    // Quiet settled flight: empty projectiles still paid indexedTypeScan +
++    // version/ref cache check + resetProjectileTrailDiag every tick. Latch
++    // after first empty observe; wake on entityIndexVersion / cache dirty.
++    // Soft-GPU fps not claimed.
++    if (this._projectileTrailsQuietEmpty) {
++      if (!this._projectileTrailsQuietMaybeAwake()) return false;
++      this._projectileTrailsQuietEmpty = false;
++    }
+     this._refreshProjectileCandidates();
+-    return this._projectileCandidates.length > 0;
++    if (this._projectileCandidates.length > 0) {
++      this._projectileTrailsQuietEmpty = false;
++      return true;
++    }
++    // First empty observe — zero diag once, then latch.
++    resetProjectileTrailDiag(this._projectileTrailDiag);
++    const version = entityIndexVersion(this.state);
++    if (version != null) {
++      this._projectileTrailsQuietEmpty = true;
++      this._projectileTrailsQuietIndexVersion = version;
++    } else {
++      this._projectileTrailsQuietEmpty = false;
++      this._projectileTrailsQuietIndexVersion = -1;
++    }
++    return false;
+   },
+ 
+   _recordProjectileTrailClass(diag, cls, kind) {
+diff --git a/test/projectile-trails-quiet-empty-latch.test.mjs b/test/projectile-trails-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..9f7ef1408
+--- /dev/null
++++ b/test/projectile-trails-quiet-empty-latch.test.mjs
+@@ -0,0 +1,160 @@
++/**
++ * #122 projectile-trails-quiet-empty-latch — quiet empty projectile bag skips
++ * indexedTypeScan + diag reset; dirty-wake on entityIndexVersion / cache dirty.
++ * Soft-GPU fps not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++const DT = 1 / 60;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    mode: 'flight',
++    entities: new Map([[PLAYER_ID, player]]),
++    entityList: [player],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      projectiles: [],
++      ships: [player],
++    },
++    simTime: 0,
++    tick: 0,
++    camera: { focus: { x: 0, z: 0 } },
++    world: { frameOrigin: { x: 0, z: 0 } },
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: {
++      scene,
++      camera: new THREE.PerspectiveCamera(),
++      viewport: { height: 720 },
++      interpolationAlpha: 1,
++    },
++    player: {},
++    fields: { active: [] },
++    combat: { entities: {}, statusNextPendingSeq: 0 },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: {
++      player: () => player,
++    },
++  });
++  return { system, state, bus, player };
++}
++
++test('projectile-trails quiet-latches on empty projectile bag', () => {
++  const { system, state } = makeHarness();
++  assert.equal(system._projectileTrailsRelevant(), false);
++  assert.equal(system._projectileTrailsQuietEmpty, true, 'empty bag must latch');
++  assert.equal(system._projectileTrailsQuietIndexVersion, 1);
++
++  let refreshCalls = 0;
++  const orig = system._refreshProjectileCandidates.bind(system);
++  system._refreshProjectileCandidates = (...args) => {
++    refreshCalls += 1;
++    return orig(...args);
++  };
++
++  for (let i = 0; i < 40; i++) {
++    assert.equal(system._projectileTrailsRelevant(), false);
++  }
++  assert.equal(refreshCalls, 0, 'latched ticks must skip candidate refresh');
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++  assert.equal(system._projectileTrailsQuietIndexVersion, state.entityIndex.version);
++});
++
++test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
++  const { system, state, player } = makeHarness();
++  assert.equal(system._projectileTrailsRelevant(), false);
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++
++  const proj = {
++    id: 77,
++    type: 'projectile',
++    alive: true,
++    pos: { x: 10, z: 0 },
++    vel: { x: 200, z: 0 },
++    prevPos: { x: 8, z: 0 },
++    data: { weaponId: 'pulse-bolt' },
++  };
++  state.entityIndex.version = 2;
++  state.entityIndex.projectiles = [proj];
++  state.entityList = [player, proj];
++
++  assert.equal(system._projectileTrailsRelevant(), true, 'must wake and see projectile');
++  assert.equal(system._projectileTrailsQuietEmpty, false);
++  assert.equal(system._projectileCandidates.length, 1);
++
++  state.entityIndex.version = 3;
++  state.entityIndex.projectiles = [];
++  state.entityList = [player];
++  assert.equal(system._projectileTrailsRelevant(), false);
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++  assert.equal(system._projectileTrailsQuietIndexVersion, 3);
++});
++
++test('projectile cache dirty-wake resumes without version bump', () => {
++  const { system, state, player } = makeHarness();
++  assert.equal(system._projectileTrailsRelevant(), false);
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++
++  const proj = {
++    id: 88,
++    type: 'projectile',
++    alive: true,
++    pos: { x: 12, z: 0 },
++    vel: { x: 180, z: 0 },
++    prevPos: { x: 10, z: 0 },
++    data: { weaponId: 'pulse-bolt' },
++  };
++  // Same version; explicit dirty mark (spawn path) must wake.
++  state.entityIndex.projectiles = [proj];
++  state.entityList = [player, proj];
++  system._markProjectileCacheDirty();
++
++  assert.equal(system._projectileTrailsRelevant(), true, 'cache dirty must wake');
++  assert.equal(system._projectileTrailsQuietEmpty, false);
++});
++
++test('frame update keeps latch across quiet ticks', () => {
++  const { system } = makeHarness();
++  assert.equal(system._projectileTrailsRelevant(), false);
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++
++  let refreshCalls = 0;
++  const orig = system._refreshProjectileCandidates.bind(system);
++  system._refreshProjectileCandidates = (...args) => {
++    refreshCalls += 1;
++    return orig(...args);
++  };
++
++  system.update(DT);
++  system.update(DT);
++  system.update(DT);
++  assert.equal(system._projectileTrailsQuietEmpty, true);
++  assert.equal(refreshCalls, 0, 'quiet update must not refresh candidates');
++});
+-- 
+2.47.3
+

@@ -1,0 +1,11 @@
+{
+  "medianSpeedup": 3.512680203701516,
+  "minSpeedup": 2.72485688867236,
+  "maxSpeedup": 4.311938913532545,
+  "wakeProof": {
+    "latchedSkips": 9,
+    "woke": true,
+    "wakes": 1,
+    "hidden": false
+  }
+}

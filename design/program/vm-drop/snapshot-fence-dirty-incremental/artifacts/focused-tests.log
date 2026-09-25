@@ -1,0 +1,135 @@
+TAP version 13
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.372515
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 2 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.219263
+  ...
+# Subtest: PresentationWorld reuses dense slots without accepting stale handles
+ok 3 - PresentationWorld reuses dense slots without accepting stale handles
+  ---
+  duration_ms: 3.258734
+  ...
+# Subtest: PresentationWorld retains previous/current pose and settles interpolation from live state
+ok 4 - PresentationWorld retains previous/current pose and settles interpolation from live state
+  ---
+  duration_ms: 0.827157
+  ...
+# Subtest: PresentationPublisher applies journal ranges idempotently and rebuilds generations
+ok 5 - PresentationPublisher applies journal ranges idempotently and rebuilds generations
+  ---
+  duration_ms: 4.720777
+  ...
+# Subtest: PresentationQueries return deterministic visible handles and exact transitions
+ok 6 - PresentationQueries return deterministic visible handles and exact transitions
+  ---
+  duration_ms: 2.136176
+  ...
+# Subtest: PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+ok 7 - PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
+  ---
+  duration_ms: 0.973565
+  ...
+# Subtest: PresentationWorld drops stale maximum radius after large-root churn
+ok 8 - PresentationWorld drops stale maximum radius after large-root churn
+  ---
+  duration_ms: 0.950042
+  ...
+# Subtest: ship pitch uses the maintained ship-like domain and preserves exact craft cues
+ok 9 - ship pitch uses the maintained ship-like domain and preserves exact craft cues
+  ---
+  duration_ms: 2.299082
+  ...
+# Subtest: ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+ok 10 - ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+  ---
+  duration_ms: 0.438025
+  ...
+# Subtest: ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+ok 11 - ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+  ---
+  duration_ms: 1.995145
+  ...
+# Subtest: settled idle craft skip the thrust-lean integrator
+ok 12 - settled idle craft skip the thrust-lean integrator
+  ---
+  duration_ms: 0.562902
+  ...
+# Subtest: middle-band thrust lean shares entity closure cadence when view is supplied
+ok 13 - middle-band thrust lean shares entity closure cadence when view is supplied
+  ---
+  duration_ms: 0.434655
+  ...
+# Subtest: layout-stable dirty incremental matches forceFull pack poses
+ok 14 - layout-stable dirty incremental matches forceFull pack poses
+  ---
+  duration_ms: 5.884086
+  ...
+# Subtest: membership change falls back to full pack and stays indexed
+ok 15 - membership change falls back to full pack and stays indexed
+  ---
+  duration_ms: 2.567122
+  ...
+# Subtest: two packs in one pose epoch interpolate
+ok 16 - two packs in one pose epoch interpolate
+  ---
+  duration_ms: 2.322262
+  ...
+# Subtest: a pack across a pose-epoch boundary has no interpolation source
+ok 17 - a pack across a pose-epoch boundary has no interpolation source
+  ---
+  duration_ms: 0.445718
+  ...
+# Subtest: the epoch boundary lifts once two packs share the new epoch
+ok 18 - the epoch boundary lifts once two packs share the new epoch
+  ---
+  duration_ms: 0.463735
+  ...
+# Subtest: an unstamped pack keeps the default epoch and still interpolates
+ok 19 - an unstamped pack keeps the default epoch and still interpolates
+  ---
+  duration_ms: 0.365327
+  ...
+# Subtest: a one-tick span reduces to the legacy accumulator alpha
+ok 20 - a one-tick span reduces to the legacy accumulator alpha
+  ---
+  duration_ms: 2.22212
+  ...
+# Subtest: a multi-step catch-up present no longer draws the stale previous pose
+ok 21 - a multi-step catch-up present no longer draws the stale previous pose
+  ---
+  duration_ms: 0.951309
+  ...
+# Subtest: the blended pose always lands at latest.simTime + accumulator - fixedDt
+ok 22 - the blended pose always lands at latest.simTime + accumulator - fixedDt
+  ---
+  duration_ms: 1.810119
+  ...
+# Subtest: degenerate spans fall back to the raw alpha
+ok 23 - degenerate spans fall back to the raw alpha
+  ---
+  duration_ms: 1.646441
+  ...
+# Subtest: the blend parameter stays inside [0, 1] for hostile inputs
+ok 24 - the blend parameter stays inside [0, 1] for hostile inputs
+  ---
+  duration_ms: 0.576367
+  ...
+# Subtest: a spawned entity absent from the previous pack draws at its latest pose
+ok 25 - a spawned entity absent from the previous pack draws at its latest pose
+  ---
+  duration_ms: 0.289889
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 219.872372

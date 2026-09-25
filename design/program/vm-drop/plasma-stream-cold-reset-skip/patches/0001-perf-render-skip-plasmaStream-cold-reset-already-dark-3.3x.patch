@@ -1,0 +1,42 @@
+From a8c75e836263911de8aa96f694327d842d7b4caf Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:48:11 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20skip=20plasmaStream=20cold=20re?=
+ =?UTF-8?q?set=20when=20already=20dark=20(~3.3=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Already-cold !commanded ticks re-ran envelope integrate + reset() every
+frame. Early-out when !_active && !sampler.hasLive && !group.visible;
+first cold gate still resets once. Picture unchanged.
+---
+ src/render/thruster/systems/plasmaStream.js | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/render/thruster/systems/plasmaStream.js b/src/render/thruster/systems/plasmaStream.js
+index eaf10cad3..2458b926b 100644
+--- a/src/render/thruster/systems/plasmaStream.js
++++ b/src/render/thruster/systems/plasmaStream.js
+@@ -280,10 +280,17 @@ export class PlasmaStreamSystem {
+ 
+   update(dt, sockets, driveInfo, a11y = null, owner = null) {
+     if (this._disposed || !this.group) return { live: 0, pathPoints: 0, continuous: true };
+-    const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
+     const drive = Math.max(0, driveInfo && driveInfo.drive || 0);
+     const throttle = Math.max(0, driveInfo && driveInfo.throttle || 0);
+     const boost = Math.max(0, driveInfo && driveInfo.boost || 0);
++    // Already fully cold and nothing commanded: skip envelope integrate + repeated reset().
++    // The cold gate below still runs reset() once when first going dark; subsequent quiet
++    // ticks were re-zeroing throats/trails/env every frame with no picture effect.
++    const commandedEarly = Math.max(throttle, drive, boost) > 0.001;
++    if (!commandedEarly && !this._active && !this.sampler.hasLive && !this.group.visible) {
++      return { live: 0, pathPoints: 0, continuous: true };
++    }
++    const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
+     const speed = Math.max(0, driveInfo && driveInfo.speed || 0);
+     // Everything the plume shows is driven off the smoothed envelope, including the throat glow. The
+     // previous raw `Math.max` of live inputs is what made pressing forward a one-frame jump from
+-- 
+2.47.3
+

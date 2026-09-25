@@ -1,0 +1,72 @@
+From a0a063664757e008eb9f84c2a8cdafa07e22d79b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:38:13 -0400
+Subject: [PATCH] perf(law): reuse customsScanConeOf cone via WeakMap scratch
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Probe+read path allocated a fresh cone object per call. Pool one cone per
+scanner entity (WeakMap, no enumerable _sf* keys) while still recomputing
+scanner identity so broken nets return null. Offline ~1.38×.
+---
+ src/systems/lawSecurity.js | 28 +++++++++++++++++++++++-----
+ 1 file changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/src/systems/lawSecurity.js b/src/systems/lawSecurity.js
+index aa90ae4ac..39e44a2e5 100644
+--- a/src/systems/lawSecurity.js
++++ b/src/systems/lawSecurity.js
+@@ -3114,6 +3114,10 @@ export function scanLineOccluded(origin, target, occluder) {
+   return (dx * dx + dz * dz) <= r * r;
+ }
+ 
++// Per-entity cone scratch via WeakMap (no enumerable _sf* on entities). Scanner identity is
++// recomputed every call so patrol nets that clear role/flag correctly return null after break.
++const CUSTOMS_CONE_SCRATCH = new WeakMap();
++
+ export function customsScanConeOf(entity) {
+   if (!entity || entity.alive === false || !entity.pos) return null;
+   const data = entity.data || {};
+@@ -3126,19 +3130,33 @@ export function customsScanConeOf(entity) {
+     || data.enemyId === 'customs_cutter'
+     || data.role === 'customs';
+   if (!isScanner) return null;
+-  const heading = Number.isFinite(explicit && explicit.heading)
++  let cone = CUSTOMS_CONE_SCRATCH.get(entity);
++  if (!cone) {
++    cone = {
++      origin: null,
++      heading: 0,
++      halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
++      range: CUSTOMS_SCAN_RANGE,
++      dwellS: CUSTOMS_SCAN_DWELL_S,
++      scanner: null,
++    };
++    CUSTOMS_CONE_SCRATCH.set(entity, cone);
++  }
++  cone.origin = entity.pos;
++  cone.heading = Number.isFinite(explicit && explicit.heading)
+     ? explicit.heading
+     : (Number.isFinite(entity.rot) ? entity.rot : 0);
+-  const halfAngle = Number.isFinite(explicit && explicit.halfAngle)
++  cone.halfAngle = Number.isFinite(explicit && explicit.halfAngle)
+     ? explicit.halfAngle
+     : CUSTOMS_SCAN_HALF_ANGLE;
+-  const range = Number.isFinite(explicit && explicit.range)
++  cone.range = Number.isFinite(explicit && explicit.range)
+     ? explicit.range
+     : CUSTOMS_SCAN_RANGE;
+-  const dwellS = Number.isFinite(explicit && explicit.dwellS)
++  cone.dwellS = Number.isFinite(explicit && explicit.dwellS)
+     ? explicit.dwellS
+     : CUSTOMS_SCAN_DWELL_S;
+-  return { origin: entity.pos, heading, halfAngle, range, dwellS, scanner: entity };
++  cone.scanner = entity;
++  return cone;
+ }
+ 
+ export function aggressionCauseFor(state, attacker, target) {
+-- 
+2.47.3
+

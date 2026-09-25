@@ -47,7 +47,7 @@ const DEFAULTS = Object.freeze({
   emergencyInputSlewPerTick: 0.12,
   torqueSlewPerTick: 0.065,
   emergencyTorqueSlewPerTick: 0.14,
-  yawSoftAngle: 1.15,
+  yawSoftAngle: 0.55,
   yawDeadband: 0.035,
 
   // Turns command a yaw RATE, not raw angle-proportional torque. A P-on-angle torque loop
@@ -56,7 +56,7 @@ const DEFAULTS = Object.freeze({
   // ±5 rad/s for 10+ s, burned only strafe, and never crossed its own escape leash). The rate
   // target bounds the slew; the rate error makes the torque channel pure damping near the goal.
   yawRateTarget: 2.4,
-  yawRateGain: 0.4,
+  yawRateGain: 0.7,
   turnBeforeBurnAngle: 0.82,
   speedBrakeSlack: 8,
   closingBrakeSlack: 10,
@@ -241,11 +241,26 @@ export class ManeuverPlanner {
     // Some combat phases hold or return to a formation point while charging a fixed gun. Keep the
     // translational request pointed at that slot, but let the authored intent explicitly aim the
     // ship's nose at its target so HOLD does not turn a firing window into deterministic misses.
-    const facingUnit = intent.faceTarget === true && target && !desired.obstacleAvoidance
+    // An obstacle dodge is translational — the tracked route drives the forward/strafe channels
+    // whatever the nose points at, so a rock in the dodge cone must not steal the firing face.
+    // Vetoing it made every ring pass through arena cover a firing blackout: the nose chased the
+    // whipping dodge route and fixed mounts sprayed past a stationary target (D38).
+    const facingUnit = intent.faceTarget === true && target
       ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
       : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
     const angleError = wrapAngle(heading - selfPose.rot);
+    // The commanded heading itself moves (a target bearing rotates as both ships fly). A
+    // rate-only loop can only match that motion by holding a constant lag — measured: a wasp
+    // on a strike run parked ~28 deg off the player through the whole fire window and missed.
+    // Differentiate the commanded heading between plan calls and feed it forward so the rate
+    // channel tracks the bearing instead of lagging it.
+    const headingGapTicks = Number.isInteger(runtime.lastHeadingTick) ? Math.max(1, tick - runtime.lastHeadingTick) : 1;
+    const headingRate = Number.isFinite(runtime.lastHeading)
+      ? wrapAngle(heading - runtime.lastHeading) / (headingGapTicks / 60)
+      : 0;
+    runtime.lastHeading = heading;
+    runtime.lastHeadingTick = tick;
     const forwardDot = Math.cos(selfPose.rot) * desiredUnit.x + Math.sin(selfPose.rot) * desiredUnit.z;
     const rightDot = -Math.sin(selfPose.rot) * desiredUnit.x + Math.cos(selfPose.rot) * desiredUnit.z;
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
@@ -306,7 +321,7 @@ export class ManeuverPlanner {
     const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
     const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
       ? 0
-      : yawRateTorqueFor(angleError, measuredWy, kind, this.config, hullScale);
+      : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale);
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
@@ -369,6 +384,8 @@ export class ManeuverPlanner {
           heatFraction: selfPose.heatFraction,
           breakFormation: intent.breakFormation,
           faceTarget: intent.faceTarget === true && !!target,
+          obstacleAvoidance: desired.obstacleAvoidance === true,
+          heading,
         },
       });
     }
@@ -809,6 +826,12 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.HAZARD && !contact.tags.includes('solid')) continue;
+    // A live ship is a moving contact, not cover: applyShipCollisionAvoidance already plans the
+    // pass-around with memory, and it never vetoes faceTarget. Letting the obstacle sweep claim
+    // ships too made a packed orbit ring read as an obstacle every tick — the firing face was
+    // stolen ~9 out of 10 plans, the nose chased a whipping dodge route, and fixed mounts sprayed
+    // past the target (D38). Dead hulks still count as cover.
+    if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
     // The maneuver's own objective is never its obstacle: a contact-seeking intent (transit to a
     // pod, tether approach) exists to reach that body, so steering to its shoulder would hold the
     // ship ~1.25 clearances off the target forever (measured: the custody raider parked 49 WU out
@@ -917,11 +940,15 @@ function strafeAuthorityForKind(kind) {
   }
 }
 
-function yawRateTorqueFor(angleError, measuredWy, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
+function yawRateTorqueFor(angleError, measuredWy, headingRate, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
   if (Math.abs(angleError) < config.yawDeadband && Math.abs(measuredWy) < 0.08) return 0;
   const yaw = hullScale && hullScale.yaw > 0 ? hullScale.yaw : 1;
   const limit = yawLimitForKind(kind) * yaw;
-  const desiredWy = clamp(angleError / config.yawSoftAngle, -1, 1) * config.yawRateTarget;
+  // Feedforward is capped at the same slew bound as the proportional channel: tracking a racing
+  // bearing may spend the full rate budget, but it cannot re-pump a whirlpool — the commanded
+  // rate still collapses to the proportional term the moment the heading stops moving.
+  const track = clamp(Number.isFinite(headingRate) ? headingRate : 0, -config.yawRateTarget, config.yawRateTarget);
+  const desiredWy = track + clamp(angleError / config.yawSoftAngle, -1, 1) * config.yawRateTarget;
   return clamp((desiredWy - measuredWy) * config.yawRateGain, -limit, limit);
 }
 

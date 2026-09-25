@@ -1,0 +1,67 @@
+{
+  "label": "weapon-ribbon-quiet-live-skip",
+  "primary": "quiet-weapon-ribbon-live-zero-update",
+  "iters": 200000,
+  "capacity": 256,
+  "pairs": [
+    {
+      "beforeMs": 140.934,
+      "afterMs": 2.373,
+      "speedup": 59.395
+    },
+    {
+      "beforeMs": 141.401,
+      "afterMs": 2.324,
+      "speedup": 60.844
+    },
+    {
+      "beforeMs": 130.373,
+      "afterMs": 2.073,
+      "speedup": 62.878
+    },
+    {
+      "beforeMs": 133.079,
+      "afterMs": 2.074,
+      "speedup": 64.165
+    },
+    {
+      "beforeMs": 130.711,
+      "afterMs": 2.028,
+      "speedup": 64.463
+    },
+    {
+      "beforeMs": 136.565,
+      "afterMs": 2.107,
+      "speedup": 64.821
+    },
+    {
+      "beforeMs": 138.714,
+      "afterMs": 2.116,
+      "speedup": 65.54
+    },
+    {
+      "beforeMs": 137.328,
+      "afterMs": 2.093,
+      "speedup": 65.605
+    },
+    {
+      "beforeMs": 130.965,
+      "afterMs": 1.843,
+      "speedup": 71.062
+    },
+    {
+      "beforeMs": 148.502,
+      "afterMs": 1.96,
+      "speedup": 75.783
+    },
+    {
+      "beforeMs": 149.909,
+      "afterMs": 1.906,
+      "speedup": 78.651
+    }
+  ],
+  "medianSpeedup": 64.821,
+  "minSpeedup": 59.395,
+  "maxSpeedup": 78.651,
+  "note": "Picture unchanged: no wakes when idle; last-retire frame still clears alphas."
+}

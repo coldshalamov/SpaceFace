@@ -1868,8 +1868,9 @@
     ],
     "materialProfileRoles": {
       "accent": 3,
-      "hull": 6,
-      "mechanical": 10
+      "hull": 3,
+      "mechanical": 10,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1895,7 +1896,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1915,7 +1916,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1935,7 +1936,7 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2520,7 +2521,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
-  "runtimeHash": "66bc052e634c5927ff4063494673b9ec1ec33b69ebc71c8754142ba9a6d3a09c",
+  "runtimeHash": "4e575bb278322928931db52074424d089aa8b4edc65f27b6a4576959d7f2e399",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

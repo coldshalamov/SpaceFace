@@ -1,0 +1,336 @@
+TAP version 13
+# Subtest: still-player latch engages with nearby non-touching rocks
+ok 1 - still-player latch engages with nearby non-touching rocks
+  ---
+  duration_ms: 6.043167
+  ...
+# Subtest: asteroidField.version bump wakes still-player latch
+ok 2 - asteroidField.version bump wakes still-player latch
+  ---
+  duration_ms: 0.809045
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.743386
+  ...
+# Subtest: player unpark (speed) clears latch and re-queries
+ok 4 - player unpark (speed) clears latch and re-queries
+  ---
+  duration_ms: 0.815787
+  ...
+# Subtest: touching rock promotes on first probe before latch
+ok 5 - touching rock promotes on first probe before latch
+  ---
+  duration_ms: 1.766247
+  ...
+# Subtest: bench toggle off restores always-query (no latch)
+ok 6 - bench toggle off restores always-query (no latch)
+  ---
+  duration_ms: 0.640225
+  ...
+# Subtest: dormant rocks stay off the combat list until promoted
+ok 7 - dormant rocks stay off the combat list until promoted
+  ---
+  duration_ms: 6.180283
+  ...
+# Subtest: reserved presentation ids advance the allocator and stay unique
+ok 8 - reserved presentation ids advance the allocator and stay unique
+  ---
+  duration_ms: 1.125409
+  ...
+# Subtest: reserved dressing ids also stay unique with automatic row allocation
+ok 9 - reserved dressing ids also stay unique with automatic row allocation
+  ---
+  duration_ms: 0.605917
+  ...
+# Subtest: activity and geology rocks stay live entities
+ok 10 - activity and geology rocks stay live entities
+  ---
+  duration_ms: 0.189105
+  ...
+# Subtest: dressing rows are presentation sources, not combat entities
+ok 11 - dressing rows are presentation sources, not combat entities
+  ---
+  duration_ms: 1.554998
+  ...
+# Subtest: quiet Ceres combat list drops the dormant belt and dressing
+ok 12 - quiet Ceres combat list drops the dormant belt and dressing
+  ---
+  duration_ms: 35.089212
+  ...
+# Subtest: promote a field rock applies catch-up before it is live
+ok 13 - promote a field rock applies catch-up before it is live
+  ---
+  duration_ms: 1.19507
+  ...
+# Subtest: ram overlap promotes a field rock onto the combat list
+ok 14 - ram overlap promotes a field rock onto the combat list
+  ---
+  duration_ms: 1.099379
+  ...
+# Subtest: quiet latch engages when far table empty
+ok 15 - quiet latch engages when far table empty
+  ---
+  duration_ms: 3.693766
+  ...
+# Subtest: farActors.version bump wakes empty quiet latch
+ok 16 - farActors.version bump wakes empty quiet latch
+  ---
+  duration_ms: 0.55865
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 17 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.480482
+  ...
+# Subtest: far rows present refuse empty latch and still query
+ok 18 - far rows present refuse empty latch and still query
+  ---
+  duration_ms: 2.139325
+  ...
+# Subtest: bench toggle off restores always-walk (no latch)
+ok 19 - bench toggle off restores always-walk (no latch)
+  ---
+  duration_ms: 0.435145
+  ...
+# Subtest: queryFarActors empty early-return matches empty grid result
+ok 20 - queryFarActors empty early-return matches empty grid result
+  ---
+  duration_ms: 0.349465
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 21 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.341469
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 22 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.881911
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 23 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 1.635813
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 24 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.391582
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 25 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.56772
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 26 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.34241
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 27 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.259945
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 28 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.090869
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 29 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.800741
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 30 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.592992
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 31 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 4.353778
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 32 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.780362
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 33 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.608657
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 34 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.642256
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 35 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.333144
+  ...
+# Subtest: far-actor grid keys are packed numbers, not cx:cz strings
+ok 36 - far-actor grid keys are packed numbers, not cx:cz strings
+  ---
+  duration_ms: 2.399582
+  ...
+# Subtest: ensureFarActorTable rebuilds legacy string grid keys in-tab
+ok 37 - ensureFarActorTable rebuilds legacy string grid keys in-tab
+  ---
+  duration_ms: 0.334685
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 38 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 8.667195
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 39 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.097244
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 40 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.164921
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 41 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 1.340299
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 42 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.445412
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 43 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.474621
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 44 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 1.056011
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 45 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.139982
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 46 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.548746
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 47 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 2.275343
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 48 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 0.948709
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 49 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.275689
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 50 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 7.960285
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 51 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 1.448179
+  ...
+# Subtest: bench toggle off refuses latch
+ok 52 - bench toggle off refuses latch
+  ---
+  duration_ms: 0.996917
+  ...
+# Subtest: far rows present never skip restore path
+ok 53 - far rows present never skip restore path
+  ---
+  duration_ms: 3.496026
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 54 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 1.240852
+  ...
+# Subtest: rescan clears latch after window
+ok 55 - rescan clears latch after window
+  ---
+  duration_ms: 0.980182
+  ...
+# Subtest: wide-disc far query matches grid walk (row-scan path)
+ok 56 - wide-disc far query matches grid walk (row-scan path)
+  ---
+  duration_ms: 4.510407
+  ...
+# Subtest: tight-disc far query still finds local rows (grid path)
+ok 57 - tight-disc far query still finds local rows (grid path)
+  ---
+  duration_ms: 0.352806
+  ...
+# Subtest: row-scan respects FAR_ROW_BUDGET ceiling fixture
+ok 58 - row-scan respects FAR_ROW_BUDGET ceiling fixture
+  ---
+  duration_ms: 0.135551
+  ...
+# Subtest: the far shelf gives the wreck cathedral and the cinder sluice back on approach
+ok 59 - the far shelf gives the wreck cathedral and the cinder sluice back on approach
+  ---
+  duration_ms: 112.978616
+  ...
+# Subtest: quiet latch engages when no optic interest nearby
+ok 60 - quiet latch engages when no optic interest nearby
+  ---
+  duration_ms: 5.000421
+  ...
+# Subtest: field.version bump wakes optic quiet latch
+ok 61 - field.version bump wakes optic quiet latch
+  ---
+  duration_ms: 0.690848
+  ...
+# Subtest: membership bump wakes optic quiet latch
+ok 62 - membership bump wakes optic quiet latch
+  ---
+  duration_ms: 0.46877
+  ...
+# Subtest: player move beyond wake radius clears optic quiet latch path
+ok 63 - player move beyond wake radius clears optic quiet latch path
+  ---
+  duration_ms: 0.504803
+  ...
+# Subtest: nearby optic field rock prevents latch and promotes on approach
+ok 64 - nearby optic field rock prevents latch and promotes on approach
+  ---
+  duration_ms: 1.570318
+  ...
+# Subtest: bench toggle off restores always-walk
+ok 65 - bench toggle off restores always-walk
+  ---
+  duration_ms: 1.859391
+  ...
+1..65
+# tests 65
+# suites 0
+# pass 65
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 655.84425

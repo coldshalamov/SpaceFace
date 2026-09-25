@@ -2240,8 +2240,9 @@
     ],
     "materialProfileRoles": {
       "glass": 3,
-      "hull": 10,
-      "mechanical": 6
+      "hull": 4,
+      "mechanical": 6,
+      "signal": 6
     },
     "materialProfiles": [
       {
@@ -2252,7 +2253,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2277,12 +2278,12 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2307,12 +2308,12 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2337,7 +2338,7 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 26,
@@ -3013,7 +3014,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
   },
-  "runtimeHash": "bc5e3b58d8d345daa104fd9ca06692fb72f24ce9a69582e512986de1f467db64",
+  "runtimeHash": "d1f4c4e45b96a927fc7d4f708d91d82033448da8b99b1269595f26ffaf46a4a2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

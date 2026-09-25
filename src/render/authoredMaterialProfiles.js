@@ -4,21 +4,21 @@ import { illustratedPigmentForMaterial } from './illustratedLivery.js';
 import { hullLayoutForAsset } from './illustratedHullLayout.js';
 
 const ROLE_RULES = Object.freeze([
-  ['glass', /canopy|cockpit.?glass|material_glass|window/i],
+  ['glass', /canopy|cockpit.?glass|material_glass|window|viewport|visor/i],
   ['geology', /geolog|regolith|asteroid|rock|ore.?matrix/i],
-  ['radiator', /radiator|thermal|heat.?sink/i],
-  ['docking', /dock|contact.?surface|landing.?pad|berth/i],
+  ['radiator', /radiator|thermal|heat.?sink|cooling.?fin|heat.?vent/i],
+  ['docking', /dock|contact.?surface|landing.?pad|berth|airlock|coupling/i],
   ['ceramic', /ceramic|heat.?shield|refractory|engine.?liner/i],
   ['rubber', /rubber|gasket|hose|tire/i],
   ['repair', /field.?repair|repair.?paint|repair.?green|weld.?patch/i],
-  ['service', /service|access|maintenance|utility/i],
+  ['service', /service|access|maintenance|utility|conduit|wiring/i],
   ['drive', /thruster|engine.?glow|drive.?core|drive.?aperture/i],
   // Delimited cyan/warm so FrontierCyan paint stays accent. Nav optics and signal lenses are lights.
   ['signal', /material_emissive|emission|nav.?light|nav.?optic|cockpit.?display|sensor.?slit|mining.?lens|signal|(?:^|[_-])cyan(?:[_-]|$)|(?:^|[_-])warm(?:[_-]|$)/i],
   ['warning', /warning|hazard|decal.?red/i],
-  ['mechanical', /mechanical|machinery|hardware|exposed|brushed.?metal|fastener|pipe|stabilizer.?frame|identity.?plate/i],
+  ['mechanical', /mechanical|machinery|hardware|exposed|brushed.?metal|fastener|pipe|stabilizer.?frame|identity.?plate|strut|truss|piston|hydraulic|bulkhead|chassis|bracket|girder/i],
   ['accent', /accent|trim|paint.?secondary/i],
-  ['hull', /hull|armor|body.?primary/i],
+  ['hull', /hull|armor|body.?primary|plating|body.?shell/i],
 ]);
 
 export function authoredMaterialRole(name) {

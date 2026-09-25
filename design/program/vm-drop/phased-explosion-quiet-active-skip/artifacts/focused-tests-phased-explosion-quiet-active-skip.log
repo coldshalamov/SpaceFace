@@ -1,0 +1,182 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: kill presentation receipts classify all five causes from canonical lethal truth
+ok 1 - kill presentation receipts classify all five causes from canonical lethal truth
+  ---
+  duration_ms: 2.731071
+  ...
+# Subtest: receipt and every nested record are immutable and remain event-only
+ok 2 - receipt and every nested record are immutable and remain event-only
+  ---
+  duration_ms: 5.277815
+  ...
+# Subtest: authored projectile routing preserves the real approach and surface normal through death
+ok 3 - authored projectile routing preserves the real approach and surface normal through death
+  ---
+  duration_ms: 4.169367
+  ...
+# Subtest: real lethal terrain and Ram-Plate contacts survive synchronous damage routing
+ok 4 - real lethal terrain and Ram-Plate contacts survive synchronous damage routing
+  ---
+  duration_ms: 5.721403
+  ...
+# Subtest: a massline tangent-meeting kill publishes the real collision cause, not generic
+ok 5 - a massline tangent-meeting kill publishes the real collision cause, not generic
+  ---
+  duration_ms: 1.03019
+  ...
+# Subtest: VFX prefers nested receipt truth while legacy kill events remain compatible
+ok 6 - VFX prefers nested receipt truth while legacy kill events remain compatible
+  ---
+  duration_ms: 16.178277
+  ...
+# Subtest: phased lifecycle normalizes, saturates, resets, and drains causal residents
+ok 7 - phased lifecycle normalizes, saturates, resets, and drains causal residents
+  ---
+  duration_ms: 0.545941
+  ...
+# [impact cost] 160 events, 1549 primitives | peak occupancy: blades 124/128  arcs 48/48  shards 64/64  plates 32/32
+# Subtest: a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+ok 8 - a bullet, a slam, a rock fracture and a capital breakup are different events, not one event at four sizes
+  ---
+  duration_ms: 16.149953
+  ...
+# Subtest: every pair of impact classes differs by order, layout or primitive mix before any colour
+ok 9 - every pair of impact classes differs by order, layout or primitive mix before any colour
+  ---
+  duration_ms: 1.395058
+  ...
+# Subtest: large destruction opens its structure before anything else, and structure outlives the light
+ok 10 - large destruction opens its structure before anything else, and structure outlives the light
+  ---
+  duration_ms: 9.369301
+  ...
+# Subtest: an unsigned collision axis cannot yield a signed outward direction
+ok 11 - an unsigned collision axis cannot yield a signed outward direction
+  ---
+  duration_ms: 0.303949
+  ...
+# Subtest: flipping an unsigned axis draws the identical event; flipping a signed normal does not
+ok 12 - flipping an unsigned axis draws the identical event; flipping a signed normal does not
+  ---
+  duration_ms: 11.150595
+  ...
+# Subtest: a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+ok 13 - a one-sided beat is dropped rather than re-aimed when the axis is unsigned
+  ---
+  duration_ms: 0.496792
+  ...
+# Subtest: the classifier reads the physics of a contact, not its size alone
+ok 14 - the classifier reads the physics of a contact, not its size alone
+  ---
+  duration_ms: 0.51556
+  ...
+# Subtest: the beats of one event arrive in sequence instead of on the contact frame
+ok 15 - the beats of one event arrive in sequence instead of on the contact frame
+  ---
+  duration_ms: 5.486511
+  ...
+# Subtest: a reserved later beat is not cannibalised to draw the next event
+ok 16 - a reserved later beat is not cannibalised to draw the next event
+  ---
+  duration_ms: 1.617697
+  ...
+# Subtest: a worked face cuts and fractures without igniting or celebrating
+ok 17 - a worked face cuts and fractures without igniting or celebrating
+  ---
+  duration_ms: 1.645537
+  ...
+# Subtest: an interior that is not hot is not drawn hot, and a shield throws no matter
+ok 18 - an interior that is not hot is not drawn hot, and a shield throws no matter
+  ---
+  duration_ms: 0.330882
+  ...
+# Subtest: a contact mark takes the failure of the surface it hit, and the default is unchanged
+ok 19 - a contact mark takes the failure of the surface it hit, and the default is unchanged
+  ---
+  duration_ms: 1.310531
+  ...
+# Subtest: one contact composes one recipe: structure first, then gas, then debris, exactly once each
+ok 20 - one contact composes one recipe: structure first, then gas, then debris, exactly once each
+  ---
+  duration_ms: 2.04866
+  ...
+# Subtest: supporting layers bind as resolvers, so build order cannot silently pin them to null
+ok 21 - supporting layers bind as resolvers, so build order cannot silently pin them to null
+  ---
+  duration_ms: 1.598388
+  ...
+# Subtest: the recipe still lands when the gas and debris layers never arrive
+ok 22 - the recipe still lands when the gas and debris layers never arrive
+  ---
+  duration_ms: 2.32395
+  ...
+# Subtest: the record is handed to the supporting layers in world space and unmodified
+ok 23 - the record is handed to the supporting layers in world space and unmodified
+  ---
+  duration_ms: 1.527999
+  ...
+# Subtest: a massacre of small deaths cannot truncate the capital breakup behind it
+ok 24 - a massacre of small deaths cannot truncate the capital breakup behind it
+  ---
+  duration_ms: 1.316427
+  ...
+# Subtest: repeated hits on one surface and dense mixed combat stay inside the fixed pools
+ok 25 - repeated hits on one surface and dense mixed combat stay inside the fixed pools
+  ---
+  duration_ms: 20.39122
+  ...
+# Subtest: the same contact draws the same event every replay, without consuming simulation randomness
+ok 26 - the same contact draws the same event every replay, without consuming simulation randomness
+  ---
+  duration_ms: 3.452
+  ...
+# Subtest: malformed receipts cannot poison the record or the pools
+ok 27 - malformed receipts cannot poison the record or the pools
+  ---
+  duration_ms: 1.60267
+  ...
+# Subtest: the structural plate is a closed lit sheet, not a card
+ok 28 - the structural plate is a closed lit sheet, not a card
+  ---
+  duration_ms: 0.737475
+  ...
+# Subtest: explosion classes have distinct temporal structures and secondary pressure cues
+ok 29 - explosion classes have distinct temporal structures and secondary pressure cues
+  ---
+  duration_ms: 1.467312
+  ...
+# Subtest: authored explosion irregularity is repeatable without consuming simulation randomness
+ok 30 - authored explosion irregularity is repeatable without consuming simulation randomness
+  ---
+  duration_ms: 1.345757
+  ...
+# Subtest: bounded lifecycle emits each phase once and retires cleanly
+ok 31 - bounded lifecycle emits each phase once and retires cleanly
+  ---
+  duration_ms: 0.879811
+  ...
+# Subtest: five causal profiles have distinct frozen schedules while generic stays class-compatible
+ok 32 - five causal profiles have distinct frozen schedules while generic stays class-compatible
+  ---
+  duration_ms: 0.808816
+  ...
+# Subtest: pool capacity remains bounded under dense combat
+ok 33 - pool capacity remains bounded under dense combat
+  ---
+  duration_ms: 0.451334
+  ...
+# Subtest: invalid receipt numerics cannot poison the resident explosion pool
+ok 34 - invalid receipt numerics cannot poison the resident explosion pool
+  ---
+  duration_ms: 0.265321
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 462.132644

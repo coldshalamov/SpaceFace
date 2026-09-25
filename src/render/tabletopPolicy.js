@@ -9,6 +9,7 @@
 // drive the same policy the live path uses.
 
 import { viewHalfExtents } from './entityViewSyncBand.js';
+import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 
 const _glassCache = {
   zoom: NaN,
@@ -658,6 +659,12 @@ export function isPersistentLandmark(entity) {
  *
  * So: never build a far landmark, but never evict one already standing in the sector the player is
  * in. Leaving the sector still drops it, because the sector ids stop matching.
+ *
+ * The same keep now covers every station, not only landmark-flagged ones: stations are few per
+ * sector and expensive to rebuild, and the owner reported big stations vanishing and popping back
+ * — an authored station body already standing in the current sector is kept. Still never built
+ * from far (`authoredResident` is required), and off-screen roots are still not submitted, so the
+ * keep is memory only.
  */
 export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (!entity) return false;
@@ -665,7 +672,7 @@ export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (options.withinResidency === true) return true;
   if (options.mode === 'loading' && isCriticalStartingHub(entity)) return true;
   if (options.authoredResident !== true) return false;
-  if (!isPersistentLandmark(entity)) return false;
+  if (!isPersistentLandmark(entity) && entity.type !== 'station') return false;
   const currentSectorId = options.currentSectorId ? String(options.currentSectorId) : '';
   if (!currentSectorId) return false;
   const data = entity.data || {};
@@ -716,4 +723,22 @@ export function censusTableBands(entities, options = {}) {
     if (options.residentIds && options.residentIds.has(entity.id)) counts.resident += 1;
   }
   return counts;
+}
+
+// ---- projectile frame test ------------------------------------------------
+// Moved here from src/combat/projectileFlight.js: combat grammar forbids sim
+// code importing presentation, and this is a draw question, not a sim one.
+
+const _frameLook = { x: 0, z: 0 };
+
+/**
+ * True when a world position should be drawn this frame. Missing player
+ * position does not cull: a fixture with no pilot still has to show the shot.
+ * The pad keeps a round visible until its body and dash have left the glass.
+ */
+export function projectileOnReadableFrame(state, pos, playerPos, drawWu, out) {
+  if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return true;
+  const base = Number.isFinite(drawWu) && drawWu > 0 ? drawWu : tableVfxDrawWuFromState(state);
+  const look = tableLookAtDelta(state, playerPos, pos, out || _frameLook);
+  return shouldDrawTableVfx(look.x, look.z, base + PROJECTILE_DRAW_PAD_WU);
 }

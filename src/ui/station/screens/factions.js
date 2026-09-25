@@ -27,6 +27,7 @@ import { icon, factionIcon } from '../icons.js';
 import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
 import { createCrestOrbit, standingScaleSvg } from '../../orrery/crestOrbit.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 
@@ -48,7 +49,8 @@ const REP_MAX = 1000;
  */
 function crest(id, variant) {
   const name = factionCrestName(id);
-  if (name) return dpMark(name, { size: variant === 'hero' ? 'hero' : 'badge', lit: variant === 'hero' });
+  // unlit: this tab draws its crests mono so the arm's amber is the only warm light
+  if (name) return dpMark(name, { size: variant === 'hero' ? 'hero' : 'badge', lit: false });
   const px = variant === 'hero' ? 240 : 24;
   const svg = factionIcon(id, px) || icon('factions', px);
   return svg.replace(/class="sx-ico[^"]*"/, `class="k-crest k-crest--${variant} sx-ico"`);
@@ -67,8 +69,9 @@ export function standingColorAt(i) {
 }
 export function standingColor(rep) { return standingColorAt(tierIndex(rep)); }
 function standingClass(rep) {
-  const i = tierIndex(rep);
-  return i <= 3 ? 'k-bad' : (i === 4 ? '' : 'k-good');
+  // red is the threat channel: only a standing at or below the hostile line takes it
+  if (rep <= FACTION_AGGRO_THRESHOLD) return 'k-bad';
+  return tierIndex(rep) > 4 ? 'k-good' : '';
 }
 
 function reduceMotion() {
@@ -94,7 +97,8 @@ function nextTierInfo(rep) {
 
 function signed(value) {
   const n = Math.round(Number(value) || 0);
-  return `${n > 0 ? '+' : ''}${n}`;
+  // a true minus: the hyphen is a different glyph at 112px
+  return `${n > 0 ? '+' : n < 0 ? '\u2212' : ''}${Math.abs(n)}`;
 }
 
 function liveFaction(state, id) {
@@ -114,16 +118,19 @@ function nextRungLine(rep) {
   const rows = factionContractLadderRows(rep);
   const next = rows.find((row) => !row.unlocked);
   if (!next) return 'Every contract rung is open.';
-  return `Next: ${next.name} at ${next.minRep > 0 ? '+' : ''}${next.minRep} · ${next.unlocks}`;
+  return `Next: ${escapeHtml(next.name)} at ${next.minRep > 0 ? '+' : ''}${next.minRep}<span class="sx-fac-rung-next__more"> · ${escapeHtml(next.unlocks)}</span>`;
 }
 
 function heroHtml(n, w, cls = '') {
-  return `<div class="k-hero"><span class="k-hero__n${cls ? ` ${cls}` : ''}">${n}</span><span class="k-hero__w">${w}</span></div>`;
+  return `<div class="k-hero"><span class="k-hero__n${cls ? ` ${cls}` : ''}">${n}</span>${w ? `<span class="k-hero__w">${w}</span>` : ''}</div>`;
 }
 
 export function createFactionsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-fac';
+  // the scale runs the reading's width (measured live; 640 before layout); short screens draw it compact
+  const scaleWidth = () => { const w = readingEl && readingEl.clientWidth; return w > 0 ? Math.max(460, Math.min(920, w)) : 640; };
+  const compactHeight = () => typeof window !== 'undefined' && window.innerHeight > 0 && window.innerHeight <= 800;
 
   // faction list (real names from FACTION_META; rep from state)
   const factions = FACTION_META.map((m) => ({ id: m.id, name: m.name || m.id, meta: m }));
@@ -147,6 +154,10 @@ export function createFactionsScreen(ctx) {
   const stopDecrypt = [];
 
   function renderRail(state) {
+    renderRailBody(state);
+    syncScrollExtent(railEl.querySelector('.sx-fac__rows'));
+  }
+  function renderRailBody(state) {
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     railEl.innerHTML =
       `<p class="k-caps">Powers</p>` +
@@ -167,7 +178,7 @@ export function createFactionsScreen(ctx) {
               `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority</span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +
-            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}">${rep === 0 ? '<span class="sx-fac-row__nil">—</span>' : signed(rep)}</span>` +
+            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}${rep === 0 ? ' is-zero' : ''}">${rep === 0 ? '0' : signed(rep)}</span>` +
           `</button></li>`
         );
       }).join('') +
@@ -230,21 +241,25 @@ export function createFactionsScreen(ctx) {
 
     readingEl.innerHTML =
       `<div class="sx-fac-overview">` +
-        `<span class="sx-fac-crest" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
+        `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
         `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
           `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
-        `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}">` +
-          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span>${signed(rep)}`, escapeHtml(guidance.last), cls) +
-          heroHtml(next ? `${next.need}` : 'Peak held', next ? `to ${escapeHtml(next.name)}` : 'the top of the ladder') +
-          heroHtml(`${buffer}`, 'above the aggro line', buffer <= 0 ? 'k-bad' : '') +
+        // one figure: the standing, its tier above it; the two distances (to the next tier, above the
+        // hostile line) are measured on the scale itself as brackets, not restated as a row of figures
+        `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}: ${escapeHtml(tier.name)} ${signed(rep)}${next ? `, ${next.need} to ${escapeHtml(next.name)}` : ''}, ${buffer} above the hostile line">` +
+          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span>${signed(rep)}`, '', cls) +
         `</div>` +
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
-            `<p class="k-caps">Standing ladder</p>` +
+            `<p class="k-caps">Standing</p>` +
             // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
-            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: 560,
+            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: scaleWidth(), compact: compactHeight(), rungWords: !compactHeight(),
+              brackets: [
+                ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: String(next.need) }] : []),
+                ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: String(buffer) }] : []),
+              ],
               rungs: factionContractLadderRows(rep).map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked' })) }) +
             ladderRows(standingLadder) +
           `</div>` +
@@ -252,11 +267,11 @@ export function createFactionsScreen(ctx) {
             `<p class="k-caps">Contract access</p>` +
             ladderRows(contractLadder) +
             // the rungs hang off the standing scale; the reading names the next one and what it buys
-            `<p class="k-sentence sx-fac-rung-next">${escapeHtml(nextRungLine(rep))}</p>` +
+            `<p class="k-sentence sx-fac-rung-next">${nextRungLine(rep)}</p>` +
           `</div>` +
           `<div class="sx-fac-intent">` +
             `<p class="k-caps">Next move</p>` +
-            `<p class="k-sentence k-sentence--emph">${escapeHtml(guidance.plan)}</p>` +
+            `<p class="k-sentence k-sentence--emph">${escapeHtml(String(guidance.plan || '').replace(/^\s*([a-z])/, (m, c) => c.toUpperCase()))}</p>` +
           `</div>` +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
@@ -272,10 +287,10 @@ export function createFactionsScreen(ctx) {
 
   /** The orbit swings to the chosen power; the reading's labels resolve. */
   function composeStage(state, f) {
-    if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 150 });
+    if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 118 });
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     orbit.set({
-      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4 }; }),
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4, hostile: r <= FACTION_AGGRO_THRESHOLD }; }),
       selectedId: f.id,
       authorityId,
       swing: picked,

@@ -40,12 +40,16 @@ wrong still starts at the fun loop (§1.7), then returns here.
 
 1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
    not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
-2. If this sitting is an A-list pass with no named packet, take the next uncommitted task in
-   lane A2 (§23.4), in that order, and do not shop the queue or a later AQ for a smaller row. If
-   this sitting is INFERENCE, take one OPEN catalog line. Otherwise
-   `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it names under
-   [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do not shop around
-   `--ready` for something you would rather do; the order is the plan (§1.2).
+2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
+   the game", "polish", a long build session — take a lane from
+   [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
+   the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
+   you own the named work still open there **and** the review and tuning of that area to the
+   A-list bar; the queue units inside it are its checklist, not a script. The A2 actualize lane
+   (§23.4) is committed and closed. If this sitting is INFERENCE, take one OPEN catalog line.
+   Otherwise `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it
+   names under [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do
+   not shop around `--ready` for something you would rather do; the order is the plan (§1.2).
 3. On a queue unit, read the packet's **How agents get this wrong** section before touching code.
    Then its Leaves row: the done-when is the definition of done, in player units. If a done-when is
    missing, unclear, or could be satisfied by something the owner would call thin, write the missing
@@ -225,8 +229,8 @@ procedure:
 |---|---|
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
-| "it's not fun", "make it better", "it sucks", "wonky", "no control" | [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → `--id PQ-137`, then `--next` |
-| "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
+| "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
+| "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
@@ -234,7 +238,7 @@ procedure:
 | "the attacks are limp / frozen / a swirl that doesn't spin" | **§21** → first read `state.settings.video.motionReduce`: on 2026-09-20 the owner's Windows "Animation effects: off" had silently stripped every combat effect. Then `--id PQ-210.04` (four channels, with sound) |
 | "things pop out of existence", "asteroids vanish", "it doesn't load in time" | **§21** → `--id PQ-210.03` when it is the known retired asteroid buffer; read `state.render.asteroidInstancePool.variants[].retiredOwners` and the console for `[asteroid-pool]`. A class of pop — ships, wrecks, stations, empty locks, the glass lying — is campaign **CV-GLASS** in §23, not another prefetch constant |
 | "zero to hero", "make the demo A-list", "I can't see my ship", "the fight is unreadable", "long build session" | **§25** → [`ZERO_TO_HERO_2026-09-23.md`](./design/program/ZERO_TO_HERO_2026-09-23.md). Take the first phase without a visible slice; close each phase on its stranger pass, not a green check |
-| "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§23**. Invent the system the feeling needs. §22 is the measured list, not this door |
+| "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§27** → the lane that owns the area (the §23 campaigns are absorbed into the lanes); §23 stays the detailed wording. §22 is the measured list, not this door |
 | "it's hitching / stuttering" | **§21** → `npm run probe:smooth-flight:crucible` names each freeze and what paid for it, with the whole-machine CPU line; then `--id PQ-210.00`–`.02`. §8.4 / `PQ-129` holds the earlier campaign; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
@@ -1862,8 +1866,8 @@ Also true:
 - Corsair still shares the pirate Rig. Arclight has no route. Tanker and inspection cutter are held.
   **Yard tug is live.** Faction kits exist; nothing reads them. Dock / hulk / debris remaster is
   stuck at live presentation. Station fallback is still a fat cylinder plus hoops.
-- Distant cheap LODs exist for every player hull and are never switched in. That is a later
-  performance unlock, not this packet. Zoom-out does not swap hulls today. Do not show a box
+- Distant cheap LODs exist for every player hull and are never switched in. That is Wave F
+  below, not Waves A–E. Zoom-out does not swap hulls today. Do not show a box
   or modular kit while a body decodes. Garnish hide at a speck is the ceiling — not a cheaper
   species of ship, not an impostor. See the dynamic-graphics investigation.
 - `needed-assets.md` is stale (still calls Hitch / Pelican / Wasp blocked). Do not dispatch from it.
@@ -1924,9 +1928,29 @@ Reuse before authoring. A variant counts.
 | **`PQ-193.11`** | The four Helios lane marks wired 2026-09-09 hold at chase camera. | No cube foot/deck on tally, claim, ash pin, whistle. |
 | **`PQ-193.12`** | The fat-cylinder station fallback never appears on the default route. | Every station the player can reach loads its authored body. |
 
+### Wave F — every stand-in and every distant body is the same ship (owner, 2026-09-24) — PLANNED
+
+**Owner, 2026-09-24:** "things will load but they'll just be LOD so it'll load some box — not a
+weaker ship or the same ship at fewer polygons, literally a box — and it'll turn into a ship and back
+into a box." The same day's fix made the world stop *thrashing* (an entity the player flew away from
+and came back to was never re-admitted: no collider, no glass membership, so its mesh was evicted,
+rebuilt, and passed through the stand-in again — `test/activity-runtime.test.mjs` "rediscovers a
+station and a rock", `npm run probe:frame-solid`). What remains is the stand-in itself: whenever a
+body is legitimately still decoding, or a far LOD file is the right choice, what the player sees
+must read as that ship. This is a large asset + integration job; cut it into a packet before
+dispatch. Law: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md)
+(no box, no cheaper species, no blank lock).
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **F1 — inventory** | One table of every stand-in the live route can draw: the authored-admission resolving marker (`visualOverrides.js`), `partsLibrary.js` procedural fallbacks, modular-kit identities, station fat-cylinder fallback, and each whole-ship `_lod1`/`_lod2` file (Colossus, Ironback and Leviathan LOD1/LOD2 carry the identical triangle count — ~4–5k against a ~43–57k LOD0 — so LOD2 is not a distinct step). | Each row names where it draws, how often on a 10-minute default flight (`probe:frame-solid` offender log), and whether it reads as its ship at chase and 330 WU zoom-out. |
+| **F2 — honest LOD bodies** | Every `_lod1`/`_lod2` file is the same silhouette, paint and damage language as its LOD0 at the distance it serves; equal-count LOD1/LOD2 pairs get a real LOD1 step between. Blender material-truth preflight applies. | Matched stills at the switch distance: a stranger cannot name which is the LOD. Only then may a family join the live LOD allowlist. |
+| **F3 — no box while decoding** | The pending-body stand-in is a low-cost version of *that* hull (its own LOD2, preloaded with the sector), not a generic marker or kit. | On a cold New Game, no on-screen hull ever shows a shape that is not its own ship; `probe:frame-solid` regressions/rootSwaps stay 0. |
+| **F4 — distance swap live** | Whole-ship LOD1/LOD2 residency switching turns on for families that closed F2, with hysteresis and no swap while on the chase frame's hero band. | 330 WU zoom-out battle: CPU/GPU frame time down, zero visible identity changes, zero blink/root-swap counters. |
+
 ### Later — not this packet
 
-- Distant cheap LODs (LOD1/2 residency selector): performance, not broken.
+- Distant cheap LODs: now Wave F above.
 - Massline liner independent G7: `PQ-049.05`.
 - Hitch remaster: frozen.
 - New hull commissions while a shelf body can fill the slot.
@@ -3917,6 +3941,17 @@ A local row changes code only to move a red number. Picture stays.
 Forbidden as a performance row: bloom off, shader-prewarm retries, a low preset, a Rust port, a
 WebGPU swap, a sim worker before D1 and D4 are green.
 
+**vm-drop import ledger (2026-09-24).** Imported to master: #166 zero-copy render-package digest,
+#167 single-copy embedded KTX2, #168 in-place GLB body + its after-#167 companion, #169 readiness
+polling without `isProgram`, #170 retail vendored-GLTFLoader alias. Still packaged and pending in
+`design/program/vm-drop/*/patches/`: the quiet-latch series #31–#165 (~135 folders; each folder's
+`IMPORT.md` gives apply order and `DONE.md` is the gate). Twelve unvetted VM scratch candidates the
+VM never packaged were archived to `design/program/vm-work-archived/` when `vm-work/*` was deleted.
+Owner calls open: (a) whether retail aliases the whole vendored `three` so the two dev-only
+`three.module.js` SpaceFace fixes (empty shadow-sampler depth texture; destroyed-program readiness)
+reach players — the #170 alias map would carry it; (b) the Rapier call-frequency experiment the VM
+shelved at ~1.1–1.2×. `origin/vm-drop` is permanent; `vm-work/*` scratch is gone.
+
 ### 22.7 Wave E — the rest of a ship
 
 A studio does not leave input, language, accessibility, or the front door unscheduled. These close
@@ -4353,6 +4388,11 @@ A starter-tool limit. A second renderer. Those are refusals, not deferred rows.
 This is the work that needs taste, world knowledge, or a system the planner should not finish.
 Each campaign is a feeling. The implementation is yours. A better foundation than this section is
 the success, not a miss.
+
+**Since 2026-09-24 these campaigns live inside the §27 lanes** — each lane brief names which
+campaigns it absorbs, and the campaign text below remains the detailed wording for that part of
+the lane. A lane session takes the campaign's spirit over its exact letter: the feeling is the
+assignment; the lane's open-ended review is how you find the rest of it.
 
 The game already simulates more than the session shows. Convergence campaigns make that simulation
 feel like one finished game. Creative campaigns invent a new situation out of bodies and verbs
@@ -4924,7 +4964,7 @@ rank out-shouts a higher one fails, whatever the numbers say.
 | **7 · Ship the demo** | `PQ-033.02`, `PQ-033.03`, §22 E1, E8, `PQ-167` | Electron demo package, photo-mode store shots, a replay-cut trailer |
 
 Every phase ends with a **stranger pass**: the path played at the shipping camera and the frames
-opened and judged against the order above. Progress lines live in the program file's §7.
+opened and judged against the order above. **What is still open, in order, is the program file's §7** (refreshed 2026-09-24: the fifteen-minute path in one clean pass, the quiet-host load reading, the belt tail, the D24 leak, and every Phase 7 ship-the-demo item); progress lines live in its §8.
 
 ## 26. Use what we already have
 
@@ -4955,3 +4995,29 @@ Orrery. The next work is already ordered, and it is not a new art direction:
 Corsair, Arclight, the Span and Wasp faction kits, and the tanker are the variety we already paid
 for. They wait until that flyby is one world. Shelf bodies that are only a repaint of a live hull
 do not get a second production pass. Captures, tool caches, and old checkouts are not the game.
+
+## 27. The finish in lanes — ADMITTED 2026-09-24
+
+Owner direction, 2026-09-24: batch the granular plans into a few logical lanes, with open-ended
+instructions — the agent owns an *area*, lands the named work still open there, and reviews and
+tunes that area to the A-list bar while already working in it. **The game is finished when the
+lanes are finished** — features, polish and fun are one lane, not three passes. The full program:
+[`design/program/FINISH_LANES.md`](./design/program/FINISH_LANES.md).
+
+| Lane | The area | Absorbs |
+|---|---|---|
+| **THE MACHINE** | boots fast, holds 60 with the picture on, never hitches or leaks, nothing pops | PQ-129, PQ-204, §22 Wave D, vm-drop imports, §8.4 |
+| **THE HAND** | the ship answers the hand — flight, rope, fields, verbs, input | PQ-135–137/139/141/146/147/163/189, PQ-026–031, §22 feel rows, CV-HAND/CV-THROW |
+| **THE FIGHT** | swarm is the showcase — waves, arenas, the draft, the kill you can see | PQ-133/140/160/169/174/175/205/206, §22 combat rows, CV-AMMO, §16 |
+| **THE WORLD** | you arrived in the middle of their day — sectors, jobs, consequences | PQ-138/143/145/148–151/153/154/171, §22 world rows, CV-DAY/CV-SO/CV-QUIET + all CR-*, §24 |
+| **THE LONG GAME** | the fit, the market, the story — decisions an hour, a spine to an ending | PQ-032/142/152/155/156/170/172/176–178/195, §22 economy rows, §17 |
+| **THE PICTURE** | one game on the glass — hulls, rocks, skies, residency, the camera | PQ-049/050/134/136/159/161/190/193, §22 art rows, CV-GLASS/CV-PAINT/CV-MOTION, §13B/§13D |
+| **THE INSTRUMENT** | every 2D surface is the same instrument of light — ORRERY | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
+| **THE EAR** | a signature by ear — verb voices, the mix, room tone | PQ-158, §22 audio rows, CV-EAR |
+| **THE RELEASE** | the demo path and the package — title to end card to store | PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7 |
+
+A finishing session takes a lane, not a leaf: play the area first, work the absorbed checklist in
+any order, and fix whatever else in the area falls short — the open-ended review is part of the
+lane, not a phase after it. Acceptance batches at the area level. The queue still owns unit
+truth; grunt-sized sittings still take `--next` or an INFERENCE line; §22 and §23 remain the
+lanes' detailed wording. Lane order, briefs, gates and the coverage map live in the program file.

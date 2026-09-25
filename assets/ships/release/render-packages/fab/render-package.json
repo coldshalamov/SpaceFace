@@ -1717,8 +1717,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1749,7 +1750,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1774,7 +1775,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1799,7 +1800,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 21,
@@ -2244,7 +2245,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_fab.glb"
   },
-  "runtimeHash": "65fdcd8037c73b9a99ff343790347550c1d4f282731f78fc055bc0ff438908f2",
+  "runtimeHash": "071e4f3473033252730ea79089345bea3e17a92e4b0ceb06904cf53b648fffd3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

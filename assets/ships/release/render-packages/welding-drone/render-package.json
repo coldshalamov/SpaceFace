@@ -1053,9 +1053,10 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 9,
+      "hull": 8,
       "mechanical": 1,
-      "service": 1
+      "service": 1,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -1101,7 +1102,7 @@
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1418,7 +1419,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "6410d9c368fc4713f276cf493b35bc65ebe30a53e0c46818237eb6aef2bcec45",
+  "runtimeHash": "ecc1137785ef9e8c7834bd0c271eca4fcc9848ea09919f59d3ba09bec02f831c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

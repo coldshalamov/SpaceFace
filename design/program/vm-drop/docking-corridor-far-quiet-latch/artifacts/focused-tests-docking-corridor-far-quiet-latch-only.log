@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: far quiet latch engages beyond approach band
+ok 1 - far quiet latch engages beyond approach band
+  ---
+  duration_ms: 5.620113
+  ...
+# Subtest: near station prevents latch
+ok 2 - near station prevents latch
+  ---
+  duration_ms: 1.343574
+  ...
+# Subtest: dirty-wake on player move beyond wake disc
+ok 3 - dirty-wake on player move beyond wake disc
+  ---
+  duration_ms: 1.134676
+  ...
+# Subtest: dirty-wake on membership bump
+ok 4 - dirty-wake on membership bump
+  ---
+  duration_ms: 2.299853
+  ...
+# Subtest: bench toggle off forces full walk
+ok 5 - bench toggle off forces full walk
+  ---
+  duration_ms: 0.679631
+  ...
+# Subtest: capture/approach inside band never latches
+ok 6 - capture/approach inside band never latches
+  ---
+  duration_ms: 0.524863
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 170.831069

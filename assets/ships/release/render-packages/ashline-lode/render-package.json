@@ -3714,8 +3714,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 11,
-      "mechanical": 12
+      "hull": 4,
+      "mechanical": 12,
+      "signal": 7
     },
     "materialProfiles": [
       {
@@ -3751,7 +3752,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3761,7 +3762,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3781,7 +3782,7 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3791,7 +3792,7 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3801,7 +3802,7 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3826,7 +3827,7 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3836,7 +3837,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4740,7 +4741,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode.glb"
   },
-  "runtimeHash": "f53834de6c6486e014b7269f5b9d9b6f275e2af756ae3217dacf01d95e9db99c",
+  "runtimeHash": "12f722f5452512b29e8e814f0fd5e8ed3798179fe4ba4f20c836dc8defd2b4de",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

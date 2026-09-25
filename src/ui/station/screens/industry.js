@@ -17,6 +17,8 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 import { createChainBeam } from '../../orrery/chainBeam.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
+import { COMMODITY_GLYPHS } from '../../views/commodityGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
@@ -27,6 +29,12 @@ for (const m of MODULES) NAME.set('module:' + m.id, m.name);
 for (const w of WEAPONS) NAME.set('weapon:' + w.id, w.name);
 for (const s of SHIPS) NAME.set('ship:' + s.id, s.name);
 const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+const CMDTY_CAT = new Map(COMMODITIES.map((c) => [c.id, c.category]));
+/** The pictogram for a thing on the chain: a commodity by its category, a module as a component. */
+function glyphFor(id, kind) {
+  const cat = CMDTY_CAT.get(id) || (kind === 'module' ? 'component' : 'refined');
+  return COMMODITY_GLYPHS[cat] || COMMODITY_GLYPHS.component || '';
+}
 const STATION_TYPE = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
 
@@ -98,6 +106,10 @@ export function createIndustryScreen(ctx) {
   const stopDecrypt = [];
 
   function renderList(state) {
+    renderListBody(state);
+    syncScrollExtent(listEl);
+  }
+  function renderListBody(state) {
     const stn = stationType(ctx);
     listEl.innerHTML =
       `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
@@ -109,11 +121,13 @@ export function createIndustryScreen(ctx) {
             `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp) => {
               const r = industryReadiness(bp, state, stn);
               const selected = bp.id === selectedId;
-              const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
+              const outputName = niceName(bp.outputs.id, bp.outputs.kind);
+              const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
+              const qtyHtml = bp.outputs.qty > 1 ? `<span class="sx-ind-row__qty">×${bp.outputs.qty}</span>` : '';
               return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
-                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(output)}</span>` +
+                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}</span>` +
                   `<span class="k-row__sub sx-ind-row__tier">T${bp.tier}<span class="sx-ind-row__why"> · ${escapeHtml(shortBlockLabel(bp, r))}</span></span>` +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
@@ -159,12 +173,14 @@ export function createIndustryScreen(ctx) {
     const statusClass = queue ? 'k-signal' : (r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad'));
     const status = queue
       ? `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining.`
-      : `${escapeHtml(r.label)}. One build slot, idle.`;
+      : (r.state === 'ready' ? 'One build slot, idle.' : `${escapeHtml(r.label)}.`);
     const canBuild = r.state === 'ready' && !queue;
+    // the reason lives on the instrument and on the ladder; the sentence stays only for a running line or a note
+    const showStatus = !!queue || notes.length > 0;
 
     stageEl.innerHTML =
       `<div class="sx-fab">` +
-        `<p class="k-caps sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</p>` +
+        `<p class="k-caps sx-fab-head__cat">Tier ${bp.tier} blueprint</p>` +
         `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
         `<div class="sx-fab-heroes">` +
@@ -174,18 +190,18 @@ export function createIndustryScreen(ctx) {
         `<p class="k-caps sx-fab-col-k">Needs</p>` +
         (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
-        `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
+        (showStatus ? `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
-            `${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : escapeHtml(shortBlockLabel(bp, r)))}` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(r.label)}"`}>` +
+            `${queue ? 'Line occupied' : 'Fabricate'}` +
           `</button>` +
         `</li></ul>` +
       `</div>`;
-    composeStage(bp, it, r, canBuild);
+    composeStage(bp, it, r, canBuild, queue, progress);
   }
 
   /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
-  function composeStage(bp, it, r, canBuild) {
+  function composeStage(bp, it, r, canBuild, queue = null, progress = 0) {
     if (chain) { chain.dispose(); chain = null; }
     const fab = stageEl.querySelector('.sx-fab');
     if (!fab) return;
@@ -194,13 +210,31 @@ export function createIndustryScreen(ctx) {
     host.setAttribute('aria-hidden', 'true');
     const heroes = fab.querySelector('.sx-fab-heroes');
     if (heroes && heroes.parentNode) heroes.parentNode.insertBefore(host, heroes); else fab.appendChild(host);
-    chain = createChainBeam(host);
+    // the one verb stands on the product's axis: the chain reports its geometry and the key follows
+    const foot = fab.querySelector('.sx-fab-foot');
+    chain = createChainBeam(host, { onLayout: (g) => {
+      if (!foot) return;
+      const fr = fab.getBoundingClientRect(); const hr = host.getBoundingClientRect();
+      fab.style.setProperty('--fab-foot-x', `${Math.round(hr.left - fr.left + g.xFoot)}px`);
+      fab.style.setProperty('--fab-foot-y', `${Math.round(hr.top - fr.top + g.yFoot)}px`);
+    } });
     chain.set({
-      inputs: Object.keys(bp.inputs || {}).map((id) => ({ nameHtml: escapeHtml(matName(id)), have: Math.floor(it[id] || 0), need: bp.inputs[id] })),
+      inputs: Object.keys(bp.inputs || {}).map((id) => {
+        const have = Math.floor(it[id] || 0);
+        const need = bp.inputs[id];
+        // a short input carries its own way out: the market, in one word under the count
+        const verbHtml = have < need
+          ? `<button type="button" ${stationControlAttrs('source-market')} class="orr-chain__source" data-source-cmdty="${escapeHtml(id)}">Source in market</button>`
+          : '';
+        return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material') };
+      }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
-      output: { qty: bp.outputs.qty || 1, unit: `${niceName(bp.outputs.id, bp.outputs.kind)} · per run` },
+      output: { qty: bp.outputs.qty || 1, unit: `${niceName(bp.outputs.id, bp.outputs.kind)} · per run`, glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
+      // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
+      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)) } : null,
+      progress: queue ? progress : null,
     });
     const build = fab.querySelector('.sx-fab-build[data-build]');
     if (build) dressLampKey(build);

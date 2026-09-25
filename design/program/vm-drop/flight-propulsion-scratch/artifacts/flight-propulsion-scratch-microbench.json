@@ -1,0 +1,9 @@
+{
+  "coolBeforeMs": 1322.7946040000002,
+  "coolAfterMs": 7.596492000000126,
+  "coolSpeedup": 174.13229738147268,
+  "bodyBeforeMs": 17.115549999999985,
+  "bodyAfterMs": 1.6019979999998668,
+  "bodySpeedup": 10.68387725827461,
+  "iters": 400000
+}

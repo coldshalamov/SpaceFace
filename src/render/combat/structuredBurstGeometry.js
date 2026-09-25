@@ -36,7 +36,7 @@ export function createStructuredBurstGeometry(kind = 'glow') {
       const theta = kind === 'glow' ? [0,.47,-.60,1.34,-1.28,2.16,-2.48,2.84,-.16][k] : (k - 1) * 0.37;
       const length = kind === 'glow' ? [0.54,0.41,0.47,0.31,0.36,0.25,0.22,0.18,0.38][k] : [0.78, 1, 0.69][k];
       const width = kind === 'glow' ? [.12,.070,.087,.066,.074,.054,.045,.063,.070][k] : [0.25, 0.38, 0.22][k];
-      sheet(10, 6, k * 0.61803399 % 1, (u, v) => {
+      sheet(20, 8, k * 0.61803399 % 1, (u, v) => {
         const taper = kind === 'glow'
           ? Math.pow(1-u,1.15)*(0.54+0.46*Math.sin(u*Math.PI))
           : Math.pow(Math.sin(Math.PI * Math.min(0.999, u) * 0.94), 0.65) * (1 - 0.76 * u);
@@ -54,7 +54,7 @@ export function createStructuredBurstGeometry(kind = 'glow') {
     const starts = kind === 'ring' ? [-0.24, 2.56, 4.69] : [-0.72];
     const radius = kind === 'ring' ? 0.48 : 1;
     for (let k = 0; k < count; k++) {
-      sheet(18, 6, 0.17 + k * 0.29, (u, v) => {
+      sheet(28, 8, 0.17 + k * 0.29, (u, v) => {
         const a = starts[k] + u * sweeps[k];
         const taper = Math.pow(Math.max(0, Math.sin(Math.PI * u)), 0.6);
         const corrugation = 1 + 0.042 * Math.sin(u * Math.PI * 4 + k * 1.3);

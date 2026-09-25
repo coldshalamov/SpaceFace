@@ -1,0 +1,129 @@
+{
+  "label": "camera-clearance-floor-retain",
+  "stations": 6,
+  "capitalRocks": 0,
+  "fieldRocks": 40,
+  "iters": 200000,
+  "oracle": {
+    "agree": true,
+    "sampleOff": null,
+    "sampleOn": null,
+    "epochInvalidates": true,
+    "structural": 6
+  },
+  "settledRuns": [
+    {
+      "beforeMs": 27.316,
+      "afterMs": 15.877,
+      "speedup": 1.72,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 31.251,
+      "afterMs": 17.984,
+      "speedup": 1.738,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 32.638,
+      "afterMs": 17.216,
+      "speedup": 1.896,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 34.76,
+      "afterMs": 16.793,
+      "speedup": 2.07,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 36.021,
+      "afterMs": 16.886,
+      "speedup": 2.133,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 30.82,
+      "afterMs": 13.06,
+      "speedup": 2.36,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    },
+    {
+      "beforeMs": 47.843,
+      "afterMs": 13.703,
+      "speedup": 3.491,
+      "beforeSink": 0,
+      "afterSink": 0,
+      "sample": null,
+      "structural": 6
+    }
+  ],
+  "movingRuns": [
+    {
+      "beforeMs": 44.877,
+      "afterMs": 58.045,
+      "speedup": 0.773
+    },
+    {
+      "beforeMs": 42.933,
+      "afterMs": 52.367,
+      "speedup": 0.82
+    },
+    {
+      "beforeMs": 44.538,
+      "afterMs": 53.377,
+      "speedup": 0.834
+    },
+    {
+      "beforeMs": 44.395,
+      "afterMs": 52.203,
+      "speedup": 0.85
+    },
+    {
+      "beforeMs": 47.345,
+      "afterMs": 53.562,
+      "speedup": 0.884
+    },
+    {
+      "beforeMs": 48.772,
+      "afterMs": 54.547,
+      "speedup": 0.894
+    },
+    {
+      "beforeMs": 52.728,
+      "afterMs": 53.486,
+      "speedup": 0.986
+    }
+  ],
+  "primary": {
+    "beforeMs": 34.76,
+    "afterMs": 16.793,
+    "speedup": 2.07,
+    "beforeSink": 0,
+    "afterSink": 0,
+    "sample": null,
+    "structural": 6
+  },
+  "minSpeedup": 1.72,
+  "medianSpeedup": 2.07,
+  "maxSpeedup": 3.491,
+  "movingMedianSpeedup": 0.85
+}

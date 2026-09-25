@@ -53,6 +53,7 @@ import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js'
 import { createCounter, decrypt } from '../../orrery/text.js';
 import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { attachHoldVerb } from '../../kit/holdVerb.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -572,10 +573,11 @@ export function createContractsScreen(ctx) {
     // tradeoff stays in the accessible name.
     const optionHtml = ({ decision, option }, sub, jobTitle = '') => {
       const repeats = sub && jobTitle && String(option.label || '').trim().toLowerCase() === String(jobTitle).trim().toLowerCase();
-      const facts = sub ? String(option.tradeoff || '').split(' · ').slice(0, 3).join(' · ') : String(option.tradeoff || '');
+      // the row already shows the pay: the sub-line says only what dispatching changes
+      const facts = sub ? String(option.tradeoff || '').split(' · ').filter((c) => !/^pays\b/i.test(c.trim())).slice(0, 3).join(' · ') : String(option.tradeoff || '');
       return (
         `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt${sub ? ' sx-decision__opt--sub' : ''}" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}" aria-label="${escapeHtml(`${option.label}. ${option.tradeoff}`)}">` +
-          `<span class="k-row__name">${repeats ? 'Dispatch' : escapeHtml(option.label)}</span>` +
+          `<span class="k-row__name">${repeats ? 'Dispatch this job' : escapeHtml(option.label)}</span>` +
           `<span class="k-row__sub">${escapeHtml(facts)}</span>` +
         `</button>`
       );
@@ -624,6 +626,7 @@ export function createContractsScreen(ctx) {
       }).join('') +
       `</ul>`;
     dressBoard();
+    syncScrollExtent(boardEl);
     if (arriving && !reducedMotion()) {
       const rows = boardEl.querySelectorAll('.sx-ct-row');
       stagger(rows, { base: 60, step: 34 });

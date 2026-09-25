@@ -1,0 +1,33 @@
+{
+  "label": "stunt-flight-history-quiet-skip",
+  "nShips": 120,
+  "nDynNear": 40,
+  "ticks": 8000,
+  "isolatedPairs": 7,
+  "beforeMedMs": 77.099,
+  "afterMedMs": 16.56,
+  "minSpeedup": 3.909,
+  "medSpeedup": 4.656,
+  "maxSpeedup": 5.074,
+  "beforeRuns": [
+    62.38,
+    75.23,
+    75.79,
+    77.1,
+    84.34,
+    87.26,
+    93.95
+  ],
+  "afterRuns": [
+    15.96,
+    16.18,
+    16.3,
+    16.56,
+    16.62,
+    17.77,
+    22.7
+  ],
+  "primary": "~4.66×",
+  "ship_bar": 1.5,
+  "clears_bar": true
+}

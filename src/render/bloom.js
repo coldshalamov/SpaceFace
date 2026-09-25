@@ -375,22 +375,23 @@ let pipelineReadinessBatch = null;
 
 // gl.isProgram() is a synchronous round trip to the GPU process. Asked for every pending program on
 // every readiness poll, it was ~9 s of main thread during New Game loading (2026-09-13 launch profile,
-// warm caches); rate-limited per waiter it was still 2.5 s, because dozens of waits were live at once.
-// COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, so the hot loop keeps it.
-// Handle validity comes from the context-loss event, three's destroy(), and one native recheck budget
-// that every waiter on a context shares: at most one isProgram() per gap, never one per program per poll.
-// The gap is 2 s, not 250 ms: each isProgram() waits for the GPU process to drain its queue, and on the
-// owner's iGPU that measured 10-28 ms per call — four calls a second, 37 ms/s of main-thread stall in
-// flight whenever any compile was pending (2026-09-22 profile). The two real invalidation paths are
-// already caught without it; this recheck only bounds a pathological silent handle loss.
-const PROGRAM_HANDLE_RECHECK_DELAY_MS = 1000;
-const PROGRAM_HANDLE_RECHECK_GAP_MS = 2000;
+// warm caches); rate-limited per waiter it was still 2.5 s, because dozens of waits were live at once;
+// with one shared recheck per 2 s it still cost 10-28 ms per call on the owner's iGPU (37 ms/s in
+// flight whenever a compile was pending, 2026-09-22 profile). Each call waits for the GPU process to
+// drain EVERY queued link, so on the quiet VM a single in-flight recheck blocked 0.1-3.4 s behind the
+// streamed-admission link queue (#169 profiles) while the drawables it guarded were already hidden.
+// COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, and it already reports a
+// handle this context no longer owns: WebGL answers null (not false) for it, so a dead handle is
+// seen on the very next non-blocking poll. Handle validity therefore comes from the context-loss
+// event, three's destroy(), and that null — never from a native round trip. A handle the driver
+// silently forgets while WebGL still vouches for it (never observed) is bounded by the waits' own
+// 20 s readiness deadline.
 const programHandleContexts = new WeakMap();
 
 function programHandleContext(gl) {
   let record = programHandleContexts.get(gl);
   if (!record) {
-    record = { generation: 0, nextNativeCheckAt: Date.now() + PROGRAM_HANDLE_RECHECK_DELAY_MS };
+    record = { generation: 0 };
     programHandleContexts.set(gl, record);
     const canvas = gl.canvas;
     if (canvas && typeof canvas.addEventListener === 'function') {
@@ -428,19 +429,24 @@ export function programWrapperDead(gl, program) {
 
 /**
  * A pending program that can no longer be queried: its handle was released (three's
- * WebGLProgram.destroy clears it), the context was lost since `generation`, or the driver no longer
- * recognises the handle when this context's shared native recheck is due.
+ * WebGLProgram.destroy clears it) or the context was lost since `generation`. Both are known
+ * without a native call; a handle WebGL itself rejects surfaces as isReady() === null
+ * (programReadiness below).
  */
 function programHandleInvalid(gl, program, generation) {
   if (!program.program) return true;
   if (!gl || typeof gl !== 'object') return false;
-  const record = programHandleContext(gl);
-  if (record.generation !== generation) return true;
-  if (typeof gl.isProgram !== 'function') return false;
-  const now = Date.now();
-  if (now < record.nextNativeCheckAt) return false;
-  record.nextNativeCheckAt = now + PROGRAM_HANDLE_RECHECK_GAP_MS;
-  return !gl.isProgram(program.program);
+  return programHandleContext(gl).generation !== generation;
+}
+
+// 'ready' | 'pending' | 'invalid'. three's WebGLProgram.isReady() returns getProgramParameter(
+// COMPLETION_STATUS_KHR): a boolean for a handle this context owns, null (with GL_INVALID_VALUE /
+// GL_INVALID_OPERATION) for one it does not — and it caches that null, so it stays null.
+function programReadiness(program) {
+  if (!program || typeof program.isReady !== 'function') return 'pending';
+  const ready = program.isReady();
+  if (ready === null) return 'invalid';
+  return ready ? 'ready' : 'pending';
 }
 
 export function beginScenePipelineReadinessBatch(renderer = null) {
@@ -500,9 +506,15 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
             });
             return { contextLost: true, programs: 0 };
           }
-          if (program && typeof program.isReady === 'function' && program.isReady()) {
-            batch.programs.delete(program);
+          const readiness = programReadiness(program);
+          if (readiness === 'invalid') {
+            settleAll({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return { contextLost: true, programs: 0 };
           }
+          if (readiness === 'ready') batch.programs.delete(program);
         }
         if (batch.programs.size === 0) break;
         if (now() - started > timeoutMs) break;
@@ -650,7 +662,15 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, o
             });
             return;
           }
-          if (program.isReady()) programs.delete(program);
+          const readiness = programReadiness(program);
+          if (readiness === 'invalid') {
+            finish({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return;
+          }
+          if (readiness === 'ready') programs.delete(program);
         }
         if (programs.size === 0) {
           finish({ contextLost: false });

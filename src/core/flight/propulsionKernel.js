@@ -79,6 +79,12 @@ const TRAVEL_RAMP_FULL_S = 9;
 const TRAVEL_RAMP_TAPER_FLOOR = 0.12;
 /** Exponential decay constant for the disengaged cap record, not the ship's velocity. */
 const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
+/**
+ * D8 disrupted-beacon spend: the share of reverse authority the governor may spend against
+ * travel overspeed while the lane disruption holds. Bounded well below full brake authority so
+ * the slowdown reads as a field dragging on the drive, never as a slam (D8: "confiscation-free").
+ */
+const DISRUPTION_SPEND_AUTHORITY_FRACTION = 0.35;
 
 /**
  * Earned-speed rule (design/VISION.md: "thrusters have a cap, physics-earned speed does not get
@@ -226,6 +232,16 @@ function normalizeTravelDrive(raw) {
     ceiling: positive(d.ceiling, 0),
     rampRate: positive(d.rampRate, 0),
     rampMult: positive(d.rampMult, 1),
+    // A dead beacon's disruption field is an authored environmental force (D8): the kernel
+    // needs to know the drive came down for a world reason — the live level flag, or a break
+    // reason that was not the pilot's own hand — so the falling ceiling can spend velocity for
+    // as long as the cap record stays elevated (see the governor). Pilot-caused breaks
+    // ('pilot'/'brake'/'cancelled') keep the settle-to-rest coast.
+    disrupted: d.disrupted === true
+      || (d.breakReason != null
+        && d.breakReason !== 'pilot'
+        && d.breakReason !== 'brake'
+        && d.breakReason !== 'cancelled'),
   };
 }
 
@@ -255,7 +271,7 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
     const nominal = drive.rampRate > 0 ? drive.rampRate : ceiling / TRAVEL_RAMP_FULL_S;
     const rate = nominal * drive.rampMult * (TRAVEL_RAMP_TAPER_FLOOR + (1 - TRAVEL_RAMP_TAPER_FLOOR) * remaining);
     const cap = Math.min(ceiling, from + rate * step);
-    return { state: drive.state, cap, ceiling, ramping: cap < ceiling - EPS, physicsEarnedMomentum: false };
+    return { state: drive.state, cap, ceiling, ramping: cap < ceiling - EPS, physicsEarnedMomentum: false, disrupted: drive.disrupted === true };
   }
 
   // Off / Spooling / Cooldown: no cap contribution is being added. The old cap record fades,
@@ -263,7 +279,7 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
   // window the latch owner times, not a partial burn.
   const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
   const cap = decayed > baseCap ? decayed : 0;
-  return { state: drive.state, cap, ceiling, ramping: false, physicsEarnedMomentum: cap > 0 };
+  return { state: drive.state, cap, ceiling, ramping: false, physicsEarnedMomentum: cap > 0, disrupted: drive.disrupted === true };
 }
 
 // Owner-selected arcade mode: finite-rate vectoring, constant combat-speed command. Normal
@@ -369,7 +385,6 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
 // Mutates manualLocal.forward in place and returns telemetry (null when the governor has no
 // opinion this tick).
 function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt) {
-  void limits;
   if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
@@ -428,12 +443,24 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   // design/VISION.md forbids. RC-4 (`boostNeverBrakes`) had lifted the floor to coast while
   // boosting only; the rule is now unconditional. Spending forward-travel speed above the cap is
   // the pilot brake's job (reactionAssistAcceleration keeps full brake authority).
-  const brakeFloor = 0;
+  //
+  // D8 exception — the disrupted beacon. A dead lane segment is an authored environmental
+  // force, and the coast law itself reserves that case: earned velocity coasts "until the pilot
+  // brakes or an actual environmental force acts on it". While the drive block carries
+  // `disrupted`, the falling travel ceiling is that force: the servo floors below coast at a
+  // BOUNDED share of reverse authority and spends the excess toward the ceiling at the same
+  // ~6 s pace the disengaged ramp decays — confiscation-free (no single second erases most of
+  // the speed), and inert whenever the drive is off (burn is null, floor stays 0).
+  const disruptedBurn = !!(burn && burn.disrupted);
+  const brakeFloor = disruptedBurn
+    ? -positive(limits && limits.reverse, 0) * DISRUPTION_SPEND_AUTHORITY_FRACTION
+    : 0;
+  const spendResponseS = disruptedBurn ? TRAVEL_DISENGAGE_DECAY_TAU_S : responseS;
   // The axial servo only ever reduces POSITIVE forward. Reverse/brake stays the reverse path even
   // if strafe caused the governor to engage.
   let engaged = false;
   if (manualLocal.forward > EPS) {
-    const governed = clamp(err / responseS, brakeFloor, manualLocal.forward);
+    const governed = clamp(err / spendResponseS, brakeFloor, manualLocal.forward);
     engaged = governed < manualLocal.forward - EPS;
     manualLocal.forward = governed;
   }
@@ -458,6 +485,8 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
       ramping: burn.ramping,
       // Disengage fades the thrust ceiling while earned velocity keeps coasting.
       earned: burn.physicsEarnedMomentum,
+      // D8: a disrupted beacon spends overspeed toward the falling ceiling (environmental force).
+      disrupted: disruptedBurn,
     };
   }
   return telemetry;

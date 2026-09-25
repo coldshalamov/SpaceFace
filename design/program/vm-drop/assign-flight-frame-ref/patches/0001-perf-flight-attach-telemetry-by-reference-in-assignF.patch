@@ -1,0 +1,39 @@
+From 397d70741076cba87876354a216132026404a405 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:57:53 -0400
+Subject: [PATCH] perf(flight): attach telemetry by reference in
+ assignFlightFrame
+
+Object.assign into a retained _flightFrame copied ~15 telemetry keys every
+craft step and left stale optional keys when the kernel omitted them.
+Telemetry is fresh from makeResult; attach it and stamp mode/driveId/family.
+---
+ src/systems/flightV3.js | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/systems/flightV3.js b/src/systems/flightV3.js
+index c769def98..084e92bf1 100644
+--- a/src/systems/flightV3.js
++++ b/src/systems/flightV3.js
+@@ -1245,11 +1245,16 @@ function assignPropulsionRuntime(entity, runtime, boost) {
+ }
+ 
+ function assignFlightFrame(entity, result, mode) {
+-  const frame = entity._flightFrame || (entity._flightFrame = {});
+-  Object.assign(frame, result.telemetry);
++  // Attach kernel telemetry by reference. Object.assign into a retained frame copied ~15 keys
++  // every craft step and left stale optional keys (travelDrive/vectoring) when the kernel omitted
++  // them. Telemetry is freshly allocated in makeResult and discarded after this call; the player
++  // path mutates the same object for autopilot/orbitAssist. Consumers re-read entity._flightFrame
++  // each frame — they do not retain identity across ticks.
++  const frame = result.telemetry || {};
+   frame.mode = mode;
+   frame.driveId = result.driveId;
+   frame.family = result.family;
++  entity._flightFrame = frame;
+   return frame;
+ }
+ 
+-- 
+2.47.3
+

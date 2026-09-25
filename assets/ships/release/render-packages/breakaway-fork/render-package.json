@@ -690,7 +690,8 @@
     ],
     "materialProfileRoles": {
       "ceramic": 1,
-      "hull": 5
+      "hull": 4,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -716,7 +717,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -887,7 +888,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_breakaway_fork.glb"
   },
-  "runtimeHash": "d4b8a06cafe4e03371a5013e546c59374161ad465b8c4be8f9fcada0ec3a4e15",
+  "runtimeHash": "833030c3e3b96db6dc45fdb1f5e9635198ed882487d55b1ed211454de8562fc2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

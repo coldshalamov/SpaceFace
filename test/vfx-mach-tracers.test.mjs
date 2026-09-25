@@ -184,6 +184,11 @@ test('grazing kinetic hits skip; head-on hits dig in', () => {
     const host = Object.create(vfx);
     host._scene = {};
     host._burst = 1;
+    // The live init owns these scratch colours; the hit also emits ordinary armour spall.
+    // Keep that path active while this fixture observes the grazing-specific cone/leader.
+    host._c0 = new THREE.Color();
+    host._c1 = new THREE.Color();
+    host._spawnParticle = () => {};
     host._posFrom = () => ({ x: 10, z: 20 });
     host._ent = () => ({ factionId: 'test', shield });
     host._shieldColor = () => '#66ccff';

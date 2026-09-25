@@ -53,6 +53,24 @@ function hypot2(ax, az, bx, bz) {
   return dx * dx + dz * dz;
 }
 
+/**
+ * The footprint an entity can occupy in the player's frame: the largest of its
+ * collision radius and any authored visual envelopes. Stations draw to
+ * data.dockRadius (60-90) while entity.radius is the small collision proxy
+ * (26-42); glass/runway and discovery tests use this or a big hull whose centre
+ * is off-screen is culled while its body is still on it.
+ */
+export function entityPresenceRadius(entity) {
+  const data = entity && entity.data || {};
+  return Math.max(
+    0,
+    finite(entity && entity.radius),
+    finite(data.visualRadius),
+    finite(data.placeRadius),
+    entity && entity.type === 'station' ? finite(data.dockRadius) : 0,
+  );
+}
+
 export function physicsReachWu(options = {}) {
   const glassDiag = Math.max(0, finite(options.glassDiagonalWu));
   const speed = Math.max(0, finite(options.maxRelativeSpeedWu));

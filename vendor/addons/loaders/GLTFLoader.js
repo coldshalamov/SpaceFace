@@ -1611,7 +1611,9 @@ class GLTFMeshoptCompression {
 
 			const extensionDef = bufferView.extensions[ this.name ];
 
-			const buffer = this.parser.getDependency( 'buffer', extensionDef.buffer );
+			// SpaceFace: a compressed stream inside the GLB body is viewed in place; no body copy.
+			const range = this.parser.glbBodyRange( extensionDef.buffer, extensionDef.byteOffset || 0, extensionDef.byteLength || 0 );
+			const buffer = range ? Promise.resolve( range ) : this.parser.getDependency( 'buffer', extensionDef.buffer );
 			const decoder = this.parser.options.meshoptDecoder;
 
 			if ( ! decoder || ! decoder.supported ) {
@@ -1637,7 +1639,7 @@ class GLTFMeshoptCompression {
 				const count = extensionDef.count;
 				const stride = extensionDef.byteStride;
 
-				const source = new Uint8Array( res, byteOffset, byteLength );
+				const source = range ? new Uint8Array( range.source, range.byteOffset, range.byteLength ) : new Uint8Array( res, byteOffset, byteLength );
 
 				if ( decoder.decodeGltfBufferAsync ) {
 
@@ -1841,7 +1843,17 @@ class GLTFBinaryExtension {
 
 		this.name = EXTENSIONS.KHR_BINARY_GLTF;
 		this.content = null;
-		this.body = null;
+
+		// SpaceFace: the BIN chunk is kept as a range on the caller's GLB instead of being copied out
+		// up front (a full-body memcpy on the main thread for every streamed package). `body` is still
+		// available: it is materialized, byte-identical to the old eager slice, on first access. The
+		// parser reads plain bufferView / meshopt source ranges straight off the range (bodyRange()),
+		// so the render packages never materialize it. Callers must not mutate or transfer the GLB
+		// they pass to parse() until parsing has settled (no in-repo caller does).
+		this._body = null;
+		this.bodySource = null;
+		this.bodyByteOffset = 0;
+		this.bodyByteLength = 0;
 
 		const headerView = new DataView( data, 0, BINARY_EXTENSION_HEADER_LENGTH );
 		const textDecoder = new TextDecoder();
@@ -1882,7 +1894,12 @@ class GLTFBinaryExtension {
 			} else if ( chunkType === BINARY_EXTENSION_CHUNK_TYPES.BIN ) {
 
 				const byteOffset = BINARY_EXTENSION_HEADER_LENGTH + chunkIndex;
-				this.body = data.slice( byteOffset, byteOffset + chunkLength );
+				// Same clamping as data.slice( byteOffset, byteOffset + chunkLength ).
+				const start = Math.min( byteOffset, data.byteLength );
+				this._body = null;
+				this.bodySource = data;
+				this.bodyByteOffset = start;
+				this.bodyByteLength = Math.max( 0, Math.min( byteOffset + chunkLength, data.byteLength ) - start );
 
 			}
 
@@ -1897,6 +1914,38 @@ class GLTFBinaryExtension {
 			throw new Error( 'THREE.GLTFLoader: JSON content not found.' );
 
 		}
+
+	}
+
+	get body() {
+
+		if ( this._body === null && this.bodySource !== null ) {
+
+			this._body = this.bodySource.slice( this.bodyByteOffset, this.bodyByteOffset + this.bodyByteLength );
+
+		}
+
+		return this._body;
+
+	}
+
+	set body( value ) {
+
+		this._body = value;
+		this.bodySource = null;
+
+	}
+
+	/**
+	 * The GLB body as { source, byteOffset, byteLength } on the caller's ArrayBuffer, or null once
+	 * the body has been materialized or replaced (then `body` is the source of truth).
+	 *
+	 * @private
+	 */
+	bodyRange() {
+
+		if ( this._body !== null || this.bodySource === null ) return null;
+		return { source: this.bodySource, byteOffset: this.bodyByteOffset, byteLength: this.bodyByteLength };
 
 	}
 
@@ -3041,6 +3090,46 @@ class GLTFParser {
 	}
 
 	/**
+	 * SpaceFace: when `bufferIndex` is the GLB body and it has not been materialized, returns the
+	 * absolute range of body[byteOffset, byteOffset + byteLength) on the caller's GLB, or null when the
+	 * body is not a live range or the request is not fully inside it (callers then take the old path,
+	 * so out-of-range requests fail exactly as before).
+	 *
+	 * @private
+	 */
+	glbBodyRange( bufferIndex, byteOffset, byteLength ) {
+
+		if ( bufferIndex !== 0 ) return null;
+		const bufferDef = this.json.buffers && this.json.buffers[ 0 ];
+		if ( ! bufferDef || bufferDef.uri !== undefined || ( bufferDef.type && bufferDef.type !== 'arraybuffer' ) ) return null;
+		const binary = this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ];
+		const body = binary && typeof binary.bodyRange === 'function' ? binary.bodyRange() : null;
+		if ( ! body ) return null;
+		if ( ! Number.isInteger( byteOffset ) || ! Number.isInteger( byteLength ) || byteOffset < 0 || byteLength < 0 ) return null;
+		if ( byteOffset + byteLength > body.byteLength ) return null;
+		return { source: body.source, byteOffset: body.byteOffset + byteOffset, byteLength: byteLength };
+
+	}
+
+	/**
+	 * Like glbBodyRange(), but with ArrayBuffer.prototype.slice clamping at the end of the body, so
+	 * slicing the returned range equals body.slice( byteOffset, byteOffset + byteLength ).
+	 *
+	 * @private
+	 */
+	glbBodySliceRange( bufferIndex, byteOffset, byteLength ) {
+
+		if ( bufferIndex !== 0 || ! Number.isInteger( byteOffset ) || ! Number.isInteger( byteLength ) || byteOffset < 0 || byteLength < 0 ) return null;
+		const whole = this.glbBodyRange( 0, 0, 0 );
+		if ( ! whole ) return null;
+		const bodyLength = this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ].bodyByteLength;
+		const start = Math.min( byteOffset, bodyLength );
+		const end = Math.min( byteOffset + byteLength, bodyLength );
+		return { source: whole.source, byteOffset: whole.byteOffset + start, byteLength: Math.max( 0, end - start ) };
+
+	}
+
+	/**
 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#buffers-and-buffer-views
 	 *
 	 * @private
@@ -3050,6 +3139,21 @@ class GLTFParser {
 	loadBufferView( bufferViewIndex ) {
 
 		const bufferViewDef = this.json.bufferViews[ bufferViewIndex ];
+
+		// SpaceFace: slice a GLB-body view straight off the caller's GLB (same bytes, one copy, and the
+		// whole-body copy is never made). The copy itself is kept: bufferViews are cached, handed to
+		// accessors, Blobs and transferring decoders, and a view would pin the whole GLB.
+		const range = this.glbBodySliceRange( bufferViewDef.buffer, bufferViewDef.byteOffset || 0, bufferViewDef.byteLength || 0 );
+
+		if ( range ) {
+
+			return Promise.resolve( range ).then( function ( r ) {
+
+				return r.source.slice( r.byteOffset, r.byteOffset + r.byteLength );
+
+			} );
+
+		}
 
 		return this.getDependency( 'buffer', bufferViewDef.buffer ).then( function ( buffer ) {
 

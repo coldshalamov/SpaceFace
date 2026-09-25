@@ -1,0 +1,6 @@
+[main-thread-profile 00:52:10] launching isolated Electron; fresh temporary evidence profile (cold GPU program cache and HTTP cache)
+[main-thread-profile 00:52:50] New Game seed 47
+[main-thread-profile 00:53:10] entered flight 18.8 s after Launch; holding thrust 20000 ms
+[main-thread-profile 00:53:31] stages: preparing-run@-0.0s authored-library@0.3s authored-visuals@0.3s render-pipelines@11.0s gpu-resources@11.0s entering-flight@11.0s
+[main-thread-profile 00:53:31] long tasks: 73; resources observed: 60
+[main-thread-profile 00:53:31] report /workspace/spaceface-master-witness/.devshots/main-thread-profile/from-launch-busy/report.md

@@ -12,6 +12,8 @@
 // Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module. Evidence,
 // paging and Back stay the same verbs.
 import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
+import { createLedgerTape } from '../../orrery/ledgerTape.js';
+import { formatLedgerCycle } from '../../../systems/shipLedger.js';
 import { el } from '../../kit/index.js';
 import { dressComms, watchComms } from './comms.js';
 import { dressEvents, watchEvents } from './events.js';
@@ -61,11 +63,20 @@ export function readingOf(entry) {
   const kick = (...parts) => parts.filter(Boolean).join(' · ').toUpperCase();
   const str = (v) => (v == null ? '' : String(v));
   switch (type) {
-    case 'trade':
-      return { hero: str(t.credits), unit: `cr · ${t.verbPast || 'traded'}`, title: [t.qty != null ? `${t.qty}u` : '', str(t.commodity)].filter(Boolean).join(' '), kicker: kick(type, cycle, str(t.station)) };
+    case 'trade': {
+      // the purse's story is signed: sold is credits in, bought is credits out
+      const credits = Number(String(t.credits || '').replace(/[^0-9.]/g, ''));
+      const sold = t.verbPast === 'sold';
+      const qty = Number(t.qty);
+      const perUnit = Number.isFinite(credits) && qty > 0 ? Math.round(credits / qty) : null;
+      const effect = [perUnit != null ? `${perUnit.toLocaleString('en-US')} cr per unit` : '', str(t.station)].filter(Boolean).join(' · ');
+      // one label says the direction (TRADE · SOLD); the unit is only the unit, on the numeral's baseline
+      return { hero: Number.isFinite(credits) ? `${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')}` : str(t.credits), unit: 'cr',
+        title: [qty > 0 ? `${qty}u` : '', str(t.commodity)].filter(Boolean).join(' '), kicker: kick(type, sold ? 'sold' : 'bought'), line: effect };
+    }
     case 'witness':
       return t.credits
-        ? { hero: str(t.credits), unit: 'cr paid', title: str(t.event), kicker: kick(type, cycle, str(t.cause)) }
+        ? { hero: `\u2212${str(t.credits)}`, unit: 'cr paid', title: str(t.event), kicker: kick(type, 'credits out', str(t.cause)) }
         : { hero: '', unit: '', title: str(t.event), kicker: kick(type, cycle, str(t.outcome)) };
     case 'bearing':
       return { hero: str(t.radius), unit: 'u search ring', title: str(t.wreck), kicker: kick(type, cycle, str(t.sector)) };
@@ -112,6 +123,37 @@ export function createLedgerScreen(ctx) {
   });
   wrap.appendChild(panel.el);
 
+  // ORRERY §6 Ledger: the tape on a cycle scale is the hero, above the reading; the Hand rides it at
+  // the entry being read, and picking a tick reads that entry
+  const tapeHost = el('div', 'orr-ledger-tape');
+  tapeHost.setAttribute('aria-hidden', 'true');
+  let tape = null;
+  function tapeEntryOf(entry) {
+    const t = (entry && entry.tokens) || {};
+    const type = entry && entry.type ? String(entry.type) : '';
+    const credits = t.credits != null ? Number(String(t.credits).replace(/[^0-9.]/g, '')) : NaN;
+    let amount = null;
+    if (type === 'trade' && Number.isFinite(credits)) amount = (t.verbPast === 'sold' ? 1 : -1) * credits;
+    else if (type === 'witness' && Number.isFinite(credits)) amount = -credits;
+    return { id: entry.id, type, at: Number(entry.at) || 0, cycleLabel: entry.cycleLabel || '', amount };
+  }
+  function syncTape(selectedId) {
+    const model = panel.model;
+    const entries = model && Array.isArray(model.entries) ? model.entries.map(tapeEntryOf) : [];
+    if (!tape) tape = createLedgerTape(tapeHost, { onPick: (id) => pickById(id), purseHost });
+    let nowCycle = '';
+    try { nowCycle = formatLedgerCycle(Number(ctx && ctx.state && ctx.state.simTime) || 0); } catch (_) { nowCycle = ''; }
+    tape.set({ entries, selectedId: selectedId || null, nowCycle });
+  }
+  function pickById(id) {
+    const model = panel.model;
+    const entries = (model && model.entries) || [];
+    const idx = entries.findIndex((e) => e && e.id === id);
+    if (idx < 0) return;
+    const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
+    if (rows[idx]) { readEntry(rows[idx]); if (typeof rows[idx].focus === 'function') rows[idx].focus({ preventScroll: true }); }
+  }
+
   // The reading column (station only): the entry the player rests on.
   const read = el('div', 'sx-ledger__read');
   read.hidden = true;
@@ -125,7 +167,41 @@ export function createLedgerScreen(ctx) {
   const readLine = el('p', 'k-sentence k-sentence--emph sx-ledger__read-line');
   const readHand = el('p', 'k-sentence k-signal sx-ledger__read-hand');
   read.append(readKicker, readHero, readTitle, readLine, readHand);
-  wrap.appendChild(read);
+  // the right column: the tape above, the reading beneath the Hand's tick
+  // the purse gauge stands beside the reading, off the tape's baseline: two instruments, two zones
+  const purseHost = el('div', 'orr-ledger-purse');
+  purseHost.setAttribute('aria-hidden', 'true');
+  const row = el('div', 'sx-ledger__row');
+  row.append(read, purseHost);
+  const right = el('div', 'sx-ledger__right');
+  right.append(tapeHost, row);
+  wrap.appendChild(right);
+  // the keys that walk the ledger, said once at the ladder's foot
+  const keys = el('p', 'k-caps sx-ledger__keys');
+  keys.textContent = '\u2191\u2193 Read \u00b7 \u2190\u2192 Page';
+  keys.setAttribute('aria-hidden', 'true');
+  const navEl = panel.el.querySelector('.st-ledger-nav');
+  if (navEl) navEl.insertAdjacentElement('afterend', keys); else panel.el.appendChild(keys);
+  panel.el.addEventListener('keydown', (ev) => {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+      const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
+      if (!rows.length) return;
+      const cur = rows.findIndex((r) => r.getAttribute('aria-selected') === 'true');
+      const next = rows[Math.max(0, Math.min(rows.length - 1, (cur < 0 ? 0 : cur) + (ev.key === 'ArrowDown' ? 1 : -1)))];
+      if (!next) return;
+      ev.preventDefault();
+      readEntry(next);
+      if (typeof next.focus === 'function') next.focus({ preventScroll: true });
+    } else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      const btn = panel.el.querySelector(ev.key === 'ArrowLeft' ? '[data-ledger-page="newer"]' : '[data-ledger-page="older"]');
+      if (!btn || btn.disabled || btn.hidden) return;
+      ev.preventDefault();
+      btn.click();
+    }
+  });
 
   function dressShell() {
     const shell = (wrap.closest && wrap.closest('.sx-berth, .sx-app, .k-screen'))
@@ -181,11 +257,12 @@ export function createLedgerScreen(ctx) {
   function readEntry(item) {
     const model = panel.model;
     const detail = panel.el.querySelector('.st-ledger-detail');
-    if (!item || !model || (detail && !detail.hidden)) { read.hidden = true; dressLedger(); return; }
+    if (!item || !model || (detail && !detail.hidden)) { read.hidden = true; syncTape(null); dressLedger(); return; }
     const entries = model.entries || [];
     const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
     const entry = entries[rows.indexOf(item)];
-    if (!entry) { read.hidden = true; dressLedger(); return; }
+    if (!entry) { read.hidden = true; syncTape(null); dressLedger(); return; }
+    syncTape(entry.id);
     for (const row of rows) row.setAttribute('aria-selected', String(row === item));
     const type = entry.type ? String(entry.type) : '';
     const color = toneColor(type);
@@ -199,7 +276,9 @@ export function createLedgerScreen(ctx) {
     readHero.hidden = !r.hero;
     readTitle.textContent = r.title;
     readTitle.hidden = !r.title;
-    readLine.textContent = entry.text || '';
+    // a trade's sentence already stands in its row; the reading carries the effect instead
+    readLine.textContent = r.line != null ? r.line : (entry.text || '');
+    readLine.hidden = !readLine.textContent;
     readHand.textContent = entry.annotation || '';
     readHand.hidden = !entry.annotation;
     read.hidden = false;
@@ -237,6 +316,12 @@ export function createLedgerScreen(ctx) {
     if (status && status.textContent.includes('1 entries')) {
       status.textContent = status.textContent.replace(/\b1 entries\b/g, '1 entry');
     }
+    // one page is no archive: the count stands alone, and the key hint offers PAGE only when there is one
+    if (status && /archive page 1 of 1/i.test(status.textContent)) status.textContent = status.textContent.replace(/\s*Archive page 1 of 1\.?/i, '');
+    const older = panel.el.querySelector('[data-ledger-page="older"]');
+    const newer = panel.el.querySelector('[data-ledger-page="newer"]');
+    const paged = (older && !older.disabled && !older.hidden) || (newer && !newer.disabled && !newer.hidden);
+    keys.textContent = paged ? '\u2191\u2193 Read \u00b7 \u2190\u2192 Page' : '\u2191\u2193 Read';
   }
   // After each render the first entry is the one read, so the right half is never blank.
   function readFirst() {
@@ -253,6 +338,7 @@ export function createLedgerScreen(ctx) {
       panel.onShow();
       normalizeStatusPlural();
       readFirst();
+      if (!panel.el.querySelector('.st-ledger-entry')) syncTape(null);
       dressShell();
     },
     // Declared with no parameter on purpose. The panel closes over the ctx it was built with and
@@ -262,10 +348,12 @@ export function createLedgerScreen(ctx) {
       panel.refresh();
       normalizeStatusPlural();
       readFirst();
+      if (!panel.el.querySelector('.st-ledger-entry')) syncTape(null);
       dressShell();
     },
     onHide() { panel.onHide(); },
     dispose() {
+      if (tape) { tape.dispose(); tape = null; }
       panel.el.removeEventListener('pointerover', onPointerOver);
       panel.el.removeEventListener('focusin', onFocusIn);
       panel.el.removeEventListener('click', onClick);

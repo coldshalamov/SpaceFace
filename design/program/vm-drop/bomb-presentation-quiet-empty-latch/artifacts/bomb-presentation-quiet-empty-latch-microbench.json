@@ -1,0 +1,108 @@
+{
+  "name": "bomb-presentation-quiet-empty-latch",
+  "primary": "quiet-bomb-telegraph-empty-after-owner",
+  "iterations": 200000,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 12.658057,
+      "afterMs": 3.9404739999999947,
+      "speedup": 3.2123183657600625,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.004514999999998,
+      "afterMs": 3.8259899999999902,
+      "speedup": 2.614882683958929,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.15477,
+      "afterMs": 4.413668999999999,
+      "speedup": 2.3007547688782286,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.450469999999996,
+      "afterMs": 4.583587999999992,
+      "speedup": 2.279975861704851,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.752480999999989,
+      "afterMs": 4.286441999999994,
+      "speedup": 2.5084862923608915,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.556643000000008,
+      "afterMs": 4.217475999999998,
+      "speedup": 2.5030712682182457,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.362204000000006,
+      "afterMs": 3.894617999999994,
+      "speedup": 2.660647077582454,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 10.655482000000006,
+      "afterMs": 3.8726290000000034,
+      "speedup": 2.7514853604618454,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 18.738472,
+      "afterMs": 3.981904,
+      "speedup": 4.7059075256460225,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 11.206354000000005,
+      "afterMs": 4.132425999999995,
+      "speedup": 2.7118099634452055,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    },
+    {
+      "beforeMs": 9.679630000000003,
+      "afterMs": 4.306314,
+      "speedup": 2.247776172383157,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0
+    }
+  ],
+  "medianSpeedup": 2.614882683958929,
+  "minSpeedup": 2.247776172383157,
+  "maxSpeedup": 4.7059075256460225,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "relatch": true,
+    "walks": 3,
+    "skips": 2,
+    "count": 0
+  }
+}

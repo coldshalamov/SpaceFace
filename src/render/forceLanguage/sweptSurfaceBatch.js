@@ -9,7 +9,7 @@ import {
 // Nine vec4 instance attributes + position + instanceMatrix use 14 of WebGL2's minimum 16 attributes.
 const NAMES = ['iOrigin', 'iPath', 'iShape', 'iTint', 'iMotion', 'iFinish', 'iLife', 'iBehavior', 'iPivot'];
 export const SURFACE_STATIONS = 48;
-export const SURFACE_ACROSS = 5;
+export const SURFACE_ACROSS = 8;
 export const SURFACE_FLOATS = 36;
 const LEGACY_DEFAULTS = [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0];
 export const SURFACE_VERTEX = /* glsl */`
@@ -30,6 +30,7 @@ varying vec4 vFlow;
 varying float vFront;
 varying vec4 vCycle; // kind, release, powered local time, role
 varying vec4 vMaterial; // structural flex, machined rib count, working heat, reserved
+varying vec3 vSurfaceWorld;
 const float PI=3.14159265359;
 void main(){
   float t=position.x;
@@ -66,6 +67,16 @@ void main(){
   p+=normal*across*iShape.y*taper;
   float height=iShape.z*sin(PI*t)+(1.0-across*across)*iShape.y*0.23*taper;
   if(iMotion.w>0.5 && iMotion.w<1.5)height+=iShape.y*(1.0-across)*0.6*taper;
+  // Working surfaces curl THROUGH their section, not only around a fixed flat outline.
+  // Broad advected folds preserve dark channels between bright ridges at the flight camera.
+  bool working=cycle && !(iBehavior.y>0.5 && iBehavior.y<1.5);
+  if(working){
+    float wave=t*10.0-motionTime*(2.2+iMotion.y*.3)+iMotion.y*6.283;
+    float crest=sin(wave+across*2.4)*sin(PI*t);
+    float flex=iBehavior.w*uMotion*(1.0-release);
+    height+=iShape.y*flex*(0.42*crest+0.18*sin(wave*.63-across*4.0));
+    p+=normal*iShape.y*flex*0.17*crest*(1.0-across*across);
+  }
   float ca=cos(iOrigin.w),sa=sin(iOrigin.w);
   height+=p.x*sin(iFinish.w);
   p.x*=cos(iFinish.w);
@@ -135,6 +146,7 @@ void main(){
   vec3 world=cycle ? vec3(iPivot.x+relative.x,iOrigin.y+height,iPivot.y+relative.y)
     : iOrigin.xyz+vec3(p.x,height,p.y);
   gl_Position=projectionMatrix*modelViewMatrix*vec4(world,1.0);
+  vSurfaceWorld=(modelMatrix*vec4(world,1.0)).xyz;
   vCycle=vec4(cycle ? iBehavior.x : 0.0,release,motionTime,iBehavior.y);
   // Weapon sources keep the smooth, fully hot surface they already ship: the machined channel and
   // the cool-structure channel are lifecycle-only, so a 24-float legacy descriptor is unchanged.
@@ -153,9 +165,10 @@ varying vec4 vFlow;
 varying float vFront;
 varying vec4 vCycle;
 varying vec4 vMaterial;
+varying vec3 vSurfaceWorld;
 void main(){
   float t=vUv.x; float v=vUv.y;
-  float edge=1.0-smoothstep(0.78,1.0,abs(v));
+  float edge=1.0-smoothstep(0.90-max(fwidth(v),0.015),1.0,abs(v));
   float tips=smoothstep(0.0,0.018,t)*(1.0-smoothstep(0.97,1.0,t));
   float reveal=1.0-smoothstep(vFlow.w-0.07,vFlow.w+0.01,t);
   float pixel=max(fwidth(v)*1.15,0.055);
@@ -163,7 +176,8 @@ void main(){
   float rim=exp(-pow((v-0.68)/max(0.08,pixel),2.0));
   // Broad pigment folds survive play scale. A high-frequency sine comb used to make
   // every force resemble corrugated ribbon irrespective of its physical construction.
-  float groove=0.5+0.5*sin(t*18.0+v*4.0+vFlow.y*9.0);
+  float warp=0.32*sin(t*9.0-vCycle.z*2.1+vFlow.y*8.0);
+  float groove=0.5+0.5*sin(t*18.0+v*4.0+vFlow.y*9.0+warp);
   float packet=pow(0.5+0.5*cos(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283),3.0);
   // TRANSPORT SIGNATURE — which way material actually moves through this surface, which is the
   // family's identity before any colour. Weapon sources (kind 0) keep the generic packet exactly.
@@ -214,11 +228,31 @@ void main(){
   float channel=ribs>0.5 ? smoothstep(0.58-ribW,0.58+ribW,ribQ) : 0.0;
   body=body*(1.0-0.44*channel)+0.19*crest;
   hot=hot*heat+crest*packet*0.34*uFlash*heat;
+  bool field=vCycle.x>0.5;
+  bool boundary=vCycle.w>0.5 && vCycle.w<1.5;
+  // Interfering caustic folds are sculpted on the membrane. HDR lives in moving narrow
+  // shoulders; the broader blue/amber body stays below bloom so nearby hulls remain legible.
+  if(field && !boundary){
+    float flow=vCycle.z;
+    float bend=0.28*sin(t*11.0-flow*2.7+vFlow.y*8.0);
+    float crease=abs(v-bend+0.16*sin(t*21.0-flow*3.4));
+    float aa=max(fwidth(crease)*1.1,0.035);
+    float caustic=1.0-smoothstep(0.055,0.055+aa,crease);
+    float braids=0.5+0.5*sin(t*31.0+v*7.0-flow*3.8+vFlow.y*17.0);
+    float junction=pow(braids,5.0)*caustic;
+    vec3 normal=normalize(cross(dFdx(vSurfaceWorld),dFdy(vSurfaceWorld)));
+    float grazing=pow(1.0-abs(dot(normal,normalize(cameraPosition-vSurfaceWorld))),2.0);
+    hot+=(caustic*(1.15+packet*1.8)+junction*1.25+grazing*rim*.6)*heat*uFlash;
+    body+=0.13*braids*heat;
+  }
   float fracture=1.0;
   if(vCycle.y>0.0){
     // Persistent fragments cool and erode; they do not remain active conveyor/force symbols.
-    float grain=fract(sin(floor(t*38.0)*127.1+floor((v+1.0)*6.0)*311.7+vFlow.y*51.0)*43758.5453);
-    fracture=smoothstep(vCycle.y-0.18,vCycle.y+0.06,grain);
+    // Continuous tear contours, not square hash cells that become visible pixels on shutdown.
+    float tear=0.5+0.25*sin(t*23.0+v*5.0+vFlow.y*17.0)
+      +0.25*sin(t*11.0-v*8.0+vFlow.y*9.0);
+    float tearAA=max(fwidth(tear),0.035);
+    fracture=smoothstep(vCycle.y-0.18-tearAA,vCycle.y+0.06+tearAA,tear);
     if(vCycle.x>3.5 && vCycle.x<4.5)fracture*=smoothstep(vCycle.y-0.12,vCycle.y+0.08,t);
     hot*=1.0-0.88*vCycle.y;
     body*=1.0-0.45*vCycle.y;

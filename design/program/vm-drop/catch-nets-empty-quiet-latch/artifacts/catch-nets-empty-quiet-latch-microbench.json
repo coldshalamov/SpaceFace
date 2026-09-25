@@ -1,0 +1,73 @@
+{
+  "name": "catch-nets-empty-quiet-latch",
+  "iters": 60000,
+  "ships": 48,
+  "payloads": 16,
+  "pairs": [
+    {
+      "beforeMs": 152.691,
+      "afterMs": 16.22,
+      "speedup": 9.414
+    },
+    {
+      "beforeMs": 167.346,
+      "afterMs": 15.137,
+      "speedup": 11.055
+    },
+    {
+      "beforeMs": 159.612,
+      "afterMs": 15.474,
+      "speedup": 10.315
+    },
+    {
+      "beforeMs": 171.032,
+      "afterMs": 15.797,
+      "speedup": 10.827
+    },
+    {
+      "beforeMs": 249.736,
+      "afterMs": 20.649,
+      "speedup": 12.095
+    },
+    {
+      "beforeMs": 154.618,
+      "afterMs": 15.609,
+      "speedup": 9.905
+    },
+    {
+      "beforeMs": 152,
+      "afterMs": 14.861,
+      "speedup": 10.228
+    },
+    {
+      "beforeMs": 153.229,
+      "afterMs": 15.957,
+      "speedup": 9.602
+    },
+    {
+      "beforeMs": 149.602,
+      "afterMs": 16.275,
+      "speedup": 9.192
+    },
+    {
+      "beforeMs": 176.508,
+      "afterMs": 15.108,
+      "speedup": 11.683
+    },
+    {
+      "beforeMs": 147.499,
+      "afterMs": 15.262,
+      "speedup": 9.664
+    }
+  ],
+  "medianSpeedup": 10.228,
+  "minSpeedup": 9.192,
+  "maxSpeedup": 12.095,
+  "dirtyWake": {
+    "armed": true,
+    "afterNet": false,
+    "afterBoth": false,
+    "caught": true,
+    "dirtyWakeOk": true
+  }
+}

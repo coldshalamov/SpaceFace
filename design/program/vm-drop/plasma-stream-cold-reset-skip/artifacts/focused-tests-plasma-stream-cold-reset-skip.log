@@ -1,0 +1,321 @@
+TAP version 13
+# Subtest: the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+ok 1 - the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+  ---
+  duration_ms: 1.373347
+  ...
+# Subtest: only tumble/drift presentation may forward owner.angVel into the helix
+ok 2 - only tumble/drift presentation may forward owner.angVel into the helix
+  ---
+  duration_ms: 0.198714
+  ...
+# Subtest: a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+ok 3 - a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+  ---
+  duration_ms: 22.211967
+  ...
+# Subtest: smoothstep is monotonic on unit interval
+ok 4 - smoothstep is monotonic on unit interval
+  ---
+  duration_ms: 1.562389
+  ...
+# Subtest: path sampler retains equal-spacing history
+ok 5 - path sampler retains equal-spacing history
+  ---
+  duration_ms: 0.899761
+  ...
+# Subtest: the exhaust is swept ribbon sheets, not points, sprites or a density field
+ok 6 - the exhaust is swept ribbon sheets, not points, sprites or a density field
+  ---
+  duration_ms: 30.156242
+  ...
+# Subtest: the live plume and immutable history are separate objects
+ok 7 - the live plume and immutable history are separate objects
+  ---
+  duration_ms: 9.742103
+  ...
+# Subtest: sheets are wide enough to carry a crease, not one-normal wire strips
+ok 8 - sheets are wide enough to carry a crease, not one-normal wire strips
+  ---
+  duration_ms: 1.111533
+  ...
+# Subtest: the jet is nozzle-local and about two hull lengths, never a dragged tail
+ok 9 - the jet is nozzle-local and about two hull lengths, never a dragged tail
+  ---
+  duration_ms: 2.401319
+  ...
+# Subtest: gas flows through the live jet: its form is not a still image
+ok 10 - gas flows through the live jet: its form is not a still image
+  ---
+  duration_ms: 1.288504
+  ...
+# Subtest: throttle moves live-jet length and never its opacity
+ok 11 - throttle moves live-jet length and never its opacity
+  ---
+  duration_ms: 0.231667
+  ...
+# Subtest: every contrail center sample is an exact position the emitting nozzle occupied
+ok 12 - every contrail center sample is an exact position the emitting nozzle occupied
+  ---
+  duration_ms: 4.00534
+  ...
+# Subtest: the contrail retains a volume of curved overlapping energy sheets
+ok 13 - the contrail retains a volume of curved overlapping energy sheets
+  ---
+  duration_ms: 1.090938
+  ...
+# Subtest: distance and speed cannot trim young history
+ok 14 - distance and speed cannot trim young history
+  ---
+  duration_ms: 2.637939
+  ...
+# Subtest: a parked ship thrusting lays down no spatial trail
+ok 15 - a parked ship thrusting lays down no spatial trail
+  ---
+  duration_ms: 1.777204
+  ...
+# Subtest: sub-step jitter never rewrites or densely resamples the newest fact
+ok 16 - sub-step jitter never rewrites or densely resamples the newest fact
+  ---
+  duration_ms: 3.161514
+  ...
+# Subtest: cutting thrust leaves every young sample fixed in space; age alone removes it
+ok 17 - cutting thrust leaves every young sample fixed in space; age alone removes it
+  ---
+  duration_ms: 2.600095
+  ...
+# Subtest: the history and forge have no pulse clock, travelling bands or live-nozzle override
+ok 18 - the history and forge have no pulse clock, travelling bands or live-nozzle override
+  ---
+  duration_ms: 1.222451
+  ...
+# Subtest: emission gaps and teleports start disconnected segments without deleting history
+ok 19 - emission gaps and teleports start disconnected segments without deleting history
+  ---
+  duration_ms: 0.95877
+  ...
+# Subtest: a full history buffer skips births instead of evicting young facts
+ok 20 - a full history buffer skips births instead of evicting young facts
+  ---
+  duration_ms: 0.458904
+  ...
+# Subtest: cutting thrust puts the live jet out while recorded light fades in place
+ok 21 - cutting thrust puts the live jet out while recorded light fades in place
+  ---
+  duration_ms: 9.618541
+  ...
+# Subtest: plasma stream reuses one fallback identity without sockets or owner
+ok 22 - plasma stream reuses one fallback identity without sockets or owner
+  ---
+  duration_ms: 4.348725
+  ...
+# Subtest: full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+ok 23 - full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+  ---
+  duration_ms: 0.321151
+  ...
+# Subtest: zero throttle is dark and speed contributes only while the throttle is open
+ok 24 - zero throttle is dark and speed contributes only while the throttle is open
+  ---
+  duration_ms: 0.217118
+  ...
+# Subtest: ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+ok 25 - ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+  ---
+  duration_ms: 16.385254
+  ...
+# Subtest: dash is a one-shot supernova with a long cooling tail
+ok 26 - dash is a one-shot supernova with a long cooling tail
+  ---
+  duration_ms: 0.383235
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: the paired mouths are physical hull parts, separated and mounted on every profile family
+ok 27 - the paired mouths are physical hull parts, separated and mounted on every profile family
+  ---
+  duration_ms: 20.706086
+  ...
+# Subtest: mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+ok 28 - mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+  ---
+  duration_ms: 1.736006
+  ...
+# Subtest: installed engine changes retro heat, axial flow and scale while staying two jets
+ok 29 - installed engine changes retro heat, axial flow and scale while staying two jets
+  ---
+  duration_ms: 3.051858
+  ...
+# Subtest: the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+ok 30 - the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+  ---
+  duration_ms: 2.809474
+  ...
+# Subtest: the live forge follows the current nozzle axis, never the recorded-history tangent
+ok 31 - the live forge follows the current nozzle axis, never the recorded-history tangent
+  ---
+  duration_ms: 2.924205
+  ...
+# Subtest: a legacy reel hint has zero authority over recorded world-space history
+ok 32 - a legacy reel hint has zero authority over recorded world-space history
+  ---
+  duration_ms: 8.850832
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+ok 33 - a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+  ---
+  duration_ms: 25.505054
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the field itself changes, every family
+ok 34 - a stationary firing ship shows moving exhaust: the field itself changes, every family
+  ---
+  duration_ms: 4.19465
+  ...
+# Subtest: reduced motion calms the exhaust without freezing it
+ok 35 - reduced motion calms the exhaust without freezing it
+  ---
+  duration_ms: 2.757717
+  ...
+# Subtest: the hot core never ends short of the cold sheath wrapped around it
+ok 36 - the hot core never ends short of the cold sheath wrapped around it
+  ---
+  duration_ms: 1.040366
+  ...
+# Subtest: creases darken the interior but never open a hole between sheets (B19)
+ok 37 - creases darken the interior but never open a hole between sheets (B19)
+  ---
+  duration_ms: 2.853411
+  ...
+# Subtest: per-instance extent varies and can only ever shorten (B18, B9)
+ok 38 - per-instance extent varies and can only ever shorten (B18, B9)
+  ---
+  duration_ms: 0.597307
+  ...
+# Subtest: two ships of one family do not animate in lockstep
+ok 39 - two ships of one family do not animate in lockstep
+  ---
+  duration_ms: 1.406115
+  ...
+# Subtest: every live family pair differs on several construction axes
+ok 40 - every live family pair differs on several construction axes
+  ---
+  duration_ms: 0.472983
+  ...
+# Subtest: disciplined and loaded drives are opposites, not neighbours
+ok 41 - disciplined and loaded drives are opposites, not neighbours
+  ---
+  duration_ms: 0.403043
+  ...
+# Subtest: the unusual families do not read as reaction drives
+ok 42 - the unusual families do not read as reaction drives
+  ---
+  duration_ms: 0.328809
+  ...
+# Subtest: the three-silhouette prototype record is complete and one candidate is wired per group
+ok 43 - the three-silhouette prototype record is complete and one candidate is wired per group
+  ---
+  duration_ms: 0.346072
+  ...
+# Subtest: construction values are clamped to their stated limits
+ok 44 - construction values are clamped to their stated limits
+  ---
+  duration_ms: 0.457153
+  ...
+# Subtest: an RCS pulse throws a packet: the head leaves while the collar shuts
+ok 45 - an RCS pulse throws a packet: the head leaves while the collar shuts
+  ---
+  duration_ms: 0.241865
+  ...
+# Subtest: an RCS jet holds its reach and does not retract into its nozzle
+ok 46 - an RCS jet holds its reach and does not retract into its nozzle
+  ---
+  duration_ms: 8.373435
+  ...
+# Subtest: two RCS taps carry two independent clocks
+ok 47 - two RCS taps carry two independent clocks
+  ---
+  duration_ms: 1.277546
+  ...
+# Subtest: a shutting valve blows down rather than dimming at a constant rate
+ok 48 - a shutting valve blows down rather than dimming at a constant rate
+  ---
+  duration_ms: 0.370674
+  ...
+# Subtest: the brake bites on engagement and relaxes into the held jet
+ok 49 - the brake bites on engagement and relaxes into the held jet
+  ---
+  duration_ms: 0.47975
+  ...
+# Subtest: the bite is heat and collimation, never reach: the jet-likeness contract holds
+ok 50 - the bite is heat and collimation, never reach: the jet-likeness contract holds
+  ---
+  duration_ms: 0.68596
+  ...
+# Subtest: lighting a drive is an event, not the first part of a ramp
+ok 51 - lighting a drive is an event, not the first part of a ramp
+  ---
+  duration_ms: 0.479831
+  ...
+# Subtest: the ignition transient is spent on structure, so reduced flash still sees the engine commit
+ok 52 - the ignition transient is spent on structure, so reduced flash still sees the engine commit
+  ---
+  duration_ms: 1.285366
+  ...
+# Subtest: boost drives the arrangement harder rather than just brighter
+ok 53 - boost drives the arrangement harder rather than just brighter
+  ---
+  duration_ms: 4.58232
+  ...
+# Subtest: the fold clock is integrated, so a throttle change can never scrub the creases
+ok 54 - the fold clock is integrated, so a throttle change can never scrub the creases
+  ---
+  duration_ms: 59.027759
+  ...
+# Subtest: fleet drives follow their sockets through turns, stops and restarts
+ok 55 - fleet drives follow their sockets through turns, stops and restarts
+  ---
+  duration_ms: 3.928704
+  ...
+# Subtest: a crowd of ships all draw, all differ, and cost no per-frame allocation
+ok 56 - a crowd of ships all draw, all differ, and cost no per-frame allocation
+  ---
+  duration_ms: 2.240946
+  ...
+# Subtest: the GLSL mirror carries every term the JS law does
+ok 57 - the GLSL mirror carries every term the JS law does
+  ---
+  duration_ms: 0.407559
+  ...
+# Subtest: each family binds its own construction, and the distortion encoder stays flat
+ok 58 - each family binds its own construction, and the distortion encoder stays flat
+  ---
+  duration_ms: 5.366246
+  ...
+# Subtest: the shell arc never exceeds the span the vertex stage can place
+ok 59 - the shell arc never exceeds the span the vertex stage can place
+  ---
+  duration_ms: 0.333189
+  ...
+# Subtest: the fold profile bake is deterministic and tells the families apart
+ok 60 - the fold profile bake is deterministic and tells the families apart
+  ---
+  duration_ms: 3.696656
+  ...
+# Subtest: the nozzle shock train stays near the lip instead of laddering the jet
+ok 61 - the nozzle shock train stays near the lip instead of laddering the jet
+  ---
+  duration_ms: 0.281502
+  ...
+# Subtest: the jet/history boundary is allocation-free and tracks the live jet
+ok 62 - the jet/history boundary is allocation-free and tracks the live jet
+  ---
+  duration_ms: 0.574738
+  ...
+1..62
+# tests 62
+# suites 0
+# pass 62
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 430.321458

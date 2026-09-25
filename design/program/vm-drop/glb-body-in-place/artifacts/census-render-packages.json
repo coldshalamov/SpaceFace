@@ -1,0 +1,33 @@
+{
+ "files": 259,
+ "fileBytes": 729239404,
+ "bodyBytes": 716850668,
+ "bvBytes": {
+  "image:image/ktx2(buf 0)": "527.02 MB",
+  "accessor+meshopt(src buf 0)": "5.17 MB",
+  "accessor+meshopt(src buf 0)+stride": "184.62 MB"
+ },
+ "bvCount": {
+  "image:image/ktx2(buf 0)": 2115,
+  "accessor+meshopt(src buf 0)": 262,
+  "accessor+meshopt(src buf 0)+stride": 18612
+ },
+ "extUsed": {
+  "EXT_meshopt_compression": 259,
+  "KHR_materials_clearcoat": 106,
+  "KHR_materials_emissive_strength": 119,
+  "KHR_mesh_quantization": 259,
+  "KHR_texture_basisu": 169,
+  "KHR_materials_transmission": 35,
+  "KHR_materials_ior": 17,
+  "KHR_texture_transform": 7,
+  "KHR_materials_specular": 3,
+  "KHR_materials_anisotropy": 6
+ },
+ "buffers": {
+  "2": 259
+ },
+ "alignBad": 0,
+ "fileMB": 729.2,
+ "bodyMB": 716.9
+}

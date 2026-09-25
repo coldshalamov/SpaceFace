@@ -1,0 +1,99 @@
+From f5a2562bb974f78b48ed684e50b05f0600d15e9c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:18:42 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20energy=20hide=20a?=
+ =?UTF-8?q?fter=20first=20cold=20publish=20(~11.8=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight called _hideEnergyPlumes every idle tick, re-running
+plasma/retro/fleet.reset (fleet walks ships + family plume/rcs and clears
+the #100 asleep latch). Latch after the first hide; clear on plume/massline
+wake, init, dispose, and boundary reset. Soft-GPU fps not claimed.
+---
+ src/render/vfx.js | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index decacd508..80322ca6e 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1325,6 +1325,10 @@ export const vfx = {
+     this._projectileTrailsWereRelevant = false;
+     this._seamMarkersWereRelevant = false;
+     this._energyPlumeWasRelevant = false;
++    // Quiet settled flight: _hideEnergyPlumes used to re-run plasma/retro/fleet.reset
++    // every idle tick (fleet walks ships + family plume/rcs and clears the #100
++    // asleep latch). Latch after the first hide; clear on plume/massline wake.
++    this._energyQuietHidden = false;
+     this._doctrineTells = [];
+     for (let i = 0; i < DOCTRINE_TELL_POOL; i++) {
+       this._doctrineTells.push({
+@@ -12306,6 +12310,7 @@ export const vfx = {
+       // Full display-rate pose/drive sample. Cadence here used to leave the jet one frame
+       // behind the hull at high speed (~8u lag at SPD 255 / 30 Hz), which read as a doubled,
+       // flickering thruster. The continuous plume is a few instanced cards — cheap enough.
++      this._energyQuietHidden = false;
+       this._energyPlumeWasRelevant = true;
+       this._updateEnergyPlume(dt);
+       active = true;
+@@ -12314,6 +12319,9 @@ export const vfx = {
+       this._hideEnergyPlumes(0);
+     }
+     if (masslineRelevant) {
++      // Massline can wake energy while plumes stay quiet — drop the hide latch so a
++      // later quiet hide still publishes one cold reset.
++      this._energyQuietHidden = false;
+       this._updateEnergyMassline(dt);
+       active = true;
+     } else if (this._energy.ribbon) {
+@@ -12609,6 +12617,8 @@ export const vfx = {
+ 
+   _initEnergy() {
+     if (!this._scene) return;
++    // Fresh systems are not yet cold-published; allow the next hide to reset once.
++    this._energyQuietHidden = false;
+     const textures = loadKestrelThrusterTextures();
+     const fleet = new FamilyProductionFleet(THREE, {
+       textures,
+@@ -13244,9 +13254,15 @@ export const vfx = {
+   },
+ 
+   _hideEnergyPlumes() {
++    // Already cold after a prior quiet hide: skip plasma/retro/fleet.reset churn.
++    // Wake paths (_updateEnergy plume/massline relevant) clear _energyQuietHidden.
++    if (this._energyQuietHidden) return;
+     this._releasePlayerPlumeEventLight();
+     const energy = this._energy;
+-    if (!energy) return;
++    if (!energy) {
++      this._energyQuietHidden = true;
++      return;
++    }
+     if (energy.plasmaStream) energy.plasmaStream.reset();
+     if (energy.retroVolume) energy.retroVolume.reset();
+     if (energy.fleet) energy.fleet.reset();
+@@ -13259,9 +13275,11 @@ export const vfx = {
+     energy.rcsCooldown = 0;
+     // Production plume is hidden — never leave sticky ownership suppressing fallback trails.
+     this._clearProductionOwnership();
++    this._energyQuietHidden = true;
+   },
+ 
+   _resetEnergyForBoundary() {
++    this._energyQuietHidden = false;
+     this._hideEnergyPlumes();
+     this._energyPlumeWasRelevant = false;
+     if (this._energy && this._energy.ribbon) this._energy.ribbon.visible = false;
+@@ -13349,6 +13367,7 @@ export const vfx = {
+     disposeEnergyVolumeMaterials(this._energy.ribbon);
+     if (this._energy.ribbonGeo) this._energy.ribbonGeo.dispose();
+     this._energy = null;
++    this._energyQuietHidden = false;
+     this._clearProductionOwnership();
+   },
+ 
+-- 
+2.47.3
+

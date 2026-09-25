@@ -1757,8 +1757,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
+      "hull": 10,
       "mechanical": 3,
+      "signal": 2,
       "warning": 3
     },
     "materialProfiles": [
@@ -1775,7 +1776,7 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1810,7 +1811,7 @@
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2364,7 +2365,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "5b652c7575882f018b9eb7305be6bcefd635a9532bd9950d4a6e63d705d3fef0",
+  "runtimeHash": "e98f8e8562276c71302970986f7848d413bd6ce119847c9316fa12e9437e8ba8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

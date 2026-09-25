@@ -133,7 +133,13 @@ function buildBundle(role, variant) {
       const dy = (up - down) * gradientScale;
       const invLength = 1 / Math.sqrt(dx * dx + dy * dy + 1);
 
-      const colorValue = 238 + 255 * recipe.color * (field.macro * 0.58 + field.meso * 0.30 + field.micro * 0.06 - field.fracture * 0.38);
+      // Cavity AO from local height Laplacian: depressions and crevices receive natural contact shading
+      const laplacian = (left + right + up + down) * 0.25 - heights[index];
+      const cavity = Math.max(0, laplacian * (recipe.fracture ? 1.5 : 1.1));
+      const aoFactor = Math.max(0.38, 1.0 - cavity * 1.6);
+      const cavityDarken = 1.0 - cavity * 0.32;
+
+      const colorValue = (238 + 255 * recipe.color * (field.macro * 0.58 + field.meso * 0.30 + field.micro * 0.06 - field.fracture * 0.38)) * cavityDarken;
       albedo[offset] = clampByte(colorValue);
       albedo[offset + 1] = clampByte(colorValue);
       albedo[offset + 2] = clampByte(colorValue);
@@ -146,9 +152,10 @@ function buildBundle(role, variant) {
 
       // glTF/Three multiplies these map channels by the material's authored scalar factor.
       // Keep the maps near unity so the role factor stays authoritative while gaining variation.
+      // Red: Ambient Occlusion, Green: Roughness, Blue: Metalness (glTF standard packed ORM)
       const roughness = 0.82 + recipe.rough * (field.macro * 0.42 + field.meso * 0.30 + field.micro * 0.18 + field.fracture * 0.5);
       const metallic = recipe.metalMultiplier + recipe.metal * (field.macro * 0.54 - field.fracture * 0.3);
-      orm[offset] = 255;
+      orm[offset] = clampByte(aoFactor * 255);
       orm[offset + 1] = clampByte(roughness * 255);
       orm[offset + 2] = clampByte(metallic * 255);
       orm[offset + 3] = 255;

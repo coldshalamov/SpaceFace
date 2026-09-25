@@ -1,0 +1,83 @@
+{
+  "iters": 8000,
+  "scenarios": [
+    {
+      "name": "quiet-80ships-0atk",
+      "same": true,
+      "compose": {
+        "beforeMs": 26.237,
+        "afterMs": 17.6,
+        "x": 1.49,
+        "sample": {
+          "nearby": 3,
+          "active": false,
+          "nearest": true,
+          "attackers": 0
+        }
+      },
+      "framing": {
+        "beforeMs": 21.733,
+        "afterMs": 9.842,
+        "x": 2.21,
+        "sample": false
+      },
+      "followPair": {
+        "beforeMs": 34.664,
+        "afterMs": 16.574,
+        "x": 2.09
+      }
+    },
+    {
+      "name": "quiet-120ships-0atk",
+      "same": true,
+      "compose": {
+        "beforeMs": 33.514,
+        "afterMs": 23.739,
+        "x": 1.41,
+        "sample": {
+          "nearby": 4,
+          "active": false,
+          "nearest": true,
+          "attackers": 0
+        }
+      },
+      "framing": {
+        "beforeMs": 31.443,
+        "afterMs": 12.344,
+        "x": 2.55,
+        "sample": false
+      },
+      "followPair": {
+        "beforeMs": 54.874,
+        "afterMs": 23.557,
+        "x": 2.33
+      }
+    },
+    {
+      "name": "combat-80ships-3atk",
+      "same": true,
+      "compose": {
+        "beforeMs": 25.993,
+        "afterMs": 22.858,
+        "x": 1.14,
+        "sample": {
+          "nearby": 3,
+          "active": true,
+          "nearest": true,
+          "attackers": 1
+        }
+      },
+      "framing": {
+        "beforeMs": 1.703,
+        "afterMs": 1.963,
+        "x": 0.87,
+        "sample": true
+      },
+      "followPair": {
+        "beforeMs": 23.845,
+        "afterMs": 11.55,
+        "x": 2.06
+      }
+    }
+  ]
+}

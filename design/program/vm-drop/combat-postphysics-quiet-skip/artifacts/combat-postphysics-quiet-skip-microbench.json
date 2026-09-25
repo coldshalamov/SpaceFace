@@ -1,0 +1,65 @@
+{
+  "label": "combat-postphysics-quiet-skip",
+  "primary": "quiet-48-combatant-postphysics-residual-after-86",
+  "pairs": [
+    {
+      "beforeMs": 120.034,
+      "afterMs": 36.827,
+      "speedup": 3.259
+    },
+    {
+      "beforeMs": 111.681,
+      "afterMs": 33.436,
+      "speedup": 3.34
+    },
+    {
+      "beforeMs": 110.395,
+      "afterMs": 34.991,
+      "speedup": 3.155
+    },
+    {
+      "beforeMs": 117.914,
+      "afterMs": 35.3,
+      "speedup": 3.34
+    },
+    {
+      "beforeMs": 108.732,
+      "afterMs": 37.403,
+      "speedup": 2.907
+    },
+    {
+      "beforeMs": 117.34,
+      "afterMs": 35.15,
+      "speedup": 3.338
+    },
+    {
+      "beforeMs": 121.43,
+      "afterMs": 36.861,
+      "speedup": 3.294
+    },
+    {
+      "beforeMs": 109.182,
+      "afterMs": 34.281,
+      "speedup": 3.185
+    },
+    {
+      "beforeMs": 116.592,
+      "afterMs": 35.563,
+      "speedup": 3.278
+    },
+    {
+      "beforeMs": 114.351,
+      "afterMs": 34.059,
+      "speedup": 3.357
+    },
+    {
+      "beforeMs": 111.251,
+      "afterMs": 35.837,
+      "speedup": 3.104
+    }
+  ],
+  "medianSpeedup": 3.278,
+  "minSpeedup": 2.907,
+  "maxSpeedup": 3.357,
+  "note": "Before=reconcile+telemetry+ensure-walk every tick. After=empty byId early-out + roster-stable ensure skip. Soft-GPU fps not claimed."
+}

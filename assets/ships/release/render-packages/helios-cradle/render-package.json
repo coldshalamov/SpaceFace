@@ -4084,8 +4084,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 13,
-      "mechanical": 15
+      "hull": 4,
+      "mechanical": 15,
+      "signal": 9
     },
     "materialProfiles": [
       {
@@ -4121,7 +4122,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4131,7 +4132,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4151,7 +4152,7 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4166,7 +4167,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4176,7 +4177,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4196,7 +4197,7 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4211,7 +4212,7 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4221,7 +4222,7 @@
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4241,7 +4242,7 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5294,7 +5295,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
-  "runtimeHash": "64074b85b8c24cf474bee4c8f68e08312575f07d99466373bebffca676b6b8e3",
+  "runtimeHash": "c3236e86d69a095a5725a77de500540df3c7483bf4ae91557741baa270a1ec6a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

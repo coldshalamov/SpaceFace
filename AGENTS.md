@@ -83,6 +83,15 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   reverted, re-land the content additively; if your own change breaks the app (a bad import, a red
   core path), fix it or revert your own hunk in the same turn. Awareness of other lanes is
   background, never permission: a live row on paths you are not editing blocks nothing.
+- **Cloud agents work the remote — pull their results regularly.** A quiet VM runs the
+  performance program and pushes job folders to branch `vm-drop` (all under
+  `design/program/vm-drop/<job>/`; finished folders carry `DONE.md`, `IMPORT.md`, and a
+  `patches/` series) plus scratch patch branches `vm-work/*`. `git fetch --prune origin`
+  regularly and check for new folders; sync the outbox onto master by taking the remote's
+  `design/program/vm-drop/` tree wholesale (that path is remote-authoritative — never write
+  under it locally). `vm-drop/IMPORT_DIGEST/` is the running ledger of pending patch imports;
+  importing a finished patch job onto master is normal work, done per-folder on purpose.
+  Full contract: [`design/program/VM_LANES.md`](./design/program/VM_LANES.md).
 
 Detail: [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).
 

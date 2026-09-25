@@ -1,0 +1,17 @@
+{
+  "label": "flight-dormant-skip",
+  "craft": 500,
+  "ticks": 600,
+  "dormantFraction": 0.62,
+  "nearFraction": 0.18,
+  "before": {
+    "steps": 300000,
+    "ms": 264.705
+  },
+  "after": {
+    "steps": 114600,
+    "ms": 104.462
+  },
+  "stepReduction": 0.618,
+  "speedup": 2.534
+}

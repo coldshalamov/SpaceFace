@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: still-player latch engages with nearby non-touching rocks
+ok 1 - still-player latch engages with nearby non-touching rocks
+  ---
+  duration_ms: 6.473544
+  ...
+# Subtest: asteroidField.version bump wakes still-player latch
+ok 2 - asteroidField.version bump wakes still-player latch
+  ---
+  duration_ms: 0.98837
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.726779
+  ...
+# Subtest: player unpark (speed) clears latch and re-queries
+ok 4 - player unpark (speed) clears latch and re-queries
+  ---
+  duration_ms: 0.884962
+  ...
+# Subtest: touching rock promotes on first probe before latch
+ok 5 - touching rock promotes on first probe before latch
+  ---
+  duration_ms: 1.670531
+  ...
+# Subtest: bench toggle off restores always-query (no latch)
+ok 6 - bench toggle off restores always-query (no latch)
+  ---
+  duration_ms: 0.591733
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 330.84142

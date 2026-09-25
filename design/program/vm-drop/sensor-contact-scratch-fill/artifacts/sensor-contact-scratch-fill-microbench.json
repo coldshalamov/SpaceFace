@@ -1,0 +1,53 @@
+{
+  "label": "sensor-contact-scratch-fill",
+  "CONTACTS": 18,
+  "OBSERVERS": 6,
+  "ITERS": 2500,
+  "RUNS": 11,
+  "before": {
+    "label": "before_spread_alloc",
+    "median_ms": 1417.102,
+    "min_ms": 1346.321,
+    "max_ms": 1822.885,
+    "times": [
+      1346.32,
+      1355.93,
+      1392.28,
+      1393.34,
+      1407.38,
+      1417.1,
+      1455.06,
+      1519.13,
+      1546.97,
+      1561.73,
+      1822.88
+    ],
+    "last": 108
+  },
+  "after": {
+    "label": "after_scratch_fill",
+    "median_ms": 246.25,
+    "min_ms": 244.026,
+    "max_ms": 253.868,
+    "times": [
+      244.03,
+      244.03,
+      244.74,
+      245.38,
+      245.55,
+      246.25,
+      247.06,
+      247.78,
+      247.97,
+      253.57,
+      253.87
+    ],
+    "last": 108
+  },
+  "medSpeedup": 5.755,
+  "minSpeedup": 5.517,
+  "maxSpeedup": 7.18,
+  "ship_bar": 1.5,
+  "clears_bar": true,
+  "primary": "~5.75×"
+}

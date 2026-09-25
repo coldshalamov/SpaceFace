@@ -24,7 +24,7 @@ import {
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
-import { createWaveform } from '../../orrery/waveform.js';
+import { createWaveform, voiceEnvelope } from '../../orrery/waveform.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
@@ -300,6 +300,15 @@ export function createBarScreen(ctx) {
   }
 
   // ---------- rail: who is here tonight ----------
+  function railKeysHint() {
+    const rows = railEl.querySelector('.sx-bar__rows');
+    if (!rows || railEl.querySelector('.sx-bar__keys')) return;
+    const hint = document.createElement('p');
+    hint.className = 'k-caps sx-bar__keys';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = '\u2191\u2193 Contact';
+    rows.insertAdjacentElement('afterend', hint);
+  }
   function renderRail(state) {
     const list = contacts(state);
     if (!list.length) {
@@ -322,6 +331,7 @@ export function createBarScreen(ctx) {
       }).join('') +
       `</ul>`;
     dressRail();
+    railKeysHint();
   }
 
   // ---------- stage: the conversation ----------
@@ -380,7 +390,25 @@ export function createBarScreen(ctx) {
       let nameW = 0;
       try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
       if (nameW > 0) host.style.width = `${Math.round(nameW)}px`;
-      wave = createWaveform(host, { bars: Math.max(30, Math.min(96, Math.round((nameW || 210) / 5.6))) });
+      // the rest frame is the line's own envelope: the words they said, or the line they open with;
+      // the trace is as long as that line (never the heading's width, so it never reads as a rule)
+      const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
+      const lineText = String((lineEl ? lineEl.textContent : c.line) || '');
+      const bars = Math.max(24, Math.min(96, Math.round(lineText.length * 0.9)));
+      const traceW = Math.min(nameW > 0 ? nameW - 24 : 420, bars * 6);
+      host.style.width = `${Math.round(traceW)}px`;
+      wave = createWaveform(host, { bars: Math.max(24, Math.min(bars, Math.floor(traceW / 6))), envelope: voiceEnvelope(lineText, Math.max(24, Math.min(bars, Math.floor(traceW / 6)))) });
+    }
+    const firstChoice = stageEl.querySelector('.sx-choice');
+    if (firstChoice) firstChoice.classList.add('is-current');
+    // the keys, said once at the scale's foot
+    const choices = stageEl.querySelector('.sx-talk__choices');
+    if (choices && firstChoice && !stageEl.querySelector('.sx-talk__keys')) {
+      const hint = document.createElement('p');
+      hint.className = 'k-caps sx-talk__keys';
+      hint.setAttribute('aria-hidden', 'true');
+      hint.textContent = '1\u20133 \u00b7 Enter answers';
+      choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
     if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
@@ -404,7 +432,8 @@ export function createBarScreen(ctx) {
     let survey = null;
     try { survey = availableSurveyOffer(state, stationId); } catch (_) { survey = null; }
     let leads = [];
-    try { leads = (missionBoardSlots(state, stationId) || []).slice(0, 3); } catch (_) { leads = []; }
+    let boardCount = 0;
+    try { const all = missionBoardSlots(state, stationId) || []; boardCount = all.length; leads = all.slice(0, 3); } catch (_) { leads = []; }
     const credits = Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0));
 
     const intelHtml = tags.length
@@ -431,9 +460,10 @@ export function createBarScreen(ctx) {
       (surveyRow || leadRows
         ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}</button></li></ul>` +
-      `<p class="k-caps sx-intel__head">Intel</p>` +
-      intelHtml;
+      // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
+      // the one that matters here, so it rides the verb instead of a block of its own)
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li></ul>` +
+      `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
   }
 
@@ -455,6 +485,24 @@ export function createBarScreen(ctx) {
   railEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     selectContact(b.getAttribute('data-contact'), false);
+  });
+  // one reply is current at rest (the first); the pointer or the focus moves the mark
+  const setCurrentChoice = (btn) => {
+    for (const b of stageEl.querySelectorAll('.sx-choice.is-current')) if (b !== btn) b.classList.remove('is-current');
+    if (btn) btn.classList.add('is-current');
+  };
+  stageEl.addEventListener('pointerover', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
+  stageEl.addEventListener('focusin', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
+  // a reply's numeral is its key: 1..9 on the stage picks that reply
+  stageEl.addEventListener('keydown', (ev) => {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if (!/^[1-9]$/.test(ev.key)) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const btn = stageEl.querySelectorAll('.sx-talk__choices [data-choice]')[Number(ev.key) - 1];
+    if (!btn || btn.disabled) return;
+    ev.preventDefault();
+    btn.click();
   });
   railEl.addEventListener('keydown', (ev) => {
     const words = [...railEl.querySelectorAll('[data-contact]')];
