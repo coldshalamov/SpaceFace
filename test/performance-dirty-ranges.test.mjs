@@ -651,6 +651,24 @@ test('window-end pipeline drain requires a sustained empty queue, not one zero s
     'drain must require the empty state to persist for a sustained window');
 });
 
+test('the probe arms a partial-upload census that names ambient writers', async () => {
+  // Tier-1 totals can prove owners requested less but cannot name ambient
+  // bufferSubData writers — the 2026-09-25 acceptance runs showed ambient
+  // swings of 10M→37M deciding the driver gate. The census keys partial
+  // uploads by CPU view and resolves them to attributes; pin the wiring so a
+  // future refactor cannot silently disarm it.
+  const counters = await import('../src/core/perfCounters.js');
+  const api = counters.createPerfCounters();
+  assert.equal(typeof api.armPartialUploadCensus, 'function');
+  assert.equal(typeof api.collectPartialUploadCensus, 'function');
+  assert.equal(typeof api.disarmPartialUploadCensus, 'function');
+  assert.deepEqual(api.collectPartialUploadCensus(), [], 'disarmed census reports nothing');
+
+  const probeSource = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  assert.match(probeSource, /armPartialUploadCensus/, 'window open must arm the census');
+  assert.match(probeSource, /collectPartialUploadCensusReport/, 'window close must resolve it');
+});
+
 test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
   // The 2026-09-15 browser acceptance run failed on page warnings: every whole-ship
   // LOD demotion threw because its custom per-level bootstrapPlan still rode the
