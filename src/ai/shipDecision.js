@@ -45,7 +45,14 @@ export class ShipUtilitySelector {
       if (!selected || candidateBetter(candidate, selected)) selected = candidate;
     };
 
+    // A combat doctrine's phase whitelist is a hard contract: applyCombatDoctrineToSelection vetoes
+    // every other action, so offering the scorer anything but the allowed action can only produce a
+    // selection that is immediately discarded — starving the one verb the phase exists to commit.
+    // (Measured: action_drop_bomb's 340-WU preferred range out-scores action_burst at standoff,
+    // which left ranged_disengager fire windows permanently denied as action_request_pending.)
+    const doctrineAllowedActionId = combatDoctrine && combatDoctrine.allowedActionId || null;
     for (const def of defs) {
+      if (doctrineAllowedActionId && def.id !== doctrineAllowedActionId) continue;
       const candidate = scoreAction(def, self, target, distance, directive, this.config, !!this.trace);
       if (!candidate.eligible) continue;
       if (current && current.actionId === def.id) {

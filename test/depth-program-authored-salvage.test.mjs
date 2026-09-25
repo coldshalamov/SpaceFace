@@ -44,7 +44,10 @@ test('R1 unique variants wrap their base families without changing the bases', (
 
   const beamBase = WEAPONS.find((entry) => entry.id === 'wpn_beam_laser_m');
   const veilCutter = WEAPONS.find((entry) => entry.id === 'unique_veil_cutter');
-  assert.deepEqual({ range: beamBase.range, heatPerSec: beamBase.heatPerSec }, { range: 520, heatPerSec: 55 });
+  // Row A5 deliberately re-ranged small/medium weapons to the composed engagement envelope
+  // (S ~240, M ~260); the beam's shipped reach is that authored value, not the old 520 WU
+  // projectile-lifetime range.
+  assert.deepEqual({ range: beamBase.range, heatPerSec: beamBase.heatPerSec }, { range: 240, heatPerSec: 55 });
   assert.ok(veilCutter, 'Veil-Cutter must be present in the canonical weapon catalog');
   assert.deepEqual({
     baseId: veilCutter.baseId,
@@ -57,7 +60,7 @@ test('R1 unique variants wrap their base families without changing the bases', (
     requiresTech: veilCutter.requiresTech,
   }, {
     baseId: 'wpn_beam_laser_m',
-    range: 598,
+    range: 276,
     spreadDeg: 0.3,
     heatPerSec: 66,
     price: 0,
@@ -65,6 +68,9 @@ test('R1 unique variants wrap their base families without changing the bases', (
     salvageOnly: true,
     requiresTech: undefined,
   });
+  // The unique's reach is the authored rangePct bonus on the live base, not a fixed number.
+  assert.equal(veilCutter.range, Math.round(beamBase.range * (1 + veilCutter.variantBonuses.rangePct)),
+    'Veil-Cutter range must remain the authored rangePct bonus applied to the beam base');
 });
 
 test('authored salvage configuration survives reannotation and applies military legality', () => {

@@ -62,6 +62,10 @@ const FIELD_ANCHOR_RECOVER_MAX_TICKS = 200;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
+// Panic floor for the disengager ring. Post-A5 the shared engagement envelope is ~240-280 WU and
+// faction presence standoffs sample inside it, so the press trigger must sit below the lowest
+// authored standoff band (170 WU) instead of above the doctrine's own 240 WU default orbit.
+const RANGED_PRESS_FLOOR_WU = 140;
 // Swarm pack: the light-hull identity. Short synchronized passes instead of the raider flyby's
 // measured cycle — the fight reads as a swarm, not as three lone interceptors taking turns.
 // The strike window has to outlive the action cooldown race (burst cooldown 12t + executor
@@ -591,8 +595,12 @@ function egressPhaseFor(record) {
 
 function updateRanged(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
-  const closing = closingSpeed(self, target);
-  if (distance < 300 || closing > 55) {
+  // The closing interrupt answers the TARGET's press — a hull must never read its own run-in as an
+  // incoming charge. Mutual closure would count the disengager's approach speed too: any hull whose
+  // cruise exceeds the threshold self-interrupted every ingress and orbited in retreat forever,
+  // never reaching charge_cue (measured on fast survey hulls at cruise ~60+).
+  const press = targetPressSpeed(self, target);
+  if (distance < RANGED_PRESS_FLOOR_WU || press > 55) {
     if (record.phase !== 'retreat') {
       record.outcome = 'closing_interrupt';
       enter(record, 'retreat', tick, null);
@@ -600,13 +608,15 @@ function updateRanged(record, tick, self, target, distance) {
     return;
   }
   if (record.phase === 'retreat') {
-    if (distance >= 520 && closing < 10) enter(record, 'outer_standoff', tick, null);
+    if (distance >= 520 && press < 10) enter(record, 'outer_standoff', tick, null);
     return;
   }
-  // The charge floor must meet the retreat trigger (300) exactly: between them the doctrine had
-  // no legal move — too close to fire, too far to flee — and a disengager parked at 300-420wu
-  // orbited in outer_standoff forever. Retreat is checked first, so 300 stays panic territory.
-  if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS && distance >= 300 && distance <= 1100) {
+  // The charge floor must meet the retreat trigger exactly: between them the doctrine had no
+  // legal move — too close to fire, too far to flee — and a disengager parked inside the dead
+  // band orbited in outer_standoff forever. Retreat is checked first, so the floor stays panic
+  // territory; it lives below the 240-280 WU A5 envelope the authored standoff bands orbit in.
+  if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS
+    && distance >= RANGED_PRESS_FLOOR_WU && distance <= 1100) {
     enter(record, 'charge_cue', tick, 'weapon_charge');
   }
   else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
@@ -1314,6 +1324,18 @@ function closingSpeed(self, target) {
   const rvx = finite(target.vel && target.vel.x) - finite(self.vel && self.vel.x);
   const rvz = finite(target.vel && target.vel.z) - finite(self.vel && self.vel.z);
   return -(rvx * dx + rvz * dz) / length;
+}
+
+/** Positive when the target itself moves toward self — the press a disengager flees. */
+function targetPressSpeed(self, target) {
+  if (!self || !self.pos || !target || !target.pos) return 0;
+  const dx = finite(target.pos.x) - finite(self.pos.x);
+  const dz = finite(target.pos.z) - finite(self.pos.z);
+  const length = Math.hypot(dx, dz);
+  if (length <= 1e-6) return 0;
+  const tvx = finite(target.vel && target.vel.x);
+  const tvz = finite(target.vel && target.vel.z);
+  return -(tvx * dx + tvz * dz) / length;
 }
 
 function sideFor(seed, entityId, doctrineId, cycle, targetId) {

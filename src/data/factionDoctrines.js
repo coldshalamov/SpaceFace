@@ -129,10 +129,13 @@ export const FACTION_DOCTRINES = freeze({
     retreatAt: [0.40, 0.48],
     destroyTarget: false,
   },
+  // K1 presence ships fit only S/M weapons, so after the A5 engagement-range rebalance their
+  // standoff bands must live inside the shared 240 WU envelope (S reach) — a band above 240 puts
+  // the sampled orbit outside every fitted gun and the doctrine can never reach a fire window.
   faction_understory: {
     id: 'understory_afterwake',
     pursuit: [0.14, 0.30],
-    engagementRange: [410, 450],
+    engagementRange: [195, 215],
     formations: ['wake_cluster', 'host_shadow', 'spore_ring'],
     liveFormations: ['ring', 'wedge'],
     combatDoctrineId: 'ranged_disengager',
@@ -146,7 +149,7 @@ export const FACTION_DOCTRINES = freeze({
   faction_fulfillment: {
     id: 'fulfillment_fixed_route',
     pursuit: [0.04, 0.13],
-    engagementRange: [365, 400],
+    engagementRange: [170, 190],
     formations: ['perfect_column', 'holding_grid', 'route_stack'],
     liveFormations: ['line'],
     combatDoctrineId: 'ranged_disengager',
@@ -160,7 +163,7 @@ export const FACTION_DOCTRINES = freeze({
   faction_archive: {
     id: 'archive_redaction',
     pursuit: [0, 0.05],
-    engagementRange: [455, 490],
+    engagementRange: [215, 235],
     formations: ['reading_ring', 'folio_spiral', 'closed_stack'],
     liveFormations: ['ring'],
     combatDoctrineId: 'ranged_disengager',
@@ -174,7 +177,7 @@ export const FACTION_DOCTRINES = freeze({
   faction_pitborn: {
     id: 'pitborn_disable_and_run',
     pursuit: [0.62, 0.82],
-    engagementRange: [300, 340],
+    engagementRange: [145, 165],
     formations: ['broken_wedge', 'yard_pack', 'scrap_hook'],
     liveFormations: ['wedge'],
     combatDoctrineId: 'interceptor_flyby',
@@ -189,7 +192,7 @@ export const FACTION_DOCTRINES = freeze({
   faction_verge_layers: {
     id: 'verge_observer_lattice',
     pursuit: [0.24, 0.40],
-    engagementRange: [500, 530],
+    engagementRange: [222, 240],
     formations: ['prism_lattice', 'phase_arc', 'silent_tessellation'],
     liveFormations: ['ring'],
     combatDoctrineId: 'ranged_disengager',

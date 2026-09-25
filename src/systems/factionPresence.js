@@ -946,7 +946,14 @@ export const factionPresence = {
         x: start.x + dx * progress + (-dz / length) * offset,
         z: start.z + dz * progress + (dx / length) * offset,
       };
-      const offensive = ai.passive === false && ai.activity && ai.activity.kind === 'attack_run';
+      // A provoked route member keeps its authored combat activity — including the doctrine
+      // egress posture stand-in (`reposition`, whose authored attack_run is stashed on
+      // `ai.postureBaseActivity` by applyEngagementPosture until the doctrine recommits).
+      // Rewriting that stand-in to `transit` is a one-way downgrade: transit is not an offensive
+      // activity, so the actor silently loses doctrine eligibility and fire authority for good.
+      const postureKind = ai.postureBaseActivity && ai.postureBaseActivity.kind;
+      const offensive = ai.passive === false && ai.activity
+        && (ai.activity.kind === 'attack_run' || postureKind === 'attack_run');
       ai.activity = {
         ...(ai.activity || {}),
         kind: offensive ? ai.activity.kind : 'transit',
