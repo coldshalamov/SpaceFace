@@ -269,10 +269,13 @@ try {
     const DIE_SIM_S = envNum('SPACEFACE_DEMO_DIE_SIM_S', 300);
     let simStart = null;
     let dieStartSim = null;
-    let dieTheta = 0;
     let weaveDir = 'a';
     let weaveHeld = false;
     let lastWeave = 0;
+    let lastAimFail = null;
+    let aimLoggedOnce = false;
+    let dieTargetId = null;
+    let yawHeld = false;
     let outcome = null;
     const waves = [];
     const snapTrace = [];
@@ -281,16 +284,20 @@ try {
       const snap = await page.evaluate(() => {
         const st = window.SF.state;
         const p = st.entities.get(st.playerId);
-        let hostiles = 0;
+        let hostiles = 0, hostilesAlive = 0, nearestD = null;
         if (p) {
           for (const e of st.entities.values()) {
             if (!e || e.alive === false || e.id === p.id) continue;
+            if (e.type && e.type !== 'ship' && e.type !== 'drone') continue;
             const hostile = (e.data && e.data.ai && e.data.ai.hostile === true)
               || (e.ai && e.ai.hostileToPlayer)
               || (e.team != null && e.team !== p.team && e.team !== 2 && e.team !== 0);
             if (!hostile) continue;
+            hostilesAlive++;
             const ep = e.pos || e; const pp = p.pos || p;
-            if (Math.hypot(ep.x - pp.x, ep.z - pp.z) < 400) hostiles++;
+            const d = Math.hypot(ep.x - pp.x, ep.z - pp.z);
+            if (nearestD == null || d < nearestD) nearestD = d;
+            if (d < 400) hostiles++;
           }
         }
         return {
@@ -298,6 +305,7 @@ try {
           alive: p && p.alive !== false, hull: p && p.hull, shield: p && p.shield,
           speed: p ? +Math.hypot((p.vel || {}).x || 0, (p.vel || {}).z || 0).toFixed(1) : null,
           firing: st.input && st.input.fire, hostiles400: hostiles,
+          hostilesAlive, nearestD: nearestD == null ? null : +nearestD.toFixed(0),
           simTime: +st.simTime.toFixed(1),
           screen: document.body.dataset.kScreen || null,
         };
@@ -325,19 +333,68 @@ try {
         if (dieStartSim == null && snap.simTime != null) dieStartSim = snap.simTime;
       }
       if (dieStartSim != null && snap.mode === 'flight') {
-        // Pirouette in place: a cursor orbiting tight around screen center keeps the nose
-        // chasing a point the ship keeps overshooting — thrust spins it instead of driving
-        // it anywhere, so the swarm converges and finishes. A wide orbit still wandered
-        // out (net random walk at 160+ wu/s); a stationary target stalemates on regen.
-        dieTheta += 0.5;
-        await page.mouse.move(800 + 90 * Math.cos(dieTheta), 450 + 90 * Math.sin(dieTheta));
-        if ((snap.speed || 0) > 110) {
-          if (wHeld) { await page.keyboard.up('w'); wHeld = false; }
-          await page.keyboard.down('s');
-          await new Promise(r => setTimeout(r, 240));
-          await page.keyboard.up('s');
-        } else if (!wHeld) {
-          await page.keyboard.down('w'); wHeld = true;
+        // Converge on the swarm. The default controlScheme is PILOT — the mouse aims guns,
+        // it does NOT steer the nose; A/D yaw while coasting. So this is a bang-bang yaw
+        // loop on real keys: pick a sticky hostile, read bearing-vs-nose error, hold the
+        // yaw key toward it until inside ~0.35 rad, then W thrusts at it. Once any hostile
+        // ship is inside 250 WU the brake settles into the pack — the verified killable
+        // state (stationary target dies in ~10 sim-s). Prior die modes assumed cursor-steer
+        // and flew ballistic away from the arena while the pack chased ~100 wu/s behind.
+        const aim = await page.evaluate((preferId) => {
+          const st = window.SF.state;
+          const p = st.entities.get(st.playerId);
+          if (!p || !p.pos) return { fail: 'no-player' };
+          let best = null, bestD = Infinity, preferred = null, preferredD = null;
+          for (const e of st.entities.values()) {
+            if (!e || e.alive === false || e.id === p.id) continue;
+            if (e.type && e.type !== 'ship' && e.type !== 'drone') continue;
+            const hostile = (e.data && e.data.ai && e.data.ai.hostile === true)
+              || (e.ai && e.ai.hostileToPlayer)
+              || (e.team != null && e.team !== p.team && e.team !== 2 && e.team !== 0);
+            if (!hostile || !e.pos) continue;
+            const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+            if (e.id === preferId) { preferred = e; preferredD = d; }
+            if (d < bestD) { bestD = d; best = e; }
+          }
+          const pick = preferred || best;
+          const pickD = preferred ? preferredD : bestD;
+          if (!pick) return { fail: 'no-hostile' };
+          const bearing = Math.atan2(pick.pos.z - p.pos.z, pick.pos.x - p.pos.x);
+          let err = bearing - (p.rot || 0);
+          while (err > Math.PI) err -= Math.PI * 2;
+          while (err < -Math.PI) err += Math.PI * 2;
+          return { err, d: pickD, id: pick.id };
+        }, dieTargetId).catch((e) => ({ fail: 'eval:' + String(e && e.message || e).slice(0, 80) }));
+        if (aim && aim.fail && aim.fail !== lastAimFail) {
+          lastAimFail = aim.fail;
+          console.log(`  [rounds] die-mode aim failed: ${aim.fail} (sim=${snap.simTime})`);
+        }
+        if (aim && !aim.fail) {
+          dieTargetId = aim.id;
+          if (!aimLoggedOnce) {
+            aimLoggedOnce = true;
+            console.log(`  [rounds] die-mode converging on hostile ${aim.id} at d=${Math.round(aim.d)} (sim=${snap.simTime})`);
+          }
+          const nearestShip = snap.nearestD != null ? snap.nearestD : aim.d;
+          const yawKey = aim.err > 0 ? 'd' : 'a';
+          const offKey = aim.err > 0 ? 'a' : 'd';
+          if (nearestShip < 250 && (snap.speed || 0) > 8) {
+            // Inside the pack: brake into a stand-still so the swarm can finish.
+            if (wHeld) { await page.keyboard.up('w'); wHeld = false; }
+            if (yawHeld) { await page.keyboard.up('a'); await page.keyboard.up('d'); yawHeld = false; }
+            await page.keyboard.down('s');
+            await new Promise(r => setTimeout(r, 120));
+            await page.keyboard.up('s');
+          } else if (Math.abs(aim.err) > 0.35) {
+            // Coast-yaw the nose onto the target (PILOT: A/D yaw while not thrusting).
+            if (wHeld) { await page.keyboard.up('w'); wHeld = false; }
+            await page.keyboard.up(offKey);
+            if (!yawHeld) { await page.keyboard.down(yawKey); yawHeld = true; }
+          } else {
+            // Lined up: burn at it.
+            if (yawHeld) { await page.keyboard.up('a'); await page.keyboard.up('d'); yawHeld = false; }
+            if (!wHeld) { await page.keyboard.down('w'); wHeld = true; }
+          }
         }
       }
       if (dieStartSim != null && snap.simTime - dieStartSim > DIE_SIM_S) {
@@ -346,7 +403,7 @@ try {
       }
       snapTrace.push({ wall: Date.now() - t0, ...snap });
       if (snapTrace.length % 45 === 1) {
-        console.log(`  [rounds] mode=${snap.mode} phase=${snap.phase} w${snap.wave} hull=${snap.hull} shield=${snap.shield} hostiles400=${snap.hostiles400} speed=${snap.speed} firing=${snap.firing} sim=${snap.simTime}s`);
+        console.log(`  [rounds] mode=${snap.mode} phase=${snap.phase} w${snap.wave} hull=${snap.hull} shield=${snap.shield} hostiles400=${snap.hostiles400} alive=${snap.hostilesAlive} nearestD=${snap.nearestD} speed=${snap.speed} firing=${snap.firing} sim=${snap.simTime}s`);
       }
       if (!waves.length || waves[waves.length - 1] !== snap.wave) waves.push(snap.wave);
       if (snap.screen === 'crucibleResults' || snap.phase === 'results') {

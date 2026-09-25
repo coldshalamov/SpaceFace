@@ -704,7 +704,13 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   if (!skipUnstampedRescan(entityIndexVersion(state), runtime.classifiedMembership)) {
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
-      if (entity && entity.alive !== false && !runtime.seenEntityIds.has(entity.id)) {
+      // Entity ids are recycled through state.freeIds, so a live entity can carry an id that
+      // seenEntityIds still holds from its previous holder — the end-of-pass cleanup retains it
+      // because entities.get(id) answers live. "Unstamped" therefore has to mean the object has
+      // no stamp, not merely that its id is new; otherwise the recycled actor is never visited,
+      // never enters the owner views or physics dynamics, and drifts inert (D38 wave wasps).
+      if (entity && entity.alive !== false
+        && (!runtime.seenEntityIds.has(entity.id) || entity.activity == null)) {
         unstamped.push(entity);
       }
     }

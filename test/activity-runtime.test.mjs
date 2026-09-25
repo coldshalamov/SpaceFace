@@ -440,6 +440,61 @@ test('activity manager publishes glass and exact sets from the live classifier',
   assert.equal(far.alive, true);
 });
 
+test('a recycled entity id is stamped when its holder is replaced between passes', () => {
+  // Entity ids recycle through state.freeIds: a dead actor's id can land on a fresh spawn before
+  // the classifier's end-of-pass cleanup runs, so the new object sits in seenEntityIds with no
+  // stamp. If "unstamped" meant only "id unseen" the replacement would be skipped forever —
+  // survival wasps drifted inert outside every owner view (D38). The rescan must treat a live
+  // entity with no activity stamp as unstamped regardless of its id's history.
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const nearRock = rock(2, 20);
+  const farRocks = [];
+  for (let i = 0; i < 40; i++) farRocks.push(rock(100 + i, 4000 + i * 10));
+  // The previous holder of id 50: a far dormant rock, stamped then culled off-screen.
+  const staleHolder = rock(50, 6000);
+  const state = makeState([player, nearRock, staleHolder, ...farRocks], {
+    runtime: { profileId: 'production' },
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 3,
+      ready: true,
+      shipLike: [player],
+      asteroids: [nearRock, staleHolder, ...farRocks],
+      projectiles: [],
+    },
+  });
+  const first = ensureActivityClassified(state);
+  assert.equal(first.classifyMode, 'full');
+  assert.equal(staleHolder.activity.simTier, SIM_TIER.S3_DORMANT);
+  // Despawn the holder and respawn a hostile reusing its id before the next classify pass —
+  // the cleanup never sees a dead entity at id 50, so the stale "seen" record survives.
+  staleHolder.alive = false;
+  state.entities.delete(50);
+  state.entityList.splice(state.entityList.indexOf(staleHolder), 1);
+  const recycled = ship(50, 120, {
+    team: 1,
+    data: {
+      ai: {
+        combatant: true, passive: false,
+        activity: { kind: 'attack_run', targetId: 1 },
+      },
+    },
+  });
+  state.entityList.push(recycled);
+  state.entities.set(50, recycled);
+  state.entityIndex.shipLike.push(recycled);
+  state.entityIndex.version = 4;
+  state.tick = (state.tick | 0) + 1;
+  state.simTime = (state.simTime || 0) + 1 / 60;
+  const second = ensureActivityClassified(state);
+  assert.equal(second.classifyMode, 'incremental');
+  assert.ok(recycled.activity, 'recycled-id spawn must receive an activity stamp');
+  assert.equal(recycled.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.ok(second.exactIds.includes(50));
+  assert.ok(second.activeAiEntities.includes(recycled),
+    'a stamped hostile must be visible to the tactical owner view');
+});
+
 test('incremental classify revisits fast non-physics movers the hash cannot see', () => {
   // Travel-lane traffic repositions itself every tick at 420 WU/s and opted out of physics
   // bodies, so the production broad-phase hash never contains it. The incremental classifier
