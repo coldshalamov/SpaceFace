@@ -341,6 +341,7 @@ import {
   TABLE_RESIDENCY_PREFETCH_SECONDS,
   TABLE_SUBMIT_APPROACH_SECONDS,
   tableLookAtDelta,
+  tableLookAtOrigin,
   tablePrefetchZoomFromState,
   tableShadowCasterRadius,
   tableTravelSpeed,
@@ -1454,7 +1455,7 @@ function isFirstFlightProtectedEntity(entity) {
  * frame currently has on the readable glass. The set is small by construction; the bulk
  * runway keeps the hold so the cooked working set survives first flight.
  */
-function isHoldExemptMeshBuild(entity, state, glassIds) {
+function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, admissionEnv) {
   if (!entity || entity.alive === false) return false;
   if (isFirstFlightProtectedEntity(entity)) return true;
   if (entityIsExplicitRenderFocus(entity, state)) return true;
@@ -1468,7 +1469,7 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
   // flight, however squarely it sat on screen. The hold protects the opening from work the
   // player cannot see; a row on the live glass is work the player is looking at the absence of.
   // Builds stay inside the ordinary per-poll budget and time slice.
-  if (entityIsOnReadableGlass(entity, state)) return true;
+  if (onReadableGlass(entity)) return true;
   // Lane C — residency prefetch window under the hold. Waiting until a row crosses the
   // glass band pays first mesh build on-glass (crucible soft-GPU: asteroid builds at
   // +11.5 s while hold still owns streaming). Approach time uses the same seconds×speed
@@ -1483,12 +1484,82 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
   // Wave-planned hull keys (Choice B) are next-contact by schedule — owe their mesh under
   // the hold even when spawn distance sits on the glass lip (~165 WU vs ~163 halfX).
   if (entityMatchesWaveHullRunway(entity, state)) return true;
-  const env = renderAdmissionEnv(state);
+  const env = admissionEnv();
   const horizon = isPresentationLedgerRow(entity)
     ? TABLE_COLLECT_HORIZON_SECONDS
     : TABLE_RESIDENCY_PREFETCH_SECONDS;
   const tGlass = entityTimeToGlassSeconds(entity, env, state, horizon);
   return tGlass <= horizon;
+}
+
+export function isHoldExemptMeshBuild(entity, state, glassIds) {
+  // Single callers keep the lazy per-entity derivations: the env is built only for the few
+  // entities that survive the early exits, and the readable-glass test computes its camera
+  // terms on demand.
+  let env = null;
+  return isHoldExemptMeshBuildCore(
+    entity,
+    state,
+    glassIds,
+    (e) => entityIsOnReadableGlass(e, state),
+    () => (env = env || renderAdmissionEnv(state)),
+  );
+}
+
+const _holdExemptLookOrigin = { x: 0, z: 0 };
+const _holdExemptEnv = { anchorX: 0, anchorZ: 0, pvx: 0, pvz: 0, glassR: 0 };
+
+/**
+ * One poll's worth of invariant terms for the hold-exempt scan. enqueueHoldExemptMeshBuilds
+ * evaluates ~100+ presentation entities each collect, and entityIsOnReadableGlass used to
+ * re-derive the player entity, the live table camera and the glass half extents (trig) for
+ * every row; renderAdmissionEnv re-derived the same player and camera again in the approach
+ * tail. All of it is fixed inside one call, so it is computed once here.
+ */
+function makeHoldExemptScanContext(state) {
+  const player = playerEntityForRenderState(state);
+  const cam = liveTableCamera(state);
+  return {
+    player,
+    glass: glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt),
+    lookOrigin: tableLookAtOrigin(state, player && player.pos, _holdExemptLookOrigin),
+    env: renderAdmissionEnv(state, _holdExemptEnv),
+  };
+}
+
+/** entityIsOnReadableGlass with the per-poll terms already resolved — same math, same order. */
+function entityIsOnReadableGlassScan(entity, state, scan) {
+  if (!entity || !state) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  const player = scan.player;
+  if (!player || !player.pos || !entity.pos) return false;
+  const glass = scan.glass;
+  _residencyLookDelta.x = (Number.isFinite(entity.pos.x) ? entity.pos.x : 0) - scan.lookOrigin.x;
+  _residencyLookDelta.z = (Number.isFinite(entity.pos.z) ? entity.pos.z : 0) - scan.lookOrigin.z;
+  const band = classifyTableBand({
+    dx: _residencyLookDelta.x,
+    dz: _residencyLookDelta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+    radius: entityVisualCullRadius(entity, entity.mesh),
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+}
+
+/**
+ * The exempt predicate for one collect pass: identical answers to isHoldExemptMeshBuild
+ * (pinned by test/hold-exempt-scan.test.mjs) with the camera/glass/player/env terms hoisted.
+ */
+export function makeHoldExemptMeshBuildEvaluator(state, glassIds) {
+  const scan = makeHoldExemptScanContext(state);
+  return (entity) => isHoldExemptMeshBuildCore(
+    entity,
+    state,
+    glassIds,
+    (e) => entityIsOnReadableGlassScan(e, state, scan),
+    () => scan.env,
+  );
 }
 
 /**
@@ -1520,6 +1591,7 @@ function enqueueHoldExemptMeshBuilds(owner) {
     state,
     owner._presentationMeshScratch || (owner._presentationMeshScratch = []),
   );
+  const exempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
   const before = owner._meshBuildQueue.length;
   enqueueMissingMeshBuilds(
     list,
@@ -1527,7 +1599,7 @@ function enqueueHoldExemptMeshBuilds(owner) {
     owner._meshBuildQueuedIds,
     owner._meshBuildQueue,
     (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
-      && isHoldExemptMeshBuild(entity, state, glassIds),
+      && exempt(entity),
   );
   return owner._meshBuildQueue.length - before;
 }
@@ -1563,7 +1635,7 @@ function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
   return String(entitySectorId(entity) || '') !== String(pendingSectorId);
 }
 
-function entityIsOnReadableGlass(entity, state) {
+export function entityIsOnReadableGlass(entity, state) {
   if (!entity || !state) return false;
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const player = playerEntityForRenderState(state);
@@ -12344,7 +12416,7 @@ export const render = {
       stats.meshVisits++;
       const entity = resolveWorldPresentationEntity(state, id);
       const residencyEvict = !!(entity && entity.alive !== false)
-        && !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict', entity));
+        && !isEntityRenderRelevant(entity, state, evictRadius);
       if (!entity || entity.alive === false || residencyEvict) {
         if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
         this._unbindPresentationMesh(id, mesh);
@@ -12356,9 +12428,19 @@ export const render = {
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
+    // The evict radius is fixed for the whole poll except for the authored ship/wreck cap —
+    // compute both once instead of re-deriving camera terms and trig per mesh.
+    const evictSpeed = tableTravelSpeed(state);
+    const evictCam = liveTableCamera(state);
+    const evictRadiusBase = residencyEvictRadius(
+      evictSpeed, evictCam.prefetchZoom, evictCam.fov, evictCam.aspect, evictCam.tilt);
+    const evictRadiusShipWreck = Math.max(evictRadiusBase, authoredResidencyEvictRadius(evictSpeed));
         continue;
       }
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
+      const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
+        ? evictRadiusShipWreck
+        : evictRadiusBase;
     }
 
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
@@ -12385,17 +12467,28 @@ export const render = {
           || this._sectorBoundaryPreparations?.has(entity.id)
           || !isEntityRenderRelevant(entity, state)) continue;
       // Candidates about to cross the glass drain ahead of ordinary runway filler.
-      const urgent = entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS;
+      const urgent = tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS;
       if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
       else (urgent ? urgentOthers : otherCandidates).push(entity);
+    // entityTimeToGlassSeconds is a pure function of (entity, env, state) within one poll —
+    // the candidate scan, the four tier sorts and the urgent re-hoist used to each recompute
+    // it per call; cache one value per entity for the whole pass.
+    const tGlassCache = this._meshResidencyTtGCache || (this._meshResidencyTtGCache = new Map());
+    tGlassCache.clear();
+    const tGlass = (entity) => {
+      let s = tGlassCache.get(entity);
+      if (s === undefined) {
+        s = entityTimeToGlassSeconds(entity, env, state);
+        tGlassCache.set(entity, s);
+      }
+      return s;
+    };
     }
     // Within each tier the drain is still FIFO, so collection order used to decide which
     // of several same-tier candidates spent the bounded per-frame build budget — a distant
     // prop collected early could outrank a hull crossing the runway. Order every tier by
     // predicted time-to-glass so the nearest deadline always drains first.
-    const byTimeToGlass = (a, b) => (
-      entityTimeToGlassSeconds(a, env, state) - entityTimeToGlassSeconds(b, env, state)
-    );
+    const byTimeToGlass = (a, b) => tGlass(a) - tGlass(b);
     urgentShips.sort(byTimeToGlass);
     urgentOthers.sort(byTimeToGlass);
     shipCandidates.sort(byTimeToGlass);
@@ -12455,7 +12548,7 @@ export const render = {
       restNow.length = 0;
       for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
         const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
-        if (entity && entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS) {
+        if (entity && tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS) {
           urgentNow.push(pendingBuilds[index]);
         } else {
           restNow.push(pendingBuilds[index]);
@@ -12501,7 +12594,7 @@ export const render = {
     let moved = 0;
     for (let i = this._meshBuildQueueHead; i < queue.length; i++) {
       const entity = resolveWorldPresentationEntity(this.state, queue[i]);
-      if (!isHoldExemptMeshBuild(entity, this.state, glassIds)) continue;
+      if (!exempt(entity)) continue;
       const slot = this._meshBuildQueueHead + moved;
       if (i !== slot) {
         const [id] = queue.splice(i, 1);
@@ -12514,6 +12607,7 @@ export const render = {
     // on soft-GPU crucible). Exempt ids stay hoisted at the head, so the next hold
     // frames finish the rest without letting non-exempt work slip through.
     return moved > 0
+    const exempt = makeHoldExemptMeshBuildEvaluator(this.state, glassIds);
       ? this._drainMeshBuildQueue(Math.min(moved, RUNTIME_MESH_BUILD_BUDGET))
       : 0;
   },
