@@ -88,11 +88,11 @@ export const ORRERY_CSS = `
 @keyframes orr-rise { from { opacity:0; transform:translateY(6px); filter:blur(3px); } to { opacity:1; transform:none; filter:none; } }
 
 /* Rolling counter: each digit is a column of 0-9 that rolls to its value. */
-.orr-counter { display:inline-flex; overflow:hidden; line-height:1; height:1em; vertical-align:baseline; }
-.orr-counter__digit { display:inline-block; position:relative; width:.62em; height:1em; overflow:hidden; }
+.orr-counter { display:inline-flex; overflow:visible; line-height:1; height:1em; vertical-align:baseline; }
+.orr-counter__digit { display:inline-block; position:relative; width:.62em; height:1em; overflow:hidden; vertical-align:top; }
 .orr-counter__digit > span { position:absolute; left:0; top:0; display:flex; flex-direction:column; transition:transform 560ms var(--dp-ease-over); }
 .orr-counter__digit > span > i { font-style:normal; height:1em; line-height:1; text-align:center; }
-.orr-counter__sep { display:inline-block; white-space:pre; }
+.orr-counter__sep { display:inline-block; white-space:pre; height:1em; line-height:1; overflow:visible; vertical-align:top; }
 
 html.sf-reduce-motion .orr-drift, html.sf-reduce-motion .orr-spin-in, html.sf-reduce-motion .orr-rise { animation:none; }
 html.sf-reduce-motion .orr-draw { animation:none; stroke-dashoffset:0; }
