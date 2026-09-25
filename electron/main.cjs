@@ -423,17 +423,18 @@ function leftoverCrashExtra(identity) {
   if (identity && typeof identity.build === 'string' && identity.build.trim()) {
     extra.build = identity.build.trim().slice(0, 127);
   }
+  if (identity && identity.demo === true) extra.demo = 'true';
   return extra;
 }
 
-function leftoverCrashIdentity(appApi = app, build = '') {
+function leftoverCrashIdentity(appApi = app, build = '', demo = false) {
   let version = '';
   try {
     if (appApi && typeof appApi.getVersion === 'function') {
       version = String(appApi.getVersion() || '');
     }
   } catch (_) {}
-  return leftoverCrashExtra({ version, build });
+  return leftoverCrashExtra({ version, build, demo });
 }
 
 function startLeftoverCrashReporter(electronApi = electron, identity = null) {
@@ -457,9 +458,16 @@ function startLeftoverCrashReporter(electronApi = electron, identity = null) {
     }
   } catch (_) {}
 
-  const extra = leftoverCrashIdentity(appApi, identity && identity.build);
+  const extra = leftoverCrashIdentity(appApi, identity && identity.build, !!(identity && identity.demo));
+  // Product name travels with the packaged identity: a demo build dumps under
+  // "SpaceFace Demo" so a demo crash report names the flavor it came from.
+  let productName = 'SpaceFace';
+  try {
+    const named = appApi && typeof appApi.getName === 'function' ? String(appApi.getName() || '') : '';
+    if (named.trim()) productName = named.trim();
+  } catch (_) {}
   crashReporter.start({
-    productName: 'SpaceFace',
+    productName,
     uploadToServer: false,
     extra,
     globalExtra: extra,
@@ -480,6 +488,7 @@ function writeCrashReport({ reportDir, identity, event }) {
     version: identity && identity.version ? String(identity.version) : '',
     build: identity && identity.build ? String(identity.build) : '',
     packaged: !!(identity && identity.packaged),
+    demo: !!(identity && identity.demo),
     event: event || {},
     uptimeSeconds: typeof process.uptime === 'function' ? Math.round(process.uptime()) : null,
     pid: typeof process.pid === 'number' ? process.pid : null,

@@ -12,6 +12,7 @@
     "serve": "node server.js 8123",
     "electron": "node scripts/launch-electron.mjs",
     "dist": "npm run build:bundle && electron-builder",
+    "dist:demo": "node scripts/build-bundle.mjs --demo && node scripts/dist-demo.mjs",
     "sf": "node scripts/sf.mjs",
     "perf:spector": "node scripts/capture-spector-frame.mjs",
     "perf:renderer-info": "node scripts/probe-renderer-info.mjs",

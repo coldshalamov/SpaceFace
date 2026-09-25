@@ -69,21 +69,30 @@ function resolveReleaseIdentity({
     if (appApi && typeof appApi.getVersion === 'function') version = String(appApi.getVersion() || '');
   } catch (_) {}
 
+  // The demo package ships under productName "SpaceFace Demo" (dist:demo's -c.productName),
+  // so app.getName() is the honest demo marker — the release receipt deliberately stays
+  // flavor-blind (it hash-binds content, not packaging).
+  let appName = '';
+  try {
+    if (appApi && typeof appApi.getName === 'function') appName = String(appApi.getName() || '');
+  } catch (_) {}
+  const demo = /\bdemo\b/i.test(appName);
+
   const envBuild = cleanToken(env && env.SPACEFACE_BUILD_HASH, BUILD_HASH_LENGTH);
   if (envBuild) {
-    return Object.freeze({ version, build: envBuild, packaged, source: 'env' });
+    return Object.freeze({ version, build: envBuild, packaged, demo, source: 'env' });
   }
 
   const receiptPath = projectRoot ? path.join(projectRoot, RELEASE_RECEIPT_RELATIVE) : null;
   if (packaged && receiptPath) {
     const digest = readReleaseReceiptDigest(receiptPath, fsImpl);
-    if (digest) return Object.freeze({ version, build: digest, packaged, source: 'release-receipt' });
-    return Object.freeze({ version, build: '', packaged, source: 'unreceipted-package' });
+    if (digest) return Object.freeze({ version, build: digest, packaged, demo, source: 'release-receipt' });
+    return Object.freeze({ version, build: '', packaged, demo, source: 'unreceipted-package' });
   }
 
   const head = projectRoot ? readGitHead(projectRoot, execFileSyncImpl) : null;
-  if (head) return Object.freeze({ version, build: head, packaged, source: 'git-head' });
-  return Object.freeze({ version, build: 'dev', packaged, source: 'dev' });
+  if (head) return Object.freeze({ version, build: head, packaged, demo, source: 'git-head' });
+  return Object.freeze({ version, build: 'dev', packaged, demo, source: 'dev' });
 }
 
 // The renderer-facing view: never carries filesystem paths or env internals.
