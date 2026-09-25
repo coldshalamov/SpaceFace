@@ -187,7 +187,8 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
 
   const pathApplied = inp.autoFire && followAutoTargetPath(inp, player, state, runtime, dt);
   const vector = inp.autoTargetVector;
-  if (inp.autoFire && !pathApplied && vector && vector.active) {
+  if (inp.autoFire && !pathApplied && vector && vector.active
+    && !inp.brake && !inp.actions?.brake && !inp.drawFlightManual) {
     const rawX = finite(vector.worldX);
     const rawZ = finite(vector.worldZ);
     const length = Math.hypot(rawX, rawZ);
