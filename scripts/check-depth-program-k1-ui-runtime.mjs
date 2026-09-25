@@ -25,6 +25,7 @@ try {
     const { createBus } = await import('/src/core/eventBus.js');
     const { createScreenManager } = await import('/src/ui/screenManager.js');
     const { createUiInput } = await import('/src/ui/input.js');
+    const { createPromptDeck } = await import('/src/ui/promptDeck.js');
     const { createPirateParleyPrompt } = await import('/src/ui/pirateParleyPrompt.js');
     const { createContactHailPrompt } = await import('/src/ui/contactHailPrompt.js');
     const { createSignalInvestigationPrompt } = await import('/src/ui/signalInvestigationPrompt.js');
@@ -103,6 +104,10 @@ try {
     const contactHailPrompt = createContactHailPrompt(ctx);
     const signalPrompt = createSignalInvestigationPrompt(ctx);
     const recoveryPrompt = createRecoveryEncounterPrompt(ctx);
+    // uiRoot owns the one decision deck (created after the comms adapters subscribe, before
+    // events can fire); the adapters resolve it lazily through getPromptDeck(), so a probe that
+    // skips it leaves every deck-backed offer unable to surface at all.
+    const promptDeck = createPromptDeck(ctx);
     const parleyShown = parleyPrompt.showDemand({
       squadId: 'k1-runtime-squad',
       hailerId: 'k1-runtime-raider',
@@ -204,6 +209,7 @@ try {
     contactHailPrompt.destroy();
     signalPrompt.destroy();
     recoveryPrompt.destroy();
+    promptDeck.destroy();
     input.dispose();
     state.ui.fulfillmentBlackoutActive = true;
     const afterDisposePointer = new PointerEvent('pointerdown', { bubbles: true, cancelable: true });
