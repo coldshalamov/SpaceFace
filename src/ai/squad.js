@@ -115,6 +115,7 @@ export class SquadCommander {
     }
     const bestObjective = selectObjectiveContact(contacts);
     const bestTether = selectTetherContact(contacts);
+    const hostilesPresent = contacts.some((contact) => contact.kind === ContactKind.SHIP && contact.hostileVotes > 0);
     const directives = new Map();
     const freeze = this.freeze;
     for (let index = 0; index < squad.members.length; index++) {
@@ -132,7 +133,7 @@ export class SquadCommander {
       const allocationActive = targetAssignments !== null && targetAssignments.has(member.id);
       const assignedTarget = allocationActive ? targetAssignments.get(member.id) : null;
       const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception,
-        assignedTarget, allocationActive, freeze);
+        assignedTarget, allocationActive, hostilesPresent, freeze);
       const directive = freeze({
         tick,
         squadId,
@@ -210,20 +211,24 @@ export class SquadCommander {
           (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self'))) {
           exposedTether = true;
         }
-        // Only a line an overload dash can actually snap justifies diverting a member. A tether
-        // whose break policy ignores ship thrust (the standard player Massline) never resolves
-        // the objective, so the member must stay on ordinary combat orders instead.
-        if (!memberTetheredOverloads && Array.isArray(contact.tags) && contact.tags.includes('overloadable')
-          && squad.members.some((member) => member.id === contact.targetId || member.id === contact.ownerId)) {
-          memberTetheredOverloads = true;
-        }
       }
     }
     let lowHullTotal = 0;
     let disabledTotal = 0;
+    const hostilesPresent = hostileShips > 0;
     for (const perception of perceptions) {
       lowHullTotal += 1 - perception.self.hullFraction;
       disabledTotal += perception.self.disabled ? 1 : 0;
+      // Held-member detection lives on each member's own perception frame: the merged squad
+      // tether record keeps whichever endpoint fields arrived with the highest-confidence copy,
+      // so a member held by a line can be invisible to the merged contact (its targetId then
+      // points at another endpoint). Only a line an overload dash can actually snap justifies
+      // diverting a member mid-fight; a tether whose break policy ignores ship thrust (the
+      // standard player Massline) never resolves the objective while the wing is fighting, so
+      // the member must stay on ordinary combat orders instead.
+      if (!memberTetheredOverloads && memberShouldOverload(perception, hostilesPresent)) {
+        memberTetheredOverloads = true;
+      }
     }
     const denom = Math.max(1, perceptions.length);
     const lowHull = lowHullTotal / denom;
@@ -467,17 +472,18 @@ function formationSlotFor(squad, leaderPerception, index, count) {
 }
 
 function objectiveFor(tactic, role, focus, objective, tether, perception, assignedTarget = null,
-  allocationActive = false, freeze = Object.freeze) {
+  allocationActive = false, hostilesPresent = false, freeze = Object.freeze) {
   if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
   if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
   if (tactic === 'overload_and_break') {
     const selfTethered = !!(perception && perception.self && perception.self.tethered);
-    if (selfTethered && memberLineOverloadable(perception)) {
+    if (selfTethered && memberShouldOverload(perception, hostilesPresent)) {
       return freezeObjective(ObjectiveKind.COUNTER_TETHER_OVERLOAD, tether && tether.id, 'tethered_member', freeze);
     }
     if (!selfTethered) return freezeObjective(ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
-    // A tethered member on an unbreakable line cannot resolve an overload objective. It falls
-    // through to the ordinary combat orders below so its doctrine keeps running while held.
+    // A tethered member whose line cannot snap under ship thrust while the wing is fighting
+    // cannot resolve an overload objective. It falls through to the ordinary combat orders
+    // below so its doctrine keeps running while held.
   }
   if (tactic === 'screen_tug_steal') {
     if (role === SquadRole.TUG) return freezeObjective(ObjectiveKind.TUG, objective && objective.id, 'assigned_tug', freeze);
@@ -596,6 +602,38 @@ function selectObjectiveContact(contacts) {
     }
   }
   return best;
+}
+
+// Whether the member is the held endpoint of a line rather than its owner. A member anchoring a
+// tether of its own is the holder, not the held — it keeps working its own capture plan instead
+// of being diverted into an escape that was never aimed at it. The member's own contact frame
+// always includes its endpoint lines, so a tethered flag without a visible own-target line keeps
+// the benefit of the doubt (the same convention memberLineOverloadable uses).
+function memberHeldByForeignLine(perception) {
+  const self = perception && perception.self;
+  const selfId = self && self.id;
+  if (selfId == null || !self.tethered) return false;
+  const contacts = perception.contacts;
+  if (!Array.isArray(contacts)) return true;
+  let sawOwnLine = false;
+  for (const contact of contacts) {
+    if (!contact || contact.kind !== ContactKind.TETHER) continue;
+    if (contact.targetId !== selfId && contact.ownerId !== selfId) continue;
+    sawOwnLine = true;
+    if (contact.targetId === selfId) return true;
+  }
+  return !sawOwnLine;
+}
+
+// Whether a held member should divert into the canonical overload-dash escape. A line that can
+// actually snap under ship thrust always justifies it. A line whose break policy ignores thrust
+// — the standard player Massline — still justifies it while the wing is not in a firefight: an
+// idle held member works the rope loose as the authored counterplay beat, but a fighting member
+// keeps its combat orders so tethering a hostile cannot permanently disarm it.
+function memberShouldOverload(perception, hostilesPresent) {
+  if (!memberHeldByForeignLine(perception)) return false;
+  if (memberLineOverloadable(perception)) return true;
+  return !hostilesPresent;
 }
 
 // Whether the line holding this member can realistically be snapped by an overload dash. The

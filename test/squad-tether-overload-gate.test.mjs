@@ -120,6 +120,113 @@ test('a mixed squad counter-tethers the breakable line but lets the immune membe
     'the member on the unbreakable line stays offensive rather than idling on screen duty');
 });
 
+test('a held member with no fight in front of it still works an unsnappable line loose', () => {
+  const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'held_idle_wing',
+    doctrine: 'scavenger',
+    members: [{
+      id: 11,
+      preferredRole: 'leader',
+      capabilities: ['drive', 'sensor', 'weapon', 'counter_tether_overload'],
+      combatDoctrineId: 'interceptor_flyby',
+    }],
+  });
+
+  // The live tether-resilience and 47-A counterplay contracts: a member held by the standard
+  // player Massline must still run the canonical escape while the wing is not in a firefight.
+  const perception = memberPerception(11, {
+    tethered: true,
+    contacts: [tetherContact('att_hold', { ownerId: 1, targetId: 11, overloadable: false })],
+  });
+  const result = commander.update('held_idle_wing', 60, new Map([[11, perception]]));
+
+  assert.equal(result.tactic, 'overload_and_break');
+  const directive = result.directives.get(11);
+  assert.equal(directive.objective.kind, ObjectiveKind.COUNTER_TETHER_OVERLOAD);
+});
+
+test('held detection reads the member endpoint even when the merged line record points elsewhere', () => {
+  const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'merged_endpoint_wing',
+    doctrine: 'scavenger',
+    members: [
+      {
+        id: 11,
+        preferredRole: 'leader',
+        capabilities: ['drive', 'sensor', 'weapon', 'counter_tether_overload'],
+        combatDoctrineId: 'interceptor_flyby',
+      },
+      {
+        id: 12,
+        preferredRole: 'striker',
+        capabilities: ['drive', 'sensor', 'weapon', 'counter_tether_overload'],
+        combatDoctrineId: 'interceptor_flyby',
+      },
+    ],
+  });
+
+  // The merged contact inherits endpoint fields from the first contributor (member 11 sees the
+  // rope's far endpoint as 800), so the squad-level record never names the held member. The
+  // held member's own frame still carries targetId 12 and must drive the overload response.
+  const perceptions = new Map([
+    [11, memberPerception(11, {
+      tethered: false,
+      contacts: [tetherContact('att_hold', { ownerId: 1, targetId: 800, overloadable: false })],
+    })],
+    [12, memberPerception(12, {
+      tethered: true,
+      contacts: [tetherContact('att_hold', { ownerId: 1, targetId: 12, overloadable: false })],
+    })],
+  ]);
+  const result = commander.update('merged_endpoint_wing', 60, perceptions);
+
+  assert.equal(result.tactic, 'overload_and_break');
+  assert.equal(result.directives.get(12).objective.kind, ObjectiveKind.COUNTER_TETHER_OVERLOAD);
+});
+
+test('a member anchoring its own line is the holder, not the held', () => {
+  const commander = new SquadCommander({ seed: 47, config: { minTacticTicks: 0 } });
+  commander.registerSquad({
+    id: 'anchor_wing',
+    doctrine: 'scavenger',
+    members: [
+      {
+        id: 11,
+        preferredRole: 'leader',
+        capabilities: ['drive', 'sensor', 'weapon', 'counter_tether_overload'],
+        combatDoctrineId: 'interceptor_flyby',
+      },
+      {
+        id: 12,
+        preferredRole: 'striker',
+        capabilities: ['drive', 'sensor', 'weapon', 'counter_tether_overload'],
+        combatDoctrineId: 'interceptor_flyby',
+      },
+    ],
+  });
+
+  // Member 12 owns the only line (ownerId 12 — e.g. the 47-A thief's own rope on the spindle).
+  // Holder duty is not an escape: with no held member the overload tactic stays dark and the
+  // owner keeps ordinary orders.
+  const perceptions = new Map([
+    [11, memberPerception(11, {
+      tethered: false,
+      contacts: [tetherContact('att_own', { ownerId: 12, targetId: 800, overloadable: false })],
+    })],
+    [12, memberPerception(12, {
+      tethered: true,
+      contacts: [tetherContact('att_own', { ownerId: 12, targetId: 800, overloadable: false })],
+    })],
+  ]);
+  const result = commander.update('anchor_wing', 60, perceptions);
+
+  assert.notEqual(result.tactic, 'overload_and_break');
+  assert.notEqual(result.directives.get(12).objective.kind, ObjectiveKind.COUNTER_TETHER_OVERLOAD,
+    'the line owner is not diverted into an escape aimed at a held member');
+});
+
 test('production sensors stamp breakability from the attachment def break policy', () => {
   const state = createGameState(47);
   state.tick = 60;
