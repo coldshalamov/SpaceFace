@@ -150,13 +150,20 @@ export function createIndustryScreen(ctx) {
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
           const it = items(state);
           const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(it[id] || 0); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
+          // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
+          const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && bp.stationType === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
+          // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
+          const tiers = new Set(blueprints.map((bp) => bp.tier));
+          const groupTier = tiers.size === 1 ? [...tiers][0] : null;
+          const notReady = whys.filter((w, bi) => readiness[bi].state !== 'ready');
+          const sharedWhy = !allStation && notReady.length >= 2 && notReady[0] && notReady.every((w) => w === notReady[0]) ? notReady[0] : '';
           return `<section class="sx-ind-process${allStation ? ' is-blocked' : ''}" data-process="${category}">` +
-            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : ''}</p>` +
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}${groupTier ? `<span class="sx-ind-process__tier">T${groupTier}</span>` : ''}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : sharedWhy ? `<span class="sx-ind-process__block">${escapeHtml(sharedWhy)}</span>` : ''}</p>` +
             `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp, bi) => {
               const r = readiness[bi];
               const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
               // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
-              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && bp.stationType === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r);
+              const why = whys[bi] === sharedWhy ? '' : whys[bi];
               const selected = bp.id === selectedId;
               const outputName = niceName(bp.outputs.id, bp.outputs.kind);
               const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
@@ -165,7 +172,7 @@ export function createIndustryScreen(ctx) {
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}</span>` +
-                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier}${why ? `<span class="sx-ind-row__why"> · ${escapeHtml(why)}</span>` : ''}</span>` +
+                  ((!groupTier || why) ? `<span class="k-row__sub sx-ind-row__tier">${groupTier ? '' : `T${bp.tier}`}${why ? `<span class="sx-ind-row__why">${groupTier ? '' : ' · '}${escapeHtml(why)}</span>` : ''}</span>` : '') +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
               `</button></li>`;

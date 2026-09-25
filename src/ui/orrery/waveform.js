@@ -147,10 +147,13 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
   const lens = new Array(n).fill(4);
   const words = src ? src.split(' ') : [];
   const totalChars = words.reduce((a, w) => a + w.length, 0) || 1;
+  // the words' budget is what is left after every whisper and rest, so the line's last word is spoken too
+  const stops = words.filter((w, wi) => /[.!?]$/.test(w) && wi < words.length - 1).length;
+  const budget = Math.max(words.length, n - Math.max(0, words.length - 1) - 3 * stops - 1);
   let cursor = 0;
   words.forEach((w, wi) => {
     const stop = /[.!?]$/.test(w) && wi < words.length - 1;
-    let count = Math.max(2, Math.round((w.length / totalChars) * n));
+    let count = Math.max(1, Math.round((w.length / totalChars) * budget));
     if (cursor + count > n) count = Math.max(0, n - cursor);
     const seed = ((w.charCodeAt(0) * 2654435761) >>> 0) % 1000 / 1000;
     for (let k = 0; k < count; k += 1) {
@@ -175,14 +178,14 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
     else { leaderSegs = [[lx, ly, px, py]]; leaderPath = `M ${f(lx)} ${ly} L ${f(px)} ${f(py)}`; }
   }
   const segDist = (ax, ay, bx, by, px, py) => { const dx = bx - ax; const dy = by - ay; const L = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)); return Math.hypot(ax + t * dx - px, ay + t * dy - py); };
-  const nearLeader = (x0, y0, x1, y1) => leaderSegs.some(([ax, ay, bx, by]) => { for (let k = 0; k <= 4; k += 1) { const qx = x0 + ((x1 - x0) * k) / 4; const qy = y0 + ((y1 - y0) * k) / 4; if (segDist(ax, ay, bx, by, qx, qy) < 3) return true; } return false; });
+  const nearLeader = (x0, y0, x1, y1) => leaderSegs.some(([ax, ay, bx, by]) => { for (let k = 0; k <= 4; k += 1) { const qx = x0 + ((x1 - x0) * k) / 4; const qy = y0 + ((y1 - y0) * k) / 4; if (segDist(ax, ay, bx, by, qx, qy) < 5) return true; } return false; });
   let dBars = '';
   for (let i = 0; i < n; i += 1) {
     const a = from + (span * (i + 0.5)) / n;
     const len = lens[i];
     if (!len) continue;
     const [x0, y0] = polar(cx, cy, r + 3, a);
-    const [x1, y1] = polar(cx, cy, r + 3 + len, a);
+    const [x1, y1] = polar(cx, cy, r + 3 + len * Math.min(1, r / 310), a);
     if (leaderFrom && nearLeader(x0, y0, x1, y1)) continue; // the bars part wherever the leader passes
     dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
   }

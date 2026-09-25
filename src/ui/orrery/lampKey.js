@@ -93,9 +93,13 @@ export function injectLampKey(doc = globalThis.document) {
 
 /** The key's silhouette in the ring's own box (which stands RING_OUT outside the field on every side). */
 /** The key's own silhouette on the half-pixel grid, for the rim a disabled key shows. */
-export function rimPathD(width, height) {
+export function rimPathD(width, height, edges = null) {
   const W = Math.max(1, width); const H = Math.max(1, height); const c = CUT;
-  return `M ${W - c + 0.75} 0.75 L ${W - 0.75} ${c + 0.75} L ${W - 0.75} ${H - 0.75} L 0.75 ${H - 0.75} L 0.75 0.75 Z`;
+  const q = (n) => Math.round(n * 100) / 100;
+  // edges: the straight edges' centre lines in the key's own box (each on a device pixel's centre); by default a 0.75 inset
+  const l = edges ? edges.l : 0.75; const t = edges ? edges.t : 0.75;
+  const r = edges ? edges.r : W - 0.75; const b = edges ? edges.b : H - 0.75;
+  return `M ${q(r - c)} ${q(t)} L ${q(r)} ${q(t + c)} L ${q(r)} ${q(b)} L ${q(l)} ${q(b)} L ${q(l)} ${q(t)} Z`;
 }
 
 function layoutRim(button) {
@@ -103,10 +107,13 @@ function layoutRim(button) {
   if (!rim || typeof button.getBoundingClientRect !== 'function') return;
   const r = button.getBoundingClientRect();
   if (!(r.width > 0) || !(r.height > 0)) return;
-  const W = Math.round(r.width); const H = Math.round(r.height);
+  // the rim draws in CSS px (viewBox = the box), each straight edge on the centre of the first whole pixel inside the
+  // box, so a key at a fractional position still lights one row or column per edge, like its cut
+  const W = r.width; const H = r.height;
   rim.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const edges = { l: Math.ceil(r.left) + 0.5 - r.left, t: Math.ceil(r.top) + 0.5 - r.top, r: Math.floor(r.right - 0.5) + 0.5 - r.left, b: Math.floor(r.bottom - 0.5) + 0.5 - r.top };
   const path = rim.querySelector('path');
-  if (path) path.setAttribute('d', rimPathD(W, H));
+  if (path) path.setAttribute('d', rimPathD(W, H, edges));
 }
 
 export function holdPathD(width, height) {

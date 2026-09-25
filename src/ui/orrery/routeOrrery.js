@@ -296,7 +296,8 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     // places round its node that touches no other name, no node and not the beam.
     const nameBoxes = [];
     const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
-    const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
+    const nodeHalo = (id) => (id === dest ? 20 : id === data.origin ? 14 : 9);
+    const nodeBoxes = [...place].map(([id, p]) => { const k = nodeHalo(id); return { l: p.x - k, r: p.x + k, t: p.y - k, b: p.y + k, id, r0: nodeR(id) }; });
     let destBox = null;
     const labelSize = (text, small) => ({ w: text.length * (small ? 7.4 : 8.6), h: small ? 11 : 12 });
     const ringCrosses = (box) => {
@@ -311,7 +312,8 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
       const h = sizes.reduce((s, x) => s + x.h + 1, -1);
-      const gapR = isDest ? 14 : 10;
+      // a name clears its own marker: the berth's ring, the station's crosshair ticks (r 13), a node's dot
+      const gapR = isDest ? 14 : p.id === data.origin ? 16 : 10;
       const turns = preferOutside ? [] : [0, 45, -45, 90, -90, 135, -135, 180];
       for (const turn of turns) {
         const deg = ((p.deg + turn) % 360 + 360) % 360;
@@ -329,7 +331,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
         // a ring is a connector too: no name lies across one (its box must sit wholly inside or outside every ring)
         // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
-        if (!isDest && destBox && boxesTouch(destBox, box, 24)) continue;
+        if (!isDest && destBox && boxesTouch(destBox, box, 12)) continue;
         if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 2))) continue;
         if (beamSegs.some(([a, b]) => segmentTouches(a.x, a.y, b.x, b.y, box, 2))) continue;
         if (reserve) { nameBoxes.push(box); if (isDest) destBox = box; }
@@ -351,7 +353,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
           box.r = box.l + w; box.b = box.t + h;
           const clearRings = !ringCrosses(box);
           const clearNodes = !nodeBoxes.some((nb) => boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 6));
-          const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 24));
+          const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 12));
           if (clearRings && clearNodes && clearNames) break;
           dist += 6;
         }
@@ -393,6 +395,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       : null;
     // a destination on the rim hangs just outside its berth on a solid leader, never in a lane
     const destSpot = destLines ? placeName({ ...place.get(dest), id: dest }, destLines, { isDest: true, reserve: true }) : null;
+    if (destSpot && destSpot.leader) beamSegs.push([{ x: destSpot.leader.x1, y: destSpot.leader.y1 }, { x: destSpot.leader.x2, y: destSpot.leader.y2 }]);
     // then the rest, the route first, nearest ring first
     // a short host names only what it has room for: the route and the berth's own lane neighbours
     const compactNames = H < 340;
@@ -424,6 +427,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
     const mask = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
     mask.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
     for (const nb of nameBoxes) mask.appendChild(svg('rect', { x: f(nb.l - 4), y: f(nb.t - 4), width: f(nb.r - nb.l + 8), height: f(nb.b - nb.t + 8), fill: '#000' }));
+    if (endPoint) mask.appendChild(svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 10, fill: '#000' }));
     const defs = svg('defs', {}); defs.appendChild(mask); layer.insertBefore(defs, layer.firstChild);
     ringsG.setAttribute('mask', `url(#${cutId})`);
     if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4', mask: `url(#${cutId})` }), 60));

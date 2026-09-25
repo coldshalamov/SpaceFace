@@ -104,7 +104,10 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
       return { W: width, xs: Array.from({ length: n }, (_, i) => (n > 1 ? pad + (i * (width - pad * 2)) / (n - 1) : width / 2)) };
     }
     const sumW = ws.reduce((a, w) => a + w, 0);
-    const W = Math.max(width, sumW + minGap * (n - 1) + minPad * 2);
+    const avail = (wrap.parentNode && wrap.parentNode.clientWidth) || 0;
+    const gap = avail > 0 && sumW + minGap * (n - 1) + minPad * 2 > avail
+      ? Math.max(10, (avail - sumW - minPad * 2) / Math.max(1, n - 1)) : minGap;
+    const W = Math.max(avail > 0 ? Math.min(width, avail) : width, sumW + gap * (n - 1) + minPad * 2);
     const extra = (W - sumW - minPad * 2) / Math.max(1, n - 1);
     const xs = [];
     let x = minPad;

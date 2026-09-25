@@ -18,7 +18,9 @@ export const ORRERY_SCREEN_CSS = `
 html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; display:none; }
 .of-title.orr-title .dp-title__rule { display:none; }
 .of-title.orr-title .dp-title__eyebrow { letter-spacing:.24em; }
-.of-title.orr-title > .dp-frame__foot { opacity:.45; }
+.of-title.orr-title > .dp-frame__foot { opacity:.82; }
+/* the Hand is the only amber: the kicker's dot is bone */
+.of-title.orr-title .dp-title__eyebrow::before { background:rgb(232 226 212 / .6) !important; box-shadow:none !important; color:rgb(232 226 212 / .6) !important; }
 @media (forced-colors: active) { .of-title.orr-title .dp-logotype::after { display:none; } }
 
 /* pause: the title's grammar held mid-flight -- no web divider under the name; the name in the
@@ -39,7 +41,12 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   box-shadow:none !important; color:rgb(246 241 230) !important; background:none !important; }
 .of-pause > .sf-pause-brief.orr-brief .sf-slot-name { font-size:18px; line-height:1.35; color:rgb(236 230 216); }
 .of-pause > .sf-pause-brief.orr-brief .dp-copy--fine { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .5); }
-.of-pause > .sf-pause-brief.orr-brief .sf-slot-name { display:flex; flex-direction:column; gap:6px; }
+.of-pause > .sf-pause-brief.orr-brief .sf-slot-name { display:flex; flex-direction:column; gap:6px; text-wrap:balance; }
+/* a short screen: PAUSED sized by the height, clear of RESUME, and the dial's sector words tighter */
+@media (max-height:800px) {
+  #screens .of-pause.orr-pause .dp-title__name, html body #screens .of-pause.orr-pause .dp-title__name { font-size:clamp(36px, 5.2vh, 60px) !important; margin-bottom:16px !important; }
+  .orr-svg .orr-arcrail__sector text { letter-spacing:.16em; }
+}
 .orr-brief__kind { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .6); }
 .orr-brief__name { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
   font-size:22px; line-height:1.1; letter-spacing:.005em; text-transform:uppercase; color:rgb(246 241 230); }
@@ -66,7 +73,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 12px rgb(0 0 0 / .6); white-space:nowrap; }
 #screens .orr-newgame .orr-turntable .k-word[aria-pressed="true"] { color:rgb(246 241 230) !important; text-shadow:0 0 1px rgb(255 226 178 / .5), 0 0 10px rgb(255 217 140 / .25), 0 1px 0 rgb(0 0 0 / .6); }
 #screens .orr-newgame .orr-turntable .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
-#screens .orr-newgame .orr-turntable .k-word-sub { text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgb(232 226 212 / .45); margin-top:3px; }
+#screens .orr-newgame .orr-turntable .k-word-sub { text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgb(232 226 212 / .62); margin-top:3px; }
 #screens .orr-newgame .orr-ng-pick > div > .orr-ng-label, #screens .orr-newgame .orr-ng-pick #sf-ng-starter-label { display:none; }
 #screens .orr-newgame .orr-ng-pick .k-sentence { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 #screens .orr-newgame .orr-stoparc .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
@@ -94,7 +101,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-newgame .orr-ng-caption .k-words--row { flex-direction:column; gap:5px; }
 #screens .orr-newgame .orr-ng-caption .k-words--row .fh-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%;
   font-weight:600; font-size:12px !important; letter-spacing:.16em; text-transform:uppercase; color:rgb(236 230 216 / .82) !important; }
-#screens .orr-newgame .orr-ng-size { margin-left:8px; font-size:10px; letter-spacing:.1em; color:rgb(232 226 212 / .45); }
+#screens .orr-newgame .orr-ng-size { margin-left:8px; font-size:10px; letter-spacing:.1em; color:rgb(232 226 212 / .62); }
 #screens .orr-newgame .orr-ng-size::before { content:"·"; margin-right:8px; color:rgb(232 226 212 / .3); }
 /* the first minutes: numbered stations on a traced line, no stepper dots */
 #screens .orr-newgame .sf-ng-route__steps { counter-reset:orrbeat; }
@@ -635,10 +642,12 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
   background-image:linear-gradient(90deg, rgb(232 226 212 / .5), rgb(232 226 212 / .08)) !important;
   background-size:100% 1px !important; background-position:0 100% !important; background-repeat:no-repeat !important;
   caret-color:var(--dp-hand, #f2b950); outline:none; }
-#screens .orr-newgame .orr-ng-input:focus { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / .1)) !important; }
+#screens .orr-newgame .orr-ng-input:focus { background-image:linear-gradient(90deg, rgb(232 226 212 / .75), rgb(232 226 212 / .12)) !important; }
 #screens .orr-newgame .orr-ng-input::placeholder { color:rgb(232 226 212 / .32); }
-#screens .orr-newgame .orr-ng-input::selection { background:transparent; color:var(--dp-hand-hot, #ffd98c); }
-#screens .orr-newgame .orr-ng-key--small::before { content:"↻"; margin-right:8px; font-size:13px; letter-spacing:0; color:var(--dp-hand, #f2b950); }
+#screens .orr-newgame .orr-ng-input::selection { background:rgb(232 226 212 / .1); color:var(--dp-ink, #e8e2d4); }
+#screens .orr-newgame .orr-ng-input { caret-color:rgb(232 226 212 / .9) !important; }
+#screens .orr-newgame .orr-ng-input::placeholder { color:rgb(232 226 212 / .6) !important; }
+#screens .orr-newgame .orr-ng-key--small::before { content:"↻"; margin-right:8px; font-size:13px; letter-spacing:0; color:rgb(232 226 212 / .7); }
 /* choice words on the dials: engraved capitals; the chosen one is lit */
 #screens .orr-newgame .orr-stopscale .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
   min-width:0 !important; min-height:0 !important; padding:2px 4px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
@@ -720,6 +729,21 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
   #screens .orr-newgame .sf-ng-launch { background:ButtonFace !important; color:ButtonText !important; border:1px solid ButtonText !important; clip-path:none; }
   #screens .orr-newgame .orr-ng-input { border-bottom:1px solid CanvasText !important; }
 }
+/* ================================ FRONT DOOR r1 craft ======================================== */
+/* the gauges read thin (a reading, not a label) */
+#screens .orr-newgame .orr-ng-stat b { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:26px !important; letter-spacing:-.01em; }
+#screens .orr-newgame .orr-ng-stat b i { font-size:11px !important; color:rgb(232 226 212 / .6) !important; }
+/* the back key's hint passes contrast */
+#screens .orr-newgame .sf-ng-footer .sf-back :is(.k-kbd, .dp-kbd, kbd) { color:rgb(232 226 212 / .6) !important; }
+/* the four difficulty stops fit a 1280 column */
+@media (max-width:1366px) { #screens .orr-newgame .orr-stopscale .k-word { letter-spacing:.08em !important; padding:2px 2px !important; } }
+/* a short screen: the first-15-minutes steps keep their titles only, and the footnote wraps before the list */
+@media (max-height:800px) {
+  #screens .orr-newgame .sf-ng-route__step .k-row__sub { display:none !important; }
+  #screens .orr-newgame .sf-ng-route__step { padding-top:2px !important; padding-bottom:2px !important; }
+  #screens .orr-newgame > .k-fine, #screens .orr-newgame .k-fine { max-width:380px; }
+}
+
 `;
 
 export function injectOrreryScreens(doc = globalThis.document) {

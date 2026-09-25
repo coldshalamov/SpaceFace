@@ -491,13 +491,22 @@ export function createBarScreen(ctx) {
     try {
       const hang = el.querySelector('.sx-bar__hang');
       const first = railEl.querySelector('.k-caps') || railEl;
-      const last = leadsEl.querySelector('.k-word--primary, [data-station-control="open-board"], button:last-of-type') || leadsEl;
+      // the board key alone (a selector list would return lead 1's own button first)
+      const last = leadsEl.querySelector('[data-station-control="open-board"]') || leadsEl.querySelector('.sx-bar__log') || leadsEl;
       if (!hang || !first || !last) return;
       const hr = hang.getBoundingClientRect();
       const top = first.getBoundingClientRect().top - hr.top + hang.scrollTop;
       const bottom = last.getBoundingClientRect().bottom - hr.top + hang.scrollTop + 12;
       hang.style.setProperty('--bar-spine-top', `${Math.round(top)}px`);
       hang.style.setProperty('--bar-spine-h', `${Math.max(0, Math.round(bottom - top))}px`);
+      // the contacts' minor ticks: one lands on the Hand's row
+      const rows = railEl.querySelector('.sx-bar__rows');
+      const chosen = rows && rows.querySelector('.sx-bar-row.is-active, .sx-bar-row[aria-selected="true"], .sx-bar-row[aria-current="true"]');
+      if (rows && chosen) {
+        const rr = rows.getBoundingClientRect(); const cr = chosen.getBoundingClientRect();
+        const armY = Math.floor(cr.top + cr.height / 2);
+        rows.style.setProperty('--bar-tick-y', `${((((armY - rr.top) % 8) + 8) % 8).toFixed(2)}px`);
+      }
     } catch (_) { /* cosmetic */ }
   }
   function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); seatSpine(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine); }

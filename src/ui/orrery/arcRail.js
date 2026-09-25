@@ -46,13 +46,15 @@ const CSS = `
   text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 9px rgb(255 217 140 / .2), 0 1px 0 rgb(0 0 0 / .6) !important; }
 .orr-arcrail-host .dp-lit__item[aria-disabled="true"], .orr-arcrail-host .dp-lit__item:disabled {
   color:rgb(232 226 212 / .34) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5) !important; }
+/* a verb that waits on a screen still loading stands at rest light under the Hand, never greyed */
+.orr-arcrail-host .dp-lit__item[data-awake][aria-disabled="true"] { color:rgb(232 226 212 / .7) !important; }
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
   text-shadow:0 0 22px rgb(255 80 56 / .36), 0 1px 0 rgb(0 0 0 / .6) !important; }
 /* a dense dial (pause): smaller words, the primary a size up as the one lamp key */
 .orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.09em !important; }
 .orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.05em !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item { font-size:clamp(12px, 1.45vh, 16px) !important; letter-spacing:.14em !important;
-  color:rgb(232 226 212 / .52) !important; }
+  color:rgb(232 226 212 / .62) !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
 .orr-svg text.orr-arcrail__cluster { font-size:9px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
@@ -62,7 +64,7 @@ const CSS = `
   clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
 /* minor stations: fine words lettered like the rim engraving */
 .orr-arcrail-host .dp-lit--fine .dp-lit__item { font-size:10px !important; letter-spacing:.32em !important; font-variation-settings:"wght" 600, "wdth" 100 !important;
-  color:rgb(232 226 212 / .46) !important; }
+  color:rgb(232 226 212 / .64) !important; }
 .orr-arcrail-host .dp-lit--fine .dp-lit__item[data-awake] { color:var(--dp-ink, #e8e2d4) !important; transform:none; }
 .orr-arcrail-host .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .5) !important;
   font-size:.62em !important; letter-spacing:.2em !important; padding:0 0 0 .4em !important; }
@@ -109,7 +111,6 @@ function injectStyle(doc = globalThis.document) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ROW_GAP = 26;
-let hubSeq = 0;
 
 /**
  * The dial's geometry for a host of W x H holding `count` verbs. Pure, so it is testable: the pivot
@@ -356,20 +357,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
     core = svg('path', { d: '', stroke: 'rgb(255 244 214)', 'stroke-width': 1, 'stroke-linecap': 'round', opacity: '.85', fill: 'none' });
     const hub = svg('g');
-    // the hub: a layered jewel -- a soft glow, a dark well with a fine bone rim, an amber cap lit
-    // from the upper left, and a bright crescent of highlight on it
-    const gid = `orr-hub-${++hubSeq}`;
-    const defs = svg('defs');
-    const grad = svg('radialGradient', { id: gid, cx: '38%', cy: '34%', r: '70%' });
-    grad.append(svg('stop', { offset: '0', 'stop-color': 'rgb(255 232 170)' }), svg('stop', { offset: '.55', 'stop-color': 'rgb(242 185 80)' }), svg('stop', { offset: '1', 'stop-color': 'rgb(150 96 24)' }));
-    defs.appendChild(grad);
-    const cres = (r0, a0, a1) => { const [x0, y0] = polar(pivot.x, pivot.y, r0, a0); const [x1, y1] = polar(pivot.x, pivot.y, r0, a1); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r0} ${r0} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+    // the hub: a soft glow, a dark well with a fine bone rim, and a flat amber disc at its heart
     hub.append(
-      defs,
       svg('circle', { cx: pivot.x, cy: pivot.y, r: 22, class: 'orr-bloom orr-hand', 'stroke-width': 10, opacity: '.12', fill: 'none' }),
       svg('circle', { cx: pivot.x, cy: pivot.y, r: 16, fill: 'rgb(4 6 9 / .92)', stroke: 'rgb(236 230 216 / .55)', 'stroke-width': 1 }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 10, fill: `url(#${gid})` }),
-      svg('path', { d: cres(7, 290, 350), stroke: 'rgb(255 250 235 / .85)', 'stroke-width': 1.6, 'stroke-linecap': 'round', fill: 'none' }),
+      // a flat amber disc: light, not a lens (no gradient ball, no specular crescent)
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 8, fill: 'var(--dp-hand, #f2b950)' }),
     );
     beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
     bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });

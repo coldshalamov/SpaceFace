@@ -719,7 +719,7 @@ export function createContractsScreen(ctx) {
       cap.style.left = `${Math.round(kx + 22)}px`;
       // the reading hangs from the line (never up into the terms at a short height)
       // at 720 the reading stands above the line (the column's foot fades below it); at full size it hangs under the line
-      cap.style.top = `${Math.round(ky + (window.innerHeight <= 800 ? -30 : 15))}px`;
+      cap.style.top = `${Math.round(ky + (window.innerHeight <= 800 ? -30 : 18))}px`;
       tether.style.display = '';
       cap.style.display = '';
       // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the
@@ -741,10 +741,28 @@ export function createContractsScreen(ctx) {
           const board = document.querySelector('.sx-ct__board');
           const seam = board ? Math.max(0, yours.getBoundingClientRect().top - board.getBoundingClientRect().bottom) : 0;
           yours.style.setProperty('--ct-seam', `${Math.round(seam)}px`);
-          // the seam's ticks keep the ladder's own 8px pitch from its first tick
-          const railTop = (document.querySelector('.sx-ct__rows') || board).getBoundingClientRect().top;
-          const seamTop = yours.getBoundingClientRect().top - seam;
-          yours.style.setProperty('--ct-seam-phase', `${Math.round((((railTop - seamTop) % 8) + 8) % 8)}px`);
+          // ONE tick series for the whole ladder: every block, the seam and the section and row ticks are
+          // phased from the ladder's first tick, so the pitch never breaks at a joint
+          const hang = yours.parentElement;
+          const kids = hang ? [...hang.children] : [];
+          const origin = kids.length ? kids[0].getBoundingClientRect().top : yours.getBoundingClientRect().top;
+          const phase = (y) => (((origin - y) % 8) + 8) % 8;
+          const snap = (y) => origin + Math.round((y - origin) / 8) * 8;
+          for (const kid of kids) kid.style.setProperty('--ct-tick-y', `${phase(kid.getBoundingClientRect().top).toFixed(2)}px`);
+          const yr = yours.getBoundingClientRect();
+          yours.style.setProperty('--ct-seam-phase', `${phase(yr.top - seam).toFixed(2)}px`);
+          // YOURS's major tick on the series point nearest its label's centre (it replaces that minor tick)
+          const padTop = parseFloat(getComputedStyle(yours).paddingTop) || 0;
+          const labelMid = yr.top + padTop + (yr.height - padTop) / 2;
+          yours.style.setProperty('--ct-yours-major', `${(snap(labelMid) - yr.top).toFixed(2)}px`);
+          // each tracked row's tick on the series point nearest its title's first line
+          for (const job of list.querySelectorAll('.sx-job')) {
+            const name = job.querySelector('.k-row__name') || job;
+            const nr = name.getBoundingClientRect();
+            const lh = parseFloat(getComputedStyle(name).lineHeight) || nr.height;
+            const mid = nr.top + Math.min(nr.height, lh) / 2;
+            job.style.setProperty('--ct-row-y', `${(snap(mid) - job.getBoundingClientRect().top).toFixed(2)}px`);
+          }
         }
       } catch (_) { /* cosmetic */ }
       // the dossier settles after the orrery's first layout (the scales land, the key seats): measure again on

@@ -1444,8 +1444,6 @@ ${T} .sx-ledger__read::after { left:1px !important; }
 
 /* ================================ ROUND 9: INDUSTRY ========================================= */
 /* the ladder's rungs carry their state in light: makeable full with a long tick, short of stock at 70%, facility-blocked at 45% */
-${T} .sx-ind-process__items .sx-ind-row.is-blocked:not(.is-active, [aria-selected="true"]) { opacity:.45 !important; }
-${T} .sx-ind-process__items .sx-ind-row.is-materials:not(.is-active, [aria-selected="true"]) { opacity:.7 !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-ready:not(.is-active, [aria-selected="true"])::before { width:14px !important; background:rgb(${BONE} / .85) !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { display:inline !important; }
 ${T} .sx-ind-process__head .sx-ind-process__count { margin-left:10px; color:rgb(${BONE} / .45) !important; letter-spacing:.12em; }
@@ -1477,14 +1475,11 @@ ${T} .sx-ledger__right > .orr-ledger-tape { position:relative; z-index:2; }
 
 /* ================================ ROUND 10: INDUSTRY ======================================== */
 /* the ladder's state light clears the contrast floor: blocked 55%, short 70%, sub-labels 45%; the chosen rung under the Hand at its state + 25% */
-${T} .sx-ind-process__items .sx-ind-row.is-blocked:not(.is-active, [aria-selected="true"]) { opacity:.55 !important; }
-${T} .sx-ind-process__items .sx-ind-row.is-active.is-blocked, ${T} .sx-ind-process__items .sx-ind-row[aria-selected="true"].is-blocked { opacity:.8 !important; }
-${T} .sx-ind-process__items .sx-ind-row.is-active.is-materials, ${T} .sx-ind-process__items .sx-ind-row[aria-selected="true"].is-materials { opacity:.95 !important; }
 ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier { color:rgb(${BONE} / .5) !important; }
 ${T} .sx-ind-process__head .sx-ind-process__count { color:rgb(${BONE} / .62) !important; }
 /* one spine for the whole ladder, drawn once at 40%; the group lists keep their ticks; the extent cursor retires (the window ends on a whole rung) */
 ${T} .sx-ind__list { position:relative !important; }
-${T} .sx-ind__list::before { content:""; position:absolute; left:7px; top:6px; bottom:6px; width:1px; background:rgb(${BONE} / .4); pointer-events:none; z-index:0; }
+/* (the spine is the scroller's own background since round 12: it cannot scroll away and shares the cursor's box) */
 ${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
 /* (the ladder's light cursor rides the one spine again: see ROUND 11) */
 @media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:nowrap !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
@@ -1544,18 +1539,18 @@ ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected,
 /* ================================ ROUND 11: INDUSTRY ======================================== */
 /* the state light lives on the words, not on the row (a row's opacity dimmed its own Hand and compounded into its sub-line) */
 ${T} .sx-ind-process__items .sx-ind-row { opacity:1 !important; }
-${T} .sx-ind-process__items .sx-ind-row.is-blocked .sx-ind-row__name { color:rgb(${BONE} / .56) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-blocked .sx-ind-row__name { color:rgb(${BONE} / .6) !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__name { color:rgb(${BONE} / .72) !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-ready .sx-ind-row__name { color:rgb(250 247 238) !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-blocked:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .82) !important; }
 ${T} .sx-ind-process__items .sx-ind-row.is-materials:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .95) !important; }
-${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier, ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__qty { color:rgb(${BONE} / .56) !important; }
+${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier, ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__qty { color:rgb(${BONE} / .52) !important; }
 ${T} .sx-ind-process__items .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .66) !important; }
 /* every rung not ready says why on its own line (the header carries the group's shared reason) */
 ${T} .sx-ind-process__items .sx-ind-row:is(.is-materials, .is-blocked) .sx-ind-row__why { display:inline !important; }
 /* the ladder's light cursor rides the one spine: a 3px bar at 60% with an end tick */
 ${T} .sx-ind__list .orr-extent { display:block !important; }
-${T} .sx-ind__list .orr-extent::before { left:6px !important; width:3px !important; background:rgb(${BONE} / .6) !important; box-shadow:none !important; opacity:1 !important; }
+${T} .sx-ind__list .orr-extent::before { left:6px !important; width:3px !important; background:rgb(${BONE} / .45) !important; box-shadow:none !important; opacity:1 !important; }
 ${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:9px; height:1.5px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 1.5px); background:rgb(${BONE} / .6); }
 ${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
 
@@ -1574,6 +1569,47 @@ ${T} .sx-lead__rows .sx-lead .sx-lead__t, ${T} .sx-lead__rows .sx-lead.is-curren
   ${T} .sx-bar__rows .sx-bar-row { padding-top:4px !important; padding-bottom:4px !important; }
   ${T} .sx-bar__leads { padding-bottom:16px !important; }
 }
+
+/* ================================ ROUND 13: MISSIONS ======================================== */
+/* one tick series: every block's minor ticks tile at 8px from the phase the screen measured off the ladder's first tick */
+${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 5px, rgb(${BONE} / .07) 5px, rgb(${BONE} / .07) 10px, transparent 10px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 4px var(--ct-tick-y, 0px) / 5px 8px repeat-y !important; }
+/* the seam takes the blocks' measured stroke: a 1px spine at .24, its band, 5px ticks on the same series */
+${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
+  background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .24) 3px, rgb(${BONE} / .24) 4px, transparent 4px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${BONE} / .07) 1px, rgb(${BONE} / .07) 6px, transparent 6px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 0 var(--ct-seam-phase, 0px) / 5px 8px repeat-y !important; }
+/* section and row ticks sit on the series, on their words */
+${T} .sx-ct__yours::after { top:var(--ct-yours-major, 50%) !important; margin-top:0 !important; height:1.5px !important; }
+${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margin-top:0 !important; }
+@media (max-height:800px) {
+  /* the ladder's measure: row text runs to x 420 so no reward orphans; the dossier keeps its place */
+  ${T} .k-panel.sx-ct { grid-template-columns:388px minmax(0, 1fr) !important; column-gap:16px !important; }
+  /* the player's own contract is never cut: the title whole, TRACKED after it */
+  ${T} .sx-ct__jobs .sx-job .k-row__name { max-width:none !important; overflow:visible !important; text-overflow:clip !important; }
+  ${T} .sx-ct__jobs .sx-job .k-row__sub { max-width:250px !important; }
+}
+
+/* ================================ ROUND 12: INDUSTRY ======================================== */
+/* the spine belongs to the scroller's own box: the cursor maps to the same box, so they share a top and an end */
+${T} .sx-ind__list { background:linear-gradient(rgb(${BONE} / .4), rgb(${BONE} / .4)) 7px 0 / 1px 100% no-repeat !important; }
+/* the group's shared tier on its header, after the process word */
+${T} .sx-ind-process__head .sx-ind-process__tier { margin-left:10px; color:rgb(${BONE} / .62) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color:rgb(${BONE} / .4); }
+
+/* ================================ ROUND 12: BAR ============================================= */
+/* the lead marker paints above the spine; one tick weight: every row tick one pixel on a whole pixel */
+${T} .sx-lead__rows .sx-lead.is-current::before { z-index:1 !important; }
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead)::before { height:1px !important; margin-top:0 !important; top:round(down, 50%, 1px) !important; }
+/* the contacts' minor ticks are phased so one lands on the Hand's row, never 2px under it */
+${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 4px var(--bar-tick-y, 0px) / 4px 8px repeat-y !important; }
+/* one rhythm down the rail on a tall screen: the contacts at the leads' kind of pitch */
+@media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__rows .sx-bar-row { padding-top:8px !important; padding-bottom:8px !important; } }
+
+/* ================================ ROUND 13b: MISSIONS ======================================= */
+/* at 720 a title and its reward (glued by their last word) fit one line: the row gives up its right pad, the column 12px more */
+@media (max-height:800px) { ${T} .sx-ct__rows .sx-ct-row { padding-right:0 !important; } ${T} .k-panel.sx-ct { grid-template-columns:400px minmax(0, 1fr) !important; } }
 
 `;
 
