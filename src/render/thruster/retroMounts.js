@@ -9,6 +9,13 @@
 // Placement guide: the pack must sit ON the skin. Hull flanks taper inward toward the nose and
 // differ per ship, so the station's lateral position is measured from the authored hull geometry
 // at build time — a fixed halfSpan floats off a tapered bow or drowns inside a wide flank.
+//
+// Part contract: each side's pack is a self-contained thruster — one `Retro_Thruster_*` pivot
+// owns ALL of its hardware plus its emitter socket. shipMicroMotion gimbals the pivot with
+// steering demand, and because the socket is a child of the pivot the exhaust keeps firing out
+// of the moving nozzle — VFX never chases a static anchor while the part swings. Authored parts
+// that want the same coupling put their SOCKET_* emitter inside the articulating node the same
+// way.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addSocket } from '../ships/shipKit.js';
@@ -172,11 +179,22 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
     color: '#04070b', emissive: engine.plumeCore || '#36c8ff', emissiveIntensity: RETRO_IRIS_IDLE,
     metalness: 0.2, roughness: 0.6, side: THREE.DoubleSide,
   });
-  const shellParts = [];
-  const nozzleParts = [];
-  const trimParts = [];
-  const throatParts = [];
-  const irisParts = [];
+  // Material buckets per side. Bucket mesh names deliberately avoid the micro-motion bell scan's
+  // words (nozzle|bell|drive|engine|plume|thruster|exhaust|rcs): the pivot is the articulated
+  // node, and a mesh that also matched would rotate a second time about the pivot origin.
+  const MESH_PARTS = [
+    ['Shell', metal],   // fairing + aperture plate
+    ['Body', nozzleMetal], // gland + diverging bell
+    ['Trim', trim],     // lip + collar rings
+    ['Throat', throat], // recessed funnel
+    ['Iris', iris],     // aperture cap
+  ];
+  const assembly = new THREE.Group();
+  // Name stays free of the micro-motion bell words even though the id contains 'engine' —
+  // only the two pack pivots articulate; a bell entry on the wrapper would double the swing.
+  assembly.name = 'Retro_Bow_Assembly';
+  assembly.userData.spacefaceRetroHardware = true;
+  assembly.userData.engineProfileId = engineProfileId;
   const mountY = 0.055;
   const splay = 0.349; // match the reaction-jet resolver: exhaust clears the two bow flanks
   const axisX = Math.cos(splay);
@@ -214,67 +232,83 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
       : profile.halfSpan;
     const z = side * span;
     const mouthZ = z + 0.05 * axisZ;
+    const sideName = side < 0 ? 'Port' : 'Starboard';
+    // The gimbal pivot stands on the jet axis at the fairing's root — steering the pack swings
+    // the mouth around the mount point like a vectored nozzle, and the socket (a pivot child)
+    // carries the plume with it.
+    const pivot = new THREE.Group();
+    pivot.name = `Retro_Thruster_${sideName}`;
+    // Declare the articulating pivot on the hull — shipMicroMotion gimbals declared nodes before
+    // its name scan, so a socket-owning pack always gets its slot. This is the part-owned
+    // emitter contract: the part owns the swing, the swing owns the socket, the socket owns the
+    // exhaust.
+    (hull.userData.spacefaceArticulatingNodes
+      || (hull.userData.spacefaceArticulatingNodes = []))
+      .push({ node: pivot, demandScale: 0.55 });
+    const px = mouthX - axisX * r * 2.9;
+    const py = packY;
+    const pz = mouthZ - axisZ * r * 2.9;
+    pivot.position.set(px, py, pz);
     // Positions along the jet axis, measured aft of the lip plane at the mouth.
     const aftX = (t) => mouthX - axisX * t;
     const aftZ = (t) => mouthZ - axisZ * t;
+    const parts = [[], [], [], [], []];
+    const bucket = { Shell: 0, Body: 1, Trim: 2, Throat: 3, Iris: 4 };
 
     // A low wedge fairing grows out of the flank — a shallow tapering blister the size of the
     // port it carries, its aft end buried in the hull. It stays hull-aligned; only the nozzle
     // hardware carries the splay. Roughly 3 bell radii long, i.e. a fitting, not a spine.
-    shellParts.push(placed(
+    parts[bucket.Shell].push(placed(
       new THREE.CylinderGeometry(r * 1.05, r * 1.8, r * 3.3, 7, 1),
       mouthX - axisX * r * 3.4, packY - r * 0.34, z - side * r * 0.35, -Math.PI / 2, 0, [1, 0.42, 1.1]));
     // The aperture plate the jet fires through: a thin chamfered ring flush on the fairing's
     // forward face, normal to the jet axis — the port surround, not a shroud.
-    shellParts.push(placed(
+    parts[bucket.Shell].push(placed(
       new THREE.CylinderGeometry(r * 1.55, r * 1.95, r * 0.22, 8, 1),
       aftX(r * 2.55), packY, aftZ(r * 2.55), -Math.PI / 2, -side * splay));
     // The gland: a short collar the bell bolts to — the visible valve body between plate and bell.
-    nozzleParts.push(placed(
+    parts[bucket.Body].push(placed(
       new THREE.CylinderGeometry(r * 0.70, r * 0.82, r * 1.0, profile.segments, 1),
       aftX(r * 2.05), packY, aftZ(r * 2.05), -Math.PI / 2, -side * splay));
     // The nozzle itself: a real diverging bell — narrow at the chamber joint, flaring to the lip.
     // Total protrusion past the plate is about one bell diameter, like a Draco at the skin.
-    nozzleParts.push(placed(
+    parts[bucket.Body].push(placed(
       new THREE.CylinderGeometry(r * 1.0, r * 0.56, r * 1.7, profile.segments, 1, true),
       aftX(r * 0.85), packY, aftZ(r * 0.85), -Math.PI / 2, -side * splay));
     // Machined edges: the exit lip ring and the collar where the bell meets the gland.
-    trimParts.push(placed(
+    parts[bucket.Trim].push(placed(
       new THREE.TorusGeometry(r * 1.0, r * 0.08, 5, profile.segments),
       mouthX + axisX * 0.004, packY, mouthZ + axisZ * 0.004, 0, Math.PI / 2 - side * splay));
-    trimParts.push(placed(
+    parts[bucket.Trim].push(placed(
       new THREE.TorusGeometry(r * 0.60, r * 0.07, 5, profile.segments),
       aftX(r * 1.66), packY, aftZ(r * 1.66), 0, Math.PI / 2 - side * splay));
     // Inside is a dark funnel that narrows to the iris — a designed aperture, not a glowing disc.
-    throatParts.push(placed(
+    parts[bucket.Throat].push(placed(
       new THREE.CylinderGeometry(r * 0.96, r * 0.26, r * 1.7, profile.segments, 1, true),
       aftX(r * 0.86), packY, aftZ(r * 0.86), -Math.PI / 2, -side * splay));
-    irisParts.push(placed(
+    parts[bucket.Iris].push(placed(
       new THREE.CircleGeometry(r * 0.26, profile.segments),
       aftX(r * 1.7), packY, aftZ(r * 1.7), 0, Math.PI / 2 - side * splay));
-    const name = side < 0 ? 'SOCKET_Retro_Port' : 'SOCKET_Retro_Starboard';
-    const socket = addSocket(hull, name,
-      [mouthX + axisX * 0.01, packY, mouthZ + axisZ * 0.01], 'retro', [axisX, 0, axisZ]);
+    for (let i = 0; i < MESH_PARTS.length; i++) {
+      const mesh = new THREE.Mesh(merged(parts[i]), MESH_PARTS[i][1]);
+      mesh.geometry.translate(-px, -py, -pz); // geometry was authored hull-local; pivot owns it
+      mesh.name = `Retro_${MESH_PARTS[i][0]}_${sideName}`;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      pivot.add(mesh);
+    }
+    const socket = addSocket(pivot, `SOCKET_Retro_${sideName}`,
+      [mouthX + axisX * 0.01 - px, 0, mouthZ + axisZ * 0.01 - pz], 'retro', [axisX, 0, axisZ]);
     socket.userData.engineProfileId = engineProfileId;
-    socket.userData.retroIris = { material: iris, idle: RETRO_IRIS_IDLE, lit: RETRO_IRIS_LIT };
+    // Driven hardware channels: the vfx owner raises the throat's heat emissive with spool and
+    // the iris with live demand, and cools both on reset — the part carries its own heat sink.
+    socket.userData.retroIris = {
+      material: iris, idle: RETRO_IRIS_IDLE, lit: RETRO_IRIS_LIT,
+      heatMaterial: throat, heatIdle: 0.04, heatLit: 0.6,
+    };
+    assembly.add(pivot);
   }
   if (skinOwned && skin) skin.geometry.dispose();
-  const assembly = new THREE.Group();
-  assembly.name = `Retro_Bow_Assembly_${engineProfileId}`;
-  assembly.userData.spacefaceRetroHardware = true;
-  for (const [parts, material, name] of [
-    [shellParts, metal, 'Retro_Fairings'],
-    [nozzleParts, nozzleMetal, 'Retro_Nozzle_Tips'],
-    [trimParts, trim, 'Retro_Machined_Lips'],
-    [throatParts, throat, 'Retro_Throat_Funnels'],
-    [irisParts, iris, 'Retro_Throat_Irises'],
-  ]) {
-    const mesh = new THREE.Mesh(merged(parts), material);
-    mesh.name = name;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    assembly.add(mesh);
-  }
   hull.add(assembly);
   return assembly;
 }

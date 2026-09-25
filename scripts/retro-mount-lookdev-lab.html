@@ -89,6 +89,15 @@
     }
     hull.scale.setScalar(radius);
     scene.add(hull);
+    // ?gimbal=0.07 swings both packs on their pivots — the emitter socket rides along, which is
+    // exactly what live micro-motion writes every frame. Applied before the report so the dumped
+    // socket poses show the swung state.
+    const gimbalSwing = Number(params.get('gimbal')) || 0;
+    if (gimbalSwing && assembly) {
+      assembly.traverse((o) => {
+        if (o.name.startsWith('Retro_Thruster_')) o.rotation.y += gimbalSwing;
+      });
+    }
     scene.updateMatrixWorld(true);
 
     // Report: hull + assembly bounds and socket world positions.
@@ -165,7 +174,8 @@
 
     if (irisLit && assembly) {
       assembly.traverse((o) => {
-        if (o.name === 'Retro_Throat_Irises') o.material.emissiveIntensity = 2.4;
+        if (o.name.startsWith('Retro_Iris')) o.material.emissiveIntensity = 2.4;
+        if (o.name.startsWith('Retro_Throat')) o.material.emissiveIntensity = 0.5;
       });
     }
 

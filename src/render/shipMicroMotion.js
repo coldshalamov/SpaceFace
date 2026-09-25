@@ -125,9 +125,10 @@ const DEATH_KILL_MATCH_S = 3.0;         // kills older than this read as cold sa
 const DEATH_SPIN_START = 7.0;           // rad/s at spiral ignition
 const DEATH_SPIN_END = 1.2;             // rad/s handed to dead drift
 const RECENT_KILL_SLOTS = 8;
-const MAX_BELL_PIVOTS = 6;
+const MAX_BELL_PIVOTS = 12;
 const MAX_RCS_PIVOTS = 4;
-const MOUNT_SCAN_NODE_CAP = 64;
+// Whole authored ships run ~140 nodes; 64 starved the scan before any pivot was reached.
+const MOUNT_SCAN_NODE_CAP = 192;
 
 // Materialize ramp (spawn/respawn): settle from ~55% scale with one overshoot breath.
 const MATERIALIZE_S = 0.55;
@@ -1051,10 +1052,58 @@ export function createShipMicroMotionTracker() {
     rec.hullYawBase = hull && hull.rotation && Number.isFinite(hull.rotation.y) ? hull.rotation.y : 0;
     if (!rec.bells) rec.bells = [];
     if (!rec.rcsNozzles) rec.rcsNozzles = [];
+    const addBellEntry = (node, lower, isSocket, demandScale) => {
+      if (rec.bellCount >= MAX_BELL_PIVOTS || !node.rotation) return;
+      let entry = rec.bells[rec.bellCount];
+      if (!entry) entry = rec.bells[rec.bellCount] = {};
+      entry.node = node;
+      entry.baseY = Number.isFinite(node.rotation.y) ? node.rotation.y : 0;
+      entry.baseZ = Number.isFinite(node.rotation.z) ? node.rotation.z : 0;
+      entry.isPlume = lower.indexOf('plume') >= 0 && !isSocket;
+      entry.isSocket = isSocket;
+      entry.demandScale = demandScale;
+      if (node.scale) {
+        entry.baseSX = Number.isFinite(node.scale.x) ? node.scale.x : 1;
+        entry.baseSY = Number.isFinite(node.scale.y) ? node.scale.y : 1;
+        entry.baseSZ = Number.isFinite(node.scale.z) ? node.scale.z : 1;
+      } else {
+        entry.baseSX = 1; entry.baseSY = 1; entry.baseSZ = 1;
+      }
+      entry.heatSkin = !entry.isPlume && !isSocket && (
+        lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
+        || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
+      );
+      entry.heatMats = null;
+      entry.heatBase = null;
+      rec.bellCount++;
+    };
+    // Part-owned articulation: a part that carries a swinging emitter declares its pivots on the
+    // hull (retroMounts is the procedural reference; authored GLB nodes can flag the same via
+    // userData.spacefaceGimbal extras). Declared nodes take bell slots BEFORE the name scan — a
+    // socket-owning pack must never lose its swing to traversal order or the node cap.
+    const claimedNodes = new Set();
+    const declared = hull && hull.userData && hull.userData.spacefaceArticulatingNodes;
+    if (Array.isArray(declared)) {
+      for (const spec of declared) {
+        const node = spec && spec.node;
+        if (!node || claimedNodes.has(node)) continue;
+        // Stale entries from a replaced build are skipped: the node must still live here.
+        let underRoots = false;
+        for (let o = node; o; o = o.parent) {
+          if (o === hull || o === mesh) { underRoots = true; break; }
+        }
+        if (!underRoots) continue;
+        claimedNodes.add(node);
+        addBellEntry(node, (node.name || '').toLowerCase(), false,
+          Number.isFinite(spec.demandScale) ? spec.demandScale : 1);
+      }
+    }
     const roots = [];
     if (hull) roots.push(hull);
     if (mesh && mesh !== hull) roots.push(mesh);
     let scanned = 0;
+    const bellHits = [];
+    const flaggedPivots = [];
     for (let r = 0; r < roots.length; r++) {
       const stack = [roots[r]];
       while (stack.length > 0 && scanned < MOUNT_SCAN_NODE_CAP) {
@@ -1072,34 +1121,20 @@ export function createShipMicroMotionTracker() {
           entry.baseSY = Number.isFinite(node.scale.y) ? node.scale.y : 1;
           entry.baseSZ = Number.isFinite(node.scale.z) ? node.scale.z : 1;
           rec.rcsNozzleCount++;
-        } else if (node.rotation && rec.bellCount < MAX_BELL_PIVOTS) {
+        } else if (node.rotation && !claimedNodes.has(node)) {
+          if (node.userData && node.userData.spacefaceGimbal) {
+            claimedNodes.add(node);
+            flaggedPivots.push(node);
+            continue;
+          }
           const isBell = lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
             || lower.indexOf('drive') >= 0 || lower.indexOf('engine') >= 0
             || lower.indexOf('plume') >= 0 || lower.indexOf('thruster') >= 0
             || lower.indexOf('exhaust') >= 0;
           const isGimbalSocket = isSocket && (lower.indexOf('engine') >= 0 || lower.indexOf('trail') >= 0);
           if ((isBell && !isSocket) || isGimbalSocket) {
-            let entry = rec.bells[rec.bellCount];
-            if (!entry) entry = rec.bells[rec.bellCount] = {};
-            entry.node = node;
-            entry.baseY = Number.isFinite(node.rotation.y) ? node.rotation.y : 0;
-            entry.baseZ = Number.isFinite(node.rotation.z) ? node.rotation.z : 0;
-            entry.isPlume = lower.indexOf('plume') >= 0 && !isSocket;
-            entry.isSocket = isSocket;
-            if (node.scale) {
-              entry.baseSX = Number.isFinite(node.scale.x) ? node.scale.x : 1;
-              entry.baseSY = Number.isFinite(node.scale.y) ? node.scale.y : 1;
-              entry.baseSZ = Number.isFinite(node.scale.z) ? node.scale.z : 1;
-            } else {
-              entry.baseSX = 1; entry.baseSY = 1; entry.baseSZ = 1;
-            }
-            entry.heatSkin = !entry.isPlume && !isSocket && (
-              lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
-              || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
-            );
-            entry.heatMats = null;
-            entry.heatBase = null;
-            rec.bellCount++;
+            claimedNodes.add(node);
+            bellHits.push({ node, lower, isSocket });
           }
         }
         const children = node.children;
@@ -1107,6 +1142,17 @@ export function createShipMicroMotionTracker() {
           for (let i = 0; i < children.length; i++) stack.push(children[i]);
         }
       }
+    }
+    // Flagged authored pivots take slots next; then name-scan order.
+    for (const node of flaggedPivots) {
+      const lower = (node.name || '').toLowerCase();
+      const spec = node.userData && node.userData.spacefaceGimbal;
+      addBellEntry(node, lower, false,
+        Number.isFinite(spec && spec.demandScale) ? spec.demandScale : 1);
+    }
+    for (const hit of bellHits) {
+      addBellEntry(hit.node, hit.lower, hit.isSocket,
+        hit.lower.indexOf('retro') >= 0 ? 0.55 : 1);
     }
   }
 
@@ -1481,8 +1527,9 @@ export function createShipMicroMotionTracker() {
       const b = rec.bells[i];
       const node = b.node;
       if (!node || !node.rotation) continue;
-      node.rotation.y = b.baseY + rec.gimbalYaw;
-      node.rotation.z = b.baseZ + rec.gimbalPitch;
+      const ds = b.demandScale == null ? 1 : b.demandScale;
+      node.rotation.y = b.baseY + rec.gimbalYaw * ds;
+      node.rotation.z = b.baseZ + rec.gimbalPitch * ds;
       if (b.isPlume && !b.isSocket && node.scale) {
         if (rec.flareApplied !== 1 && rec.flareApplied > 0) {
           node.scale.x /= rec.flareApplied;

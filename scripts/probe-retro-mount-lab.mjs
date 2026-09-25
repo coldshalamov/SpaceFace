@@ -118,6 +118,8 @@ try {
       url.searchParams.set('view', view);
       if (args.debug) url.searchParams.set('debug', String(args.debug));
       if (args.mounts != null) url.searchParams.set('mounts', String(args.mounts));
+      if (args.gimbal) url.searchParams.set('gimbal', String(args.gimbal));
+      if (args.iris) url.searchParams.set('iris', String(args.iris));
       const name = `${hullKey}-${view}.png`;
       reports[`${hullKey}/${view}`] = await capture(page, String(url), name);
     }

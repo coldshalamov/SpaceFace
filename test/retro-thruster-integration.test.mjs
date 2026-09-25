@@ -24,16 +24,23 @@ test('the paired mouths are physical hull parts, separated and mounted on every 
   const spans = new Set();
   for (const id of ids) {
     const { hull, assembly } = mountedHull(id);
+    const portPivot = hull.getObjectByName('Retro_Thruster_Port');
+    const stbdPivot = hull.getObjectByName('Retro_Thruster_Starboard');
     const port = hull.getObjectByName('SOCKET_Retro_Port');
     const starboard = hull.getObjectByName('SOCKET_Retro_Starboard');
-    assert.ok(assembly?.children.length >= 3, `${id}: shrouds, lips, throats`);
+    // Each side is one articulating pack: pivot owns its meshes and its emitter socket.
+    assert.equal(assembly?.children.length, 2, `${id}: two pack pivots`);
+    assert.ok(portPivot && stbdPivot, `${id}: both pack pivots`);
+    assert.equal(port.parent, portPivot, `${id}: port socket rides its pivot`);
+    assert.equal(starboard.parent, stbdPivot, `${id}: starboard socket rides its pivot`);
+    assert.ok(portPivot.children.filter((c) => c.isMesh).length >= 4, `${id}: port pack is built`);
     assert.ok(port && starboard, `${id}: both physical mouth sockets`);
-    assert.ok(port.position.x > 0 && starboard.position.x > 0, `${id}: bow-mounted`);
-    assert.ok(port.position.z < 0 && starboard.position.z > 0, `${id}: separated sides`);
+    assert.ok(portPivot.position.x > 0 && stbdPivot.position.x > 0, `${id}: bow-mounted`);
+    assert.ok(portPivot.position.z < 0 && stbdPivot.position.z > 0, `${id}: separated sides`);
     assert.ok(port.userData.forward[0] > 0.9 && port.userData.forward[2] < 0);
     assert.ok(starboard.userData.forward[2] > 0);
     assert.equal(attachRetroMounts(hull, { data: { defId: id } }), null, 'no duplicate on rebuild');
-    spans.add(Math.round(starboard.position.z * 100));
+    spans.add(Math.round(stbdPivot.position.z * 100));
   }
   assert.ok(spans.size >= 3, 'engine families use distinct hardware spacing');
 });
@@ -66,6 +73,75 @@ test('mounted retro exhaust follows presented yaw and world position, including 
     assert.ok(Math.abs(-sock.ax - Math.cos(exhaustYaw)) < 1e-5, `yaw ${yaw}: exhaust X`);
     assert.ok(Math.abs(-sock.az - Math.sin(exhaustYaw)) < 1e-5, `yaw ${yaw}: exhaust Z`);
   }
+});
+
+test('the emitter rides its articulating mount — gimbaling the pack moves the jet with it', () => {
+  const { root, hull } = mountedHull('ship_kestrel');
+  const ctx = {
+    _socketWorldPos: new THREE.Vector3(),
+    _socketWorldQuat: new THREE.Quaternion(),
+    _socketWorldScale: new THREE.Vector3(),
+    _socketForward: new THREE.Vector3(),
+    _entityLocalXZ: { x: 0, z: 0 },
+    _spawnLocalXZ: { x: 0, z: 0 },
+    _frameMembrane: null,
+    _toLocalXZ(x, z, out) { out.x = x; out.z = z; return out; },
+  };
+  const pivot = hull.getObjectByName('Retro_Thruster_Port');
+  const socket = hull.getObjectByName('SOCKET_Retro_Port');
+  const sock = {};
+  vfx._writeRetroSocketPose.call(ctx, socket, sock);
+  const rest = { x: sock.x, z: sock.z, ax: sock.ax, az: sock.az };
+  // The pack gimbals on its pivot (micro-motion writes rotation.y/z); the socket and every
+  // hardware mesh are its children, so the plume origin and axis must swing with the part.
+  pivot.rotation.y += 0.07;
+  pivot.rotation.z -= 0.04;
+  root.updateWorldMatrix(true, true);
+  vfx._writeRetroSocketPose.call(ctx, socket, sock);
+  assert.ok(Math.hypot(sock.x - rest.x, sock.z - rest.z) > 1e-6, 'socket world pose followed the pivot');
+  assert.ok(Math.hypot(sock.ax - rest.ax, sock.az - rest.az) > 1e-3, 'jet axis followed the gimbal');
+  const fwd = new THREE.Vector3(...socket.userData.forward).applyQuaternion(socket.getWorldQuaternion(new THREE.Quaternion()));
+  // ax is opposite exhaust: exhaust = -a = world forward of the socket.
+  assert.ok(Math.abs(-sock.ax - fwd.x) < 1e-5 && Math.abs(-sock.az - fwd.z) < 1e-5, 'exhaust is the socket forward');
+});
+
+test('spool heats the pack hardware and reset cools it — the part carries its own heat sink', () => {
+  const jets = new PlayerRetroJets(THREE);
+  jets.attach(new THREE.Scene());
+  jets.configure('engine_ion_small', 14);
+  const iris = { emissiveIntensity: 0.12 };
+  const heat = { emissiveIntensity: 0.04 };
+  const sock = {
+    x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0,
+    retroIris: { material: iris, idle: 0.12, lit: 3.4, heatMaterial: heat, heatIdle: 0.04, heatLit: 0.6 },
+  };
+  const env = { drive: 1, boost: 0, lengthWU: 3, exitRadiusWU: 1.2, spread: 0.5, radiance: 1.1, opacity: 0.1 };
+  jets.update(1 / 60, [sock], env);
+  assert.ok(iris.emissiveIntensity > 1, 'iris lit at full brake');
+  assert.ok(heat.emissiveIntensity > 0.2, 'throat heat rises with spool');
+  jets.reset();
+  assert.equal(iris.emissiveIntensity, 0.12, 'reset cools the iris');
+  assert.equal(heat.emissiveIntensity, 0.04, 'reset cools the throat');
+  jets.dispose();
+});
+
+test('a released jet withers instead of snapping — coherence dies and the tail frays', () => {
+  const jets = new PlayerRetroJets(THREE);
+  jets.attach(new THREE.Scene());
+  jets.configure('engine_ion_small', 14);
+  const sock = { x: 0, y: 0, z: 0, ax: -1, ay: 0, az: 0 };
+  const env = (drive) => ({ drive, boost: 0, lengthWU: 3, exitRadiusWU: 1.2, spread: 0.5, radiance: 1.1, opacity: 0.1 });
+  jets.update(1 / 60, [sock], env(1));
+  const held = jets._plumes[0].material.uniforms;
+  const heldCoherence = held.uCoherence.value;
+  const heldWobble = held.uWobble.value;
+  const heldLength = jets._shape.jetLength;
+  jets.update(1 / 60, [sock], env(0.05));
+  const fading = jets._plumes[0].material.uniforms;
+  assert.ok(fading.uCoherence.value < heldCoherence * 0.4, 'the column breaks up as it dies');
+  assert.ok(jets._shape.jetLength > heldLength, 'the tail keeps its drift while it dies');
+  assert.ok(fading.uWobble.value > heldWobble, 'fraying grows while it fades');
+  jets.dispose();
 });
 
 test('installed engine changes retro heat, axial flow and scale while staying two jets', () => {

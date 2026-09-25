@@ -58,12 +58,34 @@ async function shot(page, name) {
     const sf = window.SF;
     const volume = sf.registry.get('vfx')?._energy?.retroVolume;
     const player = sf.state.entities.get(sf.state.playerId);
+    // Coupling evidence: the live plume's nozzle anchor vs the socket's world position — they
+    // must sit on the same point even while the pack pivots.
+    let pivotYaw = null;
+    let socketToPlume = null;
+    const pivot = player?.view?.root?.getObjectByName('Retro_Thruster_Port');
+    const socket = player?.view?.root?.getObjectByName('SOCKET_Retro_Port');
+    if (pivot) pivotYaw = +pivot.rotation.y.toFixed(4);
+    if (socket && volume?._plumes?.[0]) {
+      socket.updateWorldMatrix(true, false);
+      const wp = new socket.position.constructor().setFromMatrixPosition(socket.matrixWorld);
+      const np = volume._plumes[0].material.uniforms.uNozzlePos.value;
+      // Plume space is membrane-local XZ; compare in the same space the vfx owner writes.
+      const g = { x: wp.x, z: wp.z };
+      const membrane = sf.registry.get('vfx')?._frameMembrane;
+      if (membrane && typeof membrane.toGlobal === 'function') membrane.toGlobal(g, g);
+      const loc = { x: g.x, z: g.z };
+      const vfxx = sf.registry.get('vfx');
+      if (vfxx && typeof vfxx._toLocalXZ === 'function') vfxx._toLocalXZ(g.x, g.z, loc);
+      socketToPlume = +Math.hypot(np.x - loc.x, np.z - loc.z).toFixed(4);
+    }
     return {
       tick: sf.state.tick,
       speed: Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0),
       live: volume?._liveCount,
       spool: volume?.spool,
       visible: volume?.group?.visible,
+      pivotYaw,
+      socketToPlume,
     };
   });
   const box = await page.locator('#gl-canvas').boundingBox();
@@ -150,15 +172,35 @@ try {
   await waitForSimTicks(page, 10);
   await shot(page, '01-retro-brake.png');
 
+  // Steer while braking: the packs swing on their pivots and the jets must track the swing —
+  // socketToPlume staying ~0 is the coupling proof.
+  await page.keyboard.down('KeyD');
+  await waitForSimTicks(page, 8);
+  await shot(page, '02-retro-steering.png');
+  await page.keyboard.up('KeyD');
+
+  // Ownership check: slam a huge rotation onto the pivot. If micro-motion owns the node it
+  // overwrites it next frame (baseY + gimbalYaw*ds ≈ small); if it survives, the scan missed it.
+  const ownership = await page.evaluate(async () => {
+    const sf = window.SF;
+    const player = sf.state.entities.get(sf.state.playerId);
+    const pivot = player?.view?.root?.getObjectByName('Retro_Thruster_Port');
+    if (!pivot) return { found: false };
+    pivot.rotation.y = 0.5;
+    await new Promise((r) => setTimeout(r, 80));
+    return { found: true, afterWrite: +pivot.rotation.y.toFixed(4) };
+  });
+  console.log('pivot ownership:', JSON.stringify(ownership));
+
   // 3. Hit the accelerator: the reported bug shed two blobs at the release point.
   await page.keyboard.up('KeyS');
   await page.keyboard.down('KeyW');
   await waitForSimTicks(page, 5);
-  await shot(page, '02-retro-release-early.png');
+  await shot(page, '03-retro-release-early.png');
   await waitForSimTicks(page, 16);
-  await shot(page, '03-retro-release-late.png');
+  await shot(page, '04-retro-release-late.png');
   await waitForSimTicks(page, 30);
-  await shot(page, '04-retro-gone.png');
+  await shot(page, '05-retro-gone.png');
 
   const summary = await page.evaluate(() => {
     const sf = window.SF;
