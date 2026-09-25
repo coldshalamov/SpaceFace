@@ -932,10 +932,8 @@ input[type="radio"]:checked::before {
   min-width: 0;
 }
 .sf-overview-row__name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ink);
 }
 .sf-overview-row__right {
