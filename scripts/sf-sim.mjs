@@ -92,6 +92,10 @@ const tacticalAI = hasFlag('--tactical-ai');
 // Default 'legacy' keeps every existing check:sim* gate byte-identical.
 const flightSystem = readFlightSystem('--flight-system', 'legacy');
 const counterTetherProbe = readCounterTetherProbe('--counter-tether-probe', null);
+// Handoff staging positions, hoisted above the top-level dispatch below: the harness calls
+// update47aScenarioActorIntents before these consts would be initialized if declared next to it.
+const HANDOFF_STAND_OFF_TUG = { x: 815, z: 95, rot: -0.35 };
+const HANDOFF_ZONE_BEACON = { x: 780, z: 320 };
 const scenarioContractPath = argValue('--scenario-contract', 'src/data/scenarios/47a.scenario.json');
 const scenarioContract = loadScenarioContract(scenarioContractPath);
 
@@ -956,6 +960,7 @@ function update47aScenarioActorIntents(state, options = {}) {
   set47aTacticalActive(harasser, simTime >= 75 || activeBeat === 'scavenger_arrival');
   set47aTacticalActive(thief, simTime >= 75 || activeBeat === 'scavenger_arrival');
   set47aTacticalActive(recoveryTug, simTime >= 270 || activeBeat === 'recovery_tug');
+  stage47aHandoffActors(state, recoveryTug, simTime, activeBeat);
   if (!harasser || !harasser.alive) return;
   const shouldFire = (simTime >= 75 && simTime <= 76.25) || (activeBeat === 'scavenger_arrival' && simTime <= 76.25);
   harasser.data.intent = shouldFire
@@ -969,6 +974,29 @@ function update47aScenarioActorIntents(state, options = {}) {
 function set47aTacticalActive(entity, active) {
   if (!entity || !entity.data || !entity.data.ai) return;
   entity.data.ai.passive = !active;
+}
+
+// The deterministic harness has no tug/beacon flight AI: when the recovery beat opens, the
+// official cordon stages at its authored stand-off and Kessler's covert zone keys to the
+// handoff pocket — the spot the scripted tow parks the pair (~(735,223)) — so the authored
+// live-state predicates can measure real handoff proximity at the resolution beat.
+// Staging at the beat (not spawn) keeps every <=720-tick telemetry golden byte-identical;
+// the live route keeps its own dormant-then-approach staging via liveColdStartSafe holds.
+function stage47aHandoffActors(state, recoveryTug, simTime, activeBeat) {
+  if (!(simTime >= 270 || activeBeat === 'recovery_tug' || activeBeat === 'resolution_branch')) return;
+  if (recoveryTug && recoveryTug.alive !== false
+      && Math.hypot(recoveryTug.pos.x - HANDOFF_STAND_OFF_TUG.x,
+        recoveryTug.pos.z - HANDOFF_STAND_OFF_TUG.z) > 0.01) {
+    placeEntity(recoveryTug, HANDOFF_STAND_OFF_TUG.x, HANDOFF_STAND_OFF_TUG.z, HANDOFF_STAND_OFF_TUG.rot);
+    // noInterp marks an authoritative teleport: the SG-02 owner resyncs the Rapier body to the
+    // entity pose on the next step instead of publishing the stale body pose back.
+    recoveryTug.flags = Object.assign({}, recoveryTug.flags, { noInterp: true });
+    recoveryTug.physicsSleeping = false;
+  }
+  const beacon = resolveScenarioEntity(state, 'kessler_handoff_beacon');
+  if (beacon && Math.hypot(beacon.pos.x - HANDOFF_ZONE_BEACON.x, beacon.pos.z - HANDOFF_ZONE_BEACON.z) > 0.01) {
+    placeEntity(beacon, HANDOFF_ZONE_BEACON.x, HANDOFF_ZONE_BEACON.z, beacon.rot || 0);
+  }
 }
 
 function loadScenarioContract(rel) {
