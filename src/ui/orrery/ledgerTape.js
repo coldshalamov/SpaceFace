@@ -60,7 +60,8 @@ const CSS = `
 .orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size:11px; fill:rgb(${BONE} / .6); }
 .orr-ltape__purse text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:9px; }
 .orr-svg .orr-ltape__hand-drop { stroke:var(--dp-hand, #f2b950); }
-.orr-ltape text.orr-ltape__net-key { font-size:8.5px; }
+.orr-ltape text.orr-ltape__net-key, .orr-ltape__purse text.orr-ltape__net-key { font-size:9.5px; fill:rgb(${BONE} / .6); }
+.orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { fill:rgb(${BONE} / .76); }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
 .orr-ltape__pursehost { position:relative; display:block; }
 .orr-ltape__pursehost > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
@@ -73,7 +74,7 @@ const CSS = `
 .orr-ltape text.orr-ltape__figure { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.02em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__figure--out { fill:rgb(${BONE}); }
 .orr-ltape text.orr-ltape__cycle--now { fill:rgb(248 244 234 / .8); }
-.orr-ltape text.orr-ltape__net { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:22px; letter-spacing:-.01em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
+.orr-ltape text.orr-ltape__net, .orr-ltape__purse text.orr-ltape__net { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:22px; letter-spacing:-.01em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size:8.5px; }
 .orr-ltape text.orr-ltape__cycle { fill:rgb(${BONE} / .66); font-size:10.5px; }
 .orr-svg .orr-ltape__arc-track { stroke:rgb(${BONE} / .22); fill:none; }
@@ -313,10 +314,14 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       // 45-degree elbow, then along the reading's kicker line to twelve px past its last glyph, with an end tick
       const yRun = H + 34.5;
       const xEnd = x0 + (Number.isFinite(data.leaderEndX) ? data.leaderEndX : 148) + 0.5;
-      const ex = chosen.x - 24;
-      const leaderD = ex > xEnd + 8
-        ? `M ${f(chosen.x)} ${f(foot + 12)} L ${f(chosen.x)} ${f(yRun - 24)} L ${f(ex)} ${f(yRun)} L ${f(xEnd)} ${f(yRun)} M ${f(xEnd)} ${f(yRun - 3)} L ${f(xEnd)} ${f(yRun + 3)}`
-        : `M ${f(chosen.x)} ${f(foot + 12)} L ${f(chosen.x)} ${f(yRun)}`;
+      const xl = Math.round(chosen.x) + 0.5;
+      const ex = xl - 24;
+      const withRun = ex > xEnd + 8;
+      // the orthogonal runs on the pixel grid (crisp), the 45-degree elbow anti-aliased: one leader, two paths
+      const leaderD = withRun
+        ? `M ${f(xl)} ${f(foot + 12)} L ${f(xl)} ${f(yRun - 24)} M ${f(ex)} ${f(yRun)} L ${f(xEnd)} ${f(yRun)} M ${f(xEnd)} ${f(yRun - 3)} L ${f(xEnd)} ${f(yRun + 3)}`
+        : `M ${f(xl)} ${f(foot + 12)} L ${f(xl)} ${f(yRun)}`;
+      const elbowD = withRun ? `M ${f(xl)} ${f(yRun - 24)} L ${f(ex)} ${f(yRun)}` : '';
       hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${f(foot + 12)}`, class: 'orr-core orr-ltape__hand-drop', 'stroke-width': 1.4 }));
       // a sold entry's stem crosses the tape through a break in its core
       if (chosen.up) hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${y - 3} L ${f(chosen.x)} ${y + 4}`, class: 'orr-ltape__break', 'stroke-width': 5 }));
@@ -324,7 +329,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         svg('circle', { cx: f(chosen.x), cy: f(chosen.tipY), r: 12, class: 'orr-ltape__hand-glow' }),
         svg('circle', { cx: f(chosen.x), cy: f(chosen.tipY), r: 7, class: 'orr-core orr-ltape__hand-ring', 'stroke-width': 1.6 }),
         svg('circle', { cx: f(chosen.x), cy: f(chosen.tipY), r: 2.6, class: 'orr-ltape__hand-bead' }),
-        svg('path', { d: leaderD, class: 'orr-core orr-ltape__leader', 'stroke-width': 1, fill: 'none' }),
+        svg('path', { d: leaderD, class: 'orr-core orr-ltape__leader', 'stroke-width': 1, fill: 'none', 'shape-rendering': 'crispEdges' }),
+        svg('path', { d: elbowD, class: 'orr-core orr-ltape__leader', 'stroke-width': 1, fill: 'none' }),
       );
       layer.appendChild(rise(hg, 120 + sorted.length * 50));
     }

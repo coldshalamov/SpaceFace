@@ -45,7 +45,10 @@ const CSS = `
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .5) !important; opacity:1 !important; filter:none !important; }
 /* a disabled key is its silhouette alone: the field's cut shape as a 1px bone outline (the overlay hollows it), the verb in dim ink */
-.orr-lampkey:disabled::before { background:transparent !important; background-image:none !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .5) !important; }
+.orr-lampkey:disabled::before { background:transparent !important; background-image:none !important; box-shadow:none !important; }
+.orr-lampkey__rim { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; display:none; z-index:1; }
+.orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.5; stroke-linejoin:miter; }
+.orr-lampkey:disabled .orr-lampkey__rim { display:block; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }
 .orr-lampkey:disabled .orr-lampkey__commit, .orr-lampkey:disabled .orr-lampkey__commit-bloom, .orr-lampkey:disabled .orr-lampkey__fill, .orr-lampkey:disabled .orr-lampkey__fillbloom { display:none; }
 .orr-lampkey:disabled::after { display:none !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .92) !important; background-size:auto !important;
@@ -89,6 +92,23 @@ export function injectLampKey(doc = globalThis.document) {
 }
 
 /** The key's silhouette in the ring's own box (which stands RING_OUT outside the field on every side). */
+/** The key's own silhouette on the half-pixel grid, for the rim a disabled key shows. */
+export function rimPathD(width, height) {
+  const W = Math.max(1, width); const H = Math.max(1, height); const c = CUT;
+  return `M ${W - c + 0.75} 0.75 L ${W - 0.75} ${c + 0.75} L ${W - 0.75} ${H - 0.75} L 0.75 ${H - 0.75} L 0.75 0.75 Z`;
+}
+
+function layoutRim(button) {
+  const rim = button.querySelector && button.querySelector(':scope > .orr-lampkey__rim');
+  if (!rim || typeof button.getBoundingClientRect !== 'function') return;
+  const r = button.getBoundingClientRect();
+  if (!(r.width > 0) || !(r.height > 0)) return;
+  const W = Math.round(r.width); const H = Math.round(r.height);
+  rim.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const path = rim.querySelector('path');
+  if (path) path.setAttribute('d', rimPathD(W, H));
+}
+
 export function holdPathD(width, height) {
   const W = Math.max(1, width);
   const H = Math.max(1, height);
@@ -139,6 +159,14 @@ export function dressLampKey(button, { hold = false, note = '' } = {}) {
     word.className = 'orr-lampkey__word';
     const first = [...button.childNodes].find((n) => n.nodeType === 3 ? n.textContent.trim() : (n.nodeType === 1 && !n.classList.contains('dp-holdring')));
     if (first) { button.insertBefore(word, first); word.appendChild(first); }
+  }
+  // the rim: the silhouette a disabled key shows instead of a field (drawn along the cut, which a box shadow cannot follow)
+  if (button.querySelector && !button.querySelector(':scope > .orr-lampkey__rim') && typeof doc.createElementNS === 'function') {
+    const rim = svgEl(doc, 'svg', { class: 'orr-lampkey__rim', 'aria-hidden': 'true', focusable: 'false', viewBox: '0 0 100 40' });
+    rim.appendChild(svgEl(doc, 'path', { d: rimPathD(100, 40), 'vector-effect': 'non-scaling-stroke' }));
+    button.appendChild(rim);
+    layoutRim(button);
+    if (typeof ResizeObserver === 'function') { try { new ResizeObserver(() => layoutRim(button)).observe(button); } catch (_) { /* no observer, no resize */ } }
   }
   if (hold) {
     button.setAttribute('data-hold', '1');

@@ -42,7 +42,7 @@ const CSS = `
 .orr-chain.is-blocked .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .45); }
 .orr-chain.is-blocked .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .4); }
 .orr-chain.is-blocked .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .4); }
-.orr-chain__reason { color:rgb(248 244 234 / .82); }
+.orr-chain__label .orr-chain__reason, .orr-chain__reason { color:rgb(248 244 234 / .88) !important; opacity:1 !important; }
 /* while the line is blocked, light stops at the block: the product is drawn at the ring's own alpha */
 .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .45); }
@@ -233,7 +233,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const frac = have / need;
       const gauge = svg('g', { class: `orr-chain__stock${frac >= 1 ? ' is-full' : frac > 0 ? ' is-part' : ' is-empty'}` });
       gauge.appendChild(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-core orr-chain__stock-track', 'stroke-width': 1 }));
-      if (need <= 12) gauge.appendChild(svg('path', { d: ticksD(xIn, y, rIn, need, { len: 3, major: need + 1, majorLen: 3, inward: true }), class: 'orr-core orr-chain__stock-div', 'stroke-width': 1 }));
+      if (need <= 12) gauge.appendChild(svg('path', { d: ticksD(xIn, y, rIn, need, { len: 6, major: need + 1, majorLen: 6, inward: true }), class: 'orr-core orr-chain__stock-div', 'stroke-width': 1.2 }));
       if (frac > 0.001) {
         const dA = arcD(xIn, y, rIn, 0, 360 * Math.min(0.9999, frac));
         gauge.appendChild(svg('path', { d: dA, class: 'orr-bloom orr-chain__stock-bloom', 'stroke-width': 5, opacity: '.2' }));
@@ -304,7 +304,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     if (arriveNow && tl) { tl.classList.add('orr-chain__rise'); tl.style.setProperty('--orr-delay', '240ms'); }
     if (arriveNow) { pl.classList.add('orr-chain__rise'); pl.style.setProperty('--orr-delay', '220ms'); }
     // out: one beam to the product
-    const dOut = `M ${f(xProc + rProc - 1)} ${f(cy)} L ${f(xOut - rOut)} ${f(cy)}`;
+    const dOut = `M ${f(xProc + rProc - 1)} ${f(cy)} L ${f(xOut - rOut - 2)} ${f(cy)}`;
     layer.appendChild(riseG(svg('path', { d: dOut, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: blocked ? '.05' : live ? '.22' : '.14' }), 260));
     const outBeam = svg('path', { d: dOut, class: `orr-core orr-chain__beam${blocked ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.4 });
     layer.appendChild(rise(outBeam, 260));

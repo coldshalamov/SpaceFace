@@ -1437,6 +1437,21 @@ ${T} .sx-fac-legend .is-hostile { color:rgb(255 80 56 / .85) !important; }
   ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
 }
 
+/* ================================ ROUND 9: LEDGER =========================================== */
+/* the reading's rule sits on the same column as the axis */
+${T} .sx-ledger__read::after { left:1px !important; }
+
+/* ================================ ROUND 9: INDUSTRY ========================================= */
+/* the ladder's rungs carry their state in light: makeable full with a long tick, short of stock at 70%, facility-blocked at 45% */
+${T} .sx-ind-process__items .sx-ind-row.is-blocked:not(.is-active, [aria-selected="true"]) { opacity:.45 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials:not(.is-active, [aria-selected="true"]) { opacity:.7 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-ready:not(.is-active, [aria-selected="true"])::before { width:14px !important; background:rgb(${BONE} / .85) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { display:inline !important; }
+${T} .sx-ind-process__head .sx-ind-process__count { margin-left:10px; color:rgb(${BONE} / .45) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__block { margin-left:10px; color:rgb(${BONE} / .66) !important; letter-spacing:.12em; }
+${T} .sx-ind-process__head .sx-ind-process__block::before { content:"·  "; color:rgb(${BONE} / .4); }
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
