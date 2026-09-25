@@ -2740,7 +2740,11 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
 
 const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DAY_SECONDS;
 
-function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null) {
+// Exported for the check harness: the seeded migration matrix proves the module-split migration
+// stayed lossless, so it must plan each sector-day at its F2-era scheduling semantics — no
+// cross-day shape-budget carryover (SHAPE_BUCKET_DAYS / ENCOUNTER_SHAPE_BUDGET_PER_HOUR landed in
+// b6ed59676, post-migration). Passing shapeCounts = null gives exactly that per-day planner.
+export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null) {
   const out = [];
 
   if (!Array.isArray(zones) || !zones.length) return out;

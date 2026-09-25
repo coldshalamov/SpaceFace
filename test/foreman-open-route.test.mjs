@@ -54,7 +54,10 @@ test('foreman placements schedule in their zones and the toll prices honestly', 
 test('foreman role reads: telegraph, slow turn, counterplay, and pinned zero pay', () => {
   assert.equal(foreman.telegraph.cue, 'engine_flare');
   assert.equal(foreman.telegraph.bark, 'warn');
-  assert.match(foreman.telegraph.line, /slow turn/);
+  // INF-025 made prow/stern directional armor the counterplay the telegraph teaches; the slow
+  // turn it exploits is still pinned directly by turnRate below.
+  assert.match(foreman.telegraph.line, /prow/);
+  assert.match(foreman.telegraph.line, /stern/);
   assert.match(foreman.counterHint, /swarmer/);
   assert.equal(foreman.mass, 420, 'moving terrain, not a shove toy');
   assert.ok(foreman.turnRate < 1.0, 'slowest-turn heavy in its class');

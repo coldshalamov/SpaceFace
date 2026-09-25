@@ -1,9 +1,12 @@
-// 015 — Opening hauler raid on the starter freight corridor.
+// 344 — Opening hauler raid on the starter freight corridor.
 // Guaranteed day-0 teaching encounter: a hauler is actually under attack by pirates close to
 // Helios Station so the player can fly in, defend the hauler, steal the spilled cargo, or leave.
+// Appended after the migration-era catalogue prefix (orders 010–120): the depth-program loader
+// fixture pins that prefix as an immutable migration proof, so post-migration modules take the
+// next free order rather than slotting in by theme.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
-export const encounterOrder = 15;
+export const encounterOrder = 344;
 export const trigger = deepFreeze({
   id: 'opening_hauler_raid',
   tier: 'minor',

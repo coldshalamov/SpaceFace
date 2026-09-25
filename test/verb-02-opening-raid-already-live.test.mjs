@@ -8,7 +8,7 @@ import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
-import encounter015, { runtime } from '../src/data/encounters/015-opening-hauler-raid.js';
+import encounter344, { runtime } from '../src/data/encounters/344-opening-hauler-raid.js';
 
 function makeHarness(seed = 4242) {
   const sim = createSimulation({ seed, systems: [spawnBudget, encounterDirector] });
@@ -43,8 +43,8 @@ function fireRaid(h) {
 }
 
 test('the encounter shape carries no choice card at all', () => {
-  assert.equal(encounter015.choices, undefined, '015 must not author choices');
-  assert.equal(encounter015.timeoutChoice, undefined, '015 must not author a timeout choice');
+  assert.equal(encounter344.choices, undefined, '015 must not author choices');
+  assert.equal(encounter344.timeoutChoice, undefined, '015 must not author a timeout choice');
   assert.equal(typeof runtime.choose, 'undefined', 'the runtime must not answer choices');
 });
 

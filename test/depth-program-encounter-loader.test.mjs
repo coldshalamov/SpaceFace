@@ -12,7 +12,7 @@ import {
 } from '../src/data/encounters/index.generated.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { AUTHORED_PLACE_ZONES } from '../src/data/authoredPlaces.js';
-import { planEncounters } from '../src/systems/encounterDirector.js';
+import { planEncounters, planEncountersDay } from '../src/systems/encounterDirector.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const fixture = JSON.parse(readFileSync(
@@ -151,6 +151,18 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
 // identity (shape, zone, delay, archetypes, positions). Measured 2026-08-23: stripping them restores
 // 332c517a… exactly, while live-vs-baseline still only moves Ceres (Throughline Weigh) and Tethys
 // (Driftmark + Anvil). Reconstruct them here the same way the catalogue gates are reconstructed.
+//
+// A third post-migration change is the E6 shape budget (b6ed59676): `planEncounters` now replans
+// the 6-sector-day bucket so a grammar key at ENCOUNTER_SHAPE_BUDGET_PER_HOUR sightings is skipped
+// and the draw retried — a real live scheduling feature, but one that did not exist when the
+// fixture was seeded. Worse, under the shape-stripped migration catalogue every grammar key
+// degenerates to `unknown|<zoneType>|unknown|unknown`, so the budget behaves as "max 4 items per
+// zone type per bucket" — semantics the live game never runs. The faithful reconstruction is the
+// per-day planner seam itself: `planEncountersDay` with no carried shape counts is byte-identical
+// to the migration-era planner for this catalogue (measured 2026-09-25: all 60 rows hash
+// 332c517a…, matching the fixture and the fresh-root planner row-for-row). `planEncounters` keeps
+// its live bucket semantics and stays on the movedSectors comparison so the hold-out still
+// measures real zone drift end to end.
 const AUTHORED_PLACE_ZONE_IDS = new Set(
   Object.values(AUTHORED_PLACE_ZONES).flat().map((zone) => zone.id),
 );
@@ -203,7 +215,7 @@ test('encounter migration preserves the seeded 60-schedule matrix', () => {
     const zones = migrationBaselineZones(sectorId);
     for (const day of fixture.scheduleMatrix.days) {
       for (const seed of fixture.scheduleMatrix.seeds) {
-        rows.push([sectorId, day, seed, migrationBaselinePlan(planEncounters(seed, sectorId, day, zones, null, migrationCatalog))]);
+        rows.push([sectorId, day, seed, migrationBaselinePlan(planEncountersDay(seed, sectorId, day, zones, null, migrationCatalog))]);
       }
     }
   }
