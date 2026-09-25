@@ -212,6 +212,29 @@ test('the material is a depth-writing premultiplied volume, not an additive card
   material.dispose();
 });
 
+test('gas premultiplies after nonlinear display conversion so thin edges do not add false light', () => {
+  const material = createGasVolumeMaterial(createGasVolumeTextures());
+  const shader = material.fragmentShader;
+  assert.equal(material.premultipliedAlpha, true,
+    'Three must enable the final premultiplied-alpha shader chunk');
+  const straight = shader.indexOf('sum * uRadiance / max(1.0 - transmittance');
+  const tone = shader.indexOf('#include <tonemapping_fragment>');
+  const display = shader.indexOf('#include <colorspace_fragment>');
+  const premultiply = shader.indexOf('#include <premultiplied_alpha_fragment>');
+  assert.ok(straight >= 0 && tone > straight && display > tone && premultiply > display,
+    'unpremultiply accumulated optical coverage, convert straight colour, then restore alpha');
+  // This was visible even with bloom disabled: converting already-premultiplied RGB lifts the
+  // edge above its alpha. Five overlapping 10%-opaque white edges should not add white light.
+  const opacity = 0.1;
+  const wrongEdge = new THREE.Color().setRGB(opacity, opacity, opacity).convertLinearToSRGB().r;
+  const correctEdge = new THREE.Color().setRGB(1, 1, 1).convertLinearToSRGB().r * opacity;
+  assert.ok(wrongEdge > correctEdge * 3);
+  let light = 0;
+  for (let i = 0; i < 5; i++) light = correctEdge + light * (1 - opacity);
+  assert.ok(Math.abs(light - (1 - 0.9 ** 5)) < 1e-6);
+  material.dispose();
+});
+
 test('a GLSL template literal contains no backtick and no unresolved hole', () => {
   // A backtick inside a GLSL template literal terminates the JS string and takes every importer
   // of vfx.js down with it. This has cost this repo real time more than once.
@@ -417,6 +440,24 @@ test('emitFromImpact is the one entry point and never throws on a bad record', (
   assert.equal(gas.emitFromImpact(record({ materialId: 'shield' })), false);
   assert.equal(gas.liveCount, 0);
   gas.dispose();
+});
+
+test('whole-body destruction radius is not expanded again as a tiny contact patch', () => {
+  for (const eventClass of ['breakup', 'detonation']) {
+    const { gas, camera } = harness();
+    const radius = 18;
+    gas.emitFromImpact(record({ eventClass, radiusWU: radius, axisSigned: false, severity: 1 }));
+    for (let frame = 0; frame <= 24; frame++) gas.update(frame / 60, camera);
+    const size = gas.mesh.geometry.getAttribute('aGasScale');
+    assert.equal(gas.liveCount, 2, 'the paired aftermath still exists');
+    for (let slot = 0; slot < gas.mesh.count; slot++) {
+      const span = Math.max(size.getX(slot), size.getY(slot), size.getZ(slot));
+      assert.ok(span > radius, 'aftermath still expands beyond the body');
+      assert.ok(span < radius * 3,
+        `${eventClass} on an 18 WU hull produced a ${span.toFixed(1)} WU blanket`);
+    }
+    gas.dispose();
+  }
 });
 
 test('an UNSIGNED collision axis draws symmetric, never a fabricated direction', () => {

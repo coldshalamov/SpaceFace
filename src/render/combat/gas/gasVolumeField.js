@@ -283,7 +283,11 @@ class GasVolumeField {
     const family = gasFamilyForImpact(rec.materialId, rec.eventClass, severity);
     if (!family) return false;
     const radius = Math.max(0.5, Number.isFinite(rec.radiusWU) ? rec.radiusWU : 2);
-    const scale = radius * (2.1 + 3.4 * severity);
+    // A breach radius describes a contact patch; a breakup/detonation radius already describes
+    // the whole affected body. Applying contact expansion to that full radius then multiplying
+    // by the family's growth again made an 18 WU hull leave a 129 WU opaque gas blanket.
+    const wholeBody = rec.eventClass === 'breakup' || rec.eventClass === 'detonation';
+    const scale = radius * (wholeBody ? 0.9 + 0.7 * severity : 2.1 + 3.4 * severity);
     const seed = Number.isFinite(rec.serial) ? (rec.serial % 997) / 997 : undefined;
     const outward = impactOutwardNormal(rec, this._normalScratch);
 

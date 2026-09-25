@@ -301,7 +301,8 @@ const FRAGMENT = /* glsl */`
 
       // Sub-voxel structure: the cell's own solved motion field, tiled, used as a domain warp.
       vec3 tiled = fract(p * shape.w + detailOffset);
-      p += gasMotion(tiled, vCells.x) * shape.z;
+      vec3 detailFlow = gasMotion(tiled, vCells.x);
+      p += detailFlow * shape.z;
 
       // Motion-vector frame interpolation: walk each frame toward the other along its own baked
       // transport before blending. A straight cross-dissolve of two volumes boils; this does not.
@@ -313,6 +314,11 @@ const FRAGMENT = /* glsl */`
 
       float density = field.r;
       float aux = field.g;
+      float combustion = 1.0 - step(0.5, vFamily);
+      // The film already contains cold openings between its fuel lobes. Preserve their optical
+      // depth instead of filling them with the same milky extinction as a dense burning shoulder.
+      // This is a material response to solved density, not an extra procedural noise texture.
+      density *= mix(1.0, mix(0.38, 1.35, smoothstep(0.035, 0.26, field.r)), combustion);
 
       // Depth-aware soft intersection with the surface this gas came off. The analytic sphere is
       // the hull or rock face the emitter handed us; the gas dilutes into it instead of ending on
@@ -332,7 +338,9 @@ const FRAGMENT = /* glsl */`
         // Two taps along one fixed key. Bounded single scattering reveals the baked lobes and
         // cavities as rounded masses; it is not a flat opacity mask.
         vec3 key = uKeyDirection * 0.055;
-        float blocker = gasDensity(p + key, vCells.x).r + gasDensity(p + key * 2.4, vCells.x).r;
+        float nearBlocker = gasDensity(p + key, vCells.x).r;
+        float farBlocker = gasDensity(p + key * 2.4, vCells.x).r;
+        float blocker = nearBlocker + farBlocker;
         float light = exp(-blocker * look.x);
         float painted = 0.08 + 0.42 * smoothstep(0.16, 0.40, light)
           + 0.50 * smoothstep(0.58, 0.80, light);
@@ -343,7 +351,23 @@ const FRAGMENT = /* glsl */`
         vec3 grained = tinted * (1.0 - look.w * aux);
         vec3 scatter = grained * (0.10 + 1.02 * painted) * vTint;
         scatter *= 1.0 + look.z * (1.0 - smoothstep(0.0, 0.30, density));
-        vec3 emitted = uEmissive[family] * vTint * shape.y * pow(aux, 0.8) * (0.30 + 0.70 * light);
+        // Flame lives at the hot fuel/air interface. Cool dense interiors remain soot; letting
+        // every warm voxel self-light with pow(temperature, .8) erased the film's cavities.
+        float temperature = smoothstep(0.10, 0.76, aux);
+        float litEdge = smoothstep(0.01, 0.18, field.r - nearBlocker);
+        // Rolled fuel folds react where neighbouring parcels shear past one another. Use the
+        // solved motion magnitude to break a hot spherical shoulder into moving tongues: no
+        // hash grain, extra texture or camera-aligned mask is introduced.
+        float foldSpeed = length(detailFlow);
+        float reactionFold = smoothstep(0.13, 0.19, foldSpeed)
+          * (1.0 - smoothstep(0.20, 0.26, foldSpeed));
+        float flame = temperature * temperature * litEdge * litEdge
+          * reactionFold * reactionFold * (0.12 + 0.88 * light);
+        float thermal = mix(pow(aux, 0.8) * (0.30 + 0.70 * light), flame, combustion);
+        vec3 emitted = uEmissive[family] * vTint * shape.y * thermal;
+        // A sparse incandescent edge, never a white fill across the whole smoke body.
+        emitted += combustion * vTint * vec3(1.0, 0.74, 0.34)
+          * shape.y * pow(temperature, 4.0) * litEdge * reactionFold * reactionFold * 0.45;
 
         sum += transmittance * absorb * (scatter + emitted);
         transmittance *= 1.0 - absorb;
@@ -361,11 +385,13 @@ const FRAGMENT = /* glsl */`
     vec4 clip = uWorldToClip * uObjectToWorld * vec4(objectPoint, 1.0);
     gl_FragDepth = clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 1.0);
 
-    // Premultiplied. One pass covers both the soot that OCCLUDES and the fire that ADDS, which a
-    // split normal/additive bucket pair cannot do for the same body.
-    gl_FragColor = vec4(sum * uRadiance * vOpacity, alpha);
+    // Colour conversion is nonlinear: converting premultiplied light first lifts thin edges
+    // above their alpha and makes overlapping gas turn cream. Convert straight radiance, THEN
+    // premultiply the display-linear/sRGB result for ONE / ONE_MINUS_SRC_ALPHA compositing.
+    gl_FragColor = vec4(sum * uRadiance / max(1.0 - transmittance, 0.0001), alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
+    #include <premultiplied_alpha_fragment>
   }
 `;
 
@@ -400,6 +426,7 @@ export function createGasVolumeMaterial(textures) {
     side: THREE.BackSide,
     forceSinglePass: true,
     toneMapped: true,
+    premultipliedAlpha: true,
     blending: THREE.CustomBlending,
     blendSrc: THREE.OneFactor,
     blendDst: THREE.OneMinusSrcAlphaFactor,

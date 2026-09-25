@@ -23,7 +23,7 @@ def collect():
         path=path.resolve(); name='sf:'+path.relative_to(ROOT).as_posix()
         if name in modules:return name
         modules[name]=''
-        text=path.read_text()
+        text=path.read_text(encoding='utf-8')
         def replace(m):
             ref=m.group(2); target=resolve(ref,path)
             if target and target.exists() and target.is_file():
@@ -34,7 +34,7 @@ def collect():
         text=text.replace('import.meta.url',json.dumps('http://127.0.0.1:8765/'+path.relative_to(ROOT).as_posix()))
         modules[name]=text
         return name
-    html=(ROOT/'scripts/vfx-force-language-lab.html').read_text()
+    html=(ROOT/'scripts/vfx-force-language-lab.html').read_text(encoding='utf-8')
     entry=re.search(r'<script type="module">(.*?)</script>',html,re.S).group(1)
     ep=ROOT/'scripts/__inline_cycle_lab__.js'
     def replace_entry(m):

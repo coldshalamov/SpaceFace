@@ -16,6 +16,30 @@ physical play inviting to understand: a shove has a contact and an aftermath; a 
 two bodies; an engine makes force while its wake remembers motion. Beauty comes from those distinct
 shapes and rhythms sharing the scene, with bright machinery against substantial material.
 
+**Owner's living VFX direction (2026-09-24).** Effects are a primary interaction surface. Every
+action must feel as though it disturbs a real material, rather than starting the same clip. Share
+crisp contours, dark internal separation, luminous moving folds and asymmetric onset/cooling;
+do not share one silhouette. Metric stress bends inward or opens pressure curtains; induced
+current branches between actual contacts; coherent energy stays collimated; propulsion flows;
+reactive matter adheres and creeps; kinetic impact tears solids and compresses fronts. Keep the
+strong nozzle/history, shield-contact, gas and solid-debris identities. Improve their common
+contact surfaces and downstream responses without coating every family in the same glow.
+
+Author at the flight camera: a moving silhouette first, transported internal structure second,
+filtered detail third. Reserve HDR for folds, junctions and hot reaction edges, with a substantial
+lower-radiance body. Fine edges use screen derivatives; release tears follow continuous contours,
+never square noise cells. Randomness selects stable per-deployment character; direction, body
+radius, speed, contact and lifecycle select the composition. Repeated shots can vary in curl,
+reach and timing while preserving the readable verb. Simulation RNG is never consumed.
+
+The September renewal adds twelve reaction routes in `src/render/actionVfx.js`: capture, fling,
+grind, hitch latch/cut, specialist disruption, chain priming/end, charge combo, repair, transfer,
+and bomb command. This is +24.5% against the audited 49 directly subscribed visible-event
+categories in `vfx.js` before this change; it is not a count of all game actions or polled effects.
+Continuous repair/transfer coalesces on its real target. Effects have bounded lifetimes, stay
+anchored through rebasing and pause, clear at world/save boundaries, and preserve information
+under reduced motion/flash. Added feedback never asserts extra damage, radius or force.
+
 **Owner's flight-history direction (2026-09-09):** the long, bright trail is intentional. It should
 read like a luminous snake recording the ship's previous path, making direction obvious and fast,
 nimble turns fun to watch. Preserve that generous length and brightness. Improve accurate bends,

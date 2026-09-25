@@ -600,9 +600,12 @@ function poseSolid(spec, ctx) {
   const speed = row.speed * (0.7 + j1 * 0.6);
   let angle = outAngle + j0 * row.spread;
 
-  spec.length0 = size * (row.primitive === 'plate' ? 2.6 : 1);
+  // A breakup's radius describes the whole hull. Its eight departing panels are pieces of that
+  // hull, not eight near-hull-sized sheets stacked over the ignition and hot interior.
+  const hullPanel = row.primitive === 'plate' && layout === 'plate-separation';
+  spec.length0 = size * (row.primitive === 'plate' ? (hullPanel ? 1.35 : 2.6) : 1);
   spec.length1 = spec.length0;
-  spec.width0 = size * (row.primitive === 'plate' ? 2.0 : 0.55);
+  spec.width0 = size * (row.primitive === 'plate' ? (hullPanel ? 0.7 : 2.0) : 0.55);
   spec.width1 = spec.width0;
   spec.gravity = 0;
   spec.angularVelocity = j2 * (row.primitive === 'plate' ? 2.2 : 8.5);

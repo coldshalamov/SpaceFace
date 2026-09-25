@@ -18,6 +18,19 @@ const BOLT_SIZE = 3;
 const BOLT_COLOR = 4;
 const BOLT_SHEATH = 5;
 const BOLT_MIN_PIXELS = 6;
+const BOLT_VARIATION = 7;
+
+// Cosmetic identity survives draw sorting, origin shifts and re-admission. Never consume the
+// simulation RNG to make two rounds of the same weapon breathe differently.
+export function weaponEffectSeed(entityId) {
+  let h = typeof entityId === 'number' ? entityId | 0 : 2166136261;
+  if (typeof entityId === 'string') {
+    for (let i = 0; i < entityId.length; i++) h = Math.imul(h ^ entityId.charCodeAt(i), 16777619);
+  }
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 const VERTEX_SHADER = /* glsl */`
   attribute vec3 aBoltPos;
@@ -27,11 +40,13 @@ const VERTEX_SHADER = /* glsl */`
   attribute vec3 aBoltColor;
   attribute vec3 aBoltSheath;
   attribute float aBoltMinPixels;
+  attribute vec2 aBoltVariation;
 
   uniform float uTanHalfFov;
   uniform float uViewportHeight;
   uniform float uMinPixels;
   uniform float uMinLengthPixels;
+  uniform float uBoltTime;
 
   varying vec2 vUv;
   varying vec3 vColor;
@@ -39,6 +54,7 @@ const VERTEX_SHADER = /* glsl */`
   varying float vIntensity;
   varying float vVariant;
   varying float vAlong;
+  varying vec2 vVariation;
 
   void main() {
     vUv = uv;
@@ -47,6 +63,7 @@ const VERTEX_SHADER = /* glsl */`
     vIntensity = aBoltSize.z;
     vVariant = aBoltSize.w;
     vAlong = uv.x;
+    vVariation = aBoltVariation;
 
     vec3 curr = aBoltPos;
     vec3 prev = aBoltPrev;
@@ -87,12 +104,13 @@ const VERTEX_SHADER = /* glsl */`
     float t = uv.x;
     float side = uv.y * 2.0 - 1.0;
     float bow = sin(t * 3.14159265);
+    float evolution = uBoltTime * (0.88 + aBoltVariation.y * 0.24) + aBoltVariation.x;
     vec3 shaped = position;
     if (aBoltSize.w < 0.5) {
       shaped.x += (1.0 - side * side) * bow * 0.19;
       shaped.yz *= 0.70 + smoothstep(0.35, 0.80, t) * 0.62;
     } else if (aBoltSize.w < 1.5) {
-      shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2);
+      shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2 - evolution * 5.0);
       shaped.x += bow * side * 0.12;
     } else if (aBoltSize.w >= 1.5 && aBoltSize.w < 2.5) {
       // Kinetic sabot: a machined dart, not a recoloured pulse. Needle nose, a hard flared
@@ -106,11 +124,12 @@ const VERTEX_SHADER = /* glsl */`
     } else if (aBoltSize.w >= 2.5 && aBoltSize.w < 3.5) {
       // Rail / siege: a relativistic needle with one detached ionisation collar behind the
       // nose. Thinner than the sabot along its whole length, so the two never read alike.
-      float collar = exp(-pow((t - 0.72) / 0.085, 2.0));
+      float collar = exp(-pow((t - (0.68 + aBoltVariation.y * 0.08)) / 0.085, 2.0));
       shaped.yz *= 0.60 + 0.32 * pow(1.0 - t, 2.2) + collar * 1.18;
       shaped.x += collar * side * 0.07;
     } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
       shaped.yz *= 0.8 + 0.6 * sin(t * 3.14159265);
+      shaped.yz *= 1.0 + bow * 0.12 * sin(t * 11.0 - evolution * 7.0);
       shaped.x += abs(side) * bow * 0.20;
     } else if (aBoltSize.w >= 4.5 && aBoltSize.w < 5.5) {
       shaped.x = (t - 0.5) * 0.6 + side * side * bow * 0.28;
@@ -138,6 +157,7 @@ const FRAGMENT_SHADER = /* glsl */`
   varying float vIntensity;
   varying float vVariant;
   varying float vAlong;
+  varying vec2 vVariation;
 
   uniform sampler2D uSceneDepth;
   uniform float uDepthEnabled;
@@ -156,6 +176,7 @@ const FRAGMENT_SHADER = /* glsl */`
   }
 
   void main() {
+    float boltClock = uBoltTime * (0.88 + vVariation.y * 0.24) + vVariation.x;
     float across = abs(vUv.y * 2.0 - 1.0);
     float core = pow(max(0.0, 1.0 - across), 6.0);
     float sheath = 1.0 - smoothstep(0.72, 1.0, across);
@@ -182,7 +203,7 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
     float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));
     float plasmaBulb = sin(clamp(vAlong, 0.0, 1.0) * 3.14159);
-    float plasmaBoil = 0.5 + 0.5 * sin(vAlong * 11.0 - uBoltTime * 14.0);
+    float plasmaBoil = 0.5 + 0.5 * sin(vAlong * (10.0 + vVariation.y * 2.0) - boltClock * 14.0);
     float plasmaCore = pow(max(0.0, 1.0 - across), 3.2);
     body = mix(body, (plasmaCore * 1.1 + sheath * 0.7)
       * (0.52 + plasmaBulb * 0.42 + plasmaBoil * 0.16), plasma);
@@ -195,7 +216,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float machHead = smoothstep(0.55, 1.0, vAlong);
     float machTail = smoothstep(0.5, 0.0, vAlong);
     float machCore = pow(max(0.0, 1.0 - across), 12.0);
-    float machDiamonds = 0.82 + uBoltFlicker * 0.18 * sin(vAlong * 46.0 - uBoltTime * 55.0);
+    float machDiamonds = 0.82 + uBoltFlicker * 0.18 * sin(vAlong * 46.0 - boltClock * 55.0);
     body = mix(body, (machCore * 1.5 + sheath * 0.28) * machDiamonds * (0.75 + machHead * 0.9), kinetic);
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
@@ -206,16 +227,16 @@ const FRAGMENT_SHADER = /* glsl */`
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
-    float railRings = 0.86 + uBoltFlicker * 0.14 * sin(vAlong * 44.0 - uBoltTime * 62.0);
+    float railRings = 0.86 + uBoltFlicker * 0.14 * sin(vAlong * 44.0 - boltClock * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
     body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
     col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
 
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
-    float forkCenter = 0.43 + 0.15 * sin(vAlong * 6.28318 - uBoltTime * 5.0);
+    float forkCenter = 0.43 + 0.15 * sin(vAlong * 6.28318 - boltClock * 5.0);
     float empArc = exp(-pow((across - forkCenter) / 0.17, 2.0));
-    float empCrackle = 0.78 + uBoltFlicker * 0.22 * sin(vAlong * 24.0 - uBoltTime * 33.0);
+    float empCrackle = 0.78 + uBoltFlicker * 0.22 * sin(vAlong * 24.0 - boltClock * 33.0);
     // Open air between the two branches is a silhouette feature, not a pale stripe
     // painted over the pulse body. A short root joins them at the trailing heel.
     float empRoot = (1.0 - smoothstep(0.12, 0.30, vAlong)) * core;
@@ -228,8 +249,8 @@ const FRAGMENT_SHADER = /* glsl */`
     // hulls around has to look like it is carrying a wall of pressure, not like a painted capsule.
     float concussion = step(4.5, vVariant) * (1.0 - step(5.5, vVariant));
     float concShock = smoothstep(0.65, 0.98, vAlong);
-    float concRings = 0.5 + 0.5 * sin(vAlong * 21.0 + uBoltTime * 44.0);
-    float concThrob = 0.86 + uBoltFlicker * 0.14 * sin(uBoltTime * 26.0);
+    float concRings = 0.5 + 0.5 * sin(vAlong * 21.0 + boltClock * 44.0);
+    float concThrob = 0.86 + uBoltFlicker * 0.14 * sin(boltClock * 26.0);
     body = mix(body, (core * 0.85 + sheath * (0.5 + 0.34 * concRings * (1.0 - concShock)))
       * (0.8 + concShock * 0.6 * concThrob), concussion);
     col = mix(col, vec3(1.0, 0.8, 0.45), concShock * concussion * 0.65);
@@ -237,8 +258,8 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 6: Flak - fragmentation fleck with incendiary spark jacket
     float flak = step(5.5, vVariant);
     // The spark jacket crawls tailward and spits: fragmentation is burning, not striped.
-    float flakCrawl = sin(vAlong * 25.0 + uBoltTime * 39.0);
-    float flakSpit = 1.0 + uBoltFlicker * 0.16 * sin(uBoltTime * 67.0 + vAlong * 9.0);
+    float flakCrawl = sin(vAlong * 25.0 + boltClock * 39.0);
+    float flakSpit = 1.0 + uBoltFlicker * 0.16 * sin(boltClock * 67.0 + vAlong * 9.0);
     body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * flakCrawl) * flakSpit, flak);
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
@@ -280,6 +301,7 @@ export class EnergyBoltPool {
     this.color = dynamicAttribute(this.capacity * 3, 3);
     this.sheath = dynamicAttribute(this.capacity * 3, 3);
     this.minPixels = dynamicAttribute(this.capacity, 1);
+    this.variation = dynamicAttribute(this.capacity * 2, 2);
     this.geometry.setAttribute('aBoltPos', this.pos);
     this.geometry.setAttribute('aBoltPrev', this.prev);
     this.geometry.setAttribute('aBoltAxis', this.axis);
@@ -287,6 +309,7 @@ export class EnergyBoltPool {
     this.geometry.setAttribute('aBoltColor', this.color);
     this.geometry.setAttribute('aBoltSheath', this.sheath);
     this.geometry.setAttribute('aBoltMinPixels', this.minPixels);
+    this.geometry.setAttribute('aBoltVariation', this.variation);
 
     this.material = new THREE.ShaderMaterial({
       uniforms: {
@@ -332,7 +355,7 @@ export class EnergyBoltPool {
     this._camera = null;
     this._time = 0;
     this._instanceAttributes = [
-      this.pos, this.prev, this.axis, this.size, this.color, this.sheath, this.minPixels,
+      this.pos, this.prev, this.axis, this.size, this.color, this.sheath, this.minPixels, this.variation,
     ];
     this._sortDepth = new Float64Array(this.capacity);
     this._sortOrder = new Uint32Array(this.capacity);
@@ -352,6 +375,7 @@ export class EnergyBoltPool {
         { name: 'color', attribute: this.color },
         { name: 'sheath', attribute: this.sheath },
         { name: 'minPixels', attribute: this.minPixels },
+        { name: 'variation', attribute: this.variation },
       ],
     }) : null;
     if (scene) scene.add(this.mesh);
@@ -401,6 +425,8 @@ export class EnergyBoltPool {
     this.writeCount = index + 1;
     this.entityIds[index] = entityId == null ? -1 : entityId;
     if (entityId != null) this.byEntity.set(entityId, index);
+    const seed = weaponEffectSeed(entityId == null ? index : entityId);
+    this.variation.setXY(index, seed * Math.PI * 2, (seed * 37.719) % 1);
     this.pos.setXYZ(index, x, y, z);
     this.prev.setXYZ(index, prevX, prevY, prevZ);
     this.axis.setXYZ(index, ax, ay, az);
@@ -425,6 +451,7 @@ export class EnergyBoltPool {
       markDynamicBufferItems(this.dynamicBufferOwner, BOLT_COLOR, index);
       markDynamicBufferItems(this.dynamicBufferOwner, BOLT_SHEATH, index);
       markDynamicBufferItems(this.dynamicBufferOwner, BOLT_MIN_PIXELS, index);
+      markDynamicBufferItems(this.dynamicBufferOwner, BOLT_VARIATION, index);
     }
     return index;
   }
@@ -506,6 +533,7 @@ export class EnergyBoltPool {
       this.color.needsUpdate = true;
       this.sheath.needsUpdate = true;
       this.minPixels.needsUpdate = true;
+      this.variation.needsUpdate = true;
     }
     this.mesh.visible = this.writeCount > 0;
   }

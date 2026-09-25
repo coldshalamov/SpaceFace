@@ -7,25 +7,83 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope } from '../combat/bombDynamics.js';
 import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
 import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { FIELD_LIFECYCLES, sampleFieldLifecycle } from './forceLanguage/effectLifecycle.js';
 
-const VERTICES_PER_BOMB = 900;
+// Four continuous 28-station, folded inflow surfaces plus the throat and truthful boundary.
+// Still one lazy draw, with no per-frame allocations or additional material/pipeline variants.
+const VERTICES_PER_BOMB = 3600;
 export const BOMB_PRESENTATION_MAX_VERTICES = BOMB_DRIFT.maxWorldActive * VERTICES_PER_BOMB;
 const COLORS = new Map(Object.entries(BOMB_DEFS).map(([id, def]) => [id, new THREE.Color(def.visual.accent)]));
 const owners = new WeakMap();
 const EMPTY_STATS = Object.freeze({ bombs: 0, vertices: 0, drawCalls: 0, overflow: 0 });
+// One stable cosmetic seed per identity. Numeric and string ids both work; sim RNG is untouched.
+function bombVisualSeed(id) {
+  if (typeof id === 'number') return ((Math.imul(id | 0, 16807) >>> 0) % 65521) / 65521 * 6.283185307;
+  let hash = 2166136261;
+  const text = typeof id === 'string' ? id : 'bomb';
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return (hash >>> 0) / 4294967296 * 6.283185307;
+}
 
 /** Exact program recipe the cook retains so the first live drop is not a new shader key. */
 export function createBombTelegraphMaterial() {
-  return new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     name: 'BombTelegraphGeometry',
     vertexColors: true,
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide,
-    roughness: 0.46,
-    metalness: 0.28,
+    roughness: 0.64,
+    metalness: 0.08,
     toneMapped: true,
   });
+  // The dark body keeps depth without bloom; only the curved working fold carries HDR energy.
+  // This is an analytic surface response, so it has no sprite/texture resolution to expose.
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
+attribute vec4 bombSurface;
+varying vec4 vBombSurface;`).replace('#include <begin_vertex>', `#include <begin_vertex>
+vBombSurface = bombSurface;`);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
+varying vec4 vBombSurface;`).replace('#include <color_fragment>', `#include <color_fragment>
+diffuseColor.rgb *= 0.065;`).replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+float bombV = vBombSurface.x;
+float bombT = vBombSurface.z;
+float bombPhase = abs(vBombSurface.w);
+bool bombTar = vBombSurface.w < -0.5;
+bool bombFlowing = bombPhase > 0.5;
+// Nested caustics advect into the throat at different speeds; the cooling channels between
+// them stay dark. Their wave intersections make fine structure without final-art hash noise.
+float bombSpine = 0.12 + 0.19 * sin(bombT * 11.0 - bombPhase * 2.0);
+float bombFork = 0.22 + 0.095 * sin(bombT * 21.0 - bombPhase * 2.6);
+float bombFold = exp(-pow((bombV - bombSpine) * 24.0, 2.0));
+float bombInner = exp(-pow((bombV - bombSpine + bombFork) * 32.0, 2.0));
+float bombOuter = exp(-pow((bombV - bombSpine - bombFork * 1.5) * 28.0, 2.0));
+float bombTransport = pow(0.5 + 0.5 * sin(bombT * 57.0 - bombPhase * 8.0 + bombV * 5.0), 5.0);
+float bombFiligree = pow(0.5 + 0.5 * sin(bombT * 86.0 - bombPhase * 5.3 + bombV * 13.0), 14.0);
+float bombWorking = (bombFold + 0.65 * bombInner + 0.40 * bombOuter) * (0.38 + 0.62 * bombTransport)
+  + 0.13 * bombFiligree * (1.0 - abs(bombV));
+if (bombTar) {
+  // A broken chemical reaction front crawls around a heavy, mostly unlit body. Broad dark
+  // cells and two unequal contour fronts replace the bright plastic spoon spine.
+  float chemicalEdge = 0.72 + 0.08 * sin(bombT * 31.4159 - bombPhase * 1.7)
+    + 0.045 * sin(bombT * 69.115 - bombPhase);
+  float chemicalFront = exp(-pow((abs(bombV) - chemicalEdge) * 28.0, 2.0));
+  float chemicalCells = 0.5 + 0.5 * sin(bombT * 43.98 + bombV * 6.0 - bombPhase * 1.2);
+  float chemicalVein = exp(-pow((bombV - 0.26 - 0.20 * sin(bombT * 18.85 - bombPhase)) * 26.0, 2.0));
+  bombWorking = chemicalFront * (0.18 + 0.82 * pow(chemicalCells, 3.0))
+    + chemicalVein * 0.12 * pow(1.0 - chemicalCells, 3.0);
+  diffuseColor.rgb *= 0.55 + chemicalCells * 0.45;
+} else if (!bombFlowing) {
+  bombWorking = 0.12 + 0.65 * exp(-pow((bombV - 0.12) * 5.0, 2.0));
+}
+float bombGrazing = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
+float bombEdge = 1.0 - smoothstep(bombTar ? 0.94 : 0.88, 1.0, abs(bombV));
+totalEmissiveRadiance += vColor.rgb * vBombSurface.y * (0.015 + bombWorking) * (0.80 + 0.20 * bombGrazing);
+diffuseColor.a *= bombEdge;`);
+  };
+  material.customProgramCacheKey = () => 'bomb-transport-radiance-v2';
+  return material;
 }
 
 /** Tiny retained owner for the cook. Same material key as the live batch; not the 24-bomb buffer. */
@@ -40,6 +98,7 @@ export function createBombPresentationPrecompileMesh() {
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array([
     0.35, 0.78, 1, 0.82, 0.35, 0.78, 1, 0.82, 0.35, 0.78, 1, 0.82,
   ]), 4));
+  geometry.setAttribute('bombSurface', new THREE.BufferAttribute(new Float32Array([0, 2, 0, 1, 0, 2, 0.5, 1, 0, 2, 1, 1]), 4));
   const mesh = new THREE.Mesh(geometry, createBombTelegraphMaterial());
   mesh.name = 'SF_Precompile_BombTelegraphs';
   mesh.frustumCulled = false;
@@ -84,13 +143,16 @@ export class BombPresentationBatch {
     this.positions = new Float32Array(BOMB_PRESENTATION_MAX_VERTICES * 3);
     this.normals = new Float32Array(BOMB_PRESENTATION_MAX_VERTICES * 3);
     this.colors = new Float32Array(BOMB_PRESENTATION_MAX_VERTICES * 4);
+    this.surfaces = new Float32Array(BOMB_PRESENTATION_MAX_VERTICES * 4);
     this.geometry = new THREE.BufferGeometry();
     this.positionAttribute = new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage);
     this.normalAttribute = new THREE.BufferAttribute(this.normals, 3).setUsage(THREE.DynamicDrawUsage);
     this.colorAttribute = new THREE.BufferAttribute(this.colors, 4).setUsage(THREE.DynamicDrawUsage);
+    this.surfaceAttribute = new THREE.BufferAttribute(this.surfaces, 4).setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute('position', this.positionAttribute);
     this.geometry.setAttribute('normal', this.normalAttribute);
     this.geometry.setAttribute('color', this.colorAttribute);
+    this.geometry.setAttribute('bombSurface', this.surfaceAttribute);
     this.geometry.setDrawRange(0, 0);
     this.material = createBombTelegraphMaterial();
     this.mesh = new THREE.Mesh(this.geometry, this.material);
@@ -108,6 +170,14 @@ export class BombPresentationBatch {
     this.nx = 0;
     this.ny = 1;
     this.nz = 0;
+    this.surfaceAcross = 0;
+    this.surfaceHeat = 1.4;
+    this.surfaceAlong = 0;
+    this.surfacePhase = 0;
+    this.heatScale = 1;
+    this.life = { build: 0, release: 0, scale: 0, crossScale: 0, opacity: 0, stage: 'dead' };
+    this.sectionA = new Float64Array(33);
+    this.sectionB = new Float64Array(33);
     this.stats = { bombs: 0, vertices: 0, drawCalls: 0, overflow: 0 };
     this.count = 0;
     this.disposed = false;
@@ -128,6 +198,7 @@ export class BombPresentationBatch {
     const accessibility = resolveVfxAccessibilityProfile(state.settings);
     const moving = !state.settings?.video?.motionReduce;
     const brightness = accessibility.id === 'full' ? 1 : 0.62;
+    this.heatScale = accessibility.id === 'full' ? 1 : accessibility.flashOpacityScale;
     for (const bomb of source) {
       if (!bomb?.alive || bomb.type !== 'bomb' || !bomb.data || !bomb.pos) continue;
       const d = bomb.data, def = bombDef(d.bombId);
@@ -139,17 +210,22 @@ export class BombPresentationBatch {
       stats.bombs++;
       const color = COLORS.get(def.id);
       const r = color.r * brightness, g = color.g * brightness, b = color.b * brightness;
-      const seed = Math.abs(Math.trunc(bomb.id)) || 1;
+      const seed = bombVisualSeed(bomb.id);
       if (d.phase === 'field' && def.field) {
         const f = def.field;
         const envelope = bombFieldEnvelope(now, d.fieldStartedAt, f.durationS, f.endStrength ?? 1);
         if (envelope <= 0) continue;
-        this.field(x, z, def.radius, f.kind, moving ? now : 0, envelope, r, g, b, seed);
+        const age = Math.max(0, now - (Number(d.fieldStartedAt) || 0));
+        sampleFieldLifecycle(now, Number(d.fieldStartedAt) || 0, -1,
+          f.kind === 'singularity' ? FIELD_LIFECYCLES.well : FIELD_LIFECYCLES.seed, this.life);
+        this.field(x, z, def.radius, f.kind, moving ? age : 0, envelope, r, g, b, seed,
+          moving ? this.life.scale : 1, this.life.opacity);
       } else {
         const speed = Math.hypot(bomb.vel?.x || 0, bomb.vel?.z || 0);
         const ax = speed > 0.01 ? bomb.vel.x / speed : Math.cos(bomb.rot || 0);
         const az = speed > 0.01 ? bomb.vel.z / speed : Math.sin(bomb.rot || 0);
-        this.drift(x, z, ax, az, speed, r, g, b, d.armed, now, d.spawnedAt);
+        this.drift(x, z, ax, az, speed, r, g, b, d.armed, now, d.spawnedAt, def.id,
+          moving ? Math.max(0, now - (Number(d.spawnedAt) || 0)) : 0, seed);
         if (d.phase === 'warning') {
           const progress = Math.max(0, Math.min(1, (now - d.warningAt) / Math.max(0.001, d.resolveAt - d.warningAt)));
           this.warning(x, z, def.radius, r, g, b, progress, def.field?.kind === 'singularity');
@@ -162,16 +238,20 @@ export class BombPresentationBatch {
       this.positionAttribute.clearUpdateRanges(); this.positionAttribute.addUpdateRange(0, this.count * 3);
       this.normalAttribute.clearUpdateRanges(); this.normalAttribute.addUpdateRange(0, this.count * 3);
       this.colorAttribute.clearUpdateRanges(); this.colorAttribute.addUpdateRange(0, this.count * 4);
-      this.positionAttribute.needsUpdate = this.normalAttribute.needsUpdate = this.colorAttribute.needsUpdate = true;
+      this.surfaceAttribute.clearUpdateRanges(); this.surfaceAttribute.addUpdateRange(0, this.count * 4);
+      this.positionAttribute.needsUpdate = this.normalAttribute.needsUpdate = this.colorAttribute.needsUpdate = this.surfaceAttribute.needsUpdate = true;
     }
     stats.vertices = this.count;
     stats.drawCalls = this.count > 0 ? 1 : 0;
   }
-  drift(x, z, ax, az, speed, r, g, b, armed, now, spawnedAt) {
-    const armedT = Math.max(0, Math.min(1, (now - spawnedAt) / BOMB_DRIFT.armS));
+  drift(x, z, ax, az, speed, r, g, b, armed, now, spawnedAt, kind = 'bomb_frag', time = 0, seed = 0) {
+    const armedT = Math.max(0, Math.min(1, (now - (Number(spawnedAt) || 0)) / BOMB_DRIFT.armS));
     const px = -az, pz = ax;
     // First vertex is the collar hub at the interpolated source so origin-rebase tests stay rigid.
+    this.surfaceHeat = 1.6;
     this.collar(x, z, ax, az, r, g, b, armed || armedT >= 1 ? 0.92 : 0.28 + armedT * 0.45, 1.6 + armedT * 1.05);
+    this.payloadAccent(x, z, ax, az, kind, time, seed, r, g, b, armedT);
+    this.surfaceHeat = 0.85;
     const wake = 11 + Math.min(28, speed * 0.07);
     let lastX = x - ax * 2.6, lastZ = z - az * 2.6, lastY = 1.35;
     for (let i = 1; i <= 5; i++) {
@@ -182,6 +262,82 @@ export class BombPresentationBatch {
       this.ribbon(lastX, lastZ, nextX, nextZ, 4.6 - u * 3.1, r, g, b, (armed ? 0.78 : 0.5) * (1 - u * 0.38), lastY, nextY);
       lastX = nextX; lastZ = nextZ; lastY = nextY;
     }
+    this.surfaceHeat = 1.4;
+  }
+  payloadAccent(x, z, ax, az, kind, time, seed, r, g, b, armed) {
+    const px = -az, pz = ax;
+    this.surfaceHeat = 2.2 + armed * 0.8;
+    if (kind === 'bomb_singularity' || kind === 'bomb_scrambler') {
+      // Gravity gyroscopes counterturn; Havoc is an open, asymmetric tumbling screw.
+      const gyro = kind === 'bomb_singularity';
+      for (let branch = 0; branch < (gyro ? 2 : 3); branch++) {
+        const phase = seed + branch * 2.2 + time * (branch % 2 ? -0.72 : 0.93);
+        let lx = x, lz = z, ly = 1.2;
+        for (let j = 0; j <= 20; j++) {
+          const u = j / 20, a = u * (gyro ? Math.PI * 2 : Math.PI * 1.28) + phase;
+          const rad = gyro ? 4.5 + branch * 0.8 : 2.6 + u * (5 + branch);
+          const sx = Math.cos(a) * rad, sz = Math.sin(a) * rad * (gyro ? 0.66 : 0.86);
+          const nx = x + ax * sx + px * sz, nz = z + az * sx + pz * sz;
+          const ny = 1.7 + Math.sin(a + branch) * (gyro ? 3.1 : 2.2);
+          if (j) this.ribbon(lx, lz, nx, nz, gyro ? 0.9 : 1.2 - u * 0.6, r, g, b, 0.76, ly, ny);
+          lx = nx; lz = nz; ly = ny;
+        }
+      }
+    } else if (kind === 'bomb_goo') {
+      // Compact sagging blisters; same viscous vocabulary as the released tar, at capsule scale.
+      for (let i = 0; i < 3; i++) this.swept(x, z, 7, time, 1, seed + i,
+        i * Math.PI * 2 / 3, 1, 8, r, g, b, 0.9);
+    } else if (kind === 'bomb_concussion') {
+      for (let side = -1; side <= 1; side += 2) {
+        let lx = x + ax * 4, lz = z + az * 4, ly = 1;
+        for (let j = 1; j <= 12; j++) {
+          const u = j / 12, a = u * Math.PI * 0.85;
+          const reach = 5.5 + 0.5 * Math.sin(time * 1.8 + seed);
+          const nx = x + ax * Math.cos(a) * 4 + px * side * Math.sin(a) * reach;
+          const nz = z + az * Math.cos(a) * 4 + pz * side * Math.sin(a) * reach;
+          const ny = 1 + Math.sin(a) * 2.8;
+          this.ribbon(lx, lz, nx, nz, 1.5, r, g, b, 0.82, ly, ny);
+          lx = nx; lz = nz; ly = ny;
+        }
+      }
+    } else {
+      const count = kind === 'bomb_thermite' ? 3 : kind === 'bomb_emp' ? 5 : 4;
+      for (let i = 0; i < count; i++) {
+        const side = i % 2 ? 1 : -1;
+        const f = (i - (count - 1) / 2) * 1.4;
+        let lx = x + px * f, lz = z + pz * f, ly = 1.4;
+        const segments = kind === 'bomb_thermite' ? 12 : kind === 'bomb_emp' ? 5 : 3;
+        for (let j = 1; j <= segments; j++) {
+          const u = j / segments;
+          let along, across, height, width;
+          if (kind === 'bomb_thermite') {
+            along = -u * (7.8 + i * 1.3);
+            across = f + Math.sin(u * 7.4 - time * 3 + seed + i) * u * 1.25;
+            height = 1.4 + Math.sin(u * Math.PI) * 3.2;
+            width = 2 * (1 - u * 0.86);
+          } else if (kind === 'bomb_emp') {
+            along = -u * 7;
+            across = f + side * u * 4.2 + Math.sin(j * 2 + seed) * u * 0.8;
+            height = 1.4 + u * 1.6 + 0.3 * Math.sin(time * 2.1 + seed + i);
+            width = 0.75;
+          } else if (kind === 'bomb_anchor') {
+            along = (i < 2 ? 1 : -1) * (u < 0.7 ? 5.2 : 3.7);
+            across = side * (u < 0.7 ? 2 + u * 3.5 : 4.4);
+            height = 1.4 + u * 3.4;
+            width = 1.5;
+          } else {
+            along = (i < 2 ? 1 : -1) * (2 + u * 4.2);
+            across = side * (1.7 + u * 1.8);
+            height = 1.4 + Math.sin(u * Math.PI) * 1.8;
+            width = 1.8 * (1 - u * 0.65);
+          }
+          const nx = x + ax * along + px * across, nz = z + az * along + pz * across;
+          this.ribbon(lx, lz, nx, nz, width, r, g, b, 0.82, ly, height);
+          lx = nx; lz = nz; ly = height;
+        }
+      }
+    }
+    this.surfaceAcross = 0;
   }
   collar(x, z, _ax, _az, r, g, b, opacity, height) {
     for (let i = 0; i < 6; i++) {
@@ -219,118 +375,161 @@ export class BombPresentationBatch {
     }
     this.ribbon(x - 6, z - 8, x - 6 + 13 * progress, z - 8, 2.1, r, g, b, 0.9, 0.85, 0.85);
   }
-  field(x, z, radius, kind, time, envelope, r, g, b, seed) {
-    if (kind === 'singularity') this.gravityWell(x, z, radius, time, envelope, r, g, b, seed);
-    else this.tarCloud(x, z, radius, time, envelope, r, g, b, seed);
+  field(x, z, radius, kind, time, envelope, r, g, b, seed, growth = 1, opacity = 1) {
+    this.surfaceAcross = 0;
+    this.surfaceHeat = 0.32;
+    // A quiet set of physical standing edges always marks the real influence radius. The
+    // expressive body can unfurl, creep or weaken without claiming a different gameplay range.
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + seed * 0.07;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      const outerX = x + dx * radius, outerZ = z + dz * radius;
+      this.ribbon(outerX, outerZ, outerX - dx * radius * 0.045,
+        outerZ - dz * radius * 0.045, 1.4, r, g, b, 0.56, 1, 3.8);
+    }
+    if (kind === 'singularity') this.gravityWell(x, z, radius * growth, time, envelope, r, g, b, seed, opacity);
+    else this.tarCloud(x, z, radius * growth, time, envelope, r, g, b, seed, opacity);
+    this.surfaceHeat = 1.4;
+    this.surfaceAcross = 0;
   }
-  gravityWell(x, z, radius, time, envelope, r, g, b, seed) {
-    const R = radius;
-    const rimY = (9.2 + R * 0.042) * envelope;
-    const coreY = -R * 0.048 * envelope;
-    const coreR = R * 0.08;
-    // Inner lip first so origin-rebase tests stay rigid with the interpolated source.
-    for (let i = 0; i < 10; i++) {
-      const a0 = (i / 10) * Math.PI * 2, a1 = ((i + 1) / 10) * Math.PI * 2;
-      const j0 = 0.9 + 0.18 * Math.sin(i * 1.9 + seed * 0.21);
-      const j1 = 0.9 + 0.18 * Math.sin((i + 1) * 1.9 + seed * 0.21);
-      const x0 = x + Math.cos(a0) * coreR * j0, z0 = z + Math.sin(a0) * coreR * j0;
-      const x1 = x + Math.cos(a1) * coreR * j1, z1 = z + Math.sin(a1) * coreR * j1;
-      const x2 = x + Math.cos(a0) * coreR * (j0 + 0.85), z2 = z + Math.sin(a0) * coreR * (j0 + 0.85);
-      const x3 = x + Math.cos(a1) * coreR * (j1 + 0.85), z3 = z + Math.sin(a1) * coreR * (j1 + 0.85);
-      this.tri(x0, coreY, z0, x1, coreY, z1, x2, coreY + rimY * 0.2, z2, 0.05, 0.07, 0.09, 0.82);
-      this.tri(x1, coreY, z1, x3, coreY + rimY * 0.2, z3, x2, coreY + rimY * 0.2, z2, 0.05, 0.07, 0.09, 0.82);
+  gravityWell(x, z, radius, time, envelope, r, g, b, seed, opacity = 1) {
+    // Dark throat with a shallow counter-turning lip; the core is a cavity, never a glow ball.
+    // Continuous angles close the seam, unlike the old twelve-sided disconnected polygon rim.
+    this.surfaceHeat = 0.08;
+    const core = radius * 0.078;
+    for (let i = 0; i < 40; i++) {
+      const a0 = i * Math.PI / 20, a1 = (i + 1) * Math.PI / 20;
+      const q0 = 1 + 0.10 * Math.sin(a0 * 3 + time * 0.8 + seed);
+      const q1 = 1 + 0.10 * Math.sin(a1 * 3 + time * 0.8 + seed);
+      const x0 = x + Math.cos(a0) * core * q0, z0 = z + Math.sin(a0) * core * q0;
+      const x1 = x + Math.cos(a1) * core * q1, z1 = z + Math.sin(a1) * core * q1;
+      this.tri(x, -radius * 0.054, z, x0, -1.8, z0, x1, -1.8, z1,
+        0.035 * r, 0.045 * g, 0.055 * b, opacity * 0.92);
+      this.tri(x0, -1.8, z0, x + (x0 - x) * 1.52, 2.2, z + (z0 - z) * 1.52,
+        x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
+        r * 0.36, g * 0.36, b * 0.36, opacity * 0.82);
+      this.tri(x0, -1.8, z0, x + (x1 - x) * 1.52, 2.2, z + (z1 - z) * 1.52,
+        x1, -1.8, z1, r * 0.36, g * 0.36, b * 0.36, opacity * 0.82);
     }
-    for (const band of [{ u: 0.38, w: 0.09, y: 0.34 }, { u: 0.62, w: 0.1, y: 0.62 }]) {
-      const segs = 12;
-      for (let i = 0; i < segs; i++) {
-        if ((i + seed) % 5 === 2) continue;
-        const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
-        const jitter = 0.045 * Math.sin(i * 1.81 + seed * 0.23);
-        const r0 = R * (band.u + jitter), r1 = R * (band.u + band.w + jitter);
-        const yIn = rimY * band.y + coreY * (1 - band.y);
-        const yOut = yIn + rimY * 0.12;
-        const x00 = x + Math.cos(a0) * r0, z00 = z + Math.sin(a0) * r0;
-        const x01 = x + Math.cos(a1) * r0, z01 = z + Math.sin(a1) * r0;
-        const x10 = x + Math.cos(a0) * r1, z10 = z + Math.sin(a0) * r1;
-        const x11 = x + Math.cos(a1) * r1, z11 = z + Math.sin(a1) * r1;
-        this.tri(x00, yIn, z00, x01, yIn, z01, x10, yOut, z10, r, g, b, 0.3 + envelope * 0.2);
-        this.tri(x01, yIn, z01, x11, yOut, z11, x10, yOut, z10, r, g, b, 0.3 + envelope * 0.2);
-      }
-    }
-    const rim = 12;
-    for (let i = 0; i < rim; i++) {
-      const a0 = (i / rim) * Math.PI * 2, a1 = ((i + 1) / rim) * Math.PI * 2;
-      const w0 = 0.88 + 0.14 * Math.sin(i * 1.67 + seed * 0.29);
-      const w1 = 0.88 + 0.14 * Math.sin((i + 1) * 1.67 + seed * 0.29);
-      const y0 = rimY * (0.78 + 0.28 * Math.sin(i * 2.05 + seed));
-      const y1 = rimY * (0.78 + 0.28 * Math.sin((i + 1) * 2.05 + seed));
-      const ox0 = x + Math.cos(a0) * R * w0, oz0 = z + Math.sin(a0) * R * w0;
-      const ox1 = x + Math.cos(a1) * R * w1, oz1 = z + Math.sin(a1) * R * w1;
-      const ix0 = x + Math.cos(a0) * R * (w0 - 0.11), iz0 = z + Math.sin(a0) * R * (w0 - 0.11);
-      const ix1 = x + Math.cos(a1) * R * (w1 - 0.11), iz1 = z + Math.sin(a1) * R * (w1 - 0.11);
-      const fx0 = x + Math.cos(a0) * R * (w0 + 0.045), fz0 = z + Math.sin(a0) * R * (w0 + 0.045);
-      const fx1 = x + Math.cos(a1) * R * (w1 + 0.045), fz1 = z + Math.sin(a1) * R * (w1 + 0.045);
-      this.tri(ox0, y0, oz0, ox1, y1, oz1, ix0, y0 * 0.72, iz0, r, g, b, 0.34 + envelope * 0.2);
-      this.tri(ox1, y1, oz1, ix1, y1 * 0.72, iz1, ix0, y0 * 0.72, iz0, r, g, b, 0.34 + envelope * 0.2);
-      this.tri(ox0, 0.35, oz0, ox1, 0.35, oz1, ox0, y0, oz0, r, g, b, 0.26 + envelope * 0.16);
-      this.tri(ox1, 0.35, oz1, ox1, y1, oz1, ox0, y0, oz0, r, g, b, 0.26 + envelope * 0.16);
-      this.tri(ox0, y0, oz0, ox1, y1, oz1, fx0, y0 * 0.55, fz0, r, g, b, 0.22 + envelope * 0.12);
-      this.tri(ox1, y1, oz1, fx1, y1 * 0.55, fz1, fx0, y0 * 0.55, fz0, r, g, b, 0.22 + envelope * 0.12);
-    }
-    for (let i = 0; i < 7; i++) {
-      const a = i * Math.PI * 2 / 7 + seed * 0.06 + 0.08;
-      let lastX = x + Math.cos(a) * R * 0.9;
-      let lastZ = z + Math.sin(a) * R * 0.9;
-      let lastY = rimY * 0.7;
-      for (let j = 1; j <= 5; j++) {
-        const u = j / 5;
-        const bend = 0.22 * Math.sin(u * Math.PI * 1.4 + i * 0.7);
-        const reach = R * (0.9 - u * 0.78);
-        const nextX = x + Math.cos(a + bend) * reach, nextZ = z + Math.sin(a + bend) * reach;
-        const nextY = rimY * (1 - u) * 0.58 + coreY * u;
-        const head = (time * 0.55 + i * 0.13) % 1;
-        const pulse = Math.max(0, 1 - Math.abs(u - head) * 4.2);
-        const opacity = (0.18 + pulse * 0.4) * (0.5 + 0.5 * envelope);
-        this.ribbon(lastX, lastZ, nextX, nextZ, (3.6 - u * 2.4) + pulse * 1.4, r, g, b, opacity, lastY, nextY);
-        lastX = nextX; lastZ = nextZ; lastY = nextY;
-      }
+    // Four broad caustic curtains feed the throat. Their outer reaches, widths and helical
+    // bend differ by seed, with a crest travelling inward and actual continuously flexing form.
+    for (let i = 0; i < 4; i++) {
+      this.swept(x, z, radius, time, envelope, seed + i * 1.917,
+        i * Math.PI / 2 + seed * 0.13, 0, 28, r, g, b, opacity * 0.83);
     }
   }
-  tarCloud(x, z, radius, time, envelope, r, g, b, seed) {
-    const lobes = 12;
-    for (let i = 0; i < lobes; i++) {
-      const a0 = (i / lobes) * Math.PI * 2, a1 = ((i + 1) / lobes) * Math.PI * 2;
-      if (i % 4 === 2) continue;
-      const w0 = 0.78 + 0.2 * Math.sin(i * 2.11 + seed * 0.29);
-      const w1 = 0.78 + 0.2 * Math.sin((i + 1) * 2.11 + seed * 0.29);
-      const y0 = (4.4 + Math.sin(i * 1.3 + seed) * 2.6) * envelope;
-      const y1 = (4.4 + Math.sin((i + 1) * 1.3 + seed) * 2.6) * envelope;
-      const x0 = x + Math.cos(a0) * radius * w0, z0 = z + Math.sin(a0) * radius * w0;
-      const x1 = x + Math.cos(a1) * radius * w1, z1 = z + Math.sin(a1) * radius * w1;
-      this.ribbon(x0, z0, x1, z1, 6.4, r, g, b, 0.32 + envelope * 0.18, y0, y1);
-    }
-    for (let i = 0; i < 6; i++) {
-      const a = i * Math.PI * 2 / 6 + seed * 0.13;
-      const mound = radius * (0.18 + (i % 3) * 0.08);
-      const mx = x + Math.cos(a + 0.35) * mound, mz = z + Math.sin(a + 0.35) * mound;
-      const h = (5.2 + (i % 2) * 3.1) * envelope;
-      const s = 9 + (i % 3) * 3;
-      this.tri(mx, h, mz, mx + s, 0.35, mz + s * 0.35, mx - s * 0.4, 0.35, mz + s * 0.85, r, g, b, 0.3 * envelope + 0.16);
-      let lastX = x + Math.cos(a) * radius * 0.86;
-      let lastZ = z + Math.sin(a) * radius * 0.86;
-      let lastY = 5.2 * envelope;
-      for (let j = 1; j <= 6; j++) {
-        const u = j / 6;
-        const wander = 0.28 * Math.sin(i * 2.1 + j * 1.7 + seed * 0.05);
-        const reach = radius * (0.86 - u * 0.68);
-        const nextX = x + Math.cos(a + wander) * reach, nextZ = z + Math.sin(a + wander) * reach;
-        const nextY = (5.2 - u * 2.2 + Math.sin(u * Math.PI) * 3.4) * envelope;
-        const head = (time * 0.12 + i * 0.17) % 1;
-        const pulse = Math.max(0, 1 - Math.abs(u - head) * 4);
-        this.ribbon(lastX, lastZ, nextX, nextZ, 4.2 + 3.1 * Math.sin(u * Math.PI), r, g, b,
-          (0.24 + pulse * 0.24) * (0.5 + 0.5 * envelope), lastY, nextY);
-        lastX = nextX; lastZ = nextZ; lastY = nextY;
+  tarCloud(x, z, radius, time, envelope, r, g, b, seed, opacity = 1) {
+    // One coherent viscous volume, with unequal lobes joined through a low central basin.
+    // The dark body is only part of the influence footprint; chemical light stays on its
+    // moving reaction contours. This is shaped matter, not five disconnected green petals.
+    for (let i = 0; i < 48; i++) {
+      const a0 = i / 48, a1 = (i + 1) / 48;
+      for (let j = 0; j < 5; j++) {
+        const u0 = j / 5, u1 = (j + 1) / 5;
+        this.tarVertex(x, z, radius, a0, u0, time, envelope, seed, r, g, b, opacity);
+        this.tarVertex(x, z, radius, a0, u1, time, envelope, seed, r, g, b, opacity);
+        this.tarVertex(x, z, radius, a1, u0, time, envelope, seed, r, g, b, opacity);
+        this.tarVertex(x, z, radius, a1, u0, time, envelope, seed, r, g, b, opacity);
+        this.tarVertex(x, z, radius, a0, u1, time, envelope, seed, r, g, b, opacity);
+        this.tarVertex(x, z, radius, a1, u1, time, envelope, seed, r, g, b, opacity);
       }
+    }
+    // Unequal creeping reaches overlap the basin and physically connect its outer lobes.
+    for (let i = 0; i < 3; i++) this.swept(x, z, radius * (0.90 + i * 0.025),
+      time, envelope, seed + i * 2.137, i * 2.3 + seed * 0.11, 1, 18, r, g, b, opacity * 0.74);
+    this.surfacePhase = this.surfaceAlong = 0;
+  }
+  tarVertex(x, z, radius, theta, u, time, envelope, seed, r, g, b, opacity) {
+    const a = theta * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const extent = radius * (0.67 + 0.095 * Math.sin(a * 3 + seed)
+      + 0.085 * Math.sin(a * 5 - seed + time * 0.23));
+    const wave = a * 3 + u * 8 - time * 0.35 + seed;
+    const belly = Math.sin(Math.PI * u), lobe = 0.72 + 0.28 * Math.sin(wave);
+    const height = radius * 0.095 * belly * lobe * envelope;
+    const slope = radius * 0.095 * (Math.PI * Math.cos(Math.PI * u) * lobe
+      + belly * 2.24 * Math.cos(wave)) * envelope;
+    const n = Math.hypot(extent, slope) || 1;
+    this.nx = -ca * slope / n; this.ny = extent / n; this.nz = -sa * slope / n;
+    this.surfaceAcross = u;
+    this.surfaceAlong = theta;
+    this.surfacePhase = -(1 + seed + time * 0.34);
+    this.surfaceHeat = 2.8 * envelope;
+    this.vertex(x + ca * extent * u, 0.7 + height, z + sa * extent * u,
+      r * 0.72, g * 0.80, b * 0.68, opacity * 0.76);
+  }
+  // Cross-sections are sampled coherently at both ends of every segment. The folded surface
+  // has five vertices across its curved profile, avoiding disconnected flat ribbon corners.
+  swept(x, z, radius, time, envelope, seed, angle, kind, steps, r, g, b, opacity) {
+    const a = this.sectionA, bSection = this.sectionB;
+    this.sampleSection(a, 0, x, z, radius, time, envelope, seed, angle, kind);
+    for (let i = 1; i <= steps; i++) {
+      const u = i / steps;
+      this.sampleSection(bSection, u, x, z, radius, time, envelope, seed, angle, kind);
+      for (let j = 0; j < 4; j++) {
+        this.sectionVertex(a, j, r, g, b, opacity);
+        this.sectionVertex(a, j + 1, r, g, b, opacity);
+        this.sectionVertex(bSection, j, r, g, b, opacity);
+        this.sectionVertex(bSection, j, r, g, b, opacity);
+        this.sectionVertex(a, j + 1, r, g, b, opacity);
+        this.sectionVertex(bSection, j + 1, r, g, b, opacity);
+      }
+      a.set(bSection);
+    }
+    this.surfaceAcross = 0;
+    this.surfaceAlong = this.surfacePhase = 0;
+  }
+  sectionVertex(section, j, r, g, b, opacity) {
+    const p = j * 3;
+    this.surfaceAcross = j * 0.5 - 1;
+    this.surfaceHeat = section[30];
+    this.surfaceAlong = section[31]; this.surfacePhase = section[32];
+    this.nx = section[p + 15]; this.ny = section[p + 16]; this.nz = section[p + 17];
+    this.vertex(section[p], section[p + 1], section[p + 2], r, g, b, opacity);
+  }
+  sampleSection(out, u, x, z, radius, time, envelope, seed, angle, kind) {
+    let cx, cz, cy, nx, nz, width, fold;
+    const belly = Math.sin(Math.PI * u);
+    const crest = Math.pow(0.5 + 0.5 * Math.cos(u * 10.2 - time * (kind ? 1.05 : 4.2) + seed), 4);
+    out[30] = (kind ? 1.0 + crest * 1.7 : 2.7 + crest * 3.5) * (0.40 + envelope * 0.60);
+    out[31] = u;
+    out[32] = (kind ? -1 : 1) * (1 + seed + time * (kind ? 0.34 : 0.9));
+    if (kind === 0) {
+      const reach = radius * (0.91 - u * 0.82);
+      const bend = angle + u * (2.1 + 0.22 * Math.sin(seed)) - time * 0.37
+        + 0.10 * Math.sin(u * 7 - time * 1.4 + seed);
+      const slope = 2.1 + 0.22 * Math.sin(seed) + 0.7 * Math.cos(u * 7 - time * 1.4 + seed);
+      const ca = Math.cos(bend), sa = Math.sin(bend);
+      cx = x + ca * reach; cz = z + sa * reach;
+      const dx = -radius * 0.82 * ca - reach * sa * slope;
+      const dz = -radius * 0.82 * sa + reach * ca * slope;
+      const len = Math.hypot(dx, dz) || 1;
+      nx = -dz / len; nz = dx / len;
+      width = radius * (0.028 + belly * 0.050) * (0.36 + 0.64 * Math.sqrt(Math.max(0, belly)));
+      cy = radius * (0.090 * (1 - u) - 0.050 * u + belly * 0.034
+        * Math.sin(u * 7.2 - time * 2.2 + seed)) * (0.55 + envelope * 0.45);
+      fold = width * (0.54 + 0.16 * Math.sin(u * 9 - time * 2.5 + seed));
+    } else {
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      const side = radius * (0.12 * Math.sin(u * 6.2 + seed)
+        + 0.032 * Math.sin(time * 0.58 + seed + u * 4.5) * belly);
+      const along = radius * (0.10 + u * 0.86);
+      cx = x + ca * along - sa * side; cz = z + sa * along + ca * side;
+      nx = -sa; nz = ca;
+      const lumps = 0.79 + 0.16 * Math.sin(u * 11.8 - time * 0.52 + seed);
+      width = radius * (0.022 + 0.19 * Math.pow(Math.max(0, belly), 0.68)) * lumps;
+      cy = 0.6 + radius * 0.019 * belly * (1 + Math.sin(u * 8.8 - time * 0.55 + seed));
+      fold = radius * 0.095 * Math.pow(Math.max(0, belly), 0.8)
+        * (0.80 + 0.20 * Math.sin(u * 12.2 - time * 0.62 + seed)) * envelope;
+    }
+    for (let j = 0; j < 5; j++) {
+      const v = j * 0.5 - 1, p = j * 3;
+      out[p] = cx + nx * v * width;
+      out[p + 1] = cy + (1 - v * v) * fold + (kind ? 0 : v * width * 0.20);
+      out[p + 2] = cz + nz * v * width;
+      const slope = -2 * v * fold + (kind ? 0 : width * 0.20);
+      const len = Math.hypot(width, slope) || 1;
+      out[p + 15] = -nx * slope / len; out[p + 16] = width / len; out[p + 17] = -nz * slope / len;
     }
   }
   face(ax, ay, az, bx, by, bz, cx, cy, cz) {
@@ -360,6 +559,10 @@ export class BombPresentationBatch {
     this.positions[p] = x; this.positions[p + 1] = y; this.positions[p + 2] = z;
     this.normals[p] = this.nx; this.normals[p + 1] = this.ny; this.normals[p + 2] = this.nz;
     this.colors[c] = r; this.colors[c + 1] = g; this.colors[c + 2] = b; this.colors[c + 3] = opacity;
+    this.surfaces[c] = this.surfaceAcross;
+    this.surfaces[c + 1] = this.surfaceHeat * this.heatScale;
+    this.surfaces[c + 2] = this.surfaceAlong;
+    this.surfaces[c + 3] = this.surfacePhase;
     this.count++;
   }
   dispose() {

@@ -151,6 +151,21 @@ test('large destruction opens its structure before anything else, and structure 
   fx.dispose();
 });
 
+test('breakup panels are pieces of the hull rather than overlapping copies of its footprint', () => {
+  for (const radius of [6, 18, 40]) {
+    const fx = new ArcadeStructuralFx(null);
+    fx.emitImpact(record({ eventClass: 'breakup', severity: 0.95, radiusWU: radius, serial: 11 }), VIEW);
+    const panels = fx.plates.slots.filter((slot) => slot.alive);
+    assert.ok(panels.length >= 6, 'retain the multi-stage physical breakup');
+    for (const panel of panels) {
+      assert.ok(panel.length0 < radius * 1.5, 'a panel must leave room to see the opened hull');
+      assert.ok(panel.width0 < radius, 'departing panels must not blanket the hot interior');
+      assert.ok(panel.length0 > 0 && panel.width0 > 0);
+    }
+    fx.dispose();
+  }
+});
+
 // --------------------------------------------------------------------------------------------
 // 2. E2 — an unsigned collision axis is never a signed force
 // --------------------------------------------------------------------------------------------

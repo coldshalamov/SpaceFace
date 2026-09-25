@@ -14,6 +14,16 @@ export const STATUS_ATTACHED_KIND = Object.freeze({
 
 const NO_EMIT_SPRITES = Object.freeze([]);
 
+function statusSeed(entityId, statusId, stacks) {
+  let seed = typeof entityId === 'number' ? entityId | 0 : 2166136261;
+  if (typeof entityId === 'string') {
+    for (let i = 0; i < entityId.length; i++) seed = Math.imul(seed ^ entityId.charCodeAt(i), 16777619);
+  }
+  seed ^= statusId === STATUS_ATTACHED_BURN_ID ? 0x6d2b79f5 : 0x1b873593;
+  seed = Math.imul(seed ^ (stacks | 0), 0x7feb352d);
+  return ((seed ^ (seed >>> 16)) >>> 0) / 4294967296;
+}
+
 const STATUS_ROWS = Object.freeze({
   [STATUS_ATTACHED_BURN_ID]: Object.freeze({
     kind: STATUS_ATTACHED_KIND.BURN,
@@ -55,7 +65,7 @@ function _nextRankedRecord() {
   if (!rec) {
     rec = {
       entityId: 0, statusId: '', kind: '', stacks: 1, remainingS: 0,
-      expiresTick: 0, radius: 0, x: 0, z: 0, dist2: 0,
+      expiresTick: 0, tick: 0, radius: 0, x: 0, z: 0, vx: 0, vz: 0, dist2: 0,
       key: 0, entityNum: 0,
     };
     _rankedPool[_rankedUsed] = rec;
@@ -106,9 +116,12 @@ export function collectStatusAttachedVictims(state, out = []) {
       rec.stacks = Math.max(1, Math.min(3, Number(active.stacks) || 1));
       rec.remainingS = remainingS;
       rec.expiresTick = active.expiresTick;
+      rec.tick = tick;
       rec.radius = Math.max(2, Number(entity.radius) || 6);
       rec.x = Number(entity.pos.x) || 0;
       rec.z = Number(entity.pos.z) || 0;
+      rec.vx = Number.isFinite(entity.vel?.x) ? entity.vel.x : 0;
+      rec.vz = Number.isFinite(entity.vel?.z) ? entity.vel.z : 0;
       rec.dist2 = dx * dx + dz * dz;
     }
   }
@@ -153,40 +166,55 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
   const flashScale = flashReduce ? 0.32 : 1;
   const sizeScale = flashReduce ? 0.72 : 1;
   const travelling = !motionReduce;
+  // An emission is a parcel leaving a particular damaged hull, not an identical clip. Its
+  // cadence changes the fold/peel direction, while inherited velocity keeps it with the ship.
+  // Reduced motion holds a stable body mark; lifecycle time and stacks still belong to combat.
+  const seed = statusSeed(victim.entityId, victim.statusId, stacks);
+  const cadence = travelling ? Math.floor((Number(victim.tick) || 0) / (period * STATUS_ATTACHED_TICK_HZ)) : 0;
+  const phase = seed * Math.PI * 2 + cadence * 2.399963229728653;
+  const carryX = travelling ? (Number(victim.vx) || 0) * 0.72 : 0;
+  const carryZ = travelling ? (Number(victim.vz) || 0) * 0.72 : 0;
+  const radius = Math.max(2, Number(victim.radius) || 6);
   const sprites = [];
   if (row.kind === STATUS_ATTACHED_KIND.BURN) {
     const count = motionReduce ? 1 : (flashReduce ? 1 : 2);
     for (let i = 0; i < count; i++) {
+      const angle = phase + i * 2.7;
+      const fold = 0.9 + 0.1 * Math.sin(angle * 1.31);
+      const jet = Math.min(8, radius * 0.65) * (0.8 + seed * 0.4);
       sprites.push({
         kind: 'combustion',
         life,
-        size0: 0.7 * sizeScale * victim.radius * 0.12,
-        size1: 1.8 * sizeScale * victim.radius * 0.18,
+        size0: 0.7 * sizeScale * radius * 0.12 * fold,
+        size1: 1.8 * sizeScale * radius * 0.18 * fold,
         opacity0: 0.62 * flashScale,
         opacity1: 0,
         color: i % 2 ? row.altColor : row.color,
-        vx: travelling ? (i ? 4 : -3) : 0,
-        vz: travelling ? (i ? -2 : 5) : 0,
+        vx: travelling ? carryX + Math.cos(angle) * jet : 0,
+        vz: travelling ? carryZ + Math.sin(angle) * jet : 0,
         y: 0.16,
-        offset: (i === 0 ? -0.25 : 0.3) * victim.radius,
+        offset: Math.cos(angle) * 0.32 * radius,
       });
     }
   } else {
     const count = motionReduce ? 1 : Math.min(3, stacks);
     const stackScale = 0.65 + 0.35 * (stacks / 3);
     for (let i = 0; i < count; i++) {
+      const angle = phase + i * 2.0943951023931953;
+      const lobe = 0.92 + 0.08 * Math.cos(angle * 1.43);
+      const peel = Math.min(5, radius * 0.32);
       sprites.push({
         kind: 'puff',
         life: Math.min(row.authoredLife * stackScale, victim.remainingS),
-        size0: 0.9 * sizeScale * stackScale * victim.radius * 0.14,
-        size1: 2.4 * sizeScale * stackScale * victim.radius * 0.22,
+        size0: 0.9 * sizeScale * stackScale * radius * 0.14 * lobe,
+        size1: 2.4 * sizeScale * stackScale * radius * 0.22 * lobe,
         opacity0: 0.48 * flashScale * stackScale,
         opacity1: 0.08 * flashScale,
         color: i % 2 ? row.altColor : row.color,
-        vx: travelling ? (i - 1) * 3 : 0,
-        vz: travelling ? (1 - i) * 2 : 0,
+        vx: travelling ? carryX + Math.cos(angle) * peel : 0,
+        vz: travelling ? carryZ + Math.sin(angle) * peel : 0,
         y: 0.08,
-        offset: (i - 1) * 0.28 * victim.radius,
+        offset: Math.cos(angle) * 0.34 * radius,
       });
     }
   }

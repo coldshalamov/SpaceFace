@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CHASE_CAMERA_FOV_DEG, CHASE_CAMERA_VIEWPORT_HEIGHT, worldSizeForPixels } from './pixelFloor.js';
 import { RIBBON_PROFILE, ribbonProfileForWidth } from './recipes.js';
+import { weaponEffectSeed } from './energyBoltPool.js';
 
 export { RIBBON_PROFILE, ribbonProfileForWidth };
 
@@ -20,13 +21,13 @@ const RIBBON_VERT = /* glsl */`
   attribute float aAlpha;
   attribute vec3 aColor;
   attribute vec3 aRibNormal;
-  attribute vec2 aShape;
+  attribute vec4 aShape;
   varying float vAlpha;
   varying vec3 vColor;
   varying vec2 vUv;
   varying vec3 vNormalW;
   varying vec3 vViewW;
-  varying vec2 vShape;
+  varying vec4 vShape;
   void main() {
     vAlpha = aAlpha;
     vColor = aColor;
@@ -45,9 +46,10 @@ const RIBBON_FRAG = /* glsl */`
   varying vec2 vUv;
   varying vec3 vNormalW;
   varying vec3 vViewW;
-  varying vec2 vShape;
+  varying vec4 vShape;
   uniform float uIntensity;
   uniform float uGrazeGain;
+  uniform float uModulation;
 
   void main() {
     if (vAlpha <= 0.002) discard;
@@ -55,9 +57,12 @@ const RIBBON_FRAG = /* glsl */`
     float along = vUv.x;
     float id = vShape.x;
     // World arc length, not a clock: the internal structure is pinned to the path the round
-    // actually flew, so it cannot crawl while the simulation is paused and it does not stretch
-    // when the wake grows.
+    // actually flew and does not stretch when the wake grows. The material may convect inside
+    // that history, but never moves its recorded centreline or advances during pause.
     float arc = vShape.y;
+    float phase = vShape.z;
+    float age = vShape.w;
+    float flow = age * (0.88 + 0.24 * fract(phase * 4.19));
 
     // A wake is a sheet of real material. Edge-on, the eye looks through more of it and it
     // condenses into a hard filament; face-on it opens out. That view term is what separates a
@@ -73,34 +78,38 @@ const RIBBON_FRAG = /* glsl */`
 
     if (id < 0.5) {
       // CORD — machined impulse. Needle core, hard lateral cutoff, shock beads pinned to arc.
-      float beads = 0.80 + 0.20 * sin(arc * 2.6);
+      float beads = 0.82 + uModulation * 0.18 * sin(arc * 2.6 - flow * 38.0 + phase);
       float core = pow(max(0.0, 1.0 - across), 13.0);
       float jacket = 1.0 - smoothstep(0.24, 0.52, across);
       body = (core * 1.20 + jacket * 0.32) * beads;
       hot = core;
     } else if (id < 1.5) {
       // BRAID — transported plasma. Two counter-wound convection lobes cross down the wake.
-      float wind = sin(arc * 0.85);
+      float wind = sin(arc * 0.85 - flow * 6.0 + phase);
       float lobeA = exp(-pow((across - (0.30 + 0.34 * wind)) / 0.29, 2.0));
       float lobeB = exp(-pow((across - (0.30 - 0.34 * wind)) / 0.29, 2.0));
       float skin = 1.0 - smoothstep(0.72, 1.0, across);
-      body = ((lobeA + lobeB) * 0.60 + 0.14) * skin;
+      float convection = 0.90 + uModulation * 0.10 * sin(arc * 1.7 - flow * 9.0 + phase * 2.1);
+      body = ((lobeA + lobeB) * 0.60 + 0.14) * skin * convection;
       hot = max(lobeA, lobeB) * 0.75;
     } else if (id < 2.5) {
       // FORK — induced current. Two conductors with real open air between them. Both branches
       // start at the round and die together at the tail; neither is left dangling.
-      float split = 0.50 + 0.16 * sin(arc * 1.9);
+      float split = 0.50 + 0.16 * sin(arc * 1.9 - flow * 10.0 + phase);
       float branch = exp(-pow((across - split) / 0.14, 2.0));
       float root = (1.0 - smoothstep(0.0, 0.22, along)) * pow(max(0.0, 1.0 - across), 5.0);
-      body = branch * 1.30 + root * 0.60;
+      float current = 0.90 + uModulation * 0.10 * sin(arc * 4.1 - flow * 24.0 + phase);
+      body = (branch * 1.30 + root * 0.60) * current;
       hot = branch;
       // The gap is a silhouette feature, not a pale stripe painted over a solid body.
       if (body < 0.055) discard;
     } else if (id < 3.5) {
       // SHEET — staged motor. Twin vapour banks around a dark, unlit exhaust channel.
-      float bank = smoothstep(0.12, 0.44, across) * (1.0 - smoothstep(0.70, 1.0, across));
+      float curl = sin(arc * 0.72 - flow * 3.6 + phase) * 0.07;
+      float bank = smoothstep(0.12 + curl, 0.44 + curl, across) * (1.0 - smoothstep(0.70, 1.0, across));
       float channel = 1.0 - smoothstep(0.0, 0.20, across);
-      body = bank * 1.0 + channel * 0.08;
+      float exhaust = 0.91 + uModulation * 0.09 * sin(arc * 1.4 - flow * 5.0 + phase);
+      body = bank * exhaust + channel * 0.08;
       hot = bank * smoothstep(0.38, 0.0, along);
       if (body < 0.05) discard;
     } else {
@@ -129,7 +138,7 @@ export class WeaponRibbonPool {
     this.alpha = new Float32Array(verts);
     this.uv = new Float32Array(verts * 2);
     this.normal = new Float32Array(verts * 3);
-    this.shape = new Float32Array(verts * 2);
+    this.shape = new Float32Array(verts * 4);
     // The largest generated vertex index is 12,287 (256 ribbons × 24
     // segments × 2 vertices), so WebGL1-compatible uint16 indices are enough.
     const index = new Uint16Array(quads * 6);
@@ -156,14 +165,14 @@ export class WeaponRibbonPool {
     geo.setAttribute('aColor', geo.attributes.color);
     geo.setAttribute('aAlpha', new THREE.BufferAttribute(this.alpha, 1).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('aRibNormal', new THREE.BufferAttribute(this.normal, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('aShape', new THREE.BufferAttribute(this.shape, 2).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('aShape', new THREE.BufferAttribute(this.shape, 4).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
     geo.setIndex(new THREE.BufferAttribute(index, 1));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
     this.material = new THREE.ShaderMaterial({
       // Geometry now absorbs the foreshortening, so the shader only keeps a modest residual
       // density lift for the edge-on read. Both together would over-brighten a grazing wake.
-      uniforms: { uIntensity: { value: 1 }, uGrazeGain: { value: 1.35 } },
+      uniforms: { uIntensity: { value: 1 }, uGrazeGain: { value: 1.35 }, uModulation: { value: 1 } },
       vertexShader: RIBBON_VERT,
       fragmentShader: RIBBON_FRAG,
       transparent: true,
@@ -184,6 +193,8 @@ export class WeaponRibbonPool {
     this.linger = new Float32Array(this.capacity);
     this.lingerAge = new Float32Array(this.capacity);
     this.profile = new Float32Array(this.capacity);
+    this.phase = new Float32Array(this.capacity);
+    this.age = new Float32Array(this.capacity);
     this.colHead = new Float32Array(this.capacity * 3);
     this.colTail = new Float32Array(this.capacity * 3);
     this.alive = new Uint8Array(this.capacity);
@@ -191,6 +202,7 @@ export class WeaponRibbonPool {
     this.entityIds.fill(-1);
     this.byEntity = new Map();
     this._cursor = 0;
+    this._spawnSerial = 0;
     this.live = 0;
     this._cHead = new THREE.Color();
     this._cTail = new THREE.Color();
@@ -241,6 +253,8 @@ export class WeaponRibbonPool {
     this.width[slot] = width || 0.5;
     this.linger[slot] = linger || 0.1;
     this.lingerAge[slot] = 0;
+    this.phase[slot] = weaponEffectSeed(entityId == null ? ++this._spawnSerial : entityId) * Math.PI * 2;
+    this.age[slot] = 0;
     this.profile[slot] = Number.isFinite(profile) ? profile : ribbonProfileForWidth(this.width[slot]);
     const ch = this._cHead.set(colorHead || '#34cfff');
     const ct = this._cTail.set(colorTail || '#5f80ff');
@@ -280,9 +294,15 @@ export class WeaponRibbonPool {
     this.lingerAge[slot] = Math.max(this.lingerAge[slot], 0.0001);
   }
 
-  update(dt, cameraPos) {
+  update(dt, cameraPos, accessibilityProfile = null) {
+    const id = accessibilityProfile && accessibilityProfile.id;
+    const reducedMotion = id === 'reduced-motion' || id === 'reduced-motion-and-flash';
+    const reducedFlash = id === 'reduced-flash' || id === 'reduced-motion-and-flash';
+    const elapsed = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0;
+    this.material.uniforms.uModulation.value = reducedFlash ? 0 : 1;
     for (let i = 0; i < this.capacity; i++) {
       if (!this.alive[i]) continue;
+      if (!reducedMotion) this.age[i] += elapsed;
       if (this.lingerAge[i] > 0) {
         this.lingerAge[i] += dt;
         if (this.lingerAge[i] >= this.linger[i]) {
@@ -422,9 +442,11 @@ export class WeaponRibbonPool {
         col[v1] = cr; col[v1 + 1] = cg; col[v1 + 2] = cb;
         nrm[v0] = nx; nrm[v0 + 1] = ny; nrm[v0 + 2] = nz;
         nrm[v1] = nx; nrm[v1 + 1] = ny; nrm[v1 + 2] = nz;
-        const sh = (vb + s * 2) * 2;
+        const sh = (vb + s * 2) * 4;
         shp[sh] = profileId; shp[sh + 1] = arc;
-        shp[sh + 2] = profileId; shp[sh + 3] = arc;
+        shp[sh + 2] = this.phase[i]; shp[sh + 3] = this.age[i];
+        shp[sh + 4] = profileId; shp[sh + 5] = arc;
+        shp[sh + 6] = this.phase[i]; shp[sh + 7] = this.age[i];
         al[vb + s * 2] = a; al[vb + s * 2 + 1] = a;
       }
     }

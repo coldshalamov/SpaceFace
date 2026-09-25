@@ -29,6 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
@@ -1171,6 +1172,7 @@ export const vfx = {
     this._impactRecords = createImpactRecordPool(8);
     this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false };
     this._arcadeStructural = null;
+    this._actionVfx = null;
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
@@ -1443,6 +1445,8 @@ export const vfx = {
     }
     releaseVfxDynamicBufferOwner(this._seamMarkers && this._seamMarkers.dynamicBufferOwner);
     invokeVfxDisposer(this._fieldGeom, 'field force surfaces');
+    invokeVfxDisposer(this._actionVfx, 'action answers');
+    this._actionVfx = null;
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
 
     // Child presenters own their internal pools/materials. They are retired before their parent
@@ -1641,6 +1645,7 @@ export const vfx = {
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
+    add(this._actionVfx && this._actionVfx.mesh);
     add(this._emergentPools && this._emergentPools.group);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
@@ -2142,6 +2147,10 @@ export const vfx = {
   _subscribe() {
     const bus = this.bus;
     const add = (name, fn) => this._subs.push(bus.on(name, fn));
+    for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
+    for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
+      add(name, () => this._actionVfx?.clear());
+    }
     const clearTumbleCadenceFor = (p) => {
       const id = p && (p.id ?? p.entityId ?? p.targetId);
       const cd = this._tumbleVfxCd;
@@ -2376,6 +2385,7 @@ export const vfx = {
       this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
+      this._actionVfx?.reproject(ox, oz);
       this._targetContour?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
@@ -7926,7 +7936,9 @@ export const vfx = {
   _updateMiningBeam(dt) {
     const beam = this._miningBeam;
     if (!beam) return;
-    const flashScale = this.state?.settings?.accessibility?.flashReduce ? 0.58 : 1;
+    const accessibility = resolveVfxAccessibilityProfile(this.state?.settings);
+    const flashScale = accessibility.id === 'reduced-flash'
+      || accessibility.id === 'reduced-motion-and-flash' ? 0.58 : 1;
     if (!beam.active) {
       // Release tail: no geometry chase and no transport advance; the shared power scalar winds
       // down and the pair is hidden when it reaches zero.
@@ -11376,6 +11388,13 @@ export const vfx = {
     this._fieldGeomInitialized = true;
   },
 
+  _onActionVfx(name, payload) {
+    if (!this._scene) return false;
+    if (!this._actionVfx) this._actionVfx = new ActionVfx(this._scene,
+      this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    return this._actionVfx.emit(name, payload, this.state);
+  },
+
   _updateFieldGeometry(dt) {
     if (!this._fieldGeomInitialized) {
       if (!this._fieldFlowRelevant()) return;
@@ -11584,6 +11603,7 @@ export const vfx = {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
+    if (this._actionVfx) this._actionVfx.update(this.state);
     if (this.state && this.state.emergent && this.state.emergent.hot) {
       if (!this._emergentPools && this._scene) {
         this._emergentPools = createEmergentPrimitivePools();
