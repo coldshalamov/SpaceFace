@@ -77,7 +77,23 @@ test('the live Bar bridge emits the durable rumor receipt only after a returned 
 });
 
 test('a settled unique-wreck receipt cannot leave its obsolete choice buttons visible', () => {
-  const source = readFileSync(new URL('../src/ui/recoveryEncounterPrompt.js', import.meta.url), 'utf8');
-  assert.match(source, /\.sf-recovery__actions\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/,
-    'component CSS must let the hidden attribute win over the actions flex rule');
+  // The 2026-09-18 refactor (recovery adapter -> src/ui/promptDeck.js) retired the hand-rolled
+  // `.sf-recovery__actions[hidden]` card entirely; there is no longer any CSS in
+  // recoveryEncounterPrompt.js to guard. The deck now owns hiding: a settled receipt retires its
+  // decision through resolveDecision, and the deck's remove() makes the card's buttons inert
+  // (pointer-events: none) immediately, then deletes the frame from the DOM outright rather than
+  // leaving it hidden by CSS.
+  const adapterSource = readFileSync(new URL('../src/ui/recoveryEncounterPrompt.js', import.meta.url), 'utf8');
+  assert.match(
+    adapterSource,
+    /showUniqueReceipt = \(payload\) => \{[\s\S]*?deck\.resolveDecision\(ID_UNIQUE_WRECK\);[\s\S]*?if \(!receipt \|\| !canSurface\(\)\) return false;/,
+    'a unique-wreck receipt must resolve (retire) its deck decision before the canSurface/no-receipt gate, so a docked or receiptless settle still retires the obsolete card',
+  );
+
+  const deckSource = readFileSync(new URL('../src/ui/promptDeck.js', import.meta.url), 'utf8');
+  assert.match(
+    deckSource,
+    /function remove\(id\)[\s\S]*?frame\.style\.pointerEvents = 'none';[\s\S]*?frame\.remove\(\);/,
+    'a resolved decision must be made unclickable immediately and removed from the DOM, not merely hidden with CSS',
+  );
 });
