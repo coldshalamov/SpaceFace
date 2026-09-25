@@ -1,4 +1,4 @@
-// PQ-158.04 — directed synthetic voice for the 271-line bark corpus.
+// PQ-158.04 — directed synthetic voice for the 277-line bark corpus.
 //
 // Eight faction registers + the mechanic. No recorded actors. Speech params, radio processing,
 // and caption text are pure functions of (faction, situation, line). Sim RNG is never read.
@@ -9,7 +9,7 @@ import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
-export const BARK_CORPUS_TARGET = 271;
+export const BARK_CORPUS_TARGET = 277;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
