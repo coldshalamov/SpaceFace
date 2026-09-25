@@ -55,7 +55,7 @@ import {
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
-import { compileSwarmOptic } from '../data/opticStructures.js';
+import { compileSwarmOptic } from '../data/swarmOpticArenas.js';
 import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
