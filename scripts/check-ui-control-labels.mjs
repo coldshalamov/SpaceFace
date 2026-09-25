@@ -113,7 +113,7 @@ assert.match(flightPrompt, new RegExp(`\\b${brake}\\b`),
 assert.match(flightPrompt, new RegExp(MOUSE_ACTION_LABELS.fire),
   'the kbm flight prompt must name LMB fire');
 assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/);
-assert.match(controlPrompt('station', 'gamepad'), /A dock/);
+assert.match(controlPrompt('station', 'gamepad'), /B dock/);
 assert.match(controlPrompt('mining', 'touch'), /Mine button/);
 
 const readme = read('README.md');
