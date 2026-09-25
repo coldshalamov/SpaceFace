@@ -340,13 +340,22 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
         // no room round the node: the name hangs outside the outer ring on the node's bearing, off a leader
         const rad = ((p.deg - 90) * Math.PI) / 180;
         const ux = Math.cos(rad); const uy = Math.sin(rad);
-        const ox = cx + ux * (R + 20); const oy = cy + uy * (R + 20);
-        const anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
-        const ax = anchor === 'middle' ? ox : ox + (ux > 0 ? 4 : -4);
-        const cyText = anchor === 'middle' ? oy + uy * (h / 2 + 4) : oy;
-        const l0 = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
-        const box = { l: Math.max(2, Math.min(W - 2 - w, l0)), t: Math.max(2, Math.min(H - capH - 2 - h, cyText - h / 2)) };
-        box.r = box.l + w; box.b = box.t + h;
+        // out along the radial in 6px steps until neither a ring nor a node lies inside the box
+        let dist = R + 20; let ox = 0; let oy = 0; let anchor = 'middle'; let ax = 0; let box = null;
+        for (let k = 0; k < 12; k += 1) {
+          ox = cx + ux * dist; oy = cy + uy * dist;
+          anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
+          ax = anchor === 'middle' ? ox : ox + (ux > 0 ? 4 : -4);
+          const cyText = anchor === 'middle' ? oy + uy * (h / 2 + 4) : oy;
+          const l0 = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
+          box = { l: Math.max(2, Math.min(W - 2 - w, l0)), t: Math.max(2, Math.min(H - capH - 2 - h, cyText - h / 2)) };
+          box.r = box.l + w; box.b = box.t + h;
+          const clearRings = !ringCrosses(box);
+          const clearNodes = !nodeBoxes.some((nb) => boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 6));
+          const clearNames = !nameBoxes.some((nb) => boxesTouch(nb, box, 4)) && (isDest || !destBox || !boxesTouch(destBox, box, 24));
+          if (clearRings && clearNodes && clearNames) break;
+          dist += 6;
+        }
         const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
         if (reserve) nameBoxes.push(box);
         return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: ox, y2: oy } };

@@ -730,9 +730,16 @@ export function createContractsScreen(ctx) {
         if (yours && list) {
           yours.style.removeProperty('margin-top');
           const bottom = list.getBoundingClientRect().bottom;
-          const push = (dr.top + ky - 6) - bottom;
+          // the line as drawn (its path's lowest row is the horizontal run), not the key box's arithmetic
+          const drawn = tether.querySelector('.sx-ct-tether__core').getBoundingClientRect();
+          const lineY = drawn.height > 0 ? drawn.bottom - 0.5 : dr.top + ky;
+          const push = (lineY - 6) - bottom;
           // the sheet's own margin is !important: the push must be too
           if (push > 0) yours.style.setProperty('margin-top', `${Math.round(push)}px`, 'important');
+          // the seam between the board and YOURS carries the rail, so the ladder stays one scale with a block gap
+          const board = document.querySelector('.sx-ct__board');
+          const seam = board ? Math.max(0, yours.getBoundingClientRect().top - board.getBoundingClientRect().bottom) : 0;
+          yours.style.setProperty('--ct-seam', `${Math.round(seam)}px`);
         }
       } catch (_) { /* cosmetic */ }
       // the dossier settles after the orrery's first layout (the scales land, the key seats): measure again on

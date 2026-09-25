@@ -268,7 +268,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       const gLen = (v) => (v / ghostCeil) * maxUp;
       let majors = '';
       for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt((ghostCeil * k) / 4)}${k === 4 && sign > 0 ? ' cr' : ''}`; rg.appendChild(t); } }
-      rg.appendChild(svg('path', { d: `M ${f(x0 + 0.5)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 0.5)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1, 'shape-rendering': 'crispEdges' }));
+      rg.appendChild(svg('path', { d: `M ${f(x0 + 0.5)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 0.5)} ${f(y + gLen(ghostCeil))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
       const gx = x0 + 64; // clear of the axis figures (x0 + 9 .. x0 + 48)
       rg.appendChild(svg('path', { d: `M ${f(gx)} ${y} L ${f(gx)} ${f(y - gLen(ghostCeil / 2))}`, class: 'orr-core orr-ltape__ghost-stem', 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));

@@ -106,7 +106,7 @@ function liveFaction(state, id) {
 }
 
 /** The standing as a linear position for the rim arcs: one unit per hundred points, so −120 draws longer than −50. */
-function bandPosOf(r) { return (Number(r) || 0) / 100; }
+function bandPosOf(r) { return (Number(r) || 0) / 50; }
 
 function relationEntries(meta) {
   return Object.entries((meta && meta.relations) || {})

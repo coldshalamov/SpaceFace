@@ -1452,6 +1452,28 @@ ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:10px; color:rgb(
 ${T} .sx-ind-process__head .sx-ind-process__block::before { content:"·  "; color:rgb(${BONE} / .4); }
 ${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
 
+/* ================================ ROUND 11: MISSIONS ======================================== */
+/* the rail runs through the seam between the board and YOURS: one scale with a block gap, ticks and all */
+${T} .sx-ct__yours { position:relative !important; }
+${T} .sx-ct__yours::before { content:""; position:absolute; left:7px; width:1.5px; top:calc(-1 * var(--ct-seam, 0px)); height:var(--ct-seam, 0px); pointer-events:none;
+  background:linear-gradient(180deg, rgb(${BONE} / .32), rgb(${BONE} / .32)) 0 0 / 100% 100% no-repeat, repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) -3px 0 / 4px 100% no-repeat; }
+/* the ladder window's extent is a bead at the proportional height, never a second rail along a block */
+${T} .sx-ct__board .orr-extent::before { top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) / 2 - 3px) !important; height:6px !important; opacity:.6 !important; border-radius:1px; }
+/* the hold's commit stretch is a ghost of the track, not a second head in the trace's amber */
+${T} .orr-lampkey .orr-lampkey__commit { stroke:rgb(${BONE} / .7) !important; stroke-width:1 !important; }
+${T} .orr-lampkey .orr-lampkey__commit-bloom { display:none !important; }
+
+/* ================================ ROUND 9: FACTIONS ========================================= */
+/* while a relation set shows, a bystander's name is no brighter than its ghosted emblem; a related name lifts */
+${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__words { opacity:.42 !important; }
+${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { color:rgb(${BONE} / .86) !important; }
+@media (max-height:800px) {
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size:9px !important; }
+}
+
+/* the tape (and the leader's run into the reading) stands above the reading's glass */
+${T} .sx-ledger__right > .orr-ledger-tape { position:relative; z-index:2; }
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

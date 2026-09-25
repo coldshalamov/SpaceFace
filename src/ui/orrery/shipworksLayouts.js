@@ -676,6 +676,43 @@ ${W} .sx-sw__rail .sx-seg__btn { text-decoration:none !important; border-bottom:
   ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__num { width:auto !important; max-width:100% !important; min-width:0 !important; }
 }
 
+/* ================================ ROUND 12: one stage ring ==================================== */
+${W} .sx-sw__stage > .sx-sw__salering { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+${W} .sx-sw__salering-ring { stroke:rgb(${BONE} / .32); }
+${W} .sx-sw__salering-ticks { stroke:rgb(${BONE} / .22); }
+${W} text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9.5px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
+/* the glass under the hull for sale: the ship separates from the hangar; the old bone wash goes */
+${W} .sx-sw__stage.has-salering.has-poster:not(.is-live)::before { left:0 !important; right:0 !important; top:0 !important; bottom:0 !important; z-index:1 !important;
+  background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(6 8 11 / .62) 0, rgb(6 8 11 / .58) calc(var(--sw-ring-r, 280px) - 30px), rgb(6 8 11 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__poster { z-index:1; -webkit-mask-image:none !important; mask-image:none !important; }
+/* the view words are marks on the ring's upper arc; the current one lit */
+${W} .sx-sw__stage.has-salering .sx-sw__camera { position:absolute !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; width:0; height:0; margin:0 !important; padding:0 !important; overflow:visible; display:block !important; z-index:3; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera > li { position:absolute; left:0; top:0; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size:9px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(248 244 234) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:""; display:block; width:1.5px; height:8px; margin:0 auto 3px; background:rgb(${BONE} / .4); }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before { background:rgb(248 244 234); height:12px; }
+/* the verbs' one home is seated by the screen under the ring; the rack carries no layout of its own there */
+${W} .sx-sw-verbs { white-space:nowrap; }
+/* the For Sale ladder folds its last rung when more hang below */
+${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; }
+/* a short screen's chooser keeps the two delta lines and folds the sentence */
+@media (max-height:800px) {
+  ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; }
+  ${W} .sx-modrow:focus-within .sx-modrow__meta .sx-modrow__sentence { display:none !important; }
+}
+
+/* a ghost for the worse is dim bone; ice is the gain's colour alone */
+${W} .sx-sw-ghost.is-loss, ${W} .sx-sw-gauge .sx-sw-ghost.is-loss { color:rgb(146 143 135) !important; }
+
+/* the glass under the hull for sale stands in every sale state, live render included */
+${W} .sx-sw__stage.has-salering::before { content:""; position:absolute; left:0; right:0; top:0; bottom:0; z-index:1; pointer-events:none;
+  background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(6 8 11 / .62) 0, rgb(6 8 11 / .58) calc(var(--sw-ring-r, 280px) - 30px), rgb(6 8 11 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas { z-index:1; }
+
+/* For Sale: the stage stands full height (its readouts float over it), so the ring is the same dial the Fleet jig draws */
+${W}.sx-sw--buying .sx-sw__stage { flex:1 1 auto !important; min-height:0 !important; height:auto !important; max-height:none !important; }
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

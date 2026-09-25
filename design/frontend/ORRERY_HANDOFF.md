@@ -26,7 +26,7 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 4. The memory note `orrery-is-the-frontend-authority` (loaded automatically in this project) has the
    same traps with history.
 
-## 2. Status board (2026-09-25 midday)
+## 2. Status board (2026-09-25 evening)
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
@@ -37,12 +37,12 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 | Crucible door / armory / refit / results | **Passed** | 8 / 8 / 8 / 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Door: HINGE crowding at 1280, launch glow. Refit still carries key caps (HOLD F·X, ENTER) — the station retired caps for dotted words; align |
 | Station shell (all 7 tabs share it) | **Passed** | 8 | `stationLayouts.js` | Ring swing on tab arrival. Every tab critic names the shell's amber tab-rail cursor as a second amber mark: make it bone or phosphor |
 | Station Market | **Passed** | 8 | `marketLayouts.js` | 1280: dial over bright backdrop. Name the one reason a trade is unavailable |
-| Station Shipworks (dock host) | Round 11 landed (seven-segment fit dial, DOCKED verb, no mode bar, 720 sale wraps its hardpoints and folds its bars); r11 not yet scored | 7.0 (r10) | `shipworksLayouts.js` + `hullSchematic.js` | Named structural ask (r10 critic): the For Sale stage as an instrument, not a photograph on the world; the readouts as the last table; verbs in one home. 720 sale poster still sits 41px above its stage |
-| Station Missions | Round 9 landed (THE TETHER: one line of light from the ACCEPT key across the glass into the orbit's origin, the route reading riding it; prices inline; one terms spine; junction bead; ring-clear rim names; 720 window snaps to a row) | 7.4 (r8) | `stationTabsLayouts.js`, `routeOrrery.js`, `contracts.js` (`layTether`) | Persistent critic alive (r8 report in the scratchpad): send the r9 stills to it, not a new one. Remaining from r8: DISPATCH weight, hold track, 720 RISK rung |
-| Station Bar | Round 8 landed (voice trace on the spoken line, one lit cursor at rest, arm to its bead, unbroken spine, wash under the face, 720 lead titles clamp) | 7.1 (r7) | `stationTabsLayouts.js`, `waveform.js`, `bar.js` | r8 critic died on the session limit before scoring: relaunch with the "one structural change" ask (§6). Two critics disagreed on LEADS at the foot and on silhouette-vs-arc for the trace — let the next one rule |
-| Station Factions | Round 7 landed (arm rises from the sun's ring and lands on an amber seat ring; no wells — a track stub either side of each zero tick; tier names on ONE baseline; brackets carry verbs and read away from the cursor; values clear the ticks) | 7.3 (r6) | `stationTabsLayouts.js`, `crestOrbit.js`, `factions.js` | Not yet scored. The watermark crest behind the numeral has never rendered (rect 0 at both sizes) — find out why before the critic does. 1280 names compact at 9px |
-| Station Industry | Round 7 landed (THE RING AS THE GAUGE: run time as the thin numeral at the centre, the process name on the top arc, an open capped run track that progress fills; beams land flat on the track; blocked product at the ring's light; a way-out verb "Find a refinery on the chart"; key centred on the product axis; 1280 reason clear of the title) | 7.0 (r6) | `stationTabsLayouts.js`, `chainBeam.js`, `industry.js` | Persistent critic alive (r6 report in the scratchpad): send the r7 stills to it. r6 still owed: ladder foot ghost rung, extent cursor weight |
-| Station Ledger | Round 7 landed (ONE linear scale both ways — no pedestal, debit majors where the stems say; the leader ends at the reading's first words with an end tick, not on the axis; the tape ends at NOW; 11px scale figures; signed lower figures; origin label off the axis; purse feet at 22px) | 7.7 (r6) | `stationTabsLayouts.js`, `ledgerTape.js` | Persistent critic alive (r6 report in the scratchpad): send the r7 stills to it. Its "memorable": a receipt posting should draw its stem up with settle, roll its figure, and sweep the purse |
+| Station Shipworks (dock host) | Round 12 landed (one stage ring: the hull for sale sits inside the same dial the Fleet jig draws, over a radial glass, with a caption arc naming it; the view words are marks on the upper arc; the verbs have one home under the ring in both modes and name the hull; a ghost for the worse reads dim bone) | 7.1 (r11) | `shipworksLayouts.js`, `shipworks.js` (`stageRingGeo`, `drawSaleRing`, `seatVerbs`) | Critic alive (r11 report on disk): send the r51/r52 stills. Owed: the live render inside the ring is framed by the mount, not the ring; the 720 Fleet verb row; the exploded schematic |
+| Station Missions | Round 11 landed (the ladder's foot anchors to the tether AS DRAWN and the seam carries the rail; outside names step out along their radial until no ring or node is in the box; the extent is a bead; the hold's commit stretch is ghost) | 7.8 (r10, flat) | `stationTabsLayouts.js`, `routeOrrery.js`, `contracts.js` | Critic alive (r10 report on disk names the finish: one rail through the seam + anchor to the drawn line — both landed in r11, unscored). Then only DISPATCH's nature (verb or fact) and the tether's pulse under motion |
+| Station Bar | Round 9 landed (THE VOICE ON THE PERSON: a Waveform on an open arc anchored to the portrait's speaking side, labelled by the spoken line through a 45° leader; the Hand touches its bead; the leads' marker sleeps until Tab; one spine; one hint voice) | 7.0 (r8) | `waveform.js` (`createVoiceArc`), `bar.js`, `stationTabsLayouts.js` | The r8 critic's r9 re-score died on the limit twice; resume it (it holds the landmarks) with r47-bar-1920/1280 |
+| Station Factions | Round 9 landed (side names for the crests beside the top so the seat never grazes a glyph; arcs at 22° per 50 points with a 12° floor; bystanders' names as dim as their emblems; 720 names 9px and chords 1.5px) | 7.7 (r8) | `crestOrbit.js`, `factions.js`, `stationTabsLayouts.js` | Critic alive (r8 report on disk: no structural change remains; five craft items, four landed in r9). Optional: hang "Next:" off the 30 bracket |
+| Station Industry | Round 9 landed (THE LADDER AS AN INSTRUMENT OF WHAT CAN BE MADE: rung states in light, group counts and the one reason on the header, the window ends on a whole rung; the disabled key's rim is an SVG along the cut) | 7.6 (r8) | `chainBeam.js`, `industry.js`, `lampKey.js` (`rimPathD`) | Critic alive (r8 report on disk); r9 re-score in flight |
+| Station Ledger | **Passed** (r8) — round 9 landed the four floor items (crisp leader runs, purse rules under the purse scope, the reading's rule on the axis column) | **8.0 (r8)** | `ledgerTape.js`, `stationTabsLayouts.js` | Motion still owed (a receipt posting draws its stem with settle, the figure rolls, the purse sweeps) |
 | THE SHIP (F2, flight host of the Shipworks stage) | Old sheet | — | `shipworksLayouts.js` scopes the dock host only | Extend the jig composition to `#sf-ship` |
 | Chart / galaxy map | Not started | — | — | ORRERY §6 Chart: sectors on orbital tracks, lanes as beams, lens, route as the amber beam |
 | Meta (tech tree, codex, mission log, settings) | Not started | — | — | ORRERY §6 Meta |
@@ -188,32 +188,35 @@ Reports live beside the session scratchpad as `<tab>-r<n>-critic.txt`.
 
 ## 7. Ranked backlog — do these in order, each to a persistent-critic pass
 
-Scores at midday 2026-09-25: Missions 7.4 (r8), Ledger 7.7 (r6), Factions 7.3 (r6), Bar 7.1 (r7),
-Industry 7.0 (r6), Shipworks 7.0 (r10). The structural rounds are landed (§2 rows) and shot; none is
-scored yet.
+Scores at the end of 2026-09-25: **Ledger 8.0 (PASSED r8)**, Missions 7.8 (r10), Factions 7.7 (r8),
+Industry 7.6 (r8), Shipworks 7.1 (r11), Bar 7.0 (r8). Every tab has a persistent critic whose last
+report is in the session scratchpad (`<tab>-r<n>-critic.txt`) with a landmarks block; the rounds
+after those reports (Missions r11, Factions r9, Industry r9, Bar r9, Shipworks r12) are landed and
+shot but unscored — send the stills to the same critic, never a new one.
 
-1. **Score the structural rounds with the critics that are alive** (Missions, Industry, Ledger:
-   SendMessage with the r22 stills in `scratchpad/view/`); relaunch Bar with the §6 ask; spawn
-   Factions and Shipworks critics with the §6 ask. Land each (A) if it names one more; then record.
-2. **Factions watermark** (`.sx-fac-crest` in the overview) has never rendered — rect 0×0 at both
-   sizes; the dpMark hero at `lit:false` may emit nothing visible. Fix before the critic looks.
-3. **Shipworks 720 sale**: the poster sits 41px above its stage; the r10 critic's structural ask
-   (the stage as an instrument) is still open.
-4. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
-   prices, rewards). Labels resolve with `decrypt()` on arrival. The purse ticks on a trade; a
-   receipt posting draws its stem with settle (Ledger critic's "memorable"). All of it respects
-   `html.sf-reduce-motion`.
-5. **Title, Pause, New game**: rebuild on a geometry (they stalled at 6–7 as skins).
-6. **Chart, Meta, Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works**: each from §6 of
-   ORRERY.md.
-7. **2560×1440 is covered** by the shell's `zoom:1.25` rule (`stationLayouts.js`); re-check any tab
-   whose column widths change. Walks ran clean on Bar, Factions, Ledger and Shipworks
-   (`node scripts/ui-bench.mjs --shot=<id> --walk`); Missions and Industry walks are owed after their
-   structural rounds (the tether and the way-out verb are new controls/overlays).
-8. **Composited-contrast audit** of small type (`node scripts/ui-contrast.mjs --shot=<id>`).
-9. **Deferred by design, still owed:** Shipworks exploded schematic (needs part art) and one dossier
-   home; Factions RELATIONS as beams on the orbit + lore reveal; the tape's left end dissolving past
-   the origin.
+1. **Score the unscored rounds** (one message each): Bar r9 (r47-bar-*), Missions r11, Factions r9,
+   Shipworks r12, Industry r9 — stills in `scratchpad/view/`. Land what remains; record; move on.
+2. **New game: the launch Lamp Key renders with no word** (bench `new-game`, 1920: an empty amber key
+   beside BACK · ESC). `src/ui/screens/newGame.js` was dirty foreign work on 2026-09-25 — check
+   whether that lane's change lands the word before touching it.
+3. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
+   prices, rewards). Labels resolve with `decrypt()` on arrival. The Missions tether carries an ice
+   pulse from the chosen row through the key into the origin; the Factions chords draw origin → crest
+   with the pulse, rivals last; the Ledger stem draws with settle and the purse sweeps on a receipt; the
+   Bar voice arc breathes with the line. All of it respects `html.sf-reduce-motion`.
+4. **Title, Pause, New game**: rebuild on a geometry (they stalled at 7.2 / 6.3 / 6.0 as skins). The
+   title already has the arc rail with the Hand; the new game has the orbit carousel, arc gauges and
+   the difficulty dial — the pause is the one with nothing yet.
+5. **Chart, Meta, Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works**: each from §6 of
+   ORRERY.md. Stills of title/pause/new-game/chart/ship at both sizes are in `.devshots/ui-bench/`.
+6. **2560×1440 is covered** by the shell's `zoom:1.25` rule; re-check the Missions tether and the
+   Shipworks verbs (both seated with `position:fixed` from page coordinates). Walks ran clean on
+   Missions and Industry on 2026-09-25 (42 / 46 controls, every picture changed; the "(unlabeled)"
+   rows are the bench's own hidden input, not a control).
+7. **Composited-contrast audit** of small type (`node scripts/ui-contrast.mjs --shot=<id>`).
+8. **Deferred by design, still owed:** Shipworks exploded schematic (needs part art) and the live
+   render framed by the ring; Factions RELATIONS detail as an unfold; the tape's left end dissolving
+   past the origin.
 
 ## 8. Working rules that stay in force
 

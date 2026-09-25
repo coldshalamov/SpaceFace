@@ -74,6 +74,7 @@ const CSS = `
 .orr-svg .orr-crestorbit__ghost { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-crestorbit__rel { stroke:rgb(${BONE} / .4); }
+.orr-crestorbit.is-small .orr-svg .orr-crestorbit__rel { stroke-width:1.5px; }
 .orr-svg .orr-crestorbit__rel.is-hostile { stroke:rgb(255 80 56 / .45); }
 .orr-svg .orr-crestorbit__rel-bloom { stroke:rgb(${BONE}); opacity:.13; }
 .orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.14; }
@@ -323,7 +324,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         const steps = Number.isFinite(item.tierSteps) ? item.tierSteps : Math.sign(rep) * Math.min(4, Math.ceil(Math.abs(rep) / 250));
         // the arc's sweep carries magnitude: 22 degrees per tier band, the fraction inside the band included
         const pos = Number.isFinite(item.bandPos) ? item.bandPos : steps;
-        const sweep = Math.max(20, Math.min(150, Math.abs(pos) * 22));
+        const sweep = Math.max(12, Math.min(150, Math.abs(pos) * 22));
         const arcs = svg('g', {});
         arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-core orr-crestorbit__ghost', 'stroke-width': 1 }));
         // the zero tick on every crest: the arc's direction reads against it
@@ -368,7 +369,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         btn.style.left = `${f(x)}px`;
         btn.style.top = `${f(y)}px`;
         // the words face outward: above at the top of the ring, below at the foot, beside on the flanks
-        const side = deg < 30 || deg > 330 ? 'north' : deg > 150 && deg < 210 ? 'south' : deg <= 180 ? 'east' : 'west';
+        const side = deg < 14 || deg > 346 ? 'north' : deg > 166 && deg < 194 ? 'south' : deg <= 180 ? 'east' : 'west';
         for (const s of ['north', 'south', 'east', 'west']) btn.classList.toggle(`is-${s}`, s === side);
         // placed inline: a kit reset on a button's spans had left the words static and stacked under the emblem
         const wordsEl = btn.querySelector('.orr-crest__words');
