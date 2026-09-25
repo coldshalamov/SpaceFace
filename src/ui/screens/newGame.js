@@ -42,6 +42,8 @@ const DIFFICULTIES = [
 const DEFAULT_DIFFICULTY = 'standard';
 // The sheet's stage zoom for the new-game hull (Task B §1.1).
 const STAGE_ZOOM = 1.1;
+// the hull alone inside its ring stands closer: it fills about two thirds of the ring's width
+const STAGE_ZOOM_RING = 1.55;
 // The loading shell fades in over 0.8 s (#boot-overlay in styles/intro.css); after Launch the stage
 // hull's WebGL context is freed once the shell covers the stage.
 const STAGE_HULL_RELEASE_MS = 900;
@@ -708,7 +710,7 @@ export const newGameScreen = {
     }
     rootEl.appendChild(stage);
     // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
-    this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM, dock: !ORRERY });
+    this.hull = createStageHull(stage, { rootEl, zoom: ORRERY ? STAGE_ZOOM_RING : STAGE_ZOOM, dock: !ORRERY });
     if (ORRERY) {
       const statsHost = stage.querySelector('.orr-ng-stats');
       const heroBox = stage.querySelector('.k-world--stage') || stage.querySelector('.k-stage__poster');

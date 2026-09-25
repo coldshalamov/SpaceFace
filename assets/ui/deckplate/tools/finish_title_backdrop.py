@@ -18,7 +18,7 @@ OUT = os.path.join(ROOT, "assets", "ui", "backdrops", "backdrop-title.jpg")
 PLANET = (2154.0, 285.0, 179.0)
 
 
-def main(path):
+def main(path, name="backdrop-title.jpg"):
     a = np.asarray(Image.open(path).convert("RGB")).astype(np.float32) / 255.0
     h, w, _ = a.shape
     sx = w / 2560.0
@@ -28,10 +28,11 @@ def main(path):
     lum = a.mean(axis=2, keepdims=True)
     graded = (lum + (a - lum) * 0.55) * 0.74
     out = a * (1 - mask) + graded * mask
+    dest = os.path.join(os.path.dirname(OUT), name)
     Image.fromarray(np.clip(out * 255, 0, 255).astype(np.uint8)).save(
-        OUT, quality=86, optimize=True, progressive=True, subsampling=0)
-    print(f"{OUT}  {w}x{h}  {os.path.getsize(OUT) // 1024} KB")
+        dest, quality=86, optimize=True, progressive=True, subsampling=0)
+    print(f"{dest}  {w}x{h}  {os.path.getsize(dest) // 1024} KB")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "backdrop-title.jpg")

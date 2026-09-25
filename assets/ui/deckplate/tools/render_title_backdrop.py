@@ -13,6 +13,13 @@ rock, a bare truss on a plinth". This replaces it; finish_title_backdrop.py grad
         <out.png> 2560 1440 128 CYCLES
     python assets/ui/deckplate/tools/finish_title_backdrop.py <out.png>
 
+The New Game plate is the same scene BARE (no hull, no refinery, no worklight): the screen stands its own
+chosen hull alone inside its ring, so the picture behind must hold only rock and sky.
+
+    blender -b --factory-startup -P assets/ui/deckplate/tools/render_title_backdrop.py -- \
+        <out.png> 2560 1440 64 CYCLES bare
+    python assets/ui/deckplate/tools/finish_title_backdrop.py <out.png> backdrop-newgame.jpg
+
 Deterministic: fixed seeds for every noise and the scatter; Cycles uses its default seed.
 """
 import math
@@ -29,6 +36,7 @@ W = int(argv[1]) if len(argv) > 1 else 960
 H = int(argv[2]) if len(argv) > 2 else 540
 SAMPLES = int(argv[3]) if len(argv) > 3 else 32
 ENGINE = argv[4] if len(argv) > 4 else "CYCLES"
+BARE = len(argv) > 5 and argv[5] == "bare"
 
 scene = bpy.context.scene
 for ob in list(bpy.data.objects):
@@ -482,6 +490,15 @@ fill_ob = bpy.data.objects.new("fill", fill)
 scene.collection.objects.link(fill_ob)
 fill_ob.location = cam_ob.location + Vector((6, 4, 14))
 fill_ob.rotation_euler = (Vector((12, 2, 1)) - fill_ob.location).to_track_quat("-Z", "Y").to_euler()
+
+# ---------------------------------------------------------------- bare: the scene without its machines
+if BARE:
+    for o in list(imported) + list(rig) + [work_ob]:
+        o.hide_render = True
+        o.hide_viewport = True
+    for o in (root, rig_root):
+        for ch in o.children_recursive:
+            ch.hide_render = True
 
 # ---------------------------------------------------------------- render
 scene.render.resolution_x = W

@@ -80,7 +80,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 
 #screens .k-screen.orr-newgame { background:
   linear-gradient(90deg, rgb(6 8 11 / .84) 0%, rgb(6 8 11 / .74) 30%, rgb(6 8 11 / .4) 58%, rgb(6 8 11 / .24) 100%),
-  url("/assets/ui/backdrops/backdrop-title.jpg") center / cover no-repeat !important; }
+  url("/assets/ui/backdrops/backdrop-newgame.jpg") center / cover no-repeat !important; }
 /* the hull's choice at the hull: stations on an arc under the ship */
 #screens .orr-newgame > .orr-ng-pick { position:absolute; inset:0; pointer-events:none; z-index:3; }
 #screens .orr-newgame .orr-turntable .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
@@ -777,7 +777,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { position:absolute !important; left:15% !important; top:27% !important; right:auto !important; bottom:auto !important;
   width:74% !important; height:48% !important; max-width:none !important; max-height:none !important; object-fit:contain; }
 /* the hull alone has no dock's bounce light: its render is graded up so it leads its ring */
-#screens .orr-newgame > .k-stage > .k-world--stage { filter:brightness(1.55) contrast(1.06); }
+#screens .orr-newgame > .k-stage > .k-world--stage { filter:brightness(2.1) contrast(1.04); }
 #screens .orr-newgame > .k-stage::before { content:""; position:absolute; left:22%; width:60%; top:69%; height:9%; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(2 3 5 / .7), rgb(2 3 5 / .38) 55%, transparent); }
 /* the caption is the stage's own layer: the hull's name and line top-left, the ring over the stage, the run along the foot */
@@ -823,6 +823,33 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-r
   #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { top:clamp(96px, 16vh, 120px); }
   #screens .orr-newgame .sf-ng-route > .k-caps { margin-bottom:8px !important; }
   #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__name { font-size:12px; }
+}
+
+/* ================================ NEW GAME v2 r2 craft ======================================= */
+/* the screen's title on one line, so the chosen hull's name leads the stage */
+#screens .orr-newgame .orr-ng-title { white-space:nowrap !important; font-size:clamp(38px, 2.7vw, 56px) !important; }
+/* the back key's ESC and the run's label clear 4.5:1 */
+#screens .orr-newgame .sf-ng-footer .sf-back::after { color:rgb(232 226 212 / .62) !important; }
+#screens .orr-newgame .sf-ng-route > .k-caps { color:rgb(232 226 212 / .68) !important; }
+/* the pilot name's selection is a phosphor tint on the words, never a grey box */
+#screens .orr-newgame .orr-ng-input::selection { background:transparent !important; color:var(--dp-phos, rgb(223 238 255)) !important; }
+/* the fittings speak in the quiet label voice (not the condensed bold legend) */
+#screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] .fh-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
+  font-variation-settings:"wght" 600, "wdth" 112 !important; font-weight:600 !important; font-size:10.5px !important; letter-spacing:.14em !important;
+  text-transform:uppercase !important; color:rgb(232 226 212 / .72) !important; background:none !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
+/* the ring sits lower, so its top reading never shares the fittings' line */
+#screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { top:31% !important; height:46% !important; }
+#screens .orr-newgame > .k-stage::before { top:72%; }
+/* the produced poster (before the live hull draws) stands at the live hull's size inside the ring */
+#screens .orr-newgame > .k-stage > .k-stage__poster { transform:scale(1.4); transform-origin:50% 55%; }
+/* the fittings as a two-column list: no separator dots to start a wrapped line */
+@media (min-height:801px) {
+  #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] { display:grid !important; grid-template-columns:repeat(2, max-content); column-gap:32px !important; row-gap:6px !important; max-width:none !important; }
+  #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none; }
+}
+@media (max-height:800px) {
+  #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { top:33% !important; height:35% !important; }
+  #screens .orr-newgame > .k-stage::before { top:63%; }
 }
 
 `;
