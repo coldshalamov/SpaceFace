@@ -200,18 +200,24 @@ async function main() {
     throw new Error('source scene has no *_LOD0_ROOT child to rename for the sibling file.');
   }
 
-  // Scene extras carry the spacefaceAsset contract block; retag the tier the file serves.
-  const extras = scene && scene.getExtras ? scene.getExtras() : {};
-  if (extras && extras.spacefaceAsset && typeof extras.spacefaceAsset === 'object') {
-    extras.spacefaceAsset = {
-      ...extras.spacefaceAsset,
+  // Scene or asset extras carry the spacefaceAsset contract block; retag the tier the file serves.
+  const sceneExtras = scene && scene.getExtras ? scene.getExtras() : {};
+  const assetExtras = root.getAsset?.()?.extras || {};
+  const sourceAssetMetadata = sceneExtras.spacefaceAsset || assetExtras.spacefaceAsset || null;
+  if (sourceAssetMetadata && typeof sourceAssetMetadata === 'object') {
+    const updated = {
+      ...sourceAssetMetadata,
       lod: options.level,
       lodSource: 'meshopt-weld-simplify',
       lodSourceError: maxError,
       lodSourceRatio: ratio,
       lodSourceTriangles: sourceTriangles,
     };
-    scene.setExtras(extras);
+    scene.setExtras({ ...sceneExtras, spacefaceAsset: updated });
+    const asset = root.getAsset ? root.getAsset() : null;
+    if (asset) {
+      asset.extras = { ...(asset.extras || {}), spacefaceAsset: updated };
+    }
   }
 
   // Bitwise weld first (the glTF-Transform pass the lane names), then the position-weld simplify.
