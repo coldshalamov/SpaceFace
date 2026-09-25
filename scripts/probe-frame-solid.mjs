@@ -24,6 +24,7 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { summarizeCpuProfile } from './lib/cpuProfileSummary.mjs';
 import {
   compareFrameSolidMetrics,
   frameSolidMetrics,
@@ -36,6 +37,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
 const CENSUS = process.argv.includes('--census');
 const NO_CANON = process.argv.includes('--no-program-canon');
+// Main-thread CPU profile over the flight route (sampling adds a little overhead; compare
+// profiled runs only with profiled runs).
+const CPU_PROFILE = process.argv.includes('--cpu-profile');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
 const OUT_DIR = `${ROOT}.devshots/frame-solid`;
@@ -171,6 +175,13 @@ try {
     } catch (_) { return null; }
   });
   await page.evaluate(installFrameSolidSampler);
+  let cdp = null;
+  if (CPU_PROFILE) {
+    cdp = await page.context().newCDPSession(page);
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+    await cdp.send('Profiler.start');
+  }
 
   const station = await page.evaluate(() => {
     const s = window.SF.state;
@@ -401,6 +412,14 @@ try {
     }
   }
 
+  let cpuProfile = null;
+  if (cdp) {
+    const { profile } = await cdp.send('Profiler.stop');
+    mkdirSync(OUT_DIR, { recursive: true });
+    const profilePath = `${OUT_DIR}/${new Date().toISOString().replace(/[:.]/g, '-')}.cpuprofile`;
+    writeFileSync(profilePath, JSON.stringify(profile));
+    cpuProfile = { path: profilePath, ...summarizeCpuProfile(profile, { top: 30 }) };
+  }
   await page.evaluate(() => { window.__SF_FRAME_STOP__ = true; });
   const rec = await page.evaluate(() => window.__SF_FRAME__);
   const summary = summarizeFrameSolid(rec);
@@ -468,6 +487,16 @@ try {
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
   console.log(`  context losses: ${contextLosses == null ? 'NOT MEASURED' : contextLosses}`);
+  if (cpuProfile) {
+    console.log(`  cpu profile: ${cpuProfile.path} wall=${cpuProfile.wallMs}ms busy=${cpuProfile.busyMs}ms`
+      + ` idle=${cpuProfile.idleMs}ms gc=${cpuProfile.gcMs}ms program=${cpuProfile.programMs}ms`);
+    console.log('  cpu by file (self):');
+    for (const row of cpuProfile.byFile.slice(0, 15)) console.log(`    ${row.ms}ms  ${row.fn}`);
+    console.log('  cpu top self:');
+    for (const row of cpuProfile.topSelf.slice(0, 20)) console.log(`    ${row.ms}ms  ${row.fn}`);
+    console.log('  cpu top inclusive (game source):');
+    for (const row of cpuProfile.topTotalInGameSource.slice(0, 30)) console.log(`    ${row.ms}ms  ${row.fn}`);
+  }
   console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`);
   for (const e of flightLinkEvents.slice(0, 40)) {
     console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
@@ -484,6 +513,7 @@ try {
     headless: HEADLESS,
     programCanon: !NO_CANON,
     contextLosses,
+    cpuProfile,
     host: {
       cpu: (cpus()[0] && cpus()[0].model) || null,
       logicalCores: cpus().length,

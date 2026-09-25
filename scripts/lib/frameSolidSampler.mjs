@@ -85,9 +85,48 @@ export async function installFrameSolidSampler() {
         const stack = String((new Error()).stack || '').split('\n').slice(2, 14)
           .map((line) => line.trim().replace(/\(?https?:\/\/[^/]+\//, '(').replace(/\?[^:)]*/, ''))
           .filter((line) => !/countShaderLinkWitness|glInstrumentation/.test(line));
+        // Owner of the drawn mesh: first ancestor naming an entity, plus whether admission still
+        // held it (a link inside a presented draw on a held root means the hide latch leaked).
+        let owner = null;
+        for (let node = drawn; node && !owner; node = node.parent) {
+          const ud = node.userData || {};
+          const id = ud.presentationEntityId ?? ud.entityId ?? ud.sfStableEntityKey ?? null;
+          if (id == null) continue;
+          const entity = SF.state.entities && SF.state.entities.get ? SF.state.entities.get(id) : null;
+          owner = {
+            id: String(id),
+            node: node.name || node.type,
+            type: entity ? entity.type : null,
+            defId: entity && entity.data ? (entity.data.defId || entity.data.stationId || null) : null,
+            isPlayer: !!(entity && (entity.isPlayer === true || entity.id === SF.state.playerId)),
+            pipelinesPending: ud.pipelinesPending === true,
+            assetState: ud.authoredAssetState || null,
+          };
+        }
+        // The program this material drew with before (setProgram has not swapped it yet while the
+        // new program links), so the report can name the exact parameter that changed.
+        let previous = null;
+        try {
+          const props = material && SF.state.render && SF.state.render.renderer
+            && SF.state.render.renderer.properties.get(material);
+          if (props) {
+            previous = {
+              cacheKey: props.currentProgram ? String(props.currentProgram.cacheKey || '') : null,
+              name: props.currentProgram ? props.currentProgram.name || null : null,
+              materialVersion: material.version,
+              compiledVersion: props.__version ?? null,
+              envMap: props.envMap ? (props.envMap.uuid || 'set') : null,
+              instancing: props.instancing ?? null,
+              vertexTangents: props.vertexTangents ?? null,
+            };
+          }
+        } catch (_) { previous = null; }
         rec.links.push({
           frame: rec.frames,
           t: Math.round(performance.now()),
+          owner,
+          previous,
+          instanced: !!(drawn && drawn.isInstancedMesh),
           subject: typeof tier1.admissionSubject === 'string' || typeof tier1.admissionSubject === 'number'
             ? String(tier1.admissionSubject) : null,
           draw: drawn ? `${drawn.name || drawn.type || 'unnamed'}${drawn.isInstancedMesh ? ':instanced' : ''}` : null,
@@ -294,8 +333,23 @@ export function resolveFrameSolidLinks() {
         if (mine[k] !== theirs[k]) differs.push({ index: k, new: mine[k].slice(0, 80), nearest: theirs[k].slice(0, 80) });
       }
     }
+    // A material that already drew with another program: diff against that, the exact change.
+    const prevKey = link.previous && link.previous.cacheKey;
+    const changedFromPrevious = [];
+    if (prevKey) {
+      const before = fields(prevKey);
+      const n = Math.max(before.length, mine.length);
+      for (let k = 0; k < n; k++) {
+        if (before[k] !== mine[k]) {
+          changedFromPrevious.push({ index: k, new: String(mine[k] ?? '').slice(0, 80), was: String(before[k] ?? '').slice(0, 80) });
+        }
+      }
+    }
+    const { previous: previousRecord, ...rest } = link;
     return {
-      ...link,
+      ...rest,
+      previous: previousRecord ? { ...previousRecord, cacheKey: undefined } : null,
+      changedFromPrevious: prevKey ? changedFromPrevious.slice(0, 16) : null,
       program: program.name || null,
       shaderType: mine[0] ? mine[0].slice(0, 40) : null,
       nearestProgram: best ? best.name || null : null,
