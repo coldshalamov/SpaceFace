@@ -697,6 +697,15 @@ html body #screens .k-screen.orr-newgame .sf-back.k-word::after { background:non
   text-shadow:0 0 26px rgb(255 217 140 / .6); background-image:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c), rgb(255 217 140 / 0)) !important; }
 #screens .orr-newgame .sf-ng-launch[aria-disabled="true"] { color:rgb(242 185 80 / .4) !important; }
 html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch::after { animation:none; display:none; }
+/* Launch is the Lamp Key (ORRERY §6): once dressed, the word takes the key's dark ink on its amber field, the underline and
+   the breathing dot retire, and the key's own sheen returns. Keyed on the dressed word so it holds whatever the class list does. */
+#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important;
+  padding:0 34px 0 26px !important; min-height:52px !important; font-size:17px !important; letter-spacing:.16em; }
+#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word):is(:hover, :focus-visible) { color:#1c1406 !important; text-shadow:none !important; background-image:none !important; }
+#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)::after { left:0 !important; top:0 !important; width:auto !important; height:auto !important; margin:0 !important; border-radius:0 !important;
+  box-shadow:none !important; animation:orr-lampkey-sheen 6s linear infinite !important; }
+#screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)[aria-disabled="true"] { color:rgb(28 20 6 / .55) !important; }
+html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__word)::after { animation:none !important; display:block !important; background-position:-80% 0 !important; }
 /* a short screen keeps every Tab stop above the fold: tighter air, a smaller reading, and the seed's
    help sentence stays for the accessibility tree only */
 @media (max-height: 860px) {

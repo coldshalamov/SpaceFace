@@ -1692,7 +1692,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
     if (!g || !el.classList.contains('sx-sw--buying')) { for (const k of props) stats.style.removeProperty(k); return; }
     const sr = stageEl.getBoundingClientRect();
-    const w = Math.max(170, Math.min(250, g.hx - g.R - 44));
+    const w = Math.max(170, Math.min(250, g.hx - g.R - 28));
     stats.style.setProperty('position', 'fixed', 'important');
     stats.style.setProperty('left', `${Math.round(sr.left + 16)}px`, 'important');
     stats.style.setProperty('width', `${Math.round(w)}px`, 'important');
@@ -1702,7 +1702,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stats.style.setProperty('transform', 'none', 'important');
     stats.style.setProperty('z-index', '3', 'important');
     const h = stats.offsetHeight || 200;
-    stats.style.setProperty('top', `${Math.round(sr.bottom - h - 14)}px`, 'important');
+    const short = sr.height < 600;
+    stats.style.setProperty('top', `${Math.round(short ? sr.top + 6 : sr.bottom - h - 14)}px`, 'important');
   }
   function seatVerbs(g) {
     seatSaleStats(g);
@@ -1712,7 +1713,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const sr = stageEl.getBoundingClientRect();
     const short = window.innerHeight <= 800;
     const w = rack.offsetWidth || 300;
-    rack.style.cssText = `position:fixed !important; left:${Math.round(sr.left + g.hx - w / 2)}px !important; top:${Math.round(sr.top + g.hy + g.R + (short ? 20 : 42))}px !important; margin:0 !important; z-index:4;`;
+    const rh = rack.offsetHeight || 29;
+    const top = short ? sr.bottom - rh + 4 : sr.top + g.hy + g.R + 42;
+    rack.style.cssText = `position:fixed !important; left:${Math.round(sr.left + g.hx - w / 2)}px !important; top:${Math.round(top)}px !important; margin:0 !important; z-index:4;`;
   }
   let jig = null;
   let jigHost = null;

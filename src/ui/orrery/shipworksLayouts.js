@@ -612,7 +612,7 @@ ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
 /* For Sale: the stats stand under the render; at 720 the render fills the stage */
 ${W}.sx-sw--buying.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { left:50% !important; right:auto !important; transform:translateX(-50%); top:auto !important; bottom:4% !important; width:min(520px, 80%) !important; max-height:none !important; }
 @media (max-height:800px) {
-  ${W}.sx-sw--buying .sx-sw__stage > .sx-sw__poster { max-height:92% !important; height:92% !important; width:auto !important; max-width:none !important; }
+  ${W}.sx-sw--buying .sx-sw__stage:not(.has-salering) > .sx-sw__poster { max-height:92% !important; height:92% !important; width:auto !important; max-width:none !important; }
   ${W}.sx-sw--buying .sx-sw__stats { bottom:2% !important; width:min(460px, 84%) !important; }
 }
 /* one width for the handling scales wherever they stand */
