@@ -6,12 +6,13 @@ import {
   getGhostPlaybackTape,
   ghostPoseAt,
 } from '../systems/survivalRecords.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const CRUCIBLE_GHOST_OPACITY = 0.32;
 
 function applyGhostMaterial(material) {
   if (!material || typeof material.clone !== 'function') return material;
-  const next = material.clone();
+  const next = cloneMaterialPreservingShaderHooks(material);
   next.transparent = true;
   next.opacity = Math.min(CRUCIBLE_GHOST_OPACITY, Number.isFinite(next.opacity) ? next.opacity * CRUCIBLE_GHOST_OPACITY : CRUCIBLE_GHOST_OPACITY);
   next.depthWrite = false;

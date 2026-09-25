@@ -46,6 +46,7 @@ import {
   packageBatchPoolKeyFromMaterial,
   stampGeometryBatchKey,
 } from './materialBatchKey.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import {
   canBatchRenderPackageOwner,
   isRigidOpaqueBatchableSurface,
@@ -10890,18 +10891,9 @@ export function runAuthoredInstanceRangeContractProbe() {
 // separate for sockets, LOD, transparent sorting, damage movement, or drive transforms. Only surfaces
 // whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
-// Material.copy() copies userData but not instance-assigned onBeforeCompile /
-// customProgramCacheKey, so an authored shader patch would be dropped while its
-// userData receipt survived — leaving a flag that lies and a cache key that no
-// longer matches the source it was compiled from.
-// Exported for the regression test that pins the clone contract.
-export function cloneMaterialPreservingShaderHooks(base) {
-  const clone = base.clone();
-  if (Object.hasOwn(base, 'onBeforeCompile')) clone.onBeforeCompile = base.onBeforeCompile;
-  if (Object.hasOwn(base, 'customProgramCacheKey')) clone.customProgramCacheKey = base.customProgramCacheKey;
-  clone.needsUpdate = true;
-  return clone;
-}
+// cloneMaterialPreservingShaderHooks lives in materialClone.js so runtime mutators
+// (shipMicroMotion's bell heat skin) can use it without importing this module.
+export { cloneMaterialPreservingShaderHooks };
 
 function sharedMaterialFor(base, tags, palette) {
   const role = authoredSurfaceTintRole(tags, base);

@@ -64,6 +64,7 @@
 //      cold-gas ribbon request the overhead presentation draws along the slide.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { clampSlideAgainstHulls, deathSlideOffset, DEATH_SLIDE_S } from './deathSlide.js';
 import {
   integrateBellHeat,
@@ -994,7 +995,7 @@ export function createShipMicroMotionTracker() {
         base[i] = null;
         continue;
       }
-      const cloned = mat.clone();
+      const cloned = cloneMaterialPreservingShaderHooks(mat);
       clones[i] = cloned;
       base[i] = {
         r: cloned.emissive.r,

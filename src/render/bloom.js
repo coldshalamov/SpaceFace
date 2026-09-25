@@ -894,7 +894,54 @@ const COMPOSITE_FRAG = /* glsl */`
 // so all three bracket their presented draws with the same hide→render→restore pair.
 const UNREADY_SCENE_CAP = 512;
 
+// Draw-time safety net for the hide→render→restore pair below. The scene walk exits
+// early once every known program reports ready, so a stamped authored/shared material
+// that has NEVER compiled (a shader-hook-dropping clone, a late variant) reaches the
+// draw with no currentProgram and would link synchronously inside the presented frame.
+// While a guarded pass is active, a stamped material with no currentProgram skips its
+// draw and queues pipeline admission for that mesh; everything else draws unchanged.
+// The wrapper is per-renderer — this guard exists twice per renderer (bloom's own and
+// the renderer's route-level instance) — and composes with the perf-counter drawObject
+// wrapper whichever installs first. No allocation on the draw path.
+function installUnreadyDrawGuard(renderer) {
+  if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
+  if (typeof renderer.renderBufferDirect !== 'function') return;
+  renderer.__sfUnreadyDrawGuardDepth = 0;
+  const inner = renderer.renderBufferDirect;
+  renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
+      const data = material.userData;
+      if (data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null)) {
+        const props = renderer.properties;
+        // Unknown properties state must behave exactly like today — draw.
+        let compiled = true;
+        try {
+          if (props && typeof props.get === 'function') {
+            const rec = props.get(material);
+            compiled = !!(rec && rec.currentProgram);
+          }
+        } catch (_) { /* draw as today */ }
+        if (!compiled) {
+          // Same material stamp dedupe as hideIfProgramUnready: one admission
+          // in flight per material while the draw keeps being skipped.
+          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+          if (data.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+            data.__sfPipelineAdmission = true;
+            Promise.resolve(queueAdmission(object))
+              .catch(() => null)
+              .finally(() => { data.__sfPipelineAdmission = false; });
+          }
+          return undefined;
+        }
+      }
+    }
+    return inner.call(this, camera, scene, geometry, material, object, group);
+  };
+  renderer.__sfUnreadyDrawGuardWrapped = true;
+}
+
 export function createUnreadyDrawableGuard(renderer) {
+  installUnreadyDrawGuard(renderer);
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
   // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
@@ -910,6 +957,7 @@ export function createUnreadyDrawableGuard(renderer) {
   let admissionGl = null;
 
   function hideUnreadySceneDrawables(scene) {
+    if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
     unreadySceneCount = 0;
     // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
     // drivers, so the program-readiness scan below can never see them — drawing one would link
@@ -1036,6 +1084,7 @@ export function createUnreadyDrawableGuard(renderer) {
   }
 
   function restoreUnreadySceneDrawables() {
+    if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
