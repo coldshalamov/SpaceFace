@@ -20,6 +20,11 @@ const RESOLVED_BODY_CACHE = new WeakMap();
 const CONSUMED_COMMANDS = new WeakSet();
 const CONTROL_RECORDS = new WeakMap();       // entity -> reusable control record
 const BODY_RESPONSE_RECORDS = new WeakMap(); // entity -> reusable {massScale,inertiaScale}
+// Retained projectile-continuation bookkeeping lives in side-channel maps so the queued
+// physics command keeps exactly its published 5-key shape and transient bounce rewrites stay
+// out of saves, replays, and renderer-facing entity graphs.
+const PROJECTILE_CONTINUATIONS = new WeakMap(); // entity -> reusable continuation record
+const CONSUMED_CONTINUATIONS = new WeakSet();
 const VECTOR_POOL = [];
 
 const DEFAULT_THRUSTERS = Object.freeze([
@@ -73,6 +78,77 @@ export function queuePhysicsTorqueImpulse(entity, impulse, evidence = null) {
 }
 
 /**
+ * Queue a projectile bounce continuation (PQ-133.04): the outgoing velocity, yaw, and a
+ * de-penetration offset bounded to one body-radius pad along the outgoing unit velocity
+ * (the exact legacy nudgeAlongVelocity math). The immediate authoritative kinematic-mirror
+ * write keeps the legacy backend and synchronous consumers on the reflected motion; the
+ * SG-02 owner re-applies the record to the real Rapier body at the start of its next step.
+ * The record is retained (consume-once, re-armed by the next queue) in a side-channel map,
+ * so the published 5-key physics command shape stays untouched.
+ */
+export function queueProjectileContinuation(entity, continuation = {}) {
+  if (!entity || typeof entity !== 'object') return false;
+  const velocity = continuation.velocity;
+  const vx = velocity ? Number(velocity.x) : NaN;
+  const vz = velocity ? Number(velocity.z) : NaN;
+  const yaw = Number(continuation.yaw);
+  if (!Number.isFinite(vx) || !Number.isFinite(vz) || !Number.isFinite(yaw)) return false;
+  let record = PROJECTILE_CONTINUATIONS.get(entity);
+  if (!record) {
+    record = {
+      schemaVersion: PHYSICS_COMMAND_SCHEMA_VERSION,
+      velocity: { x: 0, z: 0 },
+      yaw: 0,
+      tick: 0,
+      offset: { x: 0, z: 0 },
+    };
+    PROJECTILE_CONTINUATIONS.set(entity, record);
+  } else {
+    CONSUMED_CONTINUATIONS.delete(record);
+  }
+  const speed = Math.hypot(vx, vz);
+  record.velocity.x = vx;
+  record.velocity.z = vz;
+  record.yaw = yaw;
+  record.tick = Number.isInteger(continuation.tick) && continuation.tick >= 0
+    ? continuation.tick
+    : 0;
+  const pad = (entity.radius || 0.7) + 0.05;
+  if (speed > 0) {
+    record.offset.x = (vx / speed) * pad;
+    record.offset.z = (vz / speed) * pad;
+  } else {
+    record.offset.x = 0;
+    record.offset.z = 0;
+  }
+  if (entity.vel && typeof entity.vel === 'object') {
+    entity.vel.x = vx;
+    entity.vel.z = vz;
+  } else {
+    entity.vel = { x: vx, z: vz };
+  }
+  entity.rot = yaw;
+  if (entity.pos && typeof entity.pos === 'object' && speed > 0) {
+    entity.pos.x += record.offset.x;
+    entity.pos.z += record.offset.z;
+  }
+  return true;
+}
+
+/**
+ * Physics-only: consume this entity's queued projectile continuation once. Returns null when
+ * nothing is queued or the record was already read; the next queueProjectileContinuation
+ * re-arms the retained record in place.
+ */
+export function consumeProjectileContinuation(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  const record = PROJECTILE_CONTINUATIONS.get(entity) || null;
+  if (!record || CONSUMED_CONTINUATIONS.has(record)) return null;
+  CONSUMED_CONTINUATIONS.add(record);
+  return record;
+}
+
+/**
  * Physics-only: atomically consume all commands written before this system's turn. The record
  * is retained (marked consumed, not deleted) so next tick's writes reuse the same command
  * object and arrays; consumers must read the returned contents before the next write cycle.
@@ -89,6 +165,7 @@ export function clearPhysicsAuthority(entity) {
   COMMANDS.delete(entity);
   CONTROL_RECORDS.delete(entity);
   BODY_RESPONSE_RECORDS.delete(entity);
+  PROJECTILE_CONTINUATIONS.delete(entity);
   TELEMETRY.delete(entity);
   AUTHORITY_CACHE.delete(entity);
   NORMALIZED_BODY_CACHE.delete(entity);

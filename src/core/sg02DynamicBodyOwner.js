@@ -6,6 +6,7 @@
 
 import {
   consumePhysicsCommand,
+  consumeProjectileContinuation,
   measureThrusterAuthority,
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
@@ -676,11 +677,16 @@ export class Sg02DynamicBodyOwner {
       setZero3(rec.controlTorque);
       rec.maxSpeed = Infinity;
       const command = consumePhysicsCommand(rec.entity);
+      // PQ-133.04: a projectile bounce continuation queued during the previous hit emit lands
+      // here, at the start of the next step, before the expected-kinematics capture reads the
+      // body — so the bounce rewrite is authoritative motion, never "pure contact response".
+      const continuation = consumeProjectileContinuation(rec.entity);
       rec._hadCommand = !!command;
-      if (!command && this._sleepingRecordSkipsCpu(rec, false)) continue;
+      if (!command && !continuation && this._sleepingRecordSkipsCpu(rec, false)) continue;
       resetBodyForces(rec.body);
       this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) this._applyCommand(rec, command);
+      if (continuation) this._applyProjectileContinuation(rec, continuation);
     }
 
     this._applyAttachmentSprings();
@@ -1649,6 +1655,44 @@ export class Sg02DynamicBodyOwner {
     for (const impulse of command.torqueImpulses || []) {
       applyYawTorqueImpulse(rec, impulse, impulse);
     }
+  }
+
+  // PQ-133.04: apply a consumed projectile bounce continuation to the real Rapier body.
+  // setLinvel to the outgoing velocity, setTranslation to the body pose plus the bounded
+  // de-penetration offset (world delta; the physics frame is a pure translation), setRotation
+  // to the outgoing yaw, then wake the body. The command membrane's immediate kinematic mirror
+  // already wrote the same values onto the entity for the legacy backend and synchronous
+  // consumers; this is the authoritative-body half of the same write.
+  _applyProjectileContinuation(rec, continuation) {
+    if (!rec || !rec.body || !continuation) return false;
+    const vx = finite(continuation.velocity && continuation.velocity.x);
+    const vz = finite(continuation.velocity && continuation.velocity.z);
+    const yaw = wrapAngle(finite(continuation.yaw));
+    const ox = finite(continuation.offset && continuation.offset.x);
+    const oz = finite(continuation.offset && continuation.offset.z);
+    const pose = rec.body.translation();
+    const px = finite(pose.x) + ox;
+    const pz = finite(pose.z) + oz;
+    _vecWriteScratch.x = px;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = pz;
+    rec.body.setTranslation(_vecWriteScratch, true);
+    rec._bodyPoseX = Math.fround(px);
+    rec._bodyPoseZ = Math.fround(pz);
+    rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    _vecWriteScratch.x = vx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = vz;
+    rec.body.setLinvel(_vecWriteScratch, true);
+    if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
+    if (rec.entity) rec.entity.physicsSleeping = false;
+    const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
+    kin.x = px;
+    kin.z = pz;
+    kin.vx = vx;
+    kin.vz = vz;
+    kin.yaw = yaw;
+    return true;
   }
 
   _applyBodyResponse(rec, response) {

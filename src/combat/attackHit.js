@@ -6,7 +6,6 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   SURFACE_RESPONSE,
   isSurfaceContactReceipt,
-  surfaceContactFromBodies,
   surfaceResponseFor,
 } from '../core/surfaceContact.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
@@ -43,15 +42,6 @@ export function armAttackContinue(body) {
 
 export function requestAttackContinue(body) {
   if (body) CONTINUE_NEXT.add(body);
-}
-
-function nudgeAlongVelocity(body) {
-  if (!body || !body.pos || !body.vel) return;
-  const speed = Math.hypot(body.vel.x || 0, body.vel.z || 0);
-  if (!(speed > 0)) return;
-  const pad = (body.radius || 0.7) + 0.05;
-  body.pos.x += (body.vel.x / speed) * pad;
-  body.pos.z += (body.vel.z / speed) * pad;
 }
 
 function statusIdsOf(state, entity) {
@@ -106,17 +96,9 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
   return out;
 }
 
-function receiptForContact(projectile, target, payload, tick) {
-  if (payload && isSurfaceContactReceipt(payload.receipt)) return payload.receipt;
-  if (!projectile || !target) return null;
-  return surfaceContactFromBodies(projectile, target, {
-    point: payload && payload.pos,
-    normal: payload && payload.normal,
-    velocity: projectile.vel,
-    material: target.surfaceMaterial
-      || target.surfaceKind
-      || (target.data && (target.data.surfaceMaterial || target.data.surfaceKind)),
-  }, tick);
+/** Fail-closed (PQ-133.04): combat consumes a physics receipt; it never invents one. */
+function receiptForContact(payload) {
+  return payload && isSurfaceContactReceipt(payload.receipt) ? payload.receipt : null;
 }
 
 /**
@@ -137,7 +119,17 @@ export function resolveLiveAttackHit(input = {}) {
   }
 
   if (target && isSurfaceTarget(target)) {
-    const receipt = receiptForContact(projectile, target, payload, tick);
+    const receipt = receiptForContact(payload);
+    if (!receipt) {
+      return { ok: false, reason: 'no_physics_receipt', consume: true, hops };
+    }
+    // A receipt from another tick, or for another surface, cannot authorize this contact.
+    if (receipt.tick !== tick) {
+      return { ok: false, reason: 'stale_receipt', consume: true, hops };
+    }
+    if (receipt.surfaceId != null && receipt.surfaceId !== target.id) {
+      return { ok: false, reason: 'receipt_surface_mismatch', consume: true, hops };
+    }
     const bounced = resolveRicochet(runtime, spec, receipt, projectile, {
       hostiles: input.hostiles,
       state: input.state,
@@ -149,7 +141,6 @@ export function resolveLiveAttackHit(input = {}) {
         ? input.state.entities.get(projectile.ownerId)
         : null;
       refreshFlightAfterBounce(projectile, owner && owner.pos);
-      nudgeAlongVelocity(projectile);
       return {
         ok: true,
         consume: false,

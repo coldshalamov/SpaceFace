@@ -26,6 +26,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+import { surfaceContactFromBodies } from './surfaceContact.js';
 import {
   corridorPlayableBounds,
   isCorridorSector,
@@ -765,7 +766,15 @@ export const physics = {
       const bestHit = this._bestSegmentHitScratch;
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
-      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
+      const hitPos = { x: proj.pos.x, z: proj.pos.z };
+      // PQ-133.04: physics issues the trusted surface-contact receipt at the real seam. The
+      // receipt binds proj.id/target.id/tick and publishes exactly the payload's own values.
+      const receipt = surfaceContactFromBodies(proj, bestTarget, {
+        point: hitPos,
+        normal: projectileContactFrame(proj, bestTarget, hitPos).normal,
+        velocity: proj.vel,
+      }, state && Number.isInteger(state.tick) ? state.tick : 0);
+      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
@@ -918,7 +927,14 @@ export const physics = {
       const tgt = ta === 'projectile' ? b : a;
       if (tgt.type === 'projectile') return;
       if (proj.ownerId === tgt.id && !opticSplinterHitsOwner(proj)) return; // never hit owner (optic splinters exempt)
-      bus.emit('projectile:hit', projectileHitPayload(proj, tgt, { x: proj.pos.x, z: proj.pos.z }));
+      // PQ-133.04: physics issues the trusted surface-contact receipt at the real seam.
+      const hitPos = { x: proj.pos.x, z: proj.pos.z };
+      const receipt = surfaceContactFromBodies(proj, tgt, {
+        point: hitPos,
+        normal: projectileContactFrame(proj, tgt, hitPos).normal,
+        velocity: proj.vel,
+      }, state && Number.isInteger(state.tick) ? state.tick : 0);
+      bus.emit('projectile:hit', projectileHitPayload(proj, tgt, hitPos, receipt));
       proj.alive = false;
       return;
     }
@@ -1314,10 +1330,12 @@ function shouldStartBroadphasePairSearch(e) {
   return e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'pickup';
 }
 
-export function projectileHitPayload(proj, targetOrId, pos) {
-  const pd = proj.data || {};
-  const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
-  const targetId = target ? target.id : targetOrId;
+/**
+ * The approach unit vector and contact normal a projectile:hit payload publishes. Shared with
+ * the surface-contact receipt seams (sweepProjectiles / resolvePair) so the physics-issued
+ * receipt carries exactly the values the payload publishes (PQ-133.04).
+ */
+function projectileContactFrame(proj, target, pos) {
   const velocityX = Number(proj.vel && proj.vel.x);
   const velocityZ = Number(proj.vel && proj.vel.z);
   const rotation = Number(proj.rot) || 0;
@@ -1335,7 +1353,19 @@ export function projectileHitPayload(proj, targetOrId, pos) {
     nx = -approach.x;
     nz = -approach.z;
   }
-  const normal = { x: nx, z: nz };
+  return { approach, normal: { x: nx, z: nz } };
+}
+
+export function projectileHitPayload(proj, targetOrId, pos, receipt) {
+  const pd = proj.data || {};
+  const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
+  const targetId = target ? target.id : targetOrId;
+  const velocityX = Number(proj.vel && proj.vel.x);
+  const velocityZ = Number(proj.vel && proj.vel.z);
+  const rotation = Number(proj.rot) || 0;
+  const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
+  const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
+  const frame = projectileContactFrame(proj, target, pos);
   const payload = {
     targetId,
     projectileId: proj.id,
@@ -1345,11 +1375,12 @@ export function projectileHitPayload(proj, targetOrId, pos) {
     damage: pd.damage || 0,
     damageType: pd.damageType || 'kinetic',
     pos,
-    approach,
-    normal,
+    approach: frame.approach,
+    normal: frame.normal,
   };
+  if (receipt) payload.receipt = receipt;
   if (pd.weaponId != null) payload.weaponId = pd.weaponId;
-  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos, approach, normal);
+  if (pd.damagePacket) payload.damagePacket = cloneDamagePacketWithHit(pd.damagePacket, pos, frame.approach, frame.normal);
   return payload;
 }
 

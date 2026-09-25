@@ -98,6 +98,10 @@ function surfaceKindOf(entity) {
 export function createSurfaceContactReceipt(input = {}) {
   const point = vec2(input.point);
   const velocity = vec2(input.velocity);
+  // Measured surface motion at the contact, and the projectile velocity in that moving
+  // surface's frame. Default {x:0,z:0} so every pre-existing receipt reflects identically.
+  const surfaceVelocity = vec2(input.surfaceVelocity);
+  const relativeVelocity = vec2(input.relativeVelocity);
   const normal = unitSurfaceNormal(input.normal);
   const incoming = velocity.x * normal.x + velocity.z * normal.z;
   const facing = incoming > 0
@@ -115,6 +119,8 @@ export function createSurfaceContactReceipt(input = {}) {
     material,
     response: surfaceResponseFor(material),
     velocity: Object.freeze(velocity),
+    surfaceVelocity: Object.freeze(surfaceVelocity),
+    relativeVelocity: Object.freeze(relativeVelocity),
     projectileId: input.projectileId != null ? input.projectileId : null,
     surfaceId: input.surfaceId != null ? input.surfaceId : null,
   });
@@ -122,13 +128,38 @@ export function createSurfaceContactReceipt(input = {}) {
   return receipt;
 }
 
+/**
+ * Surface-point velocity for Y-axis spin: v + omega x r, with r = point - surface.pos on the
+ * XZ plane (sv.x = vel.x + angVel*rz, sv.z = vel.z - angVel*rx).
+ */
+function surfaceVelocityOf(surface, point) {
+  if (!surface || typeof surface !== "object") return { x: 0, z: 0 };
+  const pos = surface.pos;
+  const rx = finite(point && point.x) - finite(pos && pos.x);
+  const rz = finite(point && point.z) - finite(pos && pos.z);
+  const angVel = finite(surface.angVel);
+  return {
+    x: finite(surface.vel && surface.vel.x) + angVel * rz,
+    z: finite(surface.vel && surface.vel.z) - angVel * rx,
+  };
+}
+
 export function surfaceContactFromBodies(projectile, surface, hit = {}, tick = 0) {
   const vel = hit.velocity || (projectile && projectile.vel);
+  const point = hit.point || (projectile && projectile.pos);
+  const surfaceVelocity = surfaceVelocityOf(surface, point);
+  const vz = vel && (vel.z != null ? vel.z : vel.y);
+  const relativeVelocity = {
+    x: finite(vel && vel.x) - surfaceVelocity.x,
+    z: finite(vz) - surfaceVelocity.z,
+  };
   return createSurfaceContactReceipt({
-    point: hit.point || (projectile && projectile.pos),
+    point,
     normal: hit.normal,
     material: hit.material || surfaceKindOf(surface),
     velocity: vel,
+    surfaceVelocity,
+    relativeVelocity,
     tick,
     projectileId: projectile && projectile.id,
     surfaceId: surface && surface.id,

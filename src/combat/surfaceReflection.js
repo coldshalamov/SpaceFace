@@ -5,11 +5,11 @@
 
 import {
   SURFACE_RESPONSE,
-  applyReflectedVelocity,
   isSurfaceContactReceipt,
   quantizeSurface,
   reflectVelocity,
 } from '../core/surfaceContact.js';
+import { queueProjectileContinuation } from '../core/physicsAuthority.js';
 import { selectTargets } from './attackTargeting.js';
 import { tryBounce } from './attackPropagation.js';
 import { observeProjectileReflection } from './stuntProjectileEvidence.js';
@@ -89,6 +89,16 @@ export function resolveRicochet(runtime, spec, receipt, body, options = {}) {
   if (materialClass !== SURFACE_RESPONSE.reflect) {
     return { ok: false, reason: 'no_surface_response', consume: true, materialClass };
   }
+  // Disclosed type-guard carve-out: a receipt issued for another projectile cannot authorize
+  // this body. Bare test literals without a `type` field are not projectiles and pass.
+  if (body && body.type === 'projectile'
+    && receipt.projectileId != null
+    && receipt.projectileId !== body.id) {
+    return { ok: false, reason: 'receipt_projectile_mismatch', consume: true, materialClass };
+  }
+  if (!isFiniteVec2(receipt.velocity) || !isFiniteVec2(receipt.surfaceVelocity)) {
+    return { ok: false, reason: 'receipt_not_finite', consume: true, materialClass };
+  }
   const bounced = tryBounce(runtime);
   if (!bounced.ok) {
     return {
@@ -99,16 +109,33 @@ export function resolveRicochet(runtime, spec, receipt, body, options = {}) {
       materialClass,
     };
   }
-  const reflected = reflectVelocity(receipt.velocity, receipt.normal);
+  // Surface-relative reflection: reflect in the moving surface's frame, then ride the surface.
+  // |reflected| = |relative| by construction, and identical output when surfaceVelocity is 0.
+  const surfaceVelocity = receipt.surfaceVelocity;
+  const relative = {
+    x: receipt.velocity.x - surfaceVelocity.x,
+    z: receipt.velocity.z - surfaceVelocity.z,
+  };
+  const reflected = reflectVelocity(relative, receipt.normal);
+  const preSteer = {
+    x: quantizeSurface(reflected.x + surfaceVelocity.x),
+    z: quantizeSurface(reflected.z + surfaceVelocity.z),
+  };
   const outgoing = steerAfterBounce(
-    reflected,
+    preSteer,
     receipt.point,
     spec,
     options.hostiles,
     runtime && runtime.visitedTargets,
   );
-  const steered = outgoing.x !== reflected.x || outgoing.z !== reflected.z;
-  if (body) applyReflectedVelocity(body, outgoing);
+  const steered = outgoing.x !== preSteer.x || outgoing.z !== preSteer.z;
+  if (body) {
+    queueProjectileContinuation(body, {
+      velocity: outgoing,
+      yaw: Math.atan2(outgoing.z, outgoing.x),
+      tick: receipt.tick,
+    });
+  }
   if(body&&options.state&&options.surface)observeProjectileReflection(options.state,body,options.surface,receipt,reflected,outgoing);
   return {
     ok: true,
@@ -121,4 +148,8 @@ export function resolveRicochet(runtime, spec, receipt, body, options = {}) {
     receipt,
     body,
   };
+}
+
+function isFiniteVec2(value) {
+  return !!(value && Number.isFinite(value.x) && Number.isFinite(value.z));
 }
