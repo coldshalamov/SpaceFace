@@ -92,6 +92,55 @@ test('asteroid motion: size factor halves the rate at double radius, clamped, Na
   assert.equal(resolveAsteroidSizeFactor(-4), 1);
 });
 
+// 2026-09-25 live walk: one common rock compounded its body scale to ±2e8 — releaseEntityMesh
+// nulls rec.scaleBodyRef, so the next frame re-captured the already-swollen scale as the new
+// base and every release/reacquire cycle multiplied again. The camera-clearance box then read
+// that rock's ~1.4e8 roof and the chase camera went to orbit. The swell base must be the
+// body's pristine scale no matter how many times the mesh is released and reacquired.
+test('strain swell never compounds the base scale across release/reacquire cycles', () => {
+  const tracker = createAsteroidMotionTracker();
+  const handlers = {};
+  tracker.bindEvents({ on: (event, fn) => { handlers[event] = fn; return () => {}; } });
+
+  const makeBody = (pristine) => {
+    const body = {
+      rotation: { x: 0, y: 0, z: 0 },
+      position: { x: 0, y: 0, z: 0 },
+      scale: {
+        x: pristine, y: pristine, z: pristine,
+        set(x, y, z) { this.x = x; this.y = y; this.z = z; },
+      },
+    };
+    return body;
+  };
+
+  for (const pristine of [1, -1]) {
+    const id = `ast_swell_${pristine < 0 ? 'mirror' : 'plain'}`;
+    const body = makeBody(pristine);
+    const mesh = { userData: {}, children: [body] };
+    body.parent = mesh; // releaseMesh finds bodies through the parent chain
+    const asteroid = {
+      id, type: 'asteroid', radius: 12,
+      data: { oreHP: 50, oreHPMax: 100 }, // fracture 0.5 → strain swell writes every frame
+    };
+    tracker.updateAsteroidMotion(asteroid, mesh, 0, 0.016);
+    handlers['entity:spawned']({ id, type: 'asteroid' }); // materialize envelope
+    handlers['mining:richCoreExposed']({ asteroidId: id }); // breach envelope
+    for (let i = 0; i < 1000; i += 1) {
+      tracker.updateAsteroidMotion(asteroid, mesh, 0.4, 0.016);
+      if (i % 2 === 0) tracker.releaseEntityMesh(id);
+      else tracker.releaseMesh(mesh);
+    }
+    for (const axis of ['x', 'y', 'z']) {
+      const ratio = Math.abs(body.scale[axis] / pristine);
+      assert.ok(
+        ratio >= 0.5 && ratio <= 1.2,
+        `pristine ${pristine}: scale.${axis} ${body.scale[axis]} drifted to ${ratio.toExponential(2)}x base`,
+      );
+    }
+  }
+});
+
 test('asteroid motion: pebbles visibly out-turn mountains with identical spin seeds', () => {
   // Same entity id in fresh trackers => identical hashed spin; only the radius differs.
   const pebbleTracker = createAsteroidMotionTracker();

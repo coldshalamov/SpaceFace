@@ -1707,6 +1707,11 @@ function meshNeedsAuthoredDecode(owner, entity) {
  */
 const CAMERA_CLEARANCE_MARGIN_WU = 16;
 const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
+// The chase camera's far plane: a bound bigger than the camera can even see cannot be a real
+// structure — it can only be a broken mesh bound (2026-09-25: one asteroid body scale
+// compounded to ±2e8 and this box reported a ~1.4e8 roof, orbiting the camera). Rejected
+// bounds return null so a corrupt subtree can never push the camera off the world.
+const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
 const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
 const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
 
@@ -1728,8 +1733,12 @@ function cameraClearanceBoxForMesh(mesh) {
   let box = null;
   if (!_clearanceBoxScratch.isEmpty()) {
     const b = _clearanceBoxScratch;
-    const span = Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z);
-    if (span >= CAMERA_CLEARANCE_MIN_SPAN_WU) {
+    const finite = Number.isFinite(b.min.x) && Number.isFinite(b.min.y) && Number.isFinite(b.min.z)
+      && Number.isFinite(b.max.x) && Number.isFinite(b.max.y) && Number.isFinite(b.max.z);
+    const span = finite
+      ? Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z)
+      : Infinity;
+    if (finite && span >= CAMERA_CLEARANCE_MIN_SPAN_WU && span <= CAMERA_CLEARANCE_MAX_SPAN_WU) {
       box = (cached && cached.box) || {
         minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0,
       };

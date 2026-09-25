@@ -122,6 +122,23 @@ export function resolveYieldSplitPattern(parentId, chunkId) {
 const VEIN_STATIONS = 7;
 const VEIN_EMBER = 0xff9a3c;
 
+// Pristine (pre-presentation) scale per body Object3D, recorded the FIRST time any tracker
+// sees that body — before the swell writes to it. The strain swell re-applies `base × factors`
+// absolutely, so releaseEntityMesh/releaseMesh and recycled ids must never recapture from the
+// live (already swollen) scale: 2026-09-25 a common rock compounded to ±2e8 and its clearance
+// box lifted the camera to y≈1.4e8. WeakMap keeps it module-shared across tracker instances
+// and lets dead bodies collect.
+const pristineBodyScales = new WeakMap();
+
+function pristineScaleFor(body) {
+  let p = pristineBodyScales.get(body);
+  if (!p) {
+    p = { x: body.scale.x, y: body.scale.y, z: body.scale.z };
+    pristineBodyScales.set(body, p);
+  }
+  return p;
+}
+
 function buildVeinStrip(seed, radius) {
   const R = Math.max(2, Number.isFinite(radius) ? radius : 6);
   const dirAngle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
@@ -564,15 +581,17 @@ export function createAsteroidMotionTracker() {
 
     // 5. Crack-axis strain swell. Materials are shared/instanced, so the fracture reads through
     //    transforms only: a ≤2.5% ellipsoid swell along the deterministic vein axis plus a slow
-    //    thermal breathing. Base scale is captured per body object and re-applied absolutely —
-    //    never multiplied — so mesh recreation and repeated frames cannot drift. Bodies without
-    //    a scale interface (minimal test doubles) simply skip the swell.
+    //    thermal breathing. Base scale is the body's PRISTINE scale (first seen, before any
+    //    presentation write) held per body object — re-applied absolutely, never multiplied —
+    //    so mesh release/reacquire, mesh recreation and repeated frames cannot drift or
+    //    compound. Bodies without a scale interface (minimal test doubles) simply skip the swell.
     if (body.scale && typeof body.scale.set === 'function') {
       if (rec.scaleBodyRef !== body) {
         rec.scaleBodyRef = body;
-        rec.baseScaleX = body.scale.x;
-        rec.baseScaleY = body.scale.y;
-        rec.baseScaleZ = body.scale.z;
+        const pristine = pristineScaleFor(body);
+        rec.baseScaleX = pristine.x;
+        rec.baseScaleY = pristine.y;
+        rec.baseScaleZ = pristine.z;
       }
       if (rec.fracture > 0.01) {
         const pattern = resolveVeinFracturePattern(entity.id, rec.fracture, veinScratch);

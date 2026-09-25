@@ -67,6 +67,29 @@ test('small wrecks and non-structural kinds never push the chase camera', () => 
     'the span bar and the kinds gate stay the only admission rules');
 });
 
+// 2026-09-25: one asteroid body scale compounded to ±2e8; setFromObject then reported a
+// ~1.4e8 roof and the chase camera went to orbit. Any non-finite bound, or a span larger than
+// the camera's 14k far plane, cannot be a real structure — it is rejected, not raised.
+test('a broken bound bigger than the camera far plane never pushes the camera', () => {
+  const broken = wreckRoot(300, 300, 300);
+  broken.children[0].scale.setScalar(2e8); // the compounded-scale failure shape
+  const station = wreckRoot(300, 300, 300);
+  station.userData.kind = 'station';
+  const owner = structuralOwner([broken, station]);
+  assert.equal(cameraClearanceFloorAt(owner, CAM_X, CAM_Z, CAM_Y), 150 + MARGIN,
+    'the 2e8-scaled child is ignored; the sane 300 WU station still yields its roof');
+  assert.equal(cameraClearanceFloorAt(owner, CAM_X + 5000, CAM_Z, CAM_Y), -Infinity,
+    'off the footprint nothing reports — the broken box never becomes a floor');
+});
+
+test('a non-finite bound is rejected the same way', () => {
+  const corrupt = wreckRoot(300, 300, 300);
+  corrupt.children[0].position.y = Infinity;
+  const owner = structuralOwner([corrupt]);
+  assert.equal(cameraClearanceFloorAt(owner, CAM_X, CAM_Z, CAM_Y), -Infinity,
+    'an infinite roof is not a structure the camera may clear');
+});
+
 test('the clearance kinds list names wrecks in the live owner', () => {
   const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const kinds = source.match(/const CAMERA_CLEARANCE_KINDS = new Set\(\[([^\]]*)\]\)/);
