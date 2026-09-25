@@ -213,7 +213,7 @@ test('far current-sector landmarks are map facts until they can enter the table'
   }), false, 'leaving the sector still drops the landmark');
   assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
     mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
-  }), false, 'an ordinary far station is still a map fact, landmark flag absent');
+  }), true, 'an authored station standing in the sector is kept even without the landmark flag');
   assert.equal(shouldKeepPersistentLandmarkResident(helios, {
     mode: 'flight', currentSectorId: 'sector_helios_prime',
   }), false, 'a landmark that never finished authored admission earns no residency');
@@ -221,6 +221,54 @@ test('far current-sector landmarks are map facts until they can enter the table'
     type: 'station', data: { landmark: true, sectorId: 'sector_tethys_junction' },
   }), true, 'the authored landmark flag the sector table already carries is the signal');
   assert.equal(isPersistentLandmark({ type: 'ship', data: { landmark: true } }), false);
+});
+
+test('an authored-resident station survives a complete activity frame that omits it', () => {
+  // Regression: a station shelved while the player flew past reach leaves the frame's glass/runway
+  // sets entirely, so the complete-frame deny used to evict its mesh on the away leg — and the
+  // return leg paid a multi-second authored reload while its hull sat rootHidden on the glass.
+  const state = {
+    playerId: 1,
+    mode: 'flight',
+    camera: { zoom: 144, tilt: 60 },
+    entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160 }]]),
+    world: { currentSectorId: 'sector_helios_prime' },
+    render: {
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set(),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  const authoredStation = {
+    id: 20,
+    type: 'station',
+    alive: true,
+    homeSectorId: 'sector_helios_prime',
+    pos: { x: 9000, z: 0 },
+    radius: 42,
+    mesh: { userData: { authoredAssetState: 'authored' } },
+  };
+  assert.equal(isEntityRenderRelevant(authoredStation, state), true,
+    'an authored station body already standing in the live sector is kept even when a complete'
+    + ' activity frame omits it and it sits far off the glass');
+
+  const stillLoading = {
+    ...authoredStation,
+    id: 21,
+    mesh: { userData: { authoredAssetState: 'loading' } },
+  };
+  assert.equal(isEntityRenderRelevant(stillLoading, state), false,
+    'a station that never finished authored admission earns no residency');
+
+  const otherSector = {
+    ...authoredStation,
+    id: 22,
+    homeSectorId: 'sector_ceres_belt',
+  };
+  assert.equal(isEntityRenderRelevant(otherSector, state), false,
+    'leaving the sector still drops the station');
 });
 
 test('opening compose follows the table, not a 2400 WU leftover horizon', () => {

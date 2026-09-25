@@ -1050,6 +1050,18 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   // +30-50 s wr:/place/station link cluster). Keep the arena relevant for the run's life.
   if (survivalRunHoldsArena(state)) return true;
   if (entityIsExplicitRenderFocus(entity, state)) return true;
+  // An already-authored landmark or station standing in the player's own sector is kept, never
+  // rebuilt from scratch — and this must run AHEAD of the complete-frame deny below: a big
+  // station shelved while the player flew past reach leaves the frame's glass/runway sets
+  // entirely, so the deny used to evict it on the away leg and the return found a root hidden
+  // while its authored body re-loaded on screen. This is a post-admission residency rule
+  // (`authoredResident` is still required — nothing far is ever built by it, and off-screen
+  // roots are still not submitted; the keep is memory only).
+  if (shouldKeepPersistentLandmarkResident(entity, {
+    mode: state && state.mode,
+    currentSectorId: state && state.world && state.world.currentSectorId,
+    authoredResident: entityHasAuthoredResidentRoot(entity),
+  })) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
   const inboundDecode = isInboundDecodeHull(entity, state, radius);
@@ -1086,15 +1098,6 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
     // Same law without a complete activity frame: nothing on the live glass loses its mesh.
     return entityIsOnReadableGlass(entity, state);
   }
-  // An already-authored landmark in the player's own sector is kept, never rebuilt from scratch.
-  // This is a post-admission residency rule: the loading path above no longer admits a far Helios
-  // place merely because it is the critical hub, so shell-first startup does not pay its detail
-  // decode before flight.
-  if (shouldKeepPersistentLandmarkResident(entity, {
-    mode: state && state.mode,
-    currentSectorId: state && state.world && state.world.currentSectorId,
-    authoredResident: entityHasAuthoredResidentRoot(entity),
-  })) return true;
   if (tier === PRESENTATION_TIER.R0_GLASS || tier === PRESENTATION_TIER.R1_RUNWAY) return true;
   const numericRadius = Number(radius);
   const limit = radius == null || !Number.isFinite(numericRadius)
@@ -12735,8 +12738,8 @@ export const render = {
       // real screen. The presented pose inside the live glass extents wins over the runway deny.
       const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
       const onLiveGlass = Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
-        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + glassRadius
-        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + glassRadius;
+        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + TABLE_FRAME_SKIRT_WU + glassRadius
+        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + TABLE_FRAME_SKIRT_WU + glassRadius;
       // The live-glass deadline only exists once the live screen does: a root
       // pending behind the loading shell is not on glass yet — its clock starts
       // at the first playable frame, same gate the admission lane serves.

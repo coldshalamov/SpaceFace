@@ -659,6 +659,12 @@ export function isPersistentLandmark(entity) {
  *
  * So: never build a far landmark, but never evict one already standing in the sector the player is
  * in. Leaving the sector still drops it, because the sector ids stop matching.
+ *
+ * The same keep now covers every station, not only landmark-flagged ones: stations are few per
+ * sector and expensive to rebuild, and the owner reported big stations vanishing and popping back
+ * — an authored station body already standing in the current sector is kept. Still never built
+ * from far (`authoredResident` is required), and off-screen roots are still not submitted, so the
+ * keep is memory only.
  */
 export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (!entity) return false;
@@ -666,7 +672,7 @@ export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (options.withinResidency === true) return true;
   if (options.mode === 'loading' && isCriticalStartingHub(entity)) return true;
   if (options.authoredResident !== true) return false;
-  if (!isPersistentLandmark(entity)) return false;
+  if (!isPersistentLandmark(entity) && entity.type !== 'station') return false;
   const currentSectorId = options.currentSectorId ? String(options.currentSectorId) : '';
   if (!currentSectorId) return false;
   const data = entity.data || {};
