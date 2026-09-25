@@ -326,6 +326,11 @@ export function applyOpticCellSkin(root, entity) {
   const bodyMaterial = opticCellBodyMaterial(kind, ud[OPTIC_VARIANT_USERDATA_KEY] | 0);
   if (bodyMaterial) body.material = bodyMaterial;
   ud.sfOpticMaterial = bodyMaterial;
+  // 'final' = this skin can never improve — every non-stone material is authored and a
+  // stone is final once the surface library has decoded (a bare stone resolves again each
+  // sync so it can pick up its maps). The flag keeps the per-frame hot path at two field
+  // reads and zero key-string allocation, per the render layer's no-alloc contract.
+  ud.sfOpticFinal = kind !== 'stone' || getReadyRockSurfaceTextures() != null;
   const detailMaterial = opticCellDetailMaterial(kind);
   let details = Array.isArray(ud[OPTIC_DETAILS_USERDATA_KEY]) ? ud[OPTIC_DETAILS_USERDATA_KEY] : null;
   if ((!details || details.length === 0) && detailMaterial) {
@@ -358,16 +363,24 @@ export function dressOpticCell(root, body, entity, kind, variantIdx = 0) {
 
 /**
  * Runtime refresh — the presentation-layer half of spend/rekindle. Compares the
- * entity's live data.opticMaterial (and the currently-resolved body material, so a
- * bare-then-mapped stone upgrades itself) against the stamps on its root. One Map
- * lookup and a string compare per call; ordinary rocks exit at the first null.
- * Returns true when a swap happened.
+ * entity's live data.opticMaterial against the stamps on its root; a stone that was
+ * applied before the surface library decoded is not stamped final, so it keeps
+ * resolving until it can pick up its maps. Ordinary rocks exit at the first null;
+ * steady-state optic cells exit on two field reads with no allocation. Returns true
+ * when a swap happened.
  */
 export function syncOpticCellSkin(entity, root) {
   const kind = opticCellKindOf(entity);
   if (!kind || !root || !root.userData) return false;
   const ud = root.userData;
-  const bodyMaterial = opticCellBodyMaterial(kind, ud[OPTIC_VARIANT_USERDATA_KEY] | 0);
-  if (ud[OPTIC_SKIN_USERDATA_KEY] === kind && ud.sfOpticMaterial === bodyMaterial) return false;
+  // Fast path: the applied kind still matches and the skin is final — two field reads,
+  // no cache-key string built.
+  if (ud[OPTIC_SKIN_USERDATA_KEY] === kind && ud.sfOpticFinal === true) return false;
+  if (ud[OPTIC_SKIN_USERDATA_KEY] === kind) {
+    // Same kind, not final — a bare stone still waiting on the decode. Re-resolve and
+    // only re-apply when the cache now yields the mapped material; a still-bare resolve
+    // is a no-op, so report honestly that nothing swapped.
+    if (opticCellBodyMaterial(kind, ud[OPTIC_VARIANT_USERDATA_KEY] | 0) === ud.sfOpticMaterial) return false;
+  }
   return applyOpticCellSkin(root, entity);
 }
