@@ -68,6 +68,7 @@ import {
   requestSandboxGame,
   SCENARIO_PRESETS,
 } from '../sandbox/sandboxSetup.js';
+import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import {
@@ -622,6 +623,7 @@ export const crucibleScreen = {
 
   mount(rootEl, ctx) {
     let enterButton = null;
+    ensurePhysicsLabRoute(ctx);
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
     rootEl.dataset.kReady = '0';
@@ -1248,9 +1250,10 @@ export const crucibleScreen = {
       if (practicePreset) {
         const practiceRow = el('div', 'k-row sf-crd-practice');
         const practiceWord = word('Practice room', 'k-word--emph');
-        practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Relaunch to reset.');
+        practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Spawn, latch, throw, and slow time stay on screen. Relaunch to reset.');
         practiceWord.addEventListener('click', () => {
           cue('confirm');
+          notePracticeLaunch(ctx);
           requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(practicePreset.config));
         });
         practiceRow.appendChild(practiceWord);

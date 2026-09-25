@@ -117,6 +117,13 @@ function emitKill(bus, overrides = {}) {
   });
 }
 
+// A kill opens the overload flare first. The structural breakup is the detonation
+// after that window, not the instant of the receipt.
+function settleKill(system) {
+  system.state.simTime += 0.5;
+  system._updatePendingDetonations();
+}
+
 // ── cueArbitration kind (no recipe, no budget move) ───────────────────────────
 
 test('structural-fx cue kind is declared without moving lane budgets', () => {
@@ -185,6 +192,7 @@ test('entity:killed requests blades, arcs, and shards through cue admission', ()
   const { system, bus } = makeVfxHarness();
   const before = spawned(system);
   emitKill(bus);
+  settleKill(system);
   const after = spawned(system);
   assert.ok(after.blades > before.blades, `kill must spawn blades, delta ${after.blades - before.blades}`);
   assert.ok(after.arcs > before.arcs, 'kill must spawn arcs');
@@ -272,7 +280,9 @@ test('reduced-motion kill requests fewer blades than the full-motion kill', () =
   const full = makeVfxHarness();
   const reduced = makeVfxHarness({ motionReduce: true });
   emitKill(full.bus);
+  settleKill(full.system);
   emitKill(reduced.bus);
+  settleKill(reduced.system);
   const fullSpawned = spawned(full.system).blades;
   const reducedSpawned = spawned(reduced.system).blades;
   assert.ok(fullSpawned > 0);
@@ -286,6 +296,7 @@ test('off-table kill is culled and does not grow the pool', () => {
   const { system, bus } = makeVfxHarness();
   const before = spawned(system);
   emitKill(bus, { pos: { x: 80000, z: 80000 } });
+  settleKill(system);
   assert.deepEqual(spawned(system), before);
   system.destroy();
 });
@@ -293,6 +304,7 @@ test('off-table kill is culled and does not grow the pool', () => {
 test('stats high-water per family never exceeds fixed capacity after a burst', () => {
   const { system, bus } = makeVfxHarness();
   for (let i = 0; i < 12; i++) emitKill(bus, { id: 100 + i, pos: { x: i * 0.4, z: 1 } });
+  settleKill(system);
   const stats = system.inspect().arcadeStructuralFxStats;
   for (const kind of ['blades', 'arcs', 'shards']) {
     assert.ok(stats[kind].highWater > 0, `${kind} high-water must move`);
@@ -305,6 +317,7 @@ test('stats high-water per family never exceeds fixed capacity after a burst', (
 test('WebGL context loss disposes the pool; the next kill remounts it', () => {
   const { system, bus, canvas } = makeVfxHarness({ withCanvas: true });
   emitKill(bus);
+  settleKill(system);
   assert.ok(spawned(system).blades > 0);
   const group = system._arcadeStructural.group;
   assert.ok(group.parent, 'pool must be in the scene before loss');
@@ -312,6 +325,7 @@ test('WebGL context loss disposes the pool; the next kill remounts it', () => {
   assert.equal(system.inspect().arcadeStructuralFx, null);
   assert.equal(group.parent, null);
   emitKill(bus);
+  settleKill(system);
   assert.ok(spawned(system).blades > 0, 'kill after restore must remount and spawn');
   system.destroy();
 });

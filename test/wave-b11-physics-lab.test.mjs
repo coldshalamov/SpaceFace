@@ -1,17 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { sandboxScreen } from '../src/ui/screens/sandbox.js';
 import {
   requestTimeScale,
   applyCrucibleLabControl,
+  requestSpawnBodies,
+  requestLatch,
+  requestThrow,
+  requestResetRoom,
+  ensurePhysicsLabRoute,
+  notePracticeLaunch,
+  mountCrucibleLabControls,
 } from '../src/ui/screens/crucibleLabControls.js';
 import { createSimulation } from '../src/core/sim.js';
+import { createBus } from '../src/core/eventBus.js';
+import { actions } from '../src/systems/actions.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { spawnTargetsNow, buildSandboxLaunchConfig } from '../src/ui/sandbox/sandboxSetup.js';
+import { requestSandboxGame } from '../src/ui/sandbox/sandboxSetup.js';
 import { createInputTapeDriver } from '../src/testing/lab/inputTape.js';
+import {
+  applyFeatureConfigToMaps,
+  restoreFeatureMaps,
+  snapshotFeatureMaps,
+  PRODUCTION_FEATURES,
+} from '../src/data/featureFlags.js';
 
 function createDomStub() {
   function makeNode(tag) {
@@ -150,6 +167,92 @@ function createLabHarness(seed = 4242) {
   return { sim, state, bus, player, ctx, timeEffects };
 }
 
+function stubCombatPhysics() {
+  const joints = new Map();
+  return {
+    createAttachment(input) {
+      const handle = { id: input.attachmentId, attachmentId: input.attachmentId };
+      joints.set(input.attachmentId, handle);
+      return handle;
+    },
+    cutAttachment(input) {
+      joints.delete(input.attachmentId);
+      return true;
+    },
+    setAttachmentReel() { return true; },
+    getAttachmentTelemetry() { return null; },
+  };
+}
+
+function press(node) {
+  for (const fn of (node && node.listeners && node.listeners.click) || []) fn();
+}
+
+function findText(root, text) {
+  const walk = (node) => {
+    if (!node) return null;
+    if (node.textContent === text) return node;
+    for (const child of node.children || []) {
+      const found = walk(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(root);
+}
+
+test('Wave B11: practice launch applies through the sandbox hook without a dev flag', () => {
+  const { doc, makeNode } = createDomStub();
+  doc.body = makeNode('body');
+  doc.getElementById = () => null;
+  const prevDoc = globalThis.document;
+  globalThis.document = doc;
+  const bus = createBus();
+  const spawned = [];
+  let nextId = 1;
+  const ctx = {
+    registry: { get() { return null; } },
+    bus,
+    state: {
+      player: { credits: 0 },
+      playerId: 1,
+      entities: { get: () => ({ pos: { x: 0, z: 0 } }) },
+      sandbox: false,
+    },
+    helpers: {
+      spawnEntity(spec) {
+        const entity = { id: nextId++, ...spec, alive: true };
+        spawned.push(entity);
+        return entity;
+      },
+    },
+  };
+  try {
+    assert.equal(notePracticeLaunch(ctx), true);
+    requestSandboxGame(bus, { targetDrones: { count: 2, distance: 120 } });
+    bus.emit('game:started');
+    assert.equal(spawned.length, 2, 'the sandbox hook must spawn the practice bodies');
+    assert.equal(ctx.state.sandbox, true, 'the flight that follows is the physics toy');
+    assert.ok(doc.body.children.length > 0, 'lab controls stay on screen after launch');
+    const spawnBtn = findText(doc.body, 'Spawn bodies');
+    const latchBtn = findText(doc.body, 'Latch');
+    const throwBtn = findText(doc.body, 'Throw');
+    assert.ok(spawnBtn && latchBtn && throwBtn, 'spawn, latch, and throw are visible controls');
+    bus.emit('game:exitToMenu');
+  } finally {
+    globalThis.document = prevDoc;
+  }
+});
+
+test('Wave B11: the lab is on the front door, not behind a dev flag', () => {
+  const menu = readFileSync(fileURLToPath(new URL('../src/ui/screens/mainMenu.js', import.meta.url)), 'utf8');
+  const door = readFileSync(fileURLToPath(new URL('../src/ui/screens/crucible.js', import.meta.url)), 'utf8');
+  assert.match(menu, /action: 'sandbox', label: 'Sandbox'/);
+  assert.match(door, /notePracticeLaunch\(ctx\)/);
+  assert.match(door, /No records, no rewards/);
+  assert.equal(typeof ensurePhysicsLabRoute, 'function');
+});
+
 test('Wave B11: Physics lab / Sandbox screen mounts on default route without dev flag', () => {
   const { doc, makeNode } = createDomStub();
   const prevDoc = globalThis.document;
@@ -189,60 +292,105 @@ test('Wave B11: Lab controls slow time (time-scale) and restore cleanly', () => 
   assert.equal(timeEffects.getEffectiveScale(), 1.0, 'effective time scale must return to 1.0');
 });
 
-test('Wave B11: Spawn bodies, latch with rope, throw and verify velocity change', () => {
-  const { sim, state, bus, player, ctx } = createLabHarness();
-
-  // 1. Spawn target bodies in the lab
-  spawnTargetsNow(ctx, 3);
-  const spawnedTargets = [...state.entities.values()].filter(
-    (e) => e && e.id !== player.id,
-  );
-  assert.equal(spawnedTargets.length, 3, 'three sandbox target bodies must spawn');
-
-  const target = spawnedTargets[0];
-  const initialTargetSpeed = Math.hypot(target.vel.x, target.vel.z);
-
-  // 2. Latch with the massline rope
-  const tether = {
-    id: 'tether-test-1',
-    active: true,
-    phase: 'taut',
-    sourceId: player.id,
-    targetId: target.id,
-    anchorPos: { x: target.pos.x, z: target.pos.z },
-    length: Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z),
-    maxLength: 120,
-    load: 0.8,
-    strain: 0.05,
-    tangent: { x: 1, z: 0 },
-    angularSpeed: 2.5,
-  };
-  state.tethers = [tether];
-
-  // 3. Throw the target body
-  target.vel.x += 45;
-  target.data = target.data || {};
-  target.data.stuntThrown = true;
-  bus.emit('massline:throw', {
-    payloadId: target.id,
-    releaseId: `massline:throw:${state.tick || 0}:${target.id}`,
-    payloadSpeed: Math.hypot(target.vel.x, target.vel.z),
+function createToyHarness(seed = 4242) {
+  const helpers = { combatPhysics: stubCombatPhysics() };
+  const sim = createSimulation({
+    seed,
+    helpers,
+    systems: [actions, tetherGameplay, masslineThrow],
   });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.sandbox = true;
+  state.world = state.world || { currentSectorId: 'sector_helios_prime' };
+  state.settings = state.settings || { gameplay: {} };
+  state.settings.gameplay = state.settings.gameplay || {};
+  state.settings.gameplay.masslineReleaseAssist = 'off';
 
-  const postThrowSpeed = Math.hypot(target.vel.x, target.vel.z);
-  assert.ok(
-    postThrowSpeed > initialTargetSpeed,
-    `thrown body must accelerate: post speed ${postThrowSpeed.toFixed(1)} > initial ${initialTargetSpeed.toFixed(1)}`,
-  );
-  assert.ok(target.data.stuntThrown, 'body must be marked with stuntThrown receipt');
+  const player = sim.spawn({
+    type: 'ship',
+    team: 0,
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    hull: 250,
+    hullMax: 250,
+    mass: 50,
+    radius: 8,
+  });
+  state.playerId = player.id;
+  state.player = state.player || { flags: {}, credits: 25000, cargo: { items: {} } };
+
+  const timeEffects = createTimeEffects(state);
+  const ctx = {
+    state,
+    bus,
+    timeEffects,
+    helpers: sim.helpers,
+    registry: sim.registry,
+    simStep: () => { sim.runTicks(1); return true; },
+  };
+  return { sim, state, bus, player, ctx, timeEffects };
+}
+
+test('Wave B11: Spawn, latch, throw, and reset work from the lab controls', () => {
+  const flags = snapshotFeatureMaps();
+  applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+  const { doc } = createDomStub();
+  const prevDoc = globalThis.document;
+  globalThis.document = doc;
+  try {
+    const { state, bus, player, ctx } = createToyHarness();
+    let throws = 0;
+    bus.on('massline:throw', () => { throws += 1; });
+    const host = doc.createElement('div');
+    const handle = mountCrucibleLabControls(ctx, host);
+    try {
+      const spawnBtn = findText(host, 'Spawn bodies');
+      const latchBtn = findText(host, 'Latch');
+      const throwBtn = findText(host, 'Throw');
+      const resetBtn = findText(host, 'Reset room');
+      assert.ok(spawnBtn && latchBtn && throwBtn && resetBtn);
+      assert.equal(spawnBtn.disabled, false, 'spawn is a live control in the toy');
+
+      press(spawnBtn);
+      const spawnedTargets = [...state.entities.values()].filter((entity) => entity && entity.id !== player.id && entity.alive !== false);
+      assert.equal(spawnedTargets.length, 3, 'three bodies spawn from the lab control');
+      assert.equal(applyCrucibleLabControl(ctx, requestSpawnBodies(0)), false);
+
+      const speedBefore = spawnedTargets.map((entity) => Math.hypot(entity.vel.x, entity.vel.z));
+      press(latchBtn);
+      assert.equal(state.player.tether && state.player.tether.active, true, 'latch uses the rope owner');
+      const target = state.entities.get(state.player.tether.targetId);
+      assert.ok(target && target.id !== player.id);
+
+      press(throwBtn);
+      assert.equal(throws, 1, 'throw is the real massline release');
+      assert.equal(state.player.tether.active, false, 'the rope lets go');
+      assert.equal(Math.hypot(target.vel.x, target.vel.z), speedBefore[spawnedTargets.indexOf(target)],
+        'a throw does not invent speed');
+      assert.equal(applyCrucibleLabControl(ctx, requestThrow()), false, 'a second throw needs a rope');
+
+      press(resetBtn);
+      const stillThere = [...state.entities.values()].filter((entity) => entity && entity.id !== player.id && entity.alive !== false);
+      assert.equal(stillThere.length, 0, 'reset removes the bodies the lab spawned');
+      assert.equal(applyCrucibleLabControl(ctx, requestResetRoom()).kind, 'resetRoom');
+      assert.equal(applyCrucibleLabControl(ctx, requestLatch()), false);
+    } finally {
+      if (handle) handle.dispose();
+    }
+  } finally {
+    restoreFeatureMaps(flags);
+    globalThis.document = prevDoc;
+  }
 });
 
 test('Wave B11: Deterministic input tape replay matches positions across repeat runs', () => {
   const tape = {
     events: [
-      { tick: 5, action: 'thrust', value: 1.0 },
-      { tick: 25, action: 'turn', value: 0.5 },
-      { tick: 45, action: 'thrust', value: 0.0 },
+      { tick: 5, code: 'KeyW', pressed: true },
+      { tick: 25, code: 'KeyD', pressed: true },
+      { tick: 45, code: 'KeyW', pressed: false },
     ],
     frames: [],
   };
@@ -252,17 +400,19 @@ test('Wave B11: Deterministic input tape replay matches positions across repeat 
     const driver = createInputTapeDriver(tape);
 
     const positions = [];
+    let sawThrust = false;
     for (let tick = 0; tick < 60; tick++) {
       state.tick = tick;
-      // Step input driver
-      const frameInput = tape.events.find((e) => e.tick === tick);
-      if (frameInput) {
-        if (frameInput.action === 'thrust') player.vel.z -= frameInput.value * 2;
-        if (frameInput.action === 'turn') player.vel.x += frameInput.value * 2;
-      }
+      driver.apply(state, tick, 1 / 60, { playerEntity: player });
+      const moveZ = state.input && state.input.moveZ || 0;
+      const moveX = state.input && state.input.moveX || 0;
+      if (moveZ !== 0 || moveX !== 0) sawThrust = true;
+      player.vel.z += moveZ * 2;
+      player.vel.x += moveX * 2;
       sim.runTicks(1);
       positions.push({ x: player.pos.x, z: player.pos.z });
     }
+    assert.equal(sawThrust, true, 'the tape must drive real flight keys');
     return positions;
   }
 

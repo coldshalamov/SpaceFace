@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createStructuredBurstGeometry } from './structuredBurstGeometry.js';
 import { spawnImpactStructuralBeats } from './causalStructuralBurst.js';
+import { resolveImpactPresentation } from '../../presentation/causalVfxGrammar.js';
+import { arbitrateStructuralImpactCue } from '../../presentation/cueArbitration.js';
 import { createStructuralSurfaceMaterial } from './transientVfxMaterials.js';
 import { worldSizeForPixels } from '../weapons/pixelFloor.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
@@ -196,6 +198,23 @@ class StructuralPool {
     this.evicted++;
     this.cursor = (victim + 1) % this.capacity;
     return victim;
+  }
+
+  // Read-only twin of claim's refuse rule. Equal priority may evict; a strictly hotter slot may not.
+  // `count` is how many beats this cue will write. One free slot does not admit a cue that needs more.
+  admission(priority = DEFAULT_PRIORITY, count = 1) {
+    const requested = clamp01(priority);
+    const need = Math.max(1, count | 0);
+    let free = 0;
+    let evictable = 0;
+    for (let i = 0; i < this.capacity; i++) {
+      const slot = this.slots[i];
+      if (!slot.alive) free += 1;
+      else if (slot.priority <= requested) evictable += 1;
+    }
+    if (free >= need) return 'free';
+    if (free + evictable >= need) return 'evict';
+    return 'refuse';
   }
 
   spawn(spec = {}) {
@@ -458,6 +477,19 @@ export class ArcadeStructuralFx {
     // bursts on one contact.
     this._gas = null;
     this._debris = null;
+    this._cuesAdmitted = 0;
+    this._cuesRefused = 0;
+    // Reused by emitImpact so a contact does not allocate a pool list.
+    this._neededPools = [null, null, null, null];
+    this._neededCounts = [0, 0, 0, 0];
+    this._neededGates = [0, 1, 2, 3].map(() => ({
+      pool: null,
+      need: 0,
+      live: false,
+      admission(priority) {
+        return this.pool ? this.pool.admission(priority, this.need) : 'refuse';
+      },
+    }));
     // One resident spawn spec so composing an impact allocates nothing per element.
     this._impactSpec = {
       priority: DEFAULT_PRIORITY, life: 0.12, delay: 0,
@@ -505,8 +537,9 @@ export class ArcadeStructuralFx {
   /**
    * THE composition point for a contact. One simulation event becomes ONE recipe: this lane's
    * authored ignition and structure first, then the gas layer's material, then the debris layer's
-   * solids. Primary structure is admitted before decorative residue, so under saturation the thing
-   * that carries the meaning of the hit is the thing that survives.
+   * solids. The cue arbiter runs before any of those presenters. An over-budget cue is refused
+   * whole — no jets, no impact primitives, no debris — so a saturated pool cannot fall through to
+   * a second presenter. Primary structure still outranks decorative residue when the cue is let in.
    *
    * @param {object} rec an impact record, WORLD space (see `impactEventRecord.js`). Passed to the
    *   supporting layers untouched — they localise for themselves.
@@ -517,6 +550,49 @@ export class ArcadeStructuralFx {
    */
   emitImpact(rec, view) {
     if (!rec) return 0;
+    const reduced = !!(view && view.reduced);
+    const forcedColors = !!(view && view.forcedColors);
+    const hero = !!(view && view.hero);
+    const presentation = resolveImpactPresentation(rec, { reduced, forcedColors, hero });
+    const needed = this._neededPools;
+    const counts = this._neededCounts;
+    needed[0] = needed[1] = needed[2] = needed[3] = null;
+    counts[0] = counts[1] = counts[2] = counts[3] = 0;
+    const beats = presentation.beats;
+    for (let i = 0; i < beats.length; i++) {
+      const primitive = beats[i].primitive;
+      const index = primitive === 'blade' ? 0
+        : primitive === 'arc' ? 1
+          : primitive === 'plate' ? 3
+            : 2;
+      if (!needed[index]) {
+        needed[index] = index === 0 ? this.blades
+          : index === 1 ? this.arcs
+            : index === 3 ? this.plates
+              : this.shards;
+      }
+      counts[index] += Math.max(1, beats[i].count | 0);
+    }
+    const gates = this._neededGates;
+    for (let i = 0; i < 4; i++) {
+      const gate = gates[i];
+      if (counts[i] > 0 && needed[i]) {
+        gate.pool = needed[i];
+        gate.need = counts[i];
+        gate.live = true;
+      } else {
+        gate.pool = null;
+        gate.need = 0;
+        gate.live = false;
+      }
+    }
+    const priority = view && Number.isFinite(view.priority) ? view.priority : DEFAULT_PRIORITY;
+    const decision = arbitrateStructuralImpactCue(gates, { priority, hero });
+    if (!decision.admitted) {
+      this._cuesRefused++;
+      return 0;
+    }
+    this._cuesAdmitted++;
     const spawned = spawnImpactStructuralBeats({
       fx: this,
       rec,
@@ -524,12 +600,12 @@ export class ArcadeStructuralFx {
       lx: view && Number.isFinite(view.x) ? view.x : rec.x,
       ly: view && Number.isFinite(view.y) ? view.y : rec.y,
       lz: view && Number.isFinite(view.z) ? view.z : rec.z,
-      priority: view && Number.isFinite(view.priority) ? view.priority : DEFAULT_PRIORITY,
-      reduced: !!(view && view.reduced),
-      forcedColors: !!(view && view.forcedColors),
-      hero: !!(view && view.hero),
+      priority: decision.priority,
+      reduced,
+      forcedColors,
+      hero,
     });
-    // Primary structure has landed; the supporting passes follow it, in this order, once each.
+    // Admitted cue only. Jets and debris are not a second presenter that ignores the arbiter.
     const gas = this._resolveLayer(this._gas);
     const debris = this._resolveLayer(this._debris);
     if (gas?.emitFromImpact) gas.emitFromImpact(rec);
@@ -599,6 +675,10 @@ export class ArcadeStructuralFx {
         spawned: this.plates.spawned,
         evicted: this.plates.evicted,
         rejected: this.plates.rejected,
+      },
+      cues: {
+        admitted: this._cuesAdmitted,
+        refused: this._cuesRefused,
       },
     };
   }

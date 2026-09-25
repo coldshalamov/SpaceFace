@@ -231,18 +231,38 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
 
   const heading = el('li', 'k-row k-row--static sf-lab-tel__head');
   heading.appendChild(el('span', 'k-caps', 'Telemetry'));
+  const detailsBtn = el('button', 'k-word k-word--fine', 'Show details');
+  detailsBtn.type = 'button';
+  detailsBtn.setAttribute('aria-expanded', 'false');
+  detailsBtn.setAttribute('aria-label', 'Show detailed telemetry');
+  heading.appendChild(detailsBtn);
   root.appendChild(heading);
 
   const valueEls = [];
   for (const row of ROWS) {
     const rowEl = el('li', 'k-row k-row--static sf-lab-tel-row');
+    rowEl.hidden = true;
     rowEl.appendChild(el('span', 'k-row__name k-62 sf-lab-tel-k', row.label));
     const valueEl = el('span', row.key === 'tick'
       ? 'k-row__num sf-lab-tel-tick sf-fig'
       : 'k-row__num sf-lab-tel-v sf-fig', UNAVAILABLE_MARK);
     rowEl.appendChild(valueEl);
     root.appendChild(rowEl);
-    valueEls.push({ row, valueEl });
+    valueEls.push({ row, rowEl, valueEl });
+  }
+
+  let detailsOpen = false;
+  function applyDetails() {
+    for (const { rowEl } of valueEls) rowEl.hidden = !detailsOpen;
+    detailsBtn.textContent = detailsOpen ? 'Hide details' : 'Show details';
+    detailsBtn.setAttribute('aria-expanded', detailsOpen ? 'true' : 'false');
+    detailsBtn.setAttribute('aria-label', detailsOpen ? 'Hide detailed telemetry' : 'Show detailed telemetry');
+  }
+  if (typeof detailsBtn.addEventListener === 'function') {
+    detailsBtn.addEventListener('click', () => {
+      detailsOpen = !detailsOpen;
+      applyDetails();
+    });
   }
 
   hostEl.appendChild(root);

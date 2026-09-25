@@ -596,7 +596,7 @@ export function activeMapGoal(state) {
     label: String(
       (wp && (wp.label || wp.sectorName || wp.reason))
       || (tracked && (tracked.title || tracked.name))
-      || 'Route destination',
+      || 'Plotted course',
     ).replace(/\s+/g, ' ').trim(),
   };
 }
@@ -2423,10 +2423,9 @@ const HINT_ROWS = Object.freeze([
 // SLICE C — inspector tabs. Depth on demand (ADR D9.9).
 // ---------------------------------------------------------------------------------------------
 //
-// The panel shows ONE of these at a time. That is the whole point: the brief asks for eight kinds
-// of depth, and rendering eight kinds of depth simultaneously is how the density paradox was
-// built. Overview is the default and always answers the navigation questions, so the panel is
-// never empty and never opens on a wall of numbers.
+// The panel shows ONE of these at a time. Overview is the default and is never a second copy of
+// the four navigation answers — those stay in the foot band. Depth (route, prices, threat) stays
+// on its own tab.
 //
 // HONESTY RULE FOR TABS: a tab whose data source does not exist yet renders an explicit empty
 // state that says so. It does not get filled with invented content, and it does not get a new
@@ -3502,10 +3501,10 @@ export const galaxyMapScreen = {
   },
 
   /**
-   * The four always-present navigation answers, resolved ONCE per draw and shared by the cartouche,
-   * the framing controls and the aria label.
+   * The four always-present navigation answers, resolved ONCE per draw for the foot band and the
+   * framing controls. There is no second readout: the inspector does not repeat these rows.
    *
-   * Resolving them once is the point, not an optimisation: the cartouche saying one thing while the
+   * Resolving them once is the point, not an optimisation: the foot saying one thing while the
    * "frame ship and destination" button targets another is precisely the class of contradiction the
    * readout exists to remove. Everything here is a pure read of state; the derivation lives in
    * src/ui/map/mapNavContext.js.
@@ -4431,8 +4430,8 @@ export const galaxyMapScreen = {
     const label = mapOperatorLabel(state);
     const identity = label === 'OPERATOR: UNKNOWN' ? `${label} / Quiet routing` : '';
     // The title block names the SELECTED place — or the sector the ship is in when nothing is
-    // selected — over one sentence: type · authority · distance, then the route's time when a route
-    // is engaged (DIRECTION_SHEET §2 "The chart"; the task table's `.gm-head` row).
+    // selected — over one sentence: type · authority · distance. Where the route arrives is the
+    // foot's DESTINATION row and the ribbon; copying "Arrive …" here answered it again.
     const t = this._selectedTarget;
     const curSector = currentSectorId(state);
     const titleEl = this._root.querySelector('.gm-title');
@@ -4455,10 +4454,6 @@ export const galaxyMapScreen = {
       if (rec && rec.factionId) bits.push(factionNameOf(rec.factionId));
       bits.push('you are here');
     }
-    const arrivalEl = this._root.querySelector('#gm-ribbon-arrival');
-    const ribbonEl = this._root.querySelector('#gm-route-ribbon');
-    const arrival = arrivalEl && ribbonEl && !ribbonEl.hidden ? String(arrivalEl.textContent || '').trim() : '';
-    if (arrival) bits.push(arrival);
     if (identity) bits.push(identity);
     const text = bits.join(' · ');
     if (stamp.textContent !== text) stamp.textContent = text;
@@ -4795,9 +4790,8 @@ export const galaxyMapScreen = {
       this._lastInspectorTarget = t;
     }
     if (!t) {
-      // NO SELECTION IS NOT AN EMPTY PANEL. The active tab renders with a null selection —
-      // Overview falls through to the four always-present navigation answers, so the inspector
-      // always says where you are, what you are tracking and what the next leg is.
+      // NO SELECTION IS NOT AN EMPTY PANEL. Overview is a careers line and a click hint.
+      // The four navigation answers stay in the foot — this panel must not repeat them.
       const defaultHtml = this._tabHtml(state, null);
       if (this._inspectorDetailsHtml !== defaultHtml) {
         detailsEl.innerHTML = defaultHtml;
@@ -4843,7 +4837,8 @@ export const galaxyMapScreen = {
       const relevantMission = activeMissions.find(m => m.status === 'active' && (m.destSectorId === t.id || (m.params && m.params.sectorId === t.id)));
       const presenceHtml = galaxyPresenceInspectorHtml(t.presence || []);
 
-      // Compute route distance/cost
+      // Cost of a course to this mark. The plotted legs stay on the ribbon and the Travel
+      // tab — reprinting them here answered "what is the route" a second time.
       const curSec = currentSectorId(state);
       let routeInfo = 'Select to plot route';
       if (curSec && curSec !== t.id) {
@@ -4858,23 +4853,6 @@ export const galaxyMapScreen = {
         }
       } else if (curSec === t.id) {
         routeInfo = 'Current Sector';
-      }
-
-      // Plotted route legs, when the world's route already ends here.
-      const plotted = state.nav && state.nav.route;
-      const plottedDest = plotted && Array.isArray(plotted.legs) && plotted.legs.length
-        ? plotted.legs[plotted.legs.length - 1].to : null;
-      let routeLegsHtml = '';
-      if (plotted && plottedDest === t.id) {
-        const legRows = plotted.legs.map((leg, idx) => {
-          const fromName = (sectorRecordById(state, leg.from) || {}).name || leg.from;
-          const toName = (sectorRecordById(state, leg.to) || {}).name || leg.to;
-          const interdict = leg.interdict ? ` <span style="color:${INK.red}">[interdict]</span>` : '';
-          // The leg departing the sector the player actually occupies is the one under way.
-          const current = leg.from === curSec ? ' is-current' : '';
-          return `<div class="gm-route-leg${current}"><span class="gm-route-leg-n">${idx + 1}</span><b>${escapeMapHtml(fromName)}</b> → <b>${escapeMapHtml(toName)}</b> · ${Math.round(leg.fuel)}F${interdict}</div>`;
-        }).join('');
-        routeLegsHtml = `${legRows}<div class="gm-route-total">Σ ${Math.round(plotted.totalFuel || 0)} fuel · ${plotted.totalHops || plotted.legs.length} hops</div>`;
       }
 
       html += `
@@ -4913,7 +4891,6 @@ export const galaxyMapScreen = {
             <span>Route</span>
             <span class="gm-ins-row-val">${routeInfo}</span>
           </div>
-          ${routeLegsHtml}
         </div>
       `;
 
@@ -5272,7 +5249,7 @@ export const galaxyMapScreen = {
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Route</div>
-        <div class="gm-ins-target-name">${escapeMapHtml(ribbon.arrival ? ribbon.arrival.label : 'Route')}</div>
+        <div class="gm-ins-target-name">Itinerary</div>
         <div class="gm-ins-row"><span>Status</span><span class="gm-ins-row-val">${escapeMapHtml(ribbon.reason)}</span></div>
         ${interruption}
       </div>
@@ -6157,7 +6134,8 @@ export const galaxyMapScreen = {
 
     if (metaEl) {
       const bits = [];
-      if (ribbon.nextWaypoint) bits.push(`Next: ${escapeMapHtml(ribbon.nextWaypoint.label)} · ${escapeMapHtml(ribbon.nextWaypoint.distanceLabel)}`);
+      // The next leg already has its own foot row and its own ribbon leg. Repeating
+      // "Next: …" here answered that question a second time.
       // ETA is shown with its qualifier attached, or its refusal reason. Never a bare number that
       // implies more certainty than the source supports.
       bits.push(ribbon.eta.available
