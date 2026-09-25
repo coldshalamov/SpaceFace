@@ -94,20 +94,28 @@ function bodyPrimary(pal) {
 // bodySecondary — contrast panels, inner hull, secondary structures. Darker + rougher.
 function bodySecondary(pal) {
   const key = `role:bodySecondary:${pal.hull}`;
-  return _matGet(key, () => new THREE.MeshStandardMaterial({
-    color: new THREE.Color(shade(pal.hull, 0.55)),
-    roughness: 0.85, metalness: 0.4,
-    emissive: 0x000000,
-  }));
+  return _matGet(key, () => {
+    const rough = tex('noise:roughSecondary', () => _texBuilder.noise({ size: 512, seed: 103, octaves: 4, baseCells: 6, contrast: 1.15, brightness: 0.08 }));
+    return new THREE.MeshStandardMaterial({
+      roughnessMap: rough || undefined,
+      color: new THREE.Color(shade(pal.hull, 0.55)),
+      roughness: 0.85, metalness: 0.4,
+      emissive: 0x000000,
+    });
+  });
 }
 
 // trim — rails, bevels, edge bands, borders. Brighter metal, lower roughness (catches rim light).
 function trim(pal) {
   const key = `role:trim:${pal.hull}`;
-  return _matGet(key, () => new THREE.MeshStandardMaterial({
-    color: new THREE.Color(shade(pal.hull, 1.4)),
-    roughness: 0.35, metalness: 0.85,
-  }));
+  return _matGet(key, () => {
+    const rough = tex('noise:trimRough', () => _texBuilder.noise({ size: 512, seed: 107, octaves: 3, baseCells: 8, contrast: 1.25, brightness: -0.05 }));
+    return new THREE.MeshStandardMaterial({
+      roughnessMap: rough || undefined,
+      color: new THREE.Color(shade(pal.hull, 1.4)),
+      roughness: 0.35, metalness: 0.85,
+    });
+  });
 }
 
 // hazard — danger surfaces, damage cues, warning stripes. Red-tinted emissive.

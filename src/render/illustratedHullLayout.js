@@ -60,9 +60,12 @@ export const HULL_LAYOUT_GLSL = /* glsl */`
   vec2 sfCell = fract(sfGrid);
   vec2 sfAA = max(fwidth(sfGrid) * 1.2, vec2(0.006));
   vec2 sfSeamAxes = 1.0 - smoothstep(vec2(0.012), vec2(0.012) + sfAA, min(sfCell, 1.0 - sfCell));
-  float sfFineVisibility = 1.0 - smoothstep(0.12, 0.35, max(sfAA.x, sfAA.y));
   float sfSeam = max(sfSeamAxes.x, sfSeamAxes.y) * sfDeck * sfFineVisibility;
-  sfSurfaceRelief = -sfSeam * max(sfHullSize.x, sfHullSize.z) * 0.00065
+  // Micro-fastener relief: subtle fastener impressions spaced along panel seams.
+  vec2 sfFastenerPhase = fract(sfGrid * 4.0) - 0.5;
+  float sfFastenerDist = length(sfFastenerPhase);
+  float sfFastener = (1.0 - smoothstep(0.14, 0.28, sfFastenerDist)) * sfSeam * sfFineVisibility;
+  sfSurfaceRelief = (-sfSeam * 0.00065 + sfFastener * 0.00030) * max(sfHullSize.x, sfHullSize.z)
     * sfLayoutStrength;
   float sfPanel = mod(floor(sfGrid.x) + floor(sfGrid.y) * 3.0, 4.0) / 3.0;
   float sfLeading = (1.0 - smoothstep(0.026, 0.026 + sfAA.x, sfCell.x)) * (1.0 - sfSeamAxes.x) * sfDeck * sfFineVisibility;
