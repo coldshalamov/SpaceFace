@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
+import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
@@ -1829,31 +1830,32 @@ function kickDecodeRunwayAssets(owner, entities) {
     entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
   // the earliest glass deadline: the plan decode lane is serial, so the hull closest
-  // to contact always claims it first.
-  const ordered = list.length > 1
-    ? list.slice().sort((a, b) => {
-      const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
-      const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
-      if (aw !== bw) return aw - bw;
-      return decodeSeconds(a) - decodeSeconds(b);
-    })
-    : list;
-  let started = 0;
-  for (let i = 0; i < ordered.length && started < 2; i++) {
-    const entity = ordered[i];
-    if (!entity || entity.alive === false) continue;
-    if (entity.type !== 'ship' && entity.type !== 'station') continue;
-    if (!meshNeedsAuthoredDecode(owner, entity)) continue;
-    if (pending.has(entity.id)) continue;
+  // to contact always claims it first. Only the first two in that order can ever
+  // start, so a single linear pass keeps the two best instead of fully sorting the
+  // whole list (the comparator used to re-evaluate both keys on every pair).
+  const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
+    if (!entity || entity.alive === false) return false;
+    if (entity.type !== 'ship' && entity.type !== 'station') return false;
+    if (!meshNeedsAuthoredDecode(owner, entity)) return false;
+    if (pending.has(entity.id)) return false;
     // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
     // once the schedule has named them. Other hulls earn a start either through the
     // ordinary admission policy or through the longer decode runway: the authored
     // GLB decode is the long pole on first contact and the canonical library dedupes
     // by file, so a hull closing inside the decode window gets its plan warm while
     // it is still off the glass rather than reaching contact as a resolving marker.
-    if (!entityMatchesWaveHullRunway(entity, state)
+    const wave = entityMatchesWaveHullRunway(entity, state);
+    const seconds = decodeSeconds(entity);
+    if (!wave
         && !isEntityAuthoredUpgradeRelevant(entity, state)
-        && !(decodeSeconds(entity) <= TABLE_DECODE_RUNWAY_SECONDS)) continue;
+        && !(seconds <= TABLE_DECODE_RUNWAY_SECONDS)) return false;
+    key.wave = wave ? 0 : 1;
+    key.seconds = seconds;
+    return true;
+  });
+  let started = 0;
+  for (let i = 0; i < ordered.length && started < 2; i++) {
+    const entity = ordered[i];
     pending.add(entity.id);
     started += 1;
     const opts = entityMatchesWaveHullRunway(entity, state)
