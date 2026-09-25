@@ -2298,6 +2298,9 @@ export function isMeasurementIntegrityProbeError(errorText) {
   return typeof errorText === 'string'
     && (errorText.includes('worktree-not-clean-and-stable')
       || errorText.includes('worktree changed during performance capture')
+      // Same mutation noticed on a run that already failed — the tree moved
+      // mid-capture, so the failure evidence is not attributable either.
+      || errorText.includes('worktree changed during failed capture')
       // A tree mutation between claim mint and the probe's authority check
       // legitimately rejects the claim; the probe never measured anything.
       || errorText.includes('broker-claim-stale-digest')

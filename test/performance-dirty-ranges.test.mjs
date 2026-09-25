@@ -671,6 +671,16 @@ test('mid-capture tree mutation exits are not primary acceptance failures', () =
   ].join('\n');
   assert.equal(isMeasurementIntegrityProbeError(contaminatedText), true);
 
+  // A tree mutation noticed during an already-failed run is the same event:
+  // the files changed mid-capture, so the failure cannot be attributed to the
+  // claimed candidate. Persisting it wedges the gate identically (2026-09-25,
+  // a mid-merge capture stored 'CSP-safe page condition timed out' as primary).
+  const mutatedFailedText = [
+    '[dirty-ranges] FAIL: CSP-safe page condition timed out after 30000ms | worktree changed during failed capture',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(mutatedFailedText), true);
+
   const productFailureText = [
     '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
     'exitCode=1',
