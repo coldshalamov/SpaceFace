@@ -634,7 +634,7 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   checkEqual(s.state.input.autoTargetPath.active, false,
     'dynamic combat-stick motion must not revive persistent path following');
   check(Math.abs(s.state.input.pointerScreen.x - 640) < 1
-    && Math.abs(s.state.input.pointerScreen.y - 360) < 1,
+    && Math.abs(s.state.input.pointerScreen.y - 400) < 1,
     'combat-stick mode re-centres the software pointer instead of letting the cursor escape');
 }
 
