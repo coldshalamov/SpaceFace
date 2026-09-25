@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { applyTradeNavigation, computeBestTrades, describeTradeIntel, formatCargoUnits, unitPrice } from '../src/ui/market/tradeLogic.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 
 const TRADE_LOGIC_SOURCE = readFileSync(new URL('../src/ui/market/tradeLogic.js', import.meta.url), 'utf8');
 const STATION_MARKET_SOURCE = readFileSync(new URL('../src/ui/station/screens/market.js', import.meta.url), 'utf8');
@@ -120,11 +121,14 @@ function checkFailedQuoteFallsBackToRolePrice() {
 
   const buy = unitPrice(ctx, 'station_helios', 'cmdty_food', 'buy');
   const sell = unitPrice(ctx, 'station_helios', 'cmdty_food', 'sell');
+  // Threshold tracks the live commodity table: the Economy Pulse packet (ff6a0cae9) rebalanced
+  // provisions from basePrice 40 to 73, which stranded the old hardcoded 40 ceiling.
+  const foodBase = COMMODITIES.find((c) => c.id === 'cmdty_food').basePrice;
 
   assert(buy > 0, 'failed market quote must not display as a zero buy price');
   assert(sell > 0, 'failed market quote must not display as a zero sell price');
-  assert(buy < 40, 'producer fallback should read as a source price below food base price');
-  assert(sell < 40, 'producer fallback sell price should stay below food base price');
+  assert(buy < foodBase, 'producer fallback should read as a source price below food base price');
+  assert(sell < foodBase, 'producer fallback sell price should stay below food base price');
 }
 
 function checkLiveActiveStationRecordUsesStationIdForRolePrice() {
@@ -201,7 +205,8 @@ function checkBestTradeShowsCurrentLoadAndProfit() {
   assert.equal(food.loadProfit, 40, 'food route should show current-run gross profit');
   assert.equal(food.loadVolume, 5, 'food route should show hold volume consumed');
   assert.equal(food.intelSource, 'scanned', 'marketIntel routes should carry the scanned intel source');
-  assert.equal(food.intelLabel, '2m intel', 'marketIntel routes should expose readable intel age');
+  // INF-085 (0efc5e5cf) aged the remembered-price labels: scans read as "scan · Nm old".
+  assert.equal(food.intelLabel, 'scan · 2m old', 'marketIntel routes should expose readable intel age');
   assert.equal(refined.loadUnits, 1, 'refined route should account for commodity unit price');
   assert.equal(refined.loadVolume, 0.5, 'refined route should account for non-1.0 cargo volume');
   assert.equal(trades[0].cmdtyId, 'cmdty_food', 'ranking should prefer the best current-run profit');

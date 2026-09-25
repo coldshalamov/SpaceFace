@@ -343,8 +343,13 @@ function makeHarness(overrides = {}) {
   system._markEntityCacheDirty();
   for (let f = 0; f < 6; f++) system.update(1 / 60);
   assert.equal(system._particleMat.type, 'ShaderMaterial', 'trail particles must use ShaderMaterial');
-  assert(system._particleMat.fragmentShader.includes('trailSampleProcedural'),
-    'particle fragment must procedurally sample trail streaks');
+  // e0b3b820c (2026-09-20) replaced the retired point-sprite cloud with the shard-sliver
+  // ShaderMaterial: the flow is analytic in the fragment (sin along uTrailTime, no texture
+  // sampler), so the old `trailSampleProcedural` token contract was re-pinned to it.
+  assert(system._particleMat.fragmentShader.includes('uTrailTime')
+    && system._particleMat.fragmentShader.includes('sin(along')
+    && !system._particleMat.fragmentShader.includes('texture2D'),
+    'particle fragment must procedurally animate trail flow (landed shard-sliver shader)');
   assert(system._particleMat.uniforms.uTrailTime, 'particle shader must animate warp via uTrailTime');
   assert(system._trailStreakPool && system._trailStreakPool.capacity > 0, 'trail streak pool must be initialized');
   const fleet = system._energy && system._energy.fleet;
