@@ -89,9 +89,19 @@ export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 export const PERFORMANCE_ACTIVITY_SAMPLE_MS = 5_000;
 export const PERFORMANCE_ACTIVITY_MAX_AGGREGATE_CPU_CORE_FRACTION = 0.125;
 export const PERFORMANCE_ACTIVITY_MAX_PROCESS_CPU_CORE_FRACTION = 0.075;
+// The named-contaminant census only sees heavyweight app classes (browsers, Blender). Generic
+// saturation — another agent's build, a runaway git/index operation, a queued node harness —
+// corrupts a measurement exactly the same while leaving zero contaminant processes. The
+// system-CPU leg closes that hole: sustained three-sample mean above this fraction blocks.
+export const PERFORMANCE_ACTIVITY_MAX_SYSTEM_CPU_FRACTION = 0.75;
 
 const PERFORMANCE_CONTAMINANT_PATTERN =
   /^(?:blender|blender-launcher|blender-mcp|chrome|msedge|msedgewebview2|electron)(?:\.exe)?$/i;
+const PERFORMANCE_SYSTEM_LOAD_SCRIPT = [
+  "$r=@()",
+  "for($i=0;$i -lt 3;$i++){ $r += [double](Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average; if($i -lt 2){ Start-Sleep -Milliseconds 400 } }",
+  "ConvertTo-Json -Compress -InputObject ([pscustomobject]@{samples=@($r); loadPercent=(($r | Measure-Object -Average).Average)})",
+].join(';');
 const PERFORMANCE_PROCESS_SNAPSHOT_SCRIPT = [
   "$names=@('blender','blender-launcher','blender-mcp','chrome','msedge','msedgewebview2','electron')",
   '$rows=@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $names -contains $_.ProcessName } | ForEach-Object {',
@@ -4802,15 +4812,58 @@ function withTimeout(promise, timeoutMs, label) {
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
 }
 
+async function readSystemCpuLoadFraction() {
+  const stdout = await captureProcessOutput('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    PERFORMANCE_SYSTEM_LOAD_SCRIPT,
+  ]);
+  const parsed = JSON.parse(stdout || '{}');
+  const loadPercent = Number(parsed?.loadPercent);
+  return {
+    fraction: Number.isFinite(loadPercent) ? Math.max(0, Math.min(1, loadPercent / 100)) : null,
+    samples: Array.isArray(parsed?.samples) ? parsed.samples.map(Number) : [],
+  };
+}
+
+async function inspectSystemLoad({
+  systemLoadReader = readSystemCpuLoadFraction,
+  maxSystemCpuFraction = PERFORMANCE_ACTIVITY_MAX_SYSTEM_CPU_FRACTION,
+  platform = process.platform,
+} = {}) {
+  if (platform !== 'win32') {
+    return { available: false, active: null, reasons: [`unsupported-platform:${platform}`] };
+  }
+  try {
+    const { fraction, samples } = await systemLoadReader();
+    if (!Number.isFinite(fraction)) {
+      return { available: false, active: null, reasons: ['system-load-unavailable'], samples };
+    }
+    const active = fraction > maxSystemCpuFraction;
+    return {
+      available: true,
+      active,
+      systemCpuFraction: fraction,
+      samples,
+      maxSystemCpuFraction,
+      reasons: active ? ['system-cpu-saturated'] : [],
+    };
+  } catch (error) {
+    return { available: false, active: null, reasons: [error?.message || String(error)] };
+  }
+}
+
 async function inspectPerformanceActivity(root, {
   processSampleMs = PERFORMANCE_ACTIVITY_SAMPLE_MS,
   processSnapshotReader = readPerformanceProcessSnapshot,
   processWaitFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  systemLoadReader = readSystemCpuLoadFraction,
   settleTransientProcessChurn = false,
 } = {}) {
   const lockRoot = path.join(root, 'assets', 'ships', 'release.__lock');
   const buildingPath = path.join(root, 'assets', 'ships', 'release.__building');
-  const [releaseLock, releaseBuilding, processes] = await Promise.all([
+  const [releaseLock, releaseBuilding, processes, systemCpu] = await Promise.all([
     inspectActivityPath(lockRoot, path.join(lockRoot, 'owner.json')),
     inspectActivityPath(buildingPath, buildingPath),
     inspectPerformanceContaminants({
@@ -4819,16 +4872,20 @@ async function inspectPerformanceActivity(root, {
       waitFn: processWaitFn,
       maxAttempts: settleTransientProcessChurn ? 3 : 1,
     }),
+    inspectSystemLoad({ systemLoadReader }),
   ]);
-  const active = releaseLock.active === true || releaseBuilding.active === true || processes.active === true
+  const active = releaseLock.active === true || releaseBuilding.active === true
+    || processes.active === true || systemCpu.active === true
     ? true
     : (releaseLock.active === false && releaseBuilding.active === false
-      && processes.available === true && processes.active === false ? false : null);
+      && processes.available === true && processes.active === false
+      && systemCpu.available === true && systemCpu.active === false ? false : null);
   return {
     capturedAt: new Date().toISOString(),
     releaseLock,
     releaseBuilding,
     contaminatingProcesses: processes,
+    systemCpu,
     active,
   };
 }
@@ -6154,6 +6211,7 @@ export {
   buildClosureWindows,
   inspectPerformanceActivity,
   inspectPerformanceContaminants,
+  inspectSystemLoad,
   readPerformanceRouteFailureState,
   runPerformanceAttributionProbe,
 };
