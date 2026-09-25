@@ -137,7 +137,9 @@ test('the readiness poll never makes a synchronous isProgram round trip on every
   assert.equal(isProgramCalls, 0, 'a sub-second link must not issue any synchronous isProgram call');
 });
 
-test('many long links share one native handle recheck budget instead of one each', async () => {
+test('long links never issue a synchronous isProgram round trip (#169)', async () => {
+  // Each isProgram() waits for the GPU process to drain every queued link: on the quiet VM a single
+  // in-flight recheck blocked 0.1-3.4 s behind streamed admission. COMPLETION_STATUS is the only poll.
   let isProgramCalls = 0;
   const gl = { isContextLost: () => false, isProgram: () => { isProgramCalls += 1; return true; } };
   const readyAt = Date.now() + 1400;
@@ -149,13 +151,36 @@ test('many long links share one native handle recheck budget instead of one each
   try {
     batch.join(gl, programs, () => {});
     const result = await batch.drain();
+    assert.equal(result.contextLost, false);
     assert.equal(result.programs, 0, 'the cohort drained rather than timing out');
   } finally {
     batch.close();
   }
-  // ~1.4 s of polling 100 programs is tens of thousands of handle checks; the shared budget allows a few.
-  assert.equal(isProgramCalls <= 4, true, `isProgram calls: ${isProgramCalls}`);
-  assert.equal(isProgramCalls >= 1, true, 'the native recheck still runs for links that outlive its delay');
+  assert.equal(isProgramCalls, 0, `isProgram calls: ${isProgramCalls}`);
+});
+
+test('a handle WebGL rejects (COMPLETION_STATUS answers null) settles the cohort as invalidated at once', async () => {
+  let isProgramCalls = 0;
+  const gl = { isContextLost: () => false, isProgram: () => { isProgramCalls += 1; return false; } };
+  const alive = fakeProgram('alive', 1e9);
+  // three's WebGLProgram.isReady() caches getProgramParameter's null for a handle the context does not own.
+  const orphaned = { name: 'orphaned', program: { name: 'orphaned' }, isReady: () => null };
+  const settled = [];
+  const batch = beginScenePipelineReadinessBatch(null);
+  const started = Date.now();
+  let result;
+  try {
+    batch.join(gl, [alive], (r) => settled.push(r));
+    batch.join(gl, [orphaned], (r) => settled.push(r));
+    result = await batch.drain();
+  } finally {
+    batch.close();
+  }
+  assert.equal(result.contextLost, true);
+  assert.deepEqual(settled.map((r) => r.contextLost), [true, true]);
+  assert.match(settled[0].reason, /invalidated/);
+  assert.equal(Date.now() - started < 500, true, 'seen on the first poll, not after a native recheck delay');
+  assert.equal(isProgramCalls, 0);
 });
 
 test('a context lost and restored between two polls still settles the cohort as lost', async () => {

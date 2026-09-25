@@ -709,7 +709,7 @@ test('startup publishes the final opening visibility boundary before freezing ex
 
 test('opening publication settles the chase camera before classifying first-picture visibility', () => {
   const source = renderSystem._publishOpeningFirstPicture.toString();
-  const followAt = source.indexOf('this.cam.follow(0)');
+  const followAt = source.indexOf('this.cam.follow(0,');
   const visibilityAt = source.indexOf('this.syncEntityViews(1)');
   assert.ok(followAt >= 0 && visibilityAt >= 0 && followAt < visibilityAt,
     'the exact census must not cull with the loading camera and then freeze a different chase-camera picture');
@@ -719,7 +719,7 @@ test('the first flight submit preserves the prepared opening graph instead of se
   const source = renderSystem.prepareFrame.toString();
   assert.match(source, /holdOpeningPicture\s*=\s*this\._openingFirstPicturePrepared\s*===\s*true/);
   assert.match(source,
-    /if\s*\(!holdOpeningPicture\)\s*\{[\s\S]*?this\.syncEntityViews\(alpha\)[\s\S]*?this\.cam\.follow\(frameDt\)/,
+    /if\s*\(!holdOpeningPicture\)\s*\{[\s\S]*?this\.syncEntityViews\(alpha\)[\s\S]*?this\.cam\.follow\(frameDt,/,
     'ordinary pose, visibility, LOD, and camera selection resume only after the exact first picture is submitted');
 });
 
@@ -1102,9 +1102,9 @@ test('renderer entry points delegate route selection instead of branching on blo
   assert.match(compileWire,
     /this\._compilePostRoute\(\s*route, subject, cam\.obj, scene/);
   assert.match(compileWire,
-    /compileSubjectColorAndDepth\(batch\[0\], route\)/);
+    /compileSubjectColorAndDepth\(batch\[0\], route,/);
   assert.match(compileWire,
-    /compileSubjectColorAndDepth\(staging, route\)/);
+    /compileSubjectColorAndDepth\(staging, route,/);
   assert.match(compileWire, /restoreObjectHome\(home\)/);
   assert.match(openingWire, /openingSubmissionPlan/);
   assert.doesNotMatch(openingWire, /_renderOpeningPostFrame\(/,
@@ -1220,11 +1220,12 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     'renderer must own one shared blocking-slice observer for authored admission paths');
   const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
   // 206e8b2f5 (PQ-033.02) routed two more GPU residency passes through the same observer: the
-  // context-restore re-upload and the first-picture barrier on the live mount.
+  // context-restore re-upload and the first-picture barrier on the live mount. Later passes added
+  // the warm-roots geometry residency and the live-sector pool re-upload on the same observer.
   assert.equal(
     observerWires?.length,
-    5,
-    'pipeline tracker, authored residency tracker, opening residency, context-restore residency, and first-picture residency must share the observer',
+    7,
+    'pipeline tracker, authored residency tracker, opening residency, context-restore residency, first-picture residency, warm geometry residency, and live-sector pool residency must share the observer',
   );
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
@@ -1241,6 +1242,12 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*plan\.residencySubjects[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'opening GPU residency must publish initTexture slices');
+  assert.match(source,
+    /prepareStartupGeometryResidency\(renderer,\s*warmRoots,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'warm-roots geometry residency must publish its slices');
+  assert.match(source,
+    /prepareStartupGpuResidency\(renderer,\s*unresidentPools,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'live-sector pool residency must publish initTexture slices');
   assert.match(source,
     /recordAdmissionWork\(\s*durationMs\s*\)/,
     'positive finite slices must feed backlog admission attribution');
@@ -1348,3 +1355,35 @@ function createPostRouteHarness({
     activeTarget: () => activeTarget,
   };
 }
+
+test('owned readiness polling reads handle validity from COMPLETION_STATUS, never a synchronous isProgram (#169)', async () => {
+  const material = {};
+  let isProgramCalls = 0;
+  let polls = 0;
+  const program = {
+    program: {},
+    // three's WebGLProgram.isReady() caches getProgramParameter's null for a handle WebGL rejects.
+    isReady() { polls += 1; return polls < 4 ? false : null; },
+  };
+  const canvas = { addEventListener() {}, removeEventListener() {} };
+  const renderer = {
+    domElement: canvas,
+    compile: () => new Set([material]),
+    compileAsync: async () => { throw new Error('real WebGL renderers must use owned polling'); },
+    properties: { get: () => ({ currentProgram: program }) },
+    extensions: { get: () => ({}) },
+    getContext: () => ({
+      isContextLost: () => false,
+      isProgram: () => { isProgramCalls += 1; return true; },
+    }),
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    info: { programs: [program] },
+  };
+
+  const result = await compileScenePipelinesForRenderTarget(renderer, null, {}, {}, {});
+  assert.equal(result.contextLost, true);
+  assert.equal(result.reason, 'WebGL program invalidated during shader compilation');
+  assert.equal(polls, 4, 'pending polls continue until the null answer, then stop');
+  assert.equal(isProgramCalls, 0);
+});
