@@ -1857,7 +1857,12 @@ export function admissionOwnerInactive(options, entity, error = null) {
     if (active === false) return true;
   }
   if (entity && entity.alive === false) return true;
-  return !!(error && /owner became inactive/i.test(String(error.message || error)));
+  // "must be retained before creating (a flight )?instance" is the same race one step later:
+  // a package can only lose its boundary-owner retain — and become sweepable — when the
+  // residency context ended between library load and instance creation. A live, claimed
+  // boundary keeps the mixed-lifetime pin, so the throw cannot fire otherwise.
+  return !!(error
+    && /owner became inactive|must be retained before creating/i.test(String(error.message || error)));
 }
 
 /**
@@ -5858,7 +5863,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         // the demotion's residency context ended between library load and createInstance. A live,
         // claimed boundary keeps the mixed-lifetime pin, so the message cannot fire otherwise.
         const ownerGone = causes.length > 0
-          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating an instance/i.test(cause));
+          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating/i.test(cause));
         if (ownerGone) {
           console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
         } else {

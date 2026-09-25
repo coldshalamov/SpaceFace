@@ -698,6 +698,24 @@ test('window-end pipeline drain requires a sustained empty queue, not one zero s
     'drain must require the empty state to persist for a sustained window');
 });
 
+test('owner-gone admission classifies the flight-instance retention race', async () => {
+  // 2026-09-25 electron acceptance: an 82 MB trade-hub package lost its boundary-owner
+  // retain while the player undocked mid-admission; createFlightInstance threw "must be
+  // retained before creating a flight instance", which missed the owner-inactive family
+  // regex and warned 'no substitute visual published' instead of marking the boundary
+  // re-requestable. Both message spellings must classify as the owner-gone race.
+  const { admissionOwnerInactive } = await import('../src/render/partsLibrary.js');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package sf.render.helios-trade-hub must be retained before creating a flight instance.')),
+    true, 'flight-static retention loss is the owner-gone teardown race');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x must be retained before creating an instance.')),
+    true, 'ordinary retention loss classifies the same way');
+  assert.equal(admissionOwnerInactive(null, { alive: true },
+    new Error('Render package x has no prepared flight records.')),
+    false, 'unrelated package errors must still warn');
+});
+
 test('the probe arms a partial-upload census that names ambient writers', async () => {
   // Tier-1 totals can prove owners requested less but cannot name ambient
   // bufferSubData writers — the 2026-09-25 acceptance runs showed ambient
