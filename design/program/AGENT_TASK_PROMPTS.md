@@ -30,6 +30,8 @@ Read build_map.md section 1 and do exactly what it says: node scripts/program-di
 - **Spend inference on undesigned moments** — busy sim, no designed pocket →
   copy [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt). Law:
   [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md). Overlay, not a second queue.
+- **Finish an area of the game** — a strong agent takes a whole lane → Prompt L below. Law:
+  [`FINISH_LANES.md`](./FINISH_LANES.md) and `build_map.md` §27.
 
 ## Prompt A0 — INFERENCE (think, complete, rotate)
 
@@ -43,6 +45,27 @@ That is the default: five units. Look at play. Infer a real weakness.
 Complete it. Rotate to a different kind. Detect is a hint, not a pick list.
 Or `INFERENCE 8`, `INFERENCE 3 MISSIONS`, `INFERENCE 5 NPCS`, etc.
 Then paste the contents of `design/program/INFERENCE_GOAL.txt`.
+
+## Prompt L — a finish lane (open-ended area ownership)
+
+The unit is a lane from [`FINISH_LANES.md`](./FINISH_LANES.md), not a queue leaf. Give one lane
+to one agent. First free lane is the default; name the lane explicitly to steer it.
+
+```text
+LANE <name> — read design/program/FINISH_LANES.md, your lane's brief, and the law it inherits.
+Then play your area on the default route at the shipping camera before touching code and write
+down everything that falls short of the lane's bar — including what no packet names. The lane's
+named work is the known checklist; your review finds the rest. Work both in the order that makes
+the area converge fastest. Iterate like a developer: play your own changes, judge them, fix what
+you would not ship. Close the lane's queue units as you land them, run the checks that cover each
+landing's real failure modes, commit only your files by pathspec, and report in build_map §1.4
+words. The lane is done when its checklist is clear AND a stranger would call the area finished.
+Defects outside your files follow AGENTS.md §7 — fix small, subagent medium, one ledger row for
+big. Do not stop at a green check while the area still plays wonky.
+```
+
+Lane names: `THE MACHINE` · `THE HAND` · `THE FIGHT` · `THE WORLD` · `THE LONG GAME` ·
+`THE PICTURE` · `THE INSTRUMENT` · `THE EAR` · `THE RELEASE`.
 
 ## Prompt A0-IF — INFERENCE for undesigned moments
 

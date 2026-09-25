@@ -40,12 +40,16 @@ wrong still starts at the fun loop (§1.7), then returns here.
 
 1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
    not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
-2. If this sitting is an A-list pass with no named packet, take the next uncommitted task in
-   lane A2 (§23.4), in that order, and do not shop the queue or a later AQ for a smaller row. If
-   this sitting is INFERENCE, take one OPEN catalog line. Otherwise
-   `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it names under
-   [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do not shop around
-   `--ready` for something you would rather do; the order is the plan (§1.2).
+2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
+   the game", "polish", a long build session — take a lane from
+   [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
+   the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
+   you own the named work still open there **and** the review and tuning of that area to the
+   A-list bar; the queue units inside it are its checklist, not a script. The A2 actualize lane
+   (§23.4) is committed and closed. If this sitting is INFERENCE, take one OPEN catalog line.
+   Otherwise `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it
+   names under [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do
+   not shop around `--ready` for something you would rather do; the order is the plan (§1.2).
 3. On a queue unit, read the packet's **How agents get this wrong** section before touching code.
    Then its Leaves row: the done-when is the definition of done, in player units. If a done-when is
    missing, unclear, or could be satisfied by something the owner would call thin, write the missing
@@ -225,8 +229,8 @@ procedure:
 |---|---|
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
-| "it's not fun", "make it better", "it sucks", "wonky", "no control" | [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → `--id PQ-137`, then `--next` |
-| "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
+| "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
+| "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
@@ -234,7 +238,7 @@ procedure:
 | "the attacks are limp / frozen / a swirl that doesn't spin" | **§21** → first read `state.settings.video.motionReduce`: on 2026-09-20 the owner's Windows "Animation effects: off" had silently stripped every combat effect. Then `--id PQ-210.04` (four channels, with sound) |
 | "things pop out of existence", "asteroids vanish", "it doesn't load in time" | **§21** → `--id PQ-210.03` when it is the known retired asteroid buffer; read `state.render.asteroidInstancePool.variants[].retiredOwners` and the console for `[asteroid-pool]`. A class of pop — ships, wrecks, stations, empty locks, the glass lying — is campaign **CV-GLASS** in §23, not another prefetch constant |
 | "zero to hero", "make the demo A-list", "I can't see my ship", "the fight is unreadable", "long build session" | **§25** → [`ZERO_TO_HERO_2026-09-23.md`](./design/program/ZERO_TO_HERO_2026-09-23.md). Take the first phase without a visible slice; close each phase on its stranger pass, not a green check |
-| "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§23**. Invent the system the feeling needs. §22 is the measured list, not this door |
+| "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§27** → the lane that owns the area (the §23 campaigns are absorbed into the lanes); §23 stays the detailed wording. §22 is the measured list, not this door |
 | "it's hitching / stuttering" | **§21** → `npm run probe:smooth-flight:crucible` names each freeze and what paid for it, with the whole-machine CPU line; then `--id PQ-210.00`–`.02`. §8.4 / `PQ-129` holds the earlier campaign; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
@@ -4354,6 +4358,11 @@ This is the work that needs taste, world knowledge, or a system the planner shou
 Each campaign is a feeling. The implementation is yours. A better foundation than this section is
 the success, not a miss.
 
+**Since 2026-09-24 these campaigns live inside the §27 lanes** — each lane brief names which
+campaigns it absorbs, and the campaign text below remains the detailed wording for that part of
+the lane. A lane session takes the campaign's spirit over its exact letter: the feeling is the
+assignment; the lane's open-ended review is how you find the rest of it.
+
 The game already simulates more than the session shows. Convergence campaigns make that simulation
 feel like one finished game. Creative campaigns invent a new situation out of bodies and verbs
 that already exist. Both are aimed at the fantasy in [`design/VISION.md`](./design/VISION.md):
@@ -4955,3 +4964,29 @@ Orrery. The next work is already ordered, and it is not a new art direction:
 Corsair, Arclight, the Span and Wasp faction kits, and the tanker are the variety we already paid
 for. They wait until that flyby is one world. Shelf bodies that are only a repaint of a live hull
 do not get a second production pass. Captures, tool caches, and old checkouts are not the game.
+
+## 27. The finish in lanes — ADMITTED 2026-09-24
+
+Owner direction, 2026-09-24: batch the granular plans into a few logical lanes, with open-ended
+instructions — the agent owns an *area*, lands the named work still open there, and reviews and
+tunes that area to the A-list bar while already working in it. **The game is finished when the
+lanes are finished** — features, polish and fun are one lane, not three passes. The full program:
+[`design/program/FINISH_LANES.md`](./design/program/FINISH_LANES.md).
+
+| Lane | The area | Absorbs |
+|---|---|---|
+| **THE MACHINE** | boots fast, holds 60 with the picture on, never hitches or leaks, nothing pops | PQ-129, PQ-204, §22 Wave D, vm-drop imports, §8.4 |
+| **THE HAND** | the ship answers the hand — flight, rope, fields, verbs, input | PQ-135–137/139/141/146/147/163/189, PQ-026–031, §22 feel rows, CV-HAND/CV-THROW |
+| **THE FIGHT** | swarm is the showcase — waves, arenas, the draft, the kill you can see | PQ-133/140/160/169/174/175/205/206, §22 combat rows, CV-AMMO, §16 |
+| **THE WORLD** | you arrived in the middle of their day — sectors, jobs, consequences | PQ-138/143/145/148–151/153/154/171, §22 world rows, CV-DAY/CV-SO/CV-QUIET + all CR-*, §24 |
+| **THE LONG GAME** | the fit, the market, the story — decisions an hour, a spine to an ending | PQ-032/142/152/155/156/170/172/176–178/195, §22 economy rows, §17 |
+| **THE PICTURE** | one game on the glass — hulls, rocks, skies, residency, the camera | PQ-049/050/134/136/159/161/190/193, §22 art rows, CV-GLASS/CV-PAINT/CV-MOTION, §13B/§13D |
+| **THE INSTRUMENT** | every 2D surface is the same instrument of light — ORRERY | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
+| **THE EAR** | a signature by ear — verb voices, the mix, room tone | PQ-158, §22 audio rows, CV-EAR |
+| **THE RELEASE** | the demo path and the package — title to end card to store | PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7 |
+
+A finishing session takes a lane, not a leaf: play the area first, work the absorbed checklist in
+any order, and fix whatever else in the area falls short — the open-ended review is part of the
+lane, not a phase after it. Acceptance batches at the area level. The queue still owns unit
+truth; grunt-sized sittings still take `--next` or an INFERENCE line; §22 and §23 remain the
+lanes' detailed wording. Lane order, briefs, gates and the coverage map live in the program file.

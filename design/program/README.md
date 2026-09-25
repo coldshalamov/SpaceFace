@@ -18,6 +18,7 @@ orient without ingesting the repository's history.
 | First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
 | Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |
 | Long-horizon VM / Blender / cloud-agent lanes (not the shared local checkout) | [`VM_LANES.md`](./VM_LANES.md) |
+| Finish the game — own an area end to end (the nine condensed lanes) | [`FINISH_LANES.md`](./FINISH_LANES.md) — open-ended area assignments absorbing the queue, §22, §23, §25 |
 | Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
 | Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
 | Finite implementation/review/verification protocol | [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) |
