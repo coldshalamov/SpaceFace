@@ -6842,6 +6842,9 @@ export const render = {
     };
     state.render.prepareLiveSectorBeforeFlight = async () => {
       if (state.mode !== 'loading') {
+        // A late invocation must still leave no bounded warm root mounted into flight —
+        // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
+        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
         return { skipped: true, reason: 'not-loading' };
       }
       const recookSectorId = state.world && state.world.currentSectorId;
@@ -15465,6 +15468,13 @@ export function applyFirstPlayablePaintRelease(owner) {
       if (!Number.isFinite(render.firstFlightResidencyHoldUntil)) {
         render.firstFlightResidencyHoldUntil = (Number(owner.state.simTime) || 0) + 20;
       }
+      // Backstop for the cook's parks: readiness gates can release flight without ever
+      // invoking prepareLiveSectorBeforeFlight — waitForOpeningGpuResources only calls it
+      // while mode is still 'loading', and the software-WebGL route does not await the
+      // opening prepare, so mode flips first and the whole post-opening block (warm claim,
+      // finish, both parks) is skipped. A mounted SF_OpeningSpeciesWarm then walks its
+      // ~13k hidden nodes through every frame's updateMatrixWorld. Idempotent by design.
+      try { owner._parkBoundedWarmRoots?.(); } catch (_) { /* parking is best-effort */ }
     }
   } finally {
     releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {

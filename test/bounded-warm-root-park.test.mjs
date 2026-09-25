@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { render } from '../src/render/renderer.js';
+import { applyFirstPlayablePaintRelease, render } from '../src/render/renderer.js';
 
 const RENDERER_SOURCE = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 
@@ -39,6 +39,39 @@ test('bounded warm roots leave the scene graph but stay owned for run-end releas
   assert.equal(crucible.children.length, 3, 'parking disposes nothing');
 
   assert.equal(render._parkBoundedWarmRoots.call(owner).roots, 0, 'a second park is a no-op');
+});
+
+test('the flight boundary parks bounded warm roots the skipped live-sector cook never reached', () => {
+  // The defect this guards: waitForOpeningGpuResources only invokes
+  // prepareLiveSectorBeforeFlight while mode is still 'loading', and the software-WebGL
+  // route does not await the opening prepare — mode can already be 'flight' when the
+  // prepare settles, so the whole post-opening block (warm claim, finish, both parks)
+  // is skipped and the mounted SF_OpeningSpeciesWarm walks its hidden subtree through
+  // every frame's updateMatrixWorld for the whole session.
+  const scene = new THREE.Scene();
+  const opening = warmRoot('opening-species-warm', 2);
+  const deferred = warmRoot('deferred-warm', 1);
+  const other = warmRoot('some-other-prewarm');
+  scene.add(opening, deferred, other);
+  const owner = {
+    scene,
+    state: { mode: 'flight', render: {}, simTime: 1 },
+    _rosterPrewarmRoots: [opening, deferred, other],
+    _parkBoundedWarmRoots() { return render._parkBoundedWarmRoots.call(this); },
+  };
+
+  applyFirstPlayablePaintRelease(owner);
+
+  assert.equal(opening.parent, null, 'the opening species warm root is off the graph in flight');
+  assert.equal(deferred.parent, null, 'a mounted deferred warm cannot outlive the flight boundary');
+  assert.equal(other.parent, scene, 'roots the park does not own stay mounted');
+  assert.deepEqual(owner.state.render.parkedWarmRoots, [opening, deferred],
+    'parked roots stay reachable for probes and the run-end release');
+  assert.ok(Number.isFinite(owner.state.render.firstPlayableFrameAt), 'the flight latch still stamps');
+
+  applyFirstPlayablePaintRelease(owner);
+  assert.equal(opening.parent, null, 're-running the release keeps the warm roots parked');
+  assert.equal(other.parent, scene, 're-running the release leaves foreign roots alone');
 });
 
 test('the warm roots are parked after the last pass that draws them and before the census', () => {
