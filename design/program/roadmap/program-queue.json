@@ -6315,7 +6315,7 @@
       "priority": 71,
       "title": "Wells bend space",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -7196,7 +7196,7 @@
       "parentId": "PQ-190",
       "priority": 103,
       "title": "The effect-class VFX matrix",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-190.00"
       ],
@@ -9652,7 +9652,7 @@
       "priority": 187,
       "title": "Three starters",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9682,7 +9682,7 @@
       "priority": 188,
       "title": "The save portrait",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -15500,7 +15500,7 @@
       "priority": 381,
       "title": "AttackSpec compiler + lineage kernel (Phase 3)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-133.02"
       ],
@@ -15834,7 +15834,7 @@
       "priority": 393,
       "title": "Mount ArcadeStructuralFx behind cueArbitration",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-134.00"
       ],
@@ -16214,7 +16214,7 @@
       "priority": 408,
       "title": "One answer per question",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -16488,7 +16488,7 @@
       "priority": 416,
       "title": "The lab is a toy",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -19209,7 +19209,7 @@
       "priority": 9813,
       "title": "Leave GPU batching off",
       "kind": "performance",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-204.02"
       ],
@@ -19232,7 +19232,7 @@
       "priority": 9814,
       "title": "Snapshot lean columns; no Worker/WebGPU port",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-204.00"
       ],
