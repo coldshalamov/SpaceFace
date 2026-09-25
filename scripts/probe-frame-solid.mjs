@@ -35,6 +35,7 @@ import {
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
 const CENSUS = process.argv.includes('--census');
+const NO_CANON = process.argv.includes('--no-program-canon');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
 const OUT_DIR = `${ROOT}.devshots/frame-solid`;
@@ -105,7 +106,7 @@ try {
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(`[${msg.type()}] ${msg.text().slice(0, 300)}`);
   });
-  await page.addInitScript(() => {
+  await page.addInitScript((noProgramCanon) => {
     // CDP inlines console string args whole — one giant log line overflows the pipe
     // transport before any listener can trim it. Truncate at the source.
     for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
@@ -120,7 +121,8 @@ try {
     // Arm the production perf counters (read once at renderer construction) so in-flight
     // shader links are counted and attributed. Unarmed, the counter reads 0 — a false pass.
     window.__SPACEFACE_PERF_COUNTERS__ = true;
-  });
+    if (noProgramCanon) window.__SF_PROGRAM_CANON_OFF__ = true;
+  }, NO_CANON);
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
   await page.bringToFront();
@@ -474,6 +476,7 @@ try {
     at: new Date().toISOString(),
     head,
     headless: HEADLESS,
+    programCanon: !NO_CANON,
     host: {
       cpu: (cpus()[0] && cpus()[0].model) || null,
       logicalCores: cpus().length,

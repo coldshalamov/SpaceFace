@@ -107,6 +107,7 @@ import {
   takeCachedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
+import { canonicalizeAuthoredProgramState } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   entityRequiresAuthoredPresentation,
@@ -5248,6 +5249,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
   configureRealtimeCanopyMaterials(root);
   configureTransparentSinglePassSurfaces(root);
+  canonicalizeAuthoredProgramState(root);
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
