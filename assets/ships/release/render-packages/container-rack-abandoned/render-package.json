@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "486711090b5c25d9bbb6befda0e64c8fecf8cb92d7181e26afb34a579f0ddfcd",
+  "contentHash": "55886cbe4165d8ba374e00873a7ec9cd2d54dc77d566d870b66227398becde1a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1132,8 +1132,8 @@
       "uri": "place_container_rack_abandoned.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -1169,33 +1169,34 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 14
+      "hull": 2,
+      "mechanical": 12
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -1205,37 +1206,37 @@
       {
         "allowTextures": false,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -1628,7 +1629,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_container_rack_abandoned.glb"
   },
-  "runtimeHash": "2c6c985b2af907cb0cdaa6e85cc2c6c6123bc50fda9183c8acdef71c990d43c2",
+  "runtimeHash": "4abc10c8d6c29dd86c888f22b065c3d581821b0b5274b850841b44cf237c344a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

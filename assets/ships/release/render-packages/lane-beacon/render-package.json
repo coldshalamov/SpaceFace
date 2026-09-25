@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e299e9c8705d59e45d01f8879a4a85bbbab5d97206fcbdd66d0d93272499498e",
+  "contentHash": "51867591f60efd4903d327e4ae8e9438e2ca1fe6e750872a9d34c8ae6268ccd7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1769,8 +1769,8 @@
       "uri": "place_lane_beacon.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -2521,7 +2521,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
-  "runtimeHash": "4e575bb278322928931db52074424d089aa8b4edc65f27b6a4576959d7f2e399",
+  "runtimeHash": "3112f676b7dea0f204ea534ae4a6f1d4b0464e32e17253c580e5d35378012057",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

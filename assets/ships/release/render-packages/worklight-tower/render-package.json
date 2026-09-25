@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "76e27ad27ce0a6091761ffcc95ad9517d074acdee025418ea6e07b59bf589dce",
+  "contentHash": "4d5325ea0772f40307367e764721313bfd217695d6644ec20c087f7510ce9059",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1170,8 +1170,8 @@
       "uri": "place_worklight_tower.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -1249,7 +1249,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 7,
+      "hull": 6,
+      "mechanical": 1,
       "signal": 2,
       "warning": 3
     },
@@ -1277,7 +1278,7 @@
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -1658,7 +1659,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-  "runtimeHash": "3c62d336a39550cffac89737bd839f01ec0f4e1ca956217e1a88b1f15fefca68",
+  "runtimeHash": "d0eb543720dfa0b4aa85e7a5d196ce9cfe2dd9c0e8393e14cc9883760db5bacd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

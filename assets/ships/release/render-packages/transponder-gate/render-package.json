@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1d221af09e333cd3cc31ec147ac94f9dfa1c4cb4a0c6baf5456edb1499324da5",
+  "contentHash": "35a6c56e779b16c93645417fb1d33816c3c7849a9a660d90d7669fed1fe4137a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1424,8 +1424,8 @@
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -1503,7 +1503,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
+      "hull": 11,
+      "mechanical": 1,
       "warning": 3
     },
     "materialProfiles": [
@@ -1535,7 +1536,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -2010,7 +2011,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "3ccd206ec242dfc5ea6af99246812f2e55f3c771c5274020cf84657ae2e43d22",
+  "runtimeHash": "e361602285dd99ea44699f9000c88da5e4a8b9839475809b8b6bd08d667e40a9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

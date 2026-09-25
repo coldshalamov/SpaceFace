@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7b325527b89963dfb648e0564674d0199ad63ec685576a452538ec06461af910",
+  "contentHash": "7ee1fa4776a6276e33b2ef39b636461f28373657e10a22fcbb0cb5e2bd9b30b3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2845,8 +2845,8 @@
       "uri": "place_shuttle_dock.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -2957,7 +2957,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 34,
+      "hull": 33,
+      "mechanical": 1,
       "warning": 1
     },
     "materialProfiles": [
@@ -3094,7 +3095,7 @@
       {
         "allowTextures": false,
         "planIndex": 29,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -4089,7 +4090,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "4ba18b3107c7b65ffcc721e60d8a7956bf721271cf300b1b47fa64de25715734",
+  "runtimeHash": "878edfa67faaf1a46732091bbac4aeb02e34fd94412ae27fa5fc58bde1455203",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

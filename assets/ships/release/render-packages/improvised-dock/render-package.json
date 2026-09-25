@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "11cd4c7ffb5e21a1db86e03f721b77833dbfdd211cd99391e708dc9d0074a3a2",
+  "contentHash": "20534f56f3802dac31fc87deadc664bbdd75a18c463983cdc0c93f062aaabe7b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1572,8 +1572,8 @@
       "uri": "place_improvised_dock.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -1651,7 +1651,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 17
+      "hull": 15,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1682,7 +1683,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -1712,7 +1713,7 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -2223,7 +2224,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_improvised_dock.glb"
   },
-  "runtimeHash": "e8135268a448a2bb414e838706074e9a12f17b5e7e3e152befc734d46ef960da",
+  "runtimeHash": "9c0bae671a4fa670034b2e014c8098be5a6230550b092cd598e848b04fd1b391",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

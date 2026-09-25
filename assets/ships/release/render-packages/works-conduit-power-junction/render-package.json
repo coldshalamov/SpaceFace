@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f13d0941d47a30aa8fb2eb2d962e84aec83ba31cbdb78b37d7799a403a172812",
+  "contentHash": "b49bb791770925776b6493a6ce83151a3594efc47c43ab307be25b1dc1198d9c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -561,8 +561,8 @@
       "uri": "place_works_conduit_power_junction.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -671,38 +671,38 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 6
+      "service": 6
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "service"
       }
     ],
     "nodeCount": 11,
@@ -874,7 +874,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb"
   },
-  "runtimeHash": "f877fbd47ae9799b0ea21c5ab10456c32aa83b1791d7985022e1d68f0e240b49",
+  "runtimeHash": "7b676ea9f3928aa7064191dd6096bdaf1425e109e070a68e0891e1cca72ef1e4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "faa25e94c55022b585b0f3699b94f0ab9052a6e65780eb64bb834aa5e01ade03",
+  "contentHash": "89cb5444722ba2e4ee3aadd61ecfc0b340d10f2b958d8e4d0f9df460c3b91182",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1678,8 +1678,8 @@
       "uri": "place_sensor_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -1757,8 +1757,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
-      "mechanical": 3,
+      "hull": 11,
+      "mechanical": 4,
       "warning": 3
     },
     "materialProfiles": [
@@ -1795,7 +1795,7 @@
       {
         "allowTextures": false,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -2364,7 +2364,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sensor_mast.glb"
   },
-  "runtimeHash": "5e308da88b83edaea7212c99be8b100bce6b0abfabe4f2dd67455bb293388d70",
+  "runtimeHash": "8352cf97a176b8709040bab45baec9a964a1107a2825e8d8bcaccb5c1fc3f408",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fed48227047b65a9de48da8a0f6e07ebb220beccc04955e1bf6c54785ebb29cf",
+  "contentHash": "6c619b3dd4c1c60d23806219fcd3c3b7f29b525ffadfd5e9d84ec39090b24a88",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2712,8 +2712,8 @@
       "uri": "place_construction_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "bytes": 190266,
+      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
       "uri": "pilots.json"
     }
   },
@@ -2824,7 +2824,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 34
+      "hull": 33,
+      "mechanical": 1
     },
     "materialProfiles": [
       {
@@ -2870,7 +2871,7 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -3923,7 +3924,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "f947aa81b284cfbfe8b30db4695efc652617f90a3f85d3715e12c0317dba403d",
+  "runtimeHash": "034d4864245a8610106d640f30e6f31b9aac1cb2c3089710b5b15c68d1ec8e6f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
