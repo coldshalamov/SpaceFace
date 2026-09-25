@@ -23,6 +23,24 @@ const JETTISON_PICKUP_EMBARGO_S = 2;
 export const HOT_DOCK_CRUISE_FRACTION = 0.2;
 export const HOT_DOCK_MAX_PODS = 2;
 
+// One commodity the mechanic can name. A later dock with no new spill deletes it,
+// so the same sentence is not spoken again.
+function clearDockSpill(state) {
+  const cargo = state && state.player && state.player.cargo;
+  if (cargo && Object.prototype.hasOwnProperty.call(cargo, 'dockSpill')) delete cargo.dockSpill;
+}
+
+function writeDockSpill(state, commodityId, count) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!cargo) return;
+  const qty = Math.floor(Number(count) || 0);
+  if (typeof commodityId !== 'string' || !commodityId || qty <= 0) {
+    clearDockSpill(state);
+    return;
+  }
+  cargo.dockSpill = { commodityId, count: qty };
+}
+
 function volumePerUnit(def) {
   return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
 }
@@ -445,10 +463,16 @@ export const cargo = {
     const tick = state.tick | 0;
     if (this._lastHotDockSpillTick === tick) return null;
     const cruiseSpeed = resolveGovernedCombatSpeed(player, state, 0);
-    if (!(cruiseSpeed > 0)) return null;
+    if (!(cruiseSpeed > 0)) {
+      clearDockSpill(state);
+      return null;
+    }
     const threshold = cruiseSpeed * HOT_DOCK_CRUISE_FRACTION;
     const entrySpeed = Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0);
-    if (!(entrySpeed > threshold)) return null;
+    if (!(entrySpeed > threshold)) {
+      clearDockSpill(state);
+      return null;
+    }
     const desiredPods = entrySpeed >= threshold * 1.25 ? HOT_DOCK_MAX_PODS : 1;
     const items = state.player && state.player.cargo && state.player.cargo.items || {};
     const commodityIds = Object.keys(items).filter((id) => Number(items[id]) > 0 && !isUnsellableCargo(state, id)).sort();
@@ -463,8 +487,13 @@ export const cargo = {
       }
       if (pods >= desiredPods) break;
     }
-    if (pods === 0) return null;
+    if (pods === 0) {
+      clearDockSpill(state);
+      return null;
+    }
     this._lastHotDockSpillTick = tick;
+    const commodityId = commodityIds.find((id) => (spilled[id] || 0) > 0) || null;
+    writeDockSpill(state, commodityId, commodityId ? spilled[commodityId] : 0);
     const receipt = {
       stationId: payload.stationId || null,
       entrySpeed,

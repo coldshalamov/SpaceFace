@@ -5,6 +5,7 @@
 // Does not invent leftover scar classes. Cite leftover living-hull bands.
 // Leftover bark corpus in src/data/barks.js is leftover radio, not this voice.
 
+import { COMMODITIES } from '../data/commodities.js';
 import { activeOwnedShip } from '../data/hullIdentity.js';
 import {
   LIVING_HULL_SCAR_BANDS,
@@ -14,6 +15,8 @@ import {
 import { isPlayerWanted } from '../systems/heat.js';
 import { shipLedgerHasFactOutside } from '../systems/shipLedger.js';
 import { LEDGER_SPEAKER } from './storyLedger.js';
+
+const COMMODITY_NAME = new Map(COMMODITIES.map((def) => [def.id, def.name]));
 
 export const MECHANIC_KIND = 'mechanic-hull';
 export const MECHANIC_BADGE = 'HULL';
@@ -78,25 +81,41 @@ function leftoverCleanPlateLine(hull) {
   return leftoverLine('Clean plate. Nothing on this hull to file.');
 }
 
+/** Cargo left one spilled commodity on the hold. No receipt, no sentence. */
+function leftoverDockSpillLine(state) {
+  const spill = state && state.player && state.player.cargo && state.player.cargo.dockSpill;
+  if (!spill || typeof spill !== 'object') return null;
+  const commodityId = typeof spill.commodityId === 'string' ? spill.commodityId : '';
+  const count = Math.floor(Number(spill.count) || 0);
+  if (!commodityId || count <= 0) return null;
+  const name = COMMODITY_NAME.get(commodityId);
+  if (!name) return null;
+  const units = count === 1 ? 'unit' : 'units';
+  return leftoverLine(`${name} spilled on the way in, ${count} ${units}.`);
+}
+
 /** Leftover spoken lines from leftover live hull / leftover heat / leftover ledger facts. */
 export function leftoverMechanicLines(state) {
-  const owned = activeOwnedShip(state);
-  if (!owned) return [];
-  const hull = owned.livingHull;
   const lines = [];
-  const classes = leftoverMechanicScarClasses(hull);
-  for (const band of classes) {
-    const line = leftoverScarLine(hull, band);
-    if (line) lines.push(line);
+  const owned = activeOwnedShip(state);
+  if (owned) {
+    const hull = owned.livingHull;
+    const classes = leftoverMechanicScarClasses(hull);
+    for (const band of classes) {
+      const line = leftoverScarLine(hull, band);
+      if (line) lines.push(line);
+    }
+    const repair = leftoverRepairLine(hull);
+    if (repair) lines.push(repair);
+    if (!classes.length) {
+      const clean = leftoverCleanPlateLine(hull);
+      if (clean) lines.push(clean);
+    }
+    const rap = leftoverRapLine(state, hull);
+    if (rap) lines.push(rap);
   }
-  const repair = leftoverRepairLine(hull);
-  if (repair) lines.push(repair);
-  if (!classes.length) {
-    const clean = leftoverCleanPlateLine(hull);
-    if (clean) lines.push(clean);
-  }
-  const rap = leftoverRapLine(state, hull);
-  if (rap) lines.push(rap);
+  const spill = leftoverDockSpillLine(state);
+  if (spill) lines.push(spill);
   return lines;
 }
 
