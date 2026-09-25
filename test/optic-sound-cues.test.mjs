@@ -8,8 +8,9 @@
 //
 // The seam under test is the real one: audio.init subscriptions on the live event bus ->
 // play() cue requests, probed exactly the way hit-answer-channels.test.mjs probes combat hits.
-// Burst collapse is the same admission-window shape _admitCollisionCue runs on simultaneous
-// contacts: one voice per response kind per tick, re-armed on the next tick.
+// Burst collapse rides the shared `_heardRecipes` per-tick admission window — the same store
+// _onVisualEventAudio gates on — so a same-kind ring speaks once per response kind per tick
+// and re-arms on the next tick.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
