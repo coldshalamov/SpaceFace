@@ -79,6 +79,7 @@ import {
   swarmRosterShipExemplarSpecs,
   paletteWarmSubjectsForRecord,
   spawnableShipArchetypePrewarmUrls,
+  wholeShipVisualForEntity,
   PQ_193_05_WRECK_PACKAGED_FILES,
   PQ_193_05_DRONE_PACKAGED_FILE,
   PQ_193_05_GATE_PACKAGED_FILE,
@@ -229,6 +230,7 @@ import {
 import {
   isInsideSectorArrivalBand,
   planarRangeWU,
+  survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
@@ -4591,6 +4593,33 @@ function isBoundedWarmRoot(root) {
   return tag === 'bounded-cook' || tag === 'opening-species-warm' || tag === 'deferred-warm';
 }
 
+function normalizeWarmHullFile(file) {
+  return String(file || '').replace(/\\/g, '/').split(/[?#]/, 1)[0].replace(/^.*\/parts\//, '');
+}
+
+/**
+ * The whole-ship files a scoped ship-exemplar cohort can actually resolve — each spec's live
+ * selection (hostile id -> silhouette -> assetRef -> trafficRole -> defId, faction kits included)
+ * plus its LOD family siblings, because a demoted live spawn draws the lod1/lod2 GLB the lod0
+ * exemplar never carries. Keys are normalized 'wholeships/x.glb' paths matching the explicit
+ * decode list's file strings and finish()'s normalizeFile(url) output.
+ */
+function warmHullFilesForSpecs(specs) {
+  const files = new Set();
+  for (const spec of specs || []) {
+    let visual = null;
+    try { visual = wholeShipVisualForEntity(spec); }
+    catch (_) { visual = null; }
+    if (!visual || !visual.file) continue;
+    files.add(normalizeWarmHullFile(visual.file));
+    const family = visual.lodFamily;
+    for (const sibling of [family && family.lod0, family && family.lod1, family && family.lod2]) {
+      if (sibling) files.add(normalizeWarmHullFile(sibling));
+    }
+  }
+  return files;
+}
+
 export const render = {
   name: 'render',
   init(ctx) {
@@ -7681,15 +7710,33 @@ export const render = {
         // and the never-linked sweep below compiles whatever has attached by then.
         const loadsWaitDeadline = settleStarted
           + Math.min(25000, Math.max(5000, remainingMs() / 4));
+        let pendingLoadNames = null;
         const pendingBoundaryLoads = () => {
           if (prepareNow() > loadsWaitDeadline) return 0;
           let count = 0;
+          const names = pendingLoadNames === null ? [] : null;
           try {
-            for (const [, mesh] of this._meshes || []) {
+            for (const [entityId, mesh] of this._meshes || []) {
               const data = mesh && mesh.userData;
-              if (data && data.authoredAssetState === 'loading') count += 1;
+              if (data && data.authoredAssetState === 'loading') {
+                // Staging-sector dressing the arena frame provably cannot show (the same glass
+                // test the survival admission defer uses) buys the first frame nothing — the
+                // settle once held 6 s on Helios trade-hub/military station fallbacks.
+                const entity = state.entities && state.entities.get(entityId);
+                if (entity && survivalDefersArenaDressingJob(entity, state)) continue;
+                count += 1;
+                if (names && names.length < 16) {
+                  const requestedAt = Number(data.authoredUpgradeRequestedAt) || 0;
+                  const ageS = requestedAt > 0
+                    ? `+${Math.max(0, Math.round((Date.now() - requestedAt) / 1000))}s`
+                    : '';
+                  const phase = data.authoredPreparePhase ? `:${data.authoredPreparePhase}` : '';
+                  names.push(`${mesh.name || (data.entity && data.entity.id) || '?'}${phase}${ageS}`);
+                }
+              }
             }
           } catch (_) { /* census failure must not wedge the settle */ }
+          if (names && names.length > 0) pendingLoadNames = names;
           return count;
         };
         const settleDeadline = settleStarted + Math.min(120000, Math.max(60000, remainingMs()));
@@ -7742,6 +7789,7 @@ export const render = {
         }
         recordOpeningCookStep(state.render, 'live.survivalBoundarySettle', settleStarted, settleOutcome, {
           queuedPipelines: pipelineAdmissions.pendingCount | 0,
+          loadingMeshes: pendingLoadNames ? pendingLoadNames.join('|') : undefined,
           pending: settleResult ? settleResult.pending : undefined,
           inFlight: settleResult ? settleResult.inFlight : undefined,
           compiling: settleResult ? settleResult.compiling : undefined,
@@ -10900,6 +10948,21 @@ export const render = {
     // and the bounded substitute for the swept catalog where not.
     const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
       || 'assets/ships/release/parts/';
+    // Swarm-scoped crucible warm: the whole-ship decode list follows the same eligibility as the
+    // ship cohort above. spawnableShipArchetypePrewarmUrls() is the whole catalog — traffic and
+    // freight hulls the arena never fields plus wave-2+ archetypes whose GLB decodes belong to
+    // their own armory-dwell warm (the deferred kick loads the file on demand). Resolving the
+    // scoped specs through wholeShipVisualForEntity picks up faction-kit and LOD-sibling files a
+    // bare defId map would miss. finish() uses the same set to skip instantiating catalog hull
+    // records it never asked for. Non-swarm profiles keep the full catalog — no eligibility
+    // ladder exists to defer to.
+    const scopedHullFiles = profile === 'crucible' && swarmScoped === true
+      ? warmHullFilesForSpecs(shipSpecs)
+      : null;
+    // An empty scoped set means selection resolution produced nothing usable — fall back to the
+    // full catalog (and no finish() filtering) rather than warming no hulls at all.
+    const launchHullFiles = scopedHullFiles && scopedHullFiles.size > 0 ? scopedHullFiles : null;
+    warm.launchHullFiles = launchHullFiles;
     const explicitFiles = [
       ...PQ_193_05_WRECK_PACKAGED_FILES.map((file) => ({ file, slot: 'place' })),
       { file: PQ_193_05_DRONE_PACKAGED_FILE, slot: 'place' },
@@ -10916,7 +10979,8 @@ export const render = {
       { file: 'places/place_breakaway_sp07.glb', slot: 'place' },
       ...Object.values(OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID)
         .map((file) => ({ file, slot: 'place' })),
-      ...spawnableShipArchetypePrewarmUrls().map((file) => ({ file, slot: 'hull' })),
+      ...(launchHullFiles ? [...launchHullFiles] : spawnableShipArchetypePrewarmUrls())
+        .map((file) => ({ file, slot: 'hull' })),
     ];
     // options.deferFleetDecodes (the early opening warm): the whole-ship 'hull' entries are the
     // multi-MB share of this list, and on the opening route there is no menu dwell to hide them —
@@ -11169,6 +11233,24 @@ export const render = {
             (state && state.run && Number.isInteger(state.run.wave) ? state.run.wave : 1)))
         : null,
     });
+    // The decode list's wave scoping (begin()) bounds what WE fetched, but other decode paths —
+    // the sector preload, a boundary that just resolved — can still mint catalog hull records.
+    // A catalog hull no wave-1 spawn or live entity resolves is wave-2+ work: its package
+    // instance and (file x palette) subjects belong to the deferred armory-dwell warm, not this
+    // cook's compile sweep. Live entities' resolved files always stay — their palette shares are
+    // what the instance pools promote from.
+    const catalogHullFiles = (warm.profile === 'crucible' && warm.swarmScoped === true)
+      ? new Set(spawnableShipArchetypePrewarmUrls().map(normalizeWarmHullFile))
+      : null;
+    const launchHullKeepSet = catalogHullFiles
+      ? new Set(warm.launchHullFiles || [])
+      : null;
+    if (launchHullKeepSet) {
+      for (const entity of (state && state.entityList) || []) {
+        if (!entity || entity.type !== 'ship') continue;
+        for (const file of warmHullFilesForSpecs([entity])) launchHullKeepSet.add(file);
+      }
+    }
     const signatureOf = (palette) => [
       palette && palette.hull, palette && palette.accent, palette && palette.thruster,
       palette && palette.dark, palette && palette.finish, palette && palette.wear,
@@ -11211,6 +11293,14 @@ export const render = {
       const parts = String(cacheKey || '').split('::');
       const url = parts[0];
       const slot = parts[1];
+      // Wave-1-scoped launch (see catalogHullFiles above): skip catalog hull records nobody can
+      // field yet — non-catalog hulls and every kept file still instantiate normally. An empty
+      // keep set means selection resolution failed (or no cohort exists); fall back to the
+      // unfiltered sweep rather than launching with every hull family cold.
+      if (slot === 'hull' && catalogHullFiles && launchHullKeepSet && launchHullKeepSet.size > 0) {
+        const file = normalizeFile(url);
+        if (catalogHullFiles.has(file) && !launchHullKeepSet.has(file)) continue;
+      }
       if (record.renderPackage) {
         try {
           record = await warmPackageResidency.retainForInstance(
@@ -12426,7 +12516,13 @@ export const render = {
     // invisible on-screen object is worse than one bounded build inside a late
     // frame).
     let deadlineGlassOnly = false;
-    if (buildBudget !== Infinity && this._initialMeshReconcileComplete) {
+    // The late-present gate protects frames the player watches — the loading shell has none:
+    // a refused start inside drainMeshBuildsBehindShell just stall-yields a whole shell frame
+    // per pass, and on a loaded host every shell frame reads >22 ms so the queue never starts
+    // (witness: live.meshBuilds1 4.4 s, 56 passes, 0 built — the items were all unbuildable
+    // skips anyway, so the delay bought nothing).
+    const loadingDrain = (this.state && this.state.mode) === 'loading';
+    if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,

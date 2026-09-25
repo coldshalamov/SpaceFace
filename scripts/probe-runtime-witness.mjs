@@ -2615,6 +2615,11 @@ async function launchProductionCrucible(targetPage, route) {
   await swarm.waitFor({ state: 'visible', timeout: 30_000 });
   await swarm.click();
   await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
+  // SPACEFACE_CRUCIBLE_DWELL_MS models a human reading the door before launch: the menu-dwell
+  // roster warm is supposed to spend that time decoding/linking, so a fast click vs a 10 s
+  // dwell bracket how much launch time the dwell actually buys.
+  const dwellMs = Number(process.env.SPACEFACE_CRUCIBLE_DWELL_MS || 0);
+  if (dwellMs > 0) await targetPage.waitForTimeout(dwellMs);
   await targetPage.locator('#screens .sf-crd-foot button.k-word--primary:visible').click();
   // The launch gate must outlive the roster cook: since the PQ-033.00-family prewarm moved the
   // roster's GLB/GPU cost into the launch shell, launch-to-flight reads ~156–176 s on the owner's
