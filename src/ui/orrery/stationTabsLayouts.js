@@ -1378,6 +1378,12 @@ ${T} .sx-ledger__read::after { background:rgb(${BONE} / .5) !important; }
 ${T} .sx-fac-overview > .sx-fac-crest, ${T} .sx-fac-overview > .sx-fac-crest.is-authority { display:block !important; color:rgb(236 230 216); }
 ${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-crest svg { display:block; width:100%; height:100%; color:rgb(236 230 216); }
 
+/* a short screen's tier names at 9px: nine bands of ~63px hold ACCEPTED only at this size */
+@media (max-height:800px) {
+  ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { font-size:9px !important; letter-spacing:.08em !important; }
+  ${T} .orr-standing text.orr-standing__val { font-size:8.5px !important; }
+}
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

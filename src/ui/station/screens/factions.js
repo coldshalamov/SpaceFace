@@ -26,7 +26,7 @@ import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
 import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
-import { createCrestOrbit, standingScaleSvg } from '../../orrery/crestOrbit.js';
+import { createCrestOrbit, standingScaleSvg, crestUrl } from '../../orrery/crestOrbit.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
@@ -241,7 +241,7 @@ export function createFactionsScreen(ctx) {
 
     readingEl.innerHTML =
       `<div class="sx-fac-overview">` +
-        `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
+        `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true"><img src="${crestUrl(f.id)}" alt="" decoding="sync" draggable="false"></span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
         `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +

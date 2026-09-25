@@ -649,6 +649,33 @@ ${W} .sx-sw__rail .sx-seg__btn { text-decoration:none !important; border-bottom:
 
 @media (max-height:800px) { ${W}.sx-sw--buying .sx-sw-bar { display:none !important; } }
 
+/* For Sale at 720: the hardpoints are inline blocks (they wrap between each other even with no spaces between them) */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec__hp { display:inline-block !important; white-space:nowrap !important; margin:0 10px 2px 0 !important; }
+  ${W}.sx-sw--buying .sx-spec__hp::after { content:none !important; }
+  ${W}.sx-sw--buying .sx-spec > li > .k-row__num { white-space:normal !important; display:block !important; }
+}
+
+/* For Sale at 720: the hardpoints row takes the whole column — its label above, its values in two lines with dots */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) { display:block !important; padding:4px 0 2px !important; }
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__name { display:block !important; margin-bottom:3px !important; }
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__num { display:block !important; line-height:1.35 !important; }
+  ${W}.sx-sw--buying .sx-spec__hp { display:inline !important; margin:0 !important; white-space:normal !important; }
+  ${W}.sx-sw--buying .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\00b7\\0020" !important; color:rgb(${BONE} / .45) !important; }
+}
+
+/* the value cell is a flex row under the kit: let it wrap, and let each hardpoint be its own item */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li > .k-row__num { flex-wrap:wrap !important; row-gap:2px; column-gap:0; }
+  ${W}.sx-sw--buying .sx-spec__hp { flex:none !important; }
+}
+
+/* the value cell took its text's natural width (441px in a 241px column): it is the column's width and wraps */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li:has(> .k-row__num > .sx-spec__hp) > .k-row__num { width:auto !important; max-width:100% !important; min-width:0 !important; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {
