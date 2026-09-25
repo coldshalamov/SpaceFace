@@ -87,7 +87,7 @@ export function createWaveform(host, { bars = 28, envelope = null } = {}) {
     const centre = 1 - Math.abs((i - (bars - 1) / 2) / ((bars - 1) / 2));
     const env = envelope && Number.isFinite(envelope[i]) ? Math.max(0, Math.min(1, envelope[i])) : null;
     // 2..14px of a 24px line at rest: a real envelope, tapered at the ends; the breathe adds to it
-    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.08 + env * 0.74).toFixed(2));
+    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.14 + env * 0.68).toFixed(2));
     bar.style.setProperty('--orr-wave-d', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-sd', `${(0.28 + Math.random() * 0.3).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-delay', `${(-Math.random() * 2).toFixed(2)}s`);

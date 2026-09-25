@@ -38,15 +38,23 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const end = from + span * Math.min(1.08, total / capacity);
     if (total > 0) ghostArc = `<path class="orr-power__ghost${total > capacity ? ' is-over' : ''}" d="${arcD(cx, cy, r + 9, from, Math.min(to + 10, end))}"/>`;
   }
-  // the systems round the arc: a tick each on the scale, the word outside it
+  // the systems round the arc: a segment each on an outer ring (lit when fitted, mid for a stock fit, faint when
+  // empty), a tick on the scale, the word outside it
   let sys = '';
   const list = Array.isArray(systems) ? systems.filter(Boolean) : [];
   const n = list.length;
   list.forEach((s, i) => {
+    const a0 = from + (span * i) / n + 2.5;
+    const a1 = from + (span * (i + 1)) / n - 2.5;
+    const segState = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
+    if (a1 > a0) {
+      if (segState !== 'is-empty') sys += `<path class="orr-power__seg-bloom ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+      sys += `<path class="orr-power__seg ${segState}" d="${arcD(cx, cy, r + 7, a0, a1)}"/>`;
+    }
     const a = from + (span * (i + 0.5)) / n;
-    const [tx0, ty0] = polar(cx, cy, r + 12, a);
-    const [tx1, ty1] = polar(cx, cy, r + 17, a);
-    const [lx, ly] = polar(cx, cy, r + 13, a);
+    const [tx0, ty0] = polar(cx, cy, r + 11, a);
+    const [tx1, ty1] = polar(cx, cy, r + 14, a);
+    const [lx, ly] = polar(cx, cy, r + 16, a);
     const cos = Math.cos(((a - 90) * Math.PI) / 180);
     const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
@@ -400,6 +408,10 @@ ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:232px; h
 ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
+${W} .orr-power__seg { fill:none; stroke:rgb(${BONE} / .2); stroke-width:2.5; }
+${W} .orr-power__seg.is-fitted { stroke:rgb(248 244 234); }
+${W} .orr-power__seg.is-stock { stroke:rgb(${BONE} / .7); }
+${W} .orr-power__seg-bloom { fill:none; stroke:rgb(${BONE}); stroke-width:7; opacity:.18; }
 ${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
 ${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.8px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
 ${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
@@ -620,6 +632,10 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 @media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
 /* a short screen: the chosen module's sentence folds so its key stays above the fold */
 @media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
+
+/* ================================ ROUND 11 =================================================== */
+/* the mode words carry no underline: weight says which is open */
+${W} .sx-sw__mode .k-word::after, ${W} .sx-sw__modes .k-word::after, ${W} [data-sw-mode]::after, ${W} .sx-sw__hang > .k-words:first-child .k-word::after { display:none !important; }
 
 `;
 

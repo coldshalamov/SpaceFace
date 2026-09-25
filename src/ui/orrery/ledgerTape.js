@@ -56,7 +56,8 @@ const CSS = `
 .orr-svg .orr-ltape__arc-headbloom { fill:rgb(248 244 234); opacity:.22; }
 .orr-svg .orr-ltape__arc-headbloom--out { fill:rgb(${BONE}); opacity:.14; }
 .orr-svg .orr-ltape__arc-bloom--out { opacity:.1; }
-.orr-ltape text.orr-ltape__foot-n { font-size:12.5px; }
+.orr-ltape text.orr-ltape__foot-n { font-size:22px; font-weight:250; letter-spacing:-.01em; }
+.orr-svg .orr-ltape__hand-drop { stroke:var(--dp-hand, #f2b950); }
 .orr-ltape text.orr-ltape__net-key { font-size:8.5px; }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
 .orr-ltape__pursehost { position:relative; display:block; }
@@ -188,6 +189,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
     const inner0 = x0 + 44;
     const inner1 = nowX - 76;
     const spread = sorted.length === 1 || span < 1e-3;
+    // moments that coincide keep the list's newest-first order; the tape runs oldest to now, so reverse them
+    if (spread && sorted.length > 1) sorted.reverse();
     const xs = sorted.map((e, k) => (spread ? inner0 + ((k + 0.5) / sorted.length) * (inner1 - inner0) : inner0 + ((e.at - tMin) / span) * (inner1 - inner0)));
     const minGap = 26;
     for (let k = 1; k < xs.length; k += 1) if (xs[k] - xs[k - 1] < minGap) xs[k] = xs[k - 1] + minGap;
@@ -239,24 +242,31 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
           const yy = sign > 0 ? y - len : y + len;
           if (k % 2 === 0) majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `;
           else minors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 3)} ${f(yy)} `;
-          if (k % 2 === 0 && sign > 0) {
+          if (k % 2 === 0) {
             const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' });
-            t.textContent = `${fmt(v)}${k === 4 ? ' cr' : ''}`;
+            t.textContent = `${fmt(v)}${k === 4 && sign > 0 ? ' cr' : ''}`;
             rg.appendChild(t);
           }
         }
       }
-      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - stemLen(ceilCr))} L ${f(x0)} ${f(y + stemLen(ceilCr))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
+      // the axis runs from the ceiling down and out of the tape: the reading beneath hangs from it
+      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - stemLen(ceilCr))} L ${f(x0)} ${H}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
       rg.appendChild(svg('path', { d: minors, class: 'orr-core orr-ltape__axis-minor', 'stroke-width': 1 }));
       layer.appendChild(rise(rg, 70));
     } else if (!sorted.length) {
-      // the empty tape's ghost: a dashed stem with a hollow bead where the first receipt will stand
-      const gx = x0 + 44;
-      const gg = svg('g', { class: 'orr-ltape__ghost' });
-      gg.appendChild(svg('path', { d: `M ${f(gx)} ${y} L ${f(gx)} ${y - 22}`, class: 'orr-core orr-ltape__ghost-stem', 'stroke-width': 1, 'stroke-dasharray': '2 3' }));
-      gg.appendChild(svg('circle', { cx: f(gx), cy: y - 25, r: 3, class: 'orr-ltape__ghost-bead' }));
-      layer.appendChild(rise(gg, 70));
+      // the empty tape keeps its axis (a 2,500 cr ceiling by default) and shows a ghost stem on the origin rising to the half major
+      const rg = svg('g', { class: 'orr-ltape__axis' });
+      const ghostCeil = 2500;
+      const gLen = (v) => 14 + (v / ghostCeil) * (maxUp - 14);
+      let majors = '';
+      for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; if (sign > 0) { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${fmt((ghostCeil * k) / 4)}${k === 4 ? ' cr' : ''}`; rg.appendChild(t); } }
+      rg.appendChild(svg('path', { d: `M ${f(x0)} ${f(y - gLen(ghostCeil))} L ${f(x0)} ${f(y + gLen(ghostCeil))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1 }));
+      rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 1.2 }));
+      const gx = x0 + 64; // clear of the axis figures (x0 + 9 .. x0 + 48)
+      rg.appendChild(svg('path', { d: `M ${f(gx)} ${y} L ${f(gx)} ${f(y - gLen(ghostCeil / 2))}`, class: 'orr-core orr-ltape__ghost-stem', 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));
+      rg.appendChild(svg('circle', { cx: f(gx), cy: f(y - gLen(ghostCeil / 2) - 4), r: 4, class: 'orr-ltape__ghost-bead' }));
+      layer.appendChild(rise(rg, 70));
     }
     let chosen = null;
     sorted.forEach((e, k) => {
@@ -291,9 +301,11 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
     if (chosen) {
       const hg = svg('g', { class: 'orr-ltape__hand' });
       const foot = chosen.tipY + 8;
-      // a leader callout: down from the bead, a 45-degree elbow toward the origin, along to the reading's edge
-      const ex = Math.max(x0, chosen.x - 16);
-      const leaderD = `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${H - 24} L ${f(ex)} ${H - 8} L ${x0} ${H - 8} L ${x0} ${H}`;
+      // a leader callout: down from the bead (its first inch in the Hand's own amber), a true 45-degree elbow
+      // of 24px toward the origin, along to the axis
+      const ex = Math.max(x0, chosen.x - 24);
+      const leaderD = `M ${f(chosen.x)} ${f(foot + 12)} L ${f(chosen.x)} ${H - 32} L ${f(ex)} ${H - 8} L ${x0} ${H - 8}`;
+      hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${f(foot + 12)}`, class: 'orr-core orr-ltape__hand-drop', 'stroke-width': 1.4 }));
       // a sold entry's stem crosses the tape through a break in its core
       if (chosen.up) hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${y - 3} L ${f(chosen.x)} ${y + 4}`, class: 'orr-ltape__break', 'stroke-width': 5 }));
       hg.append(
@@ -341,9 +353,9 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         const [bx, by] = polar(acx, acy, r, soldDeg);
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 7, class: 'orr-ltape__arc-headbloom' }));
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head' }));
-        const n = svg('text', { x: f(acx + 12), y: f(acy + r + 12), 'text-anchor': 'start', class: 'orr-ltape__figure orr-ltape__foot-n' });
+        const n = svg('text', { x: f(acx + 14), y: f(acy + r + 16), 'text-anchor': 'start', class: 'orr-ltape__figure orr-ltape__foot-n' });
         n.textContent = fmt(sold);
-        const t = svg('text', { x: f(acx + 12), y: f(acy + r + 25), 'text-anchor': 'start', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx + 14), y: f(acy + r + 30), 'text-anchor': 'start', class: 'orr-ltape__key' });
         t.textContent = 'SOLD';
         ag.append(n, t);
       }
@@ -354,11 +366,15 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         const [bx, by] = polar(acx, acy, r, -boughtDeg);
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 7, class: 'orr-ltape__arc-headbloom orr-ltape__arc-headbloom--out' }));
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3, class: 'orr-ltape__arc-head orr-ltape__arc-head--out' }));
-        const n = svg('text', { x: f(acx - 12), y: f(acy + r + 12), 'text-anchor': 'end', class: 'orr-ltape__figure orr-ltape__foot-n' });
+        const n = svg('text', { x: f(acx - 14), y: f(acy + r + 16), 'text-anchor': 'end', class: 'orr-ltape__figure orr-ltape__foot-n' });
         n.textContent = fmt(bought);
-        const t = svg('text', { x: f(acx - 12), y: f(acy + r + 25), 'text-anchor': 'end', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx - 14), y: f(acy + r + 30), 'text-anchor': 'end', class: 'orr-ltape__key' });
         t.textContent = 'BOUGHT';
         ag.append(n, t);
+      }
+      if (!sorted.length) {
+        for (const [x, anchor] of [[acx - 14, 'end'], [acx + 14, 'start']]) { const d = svg('text', { x: f(x), y: f(acy + r + 16), 'text-anchor': anchor, class: 'orr-ltape__figure orr-ltape__foot-n' }); d.textContent = '\u2014'; ag.appendChild(d); }
+        for (const [x, anchor, w] of [[acx - 14, 'end', 'BOUGHT'], [acx + 14, 'start', 'SOLD']]) { const t = svg('text', { x: f(x), y: f(acy + r + 30), 'text-anchor': anchor, class: 'orr-ltape__key' }); t.textContent = w; ag.appendChild(t); }
       }
       const label = sorted.length ? signed(net) : '\u2014';
       const fs = Math.min(22, Math.max(12, Math.floor((r * 1.1) / Math.max(1, label.length * 0.58))));

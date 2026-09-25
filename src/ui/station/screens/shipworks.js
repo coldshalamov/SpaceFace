@@ -1205,7 +1205,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const percent = model.condition && model.condition.percentText
       ? `<span class="sx-sw__conditionPct">${escapeHtml(model.condition.percentText)}</span>`
       : '';
-    const verb = model.condition ? model.condition.verb : 'STOWED';
+    const verb = model.condition ? model.condition.verb : 'DOCKED';
     const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
     // The title block: the hull's name at title size, its blurb as one emphasised sentence, the
     // condition verb as a fine word after the name (it carries the why).
@@ -1409,7 +1409,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? `Over budget ${plusMinus(headroom, 1)}/s`
       : `Power ${plusMinus(headroom, 1)}/s`;
     const powerTone = headroom < 0 ? 'k-hero--bad sx-sw-power__state--foe' : 'k-hero--good sx-sw-power__state--you';
-    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'STOWED');
+    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'DOCKED');
     const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
       ? activePresetRailModel.selectedPreset
       : null;

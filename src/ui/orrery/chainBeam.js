@@ -14,7 +14,7 @@ const BONE = '236 230 216';
 
 const CSS = `
 .orr-chain { position:relative; width:100%; height:100%; min-height:150px; isolation:isolate; --orr-chain-s:1; }
-.orr-chain::before { content:""; position:absolute; z-index:-1; inset:-12% -9% -12% -6%; pointer-events:none; background:radial-gradient(closest-side, rgb(6 8 11 / .8), rgb(6 8 11 / .55) 60%, rgb(6 8 11 / 0)); }
+.orr-chain::before { content:""; position:absolute; z-index:-1; inset:-14% -12% -14% -6%; pointer-events:none; background:radial-gradient(closest-side, rgb(6 8 11 / .8), rgb(6 8 11 / .55) 60%, rgb(6 8 11 / 0)); }
 .orr-chain > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-chain.is-off > svg, .orr-chain.is-off > .orr-chain__label { display:none; }
 .orr-chain__label { position:absolute; display:flex; flex-direction:column; gap:2px; pointer-events:none; white-space:nowrap; }
@@ -44,17 +44,21 @@ const CSS = `
 .orr-chain__time { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-chain__qty { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(40px * var(--orr-chain-g, 1)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); white-space:nowrap; line-height:1.3; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
-.orr-svg .orr-chain__node { fill:rgb(6 8 11 / .9); stroke:rgb(${BONE} / .85); stroke-width:1.3; }
+.orr-svg .orr-chain__node { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.3; }
+.orr-svg .orr-chain__reason-leader { stroke:rgb(${BONE} / .6); }
+.orr-chain__label.is-below .orr-chain__qty { display:block; text-align:center; }
+.orr-chain__label.is-ghost .orr-chain__qty { font-size:calc(40px * var(--orr-chain-g, 1) * .55); }
+.orr-chain__label.is-below .orr-chain__unit { display:block; text-align:center; }
 .orr-svg .orr-chain__node--short { stroke:rgb(${BONE} / .55); stroke-dasharray:3.2 2.4; }
 .orr-svg .orr-chain__node--process { stroke:rgb(248 244 234); fill:none; }
 .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .55); stroke-dasharray:4 3; }
 .orr-svg .orr-chain__node-bloom { stroke:rgb(${BONE} / .9); }
 .orr-svg .orr-chain__progress { stroke:rgb(248 244 234); }
 .orr-svg .orr-chain__progress-bloom { stroke:rgb(${BONE}); }
-.orr-svg .orr-chain__glyph { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.35; stroke-linecap:square; stroke-linejoin:miter; }
+.orr-svg .orr-chain__glyph { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.35; stroke-linecap:square; stroke-linejoin:miter; filter:drop-shadow(0 0 2px rgb(236 230 216 / .45)); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-chain__glyph :is(path, rect, circle, ellipse) { vector-effect:non-scaling-stroke; }
-.orr-chain__reason { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(11px * var(--orr-chain-s)); font-weight:650; color:rgb(248 244 234 / .88); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
+.orr-chain__reason { font-family:var(--dp-face-display, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-size:calc(30px * var(--orr-chain-s)); font-weight:250; line-height:1.05; color:rgb(248 244 234); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
 .orr-svg .orr-chain__node--out { stroke:rgb(248 244 234); stroke-width:1.6; }
 .orr-svg .orr-chain__core { fill:rgb(246 241 230); }
 .orr-svg .orr-chain__beam { stroke:rgb(${BONE} / .55); }
@@ -180,7 +184,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const endY = cy + (rProc - 1) * Math.sin(toward);
       const x0 = xIn + rIn;
       const d = `M ${f(x0)} ${f(y)} C ${f(x0 + (xProc - x0) * 0.5)} ${f(y)}, ${f(xProc - (xProc - x0) * 0.3)} ${f(endY)}, ${f(endX)} ${f(endY)}`;
-      layer.appendChild(riseG(svg('path', { d, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 5, opacity: short ? '.06' : '.14' }), 80 + i * 40));
+      layer.appendChild(riseG(svg('path', { d, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: short ? '.08' : '.22' }), 80 + i * 40));
       const beam = svg('path', { d, class: `orr-core orr-chain__beam${short ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.2 });
       layer.appendChild(rise(beam, 80 + i * 40));
       if (live && arriveNow && !short) {
@@ -207,7 +211,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 5, opacity: blocked ? '.06' : '.14' }),
       svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: `orr-core orr-chain__node--process${blocked ? ' orr-chain__node--blocked' : ''}`, 'stroke-width': 1.2, fill: 'none' }),
       // the ring's own scale: sixty minor ticks inside the stroke, so the time arc has something to read against
-      svg('path', { d: ticksD(xProc, cy, rProc - 3, 60, { len: 3, major: 15, majorLen: 6, inward: true }), class: 'orr-core orr-chain__scale', 'stroke-width': 1 }),
+      svg('path', { d: ticksD(xProc, cy, rProc - 3, rProc < 90 ? 30 : 60, { len: 3, major: rProc < 90 ? 5 : 15, majorLen: 6, inward: true }), class: 'orr-core orr-chain__scale', 'stroke-width': 1 }),
     );
     // the run time as an arc on that scale: full when instant, filling on a timed job, empty and dashed when blocked
     const timeFrac = blocked ? 0 : (Number.isFinite(data.timeFrac) ? Math.max(0, Math.min(1, data.timeFrac)) : 1);
@@ -216,7 +220,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       proc.appendChild(svg('path', { d: dT, class: 'orr-bloom orr-chain__timearc-bloom', 'stroke-width': 5, opacity: '.16' }));
       proc.appendChild(svg('path', { d: dT, class: 'orr-core orr-chain__timearc', 'stroke-width': 1.5 }));
     } else if (blocked) {
-      proc.appendChild(svg('path', { d: arcD(xProc, cy, rProc - 9, 0, 360), class: 'orr-core orr-chain__timearc--off', 'stroke-width': 1, 'stroke-dasharray': '2 5' }));
+      proc.appendChild(svg('path', { d: arcD(xProc, cy, rProc + 8 * scL, 0, 360), class: 'orr-core orr-chain__timearc--off', 'stroke-width': 1 }));
     }
     // a job on the line: its progress as an arc round the ring
     const progress = Number.isFinite(data.progress) ? Math.max(0, Math.min(1, data.progress)) : null;
@@ -226,7 +230,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     }
     layer.appendChild(rise(proc, 200));
     // the verb is sized from its ring, so it always sits inside the stroke
-    const pl = label('is-centre', xProc - rProc, cy - rProc * 0.18, `<span class="orr-chain__process${blocked ? ' is-blocked' : ''}">${data.process || 'process'}</span>`);
+    const pl = label('is-centre', xProc - rProc, blocked ? cy - rProc * 0.62 : cy - rProc * 0.18, `<span class="orr-chain__process${blocked ? ' is-blocked' : ''}">${data.process || 'process'}</span>`);
     pl.style.width = `${f(rProc * 2)}px`;
     // the time under the ring; when the station cannot run the line, the reason takes that slot and the time stands over the ring
     // a process that cannot run has no duration: the time stands under the ring only when the line is open
@@ -234,15 +238,16 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     if (tl) tl.style.width = '120px';
     if (blocked) {
       // the reason takes the twelve o'clock slot alone, at label weight in ink; a way out hangs under it when there is one
-      const rl = label('is-centre', xProc - 130, cy - rProc - 30 * scL, `<span class="orr-chain__reason">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
-      rl.style.width = '260px';
+      const rl = label('is-centre', xProc - 150, cy - rProc - 74 * scL, `<span class="orr-chain__reason">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
+      rl.style.width = '300px';
+      proc.appendChild(svg('path', { d: `M ${f(xProc)} ${f(cy - rProc - 2)} L ${f(xProc)} ${f(cy - rProc - 20 * scL)}`, class: 'orr-core orr-chain__reason-leader', 'stroke-width': 1.5 }));
       if (arriveNow) { rl.classList.add('orr-chain__rise'); rl.style.setProperty('--orr-delay', '260ms'); }
     }
     if (arriveNow && tl) { tl.classList.add('orr-chain__rise'); tl.style.setProperty('--orr-delay', '240ms'); }
     if (arriveNow) { pl.classList.add('orr-chain__rise'); pl.style.setProperty('--orr-delay', '220ms'); }
     // out: one beam to the product
     const dOut = `M ${f(xProc + rProc - 1)} ${f(cy)} L ${f(xOut - rOut)} ${f(cy)}`;
-    layer.appendChild(riseG(svg('path', { d: dOut, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 5, opacity: blocked ? '.04' : live ? '.16' : '.08' }), 260));
+    layer.appendChild(riseG(svg('path', { d: dOut, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: blocked ? '.05' : live ? '.22' : '.14' }), 260));
     const outBeam = svg('path', { d: dOut, class: `orr-core orr-chain__beam${blocked ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.4 });
     layer.appendChild(rise(outBeam, 260));
     if (live && arriveNow) {
@@ -258,11 +263,12 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     layer.appendChild(riseG(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: 'orr-bloom orr-chain__node-bloom', 'stroke-width': 4, opacity: blocked ? '.05' : '.18', fill: 'none' }), 300));
     layer.appendChild(rise(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: `orr-chain__node orr-chain__node--out${blocked ? ' orr-chain__node--short' : ''}` }), 300));
     if (data.output && data.output.glyph) layer.appendChild(rise(glyphAt(data.output.glyph, xOut, cy, rOut, blocked ? 'is-short' : ''), 300));
-    const ol = label(`is-right${blocked ? ' is-ghost' : ''}`, xOut + rOut + 12 * scL, cy - 24 * gIn, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${String(data.output && data.output.unit ? data.output.unit : 'per run').split(' · ').join('<br>')}</span>`);
+    const ol = label(`is-centre is-below${blocked ? ' is-ghost' : ''}`, xOut - 110, cy + rOut + 10 * scL, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${String(data.output && data.output.unit ? data.output.unit : 'per run').split(' · ').join('<br>')}</span>`);
     if (arriveNow) { ol.classList.add('orr-chain__rise'); ol.style.setProperty('--orr-delay', '340ms'); }
     // the verb's seat: under the product's words, on the product's left edge
-    const yFoot = cy - 24 * gIn + ((ol && ol.offsetHeight) || 60) + 14;
-    if (typeof onLayout === 'function') onLayout({ W, H, xOut, rOut, cy, gIn, scL, rProc, xProc, xFoot: xOut - rOut, yFoot });
+    ol.style.width = '220px';
+    const yFoot = cy + rOut + 10 * scL + ((ol && ol.offsetHeight) || 60) + 12;
+    if (typeof onLayout === 'function') onLayout({ W, H, xOut, rOut, cy, gIn, scL, rProc, xProc, xFoot: xOut - 87, yFoot });
   }
 
   return {

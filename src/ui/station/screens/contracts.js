@@ -354,7 +354,8 @@ export function consequenceScalesSvg(m, { compact = false } = {}) {
   const rxc = rx0 + ((rx1 - rx0) * r) / 5;
   out += `<path class="orr-bloom orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="6"/>`;
   out += `<path class="orr-core orr-ct-scale__cursor${r >= 3 ? ' is-high' : ''}" d="M ${f(rxc)} ${ry - 9} L ${f(rxc)} ${ry + 10}" stroke-width="1.6"/>`;
-  out += `<text class="orr-ct-scale__word" x="${rx1 + 12}" y="${ry + 4}">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
+  // the reading rides above its own cursor tick, never in a column 150px away
+  out += `<text class="orr-ct-scale__word" x="${f(rxc)}" y="${ry - 12}" text-anchor="middle">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
   if (!compact) out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text><text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
   // standing: a centred scale, the loss to the left of zero in red, the gain to the right in light
   const sy = compact ? 44 : 62; const sx0 = rx0; const sx1 = rx1; const mid = (sx0 + sx1) / 2; const span = 10;

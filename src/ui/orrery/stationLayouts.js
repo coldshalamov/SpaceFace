@@ -280,6 +280,16 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 ${S} .sx-tile::after, ${S} .sx-dock .sx-tile::after, ${S} .sx-tile[aria-current]::after, ${S} .sx-tile.is-active::after { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .4) !important; }
 ${S} .sx-tile::before, ${S} .sx-dock .sx-tile::before, ${S} .sx-tile[aria-current]::before, ${S} .sx-tile.is-active::before { background:rgb(248 244 234) !important; background-image:none !important; background-color:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .55) !important; border-color:rgb(248 244 234) !important; }
 
+/* the deckplate's legend-key lamp outranks a plain selector: six classes beat its five */
+${S} .sxb-ops .sx-dock .sx-tile.k-word.fh-key::before, ${S} .sxb-ops .sx-dock .sx-tile.k-word.fh-key[aria-selected='true']::before, ${S} .sx-dock .sx-tile.k-word.fh-key.fh-key--legend::before { background:rgb(248 244 234) !important; background-image:none !important; box-shadow:0 0 8px rgb(248 244 234 / .55) !important; }
+${S} .sxb-ops .sx-dock .sx-tile.k-word.fh-key::after, ${S} .sxb-ops .sx-dock .sx-tile.k-word.fh-key[aria-selected='true']::after, ${S} .sx-dock .sx-tile.k-word.fh-key.fh-key--legend::after { background:rgb(248 244 234) !important; background-image:none !important; box-shadow:0 0 8px rgb(248 244 234 / .4) !important; }
+
+/* the rail's needle stays bone even while the rail holds focus (attend focuses the current tile at arrival): the tab's instrument owns the Hand */
+${S} .sxb-ops .orr-stationrow:is(:focus-within, :hover) .orr-stationrow__blade { fill:rgb(246 241 230) !important; }
+${S} .sxb-ops .orr-stationrow:is(:focus-within, :hover) .orr-stationrow__bead { fill:rgb(255 250 240) !important; }
+${S} .sxb-ops .orr-stationrow:is(:focus-within, :hover) path.orr-stationrow__tick.is-chosen { stroke:rgb(246 241 230) !important; }
+${S} .sxb-ops .orr-stationrow:is(:focus-within, :hover) .orr-stationrow__glow { fill:rgb(236 230 216) !important; opacity:.16 !important; }
+
 `;
 
 export function injectOrreryStation(doc = globalThis.document) {

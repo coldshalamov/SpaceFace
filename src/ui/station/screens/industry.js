@@ -230,7 +230,7 @@ export function createIndustryScreen(ctx) {
       }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: bp.timeS ? `${bp.timeS} s` : 'instant',
-      output: { qty: bp.outputs.qty || 1, unit: `${niceName(bp.outputs.id, bp.outputs.kind)} · per run`, glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
+      output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
       blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span>` } : null,

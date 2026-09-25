@@ -396,7 +396,9 @@ export function createBarScreen(ctx) {
     if (idEl && nameEl) {
       const host = document.createElement('div');
       host.className = 'orr-bar-wave';
-      nameEl.insertAdjacentElement('afterend', host);
+      // the trace hangs off the spoken line, not the heading: it is the voice, not a rule under a title
+      const spokenEl = stageEl.querySelector('.sx-talk__memory') || nameEl;
+      spokenEl.insertAdjacentElement('afterend', host);
       // the waveform is as wide as the name itself (not its column): measured off the glyph run
       let nameW = 0;
       try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
