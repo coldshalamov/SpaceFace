@@ -143,12 +143,17 @@ try {
     return state && state.mode === 'flight'
       && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
   }, null, { timeout: 600_000 });
-  // { links, frame } from the armed perf seam; null when the seam is absent or unarmed.
+  // { links, frame, totals } from the armed perf seam; null when the seam is absent or unarmed.
   const readShaderLinks = () => page.evaluate(() => {
     const perf = window.__SPACEFACE_PERF__;
     const snap = perf && typeof perf.getCounterSnapshot === 'function' ? perf.getCounterSnapshot() : null;
     const links = snap && snap.enabled === true && snap.totals && snap.totals.shaderLinks;
-    return Number.isFinite(links) ? { links, frame: snap.framesObserved } : null;
+    if (!Number.isFinite(links)) return null;
+    const pick = ['drawCalls', 'drawInstancedCalls', 'programSwitches', 'textureBinds', 'bufferFullUploads',
+      'bufferPartialUploads', 'bufferUploadBytes', 'textureUploads'];
+    const totals = {};
+    for (const key of pick) totals[key] = Number(snap.totals[key]) || 0;
+    return { links, frame: snap.framesObserved, totals };
   });
   // Who paid for each in-flight link: admission subject, drawn object, program name.
   const readFlightLinkEvents = (sinceFrame) => page.evaluate((since) => {
@@ -412,6 +417,48 @@ try {
     }
   }
 
+  // What one frame draws, near the station at the end of the route: visible drawables per scene
+  // root (a draw call each, instanced meshes once), and the renderer's own per-frame counters.
+  const drawCensus = await page.evaluate(() => {
+    const render = window.SF && window.SF.state && window.SF.state.render;
+    const scene = render && render.scene;
+    const renderer = render && render.renderer;
+    if (!scene) return null;
+    const roots = [];
+    let drawables = 0;
+    let instanced = 0;
+    let instances = 0;
+    for (const root of scene.children) {
+      if (!root || root.visible === false) continue;
+      let count = 0;
+      let inst = 0;
+      root.traverseVisible((o) => {
+        if (!(o.isMesh || o.isLine || o.isPoints || o.isSprite)) return;
+        if (o.isInstancedMesh && !(o.count > 0)) return;
+        count++;
+        if (o.isInstancedMesh) { inst++; instances += o.count; }
+      });
+      if (!count) continue;
+      drawables += count;
+      instanced += inst;
+      const ud = root.userData || {};
+      const label = `${root.name || root.type}${ud.entityId != null ? `#${ud.entityId}` : ''}`;
+      roots.push({ root: label.slice(0, 80), drawables: count, instanced: inst });
+    }
+    roots.sort((a, b) => b.drawables - a.drawables);
+    const info = renderer && renderer.info;
+    return {
+      drawables,
+      instancedMeshes: instanced,
+      instances,
+      rendererCalls: info && info.render ? info.render.calls : null,
+      rendererTriangles: info && info.render ? info.render.triangles : null,
+      programs: info && Array.isArray(info.programs) ? info.programs.length : null,
+      geometries: info && info.memory ? info.memory.geometries : null,
+      textures: info && info.memory ? info.memory.textures : null,
+      topRoots: roots.slice(0, 20),
+    };
+  }).catch(() => null);
   let cpuProfile = null;
   if (cdp) {
     const { profile } = await cdp.send('Profiler.stop');
@@ -433,6 +480,16 @@ try {
     ? resolvedLinks
     : (shaderLinksAtFlight ? await readFlightLinkEvents(shaderLinksAtFlight.frame) : []);
   const metrics = frameSolidMetrics(summary, { flightShaderLinks });
+  // GPU submission per presented frame over the route (system 7: draw less).
+  let submission = null;
+  if (shaderLinksAtFlight && shaderLinksAtEnd) {
+    const frames = Math.max(1, (shaderLinksAtEnd.frame || 0) - (shaderLinksAtFlight.frame || 0));
+    submission = { frames };
+    for (const key of Object.keys(shaderLinksAtEnd.totals || {})) {
+      const delta = (shaderLinksAtEnd.totals[key] || 0) - ((shaderLinksAtFlight.totals || {})[key] || 0);
+      submission[`${key}PerFrame`] = Math.round((delta / frames) * 10) / 10;
+    }
+  }
   // Authored-body composition jobs that ran in flight: service time per job (the lane is serial).
   const upgradeJobs = await page.evaluate(() => {
     const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
@@ -487,6 +544,12 @@ try {
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
   console.log(`  context losses: ${contextLosses == null ? 'NOT MEASURED' : contextLosses}`);
+  console.log(`  gpu submission: ${submission ? JSON.stringify(submission) : 'NOT MEASURED'}`);
+  if (drawCensus) {
+    const { topRoots, ...totals } = drawCensus;
+    console.log(`  draw census (one frame near the station): ${JSON.stringify(totals)}`);
+    for (const row of topRoots.slice(0, 12)) console.log(`    ${row.drawables} drawables (${row.instanced} instanced)  ${row.root}`);
+  }
   if (cpuProfile) {
     console.log(`  cpu profile: ${cpuProfile.path} wall=${cpuProfile.wallMs}ms busy=${cpuProfile.busyMs}ms`
       + ` idle=${cpuProfile.idleMs}ms gc=${cpuProfile.gcMs}ms program=${cpuProfile.programMs}ms`);
@@ -518,6 +581,8 @@ try {
     headless: HEADLESS,
     programCanon: !NO_CANON,
     contextLosses,
+    submission,
+    drawCensus,
     cpuProfile,
     host: {
       cpu: (cpus()[0] && cpus()[0].model) || null,
