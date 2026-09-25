@@ -589,6 +589,21 @@ function stampJobOwnedPersistence(entity) {
   entity.flags = Object.assign({}, entity.flags, { persistent: true });
 }
 
+// A job claim is a permanent-world marker: captureEntityRecord reads data.jobId, so the hull's
+// record goes PERMANENT at its next capture. But that capture walk only sees LIVE entities — a
+// hull shelved into the far table between assign() and the next capture pass kept a RECENT
+// record that gcExpiredRecentMemory dropped after 180 s, orphaning both the far row and the
+// job's rematerialization anchor on any route that never leaves the sector (PQ-033.02's
+// D28 residual). Pin the record through the world owner's public upsert hook at the moment
+// the job claims the hull — the identical seam traffic uses for its cast captures.
+function pinWorldRecordForJob(service, entity) {
+  const worldOwner = service && service.registry && service.registry.get
+    ? service.registry.get('world')
+    : null;
+  if (!worldOwner || typeof worldOwner.upsertWorldRecord !== 'function') return null;
+  return worldOwner.upsertWorldRecord(entity);
+}
+
 // Clear the job-owned persistence mark after the entity's job fields are already gone.
 // Anchored hulls (Ceres cast, site slots, missions, custody…) own their persistence
 // through other systems and are never touched.
@@ -1841,6 +1856,7 @@ export const npcJobsRuntime = {
         // a materialized same-id job, however, must still name this exact entity/data object.
         if (existing.entityId == null) {
           entity.data.jobId = jobId;
+          pinWorldRecordForJob(this, entity);
           return jobId;
         }
         const existingEntity = this.state.entities && this.state.entities.get(existing.entityId);
@@ -1854,6 +1870,7 @@ export const npcJobsRuntime = {
         }
         this._bindCeresFormationSlot(formationSlot, existing, entity);
         entity.data.jobId = jobId;
+        pinWorldRecordForJob(this, entity);
         return jobId;
       }
       if ((formationSlot.entityRef && formationSlot.entityRef !== entity)
@@ -1898,6 +1915,7 @@ export const npcJobsRuntime = {
         return jobId;
       }
       entity.data.jobId = jobId;
+      pinWorldRecordForJob(this, entity);
       return jobId; // unchanged ordinary idempotent assignment
     }
 
@@ -1934,6 +1952,7 @@ export const npcJobsRuntime = {
     this._invalidateJobIds();
     entity.data.jobId = jobId;
     stampJobOwnedPersistence(entity);
+    pinWorldRecordForJob(this, entity);
     this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
@@ -2621,6 +2640,33 @@ export const npcJobsRuntime = {
     }
   },
 
+  // The record-anchor half of the same invariant. assign() pins the hull's world record
+  // PERMANENT so a job survives the 180 s recent-memory window while its hull is shelved;
+  // when the job later leaves the bag (completed, released, restored-purged — every path,
+  // including paths this system does not run), that latch is stale. Left alone, job churn
+  // pinned one permanent record plus its durability-exempt far row per finished job,
+  // forever (PQ-033.02 D28 residual). Demote through the world owner's public hook — this
+  // system is the only one that knows whether a jobId is still live — on the same slow
+  // sim-clock sweep as the persistence mark, never per writer.
+  _reconcileStaleJobRecordPins() {
+    const bag = this.state.world && this.state.world.records;
+    const byRecord = bag && bag.byId;
+    if (!byRecord) return 0;
+    const worldOwner = this.registry && this.registry.get
+      ? this.registry.get('world') : null;
+    if (!worldOwner || typeof worldOwner.clearWorldRecordJobAnchor !== 'function') return 0;
+    const jobs = this._byId();
+    let demoted = 0;
+    for (const recordId of Object.keys(byRecord)) {
+      const rec = byRecord[recordId];
+      const jobId = rec && rec.jobId;
+      if (typeof jobId !== 'string' || jobId.indexOf('job:') !== 0) continue;
+      if (jobs[jobId] != null) continue; // live anchor — the pin is doing its job
+      if (worldOwner.clearWorldRecordJobAnchor(recordId, jobId)) demoted += 1;
+    }
+    return demoted;
+  },
+
   // ── PQ-019B: control leases ──────────────────────────────────────────────────────────────────────────────────────
   //
   // A lease lets another owner (a heist pursuit) borrow the HULL of a real, already-existing job
@@ -3048,6 +3094,7 @@ export const npcJobsRuntime = {
       || persistSweepT - lastPersistSweepT >= JOB_PERSIST_SWEEP_INTERVAL_S) {
       this._persistSweepLastSimT = persistSweepT;
       this._sweepJobOwnedPersistence();
+      this._reconcileStaleJobRecordPins();
     }
     const byId = this._byId();
     const ids = this._jobIdList();

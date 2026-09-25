@@ -330,25 +330,56 @@ export function insertFarActor(state, entity, simTime = 0) {
 // (PQ-033.02 attribution: ~0.2-0.6 KB/cycle, every other grower plateaued).
 export const FAR_ROW_BUDGET = 128;
 
-function farRowIsDurable(rec) {
+// A row is durable while it anchors something that still exists: the npcJobs bag relinks
+// jobs by worldRecordId against rematerialized hulls, and a live world record carries the
+// rematerialization contract — evicting those rows would orphan the job (the exact
+// phantom-job growth the convoy-cap fix closed). A row whose anchors have BOTH vanished
+// (the record was reclaimed by the 180 s recent-memory gc / the per-sector cap, and no job
+// bag entry survives) is a true orphan: nothing can ever rematerialize it, yet pre-PQ-033.02
+// it kept the durability exemption forever — the one far-row channel with no plateau.
+// When an owner bag is absent entirely (focused harnesses without that system), the anchor
+// cannot be verified and the conservative 9/19 exemption holds.
+function farRowIsDurable(rec, state) {
   if (!rec) return false;
-  // A row carrying a live npcJobs relink id or a durable world record must survive: the job
-  // bag relinks jobs by worldRecordId against rematerialized hulls, and evicting the row
-  // would orphan the job (the exact phantom-job growth the convoy-cap fix closed).
-  if (rec.jobId != null || rec.worldRecordId != null) return true;
-  const data = rec.data;
-  return !!(data && (data.jobId != null || data.worldRecordId != null));
+  const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
+  const jobId = rec.jobId != null ? rec.jobId : (data.jobId != null ? data.jobId : null);
+  const recordId = rec.worldRecordId != null ? rec.worldRecordId
+    : (data.worldRecordId != null ? data.worldRecordId : null);
+  if (jobId == null && recordId == null) return false;
+  const jobs = state && state.npcJobs && state.npcJobs.byId;
+  const records = state && state.world && state.world.records && state.world.records.byId;
+  if (jobId != null) {
+    if (!jobs) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(jobs, jobId)) return true;
+  }
+  if (recordId != null) {
+    if (!records) return true; // unverifiable: keep the exemption
+    if (Object.prototype.hasOwnProperty.call(records, recordId)) return true;
+  }
+  return false; // verifiably anchored to nothing: spent
 }
 
 /** Oldest-first, deterministic (rows is insertion-ordered and restore preserves the order). */
 export function enforceFarRowBudget(state) {
   const table = state && state.world && state.world.farActors;
-  if (!table || !Array.isArray(table.rows) || table.rows.length <= FAR_ROW_BUDGET) return 0;
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) return 0;
   let evicted = 0;
+  // True orphans die on every pass, budget or not: their rematerialization contracts are
+  // provably void, and a slow shelving session that never crosses FAR_ROW_BUDGET would
+  // otherwise accumulate them under the ceiling. Allocation-free walk, insertion order.
+  for (let i = table.rows.length - 1; i >= 0; i--) {
+    const rec = table.rows[i];
+    if (farRowIsDurable(rec, state)) continue;
+    if (rec.jobId == null && rec.worldRecordId == null
+      && !(rec.data && (rec.data.jobId != null || rec.data.worldRecordId != null))) continue; // plain row: budget below decides
+    removeFarRecord(table, rec);
+    evicted += 1;
+  }
+  if (table.rows.length <= FAR_ROW_BUDGET) return evicted;
   let i = 0;
   while (table.rows.length > FAR_ROW_BUDGET && i < table.rows.length) {
     const rec = table.rows[i];
-    if (farRowIsDurable(rec)) {
+    if (farRowIsDurable(rec, state)) {
       i += 1;
       continue;
     }

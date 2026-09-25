@@ -132,6 +132,7 @@ import {
   findLiveEntityForRecord,
   markRecordDestroyed,
   missionIdentityOf,
+  normalizeRecord,
   recordShouldRematerialize,
   recordsForSector,
   serializeRecordsBag,
@@ -1472,6 +1473,28 @@ export const world = {
       return captured ? upsertRecord(bag, captured) : null;
     }
     return null;
+  },
+
+  /**
+   * Public/test hook: drop the job anchor from a record whose npcJobs entry is gone. The
+   * anchor latched the record PERMANENT at assign() time (upsertWorldRecord above); once the
+   * job has completed/released, that latch is stale — without this, job churn pinned one
+   * permanent record (plus its exempt far row) per finished job, forever (PQ-033.02 D28
+   * residual). The caller owns the proof that the job no longer exists; other permanent
+   * identity markers (mission/named/player/wreck/terminal outcome) still win through
+   * deriveRetentionClass, so this can only ever demote a spent actor back to recent memory.
+   */
+  clearWorldRecordJobAnchor(worldRecordId, jobId) {
+    const bag = ensureWorldRecords(this.state.world);
+    const rec = bag && bag.byId && worldRecordId != null ? bag.byId[worldRecordId] : null;
+    if (!rec || rec.jobId == null) return false;
+    if (jobId != null && rec.jobId !== jobId) return false;
+    // upsertRecord's retention latch intentionally never relaxes; this hook is the one writer
+    // that may, and only for the job anchor it owns.
+    const demoted = normalizeRecord({ ...rec, jobId: null, retentionClass: null });
+    if (!demoted) return false;
+    bag.byId[demoted.recordId] = demoted;
+    return true;
   },
 
   /**
@@ -3220,17 +3243,20 @@ export const world = {
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
     this._tickUsedUpFieldOpportunity(state);
+    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
+    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
+    // Runs BEFORE tickFarActors so rows orphaned by this sweep are evicted by the far-row
+    // orphan pass in the SAME tick instead of lingering one tick (PQ-033.02: an orphan row
+    // observed mid-lag read as unbounded growth at every save boundary).
+    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
+      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+    }
     tickFarActors(state, this.helpers, this.bus);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
     requestDecodeRunwayPromote(state, this.helpers);
-    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
-    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
-    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
-      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
-    }
   },
 
   _tickAsteroidFieldInteractions(state) {

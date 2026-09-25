@@ -450,7 +450,14 @@ function serializeHistory(raw) {
   let cursor = 0;
   for (let i = raw.length - count; i < raw.length; i++) {
     const point = raw[i];
-    const t = Number(point && point.t);
+    // The chart grid samples every HISTORY_SAMPLE_S (15 s), but the timestamps are stamped
+    // from tick-accumulated simTime, so an otherwise grid-aligned point carries float dust
+    // (e.g. 15.016666666666993) that serializes ~4x the bytes of the clean value. As the
+    // 64-point ring turns over that re-inflated every save, perpetually (PQ-033.02). Snap
+    // packed timestamps to 0.1 s — orders of magnitude finer than the sampling cadence — so
+    // the packed trace keeps its authored 64 points at a fixed byte size.
+    const rawT = Number(point && point.t);
+    const t = Math.round(rawT * 10) / 10;
     const mid = Math.max(1, round(Number(point && (point.mid != null ? point.mid : point)) || 0));
     if (!Number.isFinite(t) || !(mid > 0)) continue;
     out[cursor++] = t;
