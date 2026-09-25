@@ -98,9 +98,9 @@
       "cameraAmount": 0.12
     },
     {
-      "id": "tether.break",
+      "id": "tether.break.overload",
       "sourceEvent": "tether:broken",
-      "tick": 116,
+      "tick": 98,
       "sourceToAppliedTicks": 0,
       "orderedTypes": [
         "tether:broken",
@@ -124,7 +124,7 @@
       ],
       "audioId": "presentation.tether.break",
       "audioGain": 0.772,
-      "uiKey": "presentation:tether:break",
+      "uiKey": "presentation:tether:break-overload",
       "shape": "arc",
       "particles": 96,
       "lights": 0,

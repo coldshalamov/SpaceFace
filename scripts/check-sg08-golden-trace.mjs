@@ -120,7 +120,9 @@ function sourceTickMatches(record, expectedCue) {
 function sourceCarriesCue(record, cueId) {
   if (record.type === 'scenario:beatEntered') return (record.payload.presentationEventIds || []).includes(cueId);
   if (record.type === 'tether:attached' && cueId === 'tether.attach') return true;
-  if (record.type === 'tether:broken' && cueId === 'tether.break') return true;
+  // INF-018 split the line-failure cue by cause (overload/severed/endpoint) while the bus source
+  // stays `tether:broken`; the golden pins whichever cause cue the scenario actually emits.
+  if (record.type === 'tether:broken' && (cueId === 'tether.break' || cueId.startsWith('tether.break.'))) return true;
   return recordCarriesCue(record, cueId);
 }
 

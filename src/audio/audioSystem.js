@@ -953,6 +953,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'massline.reel': 'sfx_massline_reel_whine',
   'massline.release': 'sfx_massline_release',
   'massline.bridle': 'sfx_massline_bridle_chord',
+  // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
+  // low growl authored beside the other massline recipes — a live line under load, not a break.
+  'presentation.massline.threat': 'sfx_massline_threat',
   'presentation.tether.reel': 'sfx_massline_reel_whine',
   'presentation.tether.release': 'sfx_massline_release',
   'presentation.tether.bridle': 'sfx_massline_bridle_chord',

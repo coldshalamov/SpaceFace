@@ -7,7 +7,11 @@ import { massline2Flag } from '../data/featureFlags.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
-const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
+// The 140/90 tuning is the authored 47-A contract: the scenario's measured peak tension (~119)
+// must cross the 75% near-break warning (105) without reaching the break (140), so the line
+// groans under the false mass and holds. The +25% production-def retune (175/112.5) pushed the
+// warning band above the authored load and silently removed tether.near_break from the trace.
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
 const STANDARD_TETHER_PAYOUT_REVISION = 1;
 const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;

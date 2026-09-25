@@ -1954,6 +1954,35 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 520, filterQ: 1.8,
     gainMult: 0.58,
   },
+  // Massline threat warning (Rung 10): a low wobbling growl — something heavy leaning on a live
+  // line. Deliberately NOT the latch's lock transient or the strain creak's mid-band scrape:
+  // register sits an octave lower, swells in, and wobbles instead of cracking.
+  {
+    id: 'sfx_massline_threat_growl',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 74, freqSweep: [82, 46], sweepTimeS: 0.7,
+    gainEnvelope: { attack: 0.04, sustain: 0.05, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 1.2,
+    lfoRate: 7, lfoDepth: 0.12,
+    distortionAmount: 0.3,
+  },
+  {
+    id: 'sfx_massline_threat_rumble',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.06, sustain: 0.04, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 190, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_massline_threat',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massline_threat_growl', 'sfx_massline_threat_rumble'],
+    gainMult: 0.85,
+  },
   {
     id: 'sfx_travel_commit_sub',
     category: 'engine',

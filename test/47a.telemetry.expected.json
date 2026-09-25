@@ -55,15 +55,15 @@
     "projectile:hit": 4,
     "combat:damage": 4,
     "economy:tick": 2,
-    "camera:shake": 1,
-    "presentation:cameraCue": 1,
-    "presentation:vfxCue": 2,
-    "presentation:audioCue": 2,
-    "presentation:uiCue": 2,
-    "presentation:caption": 2,
-    "presentation:cueApplied": 6,
-    "presentation:cue": 6,
-    "audio:cue": 3
+    "camera:shake": 2,
+    "presentation:cameraCue": 2,
+    "presentation:vfxCue": 3,
+    "presentation:audioCue": 3,
+    "presentation:uiCue": 3,
+    "presentation:caption": 3,
+    "presentation:cueApplied": 7,
+    "presentation:cue": 7,
+    "audio:cue": 4
   },
   "acceptanceCriteria": {
     "authoritativeHash": "2c2007a157ecd52e1ce43dacf5e021d3aaa8d41bd9ce082716c731f4c785722b",
@@ -163,6 +163,9 @@
     "Also: A5 composed-frame engagement ranges moved weapons[].range and derived.maxWeaponRange 600->240; a boost tune doubled derived.boost.max/regenRate on three ships; additive lanes added player.stats.creditsEarned and three story finale fields.",
     "Companion save fix: live projectiles ride the entities payload (transient restore, finite ttl, remapped ownerId/targetId) and restored actors reclaim saved ids when free.",
     "reload@600 was dropping all 13 in-flight rounds; it now reproduces the uninterrupted hash exactly. Repeat-20 is deterministic (baselineSha256 equals run hash).",
-    "Recorded against the working tree; the constituent lanes may land in separate commits."
+    "Recorded against the working tree; the constituent lanes may land in separate commits.",
+    "2026-09-22 count re-pin (D46 tether-cue repair): tether.near_break is restored to the legacy 47-A path — LEGACY_47A_MASSLINE_BREAK returns to 140/90 after the +25% sweep raised the warn band above the authored ~119 peak.",
+    "phase0ObservedTraceCounts +1 per restored fan-out lane: camera:shake 1->2, cameraCue 1->2, vfxCue 2->3, audioCue 2->3, uiCue 2->3, caption 2->3, cueApplied 6->7, cue 6->7, audio:cue 3->4.",
+    "authoritativeHash unchanged at 2c2007a: warning bookkeeping is not hashed physics — zero motion fields moved. Evidence: check-sg05-runtime.mjs commits tether.near_break to this run."
   ]
 }
