@@ -16,7 +16,7 @@ export const LAMPKEY_STYLE_ID = 'orr-lampkey-style';
 const BONE = '236 230 216';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** the hold line runs this far outside the field, so it stands on the glass and not on the amber */
-const RING_OUT = 7;
+const RING_OUT = 9;
 /** the field's cut, in px (matches the clip-path below) */
 const CUT = 13;
 /** the last stretch of the perimeter before the cut, where the hold commits */
@@ -41,7 +41,8 @@ const CSS = `
 .orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before { background:var(--dp-hand-hot, #ffd98c) !important; }
 .orr-lampkey:focus-visible { outline:1px solid rgb(255 217 140 / .9) !important; outline-offset:4px !important; }
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
-.orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
+/* while held the field goes quiet, so the travelling light is the brightest warm thing on the screen */
+.orr-lampkey.is-holding::before { background:var(--dp-hand, #f2b950) !important; opacity:.66; }
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .55) !important; }
 .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
 .orr-lampkey:disabled::after { display:block !important; inset:1px !important; animation:none !important; background:rgb(6 8 11 / .96) !important; background-size:auto !important;
@@ -54,15 +55,15 @@ const CSS = `
 .orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
 .orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 /* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
-.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .12); stroke-width:1; }
+.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1; }
 .orr-lampkey .orr-lampkey__commit { fill:none; stroke:rgb(255 80 56 / .85); stroke-width:1.5; }
 .orr-lampkey .orr-lampkey__commit-bloom { fill:none; stroke:rgb(255 80 56 / .9); stroke-width:6; opacity:.22; }
 .orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;
   stroke-dasharray:100; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
-.orr-lampkey .orr-lampkey__fill { stroke-width:1.6; }
-.orr-lampkey .orr-lampkey__fillbloom { stroke-width:7; opacity:.3; }
+.orr-lampkey .orr-lampkey__fill { stroke-width:2.2; }
+.orr-lampkey .orr-lampkey__fillbloom { stroke-width:9; opacity:.32; }
 /* the bead rides the same silhouette, ahead of the fill */
-.orr-lampkey .dp-holdring > .orr-lampkey__bead { position:absolute; left:0; top:0; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; pointer-events:none;
+.orr-lampkey .dp-holdring > .orr-lampkey__bead { position:absolute; left:0; top:0; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%; pointer-events:none;
   background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 10px 3px rgb(255 217 140 / .7);
   offset-path:var(--orr-hold-path); offset-distance:calc(var(--sf-hold-p, 0) * 100%); offset-rotate:0deg; opacity:0; transition:opacity .12s linear; }
 .orr-lampkey.is-holding .orr-lampkey__bead { opacity:1; }

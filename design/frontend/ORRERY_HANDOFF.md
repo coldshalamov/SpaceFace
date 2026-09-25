@@ -26,28 +26,28 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 4. The memory note `orrery-is-the-frontend-authority` (loaded automatically in this project) has the
    same traps with history.
 
-## 2. Status board (2026-09-23 night)
+## 2. Status board (2026-09-24 morning)
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
-| Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock ring/threat channel to spec |
-| Title / main menu | Iteration stopped (asks had become taste) | 7.2 | `arcRail.js`, `screenLayouts.js` | Needs a rebuild on a geometry, not more skin (§5 lesson). Emblem, arc rail, Continue with save hull |
+| Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock |
+| Title / main menu | Iteration stopped (asks had become taste) | 7.2 | `arcRail.js`, `screenLayouts.js` | Needs a rebuild on a geometry, not more skin (§5 lesson) |
 | Pause | Iteration stopped | 6.3 | same | Compact orbit ring of verbs; Resume as the primary verb |
 | New game | Iteration stopped | 6.0 | `stopDial.js` (turntable) | Orbit carousel of hulls with arc-gauge stats; difficulty dial with the Hand |
-| Crucible door / armory / refit / results | **Passed** | 8 / 8 / 8 / 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Door: HINGE crowding at 1280, launch glow. Keep them from regressing |
-| Station shell (all 7 tabs share it) | **Passed** | 8 | `stationLayouts.js` | Services orbit ring round the name (ORRERY hub intent); a ring swing on tab arrival |
-| Station Market | **Passed** | 8 | `marketLayouts.js` | 1280: dial over bright backdrop. 1920: empty lower-right. Name the one reason a trade is unavailable. Check the live total/verb in game |
-| Station Shipworks (dock host) | Rebuilt on the jig; round 5 unscored | 7.5 (1920 judged pass-level) | `shipworksLayouts.js` + `hullSchematic.js` | Score round 5 first. 1280 numerals cluster (use the refit's eight-spot numeral rule). Compatible modules as an orbit carousel round the ship. Ghost arcs on the handling scales. **For Sale** mode not composed. Inertia scale lights nothing at 18 |
-| Station Missions | Composed, **never critic-scored** | — | `stationTabsLayouts.js` | Score it. Dispatch-choice chevrons don't show. READINESS value sits indented. ORRERY intent: a mini-orrery with the route as a beam; Accept with a hold ring when collateral is at risk |
-| Station Bar | Not started | — | add to `stationTabsLayouts.js` | Contacts rail, leads with INSPECT pills, intel rows, talk choices as words; portrait as cinema; comms waveform |
-| Station Factions | Not started | — | same | Crest rail with bars and red/green tier numbers, standing ladder as a table, contract access list. ORRERY: 14 crests on an orbit ring, standing as arcs red→bone→amber |
-| Station Industry | Not started | — | same | Blueprints with red names for "unavailable" (never red: that's not a threat), needs as table rows, "Needs refinery" as a filled primary. ORRERY: chains as beams between node glyphs |
-| Station Ledger | Not started | — | same | Empty state is a sentence. ORRERY: ticker tape and arc summaries |
+| Crucible door / armory / refit / results | **Passed** | 8 / 8 / 8 / 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Door: HINGE crowding at 1280, launch glow. Refit still carries key caps (HOLD F·X, ENTER) — the station retired caps for dotted words; align |
+| Station shell (all 7 tabs share it) | **Passed** | 8 | `stationLayouts.js` | Ring swing on tab arrival. Every tab critic names the shell's amber tab-rail cursor as a second amber mark: make it bone or phosphor |
+| Station Market | **Passed** | 8 | `marketLayouts.js` | 1280: dial over bright backdrop. Name the one reason a trade is unavailable |
+| Station Shipworks (dock host) | Round 8 landed, in critic | 7.1 (r6) | `shipworksLayouts.js` + `hullSchematic.js` | Readouts as one ledger column (two at 720); the For Sale render lit; hardpoints as spans; Lamp Key on Buy & Fit / Range. Deferred: exploded schematic (needs part art), one dossier home |
+| Station Missions | Round 4 landed, in critic | 7.1 (r3) | `stationTabsLayouts.js`, `routeOrrery.js`, `lampKey.js` | r4: amber route beam = the Hand (ladder cursor bone), arm swings between berths, berth named outside the ring off a leader, hold traces the key, scale words 11px, collateral row reserved, FEATURED as a word over its row, dispatch sub-rows on ticks |
+| Station Bar | Round 3 landed, in critic | 6.9 (r2) | `stationTabsLayouts.js`, `waveform.js` | r3: mask on the face (intersected with an upper-right fade), no 1500px gutter, leads on the rail with numeral pay, one target per row, state-only choice cursor, name-wide waveform, intel folds at 720 |
+| Station Factions | Round 3 landed, in critic | 7.2 (r2) | `stationTabsLayouts.js`, `crestOrbit.js` | r3: contract rungs hang off the standing scale (three staggered rows), arm from the pivot under the authority's crest (centre = authority, chosen crest on a plate beside the name), drift field inside, zeros dropped, relations fold. Ruling: the arm is the Hand; the POWERS rail keeps a bone cursor |
+| Station Industry | Round 3 landed, in critic | 6.5 (r2) | `stationTabsLayouts.js`, `chainBeam.js` | r3: ring sized from width (r≈90 at 1920), blooms keep their opacity (animated on a group), verb sized from the ring, labels ≤1.25× while the numeral grows, SOURCE IN MARKET as a callout under each short input, needs ledger gone, beams from the rim. Deferred: ladder extent cue at 720 |
+| Station Ledger | Round 2 landed (the tape), unscored | 5.6 (r1) | `stationTabsLayouts.js`, `ledgerTape.js` | r2: the tape on a cycle scale (entries as ticks up/down by signed credits, red tips for loss/scar, the Hand on the read entry with a leader to the reading, net arc at the right); the reading signed (−930 / +2,240) with the effect line instead of the row's sentence; entries two-line; empty state one line + the empty tape; rail bloom everywhere |
 | THE SHIP (F2, flight host of the Shipworks stage) | Old sheet | — | `shipworksLayouts.js` scopes the dock host only | Extend the jig composition to `#sf-ship` |
 | Chart / galaxy map | Not started | — | — | ORRERY §6 Chart: sectors on orbital tracks, lanes as beams, lens, route as the amber beam |
 | Meta (tech tree, codex, mission log, settings) | Not started | — | — | ORRERY §6 Meta |
 | Loading | Not started | — | `bootRing.js` exists | Emblem dial; the load's real stages as ticks; no developer copy |
-| Comms / radials / confirm dialogs / toasts / Asteroid Works | Not started | — | — | Audit each with the same eye |
+| Comms / radials / confirm dialogs / toasts / Asteroid Works | Not started | — | — | Audit each with the same eye. The trade toast overprints UNDOCK at 1280 (Ledger critic) |
 
 ## 3. The library and the composition sheets
 
@@ -141,6 +141,28 @@ Checks per area (run the ones the change touches):
   when it is off.
 - **Stale shots.** Re-shoot every screen you send to the critic from the same build. One round was
   wasted on shots taken before a fix.
+- **The Read tool caches a PNG by path.** Reading `.devshots/ui-bench/x.png` twice in one session
+  can show the earlier picture. Copy the still to a fresh name (`scratchpad/view/r11-x.png`) before
+  opening it, or read the bench's probe numbers first.
+- **A library pseudo-element keeps its own transform.** `.orr-route::before` is `width:118%` with
+  `translate(-50%,-50%)`; a composition rule that only sets `inset` inherits that translate and the
+  disc slides half its width away (420px left, over the Missions title, dimming its right half for
+  three rounds). When you re-box a library pseudo-element, set `transform`, `width` and `height` too.
+  Bisect a mystery dim/bright region with `display:none` on candidates; `elementsFromPoint` skips
+  `pointer-events:none` elements and every pseudo-element, so it cannot find such overlays.
+- **An absolutely positioned grid child uses its grid area as its containing block.** A leftover
+  `grid-row:9` on `.sx-fab-foot` put the Industry key 1,100px below its plate. Set `grid-area:auto`
+  when you switch a grid child to absolute positioning.
+- **Crest art carries a dark plate.** The generated emblems sit on near-black hex shields; on the
+  glass they read as avatar chips. `mix-blend-mode:screen` on the `<img>` leaves only the light.
+- **A `mask` on an ancestor makes it a backdrop root.** A `backdrop-filter` inside a masked wrapper
+  blurs only the wrapper's own content, never the world behind it; put the blur on a sibling or on
+  the masked element itself.
+- **The critic's "two left edges" was a two-column grid** (crest | words) in a kit panel: measure
+  `display` and `gridTemplateColumns` on the parent before hunting margins.
+- **Never assume `rungs`, `rows` or `labels` fit:** assign rows right to left so a rung is one row
+  deeper than the deepest rung inside its own word's run; break words at their space into two
+  lines. Three fixed rows collided every round.
 
 ## 6. Critic protocol
 
@@ -160,25 +182,27 @@ interactive instrument. Tell the critic what is a bench artefact.
 
 ## 7. Ranked backlog — do these in order, each to a critic pass
 
-1. **Shipworks round 5 score.** Then fix the 1280 numeral cluster (eight-spot rule from the refit),
-   compose **For Sale** (the hull on its jig or hero render, spec as a ledger, the price as the
-   figure, Buy as the commit verb) and THE SHIP flight host.
-2. **Missions**: first critic round. Then the route mini-orrery (here → destination as a beam in
-   ice, jump hops as ticks), the dossier unfolding with `decrypt()`, and Accept with a hold ring
-   when collateral is at risk.
-3. **Bar, Factions, Industry, Ledger**: compose with `stationTabsLayouts.js` helpers first (rail, no
-   panels, ledgers, commit verb), then give each its ORRERY hero instrument (§6 Station): Factions'
-   crest orbit + standing arcs, Industry's production beams, Ledger's ticker + arc summaries, Bar's
-   waveform + portrait cinema.
-4. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
-   prices, rewards). Labels resolve with `decrypt()` on arrival. The purse ticks on a trade. All of
-   it respects `html.sf-reduce-motion`.
-5. **Title, Pause, New game**: rebuild on a geometry (they stalled at 6–7 as skins).
-6. **Chart, Meta, Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works**: each from §6.
-7. **Every screen at 2560×1440 and 1280×720**, and a keyboard/pad walk
-   (`node scripts/ui-bench.mjs --shot=<id> --walk`) of every control on screens you changed.
-8. **Composited-contrast audit** of small type (10px caps at 70% bone on the bright hangar truss
-   was the recurring legibility hit).
+1. **Close the five open station critics.** Missions r4, Bar r3, Factions r3, Industry r3, Ledger r2
+   (the tape) each have a round landed and a critic running or due. Read the report, fix the top
+   five, re-shoot both sizes plus the states named in §6, re-score. Shipworks r8 needs its critic
+   with the 1280 weapon state re-shot after the readouts width fix.
+2. **Shell rulings the tab critics keep naming:** the tab-rail's amber cursor is a second amber mark
+   on every composed tab (make it bone or phosphor; the tab word already carries the selection);
+   the trade toast overprints UNDOCK at 1280 (the toast rail must yield to the foot).
+3. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
+   prices, rewards). Labels resolve with `decrypt()` on arrival. The purse ticks on a trade. The
+   Missions arm already swings between berths on a spring; the Factions arm swings to the chosen
+   crest. All of it respects `html.sf-reduce-motion`.
+4. **Title, Pause, New game**: rebuild on a geometry (they stalled at 6–7 as skins).
+5. **Chart, Meta, Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works**: each from §6.
+6. **Every screen at 2560×1440 and 1280×720**, and a keyboard/pad walk
+   (`node scripts/ui-bench.mjs --shot=<id> --walk`) of every control on screens you changed. Under
+   host contention the plain bench times out at 30 s: use a long-wait copy of `ui-bench-eval.mjs`
+   (READY_TIMEOUT_MS 150 s) and shoot sequentially.
+7. **Composited-contrast audit** of small type (10px caps at 70% bone on the bright hangar truss
+   was the recurring legibility hit; the Ledger critic measured 9.5px caps at 5.0–6.1:1).
+8. **Deferred by design, still owed:** Shipworks exploded schematic (needs part art) and one dossier
+   home; Industry ladder extent cue at 720; Factions hover on a rail row swinging the arm.
 
 ## 8. Working rules that stay in force
 

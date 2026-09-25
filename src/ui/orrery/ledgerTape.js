@@ -48,6 +48,11 @@ const CSS = `
 .orr-svg .orr-ltape__hand-glow { fill:var(--dp-hand, #f2b950); opacity:.18; }
 .orr-svg .orr-ltape__hand-bead { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-svg .orr-ltape__leader { stroke:rgb(${BONE} / .6); }
+.orr-svg .orr-ltape__base { stroke:rgb(${BONE} / .18); }
+.orr-svg .orr-ltape__base-bloom { stroke:rgb(${BONE}); opacity:.06; }
+.orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
+.orr-ltape__pursehost { position:relative; display:block; }
+.orr-ltape__pursehost > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
 .orr-svg .orr-ltape__leader-bloom { stroke:rgb(${BONE}); opacity:.2; }
 .orr-svg .orr-ltape__ref-line { stroke:rgb(${BONE} / .3); }
 .orr-ltape text.orr-ltape__ref-n { fill:rgb(${BONE} / .5); }
@@ -88,7 +93,7 @@ const signed = (n) => (n > 0 ? `+${fmt(n)}` : n < 0 ? `−${fmt(n)}` : '0');
  * @param {HTMLElement} host
  * @param {{ onPick?: (id: string) => void }} [opts]
  */
-export function createLedgerTape(host, { onPick = null } = {}) {
+export function createLedgerTape(host, { onPick = null, purseHost = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, relayout() {}, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
@@ -97,6 +102,13 @@ export function createLedgerTape(host, { onPick = null } = {}) {
   host.classList.add('orr-ltape', 'is-off');
   const layer = svg('svg', { class: 'orr-svg orr-ltape__svg', 'aria-hidden': 'true', focusable: 'false' });
   host.appendChild(layer);
+  // the purse gauge stands in its own zone when a host is given: two instruments, two places
+  let purseLayer = null;
+  if (purseHost && typeof purseHost.appendChild === 'function') {
+    purseHost.classList.add('orr-ltape__pursehost');
+    purseLayer = svg('svg', { class: 'orr-svg orr-ltape__svg orr-ltape__purse', 'aria-hidden': 'true', focusable: 'false' });
+    purseHost.appendChild(purseLayer);
+  }
 
   let data = null;
   let frame = 0;
@@ -133,7 +145,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
     // the purse gauge always holds the right end, so the tape's extent never changes between states
-    const withArc = W >= 520;
+    const withArc = !purseLayer && W >= 520;
     const R_ARC = H >= 190 ? 52 : 44;
     const arcW = withArc ? R_ARC * 2 + 140 : 0;
     const padL = 0;
@@ -164,7 +176,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
     const tMin = sorted.length ? sorted[0].at : 0;
     const tMax = sorted.length ? sorted[sorted.length - 1].at : 1;
     const span = Math.max(1e-6, tMax - tMin);
-    const nowX = x1 - 20;
+    const nowX = x1 - 44;
     const inner0 = x0 + 44;
     const inner1 = nowX - 76;
     const spread = sorted.length === 1 || span < 1e-3;
@@ -182,7 +194,9 @@ export function createLedgerTape(host, { onPick = null } = {}) {
       if (c && c !== lastCycle) {
         const mx = k === 0 ? x0 : xs[k] - 13;
         if (k > 0) layer.appendChild(rise(svg('path', { d: `M ${f(mx)} ${y - 6} L ${f(mx)} ${y + 12}`, class: 'orr-core orr-ltape__major', 'stroke-width': 1.2 }), 60));
-        const t = svg('text', { x: f(mx + (k === 0 ? 0 : 4)), y: f(y + 24), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
+        // the origin's name yields a line when the first tick stands within its run
+        const crowded = k === 0 && xs.length && xs[0] - x0 < 64;
+        const t = svg('text', { x: f(mx + (k === 0 ? 0 : 4)), y: f(y + (crowded ? 38 : 24)), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
         t.textContent = c;
         layer.appendChild(rise(t, 80));
         lastCycle = c;
@@ -230,7 +244,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
       g.appendChild(svg('path', { d: `M ${f(x)} ${y} L ${f(x)} ${f(tipY)}`, class: `orr-core orr-ltape__stem${amt == null ? ' orr-ltape__stem--fact' : ''}`, 'stroke-width': 1.4 }));
       g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: 6, class: `orr-ltape__tip-bloom${threat ? ' orr-ltape__tip-bloom--threat' : ''}` }));
       g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: amt == null ? 2 : 2.6, class: `orr-ltape__tip${threat ? ' orr-ltape__tip--threat' : ''}` }));
-      if (amt != null) {
+      if (amt != null && !isChosen) {
         // neighbours closer than a figure's width take alternate heights
         const crowd = (k > 0 && xs[k] - xs[k - 1] < 58) || (k + 1 < xs.length && xs[k + 1] - xs[k] < 58);
         const lift = crowd && k % 2 === 1 ? 12 : 0;
@@ -246,9 +260,17 @@ export function createLedgerTape(host, { onPick = null } = {}) {
     // ring's foot down, an elbow to the tape's origin edge, and out of the tape into the reading beneath
     if (chosen) {
       const hg = svg('g', { class: 'orr-ltape__hand' });
-      const foot = chosen.up ? y + 2 : chosen.tipY + 8;
-      const ex = Math.max(x0, chosen.x - 14);
-      const leaderD = `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${H - LEADER_STRIP} L ${f(ex)} ${H - 8} L ${x0} ${H - 8} L ${x0} ${H}`;
+      const foot = chosen.up ? chosen.tipY + 8 : chosen.tipY + 8;
+      const yBase = H - 8;
+      const leaderD = `M ${f(chosen.x)} ${f(foot)} L ${f(chosen.x)} ${yBase}`;
+      // the base rule: the tape's width, faint; the stem lands on it and the reading is its label at the origin
+      hg.append(
+        svg('path', { d: `M ${x0} ${yBase} L ${f(x1)} ${yBase}`, class: 'orr-bloom orr-ltape__base-bloom', 'stroke-width': 4 }),
+        svg('path', { d: `M ${x0} ${yBase} L ${f(x1)} ${yBase}`, class: 'orr-core orr-ltape__base', 'stroke-width': 1 }),
+        svg('path', { d: `M ${x0} ${yBase} L ${x0} ${H}`, class: 'orr-core orr-ltape__base', 'stroke-width': 1 }),
+      );
+      // a sold entry's stem crosses the tape through a break in its core
+      if (chosen.up) hg.appendChild(svg('path', { d: `M ${f(chosen.x)} ${y - 3} L ${f(chosen.x)} ${y + 4}`, class: 'orr-ltape__break', 'stroke-width': 5 }));
       hg.append(
         svg('circle', { cx: f(chosen.x), cy: f(chosen.tipY), r: 12, class: 'orr-ltape__hand-glow' }),
         svg('circle', { cx: f(chosen.x), cy: f(chosen.tipY), r: 7, class: 'orr-core orr-ltape__hand-ring', 'stroke-width': 1.6 }),
@@ -262,13 +284,13 @@ export function createLedgerTape(host, { onPick = null } = {}) {
     // the purse's story as an arc gauge: a 270-degree track open at the foot, a zero tick at the top,
     // SOLD sweeping clockwise from zero and BOUGHT counter-clockwise, both to the larger of the two,
     // so the net is the visible difference; the signed net inside; a glass pool under it all
-    if (withArc) {
+    // the purse's story as an arc gauge, drawn into any target: a 270-degree track open at the foot, a
+    // zero tick at the top, SOLD clockwise in bone and BOUGHT counter-clockwise dimmer, both to the
+    // larger of the two, so the net is the visible difference; the signed net inside; a glass pool under
+    const drawPurse = (target, acx, acy, r) => {
       const bought = sorted.reduce((s2, e) => s2 + (Number.isFinite(e.amount) && e.amount < 0 ? -e.amount : 0), 0);
       const sold = sorted.reduce((s2, e) => s2 + (Number.isFinite(e.amount) && e.amount > 0 ? e.amount : 0), 0);
       const net = sold - bought;
-      const r = R_ARC;
-      const acx = x1 + 46 + r;
-      const acy = y - 4;
       const ag = svg('g', { class: 'orr-ltape__summary' });
       const gid = `orr-ltape-pool-${Math.round(acx)}-${Math.round(acy)}`;
       const defs = svg('defs', {});
@@ -293,8 +315,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
         ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc', 'stroke-width': 2 }));
         const [bx, by] = polar(acx, acy, r, soldDeg);
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.6, class: 'orr-ltape__arc-head' }));
-        const [lx, ly] = polar(acx, acy, r + 13, Math.max(24, soldDeg));
-        const t = svg('text', { x: f(lx), y: f(ly + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx + 10), y: f(acy + r + 14), 'text-anchor': 'start', class: 'orr-ltape__key' });
         t.textContent = `SOLD ${fmt(sold)}`;
         ag.appendChild(t);
       }
@@ -303,8 +324,7 @@ export function createLedgerTape(host, { onPick = null } = {}) {
         ag.appendChild(svg('path', { d, class: 'orr-core orr-ltape__arc orr-ltape__arc--out', 'stroke-width': 2 }));
         const [bx, by] = polar(acx, acy, r, -boughtDeg);
         ag.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.2, class: 'orr-ltape__arc-head orr-ltape__arc-head--out' }));
-        const [lx, ly] = polar(acx, acy, r + 13, -Math.max(24, boughtDeg));
-        const t = svg('text', { x: f(lx), y: f(ly + 3.5), 'text-anchor': 'end', class: 'orr-ltape__key' });
+        const t = svg('text', { x: f(acx - 10), y: f(acy + r + 14), 'text-anchor': 'end', class: 'orr-ltape__key' });
         t.textContent = `BOUGHT ${fmt(bought)}`;
         ag.appendChild(t);
       }
@@ -312,10 +332,19 @@ export function createLedgerTape(host, { onPick = null } = {}) {
       const fs = Math.min(22, Math.max(12, Math.floor((r * 1.1) / Math.max(1, label.length * 0.58))));
       const nt = svg('text', { x: f(acx), y: f(acy + fs * 0.36), 'text-anchor': 'middle', class: 'orr-ltape__net', style: `font-size:${fs}px` });
       nt.textContent = label;
-      const kt = svg('text', { x: f(acx), y: f(acy + r + 14), 'text-anchor': 'middle', class: 'orr-ltape__key' });
+      const kt = svg('text', { x: f(acx), y: f(acy + r + 30), 'text-anchor': 'middle', class: 'orr-ltape__key' });
       kt.textContent = 'NET \u00b7 CR';
       ag.append(nt, kt);
-      layer.appendChild(rise(ag, 200));
+      target.appendChild(rise(ag, 200));
+    };
+    if (withArc) drawPurse(layer, x1 + 46 + R_ARC, y - 4, R_ARC);
+    if (purseLayer) {
+      purseLayer.textContent = '';
+      const W2 = purseHost.clientWidth || 220;
+      const H2 = purseHost.clientHeight || 200;
+      purseLayer.setAttribute('viewBox', `0 0 ${W2} ${H2}`);
+      const r2 = Math.max(36, Math.min(56, Math.floor(Math.min(W2 / 2 - 60, H2 / 2 - 36))));
+      drawPurse(purseLayer, W2 / 2, H2 / 2 - 8, r2);
     }
   }
 

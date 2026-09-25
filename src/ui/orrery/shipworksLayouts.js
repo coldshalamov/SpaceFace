@@ -46,7 +46,7 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const a = from + (span * (i + 0.5)) / n;
     const [tx0, ty0] = polar(cx, cy, r + 12, a);
     const [tx1, ty1] = polar(cx, cy, r + 17, a);
-    const [lx, ly] = polar(cx, cy, r + 17, a);
+    const [lx, ly] = polar(cx, cy, r + 13, a);
     const cos = Math.cos(((a - 90) * Math.PI) / 180);
     const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
@@ -401,7 +401,7 @@ ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
 ${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
-${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8.5px; letter-spacing:.08em; fill:rgb(${BONE} / .52); }
+${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.8px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
 ${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
 ${W} text.orr-power__syslabel.is-stock { fill:rgb(${BONE} / .82); }
 ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
@@ -566,9 +566,9 @@ ${W} .orr-sw-readouts { -webkit-mask-image:none !important; mask-image:none !imp
 /* the price fits its column against the widest catalogue price; never wider than the gutter */
 ${W}.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:clamp(40px, 3.1vw, 60px) !important; }
 /* the dial is bigger, its words at label size with the ticks; at 720 the ticks alone say it */
-${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:264px; height:170px; }
-${W} .sx-sw-circuit__core .k-hero__n { top:68px; }
-${W} .sx-sw-circuit__core .k-hero__w { top:114px; }
+${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:240px; height:155px; }
+${W} .sx-sw-circuit__core .k-hero__n { top:62px; }
+${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 /* the hardpoint list: inline with a separator only on a short screen; one per line otherwise, nothing dangling */
 @media (max-height:800px) {
   ${W} .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\b7 " !important; color:rgb(${BONE} / .45); }
@@ -616,7 +616,8 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 }
 
 /* the dial's words stay inside the column: the dial sits a little left of its axis on a tall screen */
-@media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:-28px !important; } }
+/* the side column takes the width the dial's words need on a tall screen; the dial sits near its axis */
+@media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
 /* a short screen: the chosen module's sentence folds so its key stays above the fold */
 @media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
 

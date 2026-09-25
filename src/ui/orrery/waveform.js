@@ -17,7 +17,7 @@ const CSS = `
 .orr-wave__bar { display:block; width:2px; height:100%; border-radius:1px; background:rgb(${BONE} / .62); transform-origin:50% 50%;
   transform:scaleY(var(--orr-wave-rest, .18)); animation:orr-wave-breathe var(--orr-wave-d, 2.6s) ease-in-out var(--orr-wave-delay, 0s) infinite alternate; }
 .orr-wave.is-speaking .orr-wave__bar { background:rgb(248 244 234); animation:orr-wave-speak var(--orr-wave-sd, .42s) ease-in-out var(--orr-wave-delay, 0s) infinite alternate; }
-@keyframes orr-wave-breathe { from { transform:scaleY(var(--orr-wave-rest, .18)); } to { transform:scaleY(calc(var(--orr-wave-rest, .18) * 1.35 + .04)); } }
+@keyframes orr-wave-breathe { from { transform:scaleY(var(--orr-wave-rest, .18)); } to { transform:scaleY(calc(var(--orr-wave-rest, .18) * 1.18 + .03)); } }
 @keyframes orr-wave-speak { from { transform:scaleY(var(--orr-wave-lo, .2)); } to { transform:scaleY(var(--orr-wave-hi, 1)); } }
 html.sf-reduce-motion .orr-wave__bar, html.sf-reduce-motion .orr-wave.is-speaking .orr-wave__bar { animation:none; transform:scaleY(var(--orr-wave-rest, .18)); }
 `;
@@ -87,7 +87,7 @@ export function createWaveform(host, { bars = 28, envelope = null } = {}) {
     const centre = 1 - Math.abs((i - (bars - 1) / 2) / ((bars - 1) / 2));
     const env = envelope && Number.isFinite(envelope[i]) ? Math.max(0, Math.min(1, envelope[i])) : null;
     // 2..14px of a 24px line at rest: a real envelope, tapered at the ends; the breathe adds to it
-    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.08 + env * 0.5).toFixed(2));
+    bar.style.setProperty('--orr-wave-rest', env === null ? (0.12 + centre * 0.16 + Math.random() * 0.06).toFixed(2) : (0.08 + env * 0.74).toFixed(2));
     bar.style.setProperty('--orr-wave-d', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-sd', `${(0.28 + Math.random() * 0.3).toFixed(2)}s`);
     bar.style.setProperty('--orr-wave-delay', `${(-Math.random() * 2).toFixed(2)}s`);

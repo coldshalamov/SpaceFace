@@ -577,7 +577,7 @@ export function createContractsScreen(ctx) {
       const facts = sub ? String(option.tradeoff || '').split(' · ').filter((c) => !/^pays\b/i.test(c.trim())).slice(0, 3).join(' · ') : String(option.tradeoff || '');
       return (
         `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt${sub ? ' sx-decision__opt--sub' : ''}" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}" aria-label="${escapeHtml(`${option.label}. ${option.tradeoff}`)}">` +
-          `<span class="k-row__name">${repeats ? 'Dispatch' : escapeHtml(option.label)}</span>` +
+          `<span class="k-row__name">${repeats ? 'Dispatch this job' : escapeHtml(option.label)}</span>` +
           `<span class="k-row__sub">${escapeHtml(facts)}</span>` +
         `</button>`
       );

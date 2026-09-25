@@ -140,7 +140,7 @@ export function createLedgerScreen(ctx) {
   function syncTape(selectedId) {
     const model = panel.model;
     const entries = model && Array.isArray(model.entries) ? model.entries.map(tapeEntryOf) : [];
-    if (!tape) tape = createLedgerTape(tapeHost, { onPick: (id) => pickById(id) });
+    if (!tape) tape = createLedgerTape(tapeHost, { onPick: (id) => pickById(id), purseHost });
     let nowCycle = '';
     try { nowCycle = formatLedgerCycle(Number(ctx && ctx.state && ctx.state.simTime) || 0); } catch (_) { nowCycle = ''; }
     tape.set({ entries, selectedId: selectedId || null, nowCycle });
@@ -168,8 +168,13 @@ export function createLedgerScreen(ctx) {
   const readHand = el('p', 'k-sentence k-signal sx-ledger__read-hand');
   read.append(readKicker, readHero, readTitle, readLine, readHand);
   // the right column: the tape above, the reading beneath the Hand's tick
+  // the purse gauge stands beside the reading, off the tape's baseline: two instruments, two zones
+  const purseHost = el('div', 'orr-ledger-purse');
+  purseHost.setAttribute('aria-hidden', 'true');
+  const row = el('div', 'sx-ledger__row');
+  row.append(read, purseHost);
   const right = el('div', 'sx-ledger__right');
-  right.append(tapeHost, read);
+  right.append(tapeHost, row);
   wrap.appendChild(right);
   // the keys that walk the ledger, said once at the ladder's foot
   const keys = el('p', 'k-caps sx-ledger__keys');
@@ -311,6 +316,12 @@ export function createLedgerScreen(ctx) {
     if (status && status.textContent.includes('1 entries')) {
       status.textContent = status.textContent.replace(/\b1 entries\b/g, '1 entry');
     }
+    // one page is no archive: the count stands alone, and the key hint offers PAGE only when there is one
+    if (status && /archive page 1 of 1/i.test(status.textContent)) status.textContent = status.textContent.replace(/\s*Archive page 1 of 1\.?/i, '');
+    const older = panel.el.querySelector('[data-ledger-page="older"]');
+    const newer = panel.el.querySelector('[data-ledger-page="newer"]');
+    const paged = (older && !older.disabled && !older.hidden) || (newer && !newer.disabled && !newer.hidden);
+    keys.textContent = paged ? '\u2191\u2193 Read \u00b7 \u2190\u2192 Page' : '\u2191\u2193 Read';
   }
   // After each render the first entry is the one read, so the right half is never blank.
   function readFirst() {

@@ -300,6 +300,15 @@ export function createBarScreen(ctx) {
   }
 
   // ---------- rail: who is here tonight ----------
+  function railKeysHint() {
+    const rows = railEl.querySelector('.sx-bar__rows');
+    if (!rows || railEl.querySelector('.sx-bar__keys')) return;
+    const hint = document.createElement('p');
+    hint.className = 'k-caps sx-bar__keys';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = '\u2191\u2193 Contact';
+    rows.insertAdjacentElement('afterend', hint);
+  }
   function renderRail(state) {
     const list = contacts(state);
     if (!list.length) {
@@ -322,6 +331,7 @@ export function createBarScreen(ctx) {
       }).join('') +
       `</ul>`;
     dressRail();
+    railKeysHint();
   }
 
   // ---------- stage: the conversation ----------
@@ -380,10 +390,25 @@ export function createBarScreen(ctx) {
       let nameW = 0;
       try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
       if (nameW > 0) host.style.width = `${Math.round(nameW)}px`;
-      const bars = Math.max(30, Math.min(96, Math.round((nameW || 210) / 5.6)));
-      // the rest frame is the line's own envelope: the words they said, or the line they open with
+      // the rest frame is the line's own envelope: the words they said, or the line they open with;
+      // the trace is as long as that line (never the heading's width, so it never reads as a rule)
       const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
-      wave = createWaveform(host, { bars, envelope: voiceEnvelope(lineEl ? lineEl.textContent : c.line, bars) });
+      const lineText = String((lineEl ? lineEl.textContent : c.line) || '');
+      const bars = Math.max(24, Math.min(96, Math.round(lineText.length * 0.9)));
+      const traceW = Math.min(nameW > 0 ? nameW - 24 : 420, bars * 6);
+      host.style.width = `${Math.round(traceW)}px`;
+      wave = createWaveform(host, { bars: Math.max(24, Math.min(bars, Math.floor(traceW / 6))), envelope: voiceEnvelope(lineText, Math.max(24, Math.min(bars, Math.floor(traceW / 6)))) });
+    }
+    const firstChoice = stageEl.querySelector('.sx-choice');
+    if (firstChoice) firstChoice.classList.add('is-current');
+    // the keys, said once at the scale's foot
+    const choices = stageEl.querySelector('.sx-talk__choices');
+    if (choices && firstChoice && !stageEl.querySelector('.sx-talk__keys')) {
+      const hint = document.createElement('p');
+      hint.className = 'k-caps sx-talk__keys';
+      hint.setAttribute('aria-hidden', 'true');
+      hint.textContent = '1\u20133 \u00b7 Enter answers';
+      choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
     if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
@@ -461,6 +486,13 @@ export function createBarScreen(ctx) {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     selectContact(b.getAttribute('data-contact'), false);
   });
+  // one reply is current at rest (the first); the pointer or the focus moves the mark
+  const setCurrentChoice = (btn) => {
+    for (const b of stageEl.querySelectorAll('.sx-choice.is-current')) if (b !== btn) b.classList.remove('is-current');
+    if (btn) btn.classList.add('is-current');
+  };
+  stageEl.addEventListener('pointerover', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
+  stageEl.addEventListener('focusin', (ev) => { const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice'); if (b) setCurrentChoice(b); });
   // a reply's numeral is its key: 1..9 on the stage picks that reply
   stageEl.addEventListener('keydown', (ev) => {
     if (ev.altKey || ev.ctrlKey || ev.metaKey) return;

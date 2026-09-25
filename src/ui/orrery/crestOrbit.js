@@ -32,16 +32,18 @@ const CSS = `
 .orr-crest { position:absolute; display:block; width:50px; height:50px; margin:-25px 0 0 -25px; padding:0; border:0; background:none; cursor:pointer; border-radius:50%;
   transition:transform .28s var(--dp-ease-over, ease-out); }
 .orr-crest::before { content:""; display:none; position:absolute; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:radial-gradient(circle, rgb(248 244 234 / .18), rgb(248 244 234 / .06) 46%, rgb(248 244 234 / 0) 70%); pointer-events:none; }
-.orr-crest.is-chosen::before { display:block; }
-.orr-crest > img { position:relative; display:block; width:38px; height:38px; margin:6px; opacity:.7; transition:opacity .18s linear, transform .28s var(--dp-ease-over, ease-out); pointer-events:none;
+/* the bloom marks the chosen rim crest only when the sun is not the chosen power: one lit object on the orbit */
+.orr-crestorbit.is-pivoted .orr-crest.is-chosen::before { display:block; }
+.orr-crestorbit:not(.is-pivoted) .orr-crest.is-chosen > img { opacity:.82; }
+.orr-crest > img { position:relative; display:block; width:38px; height:38px; margin:6px; opacity:.52; transition:opacity .18s linear, transform .28s var(--dp-ease-over, ease-out); pointer-events:none;
   filter:brightness(1.18) drop-shadow(0 0 4px rgb(0 0 0 / .8)); }
-.orr-crest:is(:hover, :focus-visible) > img { opacity:1; transform:scale(1.12); }
+.orr-crest:is(:hover, :focus-visible) > img { opacity:.82; transform:scale(1.12); }
 .orr-crest:focus-visible { outline:none; }
 .orr-crest.is-chosen > img { opacity:1; }
 .orr-crest.is-authority::after { display:none; } / .45); pointer-events:none; }
 .orr-crest__words { position:absolute; display:flex; flex-direction:column; gap:1px; pointer-events:none; white-space:nowrap; hyphens:none; word-break:keep-all; }
-.orr-crest.is-south .orr-crest__words { left:50%; top:100%; transform:translateX(-50%); align-items:center; }
-.orr-crest.is-north .orr-crest__words { left:50%; bottom:100%; transform:translateX(-50%); align-items:center; }
+.orr-crest.is-south .orr-crest__words { left:50%; top:calc(100% + 2px); transform:translateX(-50%); align-items:center; }
+.orr-crest.is-north .orr-crest__words { left:50%; top:auto; bottom:calc(100% + 2px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse; }
 .orr-crest.is-east .orr-crest__words { left:calc(100% + 2px); top:50%; transform:translateY(-50%); align-items:flex-start; }
 .orr-crest.is-west .orr-crest__words { right:calc(100% + 2px); top:50%; transform:translateY(-50%); align-items:flex-end; }
 .orr-crest__name { pointer-events:none;
@@ -56,7 +58,10 @@ const CSS = `
 .orr-crestorbit__centre > img { display:block; width:100%; height:100%; opacity:1; filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); transition:opacity .22s linear; }
 .orr-crestorbit__centre.is-pivot > img { opacity:.3; }
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
-.orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+.orr-crestorbit__centre { z-index:1; }
+.orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:0; }
+.orr-svg .orr-hand { stroke:var(--dp-hand, #f2b950); }
 .orr-crest > img { filter:grayscale(1) brightness(1.25); mix-blend-mode:screen; }
 .orr-crestorbit__centre > img { mix-blend-mode:screen; }
 .orr-crestorbit__centre.is-swapping > img { opacity:0; }
@@ -80,14 +85,17 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-standing { position:relative; width:100%; height:74px; }
 .orr-standing > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
 .orr-svg .orr-standing__rule { stroke:rgb(${BONE} / .32); }
-.orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.55; }
+.orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.32; }
 .orr-svg .orr-standing__tick { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
 .orr-svg text.orr-standing__name { font-size:11px; font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-svg .orr-standing__bracket { stroke:rgb(${BONE} / .5); }
 .orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); }
 .orr-svg text.orr-standing__name.is-current { fill:rgb(248 244 234); }
-.orr-svg text.orr-standing__name.is-hostile { fill:rgb(255 80 56 / .8); }
+.orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
+.orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
+.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:9px; font-weight:500; letter-spacing:.02em; fill:rgb(${BONE} / .42); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
+.orr-svg text.orr-standing__val.is-hostile { fill:rgb(255 80 56 / .55); }
 .orr-svg .orr-standing__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__cursor-bloom { stroke:rgb(248 244 234); opacity:.25; }
 .orr-svg .orr-standing__rung-leader { stroke:rgb(${BONE} / .32); }
@@ -162,7 +170,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     if (!hand || !geo) return;
     const { cx, cy, R } = geo;
     // the arm pivots at the centre and runs under the authority's crest to the chosen crest's ring
-    const r0 = armFromRim && geo.centreNow ? geo.centreNow / 2 + 6 : 0;
+    const r0 = 0;
     const r1 = R - (geo.cs || crestSize) / 2 - 4;
     const [x0, y0] = polar(cx, cy, r0, deg);
     const [x1, y1] = polar(cx, cy, r1, deg);
@@ -203,7 +211,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     const centreNow = small ? Math.round(centreSize * 0.7) : centreSize;
     // the words sit outside the crests: at east and west they need their own room, so a wide-enough
     // host is bounded by its height and a narrow one by its width less a name's length
-    const R = Math.max(90, Math.min(H / 2 - cs / 2 - 36, W / 2 - cs / 2 - (small ? 62 : 86)));
+    const R = Math.max(90, Math.min(H / 2 - cs / 2 - 36, W / 2 - cs / 2 - (small ? 70 : 108)));
     geo = { cx, cy, R, cs, centreNow };
     host.classList.toggle('is-small', small);
     const arriveNow = !arrived && !reducedMotion();
@@ -217,7 +225,8 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       // the ring, its drifting scale
       const rings = svg('g', {});
       // the ring breaks 5px short of every crest, so the emblem stands on the ring instead of on a disc over it
-      const gapDeg = Math.asin(Math.min(0.9, (cs / 2 + 5) / R)) * 180 / Math.PI;
+      // the ring breaks at the emblem's own edge (the art is 38/50 of the button), not at the old plate's
+      const gapDeg = Math.asin(Math.min(0.9, (cs * 0.38 + 3) / R)) * 180 / Math.PI;
       const ringD = n > 0
         ? Array.from({ length: n }, (_, i) => arcD(cx, cy, R, (360 * i) / n + gapDeg, (360 * (i + 1)) / n - gapDeg)).join(' ')
         : arcD(cx, cy, R, 0, 360);
@@ -236,7 +245,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       const hg = svg('g', { class: 'orr-crestorbit__hand' });
       hand = {
         bloom: svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.24' }),
-        core: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
+        core: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2 }),
         bead: svg('circle', { r: 3, fill: 'var(--dp-hand-hot, #ffd98c)' }),
         tip: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
       };
@@ -300,6 +309,18 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         // the words face outward: above at the top of the ring, below at the foot, beside on the flanks
         const side = deg < 30 || deg > 330 ? 'north' : deg > 150 && deg < 210 ? 'south' : deg <= 180 ? 'east' : 'west';
         for (const s of ['north', 'south', 'east', 'west']) btn.classList.toggle(`is-${s}`, s === side);
+        // placed inline: a kit reset on a button's spans had left the words static and stacked under the emblem
+        const wordsEl = btn.querySelector('.orr-crest__words');
+        if (wordsEl) {
+          const base = 'position:absolute; display:flex; flex-direction:column; gap:1px; white-space:nowrap; pointer-events:none; margin:0; padding:0;';
+          const by = {
+            north: 'left:50%; right:auto; top:auto; bottom:calc(100% + 2px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse;',
+            south: 'left:50%; right:auto; bottom:auto; top:calc(100% + 2px); transform:translateX(-50%); align-items:center;',
+            east: 'left:calc(100% + 2px); right:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-start;',
+            west: 'right:calc(100% + 2px); left:auto; bottom:auto; top:50%; transform:translateY(-50%); align-items:flex-end;',
+          };
+          wordsEl.style.cssText = base + by[side];
+        }
         btn.classList.toggle('is-authority', item.id === data.authorityId);
         if (arriveNow) { btn.classList.add('orr-crestorbit__rise'); btn.style.setProperty('--orr-delay', `${160 + i * 30}ms`); }
         crestEls.set(item.id, btn);
@@ -319,6 +340,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     centre.classList.toggle('is-pivot', pivoted);
     host.classList.toggle('is-pivoted', pivoted);
     armFromRim = !!(data.authorityId && chosen && chosen.id === data.authorityId);
+    host.classList.toggle('is-armunder', armFromRim);
     const url = centreId ? crestUrl(centreId) : '';
     if (centreImg.getAttribute('src') !== url) {
       centre.classList.add('is-swapping');
@@ -362,9 +384,9 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   const top = brackets.length ? 22 : 0;
   // a rung's word breaks at its space into two short lines, so a word's run rarely covers its neighbour
   const pitch = compact ? 26 : 30;
-  const rungTop = compact ? 42 : 48;
+  const rungTop = compact ? 50 : 56;
   let h = 74 + top;
-  const x0 = 12; const x1 = w - 12;
+  const x0 = 0; const x1 = w - 12;
   const y = 40 + top;
   const n = Math.max(2, tiers.length);
   const cur = clampRep(rep);
@@ -401,8 +423,10 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   out += `<path class="orr-bloom orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="4" opacity=".12"/>`;
   out += `<path class="orr-core orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="1"/>`;
   out += `<path class="orr-core orr-standing__hostile" d="M ${x0} ${y} L ${f(xAt(aggroPos))} ${y}" stroke-width="1.5"/>`;
+  // minor ticks every 25 points of standing: their density shows each tier's true width
   let fine = '';
-  for (let i = 0; i <= n * 4; i += 1) { const x = xAt(i / 4); fine += `M ${f(x)} ${y} L ${f(x)} ${y + 3} `; }
+  const repMin = tiers.length ? tiers[0].min : -REP_CAP;
+  for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y} L ${f(x)} ${y + 3} `; }
   out += `<path class="orr-core orr-faint" d="${fine}" stroke-width="1"/>`;
   out += '<!--pin-->';
   tiers.forEach((t, i) => {
@@ -415,6 +439,8 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const nx = xAt(i + 0.5);
     const rowY = i % 2 === 0 ? y - 24 : y - 12;
     out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(nx)}" y="${rowY}" text-anchor="${anchor}">${name}</text>`;
+    // the boundary's value under its tick: a ruler is labelled like equipment
+    if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 20}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
   });
   out += `<path class="orr-core orr-standing__tick" d="M ${f(xAt(n))} ${y - 7} L ${f(xAt(n))} ${y + 8}" stroke-width="1.2"/>`;
   const xc = xAt(posOf(cur));

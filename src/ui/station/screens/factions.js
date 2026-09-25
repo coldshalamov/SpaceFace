@@ -178,7 +178,7 @@ export function createFactionsScreen(ctx) {
               `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority</span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +
-            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}">${rep === 0 ? '' : signed(rep)}</span>` +
+            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}${rep === 0 ? ' is-zero' : ''}">${rep === 0 ? '0' : signed(rep)}</span>` +
           `</button></li>`
         );
       }).join('') +

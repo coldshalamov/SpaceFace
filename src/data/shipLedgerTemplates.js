@@ -40,10 +40,10 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
   ]),
   trade: variants('trade', [
     // one shape: the verb first, the figure last, so the sentence agrees with the tape's sign
-    '{verb} {qty}u {commodity} at {station}. {credits} cr changed hands.',
-    '{verb} {qty}u {commodity} at {station}; the receipt reads {credits} cr.',
-    '{verb} {qty}u {commodity} through {station}. {credits} cr on the line.',
-    '{verb} the {commodity} lot, {qty}u, at {station}. Receipt: {credits} cr.',
+    '{verb} {qty}u {commodity} · {station} · {credits} cr',
+    '{verb} {qty}u {commodity} · {station} · {credits} cr cleared',
+    '{verb} {qty}u {commodity} · {station} · {credits} cr on the receipt',
+    '{verb} {qty}u {commodity} · {station} · {credits} cr booked',
   ]),
   rumor: variants('rumor', [
     'A voice put {wreck} somewhere beyond {sector}. No coordinates yet.',

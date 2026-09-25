@@ -276,6 +276,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 @media (min-width:3400px) and (min-height:1900px) {
   ${S} { zoom:1.85; --k-s:1; }
 }
+/* the tab rail's cursor and its attention dot are bone: every composed tab owns the one amber Hand */
+${S} .sxb-ops .sx-tile::after { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .4) !important; }
+${S} .sxb-ops .sx-tile::before { background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(248 244 234 / .55) !important; }
+
 `;
 
 export function injectOrreryStation(doc = globalThis.document) {
