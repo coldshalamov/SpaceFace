@@ -304,7 +304,10 @@ test('Cinder current matches the world sluice numbers and never reuses its id or
   assert.notEqual(idle.fields[0].center.x, CINDER_SLUICE_FIELD.center.x);
 });
 
-test('Helios idle is still empty with or without an explicit arena id', () => {
+test('Helios idle installs the authored Foundry room; an idle plan with no arena id stays inert', () => {
+  // PQ-133.04 R3 rebased this pin: the named idle room authors its reflective bank geometry from
+  // wave one (it still spends no field slot, mine or cover), while an idle plan with no arena id
+  // keeps the honest nothing — an unnamed room is never a guessed Foundry.
   const omitted = planArenaInstall({ arenaPhase: 'idle', seed: SEED, wave: 1, anchor: ANCHOR });
   const namedHelios = planArenaInstall({
     arenaPhase: 'idle', arenaId: 'helios_core', seed: SEED, wave: 1, anchor: ANCHOR,
@@ -312,7 +315,15 @@ test('Helios idle is still empty with or without an explicit arena id', () => {
   assert.equal(omitted.fields.length, 0);
   assert.equal(omitted.mines.length, 0);
   assert.equal(omitted.cover, false);
-  assert.deepEqual(namedHelios, omitted);
+  assert.equal(omitted.toys, undefined);
+  assert.equal(namedHelios.fields.length, 0, 'the idle Foundry room must not occupy a field slot');
+  assert.equal(namedHelios.mines.length, 0);
+  assert.equal(namedHelios.cover, false);
+  assert.ok(
+    (namedHelios.toys || []).some((toy) => toy.kind === 'plate' && toy.material === 'plate'),
+    'the named idle room installs reflective Foundry geometry',
+  );
+  assert.notDeepEqual(namedHelios, omitted, 'the Foundry room is the named-id idle form');
 });
 
 test('law arenas keep their law on every authored phase and never ask for a third slot', () => {

@@ -1,38 +1,94 @@
+// PQ-133.04 R3 — bank feedback is kernel-produced now. The survival room no longer reflects
+// shots off plates and no longer emits `combat:bankShot`: plate acceptance lives in the combat
+// kernel (compiled AttackSpec runtime + physics-issued surface receipt -> resolveRicochet).
+// These tests pin the seam that replaced the room-side solver, on the SAME authored plates the
+// old acceptance used (Cryo's ice plates) plus the Foundry room solids. No skipped acceptance:
+// every old reflection/feedback assertion is restated against the kernel or inverted fail-closed.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
-import { isSurfaceContactReceipt } from '../src/core/surfaceContact.js';
+import { compileAttackSpec } from '../src/combat/attackSpec.js';
+import { createLineage } from '../src/combat/attackLineage.js';
+import { resolveRicochet } from '../src/combat/surfaceReflection.js';
+import {
+  isSurfaceContactReceipt,
+  surfaceContactFromBodies,
+  surfaceResponseFor,
+} from '../src/core/surfaceContact.js';
 import { bankShotOffPlate } from '../src/data/arenaModuleLibrary.js';
-import { admitStructuralFxCue } from '../src/presentation/cueArbitration.js';
-import { CRYO_ARENA_ID, survivalArena } from '../src/systems/survivalArena.js';
+import { CRYO_ARENA_ID } from '../src/systems/cryoDriftArena.js';
+import { planArenaInstall, survivalArena } from '../src/systems/survivalArena.js';
+import { planWave } from '../src/systems/survivalWavePlanner.js';
 
-function boot(t) {
-  const run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 7 });
-  Object.assign(run, { arenaId: CRYO_ARENA_ID, phase: 'active', wave: 1 });
-  const state = { run, tick: 120, simTime: 2, playerId: 1, entities: new Map() };
+const SEED = 7;
+const ANCHOR = { x: 400, z: -120 };
+
+function boot(t, arenaId, { withHelpers = false } = {}) {
+  const state = createGameState(SEED);
+  state.simTime = 0;
   const raw = createBus();
   const emitted = [];
   const bus = {
-    on: raw.on,
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
     emit(event, payload) {
       emitted.push({ event, payload });
       raw.emit(event, payload);
     },
   };
+  const helpers = withHelpers
+    ? {
+      spawnEntity(spec) {
+        const id = state.nextEntityId++;
+        const entity = {
+          ...spec,
+          id,
+          alive: true,
+          pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+        };
+        state.entities.set(id, entity);
+        state.entityList.push(entity);
+        return entity;
+      },
+    }
+    : {};
+  const player = {
+    id: state.nextEntityId++,
+    alive: true,
+    type: 'ship',
+    team: 0,
+    pos: { ...ANCHOR },
+    vel: { x: 0, z: 0 },
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  const registry = { get: () => null };
   const system = Object.create(survivalArena);
-  system.init({ state, bus });
+  system.init({ state, bus, registry, helpers });
   t.after(() => system.destroy());
-  const install = () => bus.emit('run:wavePlanned', {
-    wave: 1, plan: { arenaPhase: 'idle', schedule: [] },
+  const run = createRunState({ kind: 'survival', ruleset: 'scored', seed: SEED });
+  run.arenaId = arenaId;
+  run.phase = 'active';
+  run.wave = 1;
+  state.run = run;
+  const plan = planWave({ seed: SEED, arenaId, wave: 1 });
+  assert.notEqual(plan.ok, false, `${arenaId} wave 1 must plan`);
+  bus.emit('run:wavePlanned', { wave: 1, plan, tick: 0 });
+  const expected = planArenaInstall({
+    arenaPhase: plan.arenaPhase,
+    arenaId,
+    wave: 1,
+    seed: SEED,
+    anchor: ANCHOR,
   });
-  install();
-  const plates = system._toys.filter((toy) => toy.kind === 'plate');
-  assert.equal(plates.length, 2, 'public wave event installs the authored Cryo plates');
-  emitted.length = 0;
   return {
-    system, state, bus, emitted, plates, install,
+    state, bus, emitted, system, expected,
+    plates: expected.toys.filter((toy) => toy.kind === 'plate'),
     banks: () => emitted.filter(({ event }) => event === 'combat:bankShot').map(({ payload }) => payload),
     tick() {
       system.update(1 / 60, state);
@@ -42,166 +98,109 @@ function boot(t) {
   };
 }
 
-function aimAt(shot, plate, distance = 0, tangent = 0) {
-  const n = plate.normal;
-  shot.pos = {
-    x: plate.pos.x + n.x * distance - n.z * tangent,
-    z: plate.pos.z + n.z * distance + n.x * tangent,
-  };
-  shot.vel = { x: -n.x * 120, z: -n.z * 120 };
-  shot.vx = shot.vel.x;
-  shot.vz = shot.vel.z;
+function compiledBankSpec() {
+  const result = compileAttackSpec({
+    weaponId: 'wpn_pulse_laser_s',
+    modifiers: [['mod_bank_shot', 1]],
+  });
+  assert.equal(result.ok, true);
+  return result.spec;
 }
 
-function addShot(h, { id = 10, plate = h.plates[0], distance = 0, tangent = 0 } = {}) {
+test('the authored Cryo plates publish no room-side bank feedback, and the room writes no shot', (t) => {
+  const h = boot(t, CRYO_ARENA_ID);
+  assert.ok(h.plates.length >= 2, 'the authored Cryo plates are still installed');
   const shot = {
-    id, type: 'projectile', alive: true, ownerId: h.state.playerId,
-    radius: 0.7, mass: 0.1, ttl: 4, data: { ownerId: h.state.playerId, weaponId: 'autocannon' },
+    id: 10, type: 'projectile', alive: true, radius: 0.7,
+    pos: { x: h.plates[0].pos.x + h.plates[0].normal.x * 12, z: h.plates[0].pos.z + h.plates[0].normal.z * 12 },
+    vel: { x: -h.plates[0].normal.x * 120, z: -h.plates[0].normal.z * 120 },
+    data: {},
   };
-  aimAt(shot, plate, distance, tangent);
-  h.state.entities.set(id, shot);
-  return shot;
-}
-
-test('authored plate publishes one causal bank receipt after reflecting the same live shot', (t) => {
-  const h = boot(t);
-  const shot = addShot(h, { distance: 12 });
-  const before = structuredClone(shot);
-  const expected = bankShotOffPlate(h.plates[0], shot);
-  assert.equal(expected.ok, true);
-  const vel = shot.vel;
-  const observedVelocity = [];
-  h.bus.on('combat:bankShot', () => observedVelocity.push({ ...shot.vel }));
-  h.tick();
-
-  assert.deepEqual(h.emitted.map(({ event }) => event), ['combat:bankShot']);
-  const [event] = h.banks();
-  assert.equal(event.id, shot.id);
-  assert.equal(event.projectileId, shot.id);
-  assert.equal(event.ownerId, h.state.playerId);
-  assert.equal(event.weaponId, shot.data.weaponId);
-  assert.equal(event.arenaId, CRYO_ARENA_ID);
-  assert.equal(event.plateId, h.plates[0].id);
-  assert.equal(event.tick, 120);
-  assert.ok(isSurfaceContactReceipt(event.receipt), 'forward the issued receipt, not a lookalike');
-  assert.deepEqual(event.receipt, expected.receipt);
-  assert.strictEqual(event.pos, event.receipt.point);
-  assert.strictEqual(event.normal, event.receipt.normal);
-  assert.strictEqual(event.incomingVelocity, event.receipt.velocity);
-  assert.deepEqual(event.approach, expected.receipt.velocity);
-  assert.deepEqual(event.outgoingVelocity, expected.vel);
-  assert.deepEqual(observedVelocity, [expected.vel], 'event observes the committed reflection');
-  assert.strictEqual(h.state.entities.get(shot.id), shot);
-  assert.strictEqual(shot.vel, vel);
-  assert.equal(h.state.entities.size, 1);
-  assert.deepEqual(shot, { ...before, vel: expected.vel, vx: expected.vel.x, vz: expected.vel.z });
-
-  const cue = admitStructuralFxCue('combat:bankShot', event, h.state);
-  assert.equal(cue.family, 'bank');
-  assert.equal(cue.playerCaused, true);
-  assert.equal(cue.audioCue, 'combat.causal.bank');
-  shot.vel.x = 999;
-  shot.pos.x = 999;
-  assert.deepEqual(event.outgoingVelocity, expected.vel, 'payload must not alias mutable velocity');
-  assert.deepEqual(event.pos, expected.receipt.point);
+  h.state.entities.set(shot.id, shot);
+  const velBefore = { ...shot.vel };
+  for (let i = 0; i < 10; i++) h.tick();
+  assert.deepEqual(h.banks(), [], 'combat:bankShot has no emitter left in the room');
+  assert.deepEqual(shot.vel, velBefore, 'the room must not write a projectile velocity');
+  assert.equal(shot.alive, true, 'the room must not kill shots off the plates');
 });
 
-test('remaining on the plate emits once while every original reflection still applies', (t) => {
-  const h = boot(t);
-  const shot = addShot(h);
-  for (let i = 0; i < 6; i++) {
-    const expected = bankShotOffPlate(h.plates[0], shot);
-    assert.equal(expected.ok, true, 'on-plane contact repeats in the existing solver');
-    h.tick();
-    assert.deepEqual(shot.vel, expected.vel);
-    assert.equal(shot.vx, expected.vel.x);
-    assert.equal(shot.vz, expected.vel.z);
+test('the same installed Cryo plates bank through the kernel: receipt, reflection, same body', (t) => {
+  const h = boot(t, CRYO_ARENA_ID);
+  const plate = h.plates[0];
+  const spec = compiledBankSpec();
+  const pos = {
+    x: plate.pos.x + plate.normal.x * 12,
+    z: plate.pos.z + plate.normal.z * 12,
+  };
+  const vel = { x: -plate.normal.x * 120, z: -plate.normal.z * 120 };
+  const runtime = createLineage({ spec });
+  const body = { id: 'bolt', type: 'projectile', alive: true, radius: 0.7, pos: { ...pos }, vel: { ...vel } };
+  const geometry = bankShotOffPlate(plate, {
+    id: body.id, type: 'projectile', spec, runtime, pos: { ...pos }, vel: { ...vel },
+  });
+  assert.equal(geometry.ok, true, 'the authored plate accepts an eligible runtime');
+  assert.equal(geometry.vel, undefined, 'geometry only: no velocity leaves the helper');
+  assert.equal(geometry.receipt, undefined, 'geometry only: no receipt leaves the helper');
+
+  const surface = {
+    id: plate.id, pos: { ...plate.pos }, vel: { x: 0, z: 0 }, angVel: 0, surfaceMaterial: 'plate',
+  };
+  const receipt = surfaceContactFromBodies(body, surface, {
+    point: geometry.point, normal: geometry.normal, material: 'plate', velocity: vel,
+  }, 0);
+  assert.ok(isSurfaceContactReceipt(receipt), 'the bank rides a physics-issued receipt');
+  const result = resolveRicochet(runtime, spec, receipt, body);
+  assert.equal(result.ok, true, 'the kernel banks the accepted contact');
+  assert.equal(result.consume, false, 'the same body continues');
+  // Head-on into the face reflects straight back. The kernel quantizes the contact normal to
+  // 1e-6, so an off-axis plate drifts ~1e-4 — compare with tolerance, not deepEqual.
+  const normalComponent = result.velocity.x * plate.normal.x + result.velocity.z * plate.normal.z;
+  assert.ok(normalComponent > 0, `head-on bank must leave along +normal, got ${normalComponent}`);
+  assert.ok(Math.abs(Math.hypot(result.velocity.x, result.velocity.z) - 120) < 1e-3,
+    `head-on bank keeps speed, got ${Math.hypot(result.velocity.x, result.velocity.z)}`);
+});
+
+test('eligibility is absolute: a direct shot is refused with no_spec on every authored plate', (t) => {
+  const h = boot(t, CRYO_ARENA_ID);
+  for (const plate of h.plates) {
+    const refused = bankShotOffPlate(plate, {
+      id: 'plain-bolt', type: 'projectile',
+      pos: { x: plate.pos.x + plate.normal.x * 12, z: plate.pos.z + plate.normal.z * 12 },
+      vel: { x: -plate.normal.x * 120, z: -plate.normal.z * 120 },
+    });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reason, 'no_spec');
   }
-  assert.equal(h.banks().length, 1);
-
-  aimAt(shot, h.plates[0], 12);
-  shot.vel.x *= -1;
-  shot.vel.z *= -1;
-  shot.vx = shot.vel.x;
-  shot.vz = shot.vel.z;
-  assert.equal(bankShotOffPlate(h.plates[0], shot).ok, false);
-  h.tick();
-  aimAt(shot, h.plates[0], 12);
-  h.tick();
-  assert.equal(h.banks().length, 1, 'an in-reach miss must not rearm feedback');
 });
 
-test('leaving the plate reach rearms a later bank of the same projectile', (t) => {
-  const h = boot(t);
-  const shot = addShot(h);
-  h.tick();
-  aimAt(shot, h.plates[0], 200);
-  shot.pos.x += 500;
-  h.tick();
-  assert.equal(h.banks().length, 1);
-  aimAt(shot, h.plates[0], 12);
-  h.tick();
-  assert.equal(h.banks().length, 2);
-  assert.equal(h.banks()[1].projectileId, shot.id);
-  assert.equal(h.banks()[1].plateId, h.plates[0].id);
-  assert.equal(h.banks()[1].tick, 122);
-});
-
-test('feedback is independent per projectile and per plate', (t) => {
-  const h = boot(t);
-  const first = addShot(h, { id: 20 });
-  addShot(h, { id: 10 });
-  h.tick();
-  assert.deepEqual(h.banks().map((event) => event.projectileId), [10, 20]);
-  aimAt(first, h.plates[1]);
-  h.tick();
-  assert.equal(h.banks().length, 3);
-  assert.equal(h.banks()[2].projectileId, first.id);
-  assert.equal(h.banks()[2].plateId, h.plates[1].id);
-});
-
-test('misses, stationary and dead projectiles publish no bank feedback', (t) => {
-  const h = boot(t);
-  const miss = addShot(h, { id: 10, distance: 12, tangent: h.plates[0].halfWidth + 1 });
-  const stationary = addShot(h, { id: 11 });
-  stationary.vel = { x: 0, z: 0 };
-  stationary.vx = 0;
-  stationary.vz = 0;
-  const dead = addShot(h, { id: 12 });
-  dead.alive = false;
-  assert.equal(bankShotOffPlate(h.plates[0], miss).reason, 'miss');
-  h.tick();
-  assert.deepEqual(h.emitted, []);
-});
-
-test('a shutter absorbing the shot before the plate publishes no bank feedback', (t) => {
-  const h = boot(t);
-  const shot = addShot(h);
-  const shutter = h.system._toys.find((toy) => toy.kind === 'shutter');
-  const n = h.plates[0].normal;
-  // Overlap the existing shutter with the plate to exercise same-tick absorption ordering.
-  h.system._installToys({ toys: [
-    {
-      ...shutter,
-      a: { x: shot.pos.x + n.z * 20, z: shot.pos.z - n.x * 20 },
-      b: { x: shot.pos.x - n.z * 20, z: shot.pos.z + n.x * 20 },
-    },
-    h.plates[0],
-  ] });
-  assert.equal(bankShotOffPlate(h.plates[0], shot).ok, true);
-  const before = { ...shot.vel };
-  h.tick();
-  assert.equal(shot.alive, false);
-  assert.deepEqual(shot.vel, before);
-  assert.deepEqual(h.emitted, []);
-});
-
-test('reinstalling the wave clears old feedback contacts', (t) => {
-  const h = boot(t);
-  const shot = addShot(h);
-  h.tick();
-  h.install();
-  aimAt(shot, h.plates[0]);
-  h.tick();
-  assert.equal(h.banks().length, 2);
+test('Foundry room plates materialize as reflective solids and bank the same way', (t) => {
+  const h = boot(t, 'helios_core', { withHelpers: true });
+  assert.ok(h.plates.length >= 2, 'the Foundry idle room authors bank plates');
+  const solids = h.state.entityList.filter((entity) => entity
+    && entity.data && entity.data.roomKind === 'plate');
+  assert.equal(solids.length, h.plates.length, 'every authored plate materialized');
+  for (const solid of solids) {
+    assert.equal(solid.type, 'station');
+    assert.equal(surfaceResponseFor(solid.data.surfaceMaterial), 'reflect', 'a Foundry plate reflects');
+  }
+  const plate = h.plates[0];
+  const spec = compiledBankSpec();
+  const runtime = createLineage({ spec });
+  const pos = { x: plate.pos.x + plate.normal.x * 30, z: plate.pos.z + plate.normal.z * 30 };
+  const vel = { x: -plate.normal.x * 90, z: -plate.normal.z * 90 };
+  const geometry = bankShotOffPlate(plate, {
+    id: 'bolt', type: 'projectile', spec, runtime, pos, vel,
+  });
+  assert.equal(geometry.ok, true);
+  const body = { id: 'bolt', type: 'projectile', alive: true, radius: 0.7, pos: { ...pos }, vel: { ...vel } };
+  const surface = {
+    id: plate.id, pos: { ...plate.pos }, vel: { x: 0, z: 0 }, angVel: 0, surfaceMaterial: 'plate',
+  };
+  const receipt = surfaceContactFromBodies(body, surface, {
+    point: geometry.point, normal: geometry.normal, material: 'plate', velocity: vel,
+  }, 0);
+  const result = resolveRicochet(runtime, spec, receipt, body);
+  assert.equal(result.ok, true);
+  assert.equal(result.consume, false);
+  assert.deepEqual(h.banks(), [], 'still no room-side feedback, even with a bankable shot in flight');
 });

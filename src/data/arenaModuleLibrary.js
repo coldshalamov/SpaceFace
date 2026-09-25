@@ -3,10 +3,10 @@
 // Toys are usable: shutters cut lines, plates bank shots, crushers kill, relays conduct, currents carry.
 
 import { TERRAIN_CRUMPLE_LAW } from '../combat/impulseKernel.js';
-import {
-  createSurfaceContactReceipt,
-  reflectVelocity,
-} from '../core/surfaceContact.js';
+import { compileAttackSpec } from '../combat/attackSpec.js';
+import { createLineage } from '../combat/attackLineage.js';
+import { resolveRicochet } from '../combat/surfaceReflection.js';
+import { surfaceContactFromBodies } from '../core/surfaceContact.js';
 import { normalizeField, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import {
   CINDER_ARENA_ID,
@@ -34,13 +34,17 @@ import {
 } from '../systems/stormLatticeArena.js';
 import { validateArenaModule } from '../contracts/contentFactory.js';
 
-export const ARENA_TOY_KINDS = Object.freeze(['shutter', 'plate', 'crusher', 'relay', 'current']);
+export const ARENA_TOY_KINDS = Object.freeze([
+  'shutter', 'plate', 'crusher', 'relay', 'current', 'furnace', 'gate',
+]);
 export const ARENA_TOY_VERBS = Object.freeze({
   shutter: 'cut',
   plate: 'bank',
   crusher: 'kill',
   relay: 'conduct',
   current: 'carry',
+  furnace: 'consume',
+  // A gate is authored doorway geometry: it marks and blocks, it never acts — so it verbs nothing.
 });
 export const ARENA_TOY_HAZARDS = Object.freeze(['debris', 'debris_current', 'nebula']);
 export const ARENA_TOY_MIN = 3;
@@ -207,7 +211,11 @@ export function validateArenaToys(toys) {
       seen.add(toy.id);
     }
     if (!ARENA_TOY_KINDS.includes(toy.kind)) {
-      issues.push({ path: `${path}.kind`, rule: 'kind', message: 'kind must be shutter, plate, crusher, relay, or current' });
+      issues.push({
+        path: `${path}.kind`,
+        rule: 'kind',
+        message: 'kind must be shutter, plate, crusher, relay, current, furnace, or gate',
+      });
     }
     if (toy.hazardType === 'radiation') {
       issues.push({ path: `${path}.hazardType`, rule: 'hazard', message: 'hazard type radiation is forbidden' });
@@ -217,6 +225,9 @@ export function validateArenaToys(toys) {
     const verb = ARENA_TOY_VERBS[toy.kind];
     if (verb && toy.verb !== verb) {
       issues.push({ path: `${path}.verb`, rule: 'verb', message: `${toy.kind} must verb ${verb}` });
+    } else if (!verb && toy.verb != null) {
+      // Verb-less kinds (gate) must stay verb-less: a doorway that claims an action is a lie.
+      issues.push({ path: `${path}.verb`, rule: 'verb', message: `${toy.kind} carries no verb` });
     }
   }
   return { ok: issues.length === 0, issues };
@@ -298,8 +309,16 @@ export function shutterCutsLine(shutter, from, to) {
   return segmentsIntersect(shutter.a, shutter.b, from, to);
 }
 
+/**
+ * PQ-133.04 R3: plate bank acceptance is owned by the combat kernel (compiled AttackSpec +
+ * lineage + a physics-issued surface receipt). This helper is a fail-closed GEOMETRY oracle for
+ * authored plate layout — it never issues a receipt and never produces a velocity. A projectile
+ * without an eligible bank-capable AttackSpec runtime is refused with 'no_spec'; an eligible one
+ * gets contact geometry only, and the bounce itself belongs to resolveRicochet.
+ */
 export function bankShotOffPlate(plate, projectile) {
   if (!plate || plate.kind !== 'plate') return { ok: false, reason: 'no_plate' };
+  if (!bankShotEligible(projectile)) return { ok: false, reason: 'no_spec' };
   const { n, a, b } = plateSegment(plate);
   const pos = vec(projectile && projectile.pos);
   const vel = vec(projectile && projectile.vel);
@@ -308,16 +327,28 @@ export function bankShotOffPlate(plate, projectile) {
   const look = add(pos, scale(norm(vel), 220));
   const hit = segmentHit(pos, look, a, b);
   if (!hit) return { ok: false, reason: 'miss' };
-  const receipt = createSurfaceContactReceipt({
-    point: hit,
+  return {
+    ok: true,
+    banked: true,
+    point: { x: hit.x, z: hit.z },
     normal: n,
-    material: 'plate',
-    velocity: vel,
-    surfaceId: plate.id,
+    material: typeof plate.material === 'string' && plate.material ? plate.material : 'plate',
+    surfaceId: plate.id != null ? plate.id : null,
     projectileId: projectile && projectile.id != null ? projectile.id : null,
-  });
-  const reflected = reflectVelocity(receipt.velocity, receipt.normal);
-  return { ok: true, banked: true, vel: reflected, point: { x: hit.x, z: hit.z }, receipt };
+  };
+}
+
+/** An eligible bank runtime: a compiled spec that bounces, and a lineage with a bounce left. */
+function bankShotEligible(projectile) {
+  const spec = projectile && projectile.spec;
+  const runtime = projectile && projectile.runtime;
+  if (!spec || !runtime || typeof spec !== 'object' || typeof runtime !== 'object') return false;
+  const bounces = spec.trajectory && spec.trajectory.bounces;
+  if (!Number.isInteger(bounces) || bounces <= 0) return false;
+  const remaining = runtime.remaining;
+  return !!(remaining
+    && Number.isInteger(remaining.bounces)
+    && remaining.bounces > 0);
 }
 
 export function crusherPhase(crusher, elapsedS) {
@@ -370,6 +401,137 @@ export function stepCrusher(crusher, body, elapsedS, dt = ARENA_TOY_DT) {
   return { pos: next, vel: { x: vx, z: vz }, phase: clock.phase, speed, crushed, dist };
 }
 
+// ---------------------------------------------------------------------------------------------
+// PQ-133.04 R3 Stage C — authored moving shutters. The Foundry room's shutters are dynamic
+// physics bodies; the room may only command them through the SG-02 membrane
+// (queuePhysicsImpulse / writePhysicsControl, consumed by sg02DynamicBodyOwner). These helpers
+// carry the AUTHORitative pose/cycle math and stay pure like crusherPhase/stepCrusher: same
+// shutter + same elapsed => same pose, same command, same jam verdict. No wall clock, no RNG.
+// ---------------------------------------------------------------------------------------------
+
+/** Warning/surge/calm shuttle, authored on the CRUSHER_CYCLE precedent. */
+export const SHUTTER_CYCLE = Object.freeze({ warningS: 2, surgeS: 3.5, calmS: 6.5 });
+/** How far the bar travels along dir during a surge, and the servo gains that drive it. */
+export const SHUTTER_SURGE_DISTANCE = 96;
+export const SHUTTER_SERVO = Object.freeze({ gainPos: 6, gainVel: 2.5, maxSpeed: 90 });
+export const SHUTTER_MASS = 800;
+/** Deterministic jam law: no fresh measured truth, or a surge that produces no measured
+ * acceleration past a grace window, holds the shutter instead of pushing a welded body. */
+export const SHUTTER_JAM = Object.freeze({ staleTicks: 45, accelEps: 0.05, graceS: 1 });
+
+function shutterCycleOf(shutter) {
+  const cycle = shutter && shutter.cycle ? shutter.cycle : SHUTTER_CYCLE;
+  return {
+    warningS: Math.max(0, finite(cycle.warningS, SHUTTER_CYCLE.warningS)),
+    surgeS: Math.max(0, finite(cycle.surgeS, SHUTTER_CYCLE.surgeS)),
+    calmS: Math.max(0, finite(cycle.calmS, SHUTTER_CYCLE.calmS)),
+  };
+}
+
+/**
+ * The authored clock: warning telegraphs at rest, surge drives out along dir, calm retracts.
+ * Pure: phase, seconds elapsed inside the phase, seconds remaining, and the phase progress 0..1.
+ */
+export function shutterPhase(shutter, elapsedS) {
+  const cycle = shutterCycleOf(shutter);
+  const period = cycle.warningS + cycle.surgeS + cycle.calmS;
+  const t = ((finite(elapsedS) % period) + period) % period;
+  if (t < cycle.warningS) {
+    return { phase: 'warning', phaseElapsedS: t, progress: 0, remainingS: cycle.warningS - t };
+  }
+  if (t < cycle.warningS + cycle.surgeS) {
+    const inPhase = t - cycle.warningS;
+    return {
+      phase: 'surge',
+      phaseElapsedS: inPhase,
+      progress: cycle.surgeS > 0 ? inPhase / cycle.surgeS : 1,
+      remainingS: cycle.warningS + cycle.surgeS - t,
+    };
+  }
+  const inPhase = t - cycle.warningS - cycle.surgeS;
+  return {
+    phase: 'calm',
+    phaseElapsedS: inPhase,
+    progress: cycle.calmS > 0 ? inPhase / cycle.calmS : 1,
+    remainingS: period - t,
+  };
+}
+
+/** Surge offset along dir at a phase progress: out during surge, back during calm, rest otherwise. */
+function shutterOffset(shutter, clock) {
+  const distance = Math.max(0, finite(shutter && shutter.surgeDistance, SHUTTER_SURGE_DISTANCE));
+  if (clock.phase === 'surge') return distance * clock.progress;
+  if (clock.phase === 'calm') return distance * (1 - clock.progress);
+  return 0;
+}
+
+/**
+ * The authored pose of the whole bar at elapsedS: rest geometry translated along dir.
+ * Continuous at every phase boundary, so the commanded motion never snaps.
+ */
+export function shutterPose(shutter, elapsedS) {
+  const clock = shutterPhase(shutter, elapsedS);
+  const dir = norm(shutter && shutter.dir);
+  const offset = shutterOffset(shutter, clock);
+  const shift = scale(dir, offset);
+  return {
+    phase: clock.phase,
+    progress: clock.progress,
+    pos: add(vec(shutter && shutter.pos), shift),
+    a: add(vec(shutter && shutter.a), shift),
+    b: add(vec(shutter && shutter.b), shift),
+  };
+}
+
+/**
+ * The membrane command that drives a dynamic shutter body toward the authored pose: a velocity
+ * servo (force = mass * (gainPos * positionError + gainVel * velocityError)) — the room writes
+ * this through writePhysicsControl; it never writes the body's motion itself.
+ */
+export function shutterCommand(shutter, elapsedS, body) {
+  const clock = shutterPhase(shutter, elapsedS);
+  const pose = shutterPose(shutter, elapsedS);
+  const mass = Math.max(1, finite(body && body.mass, SHUTTER_MASS));
+  const pos = vec(body && body.pos);
+  const vel = vec(body && (body.vel || { x: body.vx, z: body.vz }));
+  // Authored target velocity: the time derivative of the pose offset along dir.
+  const cycle = shutterCycleOf(shutter);
+  const distance = Math.max(0, finite(shutter && shutter.surgeDistance, SHUTTER_SURGE_DISTANCE));
+  const rate = clock.phase === 'surge' && cycle.surgeS > 0
+    ? distance / cycle.surgeS
+    : (clock.phase === 'calm' && cycle.calmS > 0 ? -distance / cycle.calmS : 0);
+  const dir = norm(shutter && shutter.dir);
+  const gx = SHUTTER_SERVO.gainPos * (pose.pos.x - pos.x) + SHUTTER_SERVO.gainVel * (dir.x * rate - vel.x);
+  const gz = SHUTTER_SERVO.gainPos * (pose.pos.z - pos.z) + SHUTTER_SERVO.gainVel * (dir.z * rate - vel.z);
+  return {
+    mode: `shutter_${clock.phase}`,
+    phase: clock.phase,
+    force: { x: mass * gx, z: mass * gz },
+    targetPos: pose.pos,
+    targetVel: { x: dir.x * rate, z: dir.z * rate },
+  };
+}
+
+/**
+ * Deterministic jam verdict from MEASURED truth only: telemetry missing or staler than
+ * SHUTTER_JAM.staleTicks is a hold; a surge that has produced no measured acceleration past the
+ * grace window is a welded body — hold it. Same inputs => same verdict, forever.
+ */
+export function shutterJammed(telemetry, context = {}) {
+  if (!telemetry || typeof telemetry !== 'object') return true;
+  const tick = Number.isInteger(context.tick) ? context.tick : null;
+  if (tick != null && Number.isInteger(telemetry.tick)
+    && telemetry.tick + SHUTTER_JAM.staleTicks < tick) return true;
+  if (context.phase === 'surge'
+    && Number.isFinite(context.phaseElapsedS)
+    && context.phaseElapsedS > SHUTTER_JAM.graceS) {
+    const accel = telemetry.linearAcceleration;
+    const magnitude = Math.hypot(finite(accel && accel.x), finite(accel && accel.z));
+    if (!(magnitude >= SHUTTER_JAM.accelEps)) return true;
+  }
+  return false;
+}
+
 export function currentCarry(current, body) {
   if (!current || current.kind !== 'current') return { ax: 0, az: 0 };
   const field = normalizeField({
@@ -404,18 +566,59 @@ function proveShutter(toy) {
   return { cut, miss: !!miss, escaped: cut && !miss, from, to };
 }
 
+let _bankProofSpec = null;
+
+/** The compiled bank-capable AttackSpec the plate proofs ride on (cached; compile is pure). */
+function bankProofSpec() {
+  if (_bankProofSpec) return _bankProofSpec;
+  const result = compileAttackSpec({
+    weaponId: 'wpn_pulse_laser_s',
+    modifiers: [['mod_bank_shot', 1]],
+  });
+  if (!result || result.ok !== true) throw new Error('bank proof spec failed to compile');
+  _bankProofSpec = result.spec;
+  return _bankProofSpec;
+}
+
+/**
+ * PQ-133.04 R3: plate acceptance runs through the kernel path — compiled bank spec + lineage +
+ * a physics-shaped receipt from surfaceContactFromBodies + resolveRicochet. No fabricated
+ * receipt, no helper-side reflection: if the kernel refuses, the plate is not bankable.
+ */
 function provePlate(toy) {
   const n = norm(toy.normal);
   const tangent = perp(n);
   const from = add(vec(toy.pos), add(scale(n, 36), scale(tangent, -36)));
   const vel = add(scale(n, -90), scale(tangent, 45));
-  const banked = bankShotOffPlate(toy, { id: 'bank_shot', pos: from, vel });
-  if (!banked.ok) return { banked: false, killed: false, reason: banked.reason };
-  const outgoing = norm(banked.vel);
-  const target = add(banked.point, scale(outgoing, 40));
+  const spec = bankProofSpec();
+  const runtime = createLineage({ spec });
+  const body = { id: 'bank_shot', type: 'projectile', alive: true, radius: 0.7, pos: { ...from }, vel: { ...vel } };
+  const geometry = bankShotOffPlate(toy, {
+    id: 'bank_shot', type: 'projectile', spec, runtime, pos: { ...from }, vel: { ...vel },
+  });
+  if (!geometry.ok) return { banked: false, killed: false, reason: geometry.reason };
+  const surface = {
+    id: toy.id != null ? toy.id : 'plate',
+    pos: vec(toy.pos),
+    vel: { x: 0, z: 0 },
+    angVel: 0,
+    surfaceMaterial: typeof toy.material === 'string' && toy.material ? toy.material : 'plate',
+  };
+  const receipt = surfaceContactFromBodies(body, surface, {
+    point: geometry.point,
+    normal: geometry.normal,
+    material: surface.surfaceMaterial,
+    velocity: vel,
+  }, 0);
+  const result = resolveRicochet(runtime, spec, receipt, body);
+  if (!result.ok || result.consume) {
+    return { banked: true, killed: false, reflected: false, reason: result.reason || 'refused' };
+  }
+  const outgoing = result.velocity;
+  const target = add(geometry.point, scale(norm(outgoing), 40));
   const straight = add(from, scale(norm(vel), 80));
   const missWithout = Math.hypot(straight.x - target.x, straight.z - target.z) > 18;
-  return { banked: true, killed: missWithout, target, from, vel: banked.vel };
+  return { banked: true, killed: missWithout, reflected: true, target, from, vel: outgoing };
 }
 
 function integrateCrusher(toy, elapsed0, ticks) {

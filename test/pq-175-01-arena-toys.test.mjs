@@ -12,12 +12,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { TERRAIN_CRUMPLE_LAW } from '../src/combat/impulseKernel.js';
+import { compileAttackSpec } from '../src/combat/attackSpec.js';
+import { createLineage } from '../src/combat/attackLineage.js';
+import { resolveRicochet } from '../src/combat/surfaceReflection.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createRunState } from '../src/core/runState.js';
+import { surfaceContactFromBodies } from '../src/core/surfaceContact.js';
 import {
   ARENA_TOY_HAZARDS,
   ARENA_TOY_MIN,
   CRUSHER_CYCLE,
+  bankShotOffPlate,
   listArenaToys,
   validateArenaToys,
 } from '../src/data/arenaModuleLibrary.js';
@@ -220,32 +225,59 @@ test('shutter: the installed bar cuts a crossing shot and lets a parallel shot p
   }
 });
 
-test('plate: the installed plate reflects a shot into its face; a shot outside reach is untouched', () => {
+test('plate: bank acceptance is the kernel receipt path — no_spec for plain shots, geometry only for eligible ones', () => {
   const h = boot(CRYO_ARENA_ID);
   const plates = h.toys.filter((toy) => toy.kind === 'plate');
   assert.ok(plates.length >= 1, 'cryo plate');
   const plate = plates[0];
   const n = norm(plate.normal);
-  const tangent = perp(n);
+  const pos = add(plate.pos, scale(n, 30));
+  const vel = scale(n, -90);
 
-  const hit = h.spawn({
-    type: 'projectile',
-    pos: add(plate.pos, scale(n, 30)),
-    vel: scale(n, -90),
-  });
-  h.tick(2);
-  const hitNormal = dot(hit.vel, n);
-  assert.ok(hitNormal > 0, `banked shot must leave along +normal, got ${hitNormal}`);
-  assert.ok(Math.abs(hitNormal - 90) < 1, `bank preserves speed, got ${hitNormal}`);
+  // PQ-133.04 R3: the room-side solver is gone. An ordinary direct shot is refused, always.
+  const plain = { id: 'plain-bolt', type: 'projectile', pos, vel };
+  const refused = bankShotOffPlate(plate, plain);
+  assert.equal(refused.ok, false, 'a direct shot cannot bank');
+  assert.equal(refused.reason, 'no_spec');
 
-  const miss = h.spawn({
-    type: 'projectile',
-    pos: add(plate.pos, add(scale(n, 30), scale(tangent, 300))),
-    vel: scale(n, -90),
+  // An eligible bank AttackSpec runtime gets CONTACT GEOMETRY ONLY — never a receipt, never a
+  // velocity. The bounce itself belongs to the kernel.
+  const compiled = compileAttackSpec({
+    weaponId: 'wpn_pulse_laser_s',
+    modifiers: [['mod_bank_shot', 1]],
   });
-  h.tick(2);
-  const missNormal = dot(miss.vel, n);
-  assert.ok(missNormal < 0, `out-of-reach shot must keep its velocity, got ${missNormal}`);
+  assert.equal(compiled.ok, true);
+  const runtime = createLineage({ spec: compiled.spec });
+  const geometry = bankShotOffPlate(plate, {
+    id: 'bolt', type: 'projectile', spec: compiled.spec, runtime, pos, vel,
+  });
+  assert.equal(geometry.ok, true, 'an eligible runtime is accepted');
+  assert.equal(geometry.vel, undefined, 'geometry only: no velocity leaves the helper');
+  assert.equal(geometry.receipt, undefined, 'geometry only: no receipt leaves the helper');
+
+  // The kernel resolves that contact off a physics-shaped receipt on the SAME installed plate.
+  const body = { id: 'bolt', type: 'projectile', alive: true, radius: 0.7, pos: { ...pos }, vel: { ...vel } };
+  const surface = {
+    id: plate.id, pos: { ...plate.pos }, vel: { x: 0, z: 0 }, angVel: 0, surfaceMaterial: 'plate',
+  };
+  const receipt = surfaceContactFromBodies(body, surface, {
+    point: geometry.point, normal: geometry.normal, material: 'plate', velocity: vel,
+  }, 0);
+  const result = resolveRicochet(runtime, compiled.spec, receipt, body);
+  assert.equal(result.ok, true, 'the kernel banks the accepted contact');
+  assert.equal(result.consume, false, 'an eligible bank continues the same body');
+  assert.ok(dot(result.velocity, n) > 0, `banked shot must leave along +normal, got ${dot(result.velocity, n)}`);
+  assert.ok(Math.abs(Math.hypot(result.velocity.x, result.velocity.z) - 90) < 1e-3,
+    `bank preserves speed, got ${Math.hypot(result.velocity.x, result.velocity.z)}`);
+
+  // Out of reach: no geometry, nothing to resolve — the fail-closed control.
+  const far = add(plate.pos, add(scale(n, 30), scale(perp(n), 300)));
+  const farGeometry = bankShotOffPlate(plate, {
+    id: 'far-bolt', type: 'projectile', spec: compiled.spec,
+    runtime: createLineage({ spec: compiled.spec }), pos: far, vel,
+  });
+  assert.equal(farGeometry.ok, false);
+  assert.equal(farGeometry.reason, 'miss');
 
   h.system.destroy();
 });

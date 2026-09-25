@@ -268,12 +268,18 @@ test('every arenaPhase builds a room no other phase builds', () => {
   assert.equal(signatures.size, 8);
 });
 
-test('idle installs nothing, every other phase installs something', () => {
+test('idle installs the authored Foundry room; every other phase installs something', () => {
   for (const phase of SURVIVAL_ARENA_PHASES) {
-    const install = planArenaInstall({ arenaPhase: phase, wave: 3, seed: SEED, anchor: ANCHOR });
+    const install = planArenaInstall({ arenaId: ARENA, arenaPhase: phase, wave: 3, seed: SEED, anchor: ANCHOR });
     const installs = install.fields.length + install.mines.length + (install.cover ? 1 : 0);
-    if (phase === 'idle') assert.equal(installs, 0, 'idle must install nothing');
-    else assert.ok(installs > 0, `${phase} installed nothing`);
+    if (phase === 'idle') {
+      // PQ-133.04 R3: Foundry idle is the teaching room — authored reflective geometry from
+      // wave one — but it still occupies none of the two field slots, no mines, no cover.
+      assert.equal(installs, 0, 'idle must not spend a field/mine/cover slot');
+      assert.ok((install.toys || []).some((toy) => toy.kind === 'plate'), 'idle must install the bank room');
+    } else {
+      assert.ok(installs > 0, `${phase} installed nothing`);
+    }
   }
 });
 

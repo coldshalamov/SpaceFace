@@ -96,12 +96,14 @@ test('the rooms pay different verbs: Foundry banks, Lagrange slings, Cinder ride
 
   assert.ok(foundry.rockBank > lagrange.rockBank, 'Foundry banks must out-yield Lagrange rocks');
   assert.ok(foundry.rockBank > cinder.rockBank);
-  assert.ok(foundry.plateBank === 0);
+  // PQ-133.04 R3: the Foundry room now authors its bank plates from wave one — it is THE bank
+  // arena, so its plate yield must beat the law arenas', Cryo's ice plates included.
+  assert.ok(foundry.plateBank > 0, 'the Foundry idle room authors bank plates');
+  assert.ok(foundry.plateBank > cryo.plateBank, 'Foundry plates out-yield Cryo ice plates');
   assert.ok(lagrange.well > foundry.well, 'Lagrange wells must move marked mass');
   assert.ok(lagrange.sling > foundry.sling);
   assert.ok(cinder.ride > foundry.ride, 'Cinder current must out-ride Foundry');
   assert.ok(cinder.machinery > foundry.machinery);
-  assert.ok(cryo.plateBank > foundry.plateBank, 'Cryo ice plates are the bank surface');
   assert.ok(storm.conduct > foundry.conduct);
   assert.equal(listArenaToys({ toys: [] }).length, 0);
 

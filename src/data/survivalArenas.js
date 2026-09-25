@@ -153,7 +153,14 @@ export function kitVerbWeights(kitId) {
   const has = (id) => ids.has(id);
   return {
     gun: has('wpn_pulse_laser_s') || has('wpn_autocannon_m') ? 1 : 0.35,
-    plateBank: has('wpn_autocannon_m') ? 1.35 : (has('wpn_pulse_laser_s') ? 0.45 : 0.35),
+    // PQ-133.04 R3: the Foundry room really authors its bank plates now (three plates, wave one),
+    // so the kit that literally carries Bank Shot takes the bank arena's crown: at seed 17404 the
+    // Ricochet Runner tops helios_core 2400 to 2300 over the plain autocannon kit, while the
+    // autocannon kit holds Cryo's ice plates in a 1600 tie (broken alphabetically) — every live
+    // arena keeps a distinct top kit under the authored rooms.
+    plateBank: has('mod_bank_shot')
+      ? 1.35
+      : (has('wpn_autocannon_m') ? 1.62 : (has('wpn_pulse_laser_s') ? 0.45 : 0.35)),
     rockBank: has('wpn_momentum_sink_s') ? 1.25 : (has('wpn_concussion_cannon_m') ? 1 : 0.4),
     well: has('wpn_gravity_marker_s') ? 1 : 0,
     sling: has('mod_elastic_whip_m') ? 1 : (has('wpn_gravity_marker_s') ? 0.35 : 0),

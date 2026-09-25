@@ -62,6 +62,8 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { Masks } from '../core/entity.js';
+import { readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import {
@@ -74,14 +76,19 @@ import {
   ARENA_TOY_LIGHT_MASS,
   ARENA_TOY_LIGHT_RADIUS,
   ARENA_TOY_MAX,
-  bankShotOffPlate,
+  SHUTTER_MASS,
+  SHUTTER_SERVO,
   currentCarry,
   listArenaToys,
   shutterCutsLine,
+  shutterCommand,
+  shutterJammed,
+  shutterPhase,
   stepCrusher,
 } from '../data/arenaModuleLibrary.js';
 import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
 import { gateBearing } from './waveMaterialization.js';
+import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
@@ -229,6 +236,115 @@ function isLawArena(arenaId) {
     || arenaId === STORM_ARENA_ID;
 }
 
+/** Non-null so release bookkeeping can tag-check: only our own room solids ever die by tag. */
+export const ARENA_ROOM_OWNER = 'survival-arena';
+
+/** Foundry toys draw on their own seeded stream so the per-phase field draws stay byte-identical. */
+const FOUNDRY_TOY_SALT = 0x1cd3e17;
+
+/**
+ * PURE authored Foundry furniture (PQ-133.04 R3). Foundry — helios_core — is the room that
+ * teaches the bank: three reflective bank plates (material 'plate') in every authored phase,
+ * gate posts marking the dominant arrival lane, the furnace block on the fire phases, and the
+ * moving shutters on the shutter phases. `solid: true` toys materialize as immovable room
+ * bodies; the shutters materialize dynamic and are commanded only through the SG-02 membrane.
+ */
+function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
+  const rng = mulberry32((arenaStreamSeed(seed, wave) ^ FOUNDRY_TOY_SALT) >>> 0);
+  const toys = [];
+  for (let i = 0; i < 3; i++) {
+    const bearing = spin + (i / 3) * TAU + (rng() - 0.5) * 0.5;
+    const distance = 240 + rng() * 70;
+    const pos = alongBearing(at, { x: Math.cos(bearing), z: Math.sin(bearing) }, distance);
+    const length = Math.hypot(pos.x - at.x, pos.z - at.z) || 1;
+    toys.push({
+      id: `foundry_plate_${i + 1}`,
+      kind: 'plate',
+      verb: 'bank',
+      material: 'plate',
+      hazardType: 'debris',
+      solid: true,
+      pos,
+      normal: { x: (at.x - pos.x) / length, z: (at.z - pos.z) / length },
+      halfWidth: 48,
+      radius: 26,
+    });
+  }
+  const mouth = alongBearing(at, lane, 320);
+  for (let i = 0; i < 2; i++) {
+    const side = i === 0 ? -1 : 1;
+    toys.push({
+      id: `foundry_gate_${i === 0 ? 'a' : 'b'}`,
+      kind: 'gate',
+      material: 'gate',
+      hazardType: 'debris_current',
+      solid: true,
+      pos: point(mouth, across.x * 110 * side, across.z * 110 * side),
+      radius: 16,
+    });
+  }
+  if (phase === 'furnace_active' || phase === 'boss') {
+    toys.push({
+      id: 'foundry_furnace',
+      kind: 'furnace',
+      verb: 'consume',
+      material: 'furnace',
+      hazardType: 'nebula',
+      solid: true,
+      pos: { x: at.x, z: at.z },
+      radius: 34,
+    });
+  }
+  if (phase === 'shutter_slow' || phase === 'shutter_alternating') {
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const center = point(at, across.x * 230 * side, across.z * 230 * side);
+      const dir = { x: across.x * -side, z: across.z * -side };
+      const tangent = { x: -dir.z, z: dir.x };
+      const half = 60;
+      toys.push({
+        id: `foundry_shutter_${i === 0 ? 'a' : 'b'}`,
+        kind: 'shutter',
+        verb: 'cut',
+        material: 'shutter',
+        hazardType: 'debris',
+        solid: true,
+        dynamic: true,
+        pos: center,
+        a: point(center, tangent.x * -half, tangent.z * -half),
+        b: point(center, tangent.x * half, tangent.z * half),
+        dir,
+        surgeDistance: 96,
+        radius: 20,
+      });
+    }
+  }
+  return toys;
+}
+
+/** Authored frame extent over the live toys — camera-law inputs; the renderer stays with its controller. */
+function authoredRoomFrame(toys) {
+  if (!Array.isArray(toys) || toys.length === 0) return null;
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  for (const toy of toys) {
+    if (!toy || !toy.pos || !Number.isFinite(toy.pos.x) || !Number.isFinite(toy.pos.z)) continue;
+    const reach = Math.max(
+      0,
+      Number.isFinite(toy.radius) ? toy.radius : 0,
+      Number.isFinite(toy.halfWidth) ? toy.halfWidth : 0,
+    );
+    minX = Math.min(minX, toy.pos.x - reach);
+    minZ = Math.min(minZ, toy.pos.z - reach);
+    maxX = Math.max(maxX, toy.pos.x + reach);
+    maxZ = Math.max(maxZ, toy.pos.z + reach);
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return null;
+  return { minX, minZ, maxX, maxZ };
+}
+
 /**
  * PURE room description for one wave. No bus, no registry, no state.
  *
@@ -253,7 +369,31 @@ export function planArenaInstall({
   };
   const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
   const empty = { phase, note: 'inert room', fields: [], mines: [], cover: false };
-  if (!isLawArena(arenaId) && phase === 'idle') return empty;
+  if (!isLawArena(arenaId) && phase === 'idle') {
+    // PQ-133.04 R3: Foundry idle is no longer empty — wave one installs the authored bank room
+    // (three reflective plates plus gate posts marking the arrival lane). Every other non-law
+    // arena keeps the honest nothing.
+    if (arenaId === FOUNDRY_ARENA_ID) {
+      const lane = gateBearing(laneGate);
+      return decorateBossRoom(finalizeInstall({
+        phase,
+        note: 'three bank plates around the quiet room, and the arrival gate marked',
+        fields: [],
+        mines: [],
+        cover: false,
+        toys: planFoundryToys({
+          phase,
+          at,
+          lane,
+          across: { x: -lane.z, z: lane.x },
+          spin: 0,
+          wave,
+          seed,
+        }),
+      }), bossRoom);
+    }
+    return empty;
+  }
   if (isLawArena(arenaId) && !SURVIVAL_ARENA_PHASES.includes(phase)) return empty;
 
   const rng = mulberry32(arenaStreamSeed(seed, wave));
@@ -453,6 +593,12 @@ export function planArenaInstall({
     // wrong room is worse than the honest nothing the ten waves already had.
     default:
       return empty;
+  }
+
+  // PQ-133.04 R3: every authored Foundry phase carries the bank-room furniture on top of its
+  // phase fields (which stay exactly as authored below). Unknown phases returned early — inert.
+  if (arenaId === FOUNDRY_ARENA_ID) {
+    out.toys = planFoundryToys({ phase, at, lane, across, spin, wave, seed });
   }
 
   return decorateBossRoom(finalizeInstall(out), bossRoom);
@@ -804,6 +950,7 @@ export const survivalArena = {
     this._installMines(install.mines);
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
+    this._materializeRoom(this._toys, wave);
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
@@ -814,6 +961,10 @@ export const survivalArena = {
       cover: install.cover,
       toys: this._toys.length,
       toyIds: this._toys.map((toy) => toy.id),
+      // PQ-133.04 R3: authored room solids (count + frame extent). Camera-law inputs only —
+      // the renderer consumer stays with its controller.
+      solids: this._roomIds.length,
+      frame: authoredRoomFrame(this._toys),
     });
   },
 
@@ -916,8 +1067,9 @@ export const survivalArena = {
       fields: this._releaseFields(),
       mines: this._releaseMines(),
       cover: this._releaseCover(),
+      solids: this._releaseRoom(),
     };
-    const had = released.fields > 0 || released.mines > 0 || released.cover;
+    const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
     const phase = this._phase;
     const wave = this._wave;
     this._reset();
@@ -1034,6 +1186,15 @@ export const survivalArena = {
           writeVel(entity, body.vx + acc.ax * step, body.vz + acc.az * step);
         }
       } else if (toy.kind === 'shutter') {
+        // PQ-133.04 Stage C: a MATERIALIZED shutter is an authoritative dynamic physics body.
+        // The room commands it through the SG-02 membrane and never touches its pose, never
+        // predictively deletes shots — contact truth belongs to physics and its receipt owners.
+        const solidEntity = toy.id != null ? this._roomSolids.get(String(toy.id)) : null;
+        if (solidEntity && solidEntity.alive !== false) {
+          this._commandShutter(toy, solidEntity, elapsed, state);
+          continue;
+        }
+        // Non-authoritative law-arena shutters keep the predictive cut.
         for (let p = 0; p < projectiles.length; p++) {
           const shot = projectiles[p];
           if (shot.alive === false) continue;
@@ -1048,51 +1209,139 @@ export const survivalArena = {
           };
           if (shutterCutsLine(toy, shot.pos, to)) shot.alive = false;
         }
-      } else if (toy.kind === 'plate') {
-        const platePos = toy.pos || toy.center;
-        const reach = Math.max(8, Number.isFinite(toy.halfWidth) ? toy.halfWidth : 24) + 48;
-        for (let p = 0; p < projectiles.length; p++) {
-          const shot = projectiles[p];
-          if (shot.alive === false || !platePos) continue;
-          const dx = shot.pos.x - platePos.x;
-          const dz = shot.pos.z - platePos.z;
-          let contacts = this._bankFeedbackContacts.get(shot);
-          if (Math.hypot(dx, dz) > reach) {
-            if (contacts) contacts.delete(toy.id);
-            continue;
-          }
-          const banked = bankShotOffPlate(toy, {
-            id: shot.id,
-            pos: shot.pos,
-            vel: toyBodyOf(shot).vel,
-          });
-          if (banked && banked.ok) {
-            writeVel(shot, banked.vel.x, banked.vel.z);
-            // Latch feedback only: keep the existing reflection on every successful contact.
-            // A miss while still in reach does not rearm; leaving this plate's reach does.
-            if (contacts && contacts.has(toy.id)) continue;
-            if (!contacts) this._bankFeedbackContacts.set(shot, contacts = new Set());
-            contacts.add(toy.id);
-            const receipt = banked.receipt;
-            this._emit('combat:bankShot', {
-              id: shot.id,
-              projectileId: shot.id,
-              ownerId: shot.ownerId ?? shot.data?.ownerId ?? null,
-              weaponId: shot.data?.weaponId ?? null,
-              arenaId: state.run.arenaId,
-              plateId: receipt.surfaceId,
-              tick: state.tick,
-              pos: receipt.point,
-              normal: receipt.normal,
-              approach: receipt.velocity,
-              incomingVelocity: receipt.velocity,
-              outgoingVelocity: { x: banked.vel.x, z: banked.vel.z },
-              receipt,
-            });
-          }
-        }
+      }
+      // PQ-133.04 R3 Stage A: the room plate branch is GONE. Plates are authored room solids
+      // whose bank acceptance lives in the combat kernel (resolveLiveAttackHit -> resolveRicochet
+      // over a physics-issued receipt); the room neither reflects shots nor emits bank feedback.
+    }
+  },
+
+  /**
+   * Command one materialized shutter toward its authored pose. ONLY channel: writePhysicsControl
+   * (consumed by sg02DynamicBodyOwner in its next _stepFixed). The jam verdict reads measured
+   * telemetry against sim time and is deterministic; a jammed shutter is held, never pushed.
+   */
+  _commandShutter(toy, entity, elapsed, state) {
+    const clock = shutterPhase(toy, elapsed);
+    const jammed = shutterJammed(readPhysicsTelemetry(entity), {
+      tick: state && Number.isInteger(state.tick) ? state.tick : null,
+      phase: clock.phase,
+      phaseElapsedS: clock.phaseElapsedS,
+    });
+    if (jammed) {
+      writePhysicsControl(entity, {
+        mode: 'shutter_hold',
+        force: { x: 0, y: 0, z: 0 },
+        source: 'survival-arena',
+        maxSpeed: SHUTTER_SERVO.maxSpeed,
+      });
+      return;
+    }
+    const command = shutterCommand(toy, elapsed, entity);
+    writePhysicsControl(entity, {
+      mode: command.mode,
+      force: { x: command.force.x, y: 0, z: command.force.z },
+      source: 'survival-arena',
+      maxSpeed: SHUTTER_SERVO.maxSpeed,
+    });
+  },
+
+  /**
+   * PQ-133.04 R3 Stage B: materialize the room's solid toys as immovable 'station' bodies
+   * (the shutters dynamic) through helpers.spawnEntity — capability-guarded like _installFields,
+   * never through spawnBudget. Deterministic ids `survival-room-w{wave}-{toyId}`; idempotent by
+   * the data tag, so a missed teardown can never double a solid.
+   */
+  _materializeRoom(toys, wave) {
+    if (!Array.isArray(toys) || toys.length === 0) return;
+    const helpers = this.ctx && this.ctx.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+    const state = this.state;
+    if (!state) return;
+    const w = Number.isInteger(wave) ? wave : 0;
+    for (const toy of toys) {
+      if (!toy || toy.solid !== true) continue;
+      const solidId = `survival-room-w${w}-${toy.id}`;
+      if (this._findRoomSolid(solidId)) continue;
+      const dynamic = toy.dynamic === true;
+      const radius = Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const mass = dynamic ? SHUTTER_MASS : Math.max(400, Math.round(radius * radius * 2.5));
+      const hull = 100000 + Math.round(radius * 40);
+      const entity = helpers.spawnEntity({
+        type: 'station',
+        id: solidId,
+        pos: { x: toy.pos.x, z: toy.pos.z },
+        vel: { x: 0, z: 0 },
+        angVel: 0,
+        radius,
+        mass,
+        hull,
+        hullMax: hull,
+        collides: true,
+        collisionMask: Masks.SHIP | Masks.STATION | Masks.ASTEROID | Masks.PROJECTILE
+          | Masks.DRONE | Masks.PAYLOAD,
+        physicsBody: {
+          schemaVersion: 1,
+          radius,
+          mass,
+          inertiaY: Math.max(8, Math.round(mass * radius * radius * 0.4)),
+          dynamic,
+          ccd: false,
+          material: 'station',
+          revision: 0,
+        },
+        data: {
+          roomOwner: ARENA_ROOM_OWNER,
+          roomSolidId: solidId,
+          roomToyId: toy.id,
+          roomKind: toy.kind,
+          roomDynamic: dynamic,
+          surfaceMaterial: typeof toy.material === 'string' && toy.material
+            ? toy.material
+            : 'station',
+        },
+      });
+      if (entity && entity.id != null) {
+        this._roomIds.push(entity.id);
+        if (toy.id != null) this._roomSolids.set(String(toy.id), entity);
       }
     }
+  },
+
+  /** Find a live room solid by its deterministic data tag (harnesses may renumber entity ids). */
+  _findRoomSolid(solidId) {
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
+    const source = Array.isArray(state.entityList)
+      ? state.entityList
+      : (typeof state.entities.values === 'function' ? state.entities.values() : null);
+    if (!source) return null;
+    for (const entity of source) {
+      if (entity && entity.alive !== false && entity.data && entity.data.roomSolidId === solidId) {
+        return entity;
+      }
+    }
+    return null;
+  },
+
+  /** Tag-checked release: only entities carrying our roomOwner tag ever die here. */
+  _releaseRoom() {
+    const ids = this._roomIds || [];
+    this._roomIds = [];
+    this._roomSolids = new Map();
+    const state = this.state;
+    if (ids.length === 0 || !state || !state.entities || typeof state.entities.get !== 'function') {
+      return 0;
+    }
+    let n = 0;
+    for (const id of ids) {
+      const solid = state.entities.get(id);
+      if (!solid || solid.alive === false) continue;
+      if (!solid.data || solid.data.roomOwner !== ARENA_ROOM_OWNER) continue;
+      solid.alive = false;
+      n++;
+    }
+    return n;
   },
 
   _tickStorm(state) {
@@ -1127,7 +1376,8 @@ export const survivalArena = {
     this._cryoRoom = null;
     this._stormAt = null;
     this._cryoShocked = new Set();
-    this._bankFeedbackContacts = new WeakMap();
+    this._roomIds = [];
+    this._roomSolids = new Map();
     this._toys = [];
     this._installedFields = [];
   },
