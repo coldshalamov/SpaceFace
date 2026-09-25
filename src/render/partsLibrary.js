@@ -10889,6 +10889,9 @@ export function cloneMaterialPreservingShaderHooks(base) {
   const clone = base.clone();
   if (Object.hasOwn(base, 'onBeforeCompile')) clone.onBeforeCompile = base.onBeforeCompile;
   if (Object.hasOwn(base, 'customProgramCacheKey')) clone.customProgramCacheKey = base.customProgramCacheKey;
+  // Clone lineage for GPU-brick owner attribution — identifies post-publish clones in
+  // telemetry without a heap walk.
+  clone.userData = { ...(clone.userData || {}), sfClonedFrom: String(base.uuid || '').slice(0, 8) };
   clone.needsUpdate = true;
   return clone;
 }

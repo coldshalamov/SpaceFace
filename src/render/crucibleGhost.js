@@ -18,6 +18,7 @@ function applyGhostMaterial(material) {
   // so sync() pays that link through the exact-target touch before root.visible opens.
   next.onBeforeCompile = material.onBeforeCompile;
   next.customProgramCacheKey = material.customProgramCacheKey;
+  next.userData = { ...(next.userData || {}), sfGhostClone: String(material.uuid || '').slice(0, 8) };
   next.transparent = true;
   next.opacity = Math.min(CRUCIBLE_GHOST_OPACITY, Number.isFinite(next.opacity) ? next.opacity * CRUCIBLE_GHOST_OPACITY : CRUCIBLE_GHOST_OPACITY);
   next.depthWrite = false;

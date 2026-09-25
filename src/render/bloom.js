@@ -1420,6 +1420,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
               material: String(material.name || material.type || 'unnamed').slice(0, 32),
               mu: String(material.uuid || '').slice(0, 8),
               ou: String(object.uuid || '').slice(0, 8),
+              cloneOf: material && material.userData
+                ? String(material.userData.sfHeatSkinClone || material.userData.sfGhostClone || material.userData.sfClonedFrom || '')
+                : '',
               root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
               key: key.slice(0, 512),
               siblingKeys: siblings,

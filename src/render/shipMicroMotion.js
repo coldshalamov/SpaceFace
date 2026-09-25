@@ -1002,6 +1002,7 @@ export function createShipMicroMotionTracker() {
       // emissive uniforms, so the clone shares the source's already-linked program.
       cloned.onBeforeCompile = mat.onBeforeCompile;
       cloned.customProgramCacheKey = mat.customProgramCacheKey;
+      cloned.userData = { ...(cloned.userData || {}), sfHeatSkinClone: String(mat.uuid || '').slice(0, 8) };
       clones[i] = cloned;
       base[i] = {
         r: cloned.emissive.r,
