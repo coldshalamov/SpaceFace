@@ -34,7 +34,7 @@ const CSS = `
 .orr-crest::before { content:""; display:none; position:absolute; left:50%; top:50%; width:58px; height:58px; margin:-29px 0 0 -29px; border-radius:50%; background:radial-gradient(circle, rgb(248 244 234 / .18), rgb(248 244 234 / .06) 46%, rgb(248 244 234 / 0) 70%); pointer-events:none; }
 /* the bloom marks the chosen rim crest only when the sun is not the chosen power: one lit object on the orbit */
 .orr-crestorbit.is-pivoted .orr-crest.is-chosen::before { display:block; }
-.orr-crestorbit:not(.is-pivoted) .orr-crest.is-chosen > img { opacity:.82; }
+.orr-crestorbit:not(.is-pivoted) .orr-crest.is-chosen > img { opacity:1; }
 .orr-crest > img { position:relative; display:block; width:38px; height:38px; margin:6px; opacity:.52; transition:opacity .18s linear, transform .28s var(--dp-ease-over, ease-out); pointer-events:none;
   filter:brightness(1.18) drop-shadow(0 0 4px rgb(0 0 0 / .8)); }
 .orr-crest:is(:hover, :focus-visible) > img { opacity:.82; transform:scale(1.12); }
@@ -80,7 +80,7 @@ const CSS = `
 .orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.14; }
 .orr-svg .orr-crestorbit__rel-bead { fill:rgb(${BONE} / .85); }
 .orr-svg .orr-crestorbit__rel-bead.is-hostile { fill:rgb(255 80 56 / .8); }
-.orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) > img { opacity:.34; }
+.orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) > img { opacity:.47; }
 .orr-crestorbit.has-relations .orr-crest.is-related > img { opacity:.92; }
 .orr-crestorbit__rise { opacity:0; animation:orr-crestorbit-rise .5s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-crestorbit-rise { to { opacity:1; } }
@@ -100,6 +100,7 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
 .orr-svg text.orr-standing__name { font-size:10.5px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-svg .orr-standing__bracket { stroke:rgb(${BONE} / .5); }
+.orr-svg text.orr-standing__rung-detail { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; fill:rgb(${BONE} / .56); }
 .orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); font-family:var(--dp-face-label, "Archivo"); font-size:9.5px; font-weight:650; letter-spacing:.14em; }
 .orr-svg text.orr-standing__name.is-current { fill:rgb(248 244 234); }
 .orr-svg.is-compact text.orr-standing__name { font-size:9px; letter-spacing:.1em; }
@@ -218,7 +219,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       if (k < 0 || k === chosenIdx) continue;
       related.add(rel.id);
       const tDeg = (360 * k) / n;
-      const [tx, ty] = polar(cx, cy, R - cs / 2 - 4, tDeg);
+      const [tx, ty] = polar(cx, cy, R - 36, tDeg);
       let d;
       if (fromSun) {
         const [sx, sy] = polar(cx, cy, centreNow / 2 + 18, tDeg);
@@ -234,7 +235,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       const hostile = rel.weight < 0;
       relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom${hostile ? ' is-hostile' : ''}`, 'stroke-width': 4 }));
       relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1 }));
-      const [bx, by] = polar(cx, cy, R - cs / 2 - 6, tDeg);
+      const [bx, by] = polar(cx, cy, R - 36, tDeg);
       relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.5, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}` }));
     }
     host.classList.toggle('has-relations', related.size > 0);
@@ -479,7 +480,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     placed[k].row = row;
   }
   const rowsUsed = placed.length ? Math.max(...placed.map((q) => q.row)) + 1 : 0;
-  if (rungs.length && rungWords) h = 40 + top + rungTop + (rowsUsed - 1) * pitch + 11 + 10;
+  if (rungs.length && rungWords) h = 40 + top + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
   else if (rungs.length) h = 74 + 10 + top;
   let out = `<svg class="orr-svg${compact ? ' is-compact' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   out += `<path class="orr-bloom orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="4" opacity=".12"/>`;
@@ -545,6 +546,9 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       // the leader: down from the rule, a 45-degree elbow of 12px, the word after it
       out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 10} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1"/>`;
       out += `<text class="orr-standing__rung ${state}" x="${f(x + 15)}" y="${rowY}" text-anchor="start">${lines.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${l}</tspan>`).join('')}</text>`;
+      if (Array.isArray(rung.detail) && rung.detail.length) {
+        out += `<text class="orr-standing__rung-detail" x="${f(x + 15)}" y="${rowY + lines.length * 11 + 4}" text-anchor="start">${rung.detail.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${String(l)}</tspan>`).join('')}</text>`;
+      }
     });
   } else {
     out += `<text class="orr-standing__rep" x="${f(xc)}" y="${y + 32}" text-anchor="middle">${cur > 0 ? '+' : ''}${cur}</text>`;

@@ -1466,7 +1466,7 @@ ${T} .orr-lampkey .orr-lampkey__commit-bloom { display:none !important; }
 
 /* ================================ ROUND 9: FACTIONS ========================================= */
 /* while a relation set shows, a bystander's name is no brighter than its ghosted emblem; a related name lifts */
-${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__words { opacity:.42 !important; }
+${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__name { opacity:.85 !important; }
 ${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { color:rgb(${BONE} / .86) !important; }
 @media (max-height:800px) {
   ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size:9px !important; }
@@ -1508,6 +1508,12 @@ ${T} .sx-bar__leads:has(.sx-lead__rows:focus-within) .sx-bar__leadkeys { color:r
 }
 
 ${T} .sx-ind__list[data-snapped="1"] { -webkit-mask-image:none !important; mask-image:none !important; }
+
+/* ================================ ROUND 10: FACTIONS ======================================== */
+/* the next rung's clause lives under its rung on the scale; the separate row retires there */
+${T} .sx-fac-rung-next.is-on-scale { display:none !important; }
+/* a short screen's tier words keep their gaps */
+@media (max-height:800px) { ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { letter-spacing:.04em !important; } }
 
 `;
 

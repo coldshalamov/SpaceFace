@@ -117,6 +117,16 @@ function relationEntries(meta) {
 }
 
 /** The next contract rung and what it buys, in one line; or the top when every rung is reached. */
+/** What a rung buys, as at most two short lines for the scale ("R3 · HIGHER-RISK ESCORTS" / "SMUGGLING, COMBAT"). */
+function rungDetailLines(unlocks) {
+  let t = String(unlocks || '').replace(/\s+contracts?\.?$/i, '').replace(/,\s+and\s+/g, ', ').trim();
+  t = t.replace(/^(R\d+)\s+/, '$1 \u00b7 ');
+  if (!t) return [];
+  const comma = t.indexOf(', ');
+  const lines = comma > 0 ? [t.slice(0, comma), t.slice(comma + 2)] : [t];
+  return lines.map((l) => (l.length > 28 ? `${l.slice(0, 27).trim()}\u2026` : l)).slice(0, 2);
+}
+
 function nextRungLine(rep) {
   const rows = factionContractLadderRows(rep);
   const next = rows.find((row) => !row.unlocked);
@@ -263,14 +273,14 @@ export function createFactionsScreen(ctx) {
                 ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: `${next.need} \u00b7 TO ${String(next.name).toUpperCase()}`, anchor: 'start' }] : []),
                 ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: `${buffer} \u00b7 ABOVE HOSTILE`, anchor: 'end' }] : []),
               ],
-              rungs: factionContractLadderRows(rep).map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked' })) }) +
+              rungs: (() => { const rows = factionContractLadderRows(rep); const nextRow = rows.find((row) => !row.unlocked && !row.aspirational); return rows.map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked', detail: row === nextRow && !compactHeight() ? rungDetailLines(row.unlocks) : null })); })() }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
             `<p class="k-caps">Contract access</p>` +
             ladderRows(contractLadder) +
             // the rungs hang off the standing scale; the reading names the next one and what it buys
-            `<p class="k-sentence sx-fac-rung-next">${nextRungLine(rep)}</p>` +
+            `<p class="k-sentence sx-fac-rung-next${compactHeight() ? '' : ' is-on-scale'}">${nextRungLine(rep)}</p>` +
           `</div>` +
           `<div class="sx-fac-intent">` +
             `<p class="k-caps">Next move</p>` +
