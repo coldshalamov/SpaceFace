@@ -9,12 +9,16 @@
 import { createGameState } from '../src/core/gameState.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { createRunState } from '../src/core/runState.js';
+import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { ships as shipsSystem } from '../src/systems/ships.js';
 import {
   buildCodeFor, buildNameFor, counterplayFor, deathCauseText, deathSentence, storyMomentsFor,
 } from '../src/systems/survivalResults.js';
+import { crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
+import { ghostHash, loadCrucibleMeta, saveCrucibleMeta } from '../src/systems/survivalRecords.js';
+import { createComboState } from '../src/systems/stuntCombo.js';
 import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
@@ -254,6 +258,69 @@ function seedCrucibleShot(screenId, shot) {
     state.ui.demoEnd = { moduleDefId: 'mod_engine_fusion_m' };
     state.player.stats = state.player.stats || {};
     state.player.stats.creditsEarned = 1840;
+    // The card reaches back to the Crucible record for its first fact — a player arrives here
+    // through a finished run, so the meta carries a best line like the live route writes it.
+    try {
+      const meta = loadCrucibleMeta();
+      saveCrucibleMeta({
+        ...meta,
+        bestLines: [{
+          id: 'line:bench-demo-end', version: 1, points: 960, multiplier: 1, raw: null,
+          bankId: null, tick: 4180, seed: BENCH_CRUCIBLE_RESULT.seed,
+          recordRules: { mode: 'swarm', arenaId: 'helios_core', mutators: [], complete: true },
+          // normalizeBestLine keeps only acts with an episode, a trick and evidence — a bare name
+          // is dropped on load and the card loses its first fact.
+          acts: [
+            { episodeId: 'ep-1', trickId: 'stunt_shove', name: 'Shove', family: 'contact',
+              tick: 1200, rootTick: 1180, points: 320, evidence: [{ kind: 'contact' }] },
+            { episodeId: 'ep-2', trickId: 'stunt_slam', name: 'Slam', family: 'contact',
+              tick: 2400, rootTick: 2360, points: 300, evidence: [{ kind: 'contact' }] },
+            { episodeId: 'ep-3', trickId: 'stunt_field_pop', name: 'Field pop', family: 'field',
+              tick: 4180, rootTick: 4100, points: 340, evidence: [{ kind: 'field' }] },
+          ],
+          videoAvailable: false, replayKind: 'causal_account',
+        }],
+      });
+    } catch { /* a bench host without storage shows two facts, like a fresh profile does */ }
+    return;
+  }
+  if (screenId === 'crucibleResults') {
+    // The share band only exists for a remembered launch plus a recorded ghost, and the combo
+    // band must disagree with the swarm kill chain the way the live plate did — a best chain of
+    // 24 over a meter that saw only flat gun kills and no chained tricks.
+    try {
+      const setup = crucibleSetupFor({ seed: BENCH_CRUCIBLE_RESULT.seed });
+      if (setup.ok && setup.value) requestCrucibleRun(bus, setup.value, BENCH_CRUCIBLE_RESULT.ruleset);
+    } catch { /* the share band is dressing; the plate still mounts without it */ }
+    try {
+      const tape = {
+        seed: BENCH_CRUCIBLE_RESULT.seed, hullId: 'ship_kestrel',
+        frames: [
+          { t: 0, x: 0, z: 0, r: 0 },
+          { t: 90, x: 14, z: 8, r: 0.7 },
+          { t: 180, x: 26, z: 3, r: 1.3 },
+          { t: 270, x: 31, z: -6, r: 1.9 },
+          { t: 360, x: 22, z: -14, r: 2.6 },
+        ],
+      };
+      const hash = ghostHash(tape);
+      const meta = loadCrucibleMeta();
+      saveCrucibleMeta({
+        ...meta,
+        ghosts: {
+          byHash: {
+            [String(hash)]: {
+              hash, seed: tape.seed, hullId: tape.hullId, frameCount: tape.frames.length,
+              frames: tape.frames, recordedAt: '2026-09-24T21:05:00.000Z',
+            },
+          },
+          lastHash: hash,
+        },
+      });
+    } catch { /* a bench host without storage skips the ghost item */ }
+    const combo = createComboState();
+    combo.gunKills = BENCH_CRUCIBLE_RESULT.kills;
+    state.stunts = { ...(state.stunts || {}), schemaVersion: 2, combo };
     return;
   }
   const ruleset = params.get('ruleset') || shot.ruleset || null;
@@ -543,16 +610,46 @@ async function openOverlay(kind) {
  *  lane by raising one persistent status and one warn floor through the same events the sim uses. */
 async function mountFlightHud(opts = {}) {
   const hudRoot = document.getElementById('hud');
-  const [{ createHud }, { createAlerts }] = await Promise.all([
+  const [{ createHud }, { createAlerts }, { createMarketNews }] = await Promise.all([
     import('../src/ui/hud.js'),
     import('../src/ui/alerts.js'),
+    import('../src/ui/marketNews.js'),
   ]);
   const ctx = {
     state, bus,
     screenManager: manager, registry,
-    helpers: { worldToScreen: () => ({ x: 960, y: 540, onScreen: true }) },
+    // Top-down camera stand-in: the player sits just below screen centre, so a world offset
+    // projects to a real screen position and a tell/hostile low in the field lands over the
+    // bottom instruments — the overlap the live route showed — instead of always dead centre.
+    helpers: {
+      worldToScreen: (world) => ({
+        x: window.innerWidth / 2 + ((world && world.x) || 0) * 0.4,
+        y: window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4,
+        onScreen: true,
+      }),
+    },
     writeStorePage() {}, publishStoreStill() {},
   };
+  // The labels the live route was seen to break, held in the still so the shot proves them:
+  // a cooling travel drive carrying its break reason, a live FLYBY doctrine tell low over the
+  // command deck, a long news headline, and long contact names on a pinned roster.
+  TRAVEL_FLAGS.travelBurn = true;
+  state.input.travelDrive = { state: 'cooldown', breakReason: 'disrupted', cap: 0, ceiling: 320 };
+  const benchContacts = [
+    { id: 11, callsign: 'Relief-Freighter Choir-Tender', team: 1, x: 60, z: -140 },
+    { id: 12, callsign: 'FIELD COIL CRADLE', team: 2, x: 0, z: 450 },
+  ];
+  for (const bc of benchContacts) {
+    if (state.entities.has(bc.id)) continue;
+    const e = {
+      id: bc.id, type: 'ship', alive: true, team: bc.team, radius: 14,
+      pos: { x: bc.x, y: 0, z: bc.z }, vel: { x: 0, y: 0, z: 0 },
+      data: { defId: 'ship_kestrel', callsign: bc.callsign },
+    };
+    state.entities.set(bc.id, e);
+    state.entityList.push(e);
+  }
+  state.player.targetId = 11;
   // createHud wipes #hud. Alerts have to mount after that wipe or the warn floor has no host.
   const hud = createHud(ctx, null);
   let alertsRoot = document.getElementById('alerts');
@@ -568,6 +665,18 @@ async function mountFlightHud(opts = {}) {
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
   if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
   bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 80, kind: 'warn', text: 'TAKING FIRE', ttl: 30 });
+  // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
+  // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
+  // the crucibleHud shot proves that suppression too.
+  if (!window.__benchMarketNews) window.__benchMarketNews = createMarketNews(ctx);
+  bus.emit('news:publish', {
+    text: 'TRAGEDY AT HELIOS: RELIEF FREIGHTER LOST WITH ALL HANDS — CONVOY LANES CLOSED',
+    kind: 'news', sourceRef: 'bench:helios-relief', stationId: 'station_helios',
+  });
+  // A live FLYBY telegraph aimed at the player, from the hostile projected over the command deck.
+  bus.emit('ai:telegraph', {
+    kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
+  });
   try {
     if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
     if (typeof hud.frame === 'function') {

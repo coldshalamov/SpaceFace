@@ -105,17 +105,18 @@ async function shoot(page, id, outDir) {
   const bg = args.bg ? `&bg=${encodeURIComponent(bgUrl(args.bg))}` : '';
   const demo = args.demo ? '&demo=1' : '';
   const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${bg}`;
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-  const opened = await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: 45_000 })
+  // This process yields CPU (PRIORITY_LOW above); a loaded host stretches module fetches for minutes.
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+  const opened = await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: 300_000 })
     .then(() => true)
     .catch(() => false);
   if (!opened) {
-    console.error(`  ${id}  NOT MOUNTED in 45s — the bench page did not finish`);
+    console.error(`  ${id}  NOT MOUNTED in 300s — the bench page did not finish`);
     return false;
   }
   await settleAnimations(page);
   const file = path.join(outDir, `${safeName(id)}.png`);
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, timeout: 120_000 });
   const report = await page.evaluate(() => window.BENCH.report());
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(`\n${id}  ${path.relative(ROOT, file)}  ${seconds}s`);
@@ -224,7 +225,7 @@ async function walk(page, id, outDir) {
       const name = (label || '(unlabeled)').slice(0, 36).padEnd(36);
       if (hoverEffect !== 'no visible change' && hoverEffect !== 'disabled') {
         const hoverFile = path.join(outDir, `${safeName(id)}--hover-${slug(label || String(index))}.png`);
-        await page.screenshot({ path: hoverFile });
+        await page.screenshot({ path: hoverFile, timeout: 120_000 });
         console.log(`  ${name} hover  ${hoverEffect}  ${path.relative(ROOT, hoverFile)}`);
         await page.evaluate((shotId) => window.BENCH.goto(shotId), id);
       }
@@ -242,7 +243,7 @@ async function walk(page, id, outDir) {
         continue;
       }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
-      await page.screenshot({ path: clickFile });
+      await page.screenshot({ path: clickFile, timeout: 120_000 });
       console.log(`  ${name} click  ${clickEffect}  ${path.relative(ROOT, clickFile)}`);
     } catch (error) {
       console.log(`  control ${index + 1}  probe failed: ${error.message.split('\n')[0]}`);

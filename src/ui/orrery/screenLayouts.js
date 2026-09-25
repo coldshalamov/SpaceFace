@@ -340,8 +340,10 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ro
 
 /* results: the death dial takes the right of the plate; the ledger and the story keep the left two
    columns; the kill-chain and last-seconds rows it draws stay for the ear only */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(0, min(600px, 46vw)) !important; grid-template-rows:auto minmax(0, 1fr); row-gap:18px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { grid-column:1; grid-row:1; overflow:visible !important; }
+/* the ledger column is capped just past half the stage so the figures, combo and share bands
+   scroll inside their own band instead of growing the row over the story and the action row */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(0, min(600px, 46vw)) !important; grid-template-rows:fit-content(56%) minmax(0, 1fr); row-gap:14px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { grid-column:1; grid-row:1; min-height:0; overflow:hidden auto !important; scrollbar-width:thin; scrollbar-color:var(--k-hair, rgb(232 226 212 / .25)) transparent; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { grid-column:1; grid-row:2; min-height:0; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial > .sf-crres__dial { position:absolute; top:28px; bottom:112px; left:42vw; right:8vw; z-index:1; }
 /* the ledger's rows stay for the ear; the eye reads four figures */
@@ -362,13 +364,13 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="story"] .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] { display:flex; flex-direction:column; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build { order:2; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name { order:3; margin-top:12px; font-size:13px; color:rgb(236 230 216 / .72); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name { order:3; margin-top:8px; font-size:13px; color:rgb(236 230 216 / .72); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name::before { content:"Converged on "; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :is(.sf-crres__causal, .sf-crres__causal-lead, .sf-crres__build-code) { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:12px !important; padding-top:20px !important; border:0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:6px; height:1px; background:rgb(236 230 216 / .34); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:10px !important; padding-top:16px !important; border:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:4px; height:1px; background:rgb(236 230 216 / .34); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step { flex:1 1 0; display:block !important; position:relative; border:0 !important; padding:0 12px 0 0 !important; min-height:0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-19px; width:9px; height:9px; border-radius:50%; background:#0b0a09;
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-16px; width:9px; height:9px; border-radius:50%; background:#0b0a09;
   box-shadow:inset 0 0 0 1.5px rgb(236 230 216 / .85); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__sub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.2em;
   text-transform:uppercase; color:rgb(236 230 216 / .6); }
@@ -378,8 +380,9 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__seed { margin:6px 0 0; font-size:11.5px; letter-spacing:.06em; color:rgb(236 230 216 / .6); }
 /* the surround darkens out from the dial, so the arena reads as distance */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::before { background:radial-gradient(circle at 67% 44%, rgb(4 6 9 / .5), rgb(4 6 9 / .78) 55%, rgb(4 6 9 / .9) 100%) !important; }
-/* the left column spreads over the instrument's height */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:space-evenly; }
+/* the left column spreads over the instrument's height — "safe" so an overflowing story stays
+   top-aligned and scrolls to its first band instead of clipping it above the visible edge */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story > .sf-crres__band + .sf-crres__band { margin-top:0; }
 /* the build: the draft it converged on stands solid */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(236 230 216 / .9); }
@@ -393,6 +396,33 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }
 /* the build's steps: the wave, then its verb, never run together */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results .sf-crres__step-verb { margin-left:10px; }
+
+/* under a short viewport the ledger cannot show every band at once — the share band's fields and
+   links are the interactive part, so they climb ahead of the read-only combo rows, and the
+   explainer line stays for the ear only */
+@media (max-height:800px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { display:flex; flex-direction:column; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__share { order:1; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:not([data-band]) { order:2; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__share-note { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0; }
+}
+
+/* demo end: the last card is an instrument, not a paragraph — the record as a register of etched
+   labels over lit readings on a pool of shadow; the Hand's dial stands with the ways out and
+   bears on the primary key */
+html body #screens > .k-screen.orr-demo-end .sf-demo-end__stage.k-panel { grid-template-columns:minmax(0, min(620px, 52vw)); position:relative; }
+html body #screens > .k-screen.orr-demo-end .orr-end-facts { position:relative; display:flex; flex-direction:column; gap:22px; margin:0; padding:0; }
+html body #screens > .k-screen.orr-demo-end .orr-end-facts::before { ${POOL} }
+html body #screens > .k-screen.orr-demo-end .orr-end-fact { display:grid; grid-template-columns:minmax(140px, 180px) minmax(0, 1fr); column-gap:20px; align-items:baseline; margin:0; }
+html body #screens > .k-screen.orr-demo-end .orr-end-fact > dt { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.22em; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-demo-end .orr-end-fact__n { margin:0; font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-size:22px; line-height:1.15; letter-spacing:.01em; color:rgb(246 241 230); }
+html body #screens > .k-screen.orr-demo-end .sf-demo-end__foot { align-items:center; }
+html body #screens > .k-screen.orr-demo-end .sf-demo-end__dial { flex:0 0 auto; width:104px; height:104px; margin-right:10px; }
+/* the forward key names its key */
+html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
+  transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
+  box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
+  font-family:var(--dp-face-label, "Archivo"); font-size:9.5px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
 
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it

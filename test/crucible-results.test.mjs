@@ -26,6 +26,7 @@ import {
   breachPhrase,
   buildLead,
   buildSteps,
+  comboLead,
   crucibleResultsScreen,
   damageBreakdown,
   featDiagram,
@@ -39,6 +40,13 @@ import {
   vitalsFigures,
   weaponDisplayName,
 } from '../src/ui/screens/crucible.js';
+import { comboSummary } from '../src/systems/stuntCombo.js';
+import {
+  ghostHash,
+  loadCrucibleMeta,
+  resetCrucibleMetaForTests,
+  saveCrucibleMeta,
+} from '../src/systems/survivalRecords.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const SEED = 7;
@@ -840,3 +848,93 @@ test('if stunt name already appears in bestLine, it is preserved and no combo ti
   assert.equal(result.decay, undefined);
 });
 
+
+/** Depth-first walk collecting nodes whose class list carries the given class. */
+function findByClass(node, cls, out = []) {
+  if (String(node.className || '').split(/\s+/).includes(cls)) out.push(node);
+  for (const child of node.children || []) findByClass(child, cls, out);
+  return out;
+}
+
+/** mountResults plus a ctx.state — the combo band only renders when the meter is visible. */
+function mountResultsWithState(result, state) {
+  const previousDocument = globalThis.document;
+  const doc = fakeDom();
+  globalThis.document = doc;
+  const emitted = [];
+  const bus = { emit(event, payload) { emitted.push({ event, payload }); }, on() {}, off() {}, once() {} };
+  const registry = { get: (name) => (name === 'survivalResults' ? { lastResult: () => result } : null) };
+  const root = doc._make('div');
+  try {
+    crucibleResultsScreen.mount(root, { bus, registry, state });
+  } finally {
+    globalThis.document = previousDocument;
+  }
+  return { root, emitted, lines: textLines(root), buttons: findButtons(root) };
+}
+
+test('the swarm kill chain and the trick combo never read as one number', () => {
+  // The live plate printed "Best chain 5" beside "No chained tricks — 4 flat kills": two
+  // different quantities sharing one word. The stat names what the swarm chain counts (kills
+  // on a clock, swarmChain.js); the combo band keeps counting chained tricks (stuntCombo.js).
+  const result = {
+    outcome: 'defeat', ruleset: 'swarm', seed: 4242, wave: 2, deepestWave: 2,
+    kills: 4, bestChain: 5, score: 210,
+  };
+  const rows = new Map(resultRows(result));
+  assert.equal(rows.get('Best kill chain'), '5');
+  assert.equal(rows.get('Best chain'), undefined, 'no ambiguous chain label beside the combo band');
+  const summary = comboSummary({ gunKills: 4 });
+  assert.match(comboLead(summary), /No chained tricks — 4 flat kills, no multiplier\./);
+  assert.doesNotMatch(comboLead(summary), /\b5\b/, 'the trick band never cites the kill chain');
+});
+
+test('the share band is one aligned row per item: caption, single-line field, save link', () => {
+  // A remembered launch makes the run code; a recorded ghost makes the file. Each item renders
+  // as one row — label, the whole code on a single-line selectable field, a real download
+  // anchor — the PQ-160.02 contract of selectable text and real links on every host.
+  const setup = crucibleSetupFor({ seed: 4242 });
+  assert.ok(setup.ok, 'the default starter produces a setup');
+  const fakeBus = { emit() {}, on() { return () => {}; }, off() {}, once() {} };
+  try {
+    requestCrucibleRun(fakeBus, setup.value, 'swarm');
+    const tape = {
+      seed: 4242, hullId: 'ship_kestrel',
+      frames: [{ t: 0, x: 0, z: 0, r: 0 }, { t: 60, x: 10, z: 5, r: 0.8 }],
+    };
+    const hash = ghostHash(tape);
+    saveCrucibleMeta({
+      ...loadCrucibleMeta(),
+      ghosts: {
+        byHash: {
+          [String(hash)]: {
+            hash, seed: 4242, hullId: 'ship_kestrel', frameCount: tape.frames.length,
+            frames: tape.frames, recordedAt: '2026-09-24T00:00:00.000Z',
+          },
+        },
+        lastHash: hash,
+      },
+    });
+    const { root } = mountResultsWithState({ ...WAVE_6_DEATH, seed: 4242 }, createGameState(4242));
+    const items = findByClass(root, 'sf-crres__share-item');
+    assert.equal(items.length, 2, 'the run code and the ghost file each get an item');
+    for (const item of items) {
+      const rows = findByClass(item, 'sf-crres__share-row');
+      assert.equal(rows.length, 1, 'one aligned row per item');
+      const kids = rows[0].children;
+      assert.equal(kids.length, 3, 'caption, field and save link share the row');
+      const [cap, field, link] = kids;
+      assert.equal(cap.tagName, 'span', 'the caption leads the row');
+      assert.equal(field.tagName, 'input', 'the code is a single-line field, not a textarea');
+      assert.equal(field.readOnly, true);
+      assert.match(String(field.value), /^SF[CG]1-/, 'the field holds the whole share code');
+      assert.ok(!String(field.value).includes('\n'), 'the field value never wraps a second line');
+      assert.equal(link.tagName, 'a');
+      assert.match(String(link.href), /^data:text\/plain/, 'the link carries the artifact text');
+      assert.ok(link.download, 'the link is a real file download');
+    }
+  } finally {
+    clearCrucibleSetup();
+    resetCrucibleMetaForTests();
+  }
+});
