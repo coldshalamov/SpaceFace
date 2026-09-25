@@ -66,7 +66,12 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
-import { compileOpticStructure, opticStructuresFor } from '../data/opticStructures.js';
+import {
+  OPTIC_SCATTER_SALT,
+  compileOpticStructure,
+  opticScatterSpecsFor,
+  opticStructuresFor,
+} from '../data/opticStructures.js';
 import {
   OPTIC_SPEND_QUIET,
   normalizeOpticSpendLedger,
@@ -88,7 +93,7 @@ import {
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
+import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -118,6 +123,7 @@ import {
   RESIDENCY_MATERIALIZED_CAP,
   RESIDENCY_TIER,
   corridorPlayableBounds,
+  globalToSectorLocalForSector,
   isCorridorSector,
   planMaterializedResidents,
   sectorGlobalOrigin,
@@ -1107,6 +1113,18 @@ export const world = {
     // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
     if (Array.isArray(active.opticStructureIds)) return;
     const specs = opticStructuresFor(sector.id);
+    // Seeded scatter: a belt with a rock field but no authored structure still
+    // grows a few small lattices from the sector seed — a short fuse or a
+    // three-crystal cluster, never a hand-authored list. The draw runs on its
+    // own branch of (seed, sectorId, epoch), AFTER the rock draw and never
+    // through its stream, so the field beneath it is byte-identical with or
+    // without scatter. Deterministic `scatter:<sectorId>:<n>` ids regrow the
+    // same cells on every re-materialize, so opticSpent rides them exactly
+    // like the authored stamps.
+    if (!specs.length && (active.fields || []).length) {
+      const scattered = this._opticScatterSpecs(sector, active);
+      for (let i = 0; i < scattered.length; i++) specs.push(scattered[i]);
+    }
     const ids = [];
     for (let s = 0; s < specs.length; s++) {
       const spec = specs[s];
@@ -1160,6 +1178,56 @@ export const world = {
       }
     }
     active.opticStructureIds = ids;
+  },
+
+  /**
+   * Plan this sector's seeded-scatter lattices. Everything the planner reads is
+   * materialized bag data (global frame) or static zone data, so the spec list
+   * is a pure function of (meta.seed, sectorId, epoch) — the rock draw's stream
+   * is never touched. Origins come back sector-local so the shared stamp loop's
+   * _toGlobal compose lands them exactly where they were planned.
+   */
+  _opticScatterSpecs(sector, active) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const rng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, OPTIC_SCATTER_SALT),
+    );
+    const tierParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1] || {};
+    const fdefs = sector.fields || [];
+    const fields = [];
+    for (const f of active.fields || []) {
+      if (!f || !f.center || !Number.isFinite(f.center.x) || !Number.isFinite(f.center.z)) continue;
+      const fdef = fdefs.find((d) => d && d.id === f.id) || null;
+      fields.push({
+        x: f.center.x,
+        z: f.center.z,
+        radius: (fdef && fdef.clusterRadius) || tierParams.clusterRadius || 450,
+      });
+    }
+    if (!fields.length) return [];
+    // Zone records are sector-local; everything else in the bag is global.
+    const zones = [];
+    for (const zone of zonesForSector(sector.id)) {
+      if (!zone || !zone.center) continue;
+      const g = this._toGlobal(zone.center, sector.id);
+      if (g && Number.isFinite(g.x) && Number.isFinite(g.z)) {
+        zones.push({ x: g.x, z: g.z, radius: Number(zone.radius) || 0 });
+      }
+    }
+    const specs = opticScatterSpecsFor(sector.id, rng, {
+      fields,
+      stations: (active.stations || []).map((s) => s && s.pos),
+      gates: (active.gates || []).map((g) => g && g.pos),
+      pois: (active.pois || []).map((p) => p && p.pos),
+      zones,
+    });
+    // The planner ran in the bag's global frame; spec.origin must be sector-local
+    // for the stamp loop's _toGlobal. Specs are frozen — translate, don't mutate.
+    return specs.map((spec) => ({
+      ...spec,
+      origin: globalToSectorLocalForSector(spec.origin, sector.id),
+    }));
   },
 
   _stripSectorFullExtras(sectorId) {

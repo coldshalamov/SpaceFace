@@ -276,6 +276,187 @@ export function compileOpticStructure(spec) {
   return compileOpticCells(cells, OPTIC_LATTICE_SPACING, spec.heading || 0);
 }
 
+// ── Seeded scatter ──────────────────────────────────────────────────────────
+// Ordinary belts grow a few small lattices from the sector seed, so authorship is
+// not required for every field. world.js draws them after the rock draw on a
+// dedicated stream — mulberry32(hash32(meta.seed, sectorId, epoch, SALT)) — that
+// never touches the field/dressing draws. Recipes stay small on purpose: a short
+// fuse or a three-crystal cluster, never a Ceres-scale gallery. Structure ids
+// (`scatter:<sectorId>:<n>`) are seed-deterministic, so the same seed regrows the
+// same cells on re-materialize and the opticSpent ledger keys them exactly like
+// the authored stamps.
+
+export const OPTIC_SCATTER_SALT = 'optic-scatter';
+export const OPTIC_SCATTER_MAX_LATTICES = 3;
+export const OPTIC_SCATTER_PATTERNS = Object.freeze(['fuse', 'triad']);
+export const OPTIC_SCATTER_PLACEMENT_TRIES = 8;
+// A scatter lattice lands just off its host field's rock disc — close enough to
+// read as part of the belt, far enough that no cell sits inside the rock cloud.
+export const OPTIC_SCATTER_RIM_PAD = 40;
+export const OPTIC_SCATTER_RIM_SPAN = 260;
+// …and clear of the anchors a lattice would crowd: stations, gates, POIs, the
+// zone cores where authored fight choreography lives, and its sibling lattices.
+export const OPTIC_SCATTER_ANCHOR_CLEARANCE = 380;
+export const OPTIC_SCATTER_ZONE_CLEARANCE = 320;
+export const OPTIC_SCATTER_SEPARATION = 480;
+
+function sortedCells(map) {
+  return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
+}
+
+/**
+ * Short fuse: 2–4 diamonds on one row with the wick's stone flank rails; half the
+ * draws add a cap stone so the tip's forward splinter dies in the lattice.
+ */
+export function opticScatterFuseCells(rng) {
+  const map = new Map();
+  const n = 2 + Math.floor((rng ? rng() : 0) * 3); // 2–4 diamonds
+  wickCells(map, n, 0, 0);
+  if (rng && rng() < 0.5) putCell(map, n, 0, 'stone');
+  return sortedCells(map);
+}
+
+/**
+ * Three-crystal cluster: an L-knee or a straight row of diamonds with a couple of
+ * stone ballast cells — enough grammar to walk and eat splinters, nothing more.
+ */
+export function opticScatterTriadCells(rng) {
+  const map = new Map();
+  if (!rng || rng() < 0.5) {
+    // L-knee: the (0,0) diamond feeds the other two on +x/+z and eats its own
+    // −x/−z splinters on the ballast stones.
+    putCell(map, 0, 0, 'diamond');
+    putCell(map, 1, 0, 'diamond');
+    putCell(map, 0, 1, 'diamond');
+    putCell(map, 1, 1, 'stone');
+    putCell(map, -1, 0, 'stone');
+    putCell(map, 0, -1, 'stone');
+  } else {
+    // Row: the centre diamond's ±z splinters die on the rails.
+    putCell(map, 0, 0, 'diamond');
+    putCell(map, 1, 0, 'diamond');
+    putCell(map, 2, 0, 'diamond');
+    putCell(map, 1, -1, 'stone');
+    putCell(map, 1, 1, 'stone');
+  }
+  return sortedCells(map);
+}
+
+export function opticScatterCells(pattern, rng) {
+  return pattern === 'triad' ? opticScatterTriadCells(rng) : opticScatterFuseCells(rng);
+}
+
+function scatterFinitePos(row) {
+  const pos = row && (row.center || row.pos || row);
+  return pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.z))
+    ? { x: Number(pos.x), z: Number(pos.z) }
+    : null;
+}
+
+function scatterOriginClear(cand, extent, fields, points, zoneCores, placed) {
+  // Every cell must stay outside every rock disc — the host field included —
+  // so the lattice grows on open ground at the belt's rim, never inside the rocks.
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (Math.hypot(cand.x - field.x, cand.z - field.z) < field.radius + extent) return false;
+  }
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (Math.hypot(cand.x - p.x, cand.z - p.z) < OPTIC_SCATTER_ANCHOR_CLEARANCE + extent) return false;
+  }
+  for (let i = 0; i < zoneCores.length; i++) {
+    const zone = zoneCores[i];
+    if (Math.hypot(cand.x - zone.x, cand.z - zone.z) < OPTIC_SCATTER_ZONE_CLEARANCE + extent) return false;
+  }
+  for (let i = 0; i < placed.length; i++) {
+    const other = placed[i];
+    const gap = OPTIC_SCATTER_SEPARATION + extent + other.extent;
+    if (Math.hypot(cand.x - other.x, cand.z - other.z) < gap) return false;
+  }
+  return true;
+}
+
+/**
+ * Plan the small lattices one belt grows from its own seed. Pure: `rng` must be
+ * the dedicated OPTIC_SCATTER_SALT stream; `anchors` are galactic-global positions
+ * from the materialized sector bag. Returns spec-shaped rows ({id, sectorId,
+ * origin, heading, cells}) that stamp through the same code as OPTIC_STRUCTURES
+ * entries — but `origin` here is already in the caller's frame, so world.js
+ * converts it back to sector-local before the shared stamp composes _toGlobal.
+ */
+export function opticScatterSpecsFor(sectorId, rng, anchors = {}) {
+  const fields = (anchors.fields || [])
+    .map((row) => {
+      const pos = scatterFinitePos(row);
+      const radius = Number(row && (row.radius || row.clusterRadius));
+      return pos
+        ? { x: pos.x, z: pos.z, radius: Number.isFinite(radius) && radius > 0 ? radius : 450 }
+        : null;
+    })
+    .filter(Boolean);
+  if (!fields.length) return [];
+
+  const points = [];
+  for (const list of [anchors.stations, anchors.gates, anchors.pois]) {
+    for (const row of list || []) {
+      const pos = scatterFinitePos(row);
+      if (pos) points.push(pos);
+    }
+  }
+  const zoneCores = [];
+  for (const row of anchors.zones || []) {
+    const pos = scatterFinitePos(row);
+    if (pos) {
+      zoneCores.push({ x: pos.x, z: pos.z, radius: Number(row && row.radius) || 0 });
+    }
+  }
+
+  const TAU = Math.PI * 2;
+  const wanted = 1 + Math.floor((rng ? rng() : 0) * OPTIC_SCATTER_MAX_LATTICES); // 1–3
+  const specs = [];
+  const placed = [];
+  for (let n = 0; n < wanted; n++) {
+    const pattern = OPTIC_SCATTER_PATTERNS[
+      Math.floor((rng ? rng() : 0) * OPTIC_SCATTER_PATTERNS.length) % OPTIC_SCATTER_PATTERNS.length
+    ];
+    const cells = opticScatterCells(pattern, rng);
+    // Splinters land on the next cell only while the lattice sits on the 8-way
+    // grid — an arbitrary heading would strand them between cells, so scatter
+    // turns in eighths like the authored stamps.
+    const heading = Math.floor((rng ? rng() : 0) * 8) * (Math.PI / 4);
+    const bodies = compileOpticCells(cells);
+    // Deepest reach of any compiled body from the origin — the clearance radius.
+    let extent = OPTIC_LATTICE_SPACING;
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+      const reach = Math.hypot(body.x, body.z) + (Number(body.radius) || 0);
+      if (reach > extent) extent = reach;
+    }
+    const startField = Math.floor((rng ? rng() : 0) * fields.length) % fields.length;
+    let origin = null;
+    for (let f = 0; f < fields.length && !origin; f++) {
+      const field = fields[(startField + f) % fields.length];
+      for (let t = 0; t < OPTIC_SCATTER_PLACEMENT_TRIES && !origin; t++) {
+        const ang = rng() * TAU;
+        const dist = field.radius + extent + OPTIC_SCATTER_RIM_PAD + rng() * OPTIC_SCATTER_RIM_SPAN;
+        const cand = { x: field.x + Math.cos(ang) * dist, z: field.z + Math.sin(ang) * dist };
+        if (scatterOriginClear(cand, extent, fields, points, zoneCores, placed)) origin = cand;
+      }
+    }
+    if (!origin) continue;
+    placed.push({ x: origin.x, z: origin.z, extent });
+    specs.push(Object.freeze({
+      id: `scatter:${sectorId}:${specs.length}`,
+      sectorId,
+      origin: Object.freeze({ x: origin.x, z: origin.z }),
+      heading,
+      cells: Object.freeze(cells.map((cell) => Object.freeze({ ...cell }))),
+      scatter: true,
+    }));
+  }
+  return specs;
+}
+
 // Per-arena swarm lattices live beside the arena data in ./swarmOpticArenas.js —
 // they are room dressing, not sector structures, so they never enter OPTIC_STRUCTURES.
 // Re-exported here so existing imports of this module keep working.
