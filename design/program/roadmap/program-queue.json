@@ -5618,7 +5618,7 @@
       "priority": 48,
       "title": "Draw-to-fly rips: a pilot reinterpretation of the ink",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03"
       ],
@@ -5633,9 +5633,10 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137.08-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137.08-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137.08-SHORT-STROKE-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: tangent-safe drawn flight integrated; corner/S/hook production cases meet speed and corridor bars. Short strokes from rest and normal-speed route acceptance remain open."
+      "brief": "A 66-unit stroke from rest on seed 4242 keeps the straight stroke's speed: corner 31.94% of cruise, S 34.40%, straight 32.44% and not slowed."
     },
     {
       "id": "PQ-137.09",
