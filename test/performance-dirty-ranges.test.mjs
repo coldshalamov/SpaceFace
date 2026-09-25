@@ -625,6 +625,24 @@ test('mid-capture tree mutation exits are not primary acceptance failures', () =
   assert.equal(isMeasurementIntegrityProbeError(null), false);
 });
 
+test('window-end pipeline drain requires a sustained empty queue, not one zero sample', async () => {
+  // Ships keep crossing mesh-build thresholds while the player moves, so the
+  // queue refills in bursts. A single zero sample raced a late burst and cost a
+  // measured acceptance run (windows[0]-pipeline-cache-mismatch, 2026-09-25).
+  // The boundary contract needs the queue to STAY empty for a beat; pin the
+  // sustained-settle loop so it cannot regress to a one-shot sample.
+  const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
+  const drainIndex = source.indexOf('pipelineDrainDeadline');
+  assert.notEqual(drainIndex, -1, 'window-end pipeline drain wait must exist');
+  const drainBlock = source.slice(drainIndex, drainIndex + 2400);
+  assert.match(drainBlock, /pipelineSettledSince/,
+    'drain must track a settled-since timestamp across consecutive samples');
+  assert.match(drainBlock, /meshBuildQueueRemaining\) === 0\s*&&\s*Number\(probeReadiness\?\.activeAdmissionJobs\) === 0/,
+    'drain must require both the mesh-build queue and admission jobs empty');
+  assert.match(drainBlock, /now - pipelineSettledSince >= 250/,
+    'drain must require the empty state to persist for a sustained window');
+});
+
 test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
   // The 2026-09-15 browser acceptance run failed on page warnings: every whole-ship
   // LOD demotion threw because its custom per-level bootstrapPlan still rode the
