@@ -2670,8 +2670,9 @@
     ],
     "materialProfileRoles": {
       "glass": 3,
-      "hull": 13,
-      "mechanical": 6
+      "hull": 4,
+      "mechanical": 6,
+      "signal": 9
     },
     "materialProfiles": [
       {
@@ -2682,7 +2683,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2692,7 +2693,7 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2712,12 +2713,12 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2727,7 +2728,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2747,12 +2748,12 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2762,7 +2763,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2782,7 +2783,7 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 31,
@@ -3548,7 +3549,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "6eff68210560dc3859e31a99267c913852815b303ca3fb0973757cd63d51224d",
+  "runtimeHash": "1901fbe2df08418d579caf2992f5cdcfeee8f145f082c92aebfb019782d1558b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -727,7 +727,8 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 6
+      "geology": 3,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -738,7 +739,7 @@
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -748,7 +749,7 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -758,7 +759,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "geology"
+        "role": "signal"
       }
     ],
     "nodeCount": 10,
@@ -942,7 +943,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb"
   },
-  "runtimeHash": "aa467f4a5611bdc74da17be7b45038ef1b438807043c540790201781417a364c",
+  "runtimeHash": "dbedeae6f706c4e3665511a7b058d08600ccd54929f2e02bda9e81b248bef7d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

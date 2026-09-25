@@ -2811,8 +2811,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 10,
-      "mechanical": 9
+      "hull": 4,
+      "mechanical": 9,
+      "signal": 6
     },
     "materialProfiles": [
       {
@@ -2843,7 +2844,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2868,12 +2869,12 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2898,12 +2899,12 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2928,7 +2929,7 @@
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 30,
@@ -3706,7 +3707,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
   },
-  "runtimeHash": "0b761ea8a95f3d67f3fbf9a3ebf460e85c5e9590b952f55fc3d63ef39f45c660",
+  "runtimeHash": "2558b8d562599fbf9bd1ee844b768c2a0429373ec68bb9610a450783a31b999e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

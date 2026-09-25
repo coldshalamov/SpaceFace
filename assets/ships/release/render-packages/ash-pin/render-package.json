@@ -3368,8 +3368,8 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 23,
-      "hull": 4,
-      "mechanical": 14
+      "hull": 3,
+      "mechanical": 15
     },
     "materialProfiles": [
       {
@@ -3520,7 +3520,7 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4655,7 +4655,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ash_pin.glb"
   },
-  "runtimeHash": "2e561e24c383631aa59977fccc0c23d4b28d42c9aa4b380af73d2a0649385455",
+  "runtimeHash": "3f8052a740c0e54a2ace758250a7c9e340d32e34f0918ae349b827e406358be8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

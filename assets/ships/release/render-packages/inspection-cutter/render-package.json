@@ -2964,9 +2964,9 @@
     ],
     "materialProfileRoles": {
       "glass": 4,
-      "hull": 11,
+      "hull": 4,
       "mechanical": 9,
-      "signal": 1
+      "signal": 8
     },
     "materialProfiles": [
       {
@@ -3002,7 +3002,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3012,7 +3012,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3032,12 +3032,12 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3047,7 +3047,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3067,7 +3067,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3077,7 +3077,7 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3927,7 +3927,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "8e912b449d26ab2ae75a3e03f4faed3f0a6d147649b136f370fc12561761f615",
+  "runtimeHash": "33a2e1e41cac30a26815cae2223a13df31e6cb0a0a779aba34a6df05b84bbabd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1311,8 +1311,9 @@
     ],
     "materialProfileRoles": {
       "hull": 2,
-      "mechanical": 11,
-      "service": 1
+      "mechanical": 10,
+      "service": 1,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -1378,7 +1379,7 @@
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1771,7 +1772,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_utility_module.glb"
   },
-  "runtimeHash": "c455128ce339eb689d000344b49a5b3276467caafccf3fbc0420781f757cf60a",
+  "runtimeHash": "c9c5ca54b1ead906b60b09dd693d0b1b9c1be979fb6bc0b5ef03a3128faa6ea9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

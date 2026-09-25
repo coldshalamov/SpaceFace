@@ -4540,9 +4540,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 4,
-      "hull": 16,
+      "hull": 7,
       "mechanical": 14,
-      "signal": 3
+      "signal": 12
     },
     "materialProfiles": [
       {
@@ -4623,7 +4623,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4633,7 +4633,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4653,7 +4653,7 @@
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4663,7 +4663,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4673,7 +4673,7 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4693,7 +4693,7 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4703,7 +4703,7 @@
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4713,7 +4713,7 @@
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4733,7 +4733,7 @@
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 49,
@@ -5904,7 +5904,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_arclight.glb"
   },
-  "runtimeHash": "42f8ac7c7c8e8dcc907cb2ee1522c522b6147af1f05d6d0aa322746ca4453de4",
+  "runtimeHash": "6ef28d58a931f8960ece06ba9c00313211781a7aa146a32245d4405440966ca0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

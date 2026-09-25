@@ -192,12 +192,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.dead-hulk",
-    "expectedContentHash": "16dc703cd350585b597a33ccc772b508649c676f8ff5618725e437cef536c267",
+    "expectedContentHash": "d7ab1fee6c42e1f724530c1c4e2514252ef341ccab31bc92d431233019866385",
     "key": "dead-hulk",
     "metadataUrl": "assets/ships/release/render-packages/dead-hulk/render-package.json",
     "runtimeAssetId": "place_dead_hulk",
     "slot": "place",
-    "sourceSha256": "5aa5868c64e80d50724614b89cfcbe411cd76b3a16115d72c252d3daea47fee8",
+    "sourceSha256": "7d4cd71180397cf2e0d2b1b4bd75a65f8f6533d01c9a0a08b3adea465e127c92",
     "sourceUrl": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
   {

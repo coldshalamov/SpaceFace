@@ -7814,9 +7814,10 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 82,
-      "hull": 3,
-      "mechanical": 13,
-      "rubber": 3
+      "hull": 1,
+      "mechanical": 14,
+      "rubber": 3,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -7847,7 +7848,7 @@
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -8077,7 +8078,7 @@
       {
         "allowTextures": false,
         "planIndex": 54,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -10962,7 +10963,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
-  "runtimeHash": "ea8aa172f64dcd74dfef05f1b9cc0f8111585b404cc8bc0876af2ca6b6c84623",
+  "runtimeHash": "630e34517ce0325ff1337019e8eaceeb30c653f48f89ff98aa6bb32e6049d800",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

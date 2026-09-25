@@ -3567,9 +3567,10 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 31,
-      "hull": 4,
-      "mechanical": 7,
-      "rubber": 1
+      "hull": 2,
+      "mechanical": 8,
+      "rubber": 1,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -3715,12 +3716,12 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4917,7 +4918,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_post.glb"
   },
-  "runtimeHash": "6874ae7ebc2cf6ab6adb85bbd6198f6d1c767953f34e64b0999e6320d05ab942",
+  "runtimeHash": "49c80c167400bef91d34cc837c7299b0e67b1ad280bc247ffae836afaacef5b8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

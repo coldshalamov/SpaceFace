@@ -2491,10 +2491,10 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 9,
       "glass": 2,
       "hull": 4,
-      "mechanical": 6
+      "mechanical": 6,
+      "signal": 9
     },
     "materialProfiles": [
       {
@@ -2505,7 +2505,7 @@
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2515,7 +2515,7 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2535,12 +2535,12 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2550,7 +2550,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2570,12 +2570,12 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2585,7 +2585,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2600,7 +2600,7 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "geology"
+        "role": "signal"
       }
     ],
     "nodeCount": 29,
@@ -3336,7 +3336,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "ac3cfc1cc1128686d99db633a94eee73414bcebf39d24456f95424797370c408",
+  "runtimeHash": "a896fa5c427d433840fe4fd3c9c3e2ea5d6ce61b03f39927e20a719ef37d29e2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

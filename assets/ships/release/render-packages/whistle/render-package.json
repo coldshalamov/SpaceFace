@@ -4621,9 +4621,10 @@
     "markers": [],
     "materialProfileRoles": {
       "ceramic": 8,
-      "hull": 11,
-      "mechanical": 31,
-      "rubber": 8
+      "hull": 7,
+      "mechanical": 32,
+      "rubber": 8,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -4819,17 +4820,17 @@
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4854,7 +4855,7 @@
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -6436,7 +6437,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-  "runtimeHash": "a9d1a3b5144c0edd4ce2e8b64be6793ab6bbecc0215ba42c52f990e7a48a1223",
+  "runtimeHash": "9bb348f9e3bb50be3847fa87423fed9991f188ab82032fddfc81ef5624065f4f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

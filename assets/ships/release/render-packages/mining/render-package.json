@@ -1717,8 +1717,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1749,7 +1750,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1774,7 +1775,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1799,7 +1800,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 21,
@@ -2244,7 +2245,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_mining.glb"
   },
-  "runtimeHash": "b7bdd7ea4162adb6487d0c8a11a23a598fd915bfbdcf74aaf98f07424aed5fd3",
+  "runtimeHash": "d7a2303718ad956da134ac2a3dda264bb83bd59c858c2716acd8bccdf4663d3a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -2049,8 +2049,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -2081,7 +2082,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2106,7 +2107,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2131,7 +2132,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 25,
@@ -2576,7 +2577,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_base.glb"
   },
-  "runtimeHash": "1abcee2bd25c845f74b492690c8c73ac4ef430a64f9a4bee112789f8b08bcc90",
+  "runtimeHash": "efc7a5bfa8e2f40dc90e32137e9afa96c69c2171b7357ff52c0d05beb416cecb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -2049,8 +2049,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "glass": 3,
-      "hull": 6,
-      "mechanical": 4
+      "hull": 3,
+      "mechanical": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -2081,7 +2082,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2106,7 +2107,7 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2131,7 +2132,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 25,
@@ -2546,7 +2547,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
-  "runtimeHash": "08f1febce00e2105bc172801c72702ef3e49eaa7206824e4df5605ad4abe2d75",
+  "runtimeHash": "1b9e62fb7ee02f0835d98b98fdec5a0e1952ed7cea0ae568b6955a30a2cb9988",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

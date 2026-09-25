@@ -2120,15 +2120,16 @@
     ],
     "materialProfileRoles": {
       "ceramic": 3,
-      "hull": 12,
-      "mechanical": 4,
-      "service": 3
+      "hull": 6,
+      "mechanical": 7,
+      "service": 3,
+      "signal": 3
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2153,12 +2154,12 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2178,12 +2179,12 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2203,7 +2204,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2875,7 +2876,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "8bcb8c17f46348091b639604165c6c77294f59f6ed64ccc72fab1963a28b691e",
+  "runtimeHash": "e02f60e352d457aa211dba1d9d63fc4aa7d4445b1d883c0dc63c363bf14e4977",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16dc703cd350585b597a33ccc772b508649c676f8ff5618725e437cef536c267",
+  "contentHash": "d7ab1fee6c42e1f724530c1c4e2514252ef341ccab31bc92d431233019866385",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2258,19 +2258,19 @@
       "sha256": "7e8c419f054da9590a8d13175c4b0b82619a16b1329d115a7c7749ec7bc2ed6a"
     },
     "sourceGlb": {
-      "bytes": 1944544,
-      "sha256": "5aa5868c64e80d50724614b89cfcbe411cd76b3a16115d72c252d3daea47fee8",
+      "bytes": 1944652,
+      "sha256": "7d4cd71180397cf2e0d2b1b4bd75a65f8f6533d01c9a0a08b3adea465e127c92",
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
       "bytes": 184173,
-      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
+      "sha256": "0f3c4bf308952a8c812f0ff38fba9624defd9e3c690d77175f4bf302b76e59d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2489292,
-    "sha256": "a6da902bd349c2b2ef80304b29d5a3ac7c7a82987e99fc03e9cb7679caeeb52d",
+    "bytes": 2489400,
+    "sha256": "36fea339690e613b82e68d674857c451e380c9d3d4fdcfbb45a10520cd3ed4ad",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2409,8 +2409,10 @@
       }
     ],
     "materialProfileRoles": {
+      "ceramic": 2,
       "glass": 2,
-      "hull": 14,
+      "hull": 6,
+      "mechanical": 6,
       "rubber": 4,
       "service": 2
     },
@@ -2428,7 +2430,7 @@
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2443,7 +2445,7 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -2453,7 +2455,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2468,7 +2470,7 @@
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2478,7 +2480,7 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -2488,7 +2490,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2498,7 +2500,7 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2508,7 +2510,7 @@
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3130,7 +3132,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "90ab07529806370f98403a9e520604da89adf4175ac09b5e8777bb82440f99ef",
+  "runtimeHash": "a5978e7f125e23374790a9086d18d1f4b1879df96dcb9d9cd054034674150ec3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

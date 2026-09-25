@@ -1249,7 +1249,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 9,
+      "hull": 7,
+      "signal": 2,
       "warning": 3
     },
     "materialProfiles": [
@@ -1266,7 +1267,7 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1291,7 +1292,7 @@
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1657,7 +1658,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-  "runtimeHash": "d707975f10da4a2fd269d0e34c092eab86611cebaa3a6cbd7ffd240dfaef665e",
+  "runtimeHash": "3c62d336a39550cffac89737bd839f01ec0f4e1ca956217e1a88b1f15fefca68",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

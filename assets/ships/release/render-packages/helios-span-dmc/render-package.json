@@ -10450,8 +10450,9 @@
     "materialProfileRoles": {
       "ceramic": 1,
       "glass": 3,
-      "hull": 19,
-      "mechanical": 98
+      "hull": 10,
+      "mechanical": 98,
+      "signal": 9
     },
     "materialProfiles": [
       {
@@ -10487,7 +10488,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10497,7 +10498,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10517,7 +10518,7 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10987,7 +10988,7 @@
       {
         "allowTextures": true,
         "planIndex": 112,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -10997,7 +10998,7 @@
       {
         "allowTextures": true,
         "planIndex": 114,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -11017,7 +11018,7 @@
       {
         "allowTextures": true,
         "planIndex": 118,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -11027,7 +11028,7 @@
       {
         "allowTextures": true,
         "planIndex": 120,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -11037,7 +11038,7 @@
       {
         "allowTextures": true,
         "planIndex": 122,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -11057,7 +11058,7 @@
       {
         "allowTextures": true,
         "planIndex": 126,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 136,
@@ -14496,7 +14497,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span_dmc.glb"
   },
-  "runtimeHash": "29f1958bbd3a52df3bb94974e8ace4308ea44c2258cc0600b236865ef9b4bf8d",
+  "runtimeHash": "e73b312508e55cdac704a3cca457a4a7a74447ce85278c91e7e793e38affaed6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
