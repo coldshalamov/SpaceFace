@@ -1,0 +1,172 @@
+From 364b555f236cc27b435e3420e41a17dbce22292a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:15:49 -0400
+Subject: [PATCH] perf(render): scratch shouldSubmitEntityMesh options + hidden
+ short-circuit
+
+syncEntityViews allocated a fresh options object for every hidden and
+visible root every frame. Hidden roots collapse to posed && protectedRoot
+(the helper's exact hidden:true result), and the visible path reuses one
+module-level options scratch. Source contract updated to assert field
+writes on the scratch and the hidden closed form.
+---
+ src/render/renderer.js               | 88 +++++++++++++++-------------
+ test/entity-mesh-visibility.test.mjs | 24 ++++----
+ 2 files changed, 61 insertions(+), 51 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..2d1ea6ee8 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -368,8 +368,29 @@ const _craftMicroMotionOptions = {
+ // none retains the object — same contract as _craftMicroMotionOptions. All fields a callee can
+ // read are rewritten at each call site so a stale flag can never leak from the previous entity.
+ const _protectedRootOptions = { isPlayer: false, forceRender: false, neverCull: false };
+-// NOTE: shouldSubmitEntityMesh's call sites stay literal — entity-mesh-visibility.test.mjs
+-// asserts that exact call shape. The scratches cover everything around it.
++// Retained shouldSubmitEntityMesh options. Both call sites rewrite every field the helper
++// can read; the helper never keeps the object. The source contract in
++// entity-mesh-visibility.test.mjs asserts the field writes (not object-literal call shape).
++const _submitEntityMeshOptions = {
++  isPlayer: false,
++  forceRender: false,
++  neverCull: false,
++  hidden: false,
++  middleBand: false,
++  type: '',
++  projectedPx: 0,
++  allowShadowCast: false,
++  snapshotMissing: false,
++  pipelinesPending: false,
++  authoredPending: false,
++  resolvingMarker: false,
++  geometryPending: false,
++  activityFrame: null,
++  entityId: null,
++  ledgerRow: false,
++  presentationTier: null,
++  onLiveGlass: false,
++};
+ const _viewBandOptions = {
+   isPlayer: false,
+   dx: 0,
+@@ -11766,24 +11787,11 @@ export const render = {
+       // A protected root keeps its prior visibility when the latest fence has no pose for it.
+       // Ordinary stale identities still fail closed and leave the submit list immediately.
+       syncResolvingMarker(mesh);
+-      // NB: the options literal here is pinned by entity-mesh-visibility.test.mjs's source
+-      // contract — the hidden-boundary call shape must stay literal.
++      // Hidden-boundary roots: shouldSubmitEntityMesh({ hidden: true }) is exactly
++      // `protectedRoot` after the snapshotMissing gate (protected returns true first;
++      // everyone else fails closed on hidden). Skip the options object entirely.
+       const visibilityChanged = !(!posed && protectedRoot)
+-        && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh({
+-          isPlayer,
+-          forceRender,
+-          neverCull,
+-          hidden: true,
+-          snapshotMissing: !posed,
+-          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
+-          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+-          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
+-          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
+-          activityFrame: this._activityFrame,
+-          entityId,
+-          ledgerRow: !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity),
+-          presentationTier: entity && entity.activity && entity.activity.presentationTier,
+-        }));
++        && applyEntityMeshVisibility(mesh, !!(posed && protectedRoot));
+       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+         mesh.userData.asteroidInstanceViewCulled = true;
+@@ -11912,29 +11920,27 @@ export const render = {
+         userData.onGlassPendingSince = null;
+       }
+       syncResolvingMarker(mesh);
+-      // Same pinned literal contract as the hidden loop above — the submit-options object
+-      // is intentionally a literal at both call sites.
++      // Retained submit options — every field shouldSubmitEntityMesh can read is rewritten.
++      _submitEntityMeshOptions.isPlayer = isPlayer;
++      _submitEntityMeshOptions.forceRender = forceRender;
++      _submitEntityMeshOptions.neverCull = neverCull;
++      _submitEntityMeshOptions.hidden = false;
++      _submitEntityMeshOptions.middleBand = viewBand === 'middle';
++      _submitEntityMeshOptions.type = typeName;
++      _submitEntityMeshOptions.projectedPx = projectedPx;
++      _submitEntityMeshOptions.allowShadowCast = false;
++      _submitEntityMeshOptions.snapshotMissing = !posed;
++      _submitEntityMeshOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
++      _submitEntityMeshOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState);
++      _submitEntityMeshOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
++      _submitEntityMeshOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
++      _submitEntityMeshOptions.activityFrame = this._activityFrame;
++      _submitEntityMeshOptions.entityId = entityId;
++      _submitEntityMeshOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
++      _submitEntityMeshOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
++      _submitEntityMeshOptions.onLiveGlass = onLiveGlass;
+       const visibilityChanged = !(!posed && protectedRoot)
+-        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+-          isPlayer,
+-          forceRender,
+-          neverCull,
+-          hidden: false,
+-          middleBand: viewBand === 'middle',
+-          type: typeName,
+-          projectedPx,
+-          allowShadowCast: false,
+-          snapshotMissing: !posed,
+-          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
+-          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+-          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
+-          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
+-          activityFrame: this._activityFrame,
+-          entityId,
+-          ledgerRow: !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity),
+-          presentationTier: entity && entity.activity && entity.activity.presentationTier,
+-          onLiveGlass,
+-        }));
++        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitEntityMeshOptions));
+       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+       if (typeName === 'ship' || typeName === 'station') {
+         _shadowCasterPoseOptions.visualRadius = lodRadius;
+diff --git a/test/entity-mesh-visibility.test.mjs b/test/entity-mesh-visibility.test.mjs
+index a8e75c46b..c68715a11 100644
+--- a/test/entity-mesh-visibility.test.mjs
++++ b/test/entity-mesh-visibility.test.mjs
+@@ -137,19 +137,23 @@ test('default video settings still request full picture quality', async () => {
+ 
+ test('live entity view sync hides off-runway roots through the helper', async () => {
+   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(/);
+-  assert.match(source, /hidden:\s*true/);
+-  assert.match(source, /hidden:\s*false/);
+-  assert.match(source, /snapshotMissing:\s*!posed/);
++  // Visible path: retained scratch options object (no per-entity literal alloc).
++  assert.match(source, /shouldSubmitEntityMesh\(_submitEntityMeshOptions\)/);
++  assert.match(source, /_submitEntityMeshOptions\.hidden = false/);
++  assert.match(source, /_submitEntityMeshOptions\.snapshotMissing = !posed/);
+   assert.match(source, /let posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
+     'clean roots derive pose validity from the latest completed fence');
+   assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
+     'ordinary roots fail closed when the completed fence has no matching identity');
+-  assert.match(source, /middleBand:\s*viewBand === 'middle'/);
+-  assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
+-  assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
+-  assert.match(source, /onLiveGlass/,
++  assert.match(source, /_submitEntityMeshOptions\.middleBand = viewBand === 'middle'/);
++  assert.match(source, /_submitEntityMeshOptions\.pipelinesPending = !!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
++  assert.match(source, /_submitEntityMeshOptions\.authoredPending = isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
++  assert.match(source, /_submitEntityMeshOptions\.onLiveGlass/,
+     'the live-glass submit override reaches the visibility rule');
+-  assert.equal((source.match(/ledgerRow:\s*!!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/g) || []).length, 2,
+-    'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
++  assert.match(source, /_submitEntityMeshOptions\.ledgerRow = !!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/,
++    'visible submit site tells the visibility rule which roots are far/field/dressing ledger rows');
++  // Hidden path: closed-form short-circuit (protectedRoot) — no shouldSubmitEntityMesh alloc.
++  assert.match(source, /applyEntityMeshVisibility\(mesh, !!\(posed && protectedRoot\)\)/,
++    'hidden-boundary submit collapses to posed && protectedRoot');
+ });
++
+-- 
+2.47.3
+

@@ -1,0 +1,66 @@
+{
+  "label": "plasma-stream-cold-reset-skip",
+  "primary": "quiet-plasma-already-cold-update",
+  "iters": 200000,
+  "pairs": [
+    {
+      "beforeMs": 12.49,
+      "afterMs": 4.446,
+      "speedup": 2.81
+    },
+    {
+      "beforeMs": 12.078,
+      "afterMs": 4.053,
+      "speedup": 2.98
+    },
+    {
+      "beforeMs": 12.495,
+      "afterMs": 3.96,
+      "speedup": 3.156
+    },
+    {
+      "beforeMs": 12.24,
+      "afterMs": 3.825,
+      "speedup": 3.2
+    },
+    {
+      "beforeMs": 12.864,
+      "afterMs": 3.948,
+      "speedup": 3.259
+    },
+    {
+      "beforeMs": 12.376,
+      "afterMs": 3.753,
+      "speedup": 3.298
+    },
+    {
+      "beforeMs": 12.974,
+      "afterMs": 3.894,
+      "speedup": 3.332
+    },
+    {
+      "beforeMs": 12.876,
+      "afterMs": 3.826,
+      "speedup": 3.366
+    },
+    {
+      "beforeMs": 12.254,
+      "afterMs": 3.585,
+      "speedup": 3.419
+    },
+    {
+      "beforeMs": 12.866,
+      "afterMs": 3.654,
+      "speedup": 3.521
+    },
+    {
+      "beforeMs": 12.58,
+      "afterMs": 3.544,
+      "speedup": 3.549
+    }
+  ],
+  "medianSpeedup": 3.298,
+  "minSpeedup": 2.81,
+  "maxSpeedup": 3.549,
+  "note": "Picture unchanged: already reset/hidden; skip repeated reset()."
+}

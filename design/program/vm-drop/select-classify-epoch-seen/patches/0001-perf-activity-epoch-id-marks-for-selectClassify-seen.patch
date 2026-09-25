@@ -1,0 +1,98 @@
+From 6357d192caad825bcb4003d3a9c5cb07e28a9852 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:16:43 -0400
+Subject: [PATCH] =?UTF-8?q?perf(activity):=20epoch=20id-marks=20for=20sele?=
+ =?UTF-8?q?ctClassify=20seen=20set=20(~2.9=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet incremental classify cleared and rehashed a Set of near-disc ids
+every pass. Dense Uint32Array epoch marks bump a generation instead —
+same pattern as presentationQueries. Soft-GPU fps not claimed.
+---
+ src/world/activityRuntime.js | 46 +++++++++++++++++++++++++++++-------
+ 1 file changed, 37 insertions(+), 9 deletions(-)
+
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index 5174adc40..bba5e6b80 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -212,7 +212,8 @@ function ensureRuntime(state) {
+       classifyEmptyFallback: [],
+       unstampedScratch: [],
+       classifyOutScratch: [],
+-      classifySeenScratch: new Set(),
++      classifySeenMarks: new Uint32Array(0),
++      classifySeenEpoch: 0,
+       lastLiveCount: 0,
+       pinResolveScratch: [],
+       pinNormalizeScratch: { out: [], seen: new Set() },
+@@ -762,11 +763,35 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
+ 
+   const out = runtime.classifyOutScratch || (runtime.classifyOutScratch = []);
+   out.length = 0;
+-  const seen = runtime.classifySeenScratch || (runtime.classifySeenScratch = new Set());
+-  seen.clear();
++  // Dense id-epoch marks (same pattern as presentationQueries): bump epoch instead of
++  // Set.clear()/rehash on the quiet near-disc. Wrap fills zeros.
++  let seenMarks = runtime.classifySeenMarks;
++  if (!(seenMarks instanceof Uint32Array)) {
++    seenMarks = new Uint32Array(0);
++    runtime.classifySeenMarks = seenMarks;
++  }
++  let seenEpoch = (runtime.classifySeenEpoch | 0) + 1;
++  if (seenEpoch >= 0x7fffffff) {
++    seenMarks.fill(0);
++    seenEpoch = 1;
++  }
++  runtime.classifySeenEpoch = seenEpoch;
++  const ensureMarkCapacity = (id) => {
++    if (id < seenMarks.length) return;
++    let cap = seenMarks.length || 64;
++    while (cap <= id) cap <<= 1;
++    const next = new Uint32Array(cap);
++    next.set(seenMarks);
++    seenMarks = next;
++    runtime.classifySeenMarks = next;
++  };
+   const add = (entity) => {
+-    if (!entity || entity.alive === false || seen.has(entity.id)) return;
+-    seen.add(entity.id);
++    if (!entity || entity.alive === false) return;
++    const id = entity.id | 0;
++    if (id < 0) return;
++    ensureMarkCapacity(id);
++    if (seenMarks[id] === seenEpoch) return;
++    seenMarks[id] = seenEpoch;
+     out.push(entity);
+   };
+   for (let i = 0; i < unstamped.length; i++) add(unstamped[i]);
+@@ -781,9 +806,12 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
+     && projectileIndex.ready === true && Array.isArray(projectileIndex.projectiles)
+     ? projectileIndex.projectiles
+     : list;
+-  for (let i = 0; i < projectiles.length; i++) {
+-    const entity = projectiles[i];
+-    if (entity && entity.alive !== false && entity.type === 'projectile') add(entity);
++  // Quiet Ceres has an empty projectiles lane; skip the typed walk entirely.
++  if (projectiles.length) {
++    for (let i = 0; i < projectiles.length; i++) {
++      const entity = projectiles[i];
++      if (entity && entity.alive !== false && entity.type === 'projectile') add(entity);
++    }
+   }
+   const scratch = runtime.radiusScratch;
+   scratch.length = 0;
+@@ -820,7 +848,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
+     const catchUp = closedForm || list;
+     for (let i = 0; i < catchUp.length; i++) {
+       const entity = catchUp[i];
+-      if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
++      if (!entity || entity.alive === false || !entity.pos) continue;
+       if (!closedForm && entity.physicsBody !== false) continue;
+       const dx = finite(entity.pos.x) - origin.x;
+       const dz = finite(entity.pos.z) - origin.z;
+-- 
+2.47.3
+

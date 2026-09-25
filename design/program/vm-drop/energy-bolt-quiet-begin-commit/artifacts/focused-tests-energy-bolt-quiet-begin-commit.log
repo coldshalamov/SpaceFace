@@ -1,0 +1,652 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: every weapon family emits source geometry whose identity survives grayscale
+ok 1 - every weapon family emits source geometry whose identity survives grayscale
+  ---
+  duration_ms: 7.482943
+  ...
+# Subtest: ballistic sources run a real breech cycle; coherent sources align before they release
+ok 2 - ballistic sources run a real breech cycle; coherent sources align before they release
+  ---
+  duration_ms: 0.860935
+  ...
+# Subtest: electrical branches bridge a real junction and extinguish together
+ok 3 - electrical branches bridge a real junction and extinguish together
+  ---
+  duration_ms: 0.460327
+  ...
+# Subtest: maximum-rate fire keeps a beat and never accumulates a second source
+ok 4 - maximum-rate fire keeps a beat and never accumulates a second source
+  ---
+  duration_ms: 0.950165
+  ...
+# Subtest: weapon wakes are world-anchored sheets, not a camera-facing cross-frame
+ok 5 - weapon wakes are world-anchored sheets, not a camera-facing cross-frame
+  ---
+  duration_ms: 3.065128
+  ...
+# Subtest: wake cross-sections are authored per family and phased on distance, not on a clock
+ok 6 - wake cross-sections are authored per family and phased on distance, not on a clock
+  ---
+  duration_ms: 1.404881
+  ...
+# Subtest: a released wake unravels from the head, and idle slots stop re-uploading
+not ok 7 - a released wake unravels from the head, and idle slots stop re-uploading
+  ---
+  duration_ms: 2.193159
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/weapon-source-identity.test.mjs:267:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    an idle pool must publish nothing at all
+    
+    1536 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1536
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/weapon-source-identity.test.mjs:306:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: projectile drawn extent is a directional smear, never a damage footprint
+ok 8 - projectile drawn extent is a directional smear, never a damage footprint
+  ---
+  duration_ms: 1.238515
+  ...
+# Subtest: every bolt dialect has its own silhouette, not one dart at seven widths
+ok 9 - every bolt dialect has its own silhouette, not one dart at seven widths
+  ---
+  duration_ms: 0.796988
+  ...
+# Subtest: the weapons lane draws nothing at the contact point
+ok 10 - the weapons lane draws nothing at the contact point
+  ---
+  duration_ms: 1.805574
+  ...
+# Subtest: an arming warhead stays legible under reduced flash without strobing
+ok 11 - an arming warhead stays legible under reduced flash without strobing
+  ---
+  duration_ms: 0.797852
+  ...
+# Subtest: a sustained beam can follow a moving socket without inventing its contact point
+ok 12 - a sustained beam can follow a moving socket without inventing its contact point
+  ---
+  duration_ms: 1.25342
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: weapon lights are a dedicated pool and do not steal the six event lights
+ok 13 - weapon lights are a dedicated pool and do not steal the six event lights
+  ---
+  duration_ms: 38.473978
+  ...
+# Subtest: shield contact writes four bubble hit slots instead of a spark in empty space
+ok 14 - shield contact writes four bubble hit slots instead of a spark in empty space
+  ---
+  duration_ms: 15.903131
+  ...
+# Subtest: distortion is a graph pass and stays off when nothing is live
+ok 15 - distortion is a graph pass and stays off when nothing is live
+  ---
+  duration_ms: 14.68529
+  ...
+# Subtest: weapon depth binding follows the active graph route rather than a retained graph object
+ok 16 - weapon depth binding follows the active graph route rather than a retained graph object
+  ---
+  duration_ms: 0.258696
+  ...
+# Subtest: pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+ok 17 - pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+  ---
+  duration_ms: 18.907195
+  ...
+# Subtest: reduced-flash and reduced-motion keep the dash and contact mark, not haze
+ok 18 - reduced-flash and reduced-motion keep the dash and contact mark, not haze
+  ---
+  duration_ms: 24.059381
+  ...
+# Subtest: energy-card recipes never fall back to a cylinder identity
+ok 19 - energy-card recipes never fall back to a cylinder identity
+  ---
+  duration_ms: 0.356862
+  ...
+# Subtest: distortion encodes signed offsets around neutral and composite decodes them
+ok 20 - distortion encodes signed offsets around neutral and composite decodes them
+  ---
+  duration_ms: 17.009664
+  ...
+# Subtest: presenter clears stale depth and carries recipe pixel floors per bolt
+ok 21 - presenter clears stale depth and carries recipe pixel floors per bolt
+  ---
+  duration_ms: 8.68221
+  ...
+# Subtest: normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+ok 22 - normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+  ---
+  duration_ms: 2.515002
+  ...
+# Subtest: equal-depth bolts retain write order and a reused pool handles partial and full volleys
+ok 23 - equal-depth bolts retain write order and a reused pool handles partial and full volleys
+  ---
+  duration_ms: 1.230425
+  ...
+# Subtest: shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+ok 24 - shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+  ---
+  duration_ms: 9.03134
+  ...
+# Subtest: ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+ok 25 - ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+  ---
+  duration_ms: 0.353053
+  ...
+# Subtest: weapon ribbons stay on WebGL1-compatible uint16 indices
+ok 26 - weapon ribbons stay on WebGL1-compatible uint16 indices
+  ---
+  duration_ms: 2.165069
+  ...
+# Subtest: weapon pose and velocity preserve zero components
+ok 27 - weapon pose and velocity preserve zero components
+  ---
+  duration_ms: 8.586936
+  ...
+# Subtest: accessibility scales flash geometry and reproject keeps target-local marks
+ok 28 - accessibility scales flash geometry and reproject keeps target-local marks
+  ---
+  duration_ms: 8.406797
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 27
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 617.420273
+PASS  check:vfx-techniques  9 entries, 9 files
+TAP version 13
+# Subtest: the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+ok 1 - the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+  ---
+  duration_ms: 1.399602
+  ...
+# Subtest: only tumble/drift presentation may forward owner.angVel into the helix
+ok 2 - only tumble/drift presentation may forward owner.angVel into the helix
+  ---
+  duration_ms: 0.238356
+  ...
+# Subtest: a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+ok 3 - a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+  ---
+  duration_ms: 18.766782
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: pulse muzzle is a socket-tracked split aperture, without stacked glow cards
+ok 4 - pulse muzzle is a socket-tracked split aperture, without stacked glow cards
+  ---
+  duration_ms: 53.421294
+  ...
+# Subtest: live pulse fire skips the legacy SPR_FLASH muzzle path
+ok 5 - live pulse fire skips the legacy SPR_FLASH muzzle path
+  ---
+  duration_ms: 0.664933
+  ...
+# Subtest: pulse hull hits keep a cyan spark cone; shield hits write bubble contact instead
+ok 6 - pulse hull hits keep a cyan spark cone; shield hits write bubble contact instead
+  ---
+  duration_ms: 1.227128
+  ...
+# Subtest: reduced destruction prunes cost without replacing or disabling phased identity
+ok 7 - reduced destruction prunes cost without replacing or disabling phased identity
+  ---
+  duration_ms: 2.478237
+  ...
+# Subtest: continuous beam muzzle ignition follows the pool start transition instead of receipt spelling
+ok 8 - continuous beam muzzle ignition follows the pool start transition instead of receipt spelling
+  ---
+  duration_ms: 75.845464
+  ...
+# Subtest: smoothstep is monotonic on unit interval
+ok 9 - smoothstep is monotonic on unit interval
+  ---
+  duration_ms: 1.330365
+  ...
+# Subtest: path sampler retains equal-spacing history
+ok 10 - path sampler retains equal-spacing history
+  ---
+  duration_ms: 0.751386
+  ...
+# Subtest: the exhaust is swept ribbon sheets, not points, sprites or a density field
+ok 11 - the exhaust is swept ribbon sheets, not points, sprites or a density field
+  ---
+  duration_ms: 24.339049
+  ...
+# Subtest: the live plume and immutable history are separate objects
+ok 12 - the live plume and immutable history are separate objects
+  ---
+  duration_ms: 10.256088
+  ...
+# Subtest: sheets are wide enough to carry a crease, not one-normal wire strips
+ok 13 - sheets are wide enough to carry a crease, not one-normal wire strips
+  ---
+  duration_ms: 0.583989
+  ...
+# Subtest: the jet is nozzle-local and about two hull lengths, never a dragged tail
+ok 14 - the jet is nozzle-local and about two hull lengths, never a dragged tail
+  ---
+  duration_ms: 1.825023
+  ...
+# Subtest: gas flows through the live jet: its form is not a still image
+ok 15 - gas flows through the live jet: its form is not a still image
+  ---
+  duration_ms: 0.611841
+  ...
+# Subtest: throttle moves live-jet length and never its opacity
+ok 16 - throttle moves live-jet length and never its opacity
+  ---
+  duration_ms: 0.245594
+  ...
+# Subtest: every contrail center sample is an exact position the emitting nozzle occupied
+ok 17 - every contrail center sample is an exact position the emitting nozzle occupied
+  ---
+  duration_ms: 4.044253
+  ...
+# Subtest: the contrail retains a volume of curved overlapping energy sheets
+ok 18 - the contrail retains a volume of curved overlapping energy sheets
+  ---
+  duration_ms: 1.219975
+  ...
+# Subtest: distance and speed cannot trim young history
+ok 19 - distance and speed cannot trim young history
+  ---
+  duration_ms: 2.880655
+  ...
+# Subtest: a parked ship thrusting lays down no spatial trail
+ok 20 - a parked ship thrusting lays down no spatial trail
+  ---
+  duration_ms: 1.815155
+  ...
+# Subtest: sub-step jitter never rewrites or densely resamples the newest fact
+ok 21 - sub-step jitter never rewrites or densely resamples the newest fact
+  ---
+  duration_ms: 3.65193
+  ...
+# Subtest: cutting thrust leaves every young sample fixed in space; age alone removes it
+ok 22 - cutting thrust leaves every young sample fixed in space; age alone removes it
+  ---
+  duration_ms: 5.240844
+  ...
+# Subtest: the history and forge have no pulse clock, travelling bands or live-nozzle override
+ok 23 - the history and forge have no pulse clock, travelling bands or live-nozzle override
+  ---
+  duration_ms: 2.179578
+  ...
+# Subtest: emission gaps and teleports start disconnected segments without deleting history
+ok 24 - emission gaps and teleports start disconnected segments without deleting history
+  ---
+  duration_ms: 5.116713
+  ...
+# Subtest: a full history buffer skips births instead of evicting young facts
+ok 25 - a full history buffer skips births instead of evicting young facts
+  ---
+  duration_ms: 0.614985
+  ...
+# Subtest: cutting thrust puts the live jet out while recorded light fades in place
+ok 26 - cutting thrust puts the live jet out while recorded light fades in place
+  ---
+  duration_ms: 11.354523
+  ...
+# Subtest: plasma stream reuses one fallback identity without sockets or owner
+ok 27 - plasma stream reuses one fallback identity without sockets or owner
+  ---
+  duration_ms: 7.18946
+  ...
+# Subtest: full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+ok 28 - full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+  ---
+  duration_ms: 0.594611
+  ...
+# Subtest: zero throttle is dark and speed contributes only while the throttle is open
+ok 29 - zero throttle is dark and speed contributes only while the throttle is open
+  ---
+  duration_ms: 0.300236
+  ...
+# Subtest: ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+ok 30 - ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+  ---
+  duration_ms: 23.774809
+  ...
+# Subtest: dash is a one-shot supernova with a long cooling tail
+ok 31 - dash is a one-shot supernova with a long cooling tail
+  ---
+  duration_ms: 0.380844
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# pq-193.02 reverse demand both bow jets live { seed: 19302, frames: 120, live: 2, reverse: 55.55555555555556 }
+# SEED=19302 length=8.6 exitR=1 aspect=8.60 construction=swept-ribbon-sheets
+# pq-193.02 release tail rides the hull { seed: 19302, tailFrames: 12 }
+# Subtest: both bow jets stay live while reverse demand is held (seed 19302)
+ok 32 - both bow jets stay live while reverse demand is held (seed 19302)
+  ---
+  duration_ms: 9.387853
+  ...
+# Subtest: production player reverse spawns zero needle sprites
+ok 33 - production player reverse spawns zero needle sprites
+  ---
+  duration_ms: 5.219141
+  ...
+# Subtest: seed 19302: retro jet has bounded directional aspect, separated sheets and the drive family
+ok 34 - seed 19302: retro jet has bounded directional aspect, separated sheets and the drive family
+  ---
+  duration_ms: 0.930162
+  ...
+# Subtest: release tail rides the moving hull instead of molting off in space (seed 19302)
+ok 35 - release tail rides the moving hull instead of molting off in space (seed 19302)
+  ---
+  duration_ms: 6.19914
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: inactive standalone field adapter is lazy; explicitly prewarmed empty owner sleeps
+ok 36 - inactive standalone field adapter is lazy; explicitly prewarmed empty owner sleeps
+  ---
+  duration_ms: 4.686794
+  ...
+# Subtest: all five live field routes produce the authored surface counts, without old eight-mesh pools
+ok 37 - all five live field routes produce the authored surface counts, without old eight-mesh pools
+  ---
+  duration_ms: 14.433034
+  ...
+# Subtest: transition retires force boundaries, animates body breakup, then sleeps without repeated uploads
+ok 38 - transition retires force boundaries, animates body breakup, then sleeps without repeated uploads
+  ---
+  duration_ms: 0.902626
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: seed: ignition, geometric build, infinite sustain, finite release
+ok 39 - seed: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 1.681276
+  ...
+# Subtest: seed: production adapter advances shader clock with NO affected targets
+ok 40 - seed: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 5.427739
+  ...
+# Subtest: well: ignition, geometric build, infinite sustain, finite release
+ok 41 - well: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.183552
+  ...
+# Subtest: well: production adapter advances shader clock with NO affected targets
+ok 42 - well: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 5.379025
+  ...
+# Subtest: repulsor: ignition, geometric build, infinite sustain, finite release
+ok 43 - repulsor: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.150405
+  ...
+# Subtest: repulsor: production adapter advances shader clock with NO affected targets
+ok 44 - repulsor: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 1.551462
+  ...
+# Subtest: cone: ignition, geometric build, infinite sustain, finite release
+ok 45 - cone: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.19097
+  ...
+# Subtest: cone: production adapter advances shader clock with NO affected targets
+ok 46 - cone: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 0.903139
+  ...
+# Subtest: sheet: ignition, geometric build, infinite sustain, finite release
+ok 47 - sheet: ignition, geometric build, infinite sustain, finite release
+  ---
+  duration_ms: 0.231803
+  ...
+# Subtest: sheet: production adapter advances shader clock with NO affected targets
+ok 48 - sheet: production adapter advances shader clock with NO affected targets
+  ---
+  duration_ms: 1.044973
+  ...
+# Subtest: interrupted birth releases from its current envelope, never jumps to full scale
+ok 49 - interrupted birth releases from its current envelope, never jumps to full scale
+  ---
+  duration_ms: 0.229433
+  ...
+# Subtest: simulation pause freezes lifecycle and motion even if presentation dt is positive
+ok 50 - simulation pause freezes lifecycle and motion even if presentation dt is positive
+  ---
+  duration_ms: 4.190155
+  ...
+# Subtest: reused producer records cannot mutate the last pose of a retiring effect
+ok 51 - reused producer records cannot mutate the last pose of a retiring effect
+  ---
+  duration_ms: 0.859207
+  ...
+# Subtest: same-id toggle restarts growth while old residue retires separately
+ok 52 - same-id toggle restarts growth while old residue retires separately
+  ---
+  duration_ms: 0.632784
+  ...
+# Subtest: float-origin reproject moves source pivots and strip origins together
+ok 53 - float-origin reproject moves source pivots and strip origins together
+  ---
+  duration_ms: 0.660537
+  ...
+# Subtest: shader interface stays finite for existing 24-float weapon descriptors
+ok 54 - shader interface stays finite for existing 24-float weapon descriptors
+  ---
+  duration_ms: 0.472962
+  ...
+# Subtest: seven active fields survive repeated replacement under bounded residue pressure
+ok 55 - seven active fields survive repeated replacement under bounded residue pressure
+  ---
+  duration_ms: 3.787561
+  ...
+# Subtest: frozen authoritative snapshot is read-only through full lifecycle
+ok 56 - frozen authoritative snapshot is read-only through full lifecycle
+  ---
+  duration_ms: 0.672337
+  ...
+# Subtest: source discharge formula has extrusion, sustain peak, cooling, extinction
+ok 57 - source discharge formula has extrusion, sustain peak, cooling, extinction
+  ---
+  duration_ms: 0.267508
+  ...
+# Subtest: full vfx.update integration wakes fields, ticks no-target motion, and drains removal
+ok 58 - full vfx.update integration wakes fields, ticks no-target motion, and drains removal
+  ---
+  duration_ms: 105.775474
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: five tool signatures are distinct; unknown tools never impersonate gravity
+ok 59 - five tool signatures are distinct; unknown tools never impersonate gravity
+  ---
+  duration_ms: 1.336611
+  ...
+# Subtest: seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 60 - seed: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 3.870239
+  ...
+# Subtest: well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 61 - well: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 1.384851
+  ...
+# Subtest: repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 62 - repulsor: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 5.613891
+  ...
+# Subtest: cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 63 - cone: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 0.928477
+  ...
+# Subtest: sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+ok 64 - sheet: actual surfaces, no Points, finite geometry descriptors, one pooled mesh
+  ---
+  duration_ms: 0.869263
+  ...
+# Subtest: empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+ok 65 - empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload
+  ---
+  duration_ms: 4.777606
+  ...
+# Subtest: six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+ok 66 - six ordinary fields plus appended Seed are visible; bounded pool does not drop Seed
+  ---
+  duration_ms: 8.84345
+  ...
+# Subtest: Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+ok 67 - Seed phase is read-only, never emits gravity flow, re-launch resets a constant published id
+  ---
+  duration_ms: 1.237993
+  ...
+# Subtest: removal retires perimeter immediately; authored body breaks up, then uploads sleep
+ok 68 - removal retires perimeter immediately; authored body breaks up, then uploads sleep
+  ---
+  duration_ms: 1.122264
+  ...
+# Subtest: deployment born at simTime zero does not reset; origin shifts update local positions
+ok 69 - deployment born at simTime zero does not reset; origin shifts update local positions
+  ---
+  duration_ms: 0.806076
+  ...
+# Subtest: reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+ok 70 - reduced motion freezes flows without deleting silhouettes; reduced flash keeps boundary geometry
+  ---
+  duration_ms: 0.5546
+  ...
+# Subtest: malformed/unknown records are skipped and do not poison GPU attributes
+ok 71 - malformed/unknown records are skipped and do not poison GPU attributes
+  ---
+  duration_ms: 0.556689
+  ...
+# Subtest: surface batch is bounded and precompile material is the runtime program
+ok 72 - surface batch is bounded and precompile material is the runtime program
+  ---
+  duration_ms: 0.625751
+  ...
+# Subtest: mechanical, rail and coherent sources have different geometry, not just different colors
+ok 73 - mechanical, rail and coherent sources have different geometry, not just different colors
+  ---
+  duration_ms: 1.955588
+  ...
+# Subtest: muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+ok 74 - muzzle follows socket pose, expires, coalesces owner fire, and preserves fallback for unregistered sources
+  ---
+  duration_ms: 0.754567
+  ...
+# Subtest: every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+ok 75 - every weapon recipe ignites a swept source; shield and hull contacts differ by structure
+  ---
+  duration_ms: 3.207732
+  ...
+# Subtest: live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+ok 76 - live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe
+  ---
+  duration_ms: 57.420786
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: weapon lights are a dedicated pool and do not steal the six event lights
+ok 77 - weapon lights are a dedicated pool and do not steal the six event lights
+  ---
+  duration_ms: 43.074178
+  ...
+# Subtest: shield contact writes four bubble hit slots instead of a spark in empty space
+ok 78 - shield contact writes four bubble hit slots instead of a spark in empty space
+  ---
+  duration_ms: 17.19022
+  ...
+# Subtest: distortion is a graph pass and stays off when nothing is live
+ok 79 - distortion is a graph pass and stays off when nothing is live
+  ---
+  duration_ms: 14.342973
+  ...
+# Subtest: weapon depth binding follows the active graph route rather than a retained graph object
+ok 80 - weapon depth binding follows the active graph route rather than a retained graph object
+  ---
+  duration_ms: 0.233731
+  ...
+# Subtest: pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+ok 81 - pulse chase-camera evidence: dash, barrel flipbook, and contact survive bloom-off
+  ---
+  duration_ms: 19.499091
+  ...
+# Subtest: reduced-flash and reduced-motion keep the dash and contact mark, not haze
+ok 82 - reduced-flash and reduced-motion keep the dash and contact mark, not haze
+  ---
+  duration_ms: 21.92477
+  ...
+# Subtest: energy-card recipes never fall back to a cylinder identity
+ok 83 - energy-card recipes never fall back to a cylinder identity
+  ---
+  duration_ms: 0.313608
+  ...
+# Subtest: distortion encodes signed offsets around neutral and composite decodes them
+ok 84 - distortion encodes signed offsets around neutral and composite decodes them
+  ---
+  duration_ms: 18.763637
+  ...
+# Subtest: presenter clears stale depth and carries recipe pixel floors per bolt
+ok 85 - presenter clears stale depth and carries recipe pixel floors per bolt
+  ---
+  duration_ms: 10.98815
+  ...
+# Subtest: normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+ok 86 - normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping
+  ---
+  duration_ms: 2.309947
+  ...
+# Subtest: equal-depth bolts retain write order and a reused pool handles partial and full volleys
+ok 87 - equal-depth bolts retain write order and a reused pool handles partial and full volleys
+  ---
+  duration_ms: 1.194723
+  ...
+# Subtest: shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+ok 88 - shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel
+  ---
+  duration_ms: 8.556042
+  ...
+# Subtest: ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+ok 89 - ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail
+  ---
+  duration_ms: 0.411554
+  ...
+# Subtest: weapon ribbons stay on WebGL1-compatible uint16 indices
+ok 90 - weapon ribbons stay on WebGL1-compatible uint16 indices
+  ---
+  duration_ms: 2.013108
+  ...
+# Subtest: weapon pose and velocity preserve zero components
+ok 91 - weapon pose and velocity preserve zero components
+  ---
+  duration_ms: 7.889087
+  ...
+# Subtest: accessibility scales flash geometry and reproject keeps target-local marks
+ok 92 - accessibility scales flash geometry and reproject keeps target-local marks
+  ---
+  duration_ms: 7.828491
+  ...
+1..92
+# tests 92
+# suites 0
+# pass 92
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 791.644589

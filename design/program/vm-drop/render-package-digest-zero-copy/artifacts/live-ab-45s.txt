@@ -1,0 +1,21 @@
+# Live A/B, 45 s main-thread profiles, interleaved patched(#166+#167 @ scratch ed1a4d658) vs bare master 97c88f92b
+# probe: xvfb-run -a node scripts/probe-main-thread-profile.mjs --ms=45000 --label=ab166-<lane>-<i> (Picture ON, soft-GPU)
+# bursts.mjs <profile> <regex> 1  (samples whose stack contains a frame matching regex; bursts merged at <=1 ms gaps)
+== bare-1
+renderPackageDigest.js (main thread): bursts 10 total 11.7 7.86s 2.0ms span 0.0 18.45s 3.7ms span 3.4 
+embeddedKtx2Textures|loadBufferView: bursts 8 total 9.4 18.49s 7.1ms span 7.6 
+== patch-1
+renderPackageDigest.js (main thread): bursts 3 total 1.1 
+embeddedKtx2Textures|loadBufferView: bursts 13 total 10.3 
+== bare-2
+renderPackageDigest.js (main thread): bursts 10 total 17.7 7.74s 9.3ms span 9.1 
+embeddedKtx2Textures|loadBufferView: bursts 11 total 18.9 7.79s 6.3ms span 6.0 8.82s 4.5ms span 1.5 
+== patch-2
+renderPackageDigest.js (main thread): bursts 3 total 0.8 
+embeddedKtx2Textures|loadBufferView: bursts 9 total 6.5 
+== bare-3
+renderPackageDigest.js (main thread): bursts 11 total 10.7 9.79s 2.6ms span 0.6 
+embeddedKtx2Textures|loadBufferView: bursts 8 total 6.4 
+== patch-3
+renderPackageDigest.js (main thread): bursts 3 total 0.8 
+embeddedKtx2Textures|loadBufferView: bursts 12 total 11.8 10.13s 3.2ms span 0.0 14.29s 2.8ms span 3.1 

@@ -1,0 +1,20 @@
+{
+  "name": "hud-screen-transform-cache",
+  "calls": 200000,
+  "elements": 12,
+  "settled": {
+    "beforeMs": 81.198,
+    "afterMs": 5.047,
+    "speedup": 16.088,
+    "writesBefore": 12,
+    "writesAfter": 12,
+    "sampleMatch": true
+  },
+  "motion": {
+    "beforeMs": 82.367,
+    "afterMs": 94.074,
+    "speedup": 0.876,
+    "writesBefore": 200000,
+    "writesAfter": 200000
+  }
+}

@@ -1,0 +1,122 @@
+From fd7a2e4f5cc1835c802e98914be1b4b636637057 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 07:04:27 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-skip=20sleeping=20Continu?=
+ =?UTF-8?q?ousPlume=20families=20(~3.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight under prepareFrame / thruster residual after #99:
+FamilyProductionFleet.endFrame re-zeroed pool + 5 layer mesh counts/
+visibility for every sleeping engine family (6 packs) every frame after
+the first empty publish. ContinuousPlumeSystem.update/endUpdate also
+re-ran event-light + layer batch clear/commit/uniforms when already empty.
+
+Trust _familyQuietAsleep after the first sleep publish; clear when a
+family opens. Trust _quietEmpty on ContinuousPlume after first empty
+GPU publish. Picture unchanged (already invisible/empty).
+
+Soft-GPU fps not claimed.
+---
+ src/render/thruster/systems/continuousPlume.js | 14 ++++++++++++++
+ src/render/thruster/systems/familyFleet.js     | 11 ++++++++++-
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/src/render/thruster/systems/continuousPlume.js b/src/render/thruster/systems/continuousPlume.js
+index adab079f0..06ae28540 100644
+--- a/src/render/thruster/systems/continuousPlume.js
++++ b/src/render/thruster/systems/continuousPlume.js
+@@ -543,6 +543,9 @@ export class ContinuousPlumeSystem {
+     this._textures = opts.textures || {};
+     this._initGpu = false;
+     this._disposed = false;
++    // Quiet settled flight: after first empty GPU publish, skip event-light + layer
++    // batch clear/commit/uniform writes until activeCount > 0 again.
++    this._quietEmpty = false;
+     this._nozzleScratch = { x: 0, y: 0, z: 0 };
+     this._uniformScratch = null;
+     this._emptyOpts = Object.freeze({ boost: 0, a11y: null });
+@@ -908,7 +911,11 @@ export class ContinuousPlumeSystem {
+     const a11y = this._batchA11y || this._a11y;
+     const result = this.pool.endWrite();
+     this._batching = false;
++    if (!(result.activeCount > 0) && this._quietEmpty) {
++      return result;
++    }
+     this._commitGpu(result, a11y, null, dt || 0);
++    this._quietEmpty = !(result.activeCount > 0);
+     return result;
+   }
+ 
+@@ -926,7 +933,13 @@ export class ContinuousPlumeSystem {
+     const a11y = o.a11y == null ? this._a11y : o.a11y;
+     if (a11y.qualityTier) this.setQualityTier(a11y.qualityTier);
+     const result = this.pool.update(throttle, sockets, a11y, dt, boost, o);
++    // Quiet path: after the first empty publish, skip event-light + layer batch
++    // clear/commit/uniform writes. Active writes leave quiet on the spawn frame.
++    if (!(result.activeCount > 0) && this._quietEmpty) {
++      return result;
++    }
+     this._commitGpu(result, a11y, sockets, dt || 0);
++    this._quietEmpty = !(result.activeCount > 0);
+     return result;
+   }
+ 
+@@ -1054,6 +1067,7 @@ export class ContinuousPlumeSystem {
+ 
+   /** Clear sim state; keep GPU resources. Idempotent. */
+   reset() {
++    this._quietEmpty = false;
+     this.pool.resetDrive();
+     this.pool.beginFrame();
+     for (let i = 0; i < this.pool.capacity; i++) this.pool.slots[i].alive = false;
+diff --git a/src/render/thruster/systems/familyFleet.js b/src/render/thruster/systems/familyFleet.js
+index b91d178c0..1b0a9b306 100644
+--- a/src/render/thruster/systems/familyFleet.js
++++ b/src/render/thruster/systems/familyFleet.js
+@@ -149,6 +149,9 @@ export class FamilyProductionFleet {
+ 
+     // Per-frame family begin flags (Uint8, fixed)
+     this._familyOpen = new Uint8Array(this.families.length);
++    // Quiet settled flight: after the first sleep publish (mesh counts/visibility cleared),
++    // skip re-zeroing every sleeping family's layer batches. Cleared when a family opens.
++    this._familyQuietAsleep = new Uint8Array(this.families.length);
+     // Per-frame socket demand per family, used to size plume capacity before the write
+     // pass. Fixed-length, reused — the growth check itself must not allocate.
+     this._familySocketDemand = new Uint32Array(this.families.length);
+@@ -559,7 +562,10 @@ export class FamilyProductionFleet {
+ 
+     for (let fi = 0; fi < this.families.length; fi++) {
+       if (!this._familyOpen[fi]) {
+-        // Sleep family: reset GPU counts, keep resources.
++        // Sleep family: reset GPU counts, keep resources. After the first empty
++        // publish, trust _familyQuietAsleep and skip pool/layer re-zero churn —
++        // counts and visibility are already 0/false from the prior sleep frame.
++        if (this._familyQuietAsleep[fi]) continue;
+         const fam = this.families[fi];
+         fam.plume.pool.beginFrame();
+         fam.plume.pool.endWrite();
+@@ -574,9 +580,11 @@ export class FamilyProductionFleet {
+           }
+         }
+         if (fam.plume.group) fam.plume.group.visible = false;
++        this._familyQuietAsleep[fi] = 1;
+         continue;
+       }
+       const fam = this.families[fi];
++      this._familyQuietAsleep[fi] = 0;
+       fam.plume.endUpdate(dt);
+       if (fam.plume.group.visible) familiesActive += 1;
+     }
+@@ -669,6 +677,7 @@ export class FamilyProductionFleet {
+       f.plume.reset();
+       if (f.rcs) f.rcs.reset();
+       f.activeEntities = 0;
++      this._familyQuietAsleep[i] = 0;
+     }
+   }
+ 
+-- 
+2.47.3
+

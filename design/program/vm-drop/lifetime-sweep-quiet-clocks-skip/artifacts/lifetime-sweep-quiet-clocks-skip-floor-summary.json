@@ -1,0 +1,63 @@
+{
+  "label": "lifetime-sweep-quiet-clocks-skip-floor",
+  "runs": [
+    {
+      "run": 1,
+      "median": 2.055,
+      "min": 1.838,
+      "max": 2.361,
+      "wake": {
+        "ok": true,
+        "ttlExpired": true,
+        "despawnOk": true
+      }
+    },
+    {
+      "run": 2,
+      "median": 2.017,
+      "min": 1.857,
+      "max": 2.182,
+      "wake": {
+        "ok": true,
+        "ttlExpired": true,
+        "despawnOk": true
+      }
+    },
+    {
+      "run": 3,
+      "median": 1.987,
+      "min": 1.65,
+      "max": 2.319,
+      "wake": {
+        "ok": true,
+        "ttlExpired": true,
+        "despawnOk": true
+      }
+    },
+    {
+      "run": 4,
+      "median": 2.04,
+      "min": 1.917,
+      "max": 2.266,
+      "wake": {
+        "ok": true,
+        "ttlExpired": true,
+        "despawnOk": true
+      }
+    },
+    {
+      "run": 5,
+      "median": 1.977,
+      "min": 1.848,
+      "max": 2.098,
+      "wake": {
+        "ok": true,
+        "ttlExpired": true,
+        "despawnOk": true
+      }
+    }
+  ],
+  "floorMedian": 1.977,
+  "floorMin": 1.65,
+  "allWakeOk": true
+}

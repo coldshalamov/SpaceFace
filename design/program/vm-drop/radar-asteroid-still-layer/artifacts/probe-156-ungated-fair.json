@@ -1,0 +1,240 @@
+{
+  "abs": {
+    "wingMorale": {
+      "name": "wingMorale",
+      "us": 0.125,
+      "errs": 0
+    },
+    "wingmen": {
+      "name": "wingmen",
+      "us": 0.061,
+      "errs": 0
+    },
+    "travelLanes": {
+      "name": "travelLanes",
+      "us": 0.04,
+      "errs": 0
+    },
+    "ambushSignatures": {
+      "name": "ambushSignatures",
+      "us": 0.298,
+      "errs": 0
+    },
+    "autoTargetAssist": {
+      "name": "autoTargetAssist",
+      "us": 0.147,
+      "errs": 0
+    },
+    "automation": {
+      "name": "automation",
+      "us": 0.022,
+      "errs": 0
+    },
+    "bulletTime": {
+      "name": "bulletTime",
+      "us": 0.323,
+      "errs": 0
+    },
+    "claims": {
+      "name": "claims",
+      "us": 0.017,
+      "errs": 0
+    },
+    "cloak": {
+      "name": "cloak",
+      "us": 0.061,
+      "errs": 0
+    },
+    "chronicler": {
+      "name": "chronicler",
+      "us": 0.165,
+      "errs": 0
+    },
+    "crafting": {
+      "name": "crafting",
+      "us": 0.097,
+      "errs": 0
+    },
+    "difficultyDirector": {
+      "name": "difficultyDirector",
+      "us": 0.682,
+      "errs": 0
+    },
+    "drill": {
+      "name": "drill",
+      "us": 0.013,
+      "errs": 0
+    },
+    "economy": {
+      "name": "economy",
+      "us": 9.928,
+      "errs": 20000
+    },
+    "environmentalMachinery": {
+      "name": "environmentalMachinery",
+      "us": 1.024,
+      "errs": 0
+    },
+    "factionPresence": {
+      "name": "factionPresence",
+      "us": 1.95,
+      "errs": 0
+    },
+    "factions": {
+      "name": "factions",
+      "us": 0.032,
+      "errs": 0
+    },
+    "fieldDepletion": {
+      "name": "fieldDepletion",
+      "us": 0.264,
+      "errs": 0
+    },
+    "cargo": {
+      "name": "cargo",
+      "us": 0.069,
+      "errs": 0
+    },
+    "collisionConsequences": {
+      "name": "collisionConsequences",
+      "us": 0.075,
+      "errs": 0
+    },
+    "aceMemory": {
+      "name": "aceMemory",
+      "us": 0.113,
+      "errs": 0
+    },
+    "bandRadio": {
+      "name": "bandRadio",
+      "us": 1.411,
+      "errs": 0
+    }
+  },
+  "loadErrors": [
+    {
+      "label": "alphabet",
+      "err": "no step/update"
+    },
+    {
+      "label": "dangerModel",
+      "err": "no step/update"
+    },
+    {
+      "label": "achievements",
+      "err": "no step/update"
+    }
+  ],
+  "ranked": [
+    {
+      "k": "economy",
+      "us": 9.928,
+      "errs": 20000
+    },
+    {
+      "k": "factionPresence",
+      "us": 1.95,
+      "errs": 0
+    },
+    {
+      "k": "bandRadio",
+      "us": 1.411,
+      "errs": 0
+    },
+    {
+      "k": "environmentalMachinery",
+      "us": 1.024,
+      "errs": 0
+    },
+    {
+      "k": "difficultyDirector",
+      "us": 0.682,
+      "errs": 0
+    },
+    {
+      "k": "bulletTime",
+      "us": 0.323,
+      "errs": 0
+    },
+    {
+      "k": "ambushSignatures",
+      "us": 0.298,
+      "errs": 0
+    },
+    {
+      "k": "fieldDepletion",
+      "us": 0.264,
+      "errs": 0
+    },
+    {
+      "k": "chronicler",
+      "us": 0.165,
+      "errs": 0
+    },
+    {
+      "k": "autoTargetAssist",
+      "us": 0.147,
+      "errs": 0
+    },
+    {
+      "k": "wingMorale",
+      "us": 0.125,
+      "errs": 0
+    },
+    {
+      "k": "aceMemory",
+      "us": 0.113,
+      "errs": 0
+    },
+    {
+      "k": "crafting",
+      "us": 0.097,
+      "errs": 0
+    },
+    {
+      "k": "collisionConsequences",
+      "us": 0.075,
+      "errs": 0
+    },
+    {
+      "k": "cargo",
+      "us": 0.069,
+      "errs": 0
+    },
+    {
+      "k": "wingmen",
+      "us": 0.061,
+      "errs": 0
+    },
+    {
+      "k": "cloak",
+      "us": 0.061,
+      "errs": 0
+    },
+    {
+      "k": "travelLanes",
+      "us": 0.04,
+      "errs": 0
+    },
+    {
+      "k": "factions",
+      "us": 0.032,
+      "errs": 0
+    },
+    {
+      "k": "automation",
+      "us": 0.022,
+      "errs": 0
+    },
+    {
+      "k": "claims",
+      "us": 0.017,
+      "errs": 0
+    },
+    {
+      "k": "drill",
+      "us": 0.013,
+      "errs": 0
+    }
+  ]
+}

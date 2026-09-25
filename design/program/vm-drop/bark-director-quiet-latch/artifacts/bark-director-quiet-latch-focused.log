@@ -1,0 +1,392 @@
+TAP version 13
+# Subtest: bark director quiet latch arms and skips census
+ok 1 - bark director quiet latch arms and skips census
+  ---
+  duration_ms: 11.815483
+  ...
+# Subtest: bark director quiet latch wakes on hostile attack spawn and speaks
+ok 2 - bark director quiet latch wakes on hostile attack spawn and speaks
+  ---
+  duration_ms: 7.445591
+  ...
+# Subtest: bark director quiet latch bench toggle restores census
+ok 3 - bark director quiet latch bench toggle restores census
+  ---
+  duration_ms: 3.164265
+  ...
+# Subtest: a thrown hull passing a civilian earns exactly one near-miss bark
+ok 4 - a thrown hull passing a civilian earns exactly one near-miss bark
+  ---
+  duration_ms: 9.43057
+  ...
+# Subtest: a second pass after exit and cooldown earns exactly one more bark
+ok 5 - a second pass after exit and cooldown earns exactly one more bark
+  ---
+  duration_ms: 1.526406
+  ...
+# Subtest: a player shove emits the loose-hull wording through the impulse receipt
+ok 6 - a player shove emits the loose-hull wording through the impulse receipt
+  ---
+  duration_ms: 0.973979
+  ...
+# Subtest: impulses from non-player attackers or with no deltaV do not track
+ok 7 - impulses from non-player attackers or with no deltaV do not track
+  ---
+  duration_ms: 0.749954
+  ...
+# Subtest: a physics impact against the witness suppresses the bark for that pass
+ok 8 - a physics impact against the witness suppresses the bark for that pass
+  ---
+  duration_ms: 1.984875
+  ...
+# Subtest: a thrown rock names the rock, and an unthrown rock stays silent
+ok 9 - a thrown rock names the rock, and an unthrown rock stays silent
+  ---
+  duration_ms: 2.316854
+  ...
+# Subtest: an ordinary untracked flyby earns nothing
+ok 10 - an ordinary untracked flyby earns nothing
+  ---
+  duration_ms: 2.630026
+  ...
+# Subtest: quiet latch engages when typed bombs bucket is empty
+ok 11 - quiet latch engages when typed bombs bucket is empty
+  ---
+  duration_ms: 2.398633
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 12 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 0.4412
+  ...
+# Subtest: dropBomb edge refuses latch and consumes edge
+ok 13 - dropBomb edge refuses latch and consumes edge
+  ---
+  duration_ms: 0.581615
+  ...
+# Subtest: live bomb in bucket refuses latch
+ok 14 - live bomb in bucket refuses latch
+  ---
+  duration_ms: 0.736668
+  ...
+# Subtest: bench toggle OFF keeps quietLatched false on empty
+ok 15 - bench toggle OFF keeps quietLatched false on empty
+  ---
+  duration_ms: 0.234221
+  ...
+# Subtest: without ready bombs bucket latch refuses
+ok 16 - without ready bombs bucket latch refuses
+  ---
+  duration_ms: 0.29517
+  ...
+# Subtest: bounty hunt empty quiet latch arms and skips census
+ok 17 - bounty hunt empty quiet latch arms and skips census
+  ---
+  duration_ms: 7.163281
+  ...
+# Subtest: bounty hunt empty quiet latch wakes on hunter spawn and normalizes
+ok 18 - bounty hunt empty quiet latch wakes on hunter spawn and normalizes
+  ---
+  duration_ms: 1.850271
+  ...
+# Subtest: bounty hunt empty quiet latch can disable for bench
+ok 19 - bounty hunt empty quiet latch can disable for bench
+  ---
+  duration_ms: 0.837533
+  ...
+# Subtest: catch-nets empty quiet latch arms and skips census
+ok 20 - catch-nets empty quiet latch arms and skips census
+  ---
+  duration_ms: 8.298691
+  ...
+# Subtest: catch-nets empty quiet latch wakes on net+pod and catches
+ok 21 - catch-nets empty quiet latch wakes on net+pod and catches
+  ---
+  duration_ms: 1.978285
+  ...
+# Subtest: catch-nets empty quiet latch can be disabled for bench
+ok 22 - catch-nets empty quiet latch can be disabled for bench
+  ---
+  duration_ms: 1.407494
+  ...
+# Subtest: quiet latch engages when no CM/PDS interest
+ok 23 - quiet latch engages when no CM/PDS interest
+  ---
+  duration_ms: 2.06388
+  ...
+# Subtest: deploy edge wakes quiet latch
+ok 24 - deploy edge wakes quiet latch
+  ---
+  duration_ms: 0.41399
+  ...
+# Subtest: membership + fitted CM wakes quiet latch
+ok 25 - membership + fitted CM wakes quiet latch
+  ---
+  duration_ms: 0.464046
+  ...
+# Subtest: bench toggle restores always-walk
+ok 26 - bench toggle restores always-walk
+  ---
+  duration_ms: 0.365392
+  ...
+# Subtest: player with CM fitted never quiet-latches
+ok 27 - player with CM fitted never quiet-latches
+  ---
+  duration_ms: 0.209715
+  ...
+# Subtest: customs cones empty quiet latch arms and skips census
+ok 28 - customs cones empty quiet latch arms and skips census
+  ---
+  duration_ms: 6.675763
+  ...
+# Subtest: customs cones empty quiet latch wakes on customs scanner spawn
+ok 29 - customs cones empty quiet latch wakes on customs scanner spawn
+  ---
+  duration_ms: 1.476874
+  ...
+# Subtest: customs cones empty quiet latch bench toggle restores census
+ok 30 - customs cones empty quiet latch bench toggle restores census
+  ---
+  duration_ms: 0.918887
+  ...
+# encounter-barks.test: ok (19 expanded keys, variant pick verified)
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/encounter-barks.test.mjs
+ok 8 - /workspace/spaceface-scratch/hillclimb-20260924h/test/encounter-barks.test.mjs
+  ---
+  duration_ms: 343.371609
+  ...
+# Subtest: quiet latch engages on idle flight with no field interest
+ok 32 - quiet latch engages on idle flight with no field interest
+  ---
+  duration_ms: 7.357268
+  ...
+# Subtest: membership bump wakes idle quiet latch
+ok 33 - membership bump wakes idle quiet latch
+  ---
+  duration_ms: 4.554892
+  ...
+# Subtest: player cone deploy leaves idle and clears latch
+ok 34 - player cone deploy leaves idle and clears latch
+  ---
+  duration_ms: 1.202148
+  ...
+# Subtest: bench toggle restores always-walk idle path
+ok 35 - bench toggle restores always-walk idle path
+  ---
+  duration_ms: 0.691239
+  ...
+# Subtest: latched idle skips discover until rescan window
+ok 36 - latched idle skips discover until rescan window
+  ---
+  duration_ms: 0.669399
+  ...
+# Subtest: flyby focus empty quiet latch arms and skips census
+ok 37 - flyby focus empty quiet latch arms and skips census
+  ---
+  duration_ms: 6.276636
+  ...
+# Subtest: flyby focus empty quiet latch wakes on closing hostile spawn and starts lease
+ok 38 - flyby focus empty quiet latch wakes on closing hostile spawn and starts lease
+  ---
+  duration_ms: 2.069777
+  ...
+# Subtest: flyby focus empty quiet latch bench toggle restores census
+ok 39 - flyby focus empty quiet latch bench toggle restores census
+  ---
+  duration_ms: 3.218227
+  ...
+# flyby-focus: targeting, lease, timing, reset, and exact-F contracts PASS
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/flyby-focus.test.mjs
+ok 11 - /workspace/spaceface-scratch/hillclimb-20260924h/test/flyby-focus.test.mjs
+  ---
+  duration_ms: 223.085194
+  ...
+# Subtest: quiet clocks skip defaults ON for production bench flag
+ok 41 - quiet clocks skip defaults ON for production bench flag
+  ---
+  duration_ms: 1.160774
+  ...
+# Subtest: quiet Ceres Infinity-ttl movers skip clocks walk without dropping corpses
+ok 42 - quiet Ceres Infinity-ttl movers skip clocks walk without dropping corpses
+  ---
+  duration_ms: 4.659992
+  ...
+# Subtest: projectile TTL still expires when short-lived lane is non-empty (dirty-wake)
+ok 43 - projectile TTL still expires when short-lived lane is non-empty (dirty-wake)
+  ---
+  duration_ms: 2.112395
+  ...
+# Subtest: shipLike despawnAt fail-open restores clocks path
+ok 44 - shipLike despawnAt fail-open restores clocks path
+  ---
+  duration_ms: 1.066896
+  ...
+# Subtest: bench flag OFF restores always-walk clocks (projectile TTL still works)
+ok 45 - bench flag OFF restores always-walk clocks (projectile TTL still works)
+  ---
+  duration_ms: 1.111885
+  ...
+# Subtest: pirate disengage empty quiet latch arms and skips dual census
+ok 46 - pirate disengage empty quiet latch arms and skips dual census
+  ---
+  duration_ms: 7.20229
+  ...
+# Subtest: pirate disengage empty quiet latch wakes on pirate spawn
+ok 47 - pirate disengage empty quiet latch wakes on pirate spawn
+  ---
+  duration_ms: 2.051694
+  ...
+# Subtest: pirate disengage empty quiet latch can disable for bench
+ok 48 - pirate disengage empty quiet latch can disable for bench
+  ---
+  duration_ms: 1.024118
+  ...
+# Subtest: pirate parley empty quiet latch arms and skips census
+ok 49 - pirate parley empty quiet latch arms and skips census
+  ---
+  duration_ms: 6.667903
+  ...
+# Subtest: pirate parley empty quiet latch wakes on toll spawn and starts scan
+ok 50 - pirate parley empty quiet latch wakes on toll spawn and starts scan
+  ---
+  duration_ms: 3.748465
+  ...
+# Subtest: pirate parley empty quiet latch bench toggle restores census
+ok 51 - pirate parley empty quiet latch bench toggle restores census
+  ---
+  duration_ms: 1.193124
+  ...
+# Subtest: salvage unstable quiet latch arms and skips census
+ok 52 - salvage unstable quiet latch arms and skips census
+  ---
+  duration_ms: 7.535684
+  ...
+# Subtest: salvage unstable quiet latch wakes on reactor arm and bursts
+ok 53 - salvage unstable quiet latch wakes on reactor arm and bursts
+  ---
+  duration_ms: 1.874283
+  ...
+# Subtest: salvage unstable quiet latch can disable for bench
+ok 54 - salvage unstable quiet latch can disable for bench
+  ---
+  duration_ms: 1.32465
+  ...
+# Subtest: sanctuary empty quiet latch arms and skips walk
+ok 55 - sanctuary empty quiet latch arms and skips walk
+  ---
+  duration_ms: 5.538506
+  ...
+# Subtest: sanctuary empty quiet latch wakes on chase into jurisdiction
+ok 56 - sanctuary empty quiet latch wakes on chase into jurisdiction
+  ---
+  duration_ms: 2.122064
+  ...
+# Subtest: sanctuary empty quiet latch wakes on combat fire seq
+ok 57 - sanctuary empty quiet latch wakes on combat fire seq
+  ---
+  duration_ms: 1.162694
+  ...
+# Subtest: sanctuary empty quiet latch can be disabled for bench
+ok 58 - sanctuary empty quiet latch can be disabled for bench
+  ---
+  duration_ms: 0.884528
+  ...
+# Subtest: bench toggle defaults ON
+ok 59 - bench toggle defaults ON
+  ---
+  duration_ms: 1.776238
+  ...
+# Subtest: player-only quiet flight latches tacticalAI
+ok 60 - player-only quiet flight latches tacticalAI
+  ---
+  duration_ms: 6.784426
+  ...
+# Subtest: dormant NPCs latch; due thinker wakes
+ok 61 - dormant NPCs latch; due thinker wakes
+  ---
+  duration_ms: 5.851801
+  ...
+# Subtest: membership spawn wakes quiet latch
+ok 62 - membership spawn wakes quiet latch
+  ---
+  duration_ms: 3.243642
+  ...
+# Subtest: bench toggle OFF refuses latch
+ok 63 - bench toggle OFF refuses latch
+  ---
+  duration_ms: 1.80779
+  ...
+# Subtest: quiet latch arms after a quiet walk and skips subsequent ticks
+ok 64 - quiet latch arms after a quiet walk and skips subsequent ticks
+  ---
+  duration_ms: 4.718649
+  ...
+# Subtest: bench toggle OFF forces every-tick walk
+ok 65 - bench toggle OFF forces every-tick walk
+  ---
+  duration_ms: 0.828808
+  ...
+# Subtest: impulse provenance generation wakes the quiet latch
+ok 66 - impulse provenance generation wakes the quiet latch
+  ---
+  duration_ms: 0.996001
+  ...
+# Subtest: hitstun begin clears quiet latch (dirty wake)
+ok 67 - hitstun begin clears quiet latch (dirty wake)
+  ---
+  duration_ms: 0.833778
+  ...
+# Subtest: membership spawn wakes quiet latch
+ok 68 - membership spawn wakes quiet latch
+  ---
+  duration_ms: 0.698625
+  ...
+# Subtest: rescan wakes after RESCAN ticks even when still quiet
+ok 69 - rescan wakes after RESCAN ticks even when still quiet
+  ---
+  duration_ms: 0.390827
+  ...
+# Subtest: bench toggle defaults ON and is readable
+ok 70 - bench toggle defaults ON and is readable
+  ---
+  duration_ms: 1.186145
+  ...
+# Subtest: quiet latch engages when NPCs sleep with empty projectile/mine lanes
+ok 71 - quiet latch engages when NPCs sleep with empty projectile/mine lanes
+  ---
+  duration_ms: 2.389598
+  ...
+# Subtest: membership bump re-arms latch with new armedTick
+ok 72 - membership bump re-arms latch with new armedTick
+  ---
+  duration_ms: 0.550095
+  ...
+# Subtest: tactical AI wake clears quiet latch
+ok 73 - tactical AI wake clears quiet latch
+  ---
+  duration_ms: 1.140022
+  ...
+# Subtest: live projectile on typed lane refuses latch
+ok 74 - live projectile on typed lane refuses latch
+  ---
+  duration_ms: 0.475982
+  ...
+# Subtest: bench OFF never latches
+ok 75 - bench OFF never latches
+  ---
+  duration_ms: 0.39249
+  ...
+# Subtest: player fire while latched still services without clearing latch
+ok 76 - player fire while latched still services without clearing latch
+  ---
+  duration_ms: 2.448602
+  ...
+1..76
+# tests 76
+# suites 0
+# pass 76
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 809.088672

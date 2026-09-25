@@ -1,0 +1,185 @@
+TAP version 13
+# Subtest: dynamic turret tracking: articulates toward active target within arc and sweeps when idle
+ok 1 - dynamic turret tracking: articulates toward active target within arc and sweeps when idle
+  ---
+  duration_ms: 3.66325
+  ...
+# Subtest: cooling fins thermal blackbody: glows on weapon fire and dumps on weapons:vent
+ok 2 - cooling fins thermal blackbody: glows on weapon fire and dumps on weapons:vent
+  ---
+  duration_ms: 2.67913
+  ...
+# Subtest: environmental hazard buffet: injects atmospheric roll/pitch jitter
+ok 3 - environmental hazard buffet: injects atmospheric roll/pitch jitter
+  ---
+  duration_ms: 1.173822
+  ...
+# Subtest: hyperspace jump dynamics: spool-up reactor tremor and warp release snap
+ok 4 - hyperspace jump dynamics: spool-up reactor tremor and warp release snap
+  ---
+  duration_ms: 1.467953
+  ...
+# Subtest: docking clamp: produces mechanical contact shudder on latch
+ok 5 - docking clamp: produces mechanical contact shudder on latch
+  ---
+  duration_ms: 0.680693
+  ...
+# Subtest: projectile motion: guided missile attitude oscillation and torpedo warhead pulse
+ok 6 - projectile motion: guided missile attitude oscillation and torpedo warhead pulse
+  ---
+  duration_ms: 0.507332
+  ...
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 7 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 2.202848
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 8 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.401464
+  ...
+# Subtest: locomotion RCS: yaw demand resolves a diagonal couple (bow-port + stern-starboard)
+ok 9 - locomotion RCS: yaw demand resolves a diagonal couple (bow-port + stern-starboard)
+  ---
+  duration_ms: 6.420084
+  ...
+# Subtest: locomotion RCS: lateral demand resolves a same-side translation pair
+ok 10 - locomotion RCS: lateral demand resolves a same-side translation pair
+  ---
+  duration_ms: 0.528544
+  ...
+# Subtest: locomotion RCS: reverse demand resolves the symmetric retro twin pair
+ok 11 - locomotion RCS: reverse demand resolves the symmetric retro twin pair
+  ---
+  duration_ms: 0.389218
+  ...
+# Subtest: locomotion RCS: observed-motion fallback justifies attitude without actuators
+ok 12 - locomotion RCS: observed-motion fallback justifies attitude without actuators
+  ---
+  duration_ms: 0.479437
+  ...
+# Subtest: locomotion RCS: maneuvering emits throttled cold-gas puffs; rest and cull stay silent
+ok 13 - locomotion RCS: maneuvering emits throttled cold-gas puffs; rest and cull stay silent
+  ---
+  duration_ms: 2.884627
+  ...
+# Subtest: locomotion gimbal: bells deflect toward thrust demand and recenter at rest
+ok 14 - locomotion gimbal: bells deflect toward thrust demand and recenter at rest
+  ---
+  duration_ms: 2.967261
+  ...
+# Subtest: locomotion gimbal: a rebuilt mesh rescans its bell pivots
+ok 15 - locomotion gimbal: a rebuilt mesh rescans its bell pivots
+  ---
+  duration_ms: 0.557716
+  ...
+# Subtest: locomotion boost: the rising edge punches the hull and flares the plume once
+ok 16 - locomotion boost: the rising edge punches the hull and flares the plume once
+  ---
+  duration_ms: 1.143981
+  ...
+# Subtest: locomotion death: fresh wreck spirals with runaway RCS, pops, and one core flash
+ok 17 - locomotion death: fresh wreck spirals with runaway RCS, pops, and one core flash
+  ---
+  duration_ms: 1.748698
+  ...
+# Subtest: locomotion death: cold, foreign, and non-ship wrecks never spiral
+ok 18 - locomotion death: cold, foreign, and non-ship wrecks never spiral
+  ---
+  duration_ms: 0.441554
+  ...
+# Subtest: locomotion death: the kill frame itself leaves one armor-seam breach pop
+ok 19 - locomotion death: the kill frame itself leaves one armor-seam breach pop
+  ---
+  duration_ms: 0.263792
+  ...
+# Subtest: locomotion contract: updates never mutate the entity (frozen sim state survives)
+ok 20 - locomotion contract: updates never mutate the entity (frozen sim state survives)
+  ---
+  duration_ms: 0.755367
+  ...
+# Subtest: ship micro-motion: weapon fire induces recoil kick and spring-damped recovery
+ok 21 - ship micro-motion: weapon fire induces recoil kick and spring-damped recovery
+  ---
+  duration_ms: 10.930009
+  ...
+# Subtest: ship micro-motion: combat damage induces impact flinch and shudder
+ok 22 - ship micro-motion: combat damage induces impact flinch and shudder
+  ---
+  duration_ms: 1.365241
+  ...
+# Subtest: ship micro-motion: boost throttle surge squats and idle breathing activates when stopped
+ok 23 - ship micro-motion: boost throttle surge squats and idle breathing activates when stopped
+  ---
+  duration_ms: 1.220071
+  ...
+# Subtest: ship micro-motion: mining drill bit rotates during active extraction
+ok 24 - ship micro-motion: mining drill bit rotates during active extraction
+  ---
+  duration_ms: 0.401334
+  ...
+# Subtest: contact yield: the same momentum crumples a light hull and leaves a hauler square
+ok 25 - contact yield: the same momentum crumples a light hull and leaves a hauler square
+  ---
+  duration_ms: 2.874592
+  ...
+# Subtest: contact yield: a hard hit compresses, then rebounds instead of staying dented
+ok 26 - contact yield: a hard hit compresses, then rebounds instead of staying dented
+  ---
+  duration_ms: 2.874936
+  ...
+# Subtest: contact yield: a weapon hit dents along the shot, a collision damage packet does not dent twice
+ok 27 - contact yield: a weapon hit dents along the shot, a collision damage packet does not dent twice
+  ---
+  duration_ms: 1.043443
+  ...
+# Subtest: line haul: a taut tether stretches both hulls toward the line, and letting go snaps them back
+ok 28 - line haul: a taut tether stretches both hulls toward the line, and letting go snaps them back
+  ---
+  duration_ms: 3.723662
+  ...
+# Subtest: contact yield: reduced motion keeps a smaller dent and drops the scrape
+ok 29 - contact yield: reduced motion keeps a smaller dent and drops the scrape
+  ---
+  duration_ms: 0.986697
+  ...
+# Subtest: ship micro-motion: reduced motion suppresses high-frequency shudder
+ok 30 - ship micro-motion: reduced motion suppresses high-frequency shudder
+  ---
+  duration_ms: 0.709581
+  ...
+# Subtest: ship pitch uses the maintained ship-like domain and preserves exact craft cues
+ok 31 - ship pitch uses the maintained ship-like domain and preserves exact craft cues
+  ---
+  duration_ms: 1.934025
+  ...
+# Subtest: ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+ok 32 - ship pitch keeps legacy fallback, lifecycle skips, and zero settling
+  ---
+  duration_ms: 0.228174
+  ...
+# Subtest: ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+ok 33 - ship pitch writes and clears a separate resident thrown-trail plan from live velocity
+  ---
+  duration_ms: 1.039913
+  ...
+# Subtest: settled idle craft skip the thrust-lean integrator
+ok 34 - settled idle craft skip the thrust-lean integrator
+  ---
+  duration_ms: 0.246707
+  ...
+# Subtest: middle-band thrust lean shares entity closure cadence when view is supplied
+ok 35 - middle-band thrust lean shares entity closure cadence when view is supplied
+  ---
+  duration_ms: 0.304404
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 242.394806

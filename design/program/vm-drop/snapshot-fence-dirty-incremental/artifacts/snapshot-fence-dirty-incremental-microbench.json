@@ -1,0 +1,70 @@
+{
+  "label": "snapshot-fence-dirty-incremental",
+  "oracle": {
+    "mismatches": 0,
+    "count": 80
+  },
+  "scenarios": [
+    {
+      "entities": 120,
+      "dirty": 1,
+      "frames": 12000,
+      "before_ms": 379.783,
+      "after_ms": 106.325,
+      "speedup": 3.572,
+      "sinkBefore": 1440000,
+      "sinkAfter": 1440000
+    },
+    {
+      "entities": 120,
+      "dirty": 3,
+      "frames": 12000,
+      "before_ms": 503.699,
+      "after_ms": 100.832,
+      "speedup": 4.995,
+      "sinkBefore": 1440000,
+      "sinkAfter": 1440000
+    },
+    {
+      "entities": 200,
+      "dirty": 2,
+      "frames": 10000,
+      "before_ms": 486.914,
+      "after_ms": 113.939,
+      "speedup": 4.273,
+      "sinkBefore": 2000000,
+      "sinkAfter": 2000000
+    },
+    {
+      "entities": 400,
+      "dirty": 4,
+      "frames": 8000,
+      "before_ms": 793.569,
+      "after_ms": 166.895,
+      "speedup": 4.755,
+      "sinkBefore": 3200000,
+      "sinkAfter": 3200000
+    },
+    {
+      "entities": 400,
+      "dirty": 40,
+      "frames": 8000,
+      "before_ms": 936.794,
+      "after_ms": 321.898,
+      "speedup": 2.91,
+      "sinkBefore": 3200000,
+      "sinkAfter": 3200000
+    }
+  ],
+  "primary": {
+    "entities": 400,
+    "dirty": 4,
+    "frames": 8000,
+    "before_ms": 793.569,
+    "after_ms": 166.895,
+    "speedup": 4.755,
+    "sinkBefore": 3200000,
+    "sinkAfter": 3200000
+  },
+  "note": "Portable pack. Soft-GPU fps not claimed. Before=forceFull dense rewrite; After=layout-stable dirty incremental. Both include applyTransform mark cost equally."
+}

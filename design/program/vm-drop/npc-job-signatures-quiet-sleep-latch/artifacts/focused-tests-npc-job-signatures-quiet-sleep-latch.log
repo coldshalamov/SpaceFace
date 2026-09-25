@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: every kind x every non-terminal phase resolves to a signal
+ok 1 - every kind x every non-terminal phase resolves to a signal
+  ---
+  duration_ms: 2.25064
+  ...
+# Subtest: a completed job and a nonsense phase show nothing
+ok 2 - a completed job and a nonsense phase show nothing
+  ---
+  duration_ms: 0.254532
+  ...
+# Subtest: loaded and empty transit are DIFFERENT signals — "amber heartbeat means mass"
+ok 3 - loaded and empty transit are DIFFERENT signals — "amber heartbeat means mass"
+  ---
+  duration_ms: 0.186198
+  ...
+# Subtest: a patrol keeps sweeping across every phase it can occupy
+ok 4 - a patrol keeps sweeping across every phase it can occupy
+  ---
+  duration_ms: 0.239433
+  ...
+# Subtest: only a miner works a rock face, and only a miner comes home under rock
+ok 5 - only a miner works a rock face, and only a miner comes home under rock
+  ---
+  duration_ms: 0.128357
+  ...
+# Subtest: distress overrides everything and is the loudest signal in the code
+ok 6 - distress overrides everything and is the loudest signal in the code
+  ---
+  duration_ms: 0.160944
+  ...
+# Subtest: signals are distinguishable WITHOUT colour — every profile has a unique rhythm
+ok 7 - signals are distinguishable WITHOUT colour — every profile has a unique rhythm
+  ---
+  duration_ms: 0.118601
+  ...
+# Subtest: every profile declares all four far-field channels
+ok 8 - every profile declares all four far-field channels
+  ---
+  duration_ms: 0.374937
+  ...
+# Subtest: a link implies a contact or an explicit absence, never an accident
+ok 9 - a link implies a contact or an explicit absence, never an accident
+  ---
+  duration_ms: 0.242678
+  ...
+# Subtest: the frame writer is deterministic: same inputs, same frame
+ok 10 - the frame writer is deterministic: same inputs, same frame
+  ---
+  duration_ms: 0.518067
+  ...
+# Subtest: the frame writer mutates only the scratch it is handed — no allocation per beat
+ok 11 - the frame writer mutates only the scratch it is handed — no allocation per beat
+  ---
+  duration_ms: 0.221586
+  ...
+# Subtest: emitStep advances exactly once per beat at the profile cadence
+ok 12 - emitStep advances exactly once per beat at the profile cadence
+  ---
+  duration_ms: 0.443625
+  ...
+# Subtest: beat cycles through exactly `beats` values and never leaves range
+ok 13 - beat cycles through exactly `beats` values and never leaves range
+  ---
+  duration_ms: 6.350445
+  ...
+# Subtest: seed de-phases hulls showing the same signal
+ok 14 - seed de-phases hulls showing the same signal
+  ---
+  duration_ms: 0.330591
+  ...
+# Subtest: D3: ceresCausalCue preferred over job phase; fallback works
+ok 15 - D3: ceresCausalCue preferred over job phase; fallback works
+  ---
+  duration_ms: 0.215112
+  ...
+# Subtest: facing falls back to hull heading when the ship is station-keeping
+ok 16 - facing falls back to hull heading when the ship is station-keeping
+  ---
+  duration_ms: 0.326778
+  ...
+# Subtest: direction is always a unit vector with a perpendicular normal
+ok 17 - direction is always a unit vector with a perpendicular normal
+  ---
+  duration_ms: 0.197337
+  ...
+# Subtest: reduced motion slows every code and stills the station-keeping chatter
+ok 18 - reduced motion slows every code and stills the station-keeping chatter
+  ---
+  duration_ms: 0.331025
+  ...
+# Subtest: only station-keeping and breaking hulls chatter; cruising hulls hold attitude
+ok 19 - only station-keeping and breaking hulls chatter; cruising hulls hold attitude
+  ---
+  duration_ms: 2.140353
+  ...
+# Subtest: corrupt inputs degrade quietly instead of throwing into the render loop
+ok 20 - corrupt inputs degrade quietly instead of throwing into the render loop
+  ---
+  duration_ms: 0.423636
+  ...
+# Subtest: pool capacity covers a saturated sector; draw range matches what the camera can show
+ok 21 - pool capacity covers a saturated sector; draw range matches what the camera can show
+  ---
+  duration_ms: 0.296321
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: npc-job signatures quiet-latch on empty bag with trustworthy revision
+ok 22 - npc-job signatures quiet-latch on empty bag with trustworthy revision
+  ---
+  duration_ms: 100.17555
+  ...
+# Subtest: npcJobs.revision dirty-wake resumes then re-latches when empty
+ok 23 - npcJobs.revision dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 20.082601
+  ...
+# Subtest: missing npcJobs.revision refuses latch (fallback stays live)
+ok 24 - missing npcJobs.revision refuses latch (fallback stays live)
+  ---
+  duration_ms: 16.418487
+  ...
+# Subtest: boundary resets clear npc-job quiet latch
+ok 25 - boundary resets clear npc-job quiet latch
+  ---
+  duration_ms: 18.471361
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 531.723602

@@ -1,0 +1,305 @@
+From 8ba219286b1cc3ec445813402e0d6fbc72059075 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:49:08 -0400
+Subject: [PATCH] =?UTF-8?q?perf(world):=20quiet-latch=20decode-runway=20pr?=
+ =?UTF-8?q?omote=20when=20far=20table=20empty=20(~9=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Empty farActors still paid authoredPrefetchRadius + wide queryFarActors grid
+walk every tick after #132 latched tickFarActors. Early-return empty rows in
+queryFarActors; quiet-latch requestDecodeRunwayPromote with version/move/rescan
+wake. Promote preserved when rows exist. Soft-GPU fps not claimed.
+---
+ src/world/farActorTable.js                    |  18 ++-
+ src/world/presentationSources.js              |  70 +++++++++-
+ ...code-runway-empty-far-quiet-latch.test.mjs | 131 ++++++++++++++++++
+ 3 files changed, 217 insertions(+), 2 deletions(-)
+ create mode 100644 test/decode-runway-empty-far-quiet-latch.test.mjs
+
+diff --git a/src/world/farActorTable.js b/src/world/farActorTable.js
+index 41135a005..d418872b2 100644
+--- a/src/world/farActorTable.js
++++ b/src/world/farActorTable.js
+@@ -23,6 +23,15 @@ export function getFarEmptyQuietLatchForBench() {
+   return FAR_EMPTY_QUIET_LATCH !== false;
+ }
+ 
++/** Bench A/B: production default ON. Empty far table skips wide-disc grid walk + decode promote latch. */
++let DECODE_RUNWAY_EMPTY_FAR_QUIET = true;
++export function setDecodeRunwayEmptyFarQuietForBench(enabled) {
++  DECODE_RUNWAY_EMPTY_FAR_QUIET = enabled !== false;
++}
++export function getDecodeRunwayEmptyFarQuietForBench() {
++  return DECODE_RUNWAY_EMPTY_FAR_QUIET !== false;
++}
++
+ /** Membership rescan while latched (0.5 s @ 60 Hz). */
+ const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
+ 
+@@ -443,6 +452,14 @@ export function queryFarActors(state, pos, radius, out = []) {
+   out.length = 0;
+   const table = state && state.world && state.world.farActors;
+   if (!table || !pos || !(radius > 0)) return out;
++  const rows = table.rows;
++  // Empty far table: wide decode/enter discs still walked every empty grid cell
++  // (far-query-row-scan only helped rows.length > 0). Early-out is correctness-equal.
++  // Bench flag OFF restores the empty grid walk for A/B against decode-runway latch.
++  if (DECODE_RUNWAY_EMPTY_FAR_QUIET !== false
++    && (!Array.isArray(rows) || rows.length === 0)) {
++    return out;
++  }
+   const x = finite(pos.x);
+   const z = finite(pos.z);
+   const r = radius;
+@@ -452,7 +469,6 @@ export function queryFarActors(state, pos, radius, out = []) {
+   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
+   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
+   const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+-  const rows = table.rows;
+   // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
+   // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
+   // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
+diff --git a/src/world/presentationSources.js b/src/world/presentationSources.js
+index 4922316e6..2a0387756 100644
+--- a/src/world/presentationSources.js
++++ b/src/world/presentationSources.js
+@@ -5,7 +5,12 @@
+ import { clearEntityRuntime } from '../core/entity.js';
+ import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
+ import { getDressingRow } from './dressingTable.js';
+-import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
++import {
++  getFarActor,
++  promoteFarActor,
++  queryFarActors,
++  getDecodeRunwayEmptyFarQuietForBench,
++} from './farActorTable.js';
+ import {
+   authoredPrefetchRadius,
+   glassCornerWu,
+@@ -260,6 +265,24 @@ function admitPromotedToRunwayFrame(state, id) {
+   if (Array.isArray(runway) && !runway.includes(id)) runway.push(id);
+ }
+ 
++/** Membership / far-version rescan while decode-runway empty-far latch holds (0.5 s @ 60 Hz). */
++const DECODE_RUNWAY_EMPTY_FAR_RESCAN_TICKS = 30;
++
++function publishDecodeRunwayQuiet(state, latched) {
++  const world = state && state.world;
++  if (!world) return;
++  const rt = world.decodeRunwayRuntime || (world.decodeRunwayRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
++/**
++ * Lane C: rematerialize far rows already inside the authored decode disc and stamp
++ * renderRunwayIds. Quiet idle flight with an empty far table still paid
++ * authoredPrefetchRadius + wide queryFarActors grid walk every tick after #132
++ * latched tickFarActors. Latch when far is empty; wake on farActors.version,
++ * player move beyond ~15% of decode enter, or a 0.5 s rescan. Promote still
++ * runs whenever far rows exist.
++ */
+ export function requestDecodeRunwayPromote(state, helpers) {
+   const result = {
+     farSeen: 0,
+@@ -274,6 +297,35 @@ export function requestDecodeRunwayPromote(state, helpers) {
+     : null;
+   const origin = player && player.pos;
+   if (!origin) return result;
++
++  const table = state.world && state.world.farActors;
++  const farVersion = table && Number.isFinite(table.version) ? table.version : null;
++  const farCount = table && Array.isArray(table.rows) ? table.rows.length : 0;
++  const px = Number.isFinite(origin.x) ? origin.x : 0;
++  const pz = Number.isFinite(origin.z) ? origin.z : 0;
++  const latchOn = getDecodeRunwayEmptyFarQuietForBench();
++
++  if (latchOn) {
++    const quiet = requestDecodeRunwayPromote._quiet;
++    const tick = state.tick | 0;
++    if (quiet
++      && quiet.farVersion === farVersion
++      && (quiet.farCount | 0) === 0
++      && farCount === 0
++      && ((tick - (quiet.armedTick | 0)) < DECODE_RUNWAY_EMPTY_FAR_RESCAN_TICKS)) {
++      const mdx = px - quiet.x;
++      const mdz = pz - quiet.z;
++      if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
++        const field = state.world && state.world.asteroidField;
++        result.rocksSeen = (field && Array.isArray(field.rocks) && field.rocks.length) ? field.rocks.length : 0;
++        publishDecodeRunwayQuiet(state, true);
++        return result;
++      }
++    }
++  } else if (requestDecodeRunwayPromote._quiet) {
++    requestDecodeRunwayPromote._quiet = null;
++  }
++
+   const decodeR = authoredPrefetchRadius(tableTravelSpeed(state));
+   const farHits = queryFarActors(state, origin, decodeR, _farPromoteScratch);
+   result.farSeen = farHits.length;
+@@ -298,6 +350,22 @@ export function requestDecodeRunwayPromote(state, helpers) {
+   // is always 0 by design. Drop the spatial scan; report presence without walking cells.
+   const field = state.world && state.world.asteroidField;
+   result.rocksSeen = (field && Array.isArray(field.rocks) && field.rocks.length) ? field.rocks.length : 0;
++
++  if (latchOn && farCount === 0 && result.farSeen === 0 && result.farPromoted === 0) {
++    const wakeR = Math.max(32, decodeR * 0.15);
++    requestDecodeRunwayPromote._quiet = {
++      farVersion,
++      farCount: 0,
++      armedTick: state.tick | 0,
++      x: px,
++      z: pz,
++      wakeMove2: wakeR * wakeR,
++    };
++    publishDecodeRunwayQuiet(state, true);
++  } else {
++    requestDecodeRunwayPromote._quiet = null;
++    publishDecodeRunwayQuiet(state, false);
++  }
+   return result;
+ }
+ 
+diff --git a/test/decode-runway-empty-far-quiet-latch.test.mjs b/test/decode-runway-empty-far-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..1f1780c4e
+--- /dev/null
++++ b/test/decode-runway-empty-far-quiet-latch.test.mjs
+@@ -0,0 +1,131 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  setDecodeRunwayEmptyFarQuietForBench,
++  getDecodeRunwayEmptyFarQuietForBench,
++  ensureFarActorTable,
++  insertFarActor,
++  queryFarActors,
++} from '../src/world/farActorTable.js';
++import { requestDecodeRunwayPromote } from '../src/world/presentationSources.js';
++import { authoredPrefetchRadius } from '../src/render/tabletopPolicy.js';
++
++function boot() {
++  const state = createGameState(21);
++  state.mode = 'flight';
++  state.meta.seed = 21;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  player.maxSpeed = 160;
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    if (!Number.isFinite(state.entityIndex.version)) state.entityIndex.version = 1;
++  }
++  ensureFarActorTable(state);
++  return { state, helpers, player };
++}
++
++function step(state, helpers) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  return requestDecodeRunwayPromote(state, helpers);
++}
++
++test('quiet latch engages when far table empty', () => {
++  setDecodeRunwayEmptyFarQuietForBench(true);
++  assert.equal(getDecodeRunwayEmptyFarQuietForBench(), true);
++  const { state, helpers } = boot();
++  const r1 = step(state, helpers);
++  assert.equal(r1.farSeen, 0);
++  assert.equal(r1.farPromoted, 0);
++  assert.equal(state.world.decodeRunwayRuntime.quietLatched, true);
++  assert.ok(requestDecodeRunwayPromote._quiet);
++  const armed = requestDecodeRunwayPromote._quiet.armedTick;
++  const r2 = step(state, helpers);
++  assert.equal(r2.farSeen, 0);
++  assert.equal(state.world.decodeRunwayRuntime.quietLatched, true);
++  assert.equal(requestDecodeRunwayPromote._quiet.armedTick, armed);
++});
++
++test('farActors.version bump wakes empty quiet latch', () => {
++  setDecodeRunwayEmptyFarQuietForBench(true);
++  const { state, helpers } = boot();
++  step(state, helpers);
++  assert.equal(state.world.decodeRunwayRuntime.quietLatched, true);
++  const armed = requestDecodeRunwayPromote._quiet.armedTick;
++  state.world.farActors.version++;
++  step(state, helpers);
++  assert.ok(requestDecodeRunwayPromote._quiet);
++  assert.notEqual(requestDecodeRunwayPromote._quiet.armedTick, armed);
++});
++
++test('player move beyond wake radius re-probes', () => {
++  setDecodeRunwayEmptyFarQuietForBench(true);
++  const { state, helpers, player } = boot();
++  step(state, helpers);
++  assert.equal(state.world.decodeRunwayRuntime.quietLatched, true);
++  const wake2 = requestDecodeRunwayPromote._quiet.wakeMove2;
++  player.pos.x += Math.sqrt(wake2) + 8;
++  const r = step(state, helpers);
++  assert.equal(r.farSeen, 0);
++  assert.ok(requestDecodeRunwayPromote._quiet);
++});
++
++test('far rows present refuse empty latch and still query', () => {
++  setDecodeRunwayEmptyFarQuietForBench(true);
++  const { state, helpers } = boot();
++  const ghost = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 80, z: 40 },
++    radius: 10,
++    mass: 20,
++    hull: 80,
++    hullMax: 80,
++    collides: true,
++    data: { trafficRole: 'hauler', homeSectorId: 'sector_ceres_belt' },
++  });
++  insertFarActor(state, ghost, 0);
++  helpers.removeEntity(ghost.id, { immediate: true, reason: 'virtualize' });
++  const r = step(state, helpers);
++  assert.ok(r.farSeen >= 1);
++  assert.equal(state.world.decodeRunwayRuntime.quietLatched, false);
++  assert.equal(requestDecodeRunwayPromote._quiet, null);
++});
++
++test('bench toggle off restores always-walk (no latch)', () => {
++  setDecodeRunwayEmptyFarQuietForBench(false);
++  assert.equal(getDecodeRunwayEmptyFarQuietForBench(), false);
++  const { state, helpers } = boot();
++  step(state, helpers);
++  assert.equal(requestDecodeRunwayPromote._quiet, null);
++  assert.equal(!!(state.world.decodeRunwayRuntime && state.world.decodeRunwayRuntime.quietLatched), false);
++  setDecodeRunwayEmptyFarQuietForBench(true);
++});
++
++test('queryFarActors empty early-return matches empty grid result', () => {
++  setDecodeRunwayEmptyFarQuietForBench(true);
++  const { state, player } = boot();
++  const decodeR = authoredPrefetchRadius(160);
++  const a = queryFarActors(state, player.pos, decodeR, []);
++  assert.equal(a.length, 0);
++  // With flag off, empty grid walk still returns [].
++  setDecodeRunwayEmptyFarQuietForBench(false);
++  const b = queryFarActors(state, player.pos, decodeR, []);
++  assert.equal(b.length, 0);
++  setDecodeRunwayEmptyFarQuietForBench(true);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,195 @@
+TAP version 13
+# Subtest: frames inside two vsyncs are not hitches
+ok 1 - frames inside two vsyncs are not hitches
+  ---
+  duration_ms: 1.483987
+  ...
+# Subtest: a named phase that owns the excess is the hitch owner
+ok 2 - a named phase that owns the excess is the hitch owner
+  ---
+  duration_ms: 0.543481
+  ...
+# Subtest: a nearly coextensive detailed phase outranks its broad container, but a sliver does not
+ok 3 - a nearly coextensive detailed phase outranks its broad container, but a sliver does not
+  ---
+  duration_ms: 0.212539
+  ...
+# Subtest: histogram coverage is the share of named hitch owners
+ok 4 - histogram coverage is the share of named hitch owners
+  ---
+  duration_ms: 1.829815
+  ...
+# Subtest: hitch run accounting separates first misses from echo misses
+ok 5 - hitch run accounting separates first misses from echo misses
+  ---
+  duration_ms: 0.359021
+  ...
+# Subtest: vfx-owned hitches are named vfx
+ok 6 - vfx-owned hitches are named vfx
+  ---
+  duration_ms: 0.169129
+  ...
+# Subtest: an external callback gap is named scheduling only when it owns the frame
+ok 7 - an external callback gap is named scheduling only when it owns the frame
+  ---
+  duration_ms: 0.150365
+  ...
+# Subtest: untracked callback and feel work remain distinct owners
+ok 8 - untracked callback and feel work remain distinct owners
+  ---
+  duration_ms: 0.2
+  ...
+# Subtest: a one-vsync hitch is unknown unless one phase owns the frame
+ok 9 - a one-vsync hitch is unknown unless one phase owns the frame
+  ---
+  duration_ms: 0.251727
+  ...
+# Subtest: an admission stall on the interval that just ended is named admission
+ok 10 - an admission stall on the interval that just ended is named admission
+  ---
+  duration_ms: 1.738391
+  ...
+# Subtest: live hitch attribution pairs the interval with the previous frame phases
+ok 11 - live hitch attribution pairs the interval with the previous frame phases
+  ---
+  duration_ms: 0.710944
+  ...
+# Subtest: live sim attribution uses total sim-frame work, not only the final fixed step
+ok 12 - live sim attribution uses total sim-frame work, not only the final fixed step
+  ---
+  duration_ms: 0.667686
+  ...
+# Subtest: live callback-untracked attribution uses the preceding callback remainder
+ok 13 - live callback-untracked attribution uses the preceding callback remainder
+  ---
+  duration_ms: 0.634159
+  ...
+# Subtest: live hitch attribution uses the callback gap for the interval that just ended
+ok 14 - live hitch attribution uses the callback gap for the interval that just ended
+  ---
+  duration_ms: 0.825151
+  ...
+# Subtest: live hitch attribution joins detailed render work to the exact frame
+ok 15 - live hitch attribution joins detailed render work to the exact frame
+  ---
+  duration_ms: 2.80902
+  ...
+# Subtest: completed autosave blocking work is available to the next hitch interval
+ok 16 - completed autosave blocking work is available to the next hitch interval
+  ---
+  duration_ms: 0.854727
+  ...
+# Subtest: live hitch attribution is off by default and reset clears the ring
+ok 17 - live hitch attribution is off by default and reset clears the ring
+  ---
+  duration_ms: 1.205386
+  ...
+# Subtest: the ship flies smooth at 60 fps: no frozen present, no snap, full game speed
+ok 18 - the ship flies smooth at 60 fps: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 20.610376
+  ...
+# Subtest: the ship flies smooth at 45 fps on a 60 Hz display: no frozen present, no snap, full game speed
+ok 19 - the ship flies smooth at 45 fps on a 60 Hz display: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 7.923186
+  ...
+# Subtest: the ship flies smooth at 40 fps on a 60 Hz display: no frozen present, no snap, full game speed
+ok 20 - the ship flies smooth at 40 fps on a 60 Hz display: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 7.006846
+  ...
+# Subtest: the ship flies smooth at 30 fps, every frame a hair either side of two ticks: no frozen present, no snap, full game speed
+ok 21 - the ship flies smooth at 30 fps, every frame a hair either side of two ticks: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 8.34105
+  ...
+# Subtest: the ship flies smooth at 25 fps: no frozen present, no snap, full game speed
+ok 22 - the ship flies smooth at 25 fps: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 9.197028
+  ...
+# Subtest: the ship flies smooth at 20 fps: no frozen present, no snap, full game speed
+ok 23 - the ship flies smooth at 20 fps: no frozen present, no snap, full game speed
+  ---
+  duration_ms: 7.574391
+  ...
+# Subtest: a slow GPU (every draw over 33 ms) still flies smooth at full game speed
+ok 24 - a slow GPU (every draw over 33 ms) still flies smooth at full game speed
+  ---
+  duration_ms: 13.441608
+  ...
+# Subtest: soft-GPU sustained ~12 fps is a slow frame rate, not a hitch cascade
+ok 25 - soft-GPU sustained ~12 fps is a slow frame rate, not a hitch cascade
+  ---
+  duration_ms: 7.39089
+  ...
+# Subtest: a real hitch pauses the world instead of teleporting the ship, and never freezes a present
+ok 26 - a real hitch pauses the world instead of teleporting the ship, and never freezes a present
+  ---
+  duration_ms: 5.427995
+  ...
+# Subtest: SimulationRunner preserves the fixed-step result for characterized callback inputs
+ok 27 - SimulationRunner preserves the fixed-step result for characterized callback inputs
+  ---
+  duration_ms: 5.254074
+  ...
+# Subtest: SimulationRunner publishes ordered completed ticks and presentation may consume only the latest
+ok 28 - SimulationRunner publishes ordered completed ticks and presentation may consume only the latest
+  ---
+  duration_ms: 2.230188
+  ...
+# Subtest: SimulationRunner carries between-tick journal writes and aggregates the earliest consumed range
+ok 29 - SimulationRunner carries between-tick journal writes and aggregates the earliest consumed range
+  ---
+  duration_ms: 1.955881
+  ...
+# Subtest: completed-tick queue exhaustion fails before advancing authoritative state
+ok 30 - completed-tick queue exhaustion fails before advancing authoritative state
+  ---
+  duration_ms: 0.822524
+  ...
+# Subtest: prepareWithoutAdvance and interpolationAlpha retain the existing accumulator phase
+ok 31 - prepareWithoutAdvance and interpolationAlpha retain the existing accumulator phase
+  ---
+  duration_ms: 0.348295
+  ...
+# Subtest: a slow frame rate keeps real time; only a hitch sheds catch-up
+ok 32 - a slow frame rate keeps real time; only a hitch sheds catch-up
+  ---
+  duration_ms: 1.372453
+  ...
+# Subtest: per-call recovery cap executes one step, sheds whole debt, and preserves phase
+ok 33 - per-call recovery cap executes one step, sheds whole debt, and preserves phase
+  ---
+  duration_ms: 0.445122
+  ...
+# Subtest: SimulationRunner terminal close drains bounded work and rejects every late operation
+ok 34 - SimulationRunner terminal close drains bounded work and rejects every late operation
+  ---
+  duration_ms: 1.742974
+  ...
+# Subtest: SimulationRunner reports residual input truth and retries close after cancellation becomes legal
+ok 35 - SimulationRunner reports residual input truth and retries close after cancellation becomes legal
+  ---
+  duration_ms: 0.464433
+  ...
+# Subtest: SimulationRunner fails the in-flight completion when registry work closes it reentrantly
+ok 36 - SimulationRunner fails the in-flight completion when registry work closes it reentrantly
+  ---
+  duration_ms: 0.467143
+  ...
+# Subtest: SimulationRunner rechecks terminal state after input observation
+ok 37 - SimulationRunner rechecks terminal state after input observation
+  ---
+  duration_ms: 0.363845
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 297.193174

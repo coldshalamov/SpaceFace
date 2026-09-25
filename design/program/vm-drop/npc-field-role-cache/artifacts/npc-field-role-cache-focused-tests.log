@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: materialized miner work depletes the shared field and delivers the mined ore once
+ok 1 - materialized miner work depletes the shared field and delivers the mined ore once
+  ---
+  duration_ms: 7.786004
+  ...
+# Subtest: fitting-screen sentences for the five powers stay authored data
+ok 2 - fitting-screen sentences for the five powers stay authored data
+  ---
+  duration_ms: 1.318894
+  ...
+# Subtest: ordinary-traffic sweeper and salvor plan a cone; anchors do not double-deploy
+ok 3 - ordinary-traffic sweeper and salvor plan a cone; anchors do not double-deploy
+  ---
+  duration_ms: 0.433891
+  ...
+# PQ-147.01 well seed 14701 / 40 ticks: bent 5/5 — cargo-a: 101.5 WU/s, 25.3 WU | cargo-b: 101.5 WU/s, 25.3 WU | debris: 79.7 WU/s, 20.0 WU | wreck: 78.7 WU/s, 19.8 WU | npc-hull: 27.2 WU/s, 8.0 WU
+# PQ-147.01 telemetry.affected=5
+# PQ-147.01 NPC deploy role=sweeper volume=cone tag=npc
+# Subtest: a well on seed 14701 bends ≥ 5 bodies without cutting hull
+ok 4 - a well on seed 14701 bends ≥ 5 bodies without cutting hull
+  ---
+  duration_ms: 215.88027
+  ...
+# Subtest: a scrap sweeper in ordinary traffic deploys a cone, not a sphere
+ok 5 - a scrap sweeper in ordinary traffic deploys a cone, not a sphere
+  ---
+  duration_ms: 5.806756
+  ...
+# Subtest: scavenger role plans a cone; anchor specialists do not double-deploy a well
+ok 6 - scavenger role plans a cone; anchor specialists do not double-deploy a well
+  ---
+  duration_ms: 1.527277
+  ...
+# Subtest: a well bends ≥ 5 bodies: cargo, debris, wrecks and an NPC hull
+ok 7 - a well bends ≥ 5 bodies: cargo, debris, wrecks and an NPC hull
+  ---
+  duration_ms: 191.05031
+  ...
+# Subtest: a scavenger in ordinary traffic deploys a cone, not a sphere
+ok 8 - a scavenger in ordinary traffic deploys a cone, not a sphere
+  ---
+  duration_ms: 3.722131
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 595.365605

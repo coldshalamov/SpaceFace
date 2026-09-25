@@ -1,0 +1,57 @@
+From 179307b60ba1cd020d8405a2fa0806e7f3b0d6a1 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:30:58 -0400
+Subject: [PATCH 3/4] feat(perf): close uncaptured-first-draw-resource
+ fail-open path
+
+Receipt.before now unions a live plan resource walk at capture time so
+loading-admission textures already resident are named before first submit.
+Pre-submit extras path recaptures once before extrasOnly fail-open, so the
+identity gate can pass cleanly (quiet-witness / boot-stage first-draw gap).
+---
+ src/render/openingSubmissionPlan.js | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/render/openingSubmissionPlan.js b/src/render/openingSubmissionPlan.js
+index 54a4abe11..d873fb2ef 100644
+--- a/src/render/openingSubmissionPlan.js
++++ b/src/render/openingSubmissionPlan.js
+@@ -1069,19 +1069,27 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
+     ? plan.firstPlayablePipelineSet.admittedProgramKeys.map((entry) => String(entry.key || '')).filter(Boolean)
+     : [];
+   const pooled = plan && plan.pooledResourceIdentitySets || {};
++  // Live walk at receipt time: loading admission can attach textures/geometries after the
++  // plan's frozen resourceIdentitySets were captured. Validation re-walks the live scene, so
++  // `before` must name those already-resident identities or the first-draw gate reports
++  // uncaptured-first-draw-resource and fail-opens. Required stays plan-bound (exact leaves).
++  const liveResources = currentPlanResourceIdentitySets(plan);
+   const before = {
+     programCacheKeys: rendererProgramKeys(renderer),
+     geometryBufferIds: [...unionSet(
+       resourceIdentitySets.geometryBufferIds,
+       pooled.geometryBufferIds,
++      liveResources.geometryBufferIds,
+     )].sort(),
+     blockingTextureIds: [...unionSet(
+       resourceIdentitySets.blockingTextureIds,
+       pooled.blockingTextureIds,
++      liveResources.blockingTextureIds,
+     )].sort(),
+     shadowResourceIds: [...unionSet(
+       resourceIdentitySets.shadowResourceIds,
+       pooled.shadowResourceIds,
++      liveResources.shadowResourceIds,
+     )].sort(),
+   };
+   const programBindings = requiredProgramBindings(renderer, plan, options);
+@@ -1159,6 +1167,7 @@ function currentPlanResourceIdentitySets(plan) {
+   const explicitTextures = [
+     plan && plan.scene && plan.scene.background,
+     plan && plan.scene && plan.scene.environment,
++    ...(Array.isArray(plan && plan.textureRefs) ? plan.textureRefs : []),
+   ].filter((texture) => texture && texture.isTexture === true);
+   return collectResourceIdentitySets([...leaves], plan && plan.route || {}, explicitTextures);
+ }
+-- 
+2.47.3
+

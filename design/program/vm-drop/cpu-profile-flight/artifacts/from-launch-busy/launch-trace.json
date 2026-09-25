@@ -1,0 +1,590 @@
+{
+ "timeline": {
+  "profileStartWallMs": 1790124760899,
+  "newGameWallMs": 1790124760899,
+  "launchWallMs": 1790124771955,
+  "flightWallMs": 1790124790724,
+  "endWallMs": 1790124811033
+ },
+ "stages": [
+  {
+   "id": "preparing-run",
+   "wallMs": 1790124771944
+  },
+  {
+   "id": "authored-library",
+   "wallMs": 1790124772283
+  },
+  {
+   "id": "authored-visuals",
+   "wallMs": 1790124772283
+  },
+  {
+   "id": "render-pipelines",
+   "wallMs": 1790124782964
+  },
+  {
+   "id": "gpu-resources",
+   "wallMs": 1790124782964
+  },
+  {
+   "id": "entering-flight",
+   "wallMs": 1790124782965
+  }
+ ],
+ "longTasks": [
+  {
+   "startTime": 81,
+   "duration": 147,
+   "wallMs": 1790124730598.4
+  },
+  {
+   "startTime": 1329.7999999821186,
+   "duration": 380,
+   "wallMs": 1790124731847.2
+  },
+  {
+   "startTime": 1723.2999999821186,
+   "duration": 9622,
+   "wallMs": 1790124732240.7
+  },
+  {
+   "startTime": 11454.699999988079,
+   "duration": 942,
+   "wallMs": 1790124741972.0999
+  },
+  {
+   "startTime": 12407.09999999404,
+   "duration": 343,
+   "wallMs": 1790124742924.5
+  },
+  {
+   "startTime": 12774.09999999404,
+   "duration": 119,
+   "wallMs": 1790124743291.5
+  },
+  {
+   "startTime": 12980.59999999404,
+   "duration": 662,
+   "wallMs": 1790124743498
+  },
+  {
+   "startTime": 13941.90000000596,
+   "duration": 95,
+   "wallMs": 1790124744459.2998
+  },
+  {
+   "startTime": 14444.5,
+   "duration": 72,
+   "wallMs": 1790124744961.9
+  },
+  {
+   "startTime": 29438.19999998808,
+   "duration": 53,
+   "wallMs": 1790124759955.5999
+  },
+  {
+   "startTime": 30412.29999998212,
+   "duration": 375,
+   "wallMs": 1790124760929.7
+  },
+  {
+   "startTime": 38333.40000000596,
+   "duration": 1989,
+   "wallMs": 1790124768850.7998
+  },
+  {
+   "startTime": 40339.90000000596,
+   "duration": 414,
+   "wallMs": 1790124770857.2998
+  },
+  {
+   "startTime": 41028.69999998808,
+   "duration": 80,
+   "wallMs": 1790124771546.0999
+  },
+  {
+   "startTime": 41706,
+   "duration": 63,
+   "wallMs": 1790124772223.4
+  },
+  {
+   "startTime": 41809.69999998808,
+   "duration": 132,
+   "wallMs": 1790124772327.0999
+  },
+  {
+   "startTime": 41985.29999998212,
+   "duration": 340,
+   "wallMs": 1790124772502.7
+  },
+  {
+   "startTime": 42373.79999998212,
+   "duration": 1745,
+   "wallMs": 1790124772891.2
+  },
+  {
+   "startTime": 44119.5,
+   "duration": 7526,
+   "wallMs": 1790124774636.9
+  },
+  {
+   "startTime": 51876.09999999404,
+   "duration": 58,
+   "wallMs": 1790124782393.5
+  },
+  {
+   "startTime": 51934.59999999404,
+   "duration": 2135,
+   "wallMs": 1790124782452
+  },
+  {
+   "startTime": 54580.69999998808,
+   "duration": 256,
+   "wallMs": 1790124785098.0999
+  },
+  {
+   "startTime": 60290.5,
+   "duration": 191,
+   "wallMs": 1790124790807.9
+  },
+  {
+   "startTime": 60493.09999999404,
+   "duration": 64,
+   "wallMs": 1790124791010.5
+  },
+  {
+   "startTime": 60623,
+   "duration": 201,
+   "wallMs": 1790124791140.4
+  },
+  {
+   "startTime": 60940.59999999404,
+   "duration": 78,
+   "wallMs": 1790124791458
+  },
+  {
+   "startTime": 61199.59999999404,
+   "duration": 215,
+   "wallMs": 1790124791717
+  },
+  {
+   "startTime": 61454.29999998212,
+   "duration": 70,
+   "wallMs": 1790124791971.7
+  },
+  {
+   "startTime": 61709.19999998808,
+   "duration": 119,
+   "wallMs": 1790124792226.5999
+  },
+  {
+   "startTime": 61962.09999999404,
+   "duration": 129,
+   "wallMs": 1790124792479.5
+  },
+  {
+   "startTime": 62220.19999998808,
+   "duration": 152,
+   "wallMs": 1790124792737.5999
+  },
+  {
+   "startTime": 62471.90000000596,
+   "duration": 180,
+   "wallMs": 1790124792989.2998
+  },
+  {
+   "startTime": 62722.79999998212,
+   "duration": 68,
+   "wallMs": 1790124793240.2
+  },
+  {
+   "startTime": 62994.69999998808,
+   "duration": 208,
+   "wallMs": 1790124793512.0999
+  },
+  {
+   "startTime": 63203,
+   "duration": 70,
+   "wallMs": 1790124793720.4
+  },
+  {
+   "startTime": 63274.5,
+   "duration": 125,
+   "wallMs": 1790124793791.9
+  },
+  {
+   "startTime": 63434,
+   "duration": 144,
+   "wallMs": 1790124793951.4
+  },
+  {
+   "startTime": 63601,
+   "duration": 98,
+   "wallMs": 1790124794118.4
+  },
+  {
+   "startTime": 63718,
+   "duration": 125,
+   "wallMs": 1790124794235.4
+  },
+  {
+   "startTime": 63871.09999999404,
+   "duration": 704,
+   "wallMs": 1790124794388.5
+  },
+  {
+   "startTime": 64589.40000000596,
+   "duration": 549,
+   "wallMs": 1790124795106.7998
+  },
+  {
+   "startTime": 65166.5,
+   "duration": 74,
+   "wallMs": 1790124795683.9
+  },
+  {
+   "startTime": 65361.19999998808,
+   "duration": 69,
+   "wallMs": 1790124795878.5999
+  },
+  {
+   "startTime": 65432.79999998212,
+   "duration": 164,
+   "wallMs": 1790124795950.2
+  },
+  {
+   "startTime": 65623.40000000596,
+   "duration": 134,
+   "wallMs": 1790124796140.7998
+  },
+  {
+   "startTime": 65783.90000000596,
+   "duration": 107,
+   "wallMs": 1790124796301.2998
+  },
+  {
+   "startTime": 66051.59999999404,
+   "duration": 165,
+   "wallMs": 1790124796569
+  },
+  {
+   "startTime": 66320,
+   "duration": 150,
+   "wallMs": 1790124796837.4
+  },
+  {
+   "startTime": 66570.79999998212,
+   "duration": 169,
+   "wallMs": 1790124797088.2
+  },
+  {
+   "startTime": 66766,
+   "duration": 82,
+   "wallMs": 1790124797283.4
+  },
+  {
+   "startTime": 66848.29999998212,
+   "duration": 101,
+   "wallMs": 1790124797365.7
+  },
+  {
+   "startTime": 67050.79999998212,
+   "duration": 189,
+   "wallMs": 1790124797568.2
+  },
+  {
+   "startTime": 67240.90000000596,
+   "duration": 476,
+   "wallMs": 1790124797758.2998
+  },
+  {
+   "startTime": 67743.19999998808,
+   "duration": 94,
+   "wallMs": 1790124798260.5999
+  },
+  {
+   "startTime": 67993.09999999404,
+   "duration": 238,
+   "wallMs": 1790124798510.5
+  },
+  {
+   "startTime": 68255.40000000596,
+   "duration": 108,
+   "wallMs": 1790124798772.7998
+  },
+  {
+   "startTime": 68515.69999998808,
+   "duration": 248,
+   "wallMs": 1790124799033.0999
+  },
+  {
+   "startTime": 68785.69999998808,
+   "duration": 101,
+   "wallMs": 1790124799303.0999
+  },
+  {
+   "startTime": 69037.5,
+   "duration": 121,
+   "wallMs": 1790124799554.9
+  },
+  {
+   "startTime": 69296.69999998808,
+   "duration": 228,
+   "wallMs": 1790124799814.0999
+  },
+  {
+   "startTime": 69544.69999998808,
+   "duration": 105,
+   "wallMs": 1790124800062.0999
+  },
+  {
+   "startTime": 69798.90000000596,
+   "duration": 217,
+   "wallMs": 1790124800316.2998
+  },
+  {
+   "startTime": 70091.19999998808,
+   "duration": 67,
+   "wallMs": 1790124800608.5999
+  },
+  {
+   "startTime": 70349.5,
+   "duration": 110,
+   "wallMs": 1790124800866.9
+  },
+  {
+   "startTime": 70460.09999999404,
+   "duration": 102,
+   "wallMs": 1790124800977.5
+  },
+  {
+   "startTime": 70644.29999998212,
+   "duration": 514,
+   "wallMs": 1790124801161.7
+  },
+  {
+   "startTime": 71188.09999999404,
+   "duration": 90,
+   "wallMs": 1790124801705.5
+  },
+  {
+   "startTime": 71441.09999999404,
+   "duration": 173,
+   "wallMs": 1790124801958.5
+  },
+  {
+   "startTime": 72577.29999998212,
+   "duration": 180,
+   "wallMs": 1790124803094.7
+  },
+  {
+   "startTime": 72850.29999998212,
+   "duration": 159,
+   "wallMs": 1790124803367.7
+  },
+  {
+   "startTime": 76577.29999998212,
+   "duration": 113,
+   "wallMs": 1790124807094.7
+  },
+  {
+   "startTime": 78502.40000000596,
+   "duration": 137,
+   "wallMs": 1790124809019.7998
+  },
+  {
+   "startTime": 80389.79999998212,
+   "duration": 195,
+   "wallMs": 1790124810907.2
+  }
+ ],
+ "atFlight": {
+  "programs": 101,
+  "geometries": 200,
+  "textures": 185,
+  "heapMb": 279,
+  "openingPending": [
+   "306:loading:ship:ship_mule",
+   "307:loading:ship:ship_atlas"
+  ],
+  "openingCookLedger": [
+   {
+    "step": "begin",
+    "ms": 0,
+    "outcome": "resolved",
+    "t": 0,
+    "kind": "opening",
+    "wallMs": 1790124782964,
+    "startedAt": 52447.40000000596
+   },
+   {
+    "step": "opening.rockSurfaceLibrary",
+    "ms": 31,
+    "outcome": "resolved",
+    "t": 31
+   },
+   {
+    "step": "opening.firstPresentAdmission",
+    "ms": 1543,
+    "outcome": "resolved",
+    "t": 1575
+   },
+   {
+    "step": "lane",
+    "ms": 0,
+    "outcome": "sample",
+    "t": 7778,
+    "queued": 0,
+    "flushed": 0,
+    "settled": 17,
+    "upgradeJobs": 7,
+    "upgradeInFlight": 1,
+    "upgradeCompiling": 1,
+    "meshBuilds": 0
+   },
+   {
+    "step": "opening.planWait",
+    "ms": 6203,
+    "outcome": "resolved",
+    "t": 7778
+   },
+   {
+    "step": "opening.residency",
+    "ms": 3,
+    "outcome": "resolved",
+    "t": 7781,
+    "subjects": 67,
+    "textureRefs": 79,
+    "textures": 80
+   },
+   {
+    "step": "opening.postResources",
+    "ms": 1,
+    "outcome": "resolved",
+    "t": 7781,
+    "route": "bloom"
+   },
+   {
+    "step": "opening.capturedPipelineDrain",
+    "ms": 0,
+    "outcome": "skipped",
+    "t": 7781,
+    "captured": 0,
+    "stillPending": 0
+   },
+   {
+    "step": "opening.drainWait",
+    "ms": 0,
+    "outcome": "resolved",
+    "t": 7782
+   },
+   {
+    "step": "opening.receipt",
+    "ms": 1,
+    "outcome": "resolved",
+    "t": 7782
+   },
+   {
+    "step": "wait.prepareOpeningGpuResources",
+    "ms": 7783,
+    "outcome": "resolved",
+    "t": 7783
+   }
+  ]
+ },
+ "atEnd": {
+  "programs": 130,
+  "geometries": 403,
+  "textures": 418,
+  "heapMb": 345,
+  "openingPending": [
+   "83:missing:fx",
+   "316:missing:ship:ship_wasp"
+  ],
+  "openingCookLedger": [
+   {
+    "step": "begin",
+    "ms": 0,
+    "outcome": "resolved",
+    "t": 0,
+    "kind": "opening",
+    "wallMs": 1790124782964,
+    "startedAt": 52447.40000000596
+   },
+   {
+    "step": "opening.rockSurfaceLibrary",
+    "ms": 31,
+    "outcome": "resolved",
+    "t": 31
+   },
+   {
+    "step": "opening.firstPresentAdmission",
+    "ms": 1543,
+    "outcome": "resolved",
+    "t": 1575
+   },
+   {
+    "step": "lane",
+    "ms": 0,
+    "outcome": "sample",
+    "t": 7778,
+    "queued": 0,
+    "flushed": 0,
+    "settled": 17,
+    "upgradeJobs": 7,
+    "upgradeInFlight": 1,
+    "upgradeCompiling": 1,
+    "meshBuilds": 0
+   },
+   {
+    "step": "opening.planWait",
+    "ms": 6203,
+    "outcome": "resolved",
+    "t": 7778
+   },
+   {
+    "step": "opening.residency",
+    "ms": 3,
+    "outcome": "resolved",
+    "t": 7781,
+    "subjects": 67,
+    "textureRefs": 79,
+    "textures": 80
+   },
+   {
+    "step": "opening.postResources",
+    "ms": 1,
+    "outcome": "resolved",
+    "t": 7781,
+    "route": "bloom"
+   },
+   {
+    "step": "opening.capturedPipelineDrain",
+    "ms": 0,
+    "outcome": "skipped",
+    "t": 7781,
+    "captured": 0,
+    "stillPending": 0
+   },
+   {
+    "step": "opening.drainWait",
+    "ms": 0,
+    "outcome": "resolved",
+    "t": 7782
+   },
+   {
+    "step": "opening.receipt",
+    "ms": 1,
+    "outcome": "resolved",
+    "t": 7782
+   },
+   {
+    "step": "wait.prepareOpeningGpuResources",
+    "ms": 7783,
+    "outcome": "resolved",
+    "t": 7783
+   }
+  ]
+ }
+}

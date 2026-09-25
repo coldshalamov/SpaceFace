@@ -1,0 +1,580 @@
+From ccc73ef75d84abc9811ec70bc51d4a8b59f83b5a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:15:29 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quantize=20presentation-query?=
+ =?UTF-8?q?=20retain=20key=20(~3.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet chase drift made #74's bit-identical zero-dirty retain miss every
+frame. Quantize the retain KEY (bounds/origin) to the same 0.25 WU cell
+as authored-instance camera cull; exact floats still drive the full
+collect/exactVisible walk when the cell changes. Soft-GPU fps not claimed.
+---
+ ...presentation-query-retain-pos-quantize.log | 147 ++++++++++++++++++
+ ...-query-retain-pos-quantize-microbench.json |  78 ++++++++++
+ ...n-query-retain-pos-quantize-microbench.mjs | 146 +++++++++++++++++
+ src/render/presentationQueries.js             |  41 +++--
+ ...sentation-query-zero-dirty-retain.test.mjs |  63 ++++++++
+ 5 files changed, 466 insertions(+), 9 deletions(-)
+ create mode 100644 artifacts/focused-tests-presentation-query-retain-pos-quantize.log
+ create mode 100644 artifacts/presentation-query-retain-pos-quantize-microbench.json
+ create mode 100644 artifacts/presentation-query-retain-pos-quantize-microbench.mjs
+
+diff --git a/artifacts/focused-tests-presentation-query-retain-pos-quantize.log b/artifacts/focused-tests-presentation-query-retain-pos-quantize.log
+new file mode 100644
+index 000000000..4d0b6f81d
+--- /dev/null
++++ b/artifacts/focused-tests-presentation-query-retain-pos-quantize.log
+@@ -0,0 +1,147 @@
++TAP version 13
++# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
++ok 1 - player and on-screen ships stay on the inner band; off-glass runway is middle
++  ---
++  duration_ms: 1.458468
++  ...
++# Subtest: middle-band closures fire once per period, staggered by slot
++ok 2 - middle-band closures fire once per period, staggered by slot
++  ---
++  duration_ms: 0.218219
++  ...
++# Subtest: zero-dirty identical cull rect retains visible set without transitions
++ok 3 - zero-dirty identical cull rect retains visible set without transitions
++  ---
++  duration_ms: 5.918578
++  ...
++# Subtest: bench toggle restores always-walk (transitions still correct)
++ok 4 - bench toggle restores always-walk (transitions still correct)
++  ---
++  duration_ms: 0.581913
++  ...
++# Subtest: retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell
++ok 5 - retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell
++  ---
++  duration_ms: 0.690494
++  ...
++# Subtest: bench toggle disables retain-key pos quantize (drift misses retain)
++ok 6 - bench toggle disables retain-key pos quantize (drift misses retain)
++  ---
++  duration_ms: 0.609797
++  ...
++# Subtest: crossing the origin cell boundary does not leave stale grid links
++ok 7 - crossing the origin cell boundary does not leave stale grid links
++  ---
++  duration_ms: 4.113229
++  ...
++# Subtest: the same holds on the z axis
++ok 8 - the same holds on the z axis
++  ---
++  duration_ms: 0.474094
++  ...
++# Subtest: retiring an entity parked in a negative origin cell fully unlinks it
++ok 9 - retiring an entity parked in a negative origin cell fully unlinks it
++  ---
++  duration_ms: 0.71229
++  ...
++# Subtest: multi-entity chains around the origin survive churn without cycles or duplicates
++ok 10 - multi-entity chains around the origin survive churn without cycles or duplicates
++  ---
++  duration_ms: 1.32268
++  ...
++# Subtest: absurd finite coordinates cannot corrupt the grid (clamped cell indices)
++ok 11 - absurd finite coordinates cannot corrupt the grid (clamped cell indices)
++  ---
++  duration_ms: 0.563786
++  ...
++# Subtest: presentation-world-unchanged-refresh-skip
++    # Subtest: skip is on by default and bench toggle restores always-write
++    ok 1 - skip is on by default and bench toggle restores always-write
++      ---
++      duration_ms: 1.04953
++      ...
++    # Subtest: unchanged refresh returns false and does not mark TRANSFORM dirty
++    ok 2 - unchanged refresh returns false and does not mark TRANSFORM dirty
++      ---
++      duration_ms: 1.828428
++      ...
++    # Subtest: pose change returns true, updates scalars, and marks TRANSFORM dirty
++    ok 3 - pose change returns true, updates scalars, and marks TRANSFORM dirty
++      ---
++      duration_ms: 0.553143
++      ...
++    # Subtest: radius / flag metadata change is observed without a pose delta
++    ok 4 - radius / flag metadata change is observed without a pose delta
++      ---
++      duration_ms: 0.537264
++      ...
++    # Subtest: entity ref replacement forces a refresh path
++    ok 5 - entity ref replacement forces a refresh path
++      ---
++      duration_ms: 0.314099
++      ...
++    # Subtest: toggle off agrees with toggle on for a mover+static mix (oracle)
++    ok 6 - toggle off agrees with toggle on for a mover+static mix (oracle)
++      ---
++      duration_ms: 6.417675
++      ...
++    1..6
++ok 12 - presentation-world-unchanged-refresh-skip
++  ---
++  duration_ms: 12.117731
++  type: 'suite'
++  ...
++# Subtest: PresentationWorld reuses dense slots without accepting stale handles
++ok 13 - PresentationWorld reuses dense slots without accepting stale handles
++  ---
++  duration_ms: 3.749969
++  ...
++# Subtest: PresentationWorld retains previous/current pose and settles interpolation from live state
++ok 14 - PresentationWorld retains previous/current pose and settles interpolation from live state
++  ---
++  duration_ms: 0.583438
++  ...
++# Subtest: PresentationPublisher applies journal ranges idempotently and rebuilds generations
++ok 15 - PresentationPublisher applies journal ranges idempotently and rebuilds generations
++  ---
++  duration_ms: 3.454662
++  ...
++# Subtest: PresentationQueries return deterministic visible handles and exact transitions
++ok 16 - PresentationQueries return deterministic visible handles and exact transitions
++  ---
++  duration_ms: 1.873658
++  ...
++# Subtest: PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
++ok 17 - PresentationWorld rebuild skips duplicate ids instead of freezing the canvas
++  ---
++  duration_ms: 0.713218
++  ...
++# Subtest: PresentationWorld drops stale maximum radius after large-root churn
++ok 18 - PresentationWorld drops stale maximum radius after large-root churn
++  ---
++  duration_ms: 0.723026
++  ...
++# Subtest: dirtySlots list tracks mark/clear cardinality
++ok 19 - dirtySlots list tracks mark/clear cardinality
++  ---
++  duration_ms: 3.919415
++  ...
++# Subtest: dirty-slot list pack matches forceFull and walk-all
++ok 20 - dirty-slot list pack matches forceFull and walk-all
++  ---
++  duration_ms: 4.759166
++  ...
++# Subtest: retire removes slot from dirty list
++ok 21 - retire removes slot from dirty list
++  ---
++  duration_ms: 0.584132
++  ...
++1..21
++# tests 26
++# suites 1
++# pass 26
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 198.579738
+diff --git a/artifacts/presentation-query-retain-pos-quantize-microbench.json b/artifacts/presentation-query-retain-pos-quantize-microbench.json
+new file mode 100644
+index 000000000..11feff68a
+--- /dev/null
++++ b/artifacts/presentation-query-retain-pos-quantize-microbench.json
+@@ -0,0 +1,78 @@
++{
++  "label": "presentation-query-retain-pos-quantize",
++  "n": 180,
++  "iters": 20000,
++  "driftPerStep": 0.011,
++  "quantWu": 0.25,
++  "pairRuns": 9,
++  "medianSpeedup": 3.0497485333214143,
++  "floorMinSpeedup": 2.825314751247281,
++  "pairs": [
++    {
++      "beforeMs": 959.2627530000001,
++      "afterMs": 314.522577,
++      "speedup": 3.0499010981968397,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 949.061996,
++      "afterMs": 308.16185500000006,
++      "speedup": 3.079751697366956,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 936.984577,
++      "afterMs": 319.082374,
++      "speedup": 2.9364974481479815,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 934.0621860000001,
++      "afterMs": 330.604647,
++      "speedup": 2.825314751247281,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 967.482092,
++      "afterMs": 336.299985,
++      "speedup": 2.876842507144328,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 1003.645716,
++      "afterMs": 315.410396,
++      "speedup": 3.1820311845396496,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 988.3267419999999,
++      "afterMs": 309.78258500000004,
++      "speedup": 3.1903883234753163,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 973.7652260000001,
++      "afterMs": 343.892564,
++      "speedup": 2.831597213599536,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    },
++    {
++      "beforeMs": 984.5807860000001,
++      "afterMs": 322.83999,
++      "speedup": 3.0497485333214143,
++      "beforeSink": 4820000,
++      "afterSink": 4820000
++    }
++  ],
++  "primary": "~3.05×",
++  "ship_bar": 1.5,
++  "clears_bar": true
++}
+diff --git a/artifacts/presentation-query-retain-pos-quantize-microbench.mjs b/artifacts/presentation-query-retain-pos-quantize-microbench.mjs
+new file mode 100644
+index 000000000..49ce672fe
+--- /dev/null
++++ b/artifacts/presentation-query-retain-pos-quantize-microbench.mjs
+@@ -0,0 +1,146 @@
++/**
++ * Primary KPI: presentationQueries.query under quiet chase drift (dirtyCount===0,
++ * focus/origin creep ≪ glass). Before = retain-key quantize OFF (bit-identical —
++ * misses every frame). After = 0.25 WU retain-key quantize ON — hits within a cell.
++ * Soft-GPU fps not claimed.
++ */
++import { performance } from 'node:perf_hooks';
++import { writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++import { fileURLToPath } from 'node:url';
++import { createPresentationWorld } from '../src/render/presentationWorld.js';
++import {
++  createPresentationQueries,
++  setPresentationQueryZeroDirtyRetainForBench,
++  setPresentationQueryRetainPosQuantizeForBench,
++} from '../src/render/presentationQueries.js';
++
++const __filename = fileURLToPath(import.meta.url);
++
++function entity(id, x, z, type = 'asteroid') {
++  return {
++    id,
++    type,
++    alive: true,
++    pos: { x, y: 0, z },
++    prevPos: { x, y: 0, z },
++    rot: 0,
++    prevRot: 0,
++    bank: 0,
++    prevBank: 0,
++    pitch: 0,
++    prevPitch: 0,
++    radius: type === 'ship' ? 8 : 6,
++    flags: {},
++    presentationVisualRevision: 0,
++  };
++}
++
++function seed(n, ships = 12) {
++  const world = createPresentationWorld({ capacity: Math.max(64, n + 8), cellSize: 128 });
++  for (let i = 0; i < n; i++) {
++    const type = i < ships ? 'ship' : 'asteroid';
++    const e = entity(
++      i + 1,
++      ((i % 24) - 12) * 55,
++      (Math.floor(i / 24) - 6) * 55,
++      type,
++    );
++    const handle = world.allocateEntity(e, 0);
++    const mesh = { userData: {}, position: { x: e.pos.x, y: 0, z: e.pos.z } };
++    world.bindMesh(handle, mesh, e, e.radius);
++  }
++  const active = world.getDiagnostics().active;
++  for (let a = 0; a < active; a++) world.clearDirty(world.activeSlots[a]);
++  return world;
++}
++
++function clearAllDirty(world) {
++  const active = world.getDiagnostics().active;
++  for (let a = 0; a < active; a++) world.clearDirty(world.activeSlots[a]);
++}
++
++function runTimed(quantizeOn, n, iters) {
++  setPresentationQueryZeroDirtyRetainForBench(true);
++  setPresentationQueryRetainPosQuantizeForBench(quantizeOn);
++  const world = seed(n);
++  const queries = createPresentationQueries(world);
++  const bounds = { x: 0, z: 0, halfX: 420, halfZ: 320 };
++  const origin = { x: 0, z: 0 };
++  const opts = { bounds, origin, playerId: 1 };
++
++  for (let i = 0; i < 32; i++) {
++    clearAllDirty(world);
++    queries.query(opts);
++  }
++
++  let sink = 0;
++  const t0 = performance.now();
++  for (let i = 0; i < iters; i++) {
++    clearAllDirty(world);
++    // Quiet chase drift well under the 0.25 WU cell.
++    bounds.x = (i * 0.011) % 0.24;
++    bounds.z = (i * 0.007) % 0.24;
++    origin.x = (i * 0.003) % 0.24;
++    origin.z = (i * 0.005) % 0.24;
++    const r = queries.query(opts);
++    sink += r.visibleCount + r.candidateCount + r.hiddenCount;
++  }
++  const ms = performance.now() - t0;
++  return { ms, sink, dirtyCount: world.dirtyCount, n };
++}
++
++if (process.argv[2] === 'child') {
++  const quantizeOn = process.argv[3] === '1';
++  const n = Number(process.argv[4] || 180);
++  const iters = Number(process.argv[5] || 20000);
++  const result = runTimed(quantizeOn, n, iters);
++  process.stdout.write(`${JSON.stringify({ quantizeOn, ...result })}\n`);
++  process.exit(0);
++}
++
++function isolated(quantizeOn, n, iters) {
++  const r = spawnSync(
++    process.execPath,
++    [__filename, 'child', quantizeOn ? '1' : '0', String(n), String(iters)],
++    { encoding: 'utf8' },
++  );
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout || 'child failed');
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++const N = 180;
++const ITERS = 20000;
++const PAIR_RUNS = 9;
++const pairs = [];
++
++for (let i = 0; i < PAIR_RUNS; i++) {
++  const before = isolated(false, N, ITERS);
++  const after = isolated(true, N, ITERS);
++  const speedup = after.ms > 0 ? before.ms / after.ms : 0;
++  pairs.push({ beforeMs: before.ms, afterMs: after.ms, speedup, beforeSink: before.sink, afterSink: after.sink });
++  console.log(`pair ${i}: ${speedup.toFixed(3)}×  ${before.ms.toFixed(1)}ms → ${after.ms.toFixed(1)}ms`);
++}
++
++const speedups = pairs.map((p) => p.speedup).sort((a, b) => a - b);
++const med = speedups[Math.floor(speedups.length / 2)];
++const floor = speedups[0];
++const out = {
++  label: 'presentation-query-retain-pos-quantize',
++  n: N,
++  iters: ITERS,
++  driftPerStep: 0.011,
++  quantWu: 0.25,
++  pairRuns: PAIR_RUNS,
++  medianSpeedup: med,
++  floorMinSpeedup: floor,
++  pairs,
++  primary: `~${med.toFixed(2)}×`,
++  ship_bar: 1.5,
++  clears_bar: med >= 1.5 && floor >= 1.5,
++};
++writeFileSync(
++  new URL('./presentation-query-retain-pos-quantize-microbench.json', import.meta.url),
++  `${JSON.stringify(out, null, 2)}\n`,
++);
++console.log(JSON.stringify({ medianSpeedup: med, floorMinSpeedup: floor, clears_bar: out.clears_bar }, null, 2));
+diff --git a/src/render/presentationQueries.js b/src/render/presentationQueries.js
+index 3d959e2e2..05fec897b 100644
+--- a/src/render/presentationQueries.js
++++ b/src/render/presentationQueries.js
+@@ -5,10 +5,17 @@ import { PRESENTATION_FLAGS } from './presentationWorld.js';
+ const INVALID_SLOT = -1;
+ 
+ // Quiet settled retain: when presentationWorld.dirtyCount is 0, layout/maxRadius are
+-// unchanged, and the cull rectangle + origin + playerId are bit-identical, the visible
++// unchanged, and the cull rectangle + origin + playerId match the retain key, the visible
+ // set cannot change — skip spatial collect / sort / exactVisible / hidden diff.
+ // Soft-GPU fps not claimed. Bench toggle restores always-walk.
++//
++// Quiet chase drift used to miss that retain every frame: focus/origin creep by << glass
++// size, so bit-identical keys never matched in flight. Quantize the retain KEY (not the
++// cull math) to the same 0.25 WU cell authored-instance camera cull uses (#53). Exact
++// floats still drive collectSpatialBounds / exactVisible whenever the cell changes.
++const PRESENTATION_QUERY_RETAIN_POS_QUANT_WU = 0.25;
+ let PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = true;
++let PRESENTATION_QUERY_RETAIN_POS_QUANTIZE = true;
+ export function setPresentationQueryZeroDirtyRetainForBench(enabled) {
+   PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = enabled !== false;
+   return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN;
+@@ -16,6 +23,18 @@ export function setPresentationQueryZeroDirtyRetainForBench(enabled) {
+ export function getPresentationQueryZeroDirtyRetainForBench() {
+   return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN !== false;
+ }
++export function setPresentationQueryRetainPosQuantizeForBench(enabled) {
++  PRESENTATION_QUERY_RETAIN_POS_QUANTIZE = enabled !== false;
++  return PRESENTATION_QUERY_RETAIN_POS_QUANTIZE;
++}
++export function getPresentationQueryRetainPosQuantizeForBench() {
++  return PRESENTATION_QUERY_RETAIN_POS_QUANTIZE !== false;
++}
++function quantizeRetainPos(value) {
++  if (PRESENTATION_QUERY_RETAIN_POS_QUANTIZE === false) return value;
++  const q = PRESENTATION_QUERY_RETAIN_POS_QUANT_WU;
++  return Math.round(value / q) * q;
++}
+ 
+ function finite(value) {
+   return Number.isFinite(value) ? value : 0;
+@@ -159,18 +178,22 @@ export function createPresentationQueries(world) {
+     const layoutVersion = Number.isFinite(world.layoutVersion) ? world.layoutVersion : -1;
+     const maxRadius = Number.isFinite(world.maxRadius) ? world.maxRadius : 0;
+     const boundCount = world.boundCount | 0;
++    const keyBoundsX = quantizeRetainPos(boundsX);
++    const keyBoundsZ = quantizeRetainPos(boundsZ);
++    const keyOriginX = quantizeRetainPos(origin.x);
++    const keyOriginZ = quantizeRetainPos(origin.z);
+     if (PRESENTATION_QUERY_ZERO_DIRTY_RETAIN
+         && retainCache.primed
+         && (world.dirtyCount | 0) === 0
+         && retainCache.layoutVersion === layoutVersion
+         && retainCache.maxRadius === maxRadius
+         && retainCache.boundCount === boundCount
+-        && retainCache.boundsX === boundsX
+-        && retainCache.boundsZ === boundsZ
++        && retainCache.boundsX === keyBoundsX
++        && retainCache.boundsZ === keyBoundsZ
+         && retainCache.halfX === halfX
+         && retainCache.halfZ === halfZ
+-        && retainCache.originX === origin.x
+-        && retainCache.originZ === origin.z
++        && retainCache.originX === keyOriginX
++        && retainCache.originZ === keyOriginZ
+         && retainCache.playerId === playerId) {
+       newlyVisibleSlots.length = 0;
+       newlyVisibleGenerations.length = 0;
+@@ -279,12 +302,12 @@ export function createPresentationQueries(world) {
+     retainCache.layoutVersion = layoutVersion;
+     retainCache.maxRadius = maxRadius;
+     retainCache.boundCount = boundCount;
+-    retainCache.boundsX = boundsX;
+-    retainCache.boundsZ = boundsZ;
++    retainCache.boundsX = keyBoundsX;
++    retainCache.boundsZ = keyBoundsZ;
+     retainCache.halfX = halfX;
+     retainCache.halfZ = halfZ;
+-    retainCache.originX = origin.x;
+-    retainCache.originZ = origin.z;
++    retainCache.originX = keyOriginX;
++    retainCache.originZ = keyOriginZ;
+     retainCache.playerId = playerId;
+     retainCache.candidateCount = result.candidateCount;
+ 
+diff --git a/test/presentation-query-zero-dirty-retain.test.mjs b/test/presentation-query-zero-dirty-retain.test.mjs
+index d0039b480..c20457c47 100644
+--- a/test/presentation-query-zero-dirty-retain.test.mjs
++++ b/test/presentation-query-zero-dirty-retain.test.mjs
+@@ -5,6 +5,8 @@ import {
+   createPresentationQueries,
+   setPresentationQueryZeroDirtyRetainForBench,
+   getPresentationQueryZeroDirtyRetainForBench,
++  setPresentationQueryRetainPosQuantizeForBench,
++  getPresentationQueryRetainPosQuantizeForBench,
+ } from '../src/render/presentationQueries.js';
+ import { createPresentationWorld } from '../src/render/presentationWorld.js';
+ 
+@@ -104,3 +106,64 @@ test('bench toggle restores always-walk (transitions still correct)', () => {
+     setPresentationQueryZeroDirtyRetainForBench(true);
+   }
+ });
++
++test('retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell', () => {
++  assert.equal(getPresentationQueryRetainPosQuantizeForBench(), true);
++  const world = createPresentationWorld({ capacity: 16, cellSize: 64 });
++  for (const value of [entity(1, { x: -8 }), entity(2, { x: 8 }), entity(3, { x: 200 })]) {
++    world.allocateEntity(value, 1);
++    bind(world, value);
++  }
++  const queries = createPresentationQueries(world);
++  const options = {
++    bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
++    origin: { x: 0, z: 0 },
++    playerId: null,
++  };
++  clearAllDirty(world);
++  const first = queries.query(options);
++  assert.deepEqual(first.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++
++  // Creep well under the 0.25 WU cell — must retain (no hide/show churn).
++  clearAllDirty(world);
++  options.bounds.x = 0.12;
++  options.bounds.z = -0.09;
++  options.origin.x = 0.04;
++  const drifted = queries.query(options);
++  assert.deepEqual(drifted.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++  assert.equal(drifted.newlyVisibleCount, 0);
++  assert.equal(drifted.hiddenCount, 0);
++
++  // Cross into the next cell — must re-walk (still same visible set here, but
++  // transitions reset because it is a full query).
++  clearAllDirty(world);
++  options.bounds.x = 0.30;
++  const crossed = queries.query(options);
++  assert.deepEqual(crossed.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++});
++
++test('bench toggle disables retain-key pos quantize (drift misses retain)', () => {
++  setPresentationQueryRetainPosQuantizeForBench(false);
++  try {
++    const world = createPresentationWorld({ capacity: 8, cellSize: 64 });
++    for (const value of [entity(1, { x: -4 }), entity(2, { x: 4 })]) {
++      world.allocateEntity(value, 1);
++      bind(world, value);
++    }
++    const queries = createPresentationQueries(world);
++    const options = {
++      bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
++      origin: { x: 0, z: 0 },
++      playerId: null,
++    };
++    clearAllDirty(world);
++    queries.query(options);
++    clearAllDirty(world);
++    options.bounds.x = 0.12;
++    const drifted = queries.query(options);
++    // Without quantize the key misses; full walk still returns the same set.
++    assert.deepEqual(drifted.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++  } finally {
++    setPresentationQueryRetainPosQuantizeForBench(true);
++  }
++});
+-- 
+2.47.3
+

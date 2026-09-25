@@ -1,0 +1,25 @@
+{
+  "N": 40,
+  "ITERS": 40000,
+  "abs": {
+    "production": {
+      "label": "production",
+      "us": 0.5123
+    },
+    "forcedScan": {
+      "label": "forcedScan",
+      "us": 1.2398
+    },
+    "earlyPred": {
+      "label": "earlyPred",
+      "us": 0.0511
+    },
+    "shouldRunOnly": {
+      "label": "shouldRunOnly",
+      "us": 0.0962
+    }
+  },
+  "headroomVsPred": 10.025,
+  "headroomVsShouldRun": 5.325,
+  "scanVsPred": 24.262
+}

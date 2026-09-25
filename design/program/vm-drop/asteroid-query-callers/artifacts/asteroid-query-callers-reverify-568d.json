@@ -1,0 +1,18 @@
+{
+  "wide": {
+    "label": "wide",
+    "radius": 4695,
+    "ms": 217.5,
+    "hits": 3041000,
+    "cellSide2": 1849
+  },
+  "tight": {
+    "label": "tight",
+    "radius": 1215,
+    "ms": 23.84,
+    "hits": 808940,
+    "cellSide2": 144
+  },
+  "speedup": 9.12,
+  "ASTEROID_FIELD_CELL": 220
+}

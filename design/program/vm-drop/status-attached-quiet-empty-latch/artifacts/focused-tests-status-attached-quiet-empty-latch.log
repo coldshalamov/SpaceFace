@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: attached victims come from the live status bag and die with expiresTick
+ok 1 - attached victims come from the live status bag and die with expiresTick
+  ---
+  duration_ms: 9.439204
+  ...
+# Subtest: sprite life never outruns the remaining status duration
+ok 2 - sprite life never outruns the remaining status duration
+  ---
+  duration_ms: 0.848575
+  ...
+# Subtest: goo residue scales with actual stacks
+ok 3 - goo residue scales with actual stacks
+  ---
+  duration_ms: 0.255069
+  ...
+# Subtest: reduced motion drops travelling accents; reduced flash keeps a dimmer hull mark
+ok 4 - reduced motion drops travelling accents; reduced flash keeps a dimmer hull mark
+  ---
+  duration_ms: 0.279471
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 157.649531
+TAP version 13
+# Subtest: INF-045: the live selection subjects the contour with its hull read
+ok 1 - INF-045: the live selection subjects the contour with its hull read
+  ---
+  duration_ms: 3.688087
+  ...
+# Subtest: INF-045: the engaged contact subjects only with no live selection
+ok 2 - INF-045: the engaged contact subjects only with no live selection
+  ---
+  duration_ms: 0.420074
+  ...
+# Subtest: INF-045: friendlies contour cyan, hostiles red — same shape either way
+ok 3 - INF-045: friendlies contour cyan, hostiles red — same shape either way
+  ---
+  duration_ms: 3.638979
+  ...
+# Subtest: INF-045: the contour draws after field surfaces yet loses to real occluders
+ok 4 - INF-045: the contour draws after field surfaces yet loses to real occluders
+  ---
+  duration_ms: 1.228694
+  ...
+# Subtest: INF-045: the contour follows, sizes, hides, and survives a rebase
+ok 5 - INF-045: the contour follows, sizes, hides, and survives a rebase
+  ---
+  duration_ms: 3.1061
+  ...
+# Subtest: INF-045: identity ignores the flash budget entirely
+ok 6 - INF-045: identity ignores the flash budget entirely
+  ---
+  duration_ms: 1.029286
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 319.945466

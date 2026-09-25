@@ -1,0 +1,308 @@
+From 03c406090835b9647d6537771c3504075fed6943 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 18:43:27 -0400
+Subject: [PATCH] perf(render): GLB body read in place, never copied out of the
+ fetched buffer (#168)
+
+The vendored GLTFLoader copied the whole BIN chunk out of every GLB inside the
+synchronous parse() call (data.slice in GLTFBinaryExtension): a full-body memcpy on
+the main thread for every streamed render package. The body is now kept as a range
+on the caller's buffer. EXT_meshopt_compression sources are viewed in place and plain
+bufferViews are sliced straight off the range (same bytes, same single copy, still
+standalone ArrayBuffers for caches, Blobs and transferring decoders). `body` stays
+available and is materialized, byte-identical to the old slice, on first access;
+out-of-range requests keep the stock path so they fail exactly as before.
+---
+ test/gltf-glb-body-range.test.mjs   | 114 ++++++++++++++++++++++++++++
+ vendor/addons/loaders/GLTFLoader.js | 112 ++++++++++++++++++++++++++-
+ 2 files changed, 222 insertions(+), 4 deletions(-)
+ create mode 100644 test/gltf-glb-body-range.test.mjs
+
+diff --git a/test/gltf-glb-body-range.test.mjs b/test/gltf-glb-body-range.test.mjs
+new file mode 100644
+index 000000000..e28c5a5d6
+--- /dev/null
++++ b/test/gltf-glb-body-range.test.mjs
+@@ -0,0 +1,114 @@
++// #168: the vendored GLTFLoader keeps the GLB BIN chunk as a range on the caller's buffer instead of
++// copying it out up front. Everything handed downstream must be byte-identical to stock three r184.
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { readFileSync } from 'node:fs';
++import { createHash } from 'node:crypto';
++import * as THREE from 'three';
++import { GLTFLoader as StockGLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
++import { GLTFLoader as VendoredGLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
++import { MeshoptDecoder } from '../vendor/addons/libs/meshopt_decoder.module.js';
++import { registerEmbeddedKtx2Textures } from '../src/render/embeddedKtx2Textures.js';
++
++const sha = (u8) => createHash('sha256').update(u8).digest('hex');
++const bytesOf = (a) => new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
++const readAb = (rel) => {
++  const b = readFileSync(new URL(rel, import.meta.url));
++  return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
++};
++
++async function parseCollect(Loader, ab) {
++  await MeshoptDecoder.ready;
++  const ktx = [];
++  let binary = null;
++  const loader = new Loader();
++  loader.setMeshoptDecoder(MeshoptDecoder);
++  loader.register(registerEmbeddedKtx2Textures);
++  loader.register((parser) => { binary = () => parser.extensions.KHR_binary_glTF; return { name: 'test-168-probe' }; });
++  loader.setKTX2Loader({
++    parse(buffer, onLoad) {
++      ktx.push(`${sha(new Uint8Array(buffer))}:${buffer.byteLength}`);
++      structuredClone(buffer, { transfer: [buffer] });
++      onLoad(new THREE.CompressedTexture([], 4, 4));
++    },
++  });
++  const gltf = await loader.parseAsync(ab, '');
++  const geometry = [];
++  gltf.scene.traverse((o) => {
++    if (!o.geometry) return;
++    for (const [name, a] of Object.entries(o.geometry.attributes).sort()) {
++      const arr = a.isInterleavedBufferAttribute ? a.data.array : a.array;
++      geometry.push(`${o.name}:${name}:${a.itemSize}:${a.offset ?? ''}:${a.normalized}:${arr.constructor.name}:${sha(bytesOf(arr))}`);
++    }
++    if (o.geometry.index) geometry.push(`${o.name}:index:${sha(bytesOf(o.geometry.index.array))}`);
++  });
++  return { ktx: ktx.sort(), geometry, binary: binary() };
++}
++
++test('meshopt + KTX2 render package: identical downstream bytes and the GLB body is never copied', async () => {
++  const rel = '../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb';
++  const stock = await parseCollect(StockGLTFLoader, readAb(rel));
++  const input = readAb(rel);
++  const patched = await parseCollect(VendoredGLTFLoader, input);
++  assert.ok(stock.ktx.length > 0 && stock.geometry.length > 0);
++  assert.deepEqual(patched.ktx, stock.ktx);
++  assert.deepEqual(patched.geometry, stock.geometry);
++  assert.equal(patched.binary._body, null, 'body never materialized');
++  assert.equal(patched.binary.bodySource, input, 'the body is a range on the caller\'s GLB');
++  assert.equal(input.byteLength, readAb(rel).byteLength, 'the caller\'s GLB is not detached');
++});
++
++test('uncompressed GLB (plain accessor bufferViews): identical geometry, bufferViews still standalone copies', async () => {
++  const rel = '../assets/ships/parts/wholeships/apron_shuttle.glb';
++  globalThis.self ??= globalThis; // image path in node; the image decode itself fails the same way on both
++  const stock = await parseCollect(StockGLTFLoader, readAb(rel));
++  const input = readAb(rel);
++  const patched = await parseCollect(VendoredGLTFLoader, input);
++  assert.ok(stock.geometry.length > 0);
++  assert.deepEqual(patched.geometry, stock.geometry);
++  assert.equal(patched.binary._body, null);
++});
++
++test('body getter materializes exactly data.slice(chunk) lazily, and the parser then falls back to it', async () => {
++  const ab = readAb('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb');
++  const dv = new DataView(ab);
++  const jsonLength = dv.getUint32(12, true);
++  const binOffset = 20 + jsonLength + 8;
++  const binLength = dv.getUint32(20 + jsonLength, true);
++  const expected = sha(new Uint8Array(ab.slice(binOffset, binOffset + binLength)));
++
++  let parser = null;
++  const loader = new VendoredGLTFLoader().setMeshoptDecoder(MeshoptDecoder);
++  loader.register((p) => { parser = p; return { name: 'test-168-early-body' }; });
++  loader.register(registerEmbeddedKtx2Textures);
++  loader.setKTX2Loader({ parse(buffer, onLoad) { onLoad(new THREE.CompressedTexture([], 4, 4)); } });
++  await MeshoptDecoder.ready;
++  const pending = loader.parseAsync(ab, '');
++  const binary = parser.extensions.KHR_binary_glTF;
++  assert.equal(binary._body, null);
++  assert.ok(parser.glbBodyRange(0, 0, 16));
++  const body = await parser.getDependency('buffer', 0); // a consumer that wants the ArrayBuffer itself
++  assert.ok(body instanceof ArrayBuffer);
++  assert.equal(body.byteLength, binLength);
++  assert.equal(sha(new Uint8Array(body)), expected);
++  assert.equal(binary.body, body, 'materialized once');
++  assert.equal(parser.glbBodyRange(0, 0, 16), null, 'ranges retire once the body exists');
++  await pending;
++});
++
++test('range helpers refuse anything the stock path would treat differently', async () => {
++  const ab = readAb('../assets/ships/release/render-packages/aftermath-aft-weapon-spar/render.glb');
++  let parser = null;
++  const loader = new VendoredGLTFLoader().setMeshoptDecoder(MeshoptDecoder);
++  loader.register((p) => { parser = p; return { name: 'test-168-ranges' }; });
++  loader.parse(ab, '', () => {}, () => {});
++  const len = parser.extensions.KHR_binary_glTF.bodyByteLength;
++  assert.equal(parser.glbBodyRange(1, 0, 4), null, 'only buffer 0 (the GLB body)');
++  assert.equal(parser.glbBodyRange(0, len - 3, 4), null, 'views past the body keep the stock (throwing) path');
++  assert.equal(parser.glbBodyRange(0, 1.5, 4), null);
++  assert.equal(parser.glbBodyRange(0, -1, 4), null);
++  const clamped = parser.glbBodySliceRange(0, len - 3, 10);
++  assert.equal(clamped.byteLength, 3, 'slice ranges clamp at the body end like ArrayBuffer.prototype.slice');
++  const past = parser.glbBodySliceRange(0, len + 5, 10);
++  assert.equal(past.byteLength, 0);
++});
+diff --git a/vendor/addons/loaders/GLTFLoader.js b/vendor/addons/loaders/GLTFLoader.js
+index 91629ef9f..a29787818 100644
+--- a/vendor/addons/loaders/GLTFLoader.js
++++ b/vendor/addons/loaders/GLTFLoader.js
+@@ -1611,7 +1611,9 @@ class GLTFMeshoptCompression {
+ 
+ 			const extensionDef = bufferView.extensions[ this.name ];
+ 
+-			const buffer = this.parser.getDependency( 'buffer', extensionDef.buffer );
++			// SpaceFace: a compressed stream inside the GLB body is viewed in place; no body copy.
++			const range = this.parser.glbBodyRange( extensionDef.buffer, extensionDef.byteOffset || 0, extensionDef.byteLength || 0 );
++			const buffer = range ? Promise.resolve( range ) : this.parser.getDependency( 'buffer', extensionDef.buffer );
+ 			const decoder = this.parser.options.meshoptDecoder;
+ 
+ 			if ( ! decoder || ! decoder.supported ) {
+@@ -1637,7 +1639,7 @@ class GLTFMeshoptCompression {
+ 				const count = extensionDef.count;
+ 				const stride = extensionDef.byteStride;
+ 
+-				const source = new Uint8Array( res, byteOffset, byteLength );
++				const source = range ? new Uint8Array( range.source, range.byteOffset, range.byteLength ) : new Uint8Array( res, byteOffset, byteLength );
+ 
+ 				if ( decoder.decodeGltfBufferAsync ) {
+ 
+@@ -1841,7 +1843,17 @@ class GLTFBinaryExtension {
+ 
+ 		this.name = EXTENSIONS.KHR_BINARY_GLTF;
+ 		this.content = null;
+-		this.body = null;
++
++		// SpaceFace: the BIN chunk is kept as a range on the caller's GLB instead of being copied out
++		// up front (a full-body memcpy on the main thread for every streamed package). `body` is still
++		// available: it is materialized, byte-identical to the old eager slice, on first access. The
++		// parser reads plain bufferView / meshopt source ranges straight off the range (bodyRange()),
++		// so the render packages never materialize it. Callers must not mutate or transfer the GLB
++		// they pass to parse() until parsing has settled (no in-repo caller does).
++		this._body = null;
++		this.bodySource = null;
++		this.bodyByteOffset = 0;
++		this.bodyByteLength = 0;
+ 
+ 		const headerView = new DataView( data, 0, BINARY_EXTENSION_HEADER_LENGTH );
+ 		const textDecoder = new TextDecoder();
+@@ -1882,7 +1894,12 @@ class GLTFBinaryExtension {
+ 			} else if ( chunkType === BINARY_EXTENSION_CHUNK_TYPES.BIN ) {
+ 
+ 				const byteOffset = BINARY_EXTENSION_HEADER_LENGTH + chunkIndex;
+-				this.body = data.slice( byteOffset, byteOffset + chunkLength );
++				// Same clamping as data.slice( byteOffset, byteOffset + chunkLength ).
++				const start = Math.min( byteOffset, data.byteLength );
++				this._body = null;
++				this.bodySource = data;
++				this.bodyByteOffset = start;
++				this.bodyByteLength = Math.max( 0, Math.min( byteOffset + chunkLength, data.byteLength ) - start );
+ 
+ 			}
+ 
+@@ -1900,6 +1917,38 @@ class GLTFBinaryExtension {
+ 
+ 	}
+ 
++	get body() {
++
++		if ( this._body === null && this.bodySource !== null ) {
++
++			this._body = this.bodySource.slice( this.bodyByteOffset, this.bodyByteOffset + this.bodyByteLength );
++
++		}
++
++		return this._body;
++
++	}
++
++	set body( value ) {
++
++		this._body = value;
++		this.bodySource = null;
++
++	}
++
++	/**
++	 * The GLB body as { source, byteOffset, byteLength } on the caller's ArrayBuffer, or null once
++	 * the body has been materialized or replaced (then `body` is the source of truth).
++	 *
++	 * @private
++	 */
++	bodyRange() {
++
++		if ( this._body !== null || this.bodySource === null ) return null;
++		return { source: this.bodySource, byteOffset: this.bodyByteOffset, byteLength: this.bodyByteLength };
++
++	}
++
+ }
+ 
+ /**
+@@ -3040,6 +3089,46 @@ class GLTFParser {
+ 
+ 	}
+ 
++	/**
++	 * SpaceFace: when `bufferIndex` is the GLB body and it has not been materialized, returns the
++	 * absolute range of body[byteOffset, byteOffset + byteLength) on the caller's GLB, or null when the
++	 * body is not a live range or the request is not fully inside it (callers then take the old path,
++	 * so out-of-range requests fail exactly as before).
++	 *
++	 * @private
++	 */
++	glbBodyRange( bufferIndex, byteOffset, byteLength ) {
++
++		if ( bufferIndex !== 0 ) return null;
++		const bufferDef = this.json.buffers && this.json.buffers[ 0 ];
++		if ( ! bufferDef || bufferDef.uri !== undefined || ( bufferDef.type && bufferDef.type !== 'arraybuffer' ) ) return null;
++		const binary = this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ];
++		const body = binary && typeof binary.bodyRange === 'function' ? binary.bodyRange() : null;
++		if ( ! body ) return null;
++		if ( ! Number.isInteger( byteOffset ) || ! Number.isInteger( byteLength ) || byteOffset < 0 || byteLength < 0 ) return null;
++		if ( byteOffset + byteLength > body.byteLength ) return null;
++		return { source: body.source, byteOffset: body.byteOffset + byteOffset, byteLength: byteLength };
++
++	}
++
++	/**
++	 * Like glbBodyRange(), but with ArrayBuffer.prototype.slice clamping at the end of the body, so
++	 * slicing the returned range equals body.slice( byteOffset, byteOffset + byteLength ).
++	 *
++	 * @private
++	 */
++	glbBodySliceRange( bufferIndex, byteOffset, byteLength ) {
++
++		if ( bufferIndex !== 0 || ! Number.isInteger( byteOffset ) || ! Number.isInteger( byteLength ) || byteOffset < 0 || byteLength < 0 ) return null;
++		const whole = this.glbBodyRange( 0, 0, 0 );
++		if ( ! whole ) return null;
++		const bodyLength = this.extensions[ EXTENSIONS.KHR_BINARY_GLTF ].bodyByteLength;
++		const start = Math.min( byteOffset, bodyLength );
++		const end = Math.min( byteOffset + byteLength, bodyLength );
++		return { source: whole.source, byteOffset: whole.byteOffset + start, byteLength: Math.max( 0, end - start ) };
++
++	}
++
+ 	/**
+ 	 * Specification: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#buffers-and-buffer-views
+ 	 *
+@@ -3051,6 +3140,21 @@ class GLTFParser {
+ 
+ 		const bufferViewDef = this.json.bufferViews[ bufferViewIndex ];
+ 
++		// SpaceFace: slice a GLB-body view straight off the caller's GLB (same bytes, one copy, and the
++		// whole-body copy is never made). The copy itself is kept: bufferViews are cached, handed to
++		// accessors, Blobs and transferring decoders, and a view would pin the whole GLB.
++		const range = this.glbBodySliceRange( bufferViewDef.buffer, bufferViewDef.byteOffset || 0, bufferViewDef.byteLength || 0 );
++
++		if ( range ) {
++
++			return Promise.resolve( range ).then( function ( r ) {
++
++				return r.source.slice( r.byteOffset, r.byteOffset + r.byteLength );
++
++			} );
++
++		}
++
+ 		return this.getDependency( 'buffer', bufferViewDef.buffer ).then( function ( buffer ) {
+ 
+ 			const byteLength = bufferViewDef.byteLength || 0;
+-- 
+2.47.3
+

@@ -1,0 +1,65 @@
+TAP version 13
+# Subtest: HUD and voice skip only on extra catch-up steps
+ok 1 - HUD and voice skip only on extra catch-up steps
+  ---
+  duration_ms: 1.351376
+  ...
+# Subtest: SimulationRunner numbers extra catch-up steps and still advances exact ticks
+ok 2 - SimulationRunner numbers extra catch-up steps and still advances exact ticks
+  ---
+  duration_ms: 2.030631
+  ...
+# Subtest: clock membership: table / near / calendar / glass
+ok 3 - clock membership: table / near / calendar / glass
+  ---
+  duration_ms: 1.260162
+  ...
+# Subtest: selected AI backends retain their slot clock on catch-up steps
+ok 4 - selected AI backends retain their slot clock on catch-up steps
+  ---
+  duration_ms: 4.242803
+  ...
+# Subtest: createSimulation extra catch-up steps invoke table only
+ok 5 - createSimulation extra catch-up steps invoke table only
+  ---
+  duration_ms: 0.759252
+  ...
+# Subtest: createSimulation calendar owners run at 2 Hz, not every tick
+ok 6 - createSimulation calendar owners run at 2 Hz, not every tick
+  ---
+  duration_ms: 1.546278
+  ...
+# Subtest: production combat order excludes calendar owners
+ok 7 - production combat order excludes calendar owners
+  ---
+  duration_ms: 0.245538
+  ...
+# Subtest: production primary ticks iterate the combat queue, not calendar names
+ok 8 - production primary ticks iterate the combat queue, not calendar names
+  ---
+  duration_ms: 0.215609
+  ...
+# Subtest: legacy47a and unprofiled hosts still walk calendar every tick
+ok 9 - legacy47a and unprofiled hosts still walk calendar every tick
+  ---
+  duration_ms: 0.651418
+  ...
+# Subtest: content gates: quiet open flight omits idle owners; wake restores them
+ok 10 - content gates: quiet open flight omits idle owners; wake restores them
+  ---
+  duration_ms: 1.301268
+  ...
+# Subtest: content gate sticky massline settles then drops
+ok 11 - content gate sticky massline settles then drops
+  ---
+  duration_ms: 0.346023
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 164.83463

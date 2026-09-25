@@ -1,0 +1,86 @@
+TAP version 13
+# Subtest: Fulfillment planner produces a deterministic three-ship fixed-route formation
+ok 1 - Fulfillment planner produces a deterministic three-ship fixed-route formation
+  ---
+  duration_ms: 3.470382
+  ...
+# Subtest: real subsystem damage drives Fulfillment blackout, routing, cargo-owner removal, and holding waypoint
+ok 2 - real subsystem damage drives Fulfillment blackout, routing, cargo-owner removal, and holding waypoint
+  ---
+  duration_ms: 23.812406
+  ...
+# Subtest: Fulfillment incident semantics survive the real save envelope without transient entity ids
+ok 3 - Fulfillment incident semantics survive the real save envelope without transient entity ids
+  ---
+  duration_ms: 22.205621
+  ...
+# Subtest: fresh-run reset invokes K1 state owners exactly once through the real reset list
+ok 4 - fresh-run reset invokes K1 state owners exactly once through the real reset list
+  ---
+  duration_ms: 1.516755
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: loss-ledger reads are non-mutating when the canonical owner has no state yet
+ok 5 - loss-ledger reads are non-mutating when the canonical owner has no state yet
+  ---
+  duration_ms: 1.976966
+  ...
+# Subtest: a real automation combat loss records its authored hull and wakes Understory in-sector
+ok 6 - a real automation combat loss records its authored hull and wakes Understory in-sector
+  ---
+  duration_ms: 7.147762
+  ...
+# Subtest: a real live-combat ship death records the lost hull and wakes Understory after the battle
+ok 7 - a real live-combat ship death records the lost hull and wakes Understory after the battle
+  ---
+  duration_ms: 7.539144
+  ...
+# Subtest: Understory never fires first but a real player hit activates its sampled defensive doctrine
+ok 8 - Understory never fires first but a real player hit activates its sampled defensive doctrine
+  ---
+  duration_ms: 3.47085
+  ...
+# Subtest: the production registry steps factionPresence before the tactical AI slot
+ok 9 - the production registry steps factionPresence before the tactical AI slot
+  ---
+  duration_ms: 11.076037
+  ...
+# Subtest: the real Deep Reach beat transition reveals observers without pretending the operation closed a gate
+ok 10 - the real Deep Reach beat transition reveals observers without pretending the operation closed a gate
+  ---
+  duration_ms: 6.04335
+  ...
+# Subtest: Kell, Archive, and Kurtz evidence truthfully wakes neutral Verge observers by revoking Vale gates
+ok 11 - Kell, Archive, and Kurtz evidence truthfully wakes neutral Verge observers by revoking Vale gates
+  ---
+  duration_ms: 15.1765
+  ...
+# Subtest: factionPresence quiet latch arms and skips empty shipLike work
+ok 12 - factionPresence quiet latch arms and skips empty shipLike work
+  ---
+  duration_ms: 6.326744
+  ...
+# Subtest: factionPresence quiet latch wakes on fixed-route presence spawn
+ok 13 - factionPresence quiet latch wakes on fixed-route presence spawn
+  ---
+  duration_ms: 1.862896
+  ...
+# Subtest: factionPresence quiet latch bench toggle restores always-update
+ok 14 - factionPresence quiet latch bench toggle restores always-update
+  ---
+  duration_ms: 0.937717
+  ...
+# Subtest: factionPresence quiet latch wakes on boarding
+ok 15 - factionPresence quiet latch wakes on boarding
+  ---
+  duration_ms: 0.693036
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1421.590699

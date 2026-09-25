@@ -1,0 +1,67 @@
+{
+  "label": "persistent-beams-quiet-active-skip",
+  "primary": "quiet-beams-active-zero-update",
+  "iters": 300000,
+  "capacity": 16,
+  "pairs": [
+    {
+      "beforeMs": 8.082,
+      "afterMs": 2.614,
+      "speedup": 3.092
+    },
+    {
+      "beforeMs": 8.03,
+      "afterMs": 2.451,
+      "speedup": 3.277
+    },
+    {
+      "beforeMs": 7.638,
+      "afterMs": 2.217,
+      "speedup": 3.446
+    },
+    {
+      "beforeMs": 7.8,
+      "afterMs": 2.24,
+      "speedup": 3.481
+    },
+    {
+      "beforeMs": 8.008,
+      "afterMs": 2.238,
+      "speedup": 3.578
+    },
+    {
+      "beforeMs": 7.952,
+      "afterMs": 2.167,
+      "speedup": 3.669
+    },
+    {
+      "beforeMs": 7.641,
+      "afterMs": 1.997,
+      "speedup": 3.827
+    },
+    {
+      "beforeMs": 7.741,
+      "afterMs": 2.009,
+      "speedup": 3.853
+    },
+    {
+      "beforeMs": 8.112,
+      "afterMs": 2.104,
+      "speedup": 3.855
+    },
+    {
+      "beforeMs": 7.828,
+      "afterMs": 1.991,
+      "speedup": 3.931
+    },
+    {
+      "beforeMs": 9.395,
+      "afterMs": 2.182,
+      "speedup": 4.306
+    }
+  ],
+  "medianSpeedup": 3.669,
+  "minSpeedup": 3.092,
+  "maxSpeedup": 4.306,
+  "note": "Picture unchanged: group.visible already false after last release."
+}

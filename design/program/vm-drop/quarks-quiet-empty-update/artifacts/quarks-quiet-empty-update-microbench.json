@@ -1,0 +1,89 @@
+{
+  "name": "quarks-quiet-empty-update",
+  "primary": "quiet-quarks-all-families-empty-update",
+  "iterations": 80000,
+  "families": 11,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 15.47828899999999,
+      "afterMs": 4.383792999999997,
+      "speedup": 3.530798329209431,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.852806000000015,
+      "afterMs": 3.9935190000000205,
+      "speedup": 3.7192275784840234,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 13.692939999999993,
+      "afterMs": 3.844581000000005,
+      "speedup": 3.561620889246442,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.045282999999984,
+      "afterMs": 4.029040000000009,
+      "speedup": 3.4860123006969284,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.74821,
+      "afterMs": 3.9417080000000055,
+      "speedup": 3.7415785238277364,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.772729999999996,
+      "afterMs": 3.6258430000000033,
+      "speedup": 4.0742883792817235,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.383778000000007,
+      "afterMs": 3.6187400000000025,
+      "speedup": 3.974802831924923,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.362661000000003,
+      "afterMs": 4.147390999999999,
+      "speedup": 3.463059306441087,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 12.953847000000025,
+      "afterMs": 3.7342629999999986,
+      "speedup": 3.4689166242442027,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 13.917596000000003,
+      "afterMs": 4.183987000000002,
+      "speedup": 3.3263956126058702,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    },
+    {
+      "beforeMs": 14.22309899999999,
+      "afterMs": 4.351785000000007,
+      "speedup": 3.2683367859395553,
+      "beforeUpdates": 80000,
+      "afterUpdates": 0
+    }
+  ],
+  "medianSpeedup": 3.531,
+  "minSpeedup": 3.268,
+  "maxSpeedup": 4.074
+}

@@ -1,0 +1,813 @@
+From 6e0af77bfa3d04e8d4bb7d34b1b74e6925400a0d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:40:33 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20wreck-wisp?=
+ =?UTF-8?q?s=20empty=20bucket=20(~3.4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid player resolve + indexedTypeScan('wrecks')
++ Map.clear every tick with no wrecks. Latch after first empty observe;
+wake on entityIndexVersion only (prior hold modeled a wake that still
+re-scanned). Type-filter empty check so entityList fallback stays truthful.
+Soft-GPU fps not claimed.
+---
+ ...sts-wreck-wisps-quiet-irrelevant-latch.log | 118 ++++++++++
+ ...sps-quiet-irrelevant-latch-microbench.json | 131 +++++++++++
+ ...isps-quiet-irrelevant-latch-microbench.mjs | 208 ++++++++++++++++++
+ ...s-quiet-irrelevant-latch-rebench1.json.tmp |  14 ++
+ ...s-quiet-irrelevant-latch-rebench2.json.tmp |  14 ++
+ ...s-quiet-irrelevant-latch-rebench3.json.tmp |  14 ++
+ ...s-quiet-irrelevant-latch-rebench4.json.tmp |  14 ++
+ src/render/vfx.js                             |  58 ++++-
+ ...reck-wisps-quiet-irrelevant-latch.test.mjs | 116 ++++++++++
+ 9 files changed, 681 insertions(+), 6 deletions(-)
+ create mode 100644 artifacts/focused-tests-wreck-wisps-quiet-irrelevant-latch.log
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.json
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.mjs
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-rebench1.json.tmp
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-rebench2.json.tmp
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-rebench3.json.tmp
+ create mode 100644 artifacts/wreck-wisps-quiet-irrelevant-latch-rebench4.json.tmp
+ create mode 100644 test/wreck-wisps-quiet-irrelevant-latch.test.mjs
+
+diff --git a/artifacts/focused-tests-wreck-wisps-quiet-irrelevant-latch.log b/artifacts/focused-tests-wreck-wisps-quiet-irrelevant-latch.log
+new file mode 100644
+index 000000000..bb5c58abd
+--- /dev/null
++++ b/artifacts/focused-tests-wreck-wisps-quiet-irrelevant-latch.log
+@@ -0,0 +1,118 @@
++TAP version 13
++# Subtest: quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++ok 1 - quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++  ---
++  duration_ms: 9.113954
++  ...
++# Subtest: quiet latch refuses without entity index version (entityList fallback stays live)
++ok 2 - quiet latch refuses without entity index version (entityList fallback stays live)
++  ---
++  duration_ms: 3.225806
++  ...
++# Subtest: quiet empty field-force latches after first empty publish
++ok 3 - quiet empty field-force latches after first empty publish
++  ---
++  duration_ms: 4.211075
++  ...
++# Subtest: fields.active dirty-wake resumes update then re-latches when empty
++ok 4 - fields.active dirty-wake resumes update then re-latches when empty
++  ---
++  duration_ms: 2.094429
++  ...
++# Subtest: picture unchanged while latched — mesh stays hidden/count 0
++ok 5 - picture unchanged while latched — mesh stays hidden/count 0
++  ---
++  duration_ms: 4.621091
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: loot-magnet quiet-latches on empty pickups+payloads buckets
++ok 6 - loot-magnet quiet-latches on empty pickups+payloads buckets
++  ---
++  duration_ms: 106.570602
++  ...
++# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
++ok 7 - entityIndexVersion dirty-wake resumes then re-latches when empty
++  ---
++  duration_ms: 40.941086
++  ...
++# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
++ok 8 - no entityIndex version refuses latch (entityList fallback stays live)
++  ---
++  duration_ms: 17.202358
++  ...
++# Subtest: boundary resets clear loot-magnet quiet latch
++ok 9 - boundary resets clear loot-magnet quiet latch
++  ---
++  duration_ms: 14.941
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: quiet empty sprites latch after first idle commit and skip reset+commit
++ok 10 - quiet empty sprites latch after first idle commit and skip reset+commit
++  ---
++  duration_ms: 101.962771
++  ...
++# Subtest: activateSprite dirty-wake clears idle latch then re-latches after drain
++ok 11 - activateSprite dirty-wake clears idle latch then re-latches after drain
++  ---
++  duration_ms: 24.270187
++  ...
++# Subtest: picture unchanged while latched — all four bucket meshes stay count 0
++ok 12 - picture unchanged while latched — all four bucket meshes stay count 0
++  ---
++  duration_ms: 16.935886
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# {
++#   "ok": true,
++#   "test": "vfx-save-restore-destroy",
++#   "saveRestore": {
++#     "liveParticles": 0,
++#     "liveSprites": 0,
++#     "activeLights": 0
++#   },
++#   "normalDestroy": {
++#     "liveParticles": 15,
++#     "liveSprites": 14,
++#     "activeLights": 2
++#   },
++#   "combatReason": {
++#     "liveParticles": 15,
++#     "liveSprites": 14,
++#     "activeLights": 2
++#   }
++# }
++# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
++ok 5 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
++  ---
++  duration_ms: 615.152029
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: wreck-wisps quiet-latches when wrecks bucket is empty
++ok 14 - wreck-wisps quiet-latches when wrecks bucket is empty
++  ---
++  duration_ms: 131.071884
++  ...
++# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
++ok 15 - entityIndexVersion dirty-wake resumes then re-latches when empty
++  ---
++  duration_ms: 45.649689
++  ...
++# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
++ok 16 - no entityIndex version refuses latch (entityList fallback stays live)
++  ---
++  duration_ms: 15.659928
++  ...
++# Subtest: boundary resets clear wreck-wisps quiet latch
++ok 17 - boundary resets clear wreck-wisps quiet latch
++  ---
++  duration_ms: 17.964322
++  ...
++1..17
++# tests 17
++# suites 0
++# pass 17
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 632.306939
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.json b/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.json
+new file mode 100644
+index 000000000..ca83a0cc8
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.json
+@@ -0,0 +1,131 @@
++{
++  "name": "wreck-wisps-quiet-irrelevant-latch",
++  "primary": "quiet-wreck-wisps-empty-bucket-version-wake",
++  "iterations": 200000,
++  "runs": 11,
++  "pairs": [
++    {
++      "beforeMs": 11.528488999999993,
++      "afterMs": 3.655024999999995,
++      "speedup": 3.154147782846905,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 13.294919000000007,
++      "afterMs": 4.297511,
++      "speedup": 3.0936323374157757,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 13.803450999999995,
++      "afterMs": 3.555876000000012,
++      "speedup": 3.88187074014953,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.894194000000013,
++      "afterMs": 3.302986000000004,
++      "speedup": 3.601042813987101,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.859651999999997,
++      "afterMs": 3.4841440000000006,
++      "speedup": 3.4038926060461323,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.813434,
++      "afterMs": 3.1509229999999917,
++      "speedup": 3.7491979334309447,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 13.393424999999993,
++      "afterMs": 3.4798410000000075,
++      "speedup": 3.848861197968518,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.993448,
++      "afterMs": 3.574655000000007,
++      "speedup": 3.3551344115725787,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.541747999999998,
++      "afterMs": 3.436644000000001,
++      "speedup": 3.35843572974099,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 11.467057999999994,
++      "afterMs": 3.424942999999999,
++      "speedup": 3.3481018516220558,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    },
++    {
++      "beforeMs": 12.763276000000005,
++      "afterMs": 3.81322999999999,
++      "speedup": 3.3471036365496016,
++      "beforeWalks": 200000,
++      "afterWalks": 0,
++      "afterSkips": 200000,
++      "beforeClears": 200000,
++      "afterClears": 0
++    }
++  ],
++  "medianSpeedup": 3.35843572974099,
++  "minSpeedup": 3.0936323374157757,
++  "maxSpeedup": 3.88187074014953,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "clears": 2
++  },
++  "note": "Prior hold modeled a wake that still re-scanned while latched (~0.96×). Version-only wake matches #115 loot-magnet. Soft-GPU fps not claimed."
++}
+\ No newline at end of file
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.mjs b/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.mjs
+new file mode 100644
+index 000000000..fee91a690
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.mjs
+@@ -0,0 +1,208 @@
++/**
++ * Primary KPI: quiet wreck-wisps path when wrecks bucket empty (Map always exists).
++ * Before = player resolve + indexedTypeScan + Map.clear every tick.
++ * After  = latch after first empty observe; wake on entityIndexVersion only.
++ * Soft-GPU fps not claimed. Picture unchanged (no wisps while empty).
++ */
++import { writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++
++const ROOT = process.cwd();
++const ITERS = 200000;
++const RUNS = 11;
++
++function runOnce(mode) {
++  const script = `
++import { performance } from 'node:perf_hooks';
++const ITERS = ${ITERS};
++const hostPlayer = { id: 1, alive: true, pos: { x: 0, z: 0 } };
++function makeHost() {
++  return {
++    _wreckWispSlots: new Map(),
++    _cadenceWreckWisps: 0,
++    _wreckWispsQuietIdle: false,
++    _wreckWispsQuietIndexVersion: -1,
++    walks: 0,
++    skips: 0,
++    clears: 0,
++    helpers: { player() { return hostPlayer; } },
++    state: {
++      playerId: 1,
++      entityIndex: { __spacefaceEntityIndexV1: true, ready: true, version: 3, wrecks: [] },
++    },
++  };
++}
++function indexedTypeScan(state, bucket) {
++  const index = state.entityIndex;
++  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index[bucket])) {
++    return index[bucket];
++  }
++  return [];
++}
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  if (!index || !index.__spacefaceEntityIndexV1 || index.ready !== true) return null;
++  return index.version;
++}
++function before(host) {
++  host.walks++;
++  const state = host.state;
++  const player = host.helpers.player();
++  if (!player || !player.alive || !player.pos) return 0;
++  const relevant = indexedTypeScan(state, 'wrecks').length > 0;
++  if (relevant) return 1;
++  host._cadenceWreckWisps = 0;
++  if (host._wreckWispSlots) { host._wreckWispSlots.clear(); host.clears++; }
++  return 0;
++}
++function after(host) {
++  const version = entityIndexVersion(host.state);
++  if (host._wreckWispsQuietIdle) {
++    if (version != null && version === host._wreckWispsQuietIndexVersion) {
++      host.skips++;
++      return 0;
++    }
++    host._wreckWispsQuietIdle = false;
++  }
++  host.walks++;
++  const state = host.state;
++  const player = host.helpers.player();
++  if (!player || !player.alive || !player.pos) {
++    host._wreckWispsQuietIdle = false;
++    return 0;
++  }
++  if (indexedTypeScan(state, 'wrecks').length > 0) {
++    host._wreckWispsQuietIdle = false;
++    return 1;
++  }
++  host._cadenceWreckWisps = 0;
++  if (host._wreckWispSlots) { host._wreckWispSlots.clear(); host.clears++; }
++  if (version != null) {
++    host._wreckWispsQuietIdle = true;
++    host._wreckWispsQuietIndexVersion = version;
++  } else {
++    host._wreckWispsQuietIdle = false;
++    host._wreckWispsQuietIndexVersion = -1;
++  }
++  return 0;
++}
++const host = makeHost();
++const fn = ${JSON.stringify(mode)} === 'before' ? before : after;
++for (let i = 0; i < 3000; i++) fn(host);
++host.walks = 0; host.skips = 0; host.clears = 0;
++const t0 = performance.now();
++for (let i = 0; i < ITERS; i++) fn(host);
++const ms = performance.now() - t0;
++console.log(JSON.stringify({
++  ms, mode: ${JSON.stringify(mode)}, walks: host.walks, skips: host.skips,
++  clears: host.clears, quiet: !!host._wreckWispsQuietIdle,
++}));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT, encoding: 'utf8', env: process.env,
++  });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout || 'spawn failed');
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++function median(xs) {
++  const a = xs.slice().sort((x, y) => x - y);
++  const m = (a.length - 1) / 2;
++  return a.length % 2 ? a[m | 0] : (a[m | 0] + a[(m | 0) + 1]) / 2;
++}
++
++function proveDirtyWake() {
++  const script = `
++const hostPlayer = { id: 1, alive: true, pos: { x: 0, z: 0 } };
++const host = {
++  _wreckWispSlots: new Map([[9, 1]]),
++  _cadenceWreckWisps: 1,
++  _wreckWispsQuietIdle: false,
++  _wreckWispsQuietIndexVersion: -1,
++  walks: 0, skips: 0, clears: 0,
++  helpers: { player() { return hostPlayer; } },
++  state: { entityIndex: { __spacefaceEntityIndexV1: true, ready: true, version: 3, wrecks: [] } },
++};
++function indexedTypeScan(state, bucket) {
++  return state.entityIndex[bucket] || [];
++}
++function entityIndexVersion(state) {
++  return state.entityIndex.version;
++}
++function step() {
++  const version = entityIndexVersion(host.state);
++  if (host._wreckWispsQuietIdle) {
++    if (version != null && version === host._wreckWispsQuietIndexVersion) {
++      host.skips++;
++      return 0;
++    }
++    host._wreckWispsQuietIdle = false;
++  }
++  host.walks++;
++  const player = host.helpers.player();
++  if (!player || !player.alive || !player.pos) return 0;
++  if (indexedTypeScan(host.state, 'wrecks').length > 0) {
++    host._wreckWispsQuietIdle = false;
++    return 1;
++  }
++  host._cadenceWreckWisps = 0;
++  if (host._wreckWispSlots) { host._wreckWispSlots.clear(); host.clears++; }
++  host._wreckWispsQuietIdle = true;
++  host._wreckWispsQuietIndexVersion = version;
++  return 0;
++}
++step(); step();
++const latched = host._wreckWispsQuietIdle && host.skips === 1 && host.clears === 1;
++host.state.entityIndex.wrecks = [{ id: 2, type: 'wreck', alive: true, pos: { x: 1, z: 1 } }];
++host.state.entityIndex.version = 4;
++step();
++const woke = !host._wreckWispsQuietIdle && host.walks === 2;
++host.state.entityIndex.wrecks = [];
++host.state.entityIndex.version = 5;
++step(); step();
++const relatch = host._wreckWispsQuietIdle && host.skips === 2;
++console.log(JSON.stringify({ ok: latched && woke && relatch, latched, woke, relatch, walks: host.walks, skips: host.skips, clears: host.clears }));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT, encoding: 'utf8', env: process.env,
++  });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout || 'wake prove failed');
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++const pairs = [];
++for (let run = 0; run < RUNS; run++) {
++  const before = runOnce('before');
++  const after = runOnce('after');
++  pairs.push({
++    beforeMs: before.ms,
++    afterMs: after.ms,
++    speedup: before.ms / after.ms,
++    beforeWalks: before.walks,
++    afterWalks: after.walks,
++    afterSkips: after.skips,
++    beforeClears: before.clears,
++    afterClears: after.clears,
++  });
++}
++const speedups = pairs.map((p) => p.speedup);
++const wake = proveDirtyWake();
++const out = {
++  name: 'wreck-wisps-quiet-irrelevant-latch',
++  primary: 'quiet-wreck-wisps-empty-bucket-version-wake',
++  iterations: ITERS,
++  runs: RUNS,
++  pairs,
++  medianSpeedup: median(speedups),
++  minSpeedup: Math.min(...speedups),
++  maxSpeedup: Math.max(...speedups),
++  dirtyWake: wake,
++  note: 'Prior hold modeled a wake that still re-scanned while latched (~0.96×). Version-only wake matches #115 loot-magnet. Soft-GPU fps not claimed.',
++};
++writeFileSync('artifacts/wreck-wisps-quiet-irrelevant-latch-microbench.json', JSON.stringify(out, null, 2));
++console.log(JSON.stringify({
++  medianSpeedup: out.medianSpeedup,
++  minSpeedup: out.minSpeedup,
++  maxSpeedup: out.maxSpeedup,
++  dirtyWake: wake,
++}, null, 2));
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench1.json.tmp b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench1.json.tmp
+new file mode 100644
+index 000000000..fc9aac420
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench1.json.tmp
+@@ -0,0 +1,14 @@
++{
++  "medianSpeedup": 3.5499421773930497,
++  "minSpeedup": 3.201373332603329,
++  "maxSpeedup": 5.304432213863122,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "clears": 2
++  }
++}
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench2.json.tmp b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench2.json.tmp
+new file mode 100644
+index 000000000..d75d1c9b9
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench2.json.tmp
+@@ -0,0 +1,14 @@
++{
++  "medianSpeedup": 3.644839086373057,
++  "minSpeedup": 2.904924930544255,
++  "maxSpeedup": 4.90807976861233,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "clears": 2
++  }
++}
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench3.json.tmp b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench3.json.tmp
+new file mode 100644
+index 000000000..f5c7c6db8
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench3.json.tmp
+@@ -0,0 +1,14 @@
++{
++  "medianSpeedup": 3.373381640591251,
++  "minSpeedup": 2.8703346491730315,
++  "maxSpeedup": 3.962605795431171,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "clears": 2
++  }
++}
+diff --git a/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench4.json.tmp b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench4.json.tmp
+new file mode 100644
+index 000000000..990457faf
+--- /dev/null
++++ b/artifacts/wreck-wisps-quiet-irrelevant-latch-rebench4.json.tmp
+@@ -0,0 +1,14 @@
++{
++  "medianSpeedup": 3.35843572974099,
++  "minSpeedup": 3.0936323374157757,
++  "maxSpeedup": 3.88187074014953,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "clears": 2
++  }
++}
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index b8d949dac..37548abd7 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1161,6 +1161,11 @@ export const vfx = {
+     this._collisionContactTicks = new Map();
+     this._collisionMediumTicks = new Map();
+     this._wreckWispSlots = new Map();
++    // Quiet settled flight: no-wrecks still paid player resolve + indexedTypeScan
++    // + Map.clear every tick. Latch after first empty observe; wake on
++    // entityIndexVersion. Soft-GPU fps not claimed.
++    this._wreckWispsQuietIdle = false;
++    this._wreckWispsQuietIndexVersion = -1;
+     this._collisionPresentationTick = -1;
+     this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+     this._admissionSerial = 0;
+@@ -2228,12 +2233,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -11626,8 +11631,9 @@ export const vfx = {
+         ? (this._updateWreckWisps() > 0 ? 1 : (sub.wreckWisps || 0))
+         : (sub.wreckWisps || 0);
+     } else {
++      // Cadence/slots cleared inside `_wreckWispsRelevant` on first empty observe
++      // (quiet latch). Soft-GPU fps not claimed.
+       this._cadenceWreckWisps = 0;
+-      if (this._wreckWispSlots) this._wreckWispSlots.clear();
+       sub.wreckWisps = 0;
+     }
+     // Continuous, family-specific swept surfaces replace sparse particle fallthrough. Update
+@@ -11879,12 +11885,52 @@ export const vfx = {
+   // cadence scan is cheap, the rhythm never shimmers frame-to-frame, and the slot map is bounded
+   // (stale ids expire two intervals after they leave the draw table).
+   // -------------------------------------------------------------------------
++  // Cheap dirty wake for quiet wreck-wisps empty latch —
++  // entityIndexVersion only. No index (version null) refuses the latch so
++  // entityList fallback stays truthful. Soft-GPU fps not claimed.
++  _wreckWispsQuietMaybeAwake() {
++    const version = entityIndexVersion(this.state);
++    if (version == null) return true;
++    return version !== this._wreckWispsQuietIndexVersion;
++  },
++
+   _wreckWispsRelevant() {
+     const state = this.state;
+     if (!state) return false;
++    // Quiet settled flight: no wrecks still paid player resolve +
++    // indexedTypeScan + Map.clear every tick. Latch after first empty observe;
++    // wake on entityIndexVersion. Soft-GPU fps not claimed.
++    if (this._wreckWispsQuietIdle) {
++      if (!this._wreckWispsQuietMaybeAwake()) return false;
++      this._wreckWispsQuietIdle = false;
++    }
+     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+-    if (!player || !player.alive || !player.pos) return false;
+-    return indexedTypeScan(state, 'wrecks').length > 0;
++    if (!player || !player.alive || !player.pos) {
++      this._wreckWispsQuietIdle = false;
++      return false;
++    }
++    const wrecks = indexedTypeScan(state, 'wrecks');
++    let hasWreck = false;
++    for (let i = 0; i < wrecks.length; i++) {
++      const e = wrecks[i];
++      if (e && e.alive !== false && e.type === 'wreck') { hasWreck = true; break; }
++    }
++    if (hasWreck) {
++      this._wreckWispsQuietIdle = false;
++      return true;
++    }
++    // Empty wrecks: clear residual slots once, then latch when version trustworthy.
++    this._cadenceWreckWisps = 0;
++    if (this._wreckWispSlots) this._wreckWispSlots.clear();
++    const version = entityIndexVersion(state);
++    if (version != null) {
++      this._wreckWispsQuietIdle = true;
++      this._wreckWispsQuietIndexVersion = version;
++    } else {
++      this._wreckWispsQuietIdle = false;
++      this._wreckWispsQuietIndexVersion = -1;
++    }
++    return false;
+   },
+ 
+   _updateWreckWisps() {
+diff --git a/test/wreck-wisps-quiet-irrelevant-latch.test.mjs b/test/wreck-wisps-quiet-irrelevant-latch.test.mjs
+new file mode 100644
+index 000000000..5bcbc24b9
+--- /dev/null
++++ b/test/wreck-wisps-quiet-irrelevant-latch.test.mjs
+@@ -0,0 +1,116 @@
++// Quiet latch for no-wrecks wreck-wisps residual under prepareFrame.
++// Soft-GPU fps not claimed. Picture unchanged while no wisps are live.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    mode: 'flight',
++    entities: new Map([[PLAYER_ID, player]]),
++    entityList: [player],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      wrecks: [],
++      ships: [player],
++    },
++    simTime: 0,
++    tick: 0,
++    camera: { focus: { x: 0, z: 0 } },
++    world: { frameOrigin: { x: 0, z: 0 } },
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: { scene, camera: new THREE.PerspectiveCamera(), viewport: { height: 720 } },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: {
++      player: () => player,
++    },
++  });
++  return { system, state, bus, player };
++}
++
++test('wreck-wisps quiet-latches when wrecks bucket is empty', () => {
++  const { system, state } = makeHarness();
++  assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, true, 'empty wrecks must latch');
++  assert.equal(system._wreckWispsQuietIndexVersion, 1);
++
++  for (let i = 0; i < 40; i++) {
++    assert.equal(system._wreckWispsRelevant(), false);
++  }
++  assert.equal(system._wreckWispsQuietIdle, true);
++  assert.equal(system._wreckWispsQuietIndexVersion, state.entityIndex.version);
++});
++
++test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
++  const { system, state, player } = makeHarness();
++  assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, true);
++
++  const wreck = {
++    id: 42,
++    type: 'wreck',
++    alive: true,
++    pos: { x: 30, z: 0 },
++    radius: 8,
++  };
++  state.entityIndex.version = 2;
++  state.entityIndex.wrecks = [wreck];
++  state.entityList = [player, wreck];
++
++  assert.equal(system._wreckWispsRelevant(), true, 'must wake and see wreck');
++  assert.equal(system._wreckWispsQuietIdle, false);
++
++  state.entityIndex.version = 3;
++  state.entityIndex.wrecks = [];
++  state.entityList = [player];
++  assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, true);
++  assert.equal(system._wreckWispsQuietIndexVersion, 3);
++
++  for (let i = 0; i < 10; i++) assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, true);
++});
++
++test('no entityIndex version refuses latch (entityList fallback stays live)', () => {
++  const { system, state } = makeHarness();
++  delete state.entityIndex;
++  state.entityList = [state.entities.get(PLAYER_ID)];
++  assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, false, 'must refuse latch without version');
++});
++
++test('boundary resets clear wreck-wisps quiet latch', () => {
++  const { system, bus } = makeHarness();
++  assert.equal(system._wreckWispsRelevant(), false);
++  assert.equal(system._wreckWispsQuietIdle, true);
++  bus.emit('sector:enter', {});
++  assert.equal(system._wreckWispsQuietIdle, false);
++  assert.equal(system._wreckWispsQuietIndexVersion, -1);
++});
+-- 
+2.47.3
+

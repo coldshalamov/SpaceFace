@@ -1,0 +1,51 @@
+{
+  "runs": [
+    {
+      "run": 1,
+      "medianSpeedup": 2.714,
+      "minSpeedup": 2.377,
+      "maxSpeedup": 4.657,
+      "allLatched": true,
+      "allWoke": true
+    },
+    {
+      "run": 2,
+      "medianSpeedup": 2.584,
+      "minSpeedup": 2.26,
+      "maxSpeedup": 3.756,
+      "allLatched": true,
+      "allWoke": true
+    },
+    {
+      "run": 3,
+      "medianSpeedup": 2.662,
+      "minSpeedup": 2.436,
+      "maxSpeedup": 2.842,
+      "allLatched": true,
+      "allWoke": true
+    },
+    {
+      "run": 4,
+      "medianSpeedup": 2.646,
+      "minSpeedup": 2.298,
+      "maxSpeedup": 3.153,
+      "allLatched": true,
+      "allWoke": true
+    },
+    {
+      "run": 5,
+      "medianSpeedup": 2.567,
+      "minSpeedup": 1.853,
+      "maxSpeedup": 2.675,
+      "allLatched": true,
+      "allWoke": true
+    }
+  ],
+  "floorMinSpeedup": 1.853,
+  "floorMedianBand": [
+    2.567,
+    2.714
+  ],
+  "allLatched": true,
+  "allWoke": true
+}

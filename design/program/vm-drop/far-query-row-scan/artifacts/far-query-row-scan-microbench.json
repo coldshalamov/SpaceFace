@@ -1,0 +1,10 @@
+{
+  "rows": 96,
+  "radius": 3600,
+  "cellSpan": 361,
+  "hits": 37,
+  "iters": 8000,
+  "gridMs": 43.62,
+  "adaptiveMs": 3.95,
+  "speedup": 11.03
+}

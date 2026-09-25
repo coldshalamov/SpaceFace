@@ -1,0 +1,351 @@
+From 33401ba50ada4eb730356794bc1cdfdca2d2c3c0 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:00:03 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20dirty-slot=20list=20for=20fence?=
+ =?UTF-8?q?=20pack=20(~2.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When dirtyCount > 0, packPresentationWorldToFence rewrites only the dense
+dirtySlots list instead of scanning every active slot's dirty mask after
+copyDenseFrom. presentationWorld maintains dirtySlots/dirtyPositions alongside
+dirtyCount. Bench toggle restores the O(active) walk.
+---
+ src/render/presentationWorld.js              |  43 +++++-
+ src/render/snapshotFence.js                  |  84 +++++++++---
+ test/snapshot-fence-dirty-slot-list.test.mjs | 132 +++++++++++++++++++
+ 3 files changed, 237 insertions(+), 22 deletions(-)
+ create mode 100644 test/snapshot-fence-dirty-slot-list.test.mjs
+
+diff --git a/src/render/presentationWorld.js b/src/render/presentationWorld.js
+index fbf4d9f28..b39c4b477 100644
+--- a/src/render/presentationWorld.js
++++ b/src/render/presentationWorld.js
+@@ -140,7 +140,11 @@ export function createPresentationWorld(options = {}) {
+   let disposed = false;
+   // O(1) count of slots with any PRESENTATION_DIRTY bit. Fence pack uses this to
+   // retain a sealed latest snapshot on quiet zero-dirty ticks without scanning.
++  // dirtySlots is a dense parallel list (length == dirtyCount) so dirty>0 packs
++  // rewrite only dirty rows instead of scanning every active slot's mask.
+   let dirtyCount = 0;
++  let dirtySlots = new Uint32Array(0);
++  let dirtyPositions = new Int32Array(0);
+ 
+   const world = {
+     capacity: 0,
+@@ -212,6 +216,7 @@ export function createPresentationWorld(options = {}) {
+     world.typeCodes = growTyped(world.typeCodes, Uint16Array, capacity);
+     world.flags = growTyped(world.flags, Uint8Array, capacity);
+     world.dirtyMasks = growTyped(world.dirtyMasks, Uint8Array, capacity);
++    dirtyPositions = growTyped(dirtyPositions, Int32Array, capacity, INVALID_INDEX);
+     world.radii = growTyped(world.radii, Float64Array, capacity);
+     world.prevX = growTyped(world.prevX, Float64Array, capacity);
+     world.prevY = growTyped(world.prevY, Float64Array, capacity);
+@@ -503,20 +508,47 @@ export function createPresentationWorld(options = {}) {
+   }
+ 
+ 
++  function ensureDirtySlotsCapacity(needed) {
++    if (needed <= dirtySlots.length) return;
++    let cap = dirtySlots.length || 16;
++    while (cap < needed) cap <<= 1;
++    dirtySlots = growTyped(dirtySlots, Uint32Array, cap);
++  }
++
++  function noteDirtySlot(slot) {
++    ensureDirtySlotsCapacity(dirtyCount + 1);
++    dirtyPositions[slot] = dirtyCount;
++    dirtySlots[dirtyCount++] = slot;
++  }
++
++  function noteCleanSlot(slot) {
++    const position = dirtyPositions[slot];
++    if (position < 0 || position >= dirtyCount) {
++      dirtyPositions[slot] = INVALID_INDEX;
++      return;
++    }
++    const last = dirtyCount - 1;
++    const lastSlot = dirtySlots[last];
++    dirtySlots[position] = lastSlot;
++    dirtyPositions[lastSlot] = position;
++    dirtyPositions[slot] = INVALID_INDEX;
++    dirtyCount = last;
++  }
++
+   function markDirtyBits(slot, bits) {
+     if (!bits) return;
+     const prev = world.dirtyMasks[slot];
+     const next = prev | bits;
+     if (prev === next) return;
+-    if (prev === 0) dirtyCount++;
++    if (prev === 0) noteDirtySlot(slot);
+     world.dirtyMasks[slot] = next;
+   }
+ 
+   function writeDirtyMask(slot, next) {
+     const prev = world.dirtyMasks[slot];
+     if (prev === next) return;
+-    if (prev === 0 && next !== 0) dirtyCount++;
+-    else if (prev !== 0 && next === 0) dirtyCount--;
++    if (prev === 0 && next !== 0) noteDirtySlot(slot);
++    else if (prev !== 0 && next === 0) noteCleanSlot(slot);
+     world.dirtyMasks[slot] = next;
+   }
+ 
+@@ -851,6 +883,11 @@ export function createPresentationWorld(options = {}) {
+     enumerable: true,
+     configurable: true,
+   });
++  Object.defineProperty(world, 'dirtySlots', {
++    get() { return dirtySlots; },
++    enumerable: true,
++    configurable: true,
++  });
+ 
+   return Object.assign(world, {
+     allocateRecord,
+diff --git a/src/render/snapshotFence.js b/src/render/snapshotFence.js
+index 7bc7d66b1..4e7c963a4 100644
+--- a/src/render/snapshotFence.js
++++ b/src/render/snapshotFence.js
+@@ -6,6 +6,17 @@ import { PRESENTATION_DIRTY } from './presentationWorld.js';
+ 
+ export const SNAPSHOT_FENCE_BUFFERS = 3;
+ 
++// Dirty>0 pack: walk world.dirtySlots (dense) instead of every activeSlots mask.
++// Bench-only toggle restores the O(active) mask scan for A/B microbench.
++let SNAPSHOT_FENCE_DIRTY_SLOT_LIST = true;
++export function setSnapshotFenceDirtySlotListForBench(enabled) {
++  SNAPSHOT_FENCE_DIRTY_SLOT_LIST = enabled !== false;
++  return SNAPSHOT_FENCE_DIRTY_SLOT_LIST;
++}
++export function getSnapshotFenceDirtySlotListForBench() {
++  return SNAPSHOT_FENCE_DIRTY_SLOT_LIST !== false;
++}
++
+ function readonlyColumns(columns) {
+   // Ownership is the immutability boundary: only the writer slot can call
+   // write(), and commit rotates to another slot before the next pack. Do not
+@@ -364,26 +375,61 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
+ 
+     const snapshot = fence.beginIncrementalPack(active, simTime, poseEpoch, layoutVersion);
+     if (snapshot && (snapshot.count | 0) === active) {
+-      // activeSlots is dense (removeActive swaps compact). Row index == activeSlots index.
+-      for (let index = 0; index < active; index++) {
+-        const slot = world.activeSlots[index];
+-        if (world.alive[slot] !== 1) {
+-          // Invariant break — reset write slot via full pack below.
+-          return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++      const dirtyN = world.dirtyCount | 0;
++      const useDirtyList = SNAPSHOT_FENCE_DIRTY_SLOT_LIST
++        && dirtyN > 0
++        && world.dirtySlots
++        && (world.dirtySlots.length | 0) >= dirtyN
++        && world.activePositions;
++      if (useDirtyList) {
++        // Dense dirtySlots (length == dirtyCount). Row index via activePositions.
++        const dirtySlots = world.dirtySlots;
++        const activePositions = world.activePositions;
++        for (let d = 0; d < dirtyN; d++) {
++          const slot = dirtySlots[d];
++          if (world.alive[slot] !== 1) {
++            return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++          }
++          const index = activePositions[slot];
++          if (index < 0 || index >= active) {
++            return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++          }
++          if ((dirtyMasks[slot] & PRESENTATION_DIRTY.ALL) === 0) continue;
++          const { qy, qw } = yawQuatForSlot(world, slot);
++          fence.rewritePose(
++            index,
++            world.x[slot],
++            world.y[slot],
++            world.z[slot],
++            qy,
++            qw,
++            world.flags[slot] >>> 0,
++            world.bank ? Number(world.bank[slot]) || 0 : 0,
++            world.pitch ? Number(world.pitch[slot]) || 0 : 0,
++          );
++        }
++      } else {
++        // activeSlots is dense (removeActive swaps compact). Row index == activeSlots index.
++        for (let index = 0; index < active; index++) {
++          const slot = world.activeSlots[index];
++          if (world.alive[slot] !== 1) {
++            // Invariant break — reset write slot via full pack below.
++            return packPresentationWorldToFenceFull(world, fence, active, simTime, poseEpoch, layoutVersion);
++          }
++          if ((dirtyMasks[slot] & PRESENTATION_DIRTY.ALL) === 0) continue;
++          const { qy, qw } = yawQuatForSlot(world, slot);
++          fence.rewritePose(
++            index,
++            world.x[slot],
++            world.y[slot],
++            world.z[slot],
++            qy,
++            qw,
++            world.flags[slot] >>> 0,
++            world.bank ? Number(world.bank[slot]) || 0 : 0,
++            world.pitch ? Number(world.pitch[slot]) || 0 : 0,
++          );
+         }
+-        if ((dirtyMasks[slot] & PRESENTATION_DIRTY.ALL) === 0) continue;
+-        const { qy, qw } = yawQuatForSlot(world, slot);
+-        fence.rewritePose(
+-          index,
+-          world.x[slot],
+-          world.y[slot],
+-          world.z[slot],
+-          qy,
+-          qw,
+-          world.flags[slot] >>> 0,
+-          world.bank ? Number(world.bank[slot]) || 0 : 0,
+-          world.pitch ? Number(world.pitch[slot]) || 0 : 0,
+-        );
+       }
+       fence.commit();
+       return active;
+diff --git a/test/snapshot-fence-dirty-slot-list.test.mjs b/test/snapshot-fence-dirty-slot-list.test.mjs
+new file mode 100644
+index 000000000..ec60f1724
+--- /dev/null
++++ b/test/snapshot-fence-dirty-slot-list.test.mjs
+@@ -0,0 +1,132 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createPresentationWorld } from '../src/render/presentationWorld.js';
++import {
++  createSnapshotFence,
++  packPresentationWorldToFence,
++  snapshotIndexOf,
++  setSnapshotFenceDirtySlotListForBench,
++  getSnapshotFenceDirtySlotListForBench,
++} from '../src/render/snapshotFence.js';
++
++function seed(n) {
++  const world = createPresentationWorld({ capacity: n });
++  const entities = [];
++  for (let i = 0; i < n; i++) {
++    const entity = {
++      id: i + 1,
++      alive: true,
++      type: 'ship',
++      pos: { x: i * 10, y: 0, z: i },
++      rot: i * 0.01,
++      bank: 0,
++      pitch: 0,
++      radius: 4,
++    };
++    entities.push(entity);
++    world.allocateEntity(entity, 0);
++  }
++  return { world, entities };
++}
++
++function move(world, entity, dx) {
++  entity.pos.x += dx;
++  world.applyTransform({
++    entityId: entity.id,
++    generation: 0,
++    revision: (entity._rev = (entity._rev || 0) + 1),
++    x: entity.pos.x,
++    y: 0,
++    z: entity.pos.z,
++    rot: entity.rot,
++    bank: 0,
++    pitch: 0,
++  }, entity);
++}
++
++function clearDirty(world) {
++  const active = world.getDiagnostics().active;
++  for (let i = 0; i < active; i++) world.clearDirty(world.activeSlots[i]);
++}
++
++test('dirtySlots list tracks mark/clear cardinality', () => {
++  const { world, entities } = seed(16);
++  assert.equal(world.dirtyCount, 16); // allocate dirties all
++  clearDirty(world);
++  assert.equal(world.dirtyCount, 0);
++  move(world, entities[2], 1);
++  move(world, entities[5], 2);
++  assert.equal(world.dirtyCount, 2);
++  const seen = new Set();
++  for (let i = 0; i < world.dirtyCount; i++) seen.add(world.dirtySlots[i]);
++  assert.equal(seen.size, 2);
++  const slot2 = world.getSlotForEntityId(entities[2].id);
++  const slot5 = world.getSlotForEntityId(entities[5].id);
++  assert.ok(seen.has(slot2));
++  assert.ok(seen.has(slot5));
++  world.clearDirty(slot2);
++  assert.equal(world.dirtyCount, 1);
++  assert.equal(world.dirtySlots[0], slot5);
++});
++
++test('dirty-slot list pack matches forceFull and walk-all', () => {
++  const restore = getSnapshotFenceDirtySlotListForBench();
++  try {
++    const { world, entities } = seed(48);
++    const fenceList = createSnapshotFence({ capacity: 48 });
++    const fenceWalk = createSnapshotFence({ capacity: 48 });
++    const fenceFull = createSnapshotFence({ capacity: 48 });
++    // Prime each fence independently so incremental is eligible; pack does not clear dirty.
++    for (let i = 0; i < 3; i++) {
++      setSnapshotFenceDirtySlotListForBench(true);
++      packPresentationWorldToFence(world, fenceList, i, 1);
++      setSnapshotFenceDirtySlotListForBench(false);
++      packPresentationWorldToFence(world, fenceWalk, i, 1);
++      packPresentationWorldToFence(world, fenceFull, i, 1, { forceFull: true });
++      clearDirty(world);
++    }
++    move(world, entities[0], 5);
++    move(world, entities[7], -3);
++    move(world, entities[11], 1.5);
++    assert.equal(world.dirtyCount, 3);
++
++    // Same dirty world → three pack styles must agree (pack leaves dirty bits set).
++    setSnapshotFenceDirtySlotListForBench(true);
++    packPresentationWorldToFence(world, fenceList, 10, 1);
++    setSnapshotFenceDirtySlotListForBench(false);
++    packPresentationWorldToFence(world, fenceWalk, 10, 1);
++    packPresentationWorldToFence(world, fenceFull, 10, 1, { forceFull: true });
++    assert.equal(world.dirtyCount, 3);
++
++    const a = fenceList.latestSnapshot();
++    const b = fenceWalk.latestSnapshot();
++    const c = fenceFull.latestSnapshot();
++    assert.equal(a.count, b.count);
++    assert.equal(a.count, c.count);
++    for (let i = 0; i < a.count; i++) {
++      const id = a.columns.entityId[i];
++      assert.equal(id, b.columns.entityId[i]);
++      assert.equal(id, c.columns.entityId[i]);
++      const p = i * 3;
++      assert.ok(Math.abs(a.columns.position[p] - b.columns.position[p]) < 1e-5);
++      assert.ok(Math.abs(a.columns.position[p] - c.columns.position[p]) < 1e-5);
++      assert.ok(Math.abs(a.columns.position[p + 2] - c.columns.position[p + 2]) < 1e-5);
++    }
++    const p0 = snapshotIndexOf(a, entities[0].id) * 3;
++    assert.ok(Math.abs(a.columns.position[p0] - entities[0].pos.x) < 1e-5);
++  } finally {
++    setSnapshotFenceDirtySlotListForBench(restore);
++  }
++});
++
++test('retire removes slot from dirty list', () => {
++  const { world, entities } = seed(12);
++  clearDirty(world);
++  move(world, entities[3], 2);
++  move(world, entities[4], 2);
++  assert.equal(world.dirtyCount, 2);
++  world.retire(entities[3].id);
++  assert.equal(world.dirtyCount, 1);
++  const slot4 = world.getSlotForEntityId(entities[4].id);
++  assert.equal(world.dirtySlots[0], slot4);
++});
+-- 
+2.47.3
+

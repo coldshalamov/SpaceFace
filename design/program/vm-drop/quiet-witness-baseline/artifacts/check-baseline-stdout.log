@@ -4,346 +4,119 @@
 
 
 check:baseline
-  FAIL    1077ms  ui-screen-imports
-  PASS     108ms  ui-glyphs
-  PASS     170ms  ui-control-labels
-  PASS     170ms  vfx-techniques
-  FAIL     279ms  pq020-ceres-topology
-  FAIL     215ms  save-schema
-  FAIL     390ms  opening-mesh-defer
-  FAIL     318ms  smooth-flight
-  FAIL     153ms  flight-v3
-  FAIL     189ms  m1-tether-mass
-  FAIL     305ms  sim-v3-compare
-  PASS    2475ms  render-package-plan
-  FAIL     275ms  sim-compare
-  FAIL     268ms  sim-v3
-  FAIL     258ms  sim
-  FAIL    3545ms  massline
+  PASS    2011ms  ui-screen-imports
+  PASS     159ms  ui-glyphs
+  PASS     228ms  ui-control-labels
+  PASS     352ms  vfx-techniques
+  PASS    1743ms  pq020-ceres-topology
+  FAIL     427ms  save-schema
+  PASS     735ms  opening-mesh-defer
+  PASS     659ms  smooth-flight
+  PASS     808ms  flight-v3
+  PASS     570ms  m1-tether-mass
+  PASS    2843ms  sim-v3-compare
+  PASS    3383ms  render-package-plan
+  FAIL    2066ms  sim-compare
+  FAIL   12121ms  sim-v3
+  FAIL    2265ms  sim
+  PASS   33683ms  massline
 
-  4/16 green in 3545ms wall (parallel:2+1x2), budget 90000ms, headroom 86455ms
+  12/16 green in 33683ms wall (parallel:2+1x2), budget 90000ms, headroom 56317ms
   concurrency allowance 4 from availableParallelism — split, not multiplied (see the header)
 
---- ui-screen-imports (exit 1) :: node scripts/check-ui-screen-imports.mjs
-ERR  ../src/ui/station/screens/shipworks.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/screens/industry.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/screens/contracts.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/screens/factions.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/screens/bar.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/screens/ledger.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ERR  ../src/ui/station/stationApp.js - Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-ok   ../src/ui/station/dock.js - createCommandDock
-ok   menu screens - the 19 migrated screens own no CSS
-ok   helpScreen - kit title is Help
-ok   helpScreen - fixed UI key labels read the binding registry
-ok   missionLog binding - input and visible copy read the binding registry
-ok   cargo/comms binding - input and visible copy read the binding registry
-ok   tech/drill/claim binding - input and visible copy read the binding registry
-ok   pause/help - mission log is reachable and documented for controller players
-ok   helpScreen - touch controls document on-screen menu buttons
-ok   localmapScreen - visible map key labels read the binding registry
-ok   codexScreen - title is Codex
-ok   missionLogScreen - completed ledger refreshes on empty active state
-ok   flight HUD - dock/localmap/starmap/missionLog/codex labels read the binding registry
-ok   station control prompt - near-dock mode renders the binding-backed dock/undock route
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
---- pq020-ceres-topology (exit 1) :: node scripts/check-pq020-ceres-topology.mjs
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
 --- save-schema (exit 1) :: node scripts/generate-save-schema.mjs --check
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
---- opening-mesh-defer (exit 1) :: node --test test/opening-mesh-defer.test.mjs
-TAP version 13
-# node:internal/modules/esm/resolve:283
-#     throw new ERR_MODULE_NOT_FOUND(
-#           ^
-# Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-#     at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-#     at moduleResolve (node:internal/modules/esm/resolve:952:10)
-#     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-#     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-#     at \#cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-#     at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-#     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-#     at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-#   code: 'ERR_MODULE_NOT_FOUND',
-#   url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-# }
-# Node.js v20.19.2
-# Subtest: /workspace/spaceface-master-witness/test/opening-mesh-defer.test.mjs
-not ok 1 - /workspace/spaceface-master-witness/test/opening-mesh-defer.test.mjs
-  ---
-  duration_ms: 263.865377
-  location: '/workspace/spaceface-master-witness/test/opening-mesh-defer.test.mjs:1:1'
-  failureType: 'testCodeFailure'
-  exitCode: 1
-  signal: ~
-  error: 'test failed'
-  code: 'ERR_TEST_FAILURE'
-  ...
-1..1
-# tests 1
-# suites 0
-# pass 0
-# fail 1
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 271.357083
-
---- smooth-flight (exit 1) :: node --test test/presentation-continuity.test.mjs test/presentation-runner.test.mjs test/simulation-runner.test.mjs test/snapshot-fence-span-alpha.test.mjs
-# Subtest: a one-tick span reduces to the legacy accumulator alpha
-ok 14 - a one-tick span reduces to the legacy accumulator alpha
-  ---
-  duration_ms: 2.197133
-  ...
-# Subtest: a multi-step catch-up present no longer draws the stale previous pose
-ok 15 - a multi-step catch-up present no longer draws the stale previous pose
-  ---
-  duration_ms: 0.69369
-  ...
-# Subtest: the blended pose always lands at latest.simTime + accumulator - fixedDt
-ok 16 - the blended pose always lands at latest.simTime + accumulator - fixedDt
-  ---
-  duration_ms: 0.965118
-  ...
-# Subtest: degenerate spans fall back to the raw alpha
-ok 17 - degenerate spans fall back to the raw alpha
-  ---
-  duration_ms: 0.353064
-  ...
-# Subtest: the blend parameter stays inside [0, 1] for hostile inputs
-ok 18 - the blend parameter stays inside [0, 1] for hostile inputs
-  ---
-  duration_ms: 0.389097
-  ...
-# Subtest: a spawned entity absent from the previous pack draws at its latest pose
-ok 19 - a spawned entity absent from the previous pack draws at its latest pose
-  ---
-  duration_ms: 2.093679
-  ...
-1..19
-# tests 19
-# suites 0
-# pass 17
-# fail 2
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 178.779467
-
---- flight-v3 (exit 1) :: node test/flightV3.spec.mjs && node scripts/check-brake-convergence.mjs
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
---- m1-tether-mass (exit 1) :: node scripts/check-m1-tether-mass-grounding.mjs
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
---- sim-v3-compare (exit 1) :: node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --reload-at 60 --flight-system v3
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
+'| `$.player.droneTierCap` | number | 1 |\n' +
+    '| `$.player.efficiencyMods` | object | {} |\n' +
+    '| `$.player.efficiencyMods.cargoCapMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.energyRegenMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.miningYieldMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.shieldRegenMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.tradeFeeMult` | number | 1 |\n' +
+    '| `$.player.fireGroups` | object | {} |\n' +
+    '| `$.player.fireGroups.1` | array | length 0 |\n' +
+    '| `$.player.fireGroups.2` | array | length 0 |\n' +
+    '| `$.player.heat` | number | 0 |\n' +
+    '| `$.player.heatZone` | object | {} |\n' +
+    '| `$.player.heatZone.active` | boolean | false |\n' +
+    '| `$.player.heatZone.center` | object | {} |\n' +
+    '| `$.player.heatZone.center.x` | number | 0 |\n' +
+    '| `$.player.heatZone.center.z` | number | 0 |\n' +
+    '| `$.player.heatZone.clearAfterS` | number | 0 |\n' +
+    '| `$.player.heatZone.level` | number | 0 |\n' +
+    '| `$.player.heatZone.outsideS` | number | 0 |\n' +
+    '| `$.player.heatZone.radius` | number | 0 |\n' +
+    '| `$.player.hints` | object | {} |\n' +
+    '| `$.player.hints.firstCargoFull` | boolean | false |\n' +
+    '| `$.player.hints.firstCombat` | boolean | false |\n' +
+    '| `$.player.hints.firstFlight` | boolean | false |\n' +
+    '| `$.player.hints.firstGate` | boolean | false |\n' +
+    '| `$.player.hints.firstShieldDrop` | boolean | false |\n' +
+    '| `$.player.hints.firstStation` | boolean | false |\n' +
+    '| `$.player.insurance` | object | {} |\n' +
+    '| `$.player.insurance.deductibleCr` | number | 500 |\n' +
+    '| `$.player.insurance.insuredModules` | boolean | false |\n' +
+    '| `$.player.insurance.lastStationId` | null | null |\n' +
+    '| `$.player.insurance.rate` | number | 0.6 |\n' +
+    '| `$.player.loadoutPresets` | array | length 0 |\n' +
+    '| `$.player.magnetRange` | number | 250 |\n' +
+    '| `$.player.massSeed` | object '... 5286 more characters,
+  operator: 'strictEqual'
 }
 
 Node.js v20.19.2
 
 --- sim-compare (exit 1) :: node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
 
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
+AssertionError [ERR_ASSERTION]: 47-A Phase 0 tape should land at least one projectile hit
+    at assert47aPhase0Metrics (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:1220:3)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:175:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
 }
 
 Node.js v20.19.2
 
 --- sim-v3 (exit 1) :: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --hash --repeat 20 --reload-at 60 --flight-system v3
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
 
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
+AssertionError [ERR_ASSERTION]: 47-A authoritative hash drifted from expected telemetry envelope
++ actual - expected
+
++ 'fe0070c14a9d62ef73b209742b419cc0611f3fb401f918cc464c20de1b1c1a9f'
+- '5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad'
+    at assertExpectedEnvelope (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:685:12)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:223:25 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'fe0070c14a9d62ef73b209742b419cc0611f3fb401f918cc464c20de1b1c1a9f',
+  expected: '5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad',
+  operator: 'strictEqual'
 }
 
 Node.js v20.19.2
 
 --- sim (exit 1) :: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
 
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
+AssertionError [ERR_ASSERTION]: 47-A Phase 0 tape should land at least one projectile hit
+    at assert47aPhase0Metrics (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:1220:3)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:212:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
 }
 
 Node.js v20.19.2
 
---- massline (exit 1) :: node scripts/check-massline-aggregate.mjs
-at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
-node:internal/modules/esm/resolve:283
-    throw new ERR_MODULE_NOT_FOUND(
-          ^
-
-Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/spaceface-master-witness/src/data/emergentPrimitives.js' imported from /workspace/spaceface-master-witness/src/data/weapons.js
-    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
-    at moduleResolve (node:internal/modules/esm/resolve:952:10)
-    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
-    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
-    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
-    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
-    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
-    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
-  code: 'ERR_MODULE_NOT_FOUND',
-  url: 'file:///workspace/spaceface-master-witness/src/data/emergentPrimitives.js'
-}
-
-Node.js v20.19.2
-
-    at file:///workspace/spaceface-master-witness/scripts/lib/check-47a-common.mjs:43:16
-    at ChildProcess.exithandler (node:child_process:430:5)
-    at ChildProcess.emit (node:events:524:28)
-    at maybeClose (node:internal/child_process:1104:16)
-    at ChildProcess._handle.onexit (node:internal/child_process:304:5)
-
-Node.js v20.19.2
-
-[check-massline] FAIL - 24 of 26 child checks not green (24 red: check:massline:heads, check:massline:mass-coupling, check:massline:momentum-sink, check:massline:release, check:massline:release-feedback, check:massline:load, check:massline:snapcatch, check:massline:reelpump, check:massline:auto-target, check:massline:threats, check:massline:threat-feedback, check:massline:arc-data, check:massline:arc-render, check:massline:whip-impact, check:massline:whip-feedback, check:impulse:authority, check:impulse:massline-combos, check:mining:bulk-guidance, check:47a:spindle, check:47a:scavenger-threat, check:47a:debris-sling, check:47a:recovery-contested, check:47a:civilian-priority, check:47a:physical-branches)
-
-EXIT:1

@@ -1,0 +1,209 @@
+From fac61054d63b7e156aa06f2078dfbcbf6edb74ae Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:30:58 -0400
+Subject: [PATCH 1/4] feat(perf): schedule background admission with
+ scheduler.yield after present
+
+Backlog #27: after present, resume via scheduler.yield() instead of stacked
+setTimeout(0). postTask(background) remains next-best; setTimeout is the
+headless fallback. Applies to compilePresentSlice, startupGpuResidency, and
+pipeline resume scheduling.
+---
+ src/render/compilePresentSlice.js       | 34 +++++++++++++------
+ src/render/pipelineReadiness.js         | 21 +++++++++---
+ src/render/startupGpuResidency.js       |  9 ++++-
+ test/flight-present-scheduling.test.mjs | 45 ++++++++++++++++++++++++-
+ 4 files changed, 91 insertions(+), 18 deletions(-)
+
+diff --git a/src/render/compilePresentSlice.js b/src/render/compilePresentSlice.js
+index cc882bb57..2c074757a 100644
+--- a/src/render/compilePresentSlice.js
++++ b/src/render/compilePresentSlice.js
+@@ -130,24 +130,36 @@ export function yieldAfterPresent() {
+ export function armCallbackAfterPresent(callback) {
+   if (typeof callback !== 'function') return;
+   let fired = false;
+-  // P2: resume admission at background priority — setTimeout(0) after rAF lands the job in the
+-  // compositor beat and was the largest named hitch owner (externalScheduling). postTask keeps
+-  // it off the frame's critical path; the timeout remains the headless/legacy fallback.
+-  const postTask = typeof globalThis.scheduler === 'object' && globalThis.scheduler
+-    && typeof globalThis.scheduler.postTask === 'function'
+-    ? globalThis.scheduler.postTask.bind(globalThis.scheduler)
++  // After present, resume via scheduler.yield() so background admission does not stack on the
++  // compositor beat the way setTimeout(0) after rAF did (largest named hitch: externalScheduling).
++  // postTask(background) is the next-best; setTimeout remains the headless/legacy fallback.
++  const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
++    ? globalThis.scheduler
+     : null;
+-  const fire = () => {
++  const yieldFn = sched && typeof sched.yield === 'function'
++    ? () => sched.yield()
++    : null;
++  const postTask = sched && typeof sched.postTask === 'function'
++    ? sched.postTask.bind(sched)
++    : null;
++  const resume = () => {
+     if (fired) return;
+     fired = true;
+-    if (postTask) postTask(callback, { priority: 'background' });
+-    else setTimeout(callback, 0);
++    if (yieldFn) {
++      Promise.resolve(yieldFn()).then(callback, () => { callback(); });
++      return;
++    }
++    if (postTask) {
++      postTask(callback, { priority: 'background' });
++      return;
++    }
++    setTimeout(callback, 0);
+   };
+   const raf = typeof globalThis.requestAnimationFrame === 'function'
+     ? globalThis.requestAnimationFrame.bind(globalThis)
+     : null;
+-  if (raf) raf(fire);
++  if (raf) raf(resume);
+   // Headless / background documents can stall rAF forever. A short timeout unsticks
+   // admission without putting the job on the present callback.
+-  setTimeout(fire, raf ? 48 : 0);
++  setTimeout(resume, raf ? 48 : 0);
+ }
+diff --git a/src/render/pipelineReadiness.js b/src/render/pipelineReadiness.js
+index 94d993673..7c91c0f43 100644
+--- a/src/render/pipelineReadiness.js
++++ b/src/render/pipelineReadiness.js
+@@ -147,15 +147,26 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+   const scheduleResume = typeof options.scheduleResume === 'function'
+     ? options.scheduleResume
+     : (callback) => {
+-        // rAF starvation (occluded or minimized headed window) would otherwise park the bounded
+-        // resume lane forever — queued compiles would never flush and the authored-readiness gate
+-        // would wait out its full timeout. The timer fires the same callback without presenting.
+-        if (typeof requestAnimationFrame !== 'function') return setTimeout(callback, 16);
++        // After present, prefer scheduler.yield() so in-flight admission does not stack on the
++        // compositor beat (setTimeout(0) after rAF). rAF starvation (occluded/minimized headed
++        // window) would otherwise park the resume lane forever — the timer unsticks without
++        // presenting.
++        const resume = () => {
++          const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
++            ? globalThis.scheduler
++            : null;
++          if (sched && typeof sched.yield === 'function') {
++            Promise.resolve(sched.yield()).then(callback, () => { callback(); });
++            return;
++          }
++          callback();
++        };
++        if (typeof requestAnimationFrame !== 'function') return setTimeout(resume, 16);
+         let fired = false;
+         const fire = () => {
+           if (fired) return;
+           fired = true;
+-          callback();
++          resume();
+         };
+         requestAnimationFrame(fire);
+         return setTimeout(fire, 48);
+diff --git a/src/render/startupGpuResidency.js b/src/render/startupGpuResidency.js
+index c77546ab2..6254669e3 100644
+--- a/src/render/startupGpuResidency.js
++++ b/src/render/startupGpuResidency.js
+@@ -585,7 +585,14 @@ export function yieldToNextPresent(options = {}) {
+         : null);
+     const scheduleTask = typeof options.scheduleTask === 'function'
+       ? options.scheduleTask
+-      : (callback) => setTimeout(callback, 0);
++      : (callback) => {
++        const sched = globalThis.scheduler;
++        if (sched && typeof sched.yield === 'function') {
++          Promise.resolve(sched.yield()).then(callback, () => { callback(); });
++          return;
++        }
++        setTimeout(callback, 0);
++      };
+     if (requestFrame) {
+       let fired = false;
+       const fire = () => {
+diff --git a/test/flight-present-scheduling.test.mjs b/test/flight-present-scheduling.test.mjs
+index 2caeb2d3d..3b4f0a791 100644
+--- a/test/flight-present-scheduling.test.mjs
++++ b/test/flight-present-scheduling.test.mjs
+@@ -15,12 +15,14 @@ import {
+ // note on scheduleUpgradeFrame in partsLibrary.js for the numbers.
+ //
+ // A source-regex assertion could not have caught either failure. It proves the code has a SHAPE,
+-// never that the shape helps. The two tests kept below drive the primitives and observe ORDER.
++// never that the shape helps. The tests below drive the primitives and observe ORDER.
+ 
+ test('armCallbackAfterPresent runs after the display callback, not inside it', async () => {
+   const order = [];
+   const realRaf = globalThis.requestAnimationFrame;
+   const realTimeout = globalThis.setTimeout;
++  const realScheduler = globalThis.scheduler;
++  globalThis.scheduler = undefined;
+   globalThis.requestAnimationFrame = (cb) => {
+     order.push('raf');
+     cb();
+@@ -46,6 +48,44 @@ test('armCallbackAfterPresent runs after the display callback, not inside it', a
+   } finally {
+     globalThis.requestAnimationFrame = realRaf;
+     globalThis.setTimeout = realTimeout;
++    globalThis.scheduler = realScheduler;
++  }
++});
++
++test('armCallbackAfterPresent prefers scheduler.yield after present', async () => {
++  const order = [];
++  const realRaf = globalThis.requestAnimationFrame;
++  const realTimeout = globalThis.setTimeout;
++  const realScheduler = globalThis.scheduler;
++  globalThis.requestAnimationFrame = (cb) => {
++    order.push('raf');
++    cb();
++    return 1;
++  };
++  globalThis.setTimeout = (cb, ms) => {
++    order.push(`timeout:${ms ?? 0}`);
++    // Do not run the unstick timer synchronously — yield should win the race.
++    return 1;
++  };
++  globalThis.scheduler = {
++    yield: async () => { order.push('yield'); },
++  };
++  try {
++    await new Promise((resolve) => {
++      armCallbackAfterPresent(() => {
++        order.push('job');
++        resolve();
++      });
++    });
++    assert.equal(order[0], 'raf');
++    assert.ok(order.includes('yield'));
++    assert.ok(order.includes('job'));
++    assert.ok(order.indexOf('yield') < order.indexOf('job'));
++    assert.ok(!order.includes('timeout:0'), 'must not stack setTimeout(0) when yield exists');
++  } finally {
++    globalThis.requestAnimationFrame = realRaf;
++    globalThis.setTimeout = realTimeout;
++    globalThis.scheduler = realScheduler;
+   }
+ });
+ 
+@@ -53,6 +93,8 @@ test('yieldAfterPresent settles only after the display callback', async () => {
+   const order = [];
+   const realRaf = globalThis.requestAnimationFrame;
+   const realTimeout = globalThis.setTimeout;
++  const realScheduler = globalThis.scheduler;
++  globalThis.scheduler = undefined;
+   globalThis.requestAnimationFrame = (cb) => {
+     order.push('raf');
+     cb();
+@@ -74,5 +116,6 @@ test('yieldAfterPresent settles only after the display callback', async () => {
+   } finally {
+     globalThis.requestAnimationFrame = realRaf;
+     globalThis.setTimeout = realTimeout;
++    globalThis.scheduler = realScheduler;
+   }
+ });
+-- 
+2.47.3
+

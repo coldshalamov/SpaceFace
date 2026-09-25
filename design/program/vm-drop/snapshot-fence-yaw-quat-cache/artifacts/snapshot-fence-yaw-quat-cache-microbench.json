@@ -1,0 +1,20 @@
+{
+  "label": "snapshot-fence-yaw-quat-cache",
+  "entities": 400,
+  "frames": 12000,
+  "rotatingFraction": 0.3,
+  "before": {
+    "label": "pack-yaw-sin-cos-every",
+    "ms": 109.631,
+    "iters": 12000,
+    "sink": 1281761.10533214
+  },
+  "after": {
+    "label": "pack-yaw-cache-read",
+    "ms": 39.537,
+    "iters": 12000,
+    "sink": 1319607.5698656866
+  },
+  "speedup": 2.773,
+  "note": "Portable pack stand-in. Soft-GPU fps not claimed."
+}

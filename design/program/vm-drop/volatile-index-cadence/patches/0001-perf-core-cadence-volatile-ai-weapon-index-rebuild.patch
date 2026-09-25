@@ -1,0 +1,73 @@
+From 3faeb1e631bbf18db6dad313041e84f02b6beafa Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 02:49:42 -0400
+Subject: [PATCH] =?UTF-8?q?perf(core):=20cadence=20volatile=20ai/weapon=20?=
+ =?UTF-8?q?index=20rebuild=20(~4.46=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+append/remove already keep aiShips/weaponShips correct for membership.
+Quiet preStep was rebuilding both lists every tick; catch mid-life attach
+on an 8-tick cadence instead.
+---
+ src/core/coreSystem.js | 23 ++++++++++++++++++++---
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index af28382f4..8529f7c0f 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -205,7 +205,7 @@ export const core = {
+     state.meta.playtimeS += dt;
+     const index = ensureEntityIndex(state);
+     reconcileEntityIndexSource(index, state.entityList);
+-    refreshVolatileEntityIndex(index);
++    refreshVolatileEntityIndex(index, state.tick);
+     beginDirtyTick(state, state.tick);
+     const movables = index.movables;
+     for (const e of movables) {
+@@ -508,6 +508,7 @@ function clearEntityIndex(index) {
+   index.radarAsteroids.length = 0;
+   index.byStationId.clear();
+   index._indexedIds.clear();
++  index._volatileReady = false;
+ }
+ 
+ function appendEntityIndex(index, e) {
+@@ -706,14 +707,30 @@ function markEntityIndexSourceSynced(index, list) {
+   index._sourceLength = list.length;
+ }
+ 
+-function refreshVolatileEntityIndex(index) {
++// Mid-life ai/weapons attach without a spawn/despawn is rare. append/remove already keep
++// aiShips/weaponShips correct for membership. Rebuilding every preStep was O(ships) on the
++// quiet registry pole; catch up on a fixed cadence so a hot attach still lands within a few
++// ticks without paying the walk 60 Hz.
++const VOLATILE_INDEX_PERIOD_TICKS = 8;
++
++function refreshVolatileEntityIndex(index, tick = 0) {
++  if (!index || !index.__spacefaceEntityIndexV1) return false;
++  if (index._volatileReady === true) {
++    const period = VOLATILE_INDEX_PERIOD_TICKS;
++    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
++    if (((t % period) + period) % period !== 0) return false;
++  }
+   index.aiShips.length = 0;
+   index.weaponShips.length = 0;
+-  for (const e of index.ships) {
++  const ships = index.ships;
++  for (let i = 0; i < ships.length; i++) {
++    const e = ships[i];
+     if (!e || !e.alive || e.type !== 'ship') continue;
+     if (e.data && e.data.ai) index.aiShips.push(e);
+     if (e.data && e.data.weapons && e.data.weapons.length) index.weaponShips.push(e);
+   }
++  index._volatileReady = true;
++  return true;
+ }
+ 
+ function isMovableEntity(e) {
+-- 
+2.47.3
+

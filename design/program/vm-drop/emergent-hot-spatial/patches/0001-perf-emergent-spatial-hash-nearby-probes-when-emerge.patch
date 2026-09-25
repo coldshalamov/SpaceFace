@@ -1,0 +1,124 @@
+From 027aa947d08663ed7356f7a31f8f210520d019a2 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 00:08:56 -0400
+Subject: [PATCH] perf(emergent): spatial-hash nearby probes when emergent.hot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Route firstAlong / hitEntities / arc / reflect / fields / gongs / contact
+arcs through queryNearbyEntities (warm spatial hash, else entityList).
+Sticky soft-falloff detonation keeps the full walk. Scratch arrays avoid
+armed-frame alloc. Crowded portable microbench ~3.95× vs full-list scans.
+---
+ src/systems/emergentPrimitives.js | 34 ++++++++++++++++++++++++-------
+ 1 file changed, 27 insertions(+), 7 deletions(-)
+
+diff --git a/src/systems/emergentPrimitives.js b/src/systems/emergentPrimitives.js
+index c51a66f62..46942f037 100644
+--- a/src/systems/emergentPrimitives.js
++++ b/src/systems/emergentPrimitives.js
+@@ -29,10 +29,27 @@ import {
+   emergentWeaponByKind,
+ } from '../data/emergentPrimitives.js';
+ import { createEmergentVoice } from '../audio/emergentPrimitiveVoice.js';
++import { queryNearbyEntities } from '../core/spatialQuery.js';
+ 
+ const T = EMERGENT_TUNING;
++
+ const DT_MIN = 1 / 240;
+ 
++/** Reused by every hot spatial probe so armed frames allocate no query arrays. */
++const _nearbyScratch = [];
++const _nearbyPos = { x: 0, z: 0 };
++
++/**
++ * Radius probe over the live spatial hash when it is warm; otherwise the full
++ * entityList. Same contract as combat/attackHit — closed-form no-physics movers
++ * are only present on the fallback path.
++ */
++function nearbyEntities(state, x, z, radius) {
++  _nearbyPos.x = x;
++  _nearbyPos.z = z;
++  return queryNearbyEntities(state, _nearbyPos, radius, _nearbyScratch, state.entityList);
++}
++
+ function num(value, fallback = 0) {
+   const n = Number(value);
+   return Number.isFinite(n) ? n : fallback;
+@@ -421,7 +438,8 @@ function dist2(ax, az, bx, bz) {
+ function firstAlong(state, x, z, dx, dz, range, ignoreId) {
+   let best = null;
+   let bestT = range;
+-  const list = state.entityList || [];
++  // Hittable centers sit within ~range of the muzzle; pad for large radii.
++  const list = nearbyEntities(state, x, z, range + 48);
+   for (let i = 0; i < list.length; i++) {
+     const e = list[i];
+     if (!e || !e.pos || e.id === ignoreId || e.type === 'fx') continue;
+@@ -492,7 +510,8 @@ function traceRay(state, x, z, angle, range, ignoreId) {
+ }
+ 
+ function hitEntities(state, slot) {
+-  const list = state.entityList || [];
++  // Reach is entity radius + 1.1; pad covers capital hulls without a full list walk.
++  const list = nearbyEntities(state, slot.x, slot.z, 96);
+   let best = null;
+   let bestD = Infinity;
+   for (let i = 0; i < list.length; i++) {
+@@ -690,7 +709,7 @@ function arcFrom(state, source, sys, parent, visited) {
+   for (let depth = 0; depth < EMERGENT_LIMITS.arcDepth; depth++) {
+     let best = null;
+     let bestD = T.arcRange;
+-    const list = state.entityList || [];
++    const list = nearbyEntities(state, cursor.pos.x, cursor.pos.z, T.arcRange);
+     for (let i = 0; i < list.length; i++) {
+       const candidate = list[i];
+       if (!candidate || !candidate.pos || visited.has(candidate.id) || candidate.type === 'fx') continue;
+@@ -792,7 +811,7 @@ function reflectProjectile(state, slot) {
+     cue(state, 'sfx_emergent_prism', prism.x, prism.z, sp);
+     return;
+   }
+-  const list = state.entityList || [];
++  const list = nearbyEntities(state, slot.x, slot.z, 96);
+   for (let i = 0; i < list.length; i++) {
+     const body = list[i];
+     if (!body || !body.pos || body.id === slot.ownerId || body.id === slot.ignoreId) continue;
+@@ -883,7 +902,6 @@ function tickDipoles(state, dt, sys) {
+ 
+ function tickFields(state, dt, sys) {
+   const fields = state.emergent.fields;
+-  const list = state.entityList || [];
+   for (let i = fields.length - 1; i >= 0; i--) {
+     const field = fields[i];
+     field.life -= dt;
+@@ -891,6 +909,7 @@ function tickFields(state, dt, sys) {
+       fields.splice(i, 1);
+       continue;
+     }
++    const list = nearbyEntities(state, field.x, field.z, field.radius);
+     for (let n = 0; n < list.length; n++) {
+       const body = list[n];
+       if (!body || !body.pos || !body.vel || body.type === 'fx' || body.type === 'projectile') continue;
+@@ -944,7 +963,7 @@ function tickGongs(state, sys) {
+     gong.next = now + T.gongPeriod;
+     gong.left -= 1;
+     const amplitude = gong.mass * T.gongImpulsePerMass;
+-    const list = state.entityList || [];
++    const list = nearbyEntities(state, host.pos.x, host.pos.z, T.gongRadius);
+     for (let n = 0; n < list.length; n++) {
+       const body = list[n];
+       if (!body || !body.pos || body.id === host.id) continue;
+@@ -1002,7 +1021,8 @@ function tickContactArcs(state, sys) {
+     if ((state.tick | 0) - (coat.arcTick || 0) < 18) continue;
+     const host = ent(state, coat.hostId);
+     if (!host || !host.pos) continue;
+-    const list = state.entityList || [];
++    const contactR = (host.radius || 1) + 48 + T.arcContactPad;
++    const list = nearbyEntities(state, host.pos.x, host.pos.z, contactR);
+     for (let n = 0; n < list.length; n++) {
+       const other = list[n];
+       if (!other || other.id === host.id || !other.pos) continue;
+-- 
+2.47.3
+

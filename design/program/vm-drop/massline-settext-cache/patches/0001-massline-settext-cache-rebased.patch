@@ -1,0 +1,98 @@
+From a2e957a8ec08bce27bb8de071b46aa11e3965fc2 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:12:00 -0400
+Subject: [PATCH] perf(massline): cache setText last write; skip textContent
+ reads (rebased)
+
+Rebase of vm-drop #12 onto master tip after preview paint/text drift.
+---
+ src/ui/masslineHud.js | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/src/ui/masslineHud.js b/src/ui/masslineHud.js
+index c7df6e12b..f7896d605 100644
+--- a/src/ui/masslineHud.js
++++ b/src/ui/masslineHud.js
+@@ -806,7 +806,7 @@ export const masslineHud = {
+     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
+     setStyle(dom.previewSvg, 'display', 'none');
+     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+-    if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
++    setText(dom.previewEl, paint);
+     setAttr(dom.previewEl, 'data-bracket-state', read.state);
+     setAttr(dom.previewEl, 'aria-label', offscreen ? `${text}, offscreen` : text);
+     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
+@@ -863,7 +863,7 @@ export const masslineHud = {
+     setStyle(dom.previewEl, 'display', 'block');
+     setClass(dom.previewEl, 'ml2-preview-snare', false);
+     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+-    if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
++    setText(dom.previewEl, paint);
+     setAttr(dom.previewEl, 'data-bracket-state', read.state);
+     setAttr(dom.previewEl, 'aria-label', text);
+     setAttr(dom.previewEl, 'data-receipt-id', '');
+@@ -918,7 +918,7 @@ export const masslineHud = {
+     setStyle(dom.previewSourceMark, 'display', 'none');
+     setStyle(dom.previewEl, 'display', 'block');
+     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+-    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
++    setText(dom.previewEl, text);
+     setAttr(dom.previewEl, 'aria-label', 'Transverse Snare ready. Press Massline to deploy the shown crossing line.');
+     setAttr(dom.previewEl, 'data-receipt-id', String(preview.receiptId || ''));
+     setAttr(dom.previewEl, 'data-target-id', 'free-target-line');
+@@ -1011,7 +1011,7 @@ export const masslineHud = {
+     setStyle(dom.previewEl, 'display', 'block');
+     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+     setClass(dom.previewEl, 'ml2-preview-snare', false);
+-    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
++    setText(dom.previewEl, text);
+     setAttr(dom.previewEl, 'aria-label', aria);
+     setAttr(dom.previewEl, 'data-receipt-id', String((selected && receipt.id) || setup.sourceReceiptId || ''));
+     setAttr(dom.previewEl, 'data-target-id', String((selected && selected.targetId) || ''));
+@@ -1060,15 +1060,13 @@ export const masslineHud = {
+         throwCollateralSpots(state, throwState));
+       if (collateral) {
+         const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
+-        if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
+-          dom.throwLabel.textContent = advisory;
+-        }
++        if (dom.throwLabel) setText(dom.throwLabel, advisory);
+         setAttr(dom.throwEl, 'aria-label',
+           `${cue.ariaLabel}, possible collateral risk near ${collateral.label.toLowerCase()}`);
+       }
+     }
+     if (degradedThrow) {
+-      if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
++      if (dom.throwLabel) setText(dom.throwLabel, 'STALE');
+       setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
+       setAttr(dom.throwEl, 'data-window-state', 'degraded');
+     }
+@@ -1100,7 +1098,7 @@ export const masslineHud = {
+     setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
+     applyCueState(dom.selfEl, dom.selfLabel, cue);
+     if (degradedSelf) {
+-      if (dom.selfLabel && dom.selfLabel.textContent !== 'STALE') dom.selfLabel.textContent = 'STALE';
++      if (dom.selfLabel) setText(dom.selfLabel, 'STALE');
+       setAttr(dom.selfEl, 'aria-label', 'Massline self-sling intercept degraded, target turning');
+       setAttr(dom.selfEl, 'data-window-state', 'degraded');
+     }
+@@ -1437,8 +1435,15 @@ function offscreenDirection(dx, dy) {
+   return `${dy < 0 ? 'upper' : 'lower'} ${dx < 0 ? 'left' : 'right'}`;
+ }
+ 
++function setText(el, text) {
++  if (!el) return;
++  if (el._sfText === text) return;
++  el._sfText = text;
++  el.textContent = text;
++}
++
+ function applyCueState(element, label, cue) {
+-  if (label && label.textContent !== cue.label) label.textContent = cue.label;
++  if (label) setText(label, cue.label);
+   setAttr(element, 'aria-label', cue.ariaLabel);
+   setAttr(element, 'data-window-state', cue.state);
+   setAttr(element, 'data-direction', cue.direction);
+-- 
+2.47.3
+

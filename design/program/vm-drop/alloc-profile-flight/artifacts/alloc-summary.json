@@ -1,0 +1,298 @@
+{
+  "measured_sha": "0612d2b9fc994557dd35cb00d0df21b791722c23",
+  "when_edt": "2026-09-22 ~20:55–20:58 EDT",
+  "tool": "node scripts/probe-runtime-witness.mjs",
+  "sampling": {
+    "api": "CDP HeapProfiler.startSampling",
+    "samplingIntervalBytes": 65536,
+    "note": "V8 allocation sampling; totalMb is sampled allocated bytes (not live heap). Stock probe keeps top-25 merged sites only — no full .heapprofile file written by scripts/probe-runtime-witness.mjs."
+  },
+  "gpu": {
+    "renderer": "ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5)",
+    "tier": "software"
+  },
+  "windows": {
+    "settled60s": {
+      "command": "SPACEFACE_WITNESS_MS=60000 SPACEFACE_WITNESS_TAG=alloc-settled-60s node scripts/probe-runtime-witness.mjs --alloc-probe --gc-probe --no-sample-shots",
+      "matches_cpu_profile_flight": "settled-60s (~60s held thrust)",
+      "sampleCount": 108,
+      "gcProbe": {
+        "collected": true,
+        "beforeMb": 379,
+        "afterMb": 363
+      },
+      "alloc": {
+        "label": "settled-60s",
+        "totalMbSampled": 13,
+        "top": [
+          {
+            "site": "append @ presentationJournal.js:274",
+            "mb": 1.4,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "cloneUniforms @ three.core.js:37307",
+            "mb": 1.2,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "Object3D @ three.core.js:11757",
+            "mb": 0.9,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "Set @ :0",
+            "mb": 0.5,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "get @ :0",
+            "mb": 0.5,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "Float32Array @ :0",
+            "mb": 0.4,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "createBindingState @ three.module.js:1710",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "BufferAttribute @ three.core.js:16696",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "multiplyMatrices @ three.core.js:10385",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "stableJsonStringify @ renderPackage.js:265",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "set @ :0",
+            "mb": 0.3,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "createFlowFlipbookMaterial @ flowFlipbookMaterial.js:646",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(IDLE_EXTERNAL) @ :0",
+            "mb": 0.2,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "MeshPhysicalMaterial @ three.core.js:38336",
+            "mb": 0.2,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(anonymous) @ eventTrace.js:71",
+            "mb": 0.2,
+            "churnClass": "unclassified"
+          },
+          {
+            "site": "(anonymous) @ partsLibrary.js:4192",
+            "mb": 0.1,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "frame @ presentationRunner.js:780",
+            "mb": 0.1,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "join @ :0",
+            "mb": 0.1,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "setup @ three.module.js:1606",
+            "mb": 0.1,
+            "churnClass": "unclassified"
+          },
+          {
+            "site": "Material @ three.core.js:20414",
+            "mb": 0.1,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(V8 API) @ :0",
+            "mb": 0.1,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "setBlending @ three.module.js:10263",
+            "mb": 0.1,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "BufferGeometry @ three.core.js:18165",
+            "mb": 0.1,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(anonymous) @ KTX2Loader.js:633",
+            "mb": 0.1,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "update @ three.module.js:4278",
+            "mb": 0.1,
+            "churnClass": "unclassified"
+          }
+        ]
+      }
+    },
+    "fromLaunchBusy": {
+      "command": "SPACEFACE_WITNESS_MS=20000 SPACEFACE_WITNESS_TAG=alloc-from-launch-busy node scripts/probe-runtime-witness.mjs --alloc-probe-boot --gc-probe --no-sample-shots",
+      "matches_cpu_profile_flight": "from-launch-busy (alloc from before loading route through ~20s flight)",
+      "sampleCount": 33,
+      "gcProbe": {
+        "collected": true,
+        "beforeMb": 435,
+        "afterMb": 348
+      },
+      "alloc": {
+        "label": "from-launch-busy",
+        "totalMbSampled": 27,
+        "top": [
+          {
+            "site": "runRapierInitWithFilteredWarning @ rapierCompatRuntime.js:81",
+            "mb": 2,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "cloneUniforms @ three.core.js:37307",
+            "mb": 1.6,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "Object3D @ three.core.js:11757",
+            "mb": 1.5,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "get @ :0",
+            "mb": 0.8,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "parseUniform @ three.module.js:6100",
+            "mb": 0.6,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(anonymous) @ KTX2Loader.js:633",
+            "mb": 0.6,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "join @ :0",
+            "mb": 0.5,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "Float32Array @ :0",
+            "mb": 0.5,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "PlumeSlotPool @ continuousPlume.js:138",
+            "mb": 0.4,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "pricePointAt @ economy.js:408",
+            "mb": 0.4,
+            "churnClass": "one-time/boot-ish"
+          },
+          {
+            "site": "MeshPhysicalMaterial @ three.core.js:38336",
+            "mb": 0.4,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(V8 API) @ :0",
+            "mb": 0.4,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "BufferAttribute @ three.core.js:16696",
+            "mb": 0.4,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "BufferGeometry @ three.core.js:18165",
+            "mb": 0.4,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "stableJsonStringify @ renderPackage.js:265",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "(IDLE_EXTERNAL) @ :0",
+            "mb": 0.3,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "createBindingState @ three.module.js:1710",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "copy @ three.core.js:13272",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "multiplyMatrices @ three.core.js:10385",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "toLowerCase @ :0",
+            "mb": 0.3,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "map @ :0",
+            "mb": 0.3,
+            "churnClass": "runtime/native-or-builtin"
+          },
+          {
+            "site": "update @ arcadeStructuralFx.js:240",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "step @ registry.js:773",
+            "mb": 0.3,
+            "churnClass": "sim-tick"
+          },
+          {
+            "site": "setValueV3f @ three.module.js:5251",
+            "mb": 0.3,
+            "churnClass": "per-frame/render"
+          },
+          {
+            "site": "parse @ GLTFLoader.js:429",
+            "mb": 0.3,
+            "churnClass": "one-time/boot-ish"
+          }
+        ]
+      }
+    }
+  }
+}

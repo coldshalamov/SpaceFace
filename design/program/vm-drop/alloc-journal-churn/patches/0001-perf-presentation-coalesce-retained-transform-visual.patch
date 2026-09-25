@@ -1,0 +1,114 @@
+From 16c2a6810658348e0a46164eecfcf129ff318625 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:15:17 -0400
+Subject: [PATCH] perf(presentation): coalesce retained transform/visual
+ records across ticks
+
+Soft-GPU presents slower than the sim, so per-tick transform appends for the
+same undrained entity dominated the alloc profile (append @ presentationJournal).
+While the prior record is still retained, overwrite it in place (tick/revision/
+pose) instead of appending. Same-tick coalesce unchanged; spawn/destroy untouched.
+---
+ src/core/presentationJournal.js    | 16 ++++++++---
+ test/presentation-journal.test.mjs | 44 ++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+), 4 deletions(-)
+
+diff --git a/src/core/presentationJournal.js b/src/core/presentationJournal.js
+index c853913c3..27f208971 100644
+--- a/src/core/presentationJournal.js
++++ b/src/core/presentationJournal.js
+@@ -262,10 +262,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
+       : 0;
+     for (let sequence = startSequence; sequence <= newestSequence; sequence++) {
+       const slot = retainedSlot(sequence);
+-      if (!slot || slot.tick !== tick || slot.entityId !== entityId
++      if (!slot || slot.entityId !== entityId
+         || slot.generation !== generation) continue;
+-      // A coalesced write can precede another kind for the same entity. Refresh the later records too
+-      // so sequence-order consumers never observe a revision or scalar snapshot moving backwards.
++      // Coalesced writes (same-tick or cross-tick while retained) can precede another kind for
++      // the same entity. Refresh later retained records too so sequence-order consumers never
++      // observe a revision, tick, or scalar snapshot moving backwards.
++      if (slot.tick < tick) slot.tick = tick;
+       slot.revision = revision;
+       fillPose(slot, source);
+     }
+@@ -368,9 +370,14 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
+     }
+ 
+     const prior = retainedSlot(sequenceTable[entityId]);
+-    if (prior && prior.kind === kind && prior.tick === tick && prior.generation === generation) {
++    // Coalesce across ticks while the prior record is still retained. Soft-GPU presents
++    // slower than the sim, so same-entity transform/visual spam was the top alloc-profile
++    // site (append @ presentationJournal). Presentation only needs the latest undrained
++    // pose/visual; intermediate ticks are overwritten in place (revision + scalars + tick).
++    if (prior && prior.kind === kind && prior.generation === generation && prior.tick <= tick) {
+       const revision = nextCounter(revisions[entityId]);
+       revisions[entityId] = revision;
++      prior.tick = tick;
+       refreshCoalescedRecords(
+         prior.sequence,
+         tick,
+@@ -381,6 +388,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
+       );
+       if (kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) transformCoalesceCount++;
+       else visualCoalesceCount++;
++      lastRecordTick = tick;
+       return prior.sequence;
+     }
+ 
+diff --git a/test/presentation-journal.test.mjs b/test/presentation-journal.test.mjs
+index a5e91bbc6..38a5af7ab 100644
+--- a/test/presentation-journal.test.mjs
++++ b/test/presentation-journal.test.mjs
+@@ -350,3 +350,47 @@ test('PresentationJournal terminal close drains retained records and rejects eve
+   assert.equal(rebuilding.needsRebuild(), false);
+   assert.equal(rebuilding.getDiagnostics().rebuildRequired, false);
+ });
++
++test('PresentationJournal coalesces cross-tick transforms while the prior record is retained', () => {
++  const journal = createPresentationJournal(32);
++  const ship = { id: 7, type: 'ship', pos: { x: 1, y: 0, z: 2 }, rot: 0 };
++  assert.equal(journal.recordSpawn(1, ship), 1);
++  const first = journal.recordTransform(2, ship);
++  assert.equal(first, 2);
++  ship.pos = { x: 4, y: 0, z: 6 };
++  ship.rot = 0.5;
++  // Later tick, prior still retained → same sequence, not a new append.
++  assert.equal(journal.recordTransform(5, ship), first);
++  const scratch = createPresentationJournalRecord();
++  assert.equal(journal.copySequence(first, scratch), true);
++  assert.equal(scratch.tick, 5);
++  assert.equal(scratch.x, 4);
++  assert.equal(scratch.z, 6);
++  assert.equal(scratch.rot, 0.5);
++  assert.equal(journal.getDiagnostics().transformCoalesceCount, 1);
++  assert.equal(journal.getDiagnostics().transformCount, 1);
++  assert.equal(journal.getWriteSequence(), 2);
++});
++
++test('PresentationJournal cross-tick coalesce microbench stays under append-heavy baseline', () => {
++  const journal = createPresentationJournal(4096);
++  const entities = [];
++  for (let id = 1; id <= 64; id++) {
++    const e = { id, type: 'ship', pos: { x: id, y: 0, z: 0 }, rot: 0, prevPos: { x: id, y: 0, z: 0 }, prevRot: 0 };
++    entities.push(e);
++    journal.recordSpawn(0, e);
++  }
++  const ticks = 120;
++  for (let tick = 1; tick <= ticks; tick++) {
++    for (const e of entities) {
++      e.prevPos.x = e.pos.x;
++      e.pos.x += 0.1;
++      journal.recordTransformIfChanged(tick, e);
++    }
++  }
++  const diag = journal.getDiagnostics();
++  // One transform per entity retained (cross-tick coalesce), not ticks*entities.
++  assert.equal(diag.transformCount, entities.length);
++  assert.ok(diag.transformCoalesceCount >= entities.length * (ticks - 1));
++  assert.equal(journal.getPendingCount(), entities.length + entities.length); // spawns + transforms
++});
+-- 
+2.47.3
+

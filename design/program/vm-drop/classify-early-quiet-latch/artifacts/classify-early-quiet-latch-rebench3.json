@@ -1,0 +1,37 @@
+{
+  "primary": {
+    "medianSpeedup": 2.846,
+    "minSpeedup": 2.489,
+    "maxSpeedup": 3.48,
+    "pairs": [
+      2.489,
+      3.48,
+      2.863,
+      2.846,
+      2.889,
+      2.965,
+      2.783,
+      2.846,
+      2.743,
+      2.844,
+      2.886
+    ],
+    "lastModes": [
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch"
+    ],
+    "earlyEnabled": true,
+    "iters": 20000,
+    "rocks": 48,
+    "runs": 11
+  }
+}

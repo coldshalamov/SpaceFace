@@ -1,0 +1,161 @@
+From c5de6ab2c16e903abc0b8f8f11162e70674fce0e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:30:58 -0400
+Subject: [PATCH 4/4] test(perf): focused shader-admission-slice proofs and
+ check script
+
+Covers live receipt texture absorb, scheduler.yield after present, player
+route checkShaderErrors-via-reporter, and in-flight slice wiring.
+---
+ package.json                         |   1 +
+ test/shader-admission-slice.test.mjs | 126 +++++++++++++++++++++++++++
+ 2 files changed, 127 insertions(+)
+ create mode 100644 test/shader-admission-slice.test.mjs
+
+diff --git a/package.json b/package.json
+index fab99f568..8638a88b5 100644
+--- a/package.json
++++ b/package.json
+@@ -590,6 +590,7 @@
+     "check:pq022:relay-collar": "node --test test/pq022-relay-collar-admission.test.mjs",
+     "check:pq022:corridor-assets": "node scripts/check-pq022-corridor-assets.mjs --expected-gaps=scripts/lib/pq022CorridorExpectedGaps.json",
+     "check:baseline": "node scripts/check-baseline.mjs",
++    "check:shader-admission-slice": "node --test test/shader-admission-slice.test.mjs test/flight-present-scheduling.test.mjs test/compile-present-slice.test.mjs test/shader-link-reporter.test.mjs test/opening-submission-plan.test.mjs test/admission-slice-budget.test.mjs test/pipeline-auto-flush-policy.test.mjs",
+     "check:perf-packets": "node --test test/shadow-caster-policy.test.mjs test/perf-combat-count-gates.test.mjs test/flight-compose-gate.test.mjs test/perf-submit-lod-archetype.test.mjs test/ship-pitch-presentation.test.mjs test/vfx-field-geometry-sleep.test.mjs test/renderer-shadow-frame.test.mjs test/renderer-projection-camera-guard.test.mjs test/space-background-boot-tier-single-build.test.mjs test/hud-contact-roster-keyed-rows.test.mjs test/audio-parameter-churn.test.mjs",
+     "check:pq023:corridor-cues": "node --test test/pq023-corridor-cues.test.mjs && node scripts/check-pq023-corridor-cues.mjs",
+     "check:pq024:survey-claim": "node --test test/pq024-survey-claim.test.mjs",
+diff --git a/test/shader-admission-slice.test.mjs b/test/shader-admission-slice.test.mjs
+new file mode 100644
+index 000000000..5cd191ff5
+--- /dev/null
++++ b/test/shader-admission-slice.test.mjs
+@@ -0,0 +1,126 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import {
++  combineOpeningProducerCensuses,
++  createOpeningProducerCensus,
++  createOpeningSubmissionPlan,
++  createOpeningSubmissionReceipt,
++  validateOpeningSubmissionReceipt,
++} from '../src/render/openingSubmissionPlan.js';
++import { yieldToNextPresent } from '../src/render/startupGpuResidency.js';
++
++const CONTENT_HASH = 'a'.repeat(64);
++
++function productionMetadata(root, hash = CONTENT_HASH) {
++  root.userData.flightRenderPackage = {
++    schema: 'spaceface.flightRenderPackage.v1',
++    assetId: 'test-opening-package',
++    contentHash: hash,
++    contentHashVerified: true,
++  };
++  return root;
++}
++
++function planOptions(root) {
++  const census = createOpeningProducerCensus(root, {
++    includeOffscreen: true,
++    route: { shadow: false, target: 'screen' },
++    textures: [],
++  });
++  const combined = combineOpeningProducerCensuses([census]);
++  return {
++    candidates: [{ root, role: 'player' }],
++    globalProgramKeys: combined.globalProgramKeys,
++    openingProgramKeys: combined.openingProgramKeys,
++    requiredContentHashes: combined.requiredContentHashes,
++    producerCensus: combined,
++    producerResourceIdentitySets: combined.resourceIdentitySets,
++  };
++}
++
++test('receipt before absorbs live textures attached after the plan froze', () => {
++  const scene = new THREE.Scene();
++  const root = new THREE.Group();
++  root.name = 'HullRoot';
++  productionMetadata(root);
++  const material = new THREE.MeshBasicMaterial();
++  material.customProgramCacheKey = () => 'opening';
++  const leaf = new THREE.Mesh(new THREE.BoxGeometry(), material);
++  leaf.name = 'Hull';
++  root.add(leaf);
++  scene.add(root);
++
++  const plan = createOpeningSubmissionPlan({
++    ...planOptions(root),
++    camera: new THREE.PerspectiveCamera(),
++    scene,
++  });
++  assert.equal(plan.complete, true);
++
++  const beforePlanTextures = new Set(plan.resourceIdentitySets.blockingTextureIds || []);
++
++  // Loading admission can stamp a blocking texture after the plan census freezes.
++  const lateTexture = new THREE.Texture();
++  material.map = lateTexture;
++
++  const renderer = {
++    info: {
++      programs: [{ cacheKey: 'opening' }],
++      memory: { geometries: 1, textures: 1 },
++    },
++  };
++  const receipt = createOpeningSubmissionReceipt(renderer, plan, {
++    programMaterials: [material],
++  });
++  const widened = receipt.before.blockingTextureIds.some((id) => !beforePlanTextures.has(id))
++    || receipt.before.blockingTextureIds.length > beforePlanTextures.size;
++  assert.ok(widened, 'live walk must widen receipt.before.blockingTextureIds past the frozen plan census');
++
++  const validation = validateOpeningSubmissionReceipt(receipt, renderer);
++  assert.equal((validation.uncapturedTextureIds || []).length, 0,
++    `uncaptured textures must be empty after live absorb, got ${JSON.stringify(validation.uncapturedTextureIds)}`);
++  assert.notEqual(validation.reason, 'uncaptured-first-draw-resource');
++});
++
++test('yieldToNextPresent prefers scheduler.yield over stacked setTimeout(0)', async () => {
++  const order = [];
++  const realRaf = globalThis.requestAnimationFrame;
++  const realTimeout = globalThis.setTimeout;
++  const realScheduler = globalThis.scheduler;
++  globalThis.requestAnimationFrame = (cb) => {
++    order.push('raf');
++    cb();
++    return 1;
++  };
++  globalThis.setTimeout = (cb, ms) => {
++    order.push(`timeout:${ms ?? 0}`);
++    return 1;
++  };
++  globalThis.scheduler = {
++    yield: async () => { order.push('yield'); },
++  };
++  try {
++    await yieldToNextPresent();
++    assert.ok(order.includes('raf'));
++    assert.ok(order.includes('yield'));
++    assert.ok(!order.includes('timeout:0'), 'must not stack setTimeout(0) when yield exists');
++  } finally {
++    globalThis.requestAnimationFrame = realRaf;
++    globalThis.setTimeout = realTimeout;
++    globalThis.scheduler = realScheduler;
++  }
++});
++
++test('player route keeps checkShaderErrors off via reporter; in-flight admission is sliced', async () => {
++  const rendererSrc = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
++  assert.match(rendererSrc, /installShaderLinkReporter/);
++  assert.match(rendererSrc, /shaderChecks/);
++  assert.doesNotMatch(rendererSrc, /checkShaderErrors\s*=\s*false/,
++    'live WebGLRenderer must not disable shader-error checks inline (compileAsync isReady crash)');
++  assert.match(rendererSrc, /sliceInFlight/);
++  assert.match(rendererSrc, /yieldAfterPresent/);
++  assert.match(rendererSrc, /_openingExtrasRecaptured/);
++});
+-- 
+2.47.3
+

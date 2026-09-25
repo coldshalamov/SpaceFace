@@ -1,0 +1,41 @@
+{
+  "name": "classify-flying-rock-retain",
+  "medianSpeedup": 2.386,
+  "minSpeedup": 2.324,
+  "maxSpeedup": 2.658,
+  "pairs": [
+    2.658,
+    2.324,
+    2.356,
+    2.363,
+    2.482,
+    2.386,
+    2.52,
+    2.343,
+    2.381,
+    2.466,
+    2.525
+  ],
+  "lastModes": [
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain",
+    "flying-frame-retain"
+  ],
+  "lastClassifyVisits": 0,
+  "flyingEnabled": true,
+  "iters": 20000,
+  "rocks": 48,
+  "runs": 11,
+  "flySpeed": 40,
+  "dirtyWakeOk": true,
+  "poseWake": true,
+  "miningWake": true
+}

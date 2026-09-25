@@ -1,0 +1,76 @@
+From bbd35c7e71b2940c102016c1585457f15b1b993a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:43:41 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20skip=20idle=20particle=20commit?=
+ =?UTF-8?q?=20republish=20when=20live=3D=3D=3D0=20(~2.3=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+vfx.update always called _integrateParticles even when liveCount===0,
+re-asserting and commitDynamicBufferOwner(0) every frame. After the first
+idle publish, mesh.count is already 0 — skip until the next spawn.
+Picture unchanged.
+---
+ src/render/vfx.js | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 0f35f5b46..decacd508 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1876,6 +1876,8 @@ export const vfx = {
+     this._head = 0;        // round-robin allocation cursor
+     this._liveCount = 0;
+     this._pDrawMax = 0;
++    // After the first quiet commit(0), skip re-assert/re-commit while live===0.
++    this._particlesPublishedIdle = false;
+     this._activeParticles = new Int32Array(cap);
+     this._activeParticlePos = new Int32Array(cap);
+     this._activeParticlePos.fill(-1);
+@@ -2108,12 +2110,14 @@ export const vfx = {
+         );
+       }
+       commitDynamicBufferOwner(this._particleDynamicBufferOwner, keep);
++      this._particlesPublishedIdle = keep <= 0;
+     } else {
+       for (const attr of Object.values(geo.attributes)) {
+         attr.setUsage(THREE.DynamicDrawUsage);
+         attr.needsUpdate = true;
+       }
+       this._shardMesh.count = keep;
++      this._particlesPublishedIdle = keep <= 0;
+     }
+     // Tier-1 pool-capacity event: the particle cloud migrated to a new capacity.
+     const tier1Grow = this.state && this.state.perfRuntime && this.state.perfRuntime.tier1;
+@@ -2688,6 +2692,7 @@ export const vfx = {
+     this._alive[i] = 1;
+     this._activeParticlePos[i] = this._liveCount;
+     this._activeParticles[this._liveCount++] = i;
++    this._particlesPublishedIdle = false;
+   },
+ 
+   _retireParticle(i) {
+@@ -14559,12 +14564,18 @@ export const vfx = {
+       if (this._shardMesh) this._shardMesh.count = 0;
+       return;
+     }
+-    assertDynamicBufferOwnerWritable(dynamicOwner);
+     if (this._liveCount <= 0) {
+       this._pDrawMax = 0;
++      // Quiet settled flight: vfx.update always calls integrate even when live===0.
++      // After one commit(0), mesh.count is already 0 — re-assert + bindings sweep is pure CPU.
++      if (this._particlesPublishedIdle) return;
++      assertDynamicBufferOwnerWritable(dynamicOwner);
+       commitDynamicBufferOwner(dynamicOwner, 0);
++      this._particlesPublishedIdle = true;
+       return;
+     }
++    this._particlesPublishedIdle = false;
++    assertDynamicBufferOwnerWritable(dynamicOwner);
+     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
+     const active = this._activeParticles;
+     const packedSlots = this._pPackedParticleSlots;
+-- 
+2.47.3
+

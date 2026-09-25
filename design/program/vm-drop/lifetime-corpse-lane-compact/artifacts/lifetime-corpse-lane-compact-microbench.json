@@ -1,0 +1,68 @@
+{
+  "name": "lifetime-corpse-lane-compact",
+  "asteroids": 320,
+  "movables": 48,
+  "mines": 4,
+  "iters": 60000,
+  "runs": 11,
+  "medianSpeedup": 5.5340673308339925,
+  "floorMinSpeedup": 5.201782552812599,
+  "pairs": [
+    {
+      "before": 72.65762999999998,
+      "after": 13.967832999999985,
+      "speedup": 5.201782552812599
+    },
+    {
+      "before": 69.73801600000002,
+      "after": 13.223444999999998,
+      "speedup": 5.2738160139056065
+    },
+    {
+      "before": 69.81536000000001,
+      "after": 12.843711999999982,
+      "speedup": 5.43576187320302
+    },
+    {
+      "before": 67.85733400000004,
+      "after": 12.408723000000009,
+      "speedup": 5.468518718646551
+    },
+    {
+      "before": 68.433333,
+      "after": 12.454872999999992,
+      "speedup": 5.494502673772751
+    },
+    {
+      "before": 69.941098,
+      "after": 12.638281000000006,
+      "speedup": 5.5340673308339925
+    },
+    {
+      "before": 71.27100600000003,
+      "after": 12.796999999999997,
+      "speedup": 5.569352660779874
+    },
+    {
+      "before": 70.11020000000002,
+      "after": 12.124666999999988,
+      "speedup": 5.782443344629596
+    },
+    {
+      "before": 69.44061499999998,
+      "after": 11.763857999999999,
+      "speedup": 5.902877695395506
+    },
+    {
+      "before": 69.310608,
+      "after": 11.529528999999997,
+      "speedup": 6.011573239461909
+    },
+    {
+      "before": 75.04208000000006,
+      "after": 12.48085900000001,
+      "speedup": 6.012573333293806
+    }
+  ],
+  "note": "Quiet pose-only. Before=full entityList corpse walk. After=movables+damageables+ordnance lanes; MEMBERSHIP dirty takes full walk. Soft-GPU fps not claimed."
+}

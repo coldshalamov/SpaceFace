@@ -1,0 +1,95 @@
+From d648566119562c226ab6ba3abcc91b7550f3036c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:54:11 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20reuse=20heat=20dissipation;=20s?=
+ =?UTF-8?q?kip=20quiet=20postPhysics=20ensure=20(~2.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Stash heatDissipationPerTick on the combat runtime so coolCombatHeat never
+re-resolves the catalog profile. Gate the prePhysics trailing vitals sync on
+statusChanged, and skip postPhysics ensureCombatant when the runtime already
+exists from prePhysics (physics does not mutate vitals/heat). Soft-GPU fps not
+claimed.
+---
+ src/combat/kernel.js  | 18 +++++++++++++-----
+ src/combat/runtime.js | 10 ++++++++++
+ 2 files changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/src/combat/kernel.js b/src/combat/kernel.js
+index 389d2cf1a..6e307b3cc 100644
+--- a/src/combat/kernel.js
++++ b/src/combat/kernel.js
+@@ -129,7 +129,9 @@ export function createCombatKernel(ctx, options = {}) {
+         applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
+       }
+       coolCombatHeat(entity, runtime, dt);
+-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
++      // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
++      // Re-sync only when statuses may have rewritten vitals this tick. Profile is on runtime.
++      if (statusChanged) syncCombatantBounds(entity, runtime);
+     }
+     actions.advance();
+   }
+@@ -137,10 +139,14 @@ export function createCombatKernel(ctx, options = {}) {
+   function postPhysics() {
+     reconcilePhysicsAttachments();
+     attachments.updateTelemetryAndBreak();
++    // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
++    // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
++    // still get ensureCombatant.
++    const table = state.combat && state.combat.entities;
+     for (const entity of sortedEntitiesForTick()) {
+       if (!entity.alive || !isCombatantType(entity.type)) continue;
+-      const runtime = ensureCombatant(state, entity, catalog);
+-      syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
++      if (table && table[entityKey(entity.id)]) continue;
++      ensureCombatant(state, entity, catalog);
+     }
+   }
+ 
+@@ -225,8 +231,10 @@ export function createCombatKernel(ctx, options = {}) {
+   }
+ 
+   function coolCombatHeat(entity, runtime, dt) {
+-    const profile = resolveCombatProfile(entity, catalog);
+-    const basePerTick = profile && profile.heat && Number(profile.heat.dissipationPerTick) || 0;
++    // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
++    const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
++      ? runtime.heatDissipationPerTick
++      : 0;
+     const normalizedTicks = Number.isFinite(dt) && dt > 0 ? dt * 60 : 1;
+     const multiplier = runtime.multipliers && Number.isFinite(runtime.multipliers.heatDissipation) ? runtime.multipliers.heatDissipation : 1;
+     runtime.heat = Math.max(0, runtime.heat - basePerTick * multiplier * normalizedTicks);
+diff --git a/src/combat/runtime.js b/src/combat/runtime.js
+index 81e75f124..5376f26a6 100644
+--- a/src/combat/runtime.js
++++ b/src/combat/runtime.js
+@@ -63,6 +63,13 @@ export function ensureCombatant(state, entity, catalog) {
+     runtime = createCombatantRuntime(entity, profile, catalog, runtime);
+     combat.entities[key] = runtime;
+   }
++  // Backfill dissipation for runtimes created before this field existed; create path
++  // already stamps it. Avoid rewriting the same number every quiet ensure.
++  if (!Number.isFinite(runtime.heatDissipationPerTick)) {
++    runtime.heatDissipationPerTick = profile && profile.heat
++      ? Number(profile.heat.dissipationPerTick) || 0
++      : 0;
++  }
+   syncCombatantBounds(entity, runtime, profile);
+   return runtime;
+ }
+@@ -132,6 +139,9 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
+     profileId: profile ? profile.id : null,
+     heat: previous && finiteNonNegative(previous.heat) ? previous.heat : 0,
+     heatMax: profile && profile.heat ? profile.heat.max : 100,
++    heatDissipationPerTick: profile && profile.heat
++      ? Number(profile.heat.dissipationPerTick) || 0
++      : 0,
+     immunityTags: profile ? [...(profile.immunityTags || [])].sort() : [],
+     baseCapabilities: profile ? cloneData(profile.capabilities || {}) : {},
+     capabilities: profile ? cloneData(profile.capabilities || {}) : {},
+-- 
+2.47.3
+

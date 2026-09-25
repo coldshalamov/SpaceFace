@@ -1,0 +1,55 @@
+{
+  "primary": "quiet-48-combatant-status-advance-empty",
+  "iters": 60000,
+  "combatants": 48,
+  "pairs": [
+    {
+      "beforeMs": 84.809,
+      "afterMs": 40.492,
+      "speedup": 2.094
+    },
+    {
+      "beforeMs": 86.476,
+      "afterMs": 35.923,
+      "speedup": 2.407
+    },
+    {
+      "beforeMs": 86.471,
+      "afterMs": 39.274,
+      "speedup": 2.202
+    },
+    {
+      "beforeMs": 82.628,
+      "afterMs": 39.841,
+      "speedup": 2.074
+    },
+    {
+      "beforeMs": 90.917,
+      "afterMs": 38.375,
+      "speedup": 2.369
+    },
+    {
+      "beforeMs": 85.96,
+      "afterMs": 38.292,
+      "speedup": 2.245
+    },
+    {
+      "beforeMs": 82.18,
+      "afterMs": 36.73,
+      "speedup": 2.237
+    },
+    {
+      "beforeMs": 79.609,
+      "afterMs": 38.442,
+      "speedup": 2.071
+    },
+    {
+      "beforeMs": 83.416,
+      "afterMs": 35.079,
+      "speedup": 2.378
+    }
+  ],
+  "medianSpeedup": 2.237,
+  "minSpeedup": 2.071,
+  "maxSpeedup": 2.407
+}

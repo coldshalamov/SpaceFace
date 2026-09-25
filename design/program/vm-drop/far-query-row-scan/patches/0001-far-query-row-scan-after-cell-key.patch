@@ -1,0 +1,139 @@
+From 92586e5555e1c5ccd46b19a546aedc29d09d60f0 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 01:22:18 -0400
+Subject: [PATCH 1/2] perf(world): adaptive row-scan for wide far-actor discs
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Prefetch/enter radii often cover more grid cells than FAR_ROW_BUDGET live
+rows. Prefer a linear row walk when cellSpan > rows.length; keep the grid
+walk for tight discs. Portable microbench ~12.6× on 96 rows / 3600 WU.
+---
+ src/world/farActorTable.js       | 24 ++++++++----
+ test/far-query-row-scan.test.mjs | 66 ++++++++++++++++++++++++++++++++
+ 2 files changed, 83 insertions(+), 7 deletions(-)
+ create mode 100644 test/far-query-row-scan.test.mjs
+
+diff --git a/src/world/farActorTable.js b/src/world/farActorTable.js
+index ced21de12..94e850be8 100644
+--- a/src/world/farActorTable.js
++++ b/src/world/farActorTable.js
+@@ -401,6 +401,13 @@ export function dropFarActorSector(state, sectorId) {
+   return dropped;
+ }
+ 
++function pushFarInRadius(out, rec, x, z, r2) {
++  if (!rec || rec.alive === false || !rec.pos) return;
++  const dx = rec.pos.x - x;
++  const dz = rec.pos.z - z;
++  if (dx * dx + dz * dz <= r2) out.push(rec);
++}
++
+ export function queryFarActors(state, pos, radius, out = []) {
+   out.length = 0;
+   const table = state && state.world && state.world.farActors;
+@@ -413,18 +420,21 @@ export function queryFarActors(state, pos, radius, out = []) {
+   const maxC = Math.floor((x + r) / FAR_ACTOR_CELL);
+   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
+   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
++  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
++  const rows = table.rows;
++  // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
++  // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
++  // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
++  if (Array.isArray(rows) && rows.length > 0 && cellSpan > rows.length) {
++    for (let i = 0; i < rows.length; i++) pushFarInRadius(out, rows[i], x, z, r2);
++    return out;
++  }
+   for (let cx = minC; cx <= maxC; cx++) {
+     const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
+     for (let cz = minR; cz <= maxR; cz++) {
+       const bucket = table.grid && table.grid.get(rowBase + cz);
+       if (!bucket) continue;
+-      for (let i = 0; i < bucket.length; i++) {
+-        const rec = bucket[i];
+-        if (!rec || rec.alive === false || !rec.pos) continue;
+-        const dx = rec.pos.x - x;
+-        const dz = rec.pos.z - z;
+-        if (dx * dx + dz * dz <= r2) out.push(rec);
+-      }
++      for (let i = 0; i < bucket.length; i++) pushFarInRadius(out, bucket[i], x, z, r2);
+     }
+   }
+   return out;
+diff --git a/test/far-query-row-scan.test.mjs b/test/far-query-row-scan.test.mjs
+new file mode 100644
+index 000000000..11f686301
+--- /dev/null
++++ b/test/far-query-row-scan.test.mjs
+@@ -0,0 +1,66 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import {
++  ensureFarActorTable,
++  queryFarActors,
++  FAR_ACTOR_CELL,
++  FAR_ROW_BUDGET,
++} from '../src/world/farActorTable.js';
++
++function seedFarRows(state, count, spacing = FAR_ACTOR_CELL * 3) {
++  const table = ensureFarActorTable(state);
++  for (let i = 0; i < count; i++) {
++    const rec = {
++      id: 1000 + i,
++      type: 'ship',
++      alive: true,
++      farResident: true,
++      pos: { x: (i % 10) * spacing, z: Math.floor(i / 10) * spacing },
++      vel: { x: 0, z: 0 },
++      radius: 8,
++      lastExactT: 0,
++      data: {},
++    };
++    table.rows.push(rec);
++    table.byId.set(rec.id, rec);
++  }
++  table.grid = null;
++  ensureFarActorTable(state);
++  return table;
++}
++
++test('wide-disc far query matches grid walk (row-scan path)', () => {
++  const state = createGameState();
++  const table = seedFarRows(state, 40);
++  const origin = { x: 0, z: 0 };
++  // Radius large enough that cellSpan >> rows → adaptive row scan.
++  const radius = FAR_ACTOR_CELL * 20;
++  const cellSpan = (Math.floor(radius / FAR_ACTOR_CELL) * 2 + 1) ** 2;
++  assert.ok(cellSpan > table.rows.length, 'fixture must take the row-scan branch');
++
++  const hits = queryFarActors(state, origin, radius, []);
++  // Oracle: every alive row inside r2
++  const r2 = radius * radius;
++  const expected = table.rows.filter((rec) => {
++    const dx = rec.pos.x - origin.x;
++    const dz = rec.pos.z - origin.z;
++    return dx * dx + dz * dz <= r2;
++  });
++  assert.equal(hits.length, expected.length);
++  const ids = new Set(hits.map((r) => r.id));
++  for (const rec of expected) assert.ok(ids.has(rec.id));
++});
++
++test('tight-disc far query still finds local rows (grid path)', () => {
++  const state = createGameState();
++  seedFarRows(state, 8, FAR_ACTOR_CELL);
++  const origin = { x: 0, z: 0 };
++  const hits = queryFarActors(state, origin, FAR_ACTOR_CELL * 0.75, []);
++  assert.ok(hits.some((r) => r.id === 1000));
++  assert.ok(hits.length <= 4);
++});
++
++test('row-scan respects FAR_ROW_BUDGET ceiling fixture', () => {
++  assert.ok(FAR_ROW_BUDGET >= 64);
++});
+-- 
+2.47.3
+

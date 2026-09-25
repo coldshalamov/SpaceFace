@@ -1,0 +1,647 @@
+TAP version 13
+# Subtest: validateJobSpec rejects unknown kind, bad id, and too-short routes
+ok 1 - validateJobSpec rejects unknown kind, bad id, and too-short routes
+  ---
+  duration_ms: 2.633716
+  ...
+# Subtest: createJob throws on an invalid spec rather than producing a corrupt record
+ok 2 - createJob throws on an invalid spec rather than producing a corrupt record
+  ---
+  duration_ms: 0.527417
+  ...
+# Subtest: owner-facing completion intents name the exact current route waypoint explicitly
+ok 3 - owner-facing completion intents name the exact current route waypoint explicitly
+  ---
+  duration_ms: 8.924041
+  ...
+# Subtest: stable target refs survive create, serialize, and restore without changing ordinary route shape
+ok 4 - stable target refs survive create, serialize, and restore without changing ordinary route shape
+  ---
+  duration_ms: 3.548888
+  ...
+# Subtest: invalid or runtime-identity target refs fail closed at create, restore, and serialize seams
+ok 5 - invalid or runtime-identity target refs fail closed at create, restore, and serialize seams
+  ---
+  duration_ms: 0.992294
+  ...
+# Subtest: determinism: two miner jobs from the same seed advance identically (state + intents)
+ok 6 - determinism: two miner jobs from the same seed advance identically (state + intents)
+  ---
+  duration_ms: 4.901193
+  ...
+# Subtest: determinism: different seeds still produce legal, finite, in-range progress
+ok 7 - determinism: different seeds still produce legal, finite, in-range progress
+  ---
+  duration_ms: 1.901679
+  ...
+# Subtest: miner completes the cyclic commission→transit→approach→work→return→(approach→)unload→transit loop
+ok 8 - miner completes the cyclic commission→transit→approach→work→return→(approach→)unload→transit loop
+  ---
+  duration_ms: 4.630023
+  ...
+# Subtest: hauler is one-shot: load→depart→transit→…→approach→unload→complete and terminates
+ok 9 - hauler is one-shot: load→depart→transit→…→approach→unload→complete and terminates
+  ---
+  duration_ms: 1.333734
+  ...
+# Subtest: patrol is cyclic over all waypoints with a scheduled hold, never terminating
+ok 10 - patrol is cyclic over all waypoints with a scheduled hold, never terminating
+  ---
+  duration_ms: 1.517842
+  ...
+# Subtest: structural difference: miner loops without terminating; hauler terminates; patrol loops over N wp
+ok 11 - structural difference: miner loops without terminating; hauler terminates; patrol loops over N wp
+  ---
+  duration_ms: 4.677164
+  ...
+# Subtest: decomposability (miner): advance(a) then advance(b) ≡ advance(a+b) in state AND intents
+ok 12 - decomposability (miner): advance(a) then advance(b) ≡ advance(a+b) in state AND intents
+  ---
+  duration_ms: 0.839575
+  ...
+# Subtest: decomposability (hauler): the same holds across a phase boundary
+ok 13 - decomposability (hauler): the same holds across a phase boundary
+  ---
+  duration_ms: 0.431777
+  ...
+# Subtest: decomposability: many tiny fixed steps ≡ one aggregated step (offscreen/onscreen equivalence)
+ok 14 - decomposability: many tiny fixed steps ≡ one aggregated step (offscreen/onscreen equivalence)
+  ---
+  duration_ms: 0.560688
+  ...
+# Subtest: exact-on-boundary: a dt equal to the phase duration fires the completion intent exactly once
+ok 15 - exact-on-boundary: a dt equal to the phase duration fires the completion intent exactly once
+  ---
+  duration_ms: 0.310686
+  ...
+# Subtest: exact-on-boundary: a dt just under the boundary fires NO completion and leaves progress<1
+ok 16 - exact-on-boundary: a dt just under the boundary fires NO completion and leaves progress<1
+  ---
+  duration_ms: 0.253868
+  ...
+# Subtest: no duplicate completion intents: a huge dt advances through many boundaries without repeats
+ok 17 - no duplicate completion intents: a huge dt advances through many boundaries without repeats
+  ---
+  duration_ms: 1.303305
+  ...
+# Subtest: bounded aggregation: progress and simTime stay finite and in-range over a very large dt
+ok 18 - bounded aggregation: progress and simTime stay finite and in-range over a very large dt
+  ---
+  duration_ms: 369.13303
+  ...
+# Subtest: advance with dt=0 is a strict no-op; negative or NaN dt is a safe no-op
+ok 19 - advance with dt=0 is a strict no-op; negative or NaN dt is a safe no-op
+  ---
+  duration_ms: 0.65897
+  ...
+# Subtest: save/restore: serialize→normalize→advance agrees with the original (phase, route, payload, seq)
+ok 20 - save/restore: serialize→normalize→advance agrees with the original (phase, route, payload, seq)
+  ---
+  duration_ms: 0.691719
+  ...
+# Subtest: save/restore: interrupted state and pre-interrupt phase survive the round trip
+ok 21 - save/restore: interrupted state and pre-interrupt phase survive the round trip
+  ---
+  duration_ms: 0.736313
+  ...
+# Subtest: normalizeJob is idempotent: normalize(normalize(x)) ≡ normalize(x)
+ok 22 - normalizeJob is idempotent: normalize(normalize(x)) ≡ normalize(x)
+  ---
+  duration_ms: 0.456588
+  ...
+# Subtest: createJob is idempotent: identical spec+seed produces byte-identical records
+ok 23 - createJob is idempotent: identical spec+seed produces byte-identical records
+  ---
+  duration_ms: 0.262927
+  ...
+# Subtest: malformed save: unknown kind is marked corrupt and never moves an NPC
+ok 24 - malformed save: unknown kind is marked corrupt and never moves an NPC
+  ---
+  duration_ms: 0.365658
+  ...
+# Subtest: malformed save: NaN/negative/>1 progress is healed into [0,1] and the machine stays legal
+ok 25 - malformed save: NaN/negative/>1 progress is healed into [0,1] and the machine stays legal
+  ---
+  duration_ms: 0.263999
+  ...
+# Subtest: malformed save: an unknown phase restarts the legal machine (no teleport)
+ok 26 - malformed save: an unknown phase restarts the legal machine (no teleport)
+  ---
+  duration_ms: 0.202852
+  ...
+# Subtest: flee is sticky: advance() will not auto-leave it
+ok 27 - flee is sticky: advance() will not auto-leave it
+  ---
+  duration_ms: 0.521743
+  ...
+# Subtest: resume restores the exact prior phase and progress — never a reset
+ok 28 - resume restores the exact prior phase and progress — never a reset
+  ---
+  duration_ms: 0.451892
+  ...
+# Subtest: interrupt is idempotent: re-interrupting a fleeing job does not stack phases
+ok 29 - interrupt is idempotent: re-interrupting a fleeing job does not stack phases
+  ---
+  duration_ms: 0.427655
+  ...
+# Subtest: virtualize/materialize round trip: offscreen advance == onscreen advance (truthful continuity)
+ok 30 - virtualize/materialize round trip: offscreen advance == onscreen advance (truthful continuity)
+  ---
+  duration_ms: 6.759136
+  ...
+# Subtest: materialization is truthful: position is the interpolated route point, never an unrelated origin
+ok 31 - materialization is truthful: position is the interpolated route point, never an unrelated origin
+  ---
+  duration_ms: 0.612099
+  ...
+# Subtest: materialization never resets progress: a job re-materializing keeps its place
+ok 32 - materialization never resets progress: a job re-materializing keeps its place
+  ---
+  duration_ms: 0.570979
+  ...
+# Subtest: no direct mutation: advance never writes cargo/credits/reputation — it only emits intents
+ok 33 - no direct mutation: advance never writes cargo/credits/reputation — it only emits intents
+  ---
+  duration_ms: 1.797806
+  ...
+# Subtest: route position is continuous: a transit leg interpolates monotonically from origin to target
+ok 34 - route position is continuous: a transit leg interpolates monotonically from origin to target
+  ---
+  duration_ms: 0.851727
+  ...
+# Subtest: summarizeJob exposes one stable shape and resumable flag
+ok 35 - summarizeJob exposes one stable shape and resumable flag
+  ---
+  duration_ms: 0.314538
+  ...
+# Subtest: intent sequence identity: every emitted intent carries a unique monotonic seq per job
+ok 36 - intent sequence identity: every emitted intent carries a unique monotonic seq per job
+  ---
+  duration_ms: 2.371633
+  ...
+# Subtest: restoreJob is the save-seam alias for normalizeJob
+ok 37 - restoreJob is the save-seam alias for normalizeJob
+  ---
+  duration_ms: 0.759294
+  ...
+# Subtest: DEFECT 1 (advance-cap-divergence): a truncating advance does NOT silently advance simTime to the requested dt
+ok 38 - DEFECT 1 (advance-cap-divergence): a truncating advance does NOT silently advance simTime to the requested dt
+  ---
+  duration_ms: 181.023845
+  ...
+# Subtest: DEFECT 1: truncation is resumable — advance(remaining) continues from the honest stop point
+ok 39 - DEFECT 1: truncation is resumable — advance(remaining) continues from the honest stop point
+  ---
+  duration_ms: 360.099717
+  ...
+# Subtest: DEFECT 1: decomposability still holds EXACTLY when neither advance truncates
+ok 40 - DEFECT 1: decomposability still holds EXACTLY when neither advance truncates
+  ---
+  duration_ms: 63.558066
+  ...
+# Subtest: DEFECT 1: no silent divergence between advance(big) and advance(big/2)+advance(big/2) — truncation is observable, not silent
+ok 41 - DEFECT 1: no silent divergence between advance(big) and advance(big/2)+advance(big/2) — truncation is observable, not silent
+  ---
+  duration_ms: 13.65492
+  ...
+# Subtest: DEFECT 2 (kind-invalid-phase): miner+load heals to start and never emits npcjobs:load
+ok 42 - DEFECT 2 (kind-invalid-phase): miner+load heals to start and never emits npcjobs:load
+  ---
+  duration_ms: 0.492544
+  ...
+# Subtest: DEFECT 2: every kind rejects the phases it cannot reach (patrol+work, hauler+hold, miner+hold)
+ok 43 - DEFECT 2: every kind rejects the phases it cannot reach (patrol+work, hauler+hold, miner+hold)
+  ---
+  duration_ms: 0.423313
+  ...
+# Subtest: DEFECT 2: a legal phase for the kind is preserved (no false heal)
+ok 44 - DEFECT 2: a legal phase for the kind is preserved (no false heal)
+  ---
+  duration_ms: 0.157781
+  ...
+# Subtest: DEFECT 3 (wrong-return-target): a miner RETURN intent names the destination reached, not the origin
+ok 45 - DEFECT 3 (wrong-return-target): a miner RETURN intent names the destination reached, not the origin
+  ---
+  duration_ms: 0.331096
+  ...
+# Subtest: DEFECT 3: TRANSIT intents already use from/to correctly (regression guard)
+ok 46 - DEFECT 3: TRANSIT intents already use from/to correctly (regression guard)
+  ---
+  duration_ms: 0.184336
+  ...
+# Subtest: DEFECT 4a (payload aliasing): mutating a nested field on an emitted intent does NOT mutate the job
+ok 47 - DEFECT 4a (payload aliasing): mutating a nested field on an emitted intent does NOT mutate the job
+  ---
+  duration_ms: 0.375734
+  ...
+# Subtest: DEFECT 4a: the returned intent array is also safe to mutate (no aliasing through the return value)
+ok 48 - DEFECT 4a: the returned intent array is also safe to mutate (no aliasing through the return value)
+  ---
+  duration_ms: 0.176153
+  ...
+# Subtest: DEFECT 4b (cyclic payload): a cyclic payload is rejected at createJob, normalizeJob, AND serializeJob — never throws
+ok 49 - DEFECT 4b (cyclic payload): a cyclic payload is rejected at createJob, normalizeJob, AND serializeJob — never throws
+  ---
+  duration_ms: 0.320585
+  ...
+# Subtest: DEFECT 4b: non-JSON payload values (functions, undefined, class instances) are rejected
+ok 50 - DEFECT 4b: non-JSON payload values (functions, undefined, class instances) are rejected
+  ---
+  duration_ms: 0.48002
+  ...
+# Subtest: DEFECT 4: summarizeJob and describeMaterialization also deep-clone payload (no aliasing through projections)
+ok 51 - DEFECT 4: summarizeJob and describeMaterialization also deep-clone payload (no aliasing through projections)
+  ---
+  duration_ms: 0.219349
+  ...
+# Subtest: convergence: runtime materialized stepping ≡ runtime virtual catch-up (state), and surfaces the exact kernel intents
+ok 52 - convergence: runtime materialized stepping ≡ runtime virtual catch-up (state), and surfaces the exact kernel intents
+  ---
+  duration_ms: 21.956988
+  ...
+# Subtest: eligibility is identical across spatial, fallback, spawn, shadow, and stable ties
+ok 53 - eligibility is identical across spatial, fallback, spawn, shadow, and stable ties
+  ---
+  duration_ms: 4.872888
+  ...
+# Subtest: nearest hostile batch preserves strict radius, live identity, and stable-id ties
+ok 54 - nearest hostile batch preserves strict radius, live identity, and stable-id ties
+  ---
+  duration_ms: 0.436204
+  ...
+# Subtest: nearest hostile service covers unindexed hulls, same-tick spawns, and inactive-hash fallback
+ok 55 - nearest hostile service covers unindexed hulls, same-tick spawns, and inactive-hash fallback
+  ---
+  duration_ms: 0.525357
+  ...
+# Subtest: batched hostile results match the full-scan oracle in stable request order across churn
+ok 56 - batched hostile results match the full-scan oracle in stable request order across churn
+  ---
+  duration_ms: 0.727213
+  ...
+# Subtest: hostile-query candidate curve is flat when total population grows from 1x to 5x remotely
+ok 57 - hostile-query candidate curve is flat when total population grows from 1x to 5x remotely
+  ---
+  duration_ms: 3.737244
+  ...
+# Subtest: nearest hostile requests and SpatialHash batch scratch reuse their high-water storage
+ok 58 - nearest hostile requests and SpatialHash batch scratch reuse their high-water storage
+  ---
+  duration_ms: 1.647966
+  ...
+# Subtest: npcJobsRuntime batches eligible hostile queries and excludes controlled hulls
+ok 59 - npcJobsRuntime batches eligible hostile queries and excludes controlled hulls
+  ---
+  duration_ms: 1.948486
+  ...
+# Subtest: npcJobsRuntime ignores nearer passive and hold-fire team-1 hulls for flee
+ok 60 - npcJobsRuntime ignores nearer passive and hold-fire team-1 hulls for flee
+  ---
+  duration_ms: 1.082456
+  ...
+# Subtest: npcJobsRuntime senses threats at deterministic 15 Hz while advancing and driving every fixed tick
+ok 61 - npcJobsRuntime senses threats at deterministic 15 Hz while advancing and driving every fixed tick
+  ---
+  duration_ms: 1.83876
+  ...
+# Subtest: npcJobsRuntime entity spawn and destroy events force immediate threat refresh
+ok 62 - npcJobsRuntime entity spawn and destroy events force immediate threat refresh
+  ---
+  duration_ms: 1.58228
+  ...
+# Subtest: precondition: sim.step advances state.simTime
+ok 63 - precondition: sim.step advances state.simTime
+  ---
+  duration_ms: 6.592616
+  ...
+# Subtest: assign: producer links a job to its hull and the bag records the runtime meta
+ok 64 - assign: producer links a job to its hull and the bag records the runtime meta
+  ---
+  duration_ms: 2.606669
+  ...
+# Subtest: materialized: the job advances phases and writes the civilian transit intent toward the target
+ok 65 - materialized: the job advances phases and writes the civilian transit intent toward the target
+  ---
+  duration_ms: 5.822836
+  ...
+# Subtest: Ceres disabled-hauler condition physically brakes the job hull until recovery clears it
+ok 66 - Ceres disabled-hauler condition physically brakes the job hull until recovery clears it
+  ---
+  duration_ms: 5.430431
+  ...
+# Subtest: Ceres tender-service presentation stamp is not a job-control seam
+ok 67 - Ceres tender-service presentation stamp is not a job-control seam
+  ---
+  duration_ms: 1.692036
+  ...
+# Subtest: post-sink replacement aborts the obsolete batch before any same-ID successor is touched
+ok 68 - post-sink replacement aborts the obsolete batch before any same-ID successor is touched
+  ---
+  duration_ms: 22.840556
+  ...
+# Subtest: save/restore: serialize→deserialize preserves the job + meta and re-links on re-entry
+ok 69 - save/restore: serialize→deserialize preserves the job + meta and re-links on re-entry
+  ---
+  duration_ms: 9.006949
+  ...
+# Subtest: continuity: a miner loop survives exit → away → re-entry, advanced virtually, never reset
+ok 70 - continuity: a miner loop survives exit → away → re-entry, advanced virtually, never reset
+  ---
+  duration_ms: 23.415787
+  ...
+# Subtest: truncation-resume: a huge away interval on a tiny-phase job is fully processed (no silent drop)
+ok 71 - truncation-resume: a huge away interval on a tiny-phase job is fully processed (no silent drop)
+  ---
+  duration_ms: 358.694795
+  ...
+# Subtest: one writer: traffic yields (writes no intent) for a hull carrying a jobId
+ok 72 - one writer: traffic yields (writes no intent) for a hull carrying a jobId
+  ---
+  duration_ms: 8.121819
+  ...
+# Subtest: hauler terminal: on COMPLETE the job unlinks and drops from the bag (hull reverts to ambient)
+ok 73 - hauler terminal: on COMPLETE the job unlinks and drops from the bag (hull reverts to ambient)
+  ---
+  duration_ms: 14.737306
+  ...
+# Subtest: flee: a nearby hostile interrupts the job into flee; removing it resumes the prior phase
+ok 74 - flee: a nearby hostile interrupts the job into flee; removing it resumes the prior phase
+  ---
+  duration_ms: 2.577891
+  ...
+# Subtest: flee: a lawful-wanted-only patrol is not a predator; a weapons-free hull still is
+ok 75 - flee: a lawful-wanted-only patrol is not a predator; a weapons-free hull still is
+  ---
+  duration_ms: 1.961379
+  ...
+# Subtest: flee: a violence stamp still interrupts even when the nearby hull is a lawful patrol
+ok 76 - flee: a violence stamp still interrupts even when the nearby hull is a lawful patrol
+  ---
+  duration_ms: 2.078864
+  ...
+# Subtest: save/Continue (real envelope): a restored job relinks after its durable hull rematerializes before deserialize
+ok 77 - save/Continue (real envelope): a restored job relinks after its durable hull rematerializes before deserialize
+  ---
+  duration_ms: 109.801052
+  ...
+# Subtest: save/Continue: an outgoing virtual job cannot leave a phantom hull marker when the incoming bag is empty
+ok 78 - save/Continue: an outgoing virtual job cannot leave a phantom hull marker when the incoming bag is empty
+  ---
+  duration_ms: 12.88428
+  ...
+# Subtest: migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)
+ok 79 - migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)
+  ---
+  duration_ms: 2.786455
+  ...
+# Subtest: every new kind is constructible and runs without corrupting itself
+ok 80 - every new kind is constructible and runs without corrupting itself
+  ---
+  duration_ms: 13.851412
+  ...
+# Subtest: each new kind produces a DISTINCT phase sequence — the anti-relabelling test
+ok 81 - each new kind produces a DISTINCT phase sequence — the anti-relabelling test
+  ---
+  duration_ms: 18.390856
+  ...
+# Subtest: surveyor works every mark and never loads or unloads
+ok 82 - surveyor works every mark and never loads or unloads
+  ---
+  duration_ms: 0.803093
+  ...
+# Subtest: salvor separates cutting from lifting — the difference from a barge
+ok 83 - salvor separates cutting from lifting — the difference from a barge
+  ---
+  duration_ms: 0.788876
+  ...
+# Subtest: tender re-departs every call-out and never touches cargo
+ok 84 - tender re-departs every call-out and never touches cargo
+  ---
+  duration_ms: 0.849039
+  ...
+# Subtest: the new kinds cycle rather than terminating
+ok 85 - the new kinds cycle rather than terminating
+  ---
+  duration_ms: 1.507409
+  ...
+# Subtest: advancement stays decomposable for the new kinds
+ok 86 - advancement stays decomposable for the new kinds
+  ---
+  duration_ms: 2.582025
+  ...
+# Subtest: the new kinds survive a save/restore round trip mid-cycle
+ok 87 - the new kinds survive a save/restore round trip mid-cycle
+  ---
+  duration_ms: 1.450148
+  ...
+# Subtest: flee interrupts and resumes to the exact phase for the new kinds
+ok 88 - flee interrupts and resumes to the exact phase for the new kinds
+  ---
+  duration_ms: 1.038917
+  ...
+# Subtest: a corrupt kind/phase pair heals instead of emitting an impossible completion
+ok 89 - a corrupt kind/phase pair heals instead of emitting an impossible completion
+  ---
+  duration_ms: 0.745529
+  ...
+1..89
+# tests 89
+# suites 0
+# pass 89
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1238.869531
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: resolves the real asteroid named by the field waypoint
+ok 1 - resolves the real asteroid named by the field waypoint
+  ---
+  duration_ms: 2.447554
+  ...
+# Subtest: refuses a non-asteroid that now holds the persisted id
+ok 2 - refuses a non-asteroid that now holds the persisted id
+  ---
+  duration_ms: 0.372093
+  ...
+# Subtest: refuses a mined-out or despawned rock
+ok 3 - refuses a mined-out or despawned rock
+  ---
+  duration_ms: 0.416532
+  ...
+# Subtest: refuses a rock with no position rather than beaming at the origin
+ok 4 - refuses a rock with no position rather than beaming at the origin
+  ---
+  duration_ms: 0.292567
+  ...
+# Subtest: ignores every waypoint that is not a field, and malformed ids
+ok 5 - ignores every waypoint that is not a field, and malformed ids
+  ---
+  duration_ms: 0.407866
+  ...
+# Subtest: a corrupt or absent route yields null instead of throwing into the render loop
+ok 6 - a corrupt or absent route yields null instead of throwing into the render loop
+  ---
+  duration_ms: 0.40804
+  ...
+# Subtest: scans past a dead field waypoint to a live one
+ok 7 - scans past a dead field waypoint to a live one
+  ---
+  duration_ms: 0.267417
+  ...
+# Subtest: natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+ok 8 - natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+  ---
+  duration_ms: 15659.435847
+  ...
+# Subtest: a yard tug snapshots the frame coupler hitch on its tow
+ok 9 - a yard tug snapshots the frame coupler hitch on its tow
+  ---
+  duration_ms: 155.175012
+  ...
+# Subtest: a salvage cutter snapshots the tractor head on a live wreck
+ok 10 - a salvage cutter snapshots the tractor head on a live wreck
+  ---
+  duration_ms: 5.284184
+  ...
+# Subtest: a scrap sweeper snapshots the elastic whip on loose debris
+ok 11 - a scrap sweeper snapshots the elastic whip on loose debris
+  ---
+  duration_ms: 9.068927
+  ...
+# Subtest: a patrol nets a raider with the elastic whip
+ok 12 - a patrol nets a raider with the elastic whip
+  ---
+  duration_ms: 4.244599
+  ...
+# Subtest: a tug binds finite freight to an existing payload through the live Rapier attachment
+ok 13 - a tug binds finite freight to an existing payload through the live Rapier attachment
+  ---
+  duration_ms: 368.474032
+  ...
+# Subtest: a destroyed tow target cuts the attachment and leaves the tug job finite
+ok 14 - a destroyed tow target cuts the attachment and leaves the tug job finite
+  ---
+  duration_ms: 8.8096
+  ...
+# Subtest: an authored world-site body and a pinned mass are never towable
+ok 15 - an authored world-site body and a pinned mass are never towable
+  ---
+  duration_ms: 93.331407
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15961.50766
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: resolves the real asteroid named by the field waypoint
+ok 1 - resolves the real asteroid named by the field waypoint
+  ---
+  duration_ms: 1.683127
+  ...
+# Subtest: refuses a non-asteroid that now holds the persisted id
+ok 2 - refuses a non-asteroid that now holds the persisted id
+  ---
+  duration_ms: 0.231589
+  ...
+# Subtest: refuses a mined-out or despawned rock
+ok 3 - refuses a mined-out or despawned rock
+  ---
+  duration_ms: 0.258699
+  ...
+# Subtest: refuses a rock with no position rather than beaming at the origin
+ok 4 - refuses a rock with no position rather than beaming at the origin
+  ---
+  duration_ms: 0.155495
+  ...
+# Subtest: ignores every waypoint that is not a field, and malformed ids
+ok 5 - ignores every waypoint that is not a field, and malformed ids
+  ---
+  duration_ms: 0.237179
+  ...
+# Subtest: a corrupt or absent route yields null instead of throwing into the render loop
+ok 6 - a corrupt or absent route yields null instead of throwing into the render loop
+  ---
+  duration_ms: 0.250802
+  ...
+# Subtest: scans past a dead field waypoint to a live one
+ok 7 - scans past a dead field waypoint to a live one
+  ---
+  duration_ms: 0.146809
+  ...
+# Subtest: natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+ok 8 - natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+  ---
+  duration_ms: 19686.595173
+  ...
+# Subtest: a yard tug snapshots the frame coupler hitch on its tow
+ok 9 - a yard tug snapshots the frame coupler hitch on its tow
+  ---
+  duration_ms: 138.483052
+  ...
+# Subtest: a salvage cutter snapshots the tractor head on a live wreck
+ok 10 - a salvage cutter snapshots the tractor head on a live wreck
+  ---
+  duration_ms: 6.169836
+  ...
+# Subtest: a scrap sweeper snapshots the elastic whip on loose debris
+ok 11 - a scrap sweeper snapshots the elastic whip on loose debris
+  ---
+  duration_ms: 9.000491
+  ...
+# Subtest: a patrol nets a raider with the elastic whip
+ok 12 - a patrol nets a raider with the elastic whip
+  ---
+  duration_ms: 4.30856
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19980.249268
+TAP version 13
+# Subtest: natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+ok 1 - natural census: ambient traffic naturally produces advancing miner, hauler AND patrol jobs (held-out seeds, no createJob in fixture)
+  ---
+  duration_ms: 14901.487203
+  ...
+# Subtest: a yard tug snapshots the frame coupler hitch on its tow
+ok 2 - a yard tug snapshots the frame coupler hitch on its tow
+  ---
+  duration_ms: 153.970465
+  ...
+# Subtest: a salvage cutter snapshots the tractor head on a live wreck
+ok 3 - a salvage cutter snapshots the tractor head on a live wreck
+  ---
+  duration_ms: 5.269216
+  ...
+# Subtest: a scrap sweeper snapshots the elastic whip on loose debris
+ok 4 - a scrap sweeper snapshots the elastic whip on loose debris
+  ---
+  duration_ms: 6.59942
+  ...
+# Subtest: a patrol nets a raider with the elastic whip
+ok 5 - a patrol nets a raider with the elastic whip
+  ---
+  duration_ms: 4.40073
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15162.886443

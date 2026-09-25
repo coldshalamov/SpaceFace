@@ -1,0 +1,247 @@
+From 83b00f07e0ff0643322cc43c239844c0d9c94451 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 12:31:28 -0400
+Subject: [PATCH] =?UTF-8?q?perf(sim):=20quiet-skip=20lifetimeSweep=20clock?=
+ =?UTF-8?q?s=20when=20short-lived=20lanes=20empty=20(~2=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet Ceres keeps projectile/fx/ordnance/pickup lanes empty; the clocks walk
+then only re-checks Infinity-ttl movers whose POSE preStep already published.
+Skip that walk when short-lived lanes are empty and no shipLike carries
+despawnAt. Dirty-wake: any short-lived lane occupancy or shipLike despawnAt
+restores the full clocks path. Dirty publish + corpse compact still run.
+
+Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+Soft-GPU fps not claimed. Picture ON.
+---
+ src/core/coreSystem.js                        |  78 +++++++++---
+ .../lifetime-sweep-quiet-clocks-skip.test.mjs | 116 ++++++++++++++++++
+ 2 files changed, 178 insertions(+), 16 deletions(-)
+ create mode 100644 test/lifetime-sweep-quiet-clocks-skip.test.mjs
+
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index 9925dbfa2..324a31f4a 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -9,6 +9,44 @@ import { packCombatTable } from './combatTable.js';
+ import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
+ import { stampNearWorkBudget } from './activityScheduler.js';
+ 
++
++// Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
++// then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
++// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
++// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
++// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
++let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
++export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
++  LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
++}
++export function getLifetimeSweepQuietClocksSkipForBench() {
++  return LIFETIME_SWEEP_QUIET_CLOCKS_SKIP !== false;
++}
++
++function shortLivedClockLanesEmpty(index) {
++  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
++  const empty = (lane) => !lane || lane.length === 0;
++  return empty(index.projectiles)
++    && empty(index.fx)
++    && empty(index.bombs)
++    && empty(index.charges)
++    && empty(index.pickups)
++    && empty(index.payloads)
++    && empty(index.mines)
++    && empty(index.vectorMines)
++    && empty(index.snares);
++}
++
++function shipLikeHasDespawnAt(index) {
++  const ships = index && index.shipLike;
++  if (!ships || ships.length === 0) return false;
++  for (let i = 0; i < ships.length; i++) {
++    const e = ships[i];
++    if (e && e.alive && e.data && e.data.despawnAt != null) return true;
++  }
++  return false;
++}
++
+ const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
+ 
+ export const core = {
+@@ -302,25 +340,33 @@ export const core = {
+       && Array.isArray(index.movables)
+       ? index.movables
+       : list;
+-    for (let i = 0; i < clocks.length; i++) {
+-      const e = clocks[i];
+-      if (!e || e.id === state.playerId) continue;
+-      if (e.alive && e.ttl !== Infinity) {
+-        e.ttl -= dt;
+-        if (e.ttl <= 0) {
++    // Quiet short-lived-lane clocks skip: when no projectile/fx/ordnance/pickup clocks exist and
++    // no shipLike carries despawnAt, the movable walk only re-checks Infinity-ttl ships whose
++    // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
++    const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
++      && shortLivedClockLanesEmpty(index)
++      && !shipLikeHasDespawnAt(index);
++    if (!skipQuietClocks) {
++      for (let i = 0; i < clocks.length; i++) {
++        const e = clocks[i];
++        if (!e || e.id === state.playerId) continue;
++        if (e.alive && e.ttl !== Infinity) {
++          e.ttl -= dt;
++          if (e.ttl <= 0) {
++            e.alive = false;
++            markDirty(state, e.id, DIRTY.MEMBERSHIP);
++          }
++        }
++        if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
+           e.alive = false;
+           markDirty(state, e.id, DIRTY.MEMBERSHIP);
+         }
+-      }
+-      if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
+-        e.alive = false;
+-        markDirty(state, e.id, DIRTY.MEMBERSHIP);
+-      }
+-      if (e.alive) {
+-        const pos = e.pos;
+-        const prev = e.prevPos;
+-        if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
+-        else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
++        if (e.alive) {
++          const pos = e.pos;
++          const prev = e.prevPos;
++          if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
++          else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
++        }
+       }
+     }
+     const dirty = collectDirtyIds(
+diff --git a/test/lifetime-sweep-quiet-clocks-skip.test.mjs b/test/lifetime-sweep-quiet-clocks-skip.test.mjs
+new file mode 100644
+index 000000000..efaee3f34
+--- /dev/null
++++ b/test/lifetime-sweep-quiet-clocks-skip.test.mjs
+@@ -0,0 +1,116 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import {
++  core,
++  setLifetimeSweepQuietClocksSkipForBench,
++  getLifetimeSweepQuietClocksSkipForBench,
++} from '../src/core/coreSystem.js';
++import { beginDirtyTick, markDirty, DIRTY } from '../src/core/dirtyJournal.js';
++
++function bootQuiet() {
++  const state = createGameState(901);
++  state.mode = 'flight';
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  core._publishPresentation = () => {};
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 1,
++  });
++  state.playerId = player.id;
++  player.ttl = Infinity;
++  for (let i = 0; i < 8; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship', pos: { x: 100 + i * 10, z: 40 }, vel: { x: 0, z: 0 },
++      radius: 8, mass: 10, hull: 80, hullMax: 80, collides: true, team: 2,
++    });
++    e.physicsSleeping = true;
++    e.ttl = Infinity;
++  }
++  if (state.entityIndex) state.entityIndex.ready = true;
++  return { state, helpers, player };
++}
++
++test('quiet clocks skip defaults ON for production bench flag', () => {
++  assert.equal(getLifetimeSweepQuietClocksSkipForBench(), true);
++});
++
++test('quiet Ceres Infinity-ttl movers skip clocks walk without dropping corpses', () => {
++  setLifetimeSweepQuietClocksSkipForBench(true);
++  const { state } = bootQuiet();
++  for (let i = 0; i < 12; i++) {
++    beginDirtyTick(state, state.tick++);
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const alive = [...state.entities.values()].filter((e) => e.alive);
++  assert.ok(alive.length >= 9, `expected quiet fleet still alive, got ${alive.length}`);
++});
++
++test('projectile TTL still expires when short-lived lane is non-empty (dirty-wake)', () => {
++  setLifetimeSweepQuietClocksSkipForBench(true);
++  const { state, helpers } = bootQuiet();
++  for (let i = 0; i < 6; i++) {
++    beginDirtyTick(state, state.tick++);
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const proj = helpers.spawnEntity({
++    type: 'projectile', pos: { x: 2, z: 0 }, vel: { x: 80, z: 0 },
++    radius: 1, mass: 1, hull: 1, hullMax: 1, collides: true, team: 1,
++  });
++  proj.ttl = 0.2;
++  for (let i = 0; i < 30; i++) {
++    beginDirtyTick(state, state.tick++);
++    state.simTime += 1 / 60;
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const still = state.entities.get(proj.id);
++  assert.ok(!still || still.alive === false, 'projectile must expire via clocks path');
++});
++
++test('shipLike despawnAt fail-open restores clocks path', () => {
++  setLifetimeSweepQuietClocksSkipForBench(true);
++  const { state } = bootQuiet();
++  for (let i = 0; i < 4; i++) {
++    beginDirtyTick(state, state.tick++);
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const npc = [...state.entities.values()].find((e) => e.type === 'ship' && e.id !== state.playerId);
++  assert.ok(npc);
++  npc.data = npc.data || {};
++  npc.data.despawnAt = state.simTime + 0.05;
++  for (let i = 0; i < 20; i++) {
++    beginDirtyTick(state, state.tick++);
++    state.simTime += 1 / 60;
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const still = state.entities.get(npc.id);
++  assert.ok(!still || still.alive === false, 'despawnAt ship must expire');
++});
++
++test('bench flag OFF restores always-walk clocks (projectile TTL still works)', () => {
++  setLifetimeSweepQuietClocksSkipForBench(false);
++  const { state, helpers } = bootQuiet();
++  const proj = helpers.spawnEntity({
++    type: 'projectile', pos: { x: 3, z: 0 }, vel: { x: 50, z: 0 },
++    radius: 1, mass: 1, hull: 1, hullMax: 1, collides: true, team: 1,
++  });
++  proj.ttl = 0.15;
++  for (let i = 0; i < 30; i++) {
++    beginDirtyTick(state, state.tick++);
++    state.simTime += 1 / 60;
++    core.preStep(1 / 60, state);
++    core.lifetimeSweep(1 / 60, state);
++  }
++  const still = state.entities.get(proj.id);
++  assert.ok(!still || still.alive === false);
++  setLifetimeSweepQuietClocksSkipForBench(true);
++});
+-- 
+2.47.3
+

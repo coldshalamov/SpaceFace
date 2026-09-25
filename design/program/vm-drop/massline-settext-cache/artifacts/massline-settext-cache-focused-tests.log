@@ -1,0 +1,531 @@
+TAP version 13
+# Subtest: ship numbers appear only when hull or shields are actually low
+ok 1 - ship numbers appear only when hull or shields are actually low
+  ---
+  duration_ms: 1.503633
+  ...
+# Subtest: Lamina owns the complete integrity readout and removes the reflow-driven hit flask
+ok 2 - Lamina owns the complete integrity readout and removes the reflow-driven hit flask
+  ---
+  duration_ms: 1.095322
+  ...
+# Subtest: one destination line already carries distance and ETA
+ok 3 - one destination line already carries distance and ETA
+  ---
+  duration_ms: 2.199768
+  ...
+# Subtest: receipt taxonomy rejects Target and danger, admits pay and errors
+ok 4 - receipt taxonomy rejects Target and danger, admits pay and errors
+  ---
+  duration_ms: 2.465141
+  ...
+# Subtest: createToasts uses admitReceipt and keeps at most two receipts
+ok 5 - createToasts uses admitReceipt and keeps at most two receipts
+  ---
+  duration_ms: 4.390838
+  ...
+# Subtest: receipt lane sits in the HUD layout and misses radar/ship/objective
+ok 6 - receipt lane sits in the HUD layout and misses radar/ship/objective
+  ---
+  duration_ms: 1.29065
+  ...
+# Subtest: roster stays reachable and collapses to a count at rest
+ok 7 - roster stays reachable and collapses to a count at rest
+  ---
+  duration_ms: 0.308187
+  ...
+# Subtest: Massline instrument is analog while latched and absent when cut
+ok 8 - Massline instrument is analog while latched and absent when cut
+  ---
+  duration_ms: 0.381387
+  ...
+# Subtest: first-use is teach-once and object-attached
+ok 9 - first-use is teach-once and object-attached
+  ---
+  duration_ms: 1.04902
+  ...
+# Subtest: windshield key laundry is not mounted on the flight route
+ok 10 - windshield key laundry is not mounted on the flight route
+  ---
+  duration_ms: 0.507415
+  ...
+# Subtest: story HUD lies remain mounted
+ok 11 - story HUD lies remain mounted
+  ---
+  duration_ms: 0.421117
+  ...
+# Subtest: anchored markers wait for the presented hull and track its drawn pose
+ok 12 - anchored markers wait for the presented hull and track its drawn pose
+  ---
+  duration_ms: 0.463991
+  ...
+# Subtest: hud job follows latch, fight, and hurt
+ok 13 - hud job follows latch, fight, and hurt
+  ---
+  duration_ms: 0.292196
+  ...
+# Subtest: the first two minutes keep exactly one instruction on screen
+ok 14 - the first two minutes keep exactly one instruction on screen
+  ---
+  duration_ms: 0.386373
+  ...
+# Subtest: the opening window anchors to the sim clock at game start, never wall time
+ok 15 - the opening window anchors to the sim clock at game start, never wall time
+  ---
+  duration_ms: 0.275954
+  ...
+# Subtest: the law paragraph retires during the opening while live incidents still surface
+ok 16 - the law paragraph retires during the opening while live incidents still surface
+  ---
+  duration_ms: 2.626102
+  ...
+# Subtest: the caption and the bypassed comms log line consult the opening rule
+ok 17 - the caption and the bypassed comms log line consult the opening rule
+  ---
+  duration_ms: 0.516546
+  ...
+# Subtest: the one-voice floor also keeps the objective solo during the opening
+ok 18 - the one-voice floor also keeps the objective solo during the opening
+  ---
+  duration_ms: 1.157057
+  ...
+# Subtest: uiRoot still mounts the extracted HUD stylesheet
+ok 19 - uiRoot still mounts the extracted HUD stylesheet
+  ---
+  duration_ms: 1.246316
+  ...
+# Subtest: the default radar dial is exactly the size the canvas is drawn at
+ok 20 - the default radar dial is exactly the size the canvas is drawn at
+  ---
+  duration_ms: 0.574401
+  ...
+# Subtest: every breakpoint that narrows the dial also scales the canvas
+ok 21 - every breakpoint that narrows the dial also scales the canvas
+  ---
+  duration_ms: 0.624477
+  ...
+# Subtest: radar ring radius stays inside the radar canvas
+ok 22 - radar ring radius stays inside the radar canvas
+  ---
+  duration_ms: 0.210699
+  ...
+# Subtest: the right dock is one column: no surface hard-codes its own width
+ok 23 - the right dock is one column: no surface hard-codes its own width
+  ---
+  duration_ms: 1.590976
+  ...
+# Subtest: --sf-dock-w is declared for every breakpoint that repositions the dock
+ok 24 - --sf-dock-w is declared for every breakpoint that repositions the dock
+  ---
+  duration_ms: 0.3945
+  ...
+# Subtest: the threat badge styles the tier values scanner.js actually emits
+ok 25 - the threat badge styles the tier values scanner.js actually emits
+  ---
+  duration_ms: 1.145998
+  ...
+# Subtest: the target card does not duplicate health that the world already draws
+ok 26 - the target card does not duplicate health that the world already draws
+  ---
+  duration_ms: 0.49632
+  ...
+# Subtest: the swarm threshold has exactly one owner
+ok 27 - the swarm threshold has exactly one owner
+  ---
+  duration_ms: 0.249371
+  ...
+# Subtest: the contact roster does not wear a leftover instrument title
+ok 28 - the contact roster does not wear a leftover instrument title
+  ---
+  duration_ms: 1.498805
+  ...
+# Subtest: the radar threat pulse is gated in JS, not by a CSS media query
+ok 29 - the radar threat pulse is gated in JS, not by a CSS media query
+  ---
+  duration_ms: 0.275504
+  ...
+# Subtest: every de-boxed surface draws brackets from the one shared recipe
+ok 30 - every de-boxed surface draws brackets from the one shared recipe
+  ---
+  duration_ms: 1.545724
+  ...
+# Subtest: the generated bracket CSS contains no backtick
+ok 31 - the generated bracket CSS contains no backtick
+  ---
+  duration_ms: 12.390622
+  ...
+# Subtest: bracketCss draws all four corners
+ok 32 - bracketCss draws all four corners
+  ---
+  duration_ms: 0.621282
+  ...
+# Subtest: stable physics HUD states do not rewrite DOM attributes every frame
+ok 33 - stable physics HUD states do not rewrite DOM attributes every frame
+  ---
+  duration_ms: 3.087437
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 924.299071
+TAP version 13
+# Subtest: PQ-004 contextual scorer makes closeness, turn direction, and cursor precision the leading explainable signals
+ok 1 - PQ-004 contextual scorer makes closeness, turn direction, and cursor precision the leading explainable signals
+  ---
+  duration_ms: 5.01856
+  ...
+# Subtest: PQ-004 genuinely precise cursor paint overrides the broad anchor preference
+ok 2 - PQ-004 genuinely precise cursor paint overrides the broad anchor preference
+  ---
+  duration_ms: 0.820368
+  ...
+# Subtest: PQ-004 scripted clutter matrix selects the turn-side heavy anchor in at least 19/20 transformed and permuted scenes
+ok 3 - PQ-004 scripted clutter matrix selects the turn-side heavy anchor in at least 19/20 transformed and permuted scenes
+  ---
+  duration_ms: 4.574703
+  ...
+# Subtest: PQ-004 classifier names exact Focus, route-anchor, and tow/salvage contexts without weapon-lock input
+ok 4 - PQ-004 classifier names exact Focus, route-anchor, and tow/salvage contexts without weapon-lock input
+  ---
+  duration_ms: 0.517657
+  ...
+# Subtest: PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise paint and deliberate reversal immediately
+ok 5 - PQ-004 hysteresis holds a marginal challenger for 200 ms but obeys precise paint and deliberate reversal immediately
+  ---
+  duration_ms: 0.319088
+  ...
+# Subtest: a Massline press honors active pointer paint instead of a stale receipt or gun/UI selection
+ok 6 - a Massline press honors active pointer paint instead of a stale receipt or gun/UI selection
+  ---
+  duration_ms: 7.339345
+  ...
+# Subtest: stations and planets are valid physical Massline anchors when deliberately painted
+ok 7 - stations and planets are valid physical Massline anchors when deliberately painted
+  ---
+  duration_ms: 3.755601
+  ...
+# Subtest: Massline attachment is based on physical presence, not an object-type whitelist
+ok 8 - Massline attachment is based on physical presence, not an object-type whitelist
+  ---
+  duration_ms: 0.325735
+  ...
+# Subtest: a Massline press resolves current physical truth instead of consuming an idle receipt
+ok 9 - a Massline press resolves current physical truth instead of consuming an idle receipt
+  ---
+  duration_ms: 2.296696
+  ...
+# Subtest: no Massline acquisition receipt survives a save-load or new-game boundary
+ok 10 - no Massline acquisition receipt survives a save-load or new-game boundary
+  ---
+  duration_ms: 1.676964
+  ...
+# Subtest: the acquisition preview marks the candidate itself and never draws a cable-like line
+ok 11 - the acquisition preview marks the candidate itself and never draws a cable-like line
+  ---
+  duration_ms: 4.890723
+  ...
+# Subtest: flying at a heavy hull past a pebble grabs the hull, not the pebble
+ok 12 - flying at a heavy hull past a pebble grabs the hull, not the pebble
+  ---
+  duration_ms: 0.853681
+  ...
+# Subtest: a press latches the candidate the previous frame published, even when the turn reverses
+ok 13 - a press latches the candidate the previous frame published, even when the turn reverses
+  ---
+  duration_ms: 3.689355
+  ...
+# Subtest: previewMatched reports false when the latch could not consume the published candidate
+ok 14 - previewMatched reports false when the latch could not consume the published candidate
+  ---
+  duration_ms: 2.11181
+  ...
+# Subtest: only genuine input-owned aim intent can steer Massline acquisition
+ok 15 - only genuine input-owned aim intent can steer Massline acquisition
+  ---
+  duration_ms: 2.168077
+  ...
+# Subtest: invalid Focus and route hints fall through to physically eligible world candidates
+ok 16 - invalid Focus and route hints fall through to physically eligible world candidates
+  ---
+  duration_ms: 1.639092
+  ...
+# Subtest: PQ-003 new profiles reserve Space for Massline, retain F as its alias, and keep defaults collision-free
+ok 17 - PQ-003 new profiles reserve Space for Massline, retain F as its alias, and keep defaults collision-free
+  ---
+  duration_ms: 3.111958
+  ...
+# Subtest: existing profiles migrate to the same Space/F Massline binding as new profiles
+ok 18 - existing profiles migrate to the same Space/F Massline binding as new profiles
+  ---
+  duration_ms: 0.868404
+  ...
+# Subtest: PQ-003 Space press publishes an immediate normalized latch packet
+ok 19 - PQ-003 Space press publishes an immediate normalized latch packet
+  ---
+  duration_ms: 2.079163
+  ...
+# Subtest: PQ-003 quick attached tap cuts on release while a hold enters line control without cutting
+ok 20 - PQ-003 quick attached tap cuts on release while a hold enters line control without cutting
+  ---
+  duration_ms: 1.151673
+  ...
+# Subtest: CADENCE: a motionless hold past the tap window never cuts on release (holds are safe)
+ok 21 - CADENCE: a motionless hold past the tap window never cuts on release (holds are safe)
+  ---
+  duration_ms: 2.08973
+  ...
+# Subtest: CADENCE: hold-entry consumes nearby turn intent once; neutral after entry stays neutral
+ok 22 - CADENCE: hold-entry consumes nearby turn intent once; neutral after entry stays neutral
+  ---
+  duration_ms: 1.296762
+  ...
+# Subtest: PQ-003 line-control publishes orbit intent without letting Helm Assist become the orbit controller
+ok 23 - PQ-003 line-control publishes orbit intent without letting Helm Assist become the orbit controller
+  ---
+  duration_ms: 0.783065
+  ...
+# Subtest: a loaded tether does not make Helm Assist face the anchor
+ok 24 - a loaded tether does not make Helm Assist face the anchor
+  ---
+  duration_ms: 0.559762
+  ...
+# Subtest: PQ-003 line-control maps forward/reverse/turn/boost and clears on modal focus loss
+ok 25 - PQ-003 line-control maps forward/reverse/turn/boost and clears on modal focus loss
+  ---
+  duration_ms: 0.836396
+  ...
+# Subtest: PQ-003 modal reset blocks held-through input but accepts the first fresh post-modal press
+ok 26 - PQ-003 modal reset blocks held-through input but accepts the first fresh post-modal press
+  ---
+  duration_ms: 0.727567
+  ...
+# Subtest: PQ-003 gamepad A/Cross reaches the same grammar in open flight but yields to a dock prompt
+ok 27 - PQ-003 gamepad A/Cross reaches the same grammar in open flight but yields to a dock prompt
+  ---
+  duration_ms: 0.842992
+  ...
+# Subtest: active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it
+ok 28 - active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it
+  ---
+  duration_ms: 0.506176
+  ...
+# Subtest: active cold touch right-stick aim publishes the same precise intent contract
+ok 29 - active cold touch right-stick aim publishes the same precise intent contract
+  ---
+  duration_ms: 0.250542
+  ...
+# Subtest: genuine pointer activity owns the same precise intent bit without stale carry-over
+ok 30 - genuine pointer activity owns the same precise intent bit without stale carry-over
+  ---
+  duration_ms: 0.38295
+  ...
+# Subtest: modal focus loss cannot revive stale pointer precision on the first resumed tick
+ok 31 - modal focus loss cannot revive stale pointer precision on the first resumed tick
+  ---
+  duration_ms: 0.385436
+  ...
+# Subtest: releaseHeldControls cannot revive stale pointer precision without a new pointer event
+ok 32 - releaseHeldControls cannot revive stale pointer precision without a new pointer event
+  ---
+  duration_ms: 0.709579
+  ...
+# Subtest: circular orbit (positive orbit sign) reads as a balanced, stable swing
+ok 33 - circular orbit (positive orbit sign) reads as a balanced, stable swing
+  ---
+  duration_ms: 2.236639
+  ...
+# Subtest: circular orbit (negative orbit sign) mirrors the positive case exactly
+ok 34 - circular orbit (negative orbit sign) mirrors the positive case exactly
+  ---
+  duration_ms: 0.393177
+  ...
+# Subtest: radial approach reports POSITIVE radialSpeed and no orbit
+ok 35 - radial approach reports POSITIVE radialSpeed and no orbit
+  ---
+  duration_ms: 1.209204
+  ...
+# Subtest: radial departure reports NEGATIVE radialSpeed, exactly negating the approach
+ok 36 - radial departure reports NEGATIVE radialSpeed, exactly negating the approach
+  ---
+  duration_ms: 0.333463
+  ...
+# Subtest: zero distance fails closed with a defined reason and full shape parity
+ok 37 - zero distance fails closed with a defined reason and full shape parity
+  ---
+  duration_ms: 0.576798
+  ...
+# Subtest: near-zero distance below the degenerate guard also fails closed
+ok 38 - near-zero distance below the degenerate guard also fails closed
+  ---
+  duration_ms: 0.166202
+  ...
+# Subtest: zero mass on BOTH bodies degrades gracefully (the reduced-mass 0/0 guard)
+ok 39 - zero mass on BOTH bodies degrades gracefully (the reduced-mass 0/0 guard)
+  ---
+  duration_ms: 0.407619
+  ...
+# Subtest: zero mass on EITHER body alone still zeroes the reduced mass
+ok 40 - zero mass on EITHER body alone still zeroes the reduced mass
+  ---
+  duration_ms: 0.497253
+  ...
+# Subtest: absent and negative mass follow the same graceful zero-mass path
+ok 41 - absent and negative mass follow the same graceful zero-mass path
+  ---
+  duration_ms: 0.51749
+  ...
+# Subtest: slack line carries no tension and can never be a stable orbit
+ok 42 - slack line carries no tension and can never be a stable orbit
+  ---
+  duration_ms: 0.41633
+  ...
+# Subtest: a line exactly at rest length is slack until it clears slackEpsilon
+ok 43 - a line exactly at rest length is slack until it clears slackEpsilon
+  ---
+  duration_ms: 0.277475
+  ...
+# Subtest: overloaded line clamps loadRatio, bands as overload, and closes the stable window
+ok 44 - overloaded line clamps loadRatio, bands as overload, and closes the stable window
+  ---
+  duration_ms: 0.253809
+  ...
+# Subtest: NaN in any host or target field fails closed without propagating
+ok 45 - NaN in any host or target field fails closed without propagating
+  ---
+  duration_ms: 0.967398
+  ...
+# Subtest: NaN in restLength, reelIntent, mass overrides, or any tuning parameter fails closed
+ok 46 - NaN in restLength, reelIntent, mass overrides, or any tuning parameter fails closed
+  ---
+  duration_ms: 0.868931
+  ...
+# Subtest: Infinity and -Infinity in any consumed field fail closed
+ok 47 - Infinity and -Infinity in any consumed field fail closed
+  ---
+  duration_ms: 1.428294
+  ...
+# Subtest: missing host / missing target / missing or negative restLength each have a defined reason
+ok 48 - missing host / missing target / missing or negative restLength each have a defined reason
+  ---
+  duration_ms: 0.429267
+  ...
+# Subtest: rotating the whole system rotates the vectors and leaves scalars and bands untouched
+ok 49 - rotating the whole system rotates the vectors and leaves scalars and bands untouched
+  ---
+  duration_ms: 1.585388
+  ...
+# Subtest: the observation is instantaneous: no dt parameter exists and none can influence it
+ok 50 - the observation is instantaneous: no dt parameter exists and none can influence it
+  ---
+  duration_ms: 0.857941
+  ...
+# Subtest: the same state observed twice is byte-identical (deterministic and pure)
+ok 51 - the same state observed twice is byte-identical (deterministic and pure)
+  ---
+  duration_ms: 0.289302
+  ...
+# Subtest: loadRatio rises monotonically with distance and the bands appear in order
+ok 52 - loadRatio rises monotonically with distance and the bands appear in order
+  ---
+  duration_ms: 0.726035
+  ...
+# Subtest: band thresholds are parameters, not baked-in constants
+ok 53 - band thresholds are parameters, not baked-in constants
+  ---
+  duration_ms: 0.268097
+  ...
+# Subtest: the module reuses the existing 0.75 overload threshold and 0.45/0.75 reel-risk bands
+ok 54 - the module reuses the existing 0.75 overload threshold and 0.45/0.75 reel-risk bands
+  ---
+  duration_ms: 0.113741
+  ...
+# Subtest: reel intent sign follows the input contract (negative = reel in) and risk tracks load
+ok 55 - reel intent sign follows the input contract (negative = reel in) and risk tracks load
+  ---
+  duration_ms: 0.228267
+  ...
+# Subtest: releaseIntent is echoed, never measured, and release reads match the arc-preview vocabulary
+ok 56 - releaseIntent is echoed, never measured, and release reads match the arc-preview vocabulary
+  ---
+  duration_ms: 0.357854
+  ...
+# Subtest: release classification bands are ordered and driven by tangent quality and load
+ok 57 - release classification bands are ordered and driven by tangent quality and load
+  ---
+  duration_ms: 0.22009
+  ...
+# Subtest: every result path returns the identical key set
+ok 58 - every result path returns the identical key set
+  ---
+  duration_ms: 0.569295
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: tumble body language is multi-axis and thrash-then-failing
+ok 59 - tumble body language is multi-axis and thrash-then-failing
+  ---
+  duration_ms: 2.299926
+  ...
+# Subtest: recover pose eases thrash toward flight lean
+ok 60 - recover pose eases thrash toward flight lean
+  ---
+  duration_ms: 0.40421
+  ...
+# Subtest: force neon scales force cues above hull-neutral baseline
+ok 61 - force neon scales force cues above hull-neutral baseline
+  ---
+  duration_ms: 0.584049
+  ...
+# Subtest: feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+ok 62 - feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+  ---
+  duration_ms: 0.641771
+  ...
+# Subtest: readControlLossPresentation never tumbles the player; ships get status/drifting
+ok 63 - readControlLossPresentation never tumbles the player; ships get status/drifting
+  ---
+  duration_ms: 0.543164
+  ...
+# Subtest: control-loss presentation exposes only active strict player-caused throw truth
+ok 64 - control-loss presentation exposes only active strict player-caused throw truth
+  ---
+  duration_ms: 0.57984
+  ...
+# Subtest: continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+ok 65 - continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+  ---
+  duration_ms: 0.507
+  ...
+# Subtest: _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+ok 66 - _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+  ---
+  duration_ms: 0.613466
+  ...
+# Subtest: _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+ok 67 - _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+  ---
+  duration_ms: 0.605327
+  ...
+# Subtest: tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+ok 68 - tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+  ---
+  duration_ms: 1.408724
+  ...
+# Subtest: updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+ok 69 - updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+  ---
+  duration_ms: 1.29645
+  ...
+1..69
+# tests 69
+# suites 0
+# pass 69
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 494.096897

@@ -1,0 +1,9 @@
+{
+  "name": "weapon-presenter-composite-quiet-latch",
+  "iters": 80000,
+  "pairs": 13,
+  "medianSpeedup": 6.109,
+  "minSpeedup": 5.354,
+  "maxSpeedup": 6.685,
+  "note": "primary isolated-worker run before package rebenches"
+}

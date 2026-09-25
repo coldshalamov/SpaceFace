@@ -1,0 +1,37 @@
+From 941643eb8303a9033c92395817a8fe51f6b47d84 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:50:24 -0400
+Subject: [PATCH] perf(hud): cache setText last write; skip textContent reads
+
+Settled hud.frame was paying a DOM text walk on every setText call even
+when the label was unchanged. Mirror setStyle's JS-side last-written
+cache (_sfText) so unchanged numerics/overlay labels are a single
+property compare. Picture unchanged.
+---
+ src/ui/hud.js | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/ui/hud.js b/src/ui/hud.js
+index 6859b72bb..87ce399c2 100644
+--- a/src/ui/hud.js
++++ b/src/ui/hud.js
+@@ -934,7 +934,15 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
+   return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
+ }
+ 
+-export function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
++// JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
++// DOM text walk (and can flush layout); hud.frame self-time in cpu-profile-flight was ~38 ms
++// over 60 s settled with dozens of setText sites on every slow/overlay tick.
++export function setText(el, text) {
++  if (!el) return;
++  if (el._sfText === text) return;
++  el._sfText = text;
++  el.textContent = text;
++}
+ function setScaleX(el, value, opts = null) {
+   if (!el) return;
+   const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
+-- 
+2.47.3
+

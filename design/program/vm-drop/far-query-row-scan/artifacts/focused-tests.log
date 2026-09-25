@@ -1,0 +1,191 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 1 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.34954
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 2 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.812756
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 3 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 1.569045
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 4 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.370704
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 5 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.557639
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 6 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.304561
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 7 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.262928
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 8 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.181657
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 9 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.844848
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 10 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.335071
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 11 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 3.826674
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 12 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.749431
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 13 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.599129
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 14 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.627725
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 15 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.333934
+  ...
+# Subtest: far-actor grid keys are packed numbers, not cx:cz strings
+ok 16 - far-actor grid keys are packed numbers, not cx:cz strings
+  ---
+  duration_ms: 2.294199
+  ...
+# Subtest: ensureFarActorTable rebuilds legacy string grid keys in-tab
+ok 17 - ensureFarActorTable rebuilds legacy string grid keys in-tab
+  ---
+  duration_ms: 0.308565
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 18 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 8.109276
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 19 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 1.92154
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 20 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.164931
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 21 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 1.554297
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 22 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.429495
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 23 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.16598
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 24 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 1.059953
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 25 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.069187
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 26 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 1.339469
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 27 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 2.452823
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 28 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 0.997016
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 29 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.34102
+  ...
+# Subtest: wide-disc far query matches grid walk (row-scan path)
+ok 30 - wide-disc far query matches grid walk (row-scan path)
+  ---
+  duration_ms: 2.629536
+  ...
+# Subtest: tight-disc far query still finds local rows (grid path)
+ok 31 - tight-disc far query still finds local rows (grid path)
+  ---
+  duration_ms: 0.312952
+  ...
+# Subtest: row-scan respects FAR_ROW_BUDGET ceiling fixture
+ok 32 - row-scan respects FAR_ROW_BUDGET ceiling fixture
+  ---
+  duration_ms: 0.111779
+  ...
+# Subtest: the far shelf gives the wreck cathedral and the cinder sluice back on approach
+ok 33 - the far shelf gives the wreck cathedral and the cinder sluice back on approach
+  ---
+  duration_ms: 142.531786
+  ...
+# Subtest: the far table keeps its newest rows within the budget and evicts oldest-first
+ok 34 - the far table keeps its newest rows within the budget and evicts oldest-first
+  ---
+  duration_ms: 2.756647
+  ...
+# Subtest: a row anchoring a world record or a job relink is never evicted, even oldest
+ok 35 - a row anchoring a world record or a job relink is never evicted, even oldest
+  ---
+  duration_ms: 0.691445
+  ...
+# Subtest: the serialized far table stays bounded across an endless shelving session
+ok 36 - the serialized far table stays bounded across an endless shelving session
+  ---
+  duration_ms: 4.970861
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 576.165335

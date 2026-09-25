@@ -1,0 +1,90 @@
+TAP version 13
+# Subtest: bench toggle defaults ON and round-trips
+ok 1 - bench toggle defaults ON and round-trips
+  ---
+  duration_ms: 1.090445
+  ...
+# Subtest: quiet open flight arms latch once mults settle
+ok 2 - quiet open flight arms latch once mults settle
+  ---
+  duration_ms: 1.530849
+  ...
+# Subtest: latched ticks skip work inside the 0.5 s rescan window
+ok 3 - latched ticks skip work inside the 0.5 s rescan window
+  ---
+  duration_ms: 0.461128
+  ...
+# Subtest: combat:damage wakes the quiet latch
+ok 4 - combat:damage wakes the quiet latch
+  ---
+  duration_ms: 0.728354
+  ...
+# Subtest: bench OFF never arms latch
+ok 5 - bench OFF never arms latch
+  ---
+  duration_ms: 4.649723
+  ...
+# Subtest: survival run refuses to latch
+ok 6 - survival run refuses to latch
+  ---
+  duration_ms: 1.691111
+  ...
+# Subtest: a spiraling player: incoming pressure decays measurably inside 3 sim-minutes
+ok 7 - a spiraling player: incoming pressure decays measurably inside 3 sim-minutes
+  ---
+  duration_ms: 6.188024
+  ...
+# Subtest: a cruising player: the world offers more (outgoing scale opens)
+ok 8 - a cruising player: the world offers more (outgoing scale opens)
+  ---
+  duration_ms: 1.165029
+  ...
+# Subtest: the harasser pin resolves via director-driven disengagement inside 10 minutes
+ok 9 - the harasser pin resolves via director-driven disengagement inside 10 minutes
+  ---
+  duration_ms: 2.616715
+  ...
+# Subtest: a player who is actually resolving the fight keeps it — no mercy steal
+ok 10 - a player who is actually resolving the fight keeps it — no mercy steal
+  ---
+  duration_ms: 1.823602
+  ...
+# Subtest: pin release exemptions: bosses, lawful pressure on wanted, encounter squads
+ok 11 - pin release exemptions: bosses, lawful pressure on wanted, encounter squads
+  ---
+  duration_ms: 4.880105
+  ...
+# Subtest: bounds: pressure never reaches zero, opportunity never caps the player
+ok 12 - bounds: pressure never reaches zero, opportunity never caps the player
+  ---
+  duration_ms: 2.422214
+  ...
+# Subtest: the stance is one inspectable state field
+ok 13 - the stance is one inspectable state field
+  ---
+  duration_ms: 0.975246
+  ...
+# Subtest: determinism: same scripted inputs → identical stance timeline
+ok 14 - determinism: same scripted inputs → identical stance timeline
+  ---
+  duration_ms: 4.118105
+  ...
+# Subtest: a scored survival run pins the director to steady — the arena keeps its own tuning
+ok 15 - a scored survival run pins the director to steady — the arena keeps its own tuning
+  ---
+  duration_ms: 1.488885
+  ...
+# Subtest: flee hold expires: the NPC may re-engage after the stand-down window
+ok 16 - flee hold expires: the NPC may re-engage after the stand-down window
+  ---
+  duration_ms: 1.545218
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 183.518886

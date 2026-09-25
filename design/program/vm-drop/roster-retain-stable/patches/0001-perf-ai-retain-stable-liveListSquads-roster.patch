@@ -1,0 +1,135 @@
+From 454dab17b3a901b5e11862014ebac87638cd2014 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:03:08 -0400
+Subject: [PATCH] =?UTF-8?q?perf(ai):=20retain=20stable=20liveListSquads=20?=
+ =?UTF-8?q?roster=20(~1.78=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet liveListSquads rebuilt members + rosterSignature every tactical tick.
+When membership/identity fields match, keep the retained roster and refresh
+only pos/activity/alive/authority. Soft-GPU fps not claimed.
+---
+ src/systems/aiPorts.js | 77 +++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 76 insertions(+), 1 deletion(-)
+
+diff --git a/src/systems/aiPorts.js b/src/systems/aiPorts.js
+index b7705969b..2155aa2de 100644
+--- a/src/systems/aiPorts.js
++++ b/src/systems/aiPorts.js
+@@ -114,6 +114,8 @@ export const aiPorts = {
+     this._pendingFlushScratch = [];
+     this._rosterCandidateScratch = [];
+     this._rosterSquadsScratch = new Map();
++    this._liveRosterScratch = null;
++    this._liveRosterMembershipKey = '';
+     ensureEncounterState(this.state);
+     this._diag = {
+       schemaVersion: AI_CONTRACT_VERSION,
+@@ -444,7 +446,8 @@ export const aiPorts = {
+   _listSquads(tick, options = {}) {
+     const state = this.state;
+     ensureActivityClassified(state);
+-    const freeze = options.freezeResults === false ? identity : Object.freeze;
++    const live = options.freezeResults === false;
++    const freeze = live ? identity : Object.freeze;
+     const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
+     squads.clear();
+     const source = getActivityOwnerEntities(state, 'ai');
+@@ -467,6 +470,24 @@ export const aiPorts = {
+       candidates.push(entity);
+     }
+     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
++
++    // Quiet live path: when membership + signature identity fields are unchanged, keep the
++    // retained roster and only refresh per-tick mutable fields (pos/activity/alive/authority).
++    // Avoids re-allocating members and rebuilding rosterSignature strings every tactical tick.
++    if (live) {
++      const membershipKey = liveRosterMembershipKey(candidates, (entity) => this._capabilitiesFor(entity, tick));
++      const retained = this._liveRosterScratch;
++      if (retained && membershipKey === this._liveRosterMembershipKey) {
++        refreshLiveRosterMembers(retained, candidates, playerId, playerTeam, authorityOrigin, authorityRadius);
++        candidates.length = 0;
++        return retained;
++      }
++      this._liveRosterMembershipKey = membershipKey;
++    } else {
++      this._liveRosterScratch = null;
++      this._liveRosterMembershipKey = '';
++    }
++
+     for (const entity of candidates) {
+       const ai = (entity.data && entity.data.ai) || entity.ai;
+       const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+@@ -526,6 +547,7 @@ export const aiPorts = {
+     Object.defineProperty(roster, NORMALIZED_ROSTER_FLAG, { value: true });
+     candidates.length = 0;
+     squads.clear();
++    if (live) this._liveRosterScratch = roster;
+     return freeze(roster);
+   },
+ 
+@@ -1436,6 +1458,59 @@ function attachmentsFor(index, entityId) {
+   return index.byEntity.get(entityId) || EMPTY_ATTACHMENTS;
+ }
+ 
++
++/** Membership + signature identity for live roster retain (excludes pos/activity/authority). */
++function liveRosterMembershipKey(candidates, capabilitiesFor) {
++  let key = '';
++  for (let i = 0; i < candidates.length; i++) {
++    const entity = candidates[i];
++    const ai = (entity.data && entity.data.ai) || entity.ai;
++    const doctrine = String(ai.doctrine || doctrineFor(entity));
++    const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
++    const squadId = String(ai.squadId || ai.wingId || `${doctrine}:${faction}`);
++    const formation = String(ai.formation || defaultFormation(doctrine));
++    const preferredRole = ai.preferredRole || ai.role || '';
++    const combatDoctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId) || '';
++    const caps = capabilitiesFor(entity) || [];
++    const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
++    key += `${entity.id}:${squadId}:${doctrine}:${faction}:${formation}:`;
++    key += `${positive(ai.formationSpacing, DEFAULT_FORMATION_SPACING)}:`;
++    key += `${positive(ai.formationBound, DEFAULT_FORMATION_BOUND)}:`;
++    key += `${preferredRole}:${combatDoctrineId}:${caps.join('+')}:`;
++    key += `${profileSignature(factionBehavior)}:${entity.team == null ? '' : entity.team};`;
++  }
++  return key;
++}
++
++function refreshLiveRosterMembers(roster, candidates, playerId, playerTeam, authorityOrigin, authorityRadius) {
++  // Candidates are sorted by id; roster members within each squad are sorted by id.
++  // Walk candidates once via id map for O(n) refresh.
++  const byId = refreshLiveRosterMembers._byId || (refreshLiveRosterMembers._byId = new Map());
++  byId.clear();
++  for (let i = 0; i < candidates.length; i++) {
++    const entity = candidates[i];
++    byId.set(entity.id, entity);
++  }
++  for (let s = 0; s < roster.length; s++) {
++    const members = roster[s].members;
++    for (let m = 0; m < members.length; m++) {
++      const member = members[m];
++      const entity = byId.get(member.id);
++      if (!entity) continue;
++      const ai = (entity.data && entity.data.ai) || entity.ai;
++      member.alive = entity.alive !== false;
++      member.pos = entity.pos || null;
++      member.activity = entity.activity || null;
++      member.team = entity.team;
++      member.passive = !!(ai && ai.passive === true);
++      member.playerId = playerId;
++      member.playerTeam = playerTeam;
++      member.authorityOrigin = authorityOrigin;
++      member.authorityRadius = authorityRadius;
++    }
++  }
++}
++
+ function rosterSignature(squad) {
+   let text = `${squad.id}|${squad.doctrine}|${squad.faction}|${squad.formation}|${squad.formationSpacing}|${squad.formationBound}|${profileSignature(squad.factionBehavior)}`;
+   for (const member of squad.members) {
+-- 
+2.47.3
+

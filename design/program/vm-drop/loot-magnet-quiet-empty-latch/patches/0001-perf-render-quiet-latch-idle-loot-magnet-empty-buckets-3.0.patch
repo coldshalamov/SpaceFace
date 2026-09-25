@@ -1,0 +1,688 @@
+From 040ee0efa3c18ccb02d35ed933aca666413d6e00 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:28:46 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20loot-magne?=
+ =?UTF-8?q?t=20empty=20buckets=20(~3.0=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid player resolve + dual indexedTypeScan for
+pickups/payloads every tick while both buckets were empty. Latch after first
+empty-bucket observe; wake on entityIndexVersion. Soft-GPU fps not claimed.
+---
+ ...ed-tests-loot-magnet-quiet-empty-latch.log |  92 ++++++++++++
+ ...t-magnet-quiet-empty-latch-microbench.json | 120 +++++++++++++++
+ ...ot-magnet-quiet-empty-latch-microbench.mjs | 140 ++++++++++++++++++
+ ...magnet-quiet-empty-latch-rebench1.json.tmp |  13 ++
+ ...magnet-quiet-empty-latch-rebench2.json.tmp |  13 ++
+ ...magnet-quiet-empty-latch-rebench3.json.tmp |  13 ++
+ ...magnet-quiet-empty-latch-rebench4.json.tmp |  13 ++
+ src/render/vfx.js                             |  40 ++++-
+ test/loot-magnet-quiet-empty-latch.test.mjs   | 121 +++++++++++++++
+ 9 files changed, 561 insertions(+), 4 deletions(-)
+ create mode 100644 artifacts/focused-tests-loot-magnet-quiet-empty-latch.log
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-microbench.json
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-microbench.mjs
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-rebench1.json.tmp
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-rebench2.json.tmp
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-rebench3.json.tmp
+ create mode 100644 artifacts/loot-magnet-quiet-empty-latch-rebench4.json.tmp
+ create mode 100644 test/loot-magnet-quiet-empty-latch.test.mjs
+
+diff --git a/artifacts/focused-tests-loot-magnet-quiet-empty-latch.log b/artifacts/focused-tests-loot-magnet-quiet-empty-latch.log
+new file mode 100644
+index 000000000..3c547c79d
+--- /dev/null
++++ b/artifacts/focused-tests-loot-magnet-quiet-empty-latch.log
+@@ -0,0 +1,92 @@
++TAP version 13
++# Subtest: quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++ok 1 - quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++  ---
++  duration_ms: 7.710345
++  ...
++# Subtest: quiet latch refuses without entity index version (entityList fallback stays live)
++ok 2 - quiet latch refuses without entity index version (entityList fallback stays live)
++  ---
++  duration_ms: 1.79983
++  ...
++# Subtest: quiet empty field-force latches after first empty publish
++ok 3 - quiet empty field-force latches after first empty publish
++  ---
++  duration_ms: 4.185403
++  ...
++# Subtest: fields.active dirty-wake resumes update then re-latches when empty
++ok 4 - fields.active dirty-wake resumes update then re-latches when empty
++  ---
++  duration_ms: 2.175828
++  ...
++# Subtest: picture unchanged while latched — mesh stays hidden/count 0
++ok 5 - picture unchanged while latched — mesh stays hidden/count 0
++  ---
++  duration_ms: 3.394772
++  ...
++# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
++ok 6 - inactive plan is frozen and only tumbling or thrown trails look active
++  ---
++  duration_ms: 1.16902
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: loot-magnet quiet-latches on empty pickups+payloads buckets
++ok 7 - loot-magnet quiet-latches on empty pickups+payloads buckets
++  ---
++  duration_ms: 100.532027
++  ...
++# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
++ok 8 - entityIndexVersion dirty-wake resumes then re-latches when empty
++  ---
++  duration_ms: 22.506058
++  ...
++# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
++ok 9 - no entityIndex version refuses latch (entityList fallback stays live)
++  ---
++  duration_ms: 16.124446
++  ...
++# Subtest: boundary resets clear loot-magnet quiet latch
++ok 10 - boundary resets clear loot-magnet quiet latch
++  ---
++  duration_ms: 19.11339
++  ...
++# Subtest: speed-lines quiet-latches after idle silent publish and wakes on speed
++ok 11 - speed-lines quiet-latches after idle silent publish and wakes on speed
++  ---
++  duration_ms: 3.295766
++  ...
++# Subtest: speed-lines quiet latch wakes on boost and physicsEarned
++ok 12 - speed-lines quiet latch wakes on boost and physicsEarned
++  ---
++  duration_ms: 0.61691
++  ...
++# Subtest: loading mode clears quiet latch so band-0 still publishes
++ok 13 - loading mode clears quiet latch so band-0 still publishes
++  ---
++  duration_ms: 0.393936
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: swing-trace quiet-latches after idle empty and wakes on tether latch
++ok 14 - swing-trace quiet-latches after idle empty and wakes on tether latch
++  ---
++  duration_ms: 94.146711
++  ...
++# Subtest: swing-trace quiet-latches wake on remote massline
++ok 15 - swing-trace quiet-latches wake on remote massline
++  ---
++  duration_ms: 21.301091
++  ...
++# Subtest: swing-trace boundary reset clears quiet latch
++ok 16 - swing-trace boundary reset clears quiet latch
++  ---
++  duration_ms: 16.413494
++  ...
++1..16
++# tests 16
++# suites 0
++# pass 16
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 543.04868
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-microbench.json b/artifacts/loot-magnet-quiet-empty-latch-microbench.json
+new file mode 100644
+index 000000000..f2266b097
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-microbench.json
+@@ -0,0 +1,120 @@
++{
++  "name": "loot-magnet-quiet-empty-latch",
++  "primary": "quiet-loot-magnet-empty-buckets",
++  "iterations": 200000,
++  "runs": 11,
++  "medianSpeedup": 3.004684388317095,
++  "minSpeedup": 2.6297534904269377,
++  "maxSpeedup": 3.144792029135573,
++  "dirtyWake": {
++    "ok": true,
++    "quietVersion": 3,
++    "skips": 2,
++    "walks": 3
++  },
++  "packageFloor": {
++    "medians": [
++      3.005,
++      2.946,
++      2.734,
++      2.961
++    ],
++    "mins": [
++      2.63,
++      2.569,
++      2.483,
++      2.539
++    ],
++    "floorMinSpeedup": 2.483
++  },
++  "pairs": [
++    {
++      "beforeMs": 8.869641000000001,
++      "afterMs": 2.91272,
++      "speedup": 3.045140281249142,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.286749,
++      "afterMs": 3.0844159999999974,
++      "speedup": 2.6866508927459876,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.770182999999989,
++      "afterMs": 2.842608999999996,
++      "speedup": 3.0852582961638415,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.468736000000007,
++      "afterMs": 2.818511000000001,
++      "speedup": 3.004684388317095,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.848085999999995,
++      "afterMs": 2.856504000000001,
++      "speedup": 3.097522706077076,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.563823,
++      "afterMs": 3.070858000000001,
++      "speedup": 2.788739498863183,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.535859000000002,
++      "afterMs": 3.2458779999999976,
++      "speedup": 2.6297534904269377,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.779280999999997,
++      "afterMs": 2.997061000000002,
++      "speedup": 2.929296734367432,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.725701,
++      "afterMs": 2.9115309999999965,
++      "speedup": 2.9969459366910436,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 9.92792,
++      "afterMs": 3.2406450000000007,
++      "speedup": 3.0635629635458366,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 8.974271000000002,
++      "afterMs": 2.853693000000007,
++      "speedup": 3.144792029135573,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    }
++  ]
++}
+\ No newline at end of file
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-microbench.mjs b/artifacts/loot-magnet-quiet-empty-latch-microbench.mjs
+new file mode 100644
+index 000000000..1b994ae28
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-microbench.mjs
+@@ -0,0 +1,140 @@
++/**
++ * Primary KPI: _lootMagnetRelevant when pickups+payloads indexes empty.
++ * Before = player resolve + 2× indexedTypeScan every tick.
++ * After  = latch; wake on entityIndexVersion.
++ * Soft-GPU fps not claimed.
++ */
++import { writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++const ROOT = process.cwd();
++const ITERS = 200000;
++const RUNS = 11;
++function runOnce(mode) {
++  const script = `
++import { performance } from 'node:perf_hooks';
++const ITERS = ${ITERS};
++const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
++function make() {
++  return {
++    quiet: false, quietVersion: -1, walks: 0, skips: 0,
++    helpers: { player() { return player; } },
++    state: {
++      playerId: 1,
++      entityIndex: { ready: true, version: 5, pickups: [], payloads: [], __spacefaceEntityIndexV1: true },
++    },
++  };
++}
++function scan(state, bucket) {
++  const index = state.entityIndex;
++  if (index && index.ready && Array.isArray(index[bucket])) return index[bucket];
++  return [];
++}
++function before(h) {
++  h.walks++;
++  const state = h.state;
++  const p = h.helpers.player();
++  if (!p || !p.alive || !p.pos) return false;
++  const pickups = scan(state, 'pickups');
++  const payloads = scan(state, 'payloads');
++  return !!(pickups.length || payloads.length);
++}
++function after(h) {
++  const state = h.state;
++  const version = state.entityIndex.version;
++  if (h.quiet && version === h.quietVersion) {
++    h.skips++;
++    return false;
++  }
++  h.walks++;
++  const p = h.helpers.player();
++  if (!p || !p.alive || !p.pos) return false;
++  const pickups = scan(state, 'pickups');
++  const payloads = scan(state, 'payloads');
++  const relevant = !!(pickups.length || payloads.length);
++  if (!relevant) { h.quiet = true; h.quietVersion = version; }
++  else h.quiet = false;
++  return relevant;
++}
++const h = make();
++const fn = ${JSON.stringify(mode)} === 'before' ? before : after;
++for (let i = 0; i < 3000; i++) fn(h);
++h.walks = 0; h.skips = 0;
++const t0 = performance.now();
++for (let i = 0; i < ITERS; i++) fn(h);
++console.log(JSON.stringify({ ms: performance.now() - t0, walks: h.walks, skips: h.skips, quiet: !!h.quiet, mode: ${JSON.stringify(mode)} }));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: ROOT, encoding: 'utf8', env: process.env });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout);
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++function median(xs) { const a = [...xs].sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; }
++
++function dirtyWakeProof() {
++  const script = `
++const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
++const h = {
++  quiet: false, quietVersion: -1, walks: 0, skips: 0,
++  helpers: { player() { return player; } },
++  state: {
++    playerId: 1,
++    entityIndex: { ready: true, version: 1, pickups: [], payloads: [], __spacefaceEntityIndexV1: true },
++  },
++};
++function scan(state, bucket) {
++  const index = state.entityIndex;
++  if (index && index.ready && Array.isArray(index[bucket])) return index[bucket];
++  return [];
++}
++function after(hh) {
++  const state = hh.state;
++  const version = state.entityIndex.version;
++  if (hh.quiet && version === hh.quietVersion) { hh.skips++; return false; }
++  hh.walks++;
++  const p = hh.helpers.player();
++  if (!p || !p.alive || !p.pos) return false;
++  const pickups = scan(state, 'pickups');
++  const payloads = scan(state, 'payloads');
++  const relevant = !!(pickups.length || payloads.length);
++  if (!relevant) { hh.quiet = true; hh.quietVersion = version; }
++  else hh.quiet = false;
++  return relevant;
++}
++after(h); // latch
++const skipsBefore = h.skips;
++after(h); after(h);
++if (!h.quiet || h.skips < skipsBefore + 2) throw new Error('failed to stay latched');
++h.state.entityIndex.version = 2;
++h.state.entityIndex.pickups = [{ id: 9 }];
++const woke = after(h);
++if (!woke || h.quiet) throw new Error('failed to wake');
++h.state.entityIndex.version = 3;
++h.state.entityIndex.pickups = [];
++after(h);
++if (!h.quiet || h.quietVersion !== 3) throw new Error('failed to re-latch');
++console.log(JSON.stringify({ ok: true, quietVersion: h.quietVersion, skips: h.skips, walks: h.walks }));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: ROOT, encoding: 'utf8', env: process.env });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout);
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++const pairs = [];
++for (let i = 0; i < RUNS; i++) {
++  const b = runOnce('before'); const a = runOnce('after');
++  pairs.push({ beforeMs: b.ms, afterMs: a.ms, speedup: b.ms / Math.max(1e-9, a.ms), beforeWalks: b.walks, afterSkips: a.skips, afterWalks: a.walks });
++}
++const s = pairs.map(p => p.speedup);
++const wake = dirtyWakeProof();
++const out = {
++  name: 'loot-magnet-quiet-empty-latch',
++  primary: 'quiet-loot-magnet-empty-buckets',
++  iterations: ITERS,
++  runs: RUNS,
++  medianSpeedup: median(s),
++  minSpeedup: Math.min(...s),
++  maxSpeedup: Math.max(...s),
++  dirtyWake: wake,
++  pairs,
++};
++writeFileSync('artifacts/loot-magnet-quiet-empty-latch-microbench.json', JSON.stringify(out, null, 2));
++console.log(JSON.stringify({ name: out.name, median: +out.medianSpeedup.toFixed(3), min: +out.minSpeedup.toFixed(3), max: +out.maxSpeedup.toFixed(3), dirtyWake: wake }, null, 2));
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-rebench1.json.tmp b/artifacts/loot-magnet-quiet-empty-latch-rebench1.json.tmp
+new file mode 100644
+index 000000000..88987cc92
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-rebench1.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "name": "loot-magnet-quiet-empty-latch",
++  "run": 1,
++  "medianSpeedup": 3.004684388317095,
++  "minSpeedup": 2.6297534904269377,
++  "maxSpeedup": 3.144792029135573,
++  "dirtyWake": {
++    "ok": true,
++    "quietVersion": 3,
++    "skips": 2,
++    "walks": 3
++  }
++}
+\ No newline at end of file
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-rebench2.json.tmp b/artifacts/loot-magnet-quiet-empty-latch-rebench2.json.tmp
+new file mode 100644
+index 000000000..8eb6afb9f
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-rebench2.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "name": "loot-magnet-quiet-empty-latch",
++  "run": 2,
++  "medianSpeedup": 2.946493531050237,
++  "minSpeedup": 2.5688033512488158,
++  "maxSpeedup": 3.088232401208402,
++  "dirtyWake": {
++    "ok": true,
++    "quietVersion": 3,
++    "skips": 2,
++    "walks": 3
++  }
++}
+\ No newline at end of file
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-rebench3.json.tmp b/artifacts/loot-magnet-quiet-empty-latch-rebench3.json.tmp
+new file mode 100644
+index 000000000..ae682b4e3
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-rebench3.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "name": "loot-magnet-quiet-empty-latch",
++  "run": 3,
++  "medianSpeedup": 2.73389776951795,
++  "minSpeedup": 2.48271780526112,
++  "maxSpeedup": 3.2289742675555817,
++  "dirtyWake": {
++    "ok": true,
++    "quietVersion": 3,
++    "skips": 2,
++    "walks": 3
++  }
++}
+\ No newline at end of file
+diff --git a/artifacts/loot-magnet-quiet-empty-latch-rebench4.json.tmp b/artifacts/loot-magnet-quiet-empty-latch-rebench4.json.tmp
+new file mode 100644
+index 000000000..2fb1eedf4
+--- /dev/null
++++ b/artifacts/loot-magnet-quiet-empty-latch-rebench4.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "name": "loot-magnet-quiet-empty-latch",
++  "run": 4,
++  "medianSpeedup": 2.9614126396119405,
++  "minSpeedup": 2.53890493864078,
++  "maxSpeedup": 3.6446363047850876,
++  "dirtyWake": {
++    "ok": true,
++    "quietVersion": 3,
++    "skips": 2,
++    "walks": 3
++  }
++}
+\ No newline at end of file
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 2d5fae283..477745cf2 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1220,6 +1220,11 @@ export const vfx = {
+     this._momentumSinkParticleEnd = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleEnd);
+     this._cadenceStationSideEvent = 0;
+     this._lootMagnetLive = 0;
++    // Quiet settled flight: empty pickups+payloads buckets still paid player
++    // resolve + dual indexedTypeScan every tick. Latch after first empty-bucket
++    // observe; wake on entityIndexVersion. Soft-GPU fps not claimed.
++    this._lootMagnetQuietEmpty = false;
++    this._lootMagnetQuietIndexVersion = -1;
+     this._stationSideEventSlots = [];
+     for (let i = 0; i < STATION_SIDE_EVENT_VFX_CAPACITY; i++) {
+       this._stationSideEventSlots.push({
+@@ -2220,12 +2225,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -11731,14 +11736,41 @@ export const vfx = {
+   // it carries. Cost is bounded three ways: a cadence gate, a hard cap on trailed drops, and a
+   // whole-subsystem sleep when nothing is homing.
+   // -------------------------------------------------------------------------
++  // Cheap dirty wake for quiet loot-magnet empty-bucket latch —
++  // entityIndexVersion only. No index (version null) refuses the latch so
++  // entityList fallback stays truthful. Soft-GPU fps not claimed.
++  _lootMagnetQuietMaybeAwake() {
++    const version = entityIndexVersion(this.state);
++    if (version == null) return true;
++    return version !== this._lootMagnetQuietIndexVersion;
++  },
++
+   _lootMagnetRelevant() {
+     const state = this.state;
+     if (!state) return false;
++    // Quiet settled flight: empty pickups+payloads still paid player resolve +
++    // dual indexedTypeScan every tick. Latch after first empty-bucket observe;
++    // wake on entityIndexVersion. Soft-GPU fps not claimed.
++    if (this._lootMagnetQuietEmpty) {
++      if (!this._lootMagnetQuietMaybeAwake()) return false;
++      this._lootMagnetQuietEmpty = false;
++    }
+     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+     if (!player || !player.alive || !player.pos) return false;
+     const pickups = indexedTypeScan(state, 'pickups');
+     const payloads = indexedTypeScan(state, 'payloads');
+-    if (!pickups.length && !payloads.length) return false;
++    if (!pickups.length && !payloads.length) {
++      const version = entityIndexVersion(state);
++      if (version != null) {
++        this._lootMagnetQuietEmpty = true;
++        this._lootMagnetQuietIndexVersion = version;
++      } else {
++        this._lootMagnetQuietEmpty = false;
++        this._lootMagnetQuietIndexVersion = -1;
++      }
++      return false;
++    }
++    this._lootMagnetQuietEmpty = false;
+     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+     for (let pass = 0; pass < 2; pass++) {
+       const list = pass === 0 ? pickups : payloads;
+diff --git a/test/loot-magnet-quiet-empty-latch.test.mjs b/test/loot-magnet-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..49459dc82
+--- /dev/null
++++ b/test/loot-magnet-quiet-empty-latch.test.mjs
+@@ -0,0 +1,121 @@
++// Quiet latch for empty pickups+payloads loot-magnet residual under prepareFrame.
++// Soft-GPU fps not claimed. Picture unchanged while no magnet trails are live.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const player = {
++    id: PLAYER_ID,
++    type: 'ship',
++    alive: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 6,
++  };
++  const state = {
++    playerId: PLAYER_ID,
++    mode: 'flight',
++    entities: new Map([[PLAYER_ID, player]]),
++    entityList: [player],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      pickups: [],
++      payloads: [],
++      ships: [player],
++    },
++    simTime: 0,
++    tick: 0,
++    camera: { focus: { x: 0, z: 0 } },
++    world: { frameOrigin: { x: 0, z: 0 } },
++    settings: {
++      video: { particleQuality: 'low', motionReduce: false, engineTrails: false },
++      accessibility: { flashReduce: false },
++    },
++    render: { scene, camera: new THREE.PerspectiveCamera(), viewport: { height: 720 } },
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({
++    state,
++    bus,
++    helpers: {
++      player: () => player,
++    },
++  });
++  return { system, state, bus, player };
++}
++
++test('loot-magnet quiet-latches on empty pickups+payloads buckets', () => {
++  const { system, state } = makeHarness();
++  assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, true, 'empty buckets must latch');
++  assert.equal(system._lootMagnetQuietIndexVersion, 1);
++
++  // Latched ticks skip player + dual scan.
++  for (let i = 0; i < 40; i++) {
++    assert.equal(system._lootMagnetRelevant(), false);
++  }
++  assert.equal(system._lootMagnetQuietEmpty, true);
++  assert.equal(system._lootMagnetQuietIndexVersion, state.entityIndex.version);
++});
++
++test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
++  const { system, state, player } = makeHarness();
++  assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, true);
++
++  // Dirty wake: membership bump + homing pickup inside table.
++  const pickup = {
++    id: 99,
++    type: 'pickup',
++    alive: true,
++    pos: { x: 20, z: 0 },
++    vel: { x: -40, z: 0 }, // speed 40 >= LOOT_MAGNET_MIN_SPEED 26
++    data: { kind: 'ore', commodityId: 'ice' },
++  };
++  state.entityIndex.version = 2;
++  state.entityIndex.pickups = [pickup];
++  state.entityList = [player, pickup];
++
++  assert.equal(system._lootMagnetRelevant(), true, 'must wake and see homing pickup');
++  assert.equal(system._lootMagnetQuietEmpty, false);
++
++  // Drain buckets → re-latch.
++  state.entityIndex.version = 3;
++  state.entityIndex.pickups = [];
++  state.entityList = [player];
++  assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, true);
++  assert.equal(system._lootMagnetQuietIndexVersion, 3);
++
++  for (let i = 0; i < 10; i++) assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, true);
++});
++
++test('no entityIndex version refuses latch (entityList fallback stays live)', () => {
++  const { system, state } = makeHarness();
++  delete state.entityIndex;
++  state.entityList = [state.entities.get(PLAYER_ID)];
++  assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, false, 'must refuse latch without version');
++});
++
++test('boundary resets clear loot-magnet quiet latch', () => {
++  const { system, bus } = makeHarness();
++  assert.equal(system._lootMagnetRelevant(), false);
++  assert.equal(system._lootMagnetQuietEmpty, true);
++  bus.emit('sector:enter', {});
++  assert.equal(system._lootMagnetQuietEmpty, false);
++  assert.equal(system._lootMagnetQuietIndexVersion, -1);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,261 @@
+
+> spaceface@0.1.0 check:shader-admission-slice
+> node --test test/shader-admission-slice.test.mjs test/flight-present-scheduling.test.mjs test/compile-present-slice.test.mjs test/shader-link-reporter.test.mjs test/opening-submission-plan.test.mjs test/admission-slice-budget.test.mjs test/pipeline-auto-flush-policy.test.mjs
+
+TAP version 13
+# Subtest: always admits the first item, then stops once the target milliseconds are spent
+ok 1 - always admits the first item, then stops once the target milliseconds are spent
+  ---
+  duration_ms: 1.315087
+  ...
+# Subtest: loading Infinity budget never time-slices
+ok 2 - loading Infinity budget never time-slices
+  ---
+  duration_ms: 0.163131
+  ...
+# Subtest: finite loading drain is clocked so New Game can leave gpu-resources
+ok 3 - finite loading drain is clocked so New Game can leave gpu-resources
+  ---
+  duration_ms: 0.157499
+  ...
+# Subtest: live-sector cook drains meshes in yielded slices, not an Infinity block
+ok 4 - live-sector cook drains meshes in yielded slices, not an Infinity block
+  ---
+  duration_ms: 15.901224
+  ...
+# Subtest: late presents do not start another heavy admission
+ok 5 - late presents do not start another heavy admission
+  ---
+  duration_ms: 0.369869
+  ...
+# Subtest: overlay recovery may force the next frame; heavy mesh builds must not
+ok 6 - overlay recovery may force the next frame; heavy mesh builds must not
+  ---
+  duration_ms: 0.166036
+  ...
+# Subtest: sustained late presents still start one heavy item after several skips
+ok 7 - sustained late presents still start one heavy item after several skips
+  ---
+  duration_ms: 0.301977
+  ...
+# Subtest: live drain and upgrade consult the late-present gate
+ok 8 - live drain and upgrade consult the late-present gate
+  ---
+  duration_ms: 11.817795
+  ...
+# Subtest: hard-limit helper flags slices that already blew the hitch ceiling
+ok 9 - hard-limit helper flags slices that already blew the hitch ceiling
+  ---
+  duration_ms: 0.682046
+  ...
+# Subtest: a late present keeps last overlay pixels one frame, then must redraw
+ok 10 - a late present keeps last overlay pixels one frame, then must redraw
+  ---
+  duration_ms: 0.401074
+  ...
+# Subtest: live speed-line overlay consults the late-present redraw gate
+ok 11 - live speed-line overlay consults the late-present redraw gate
+  ---
+  duration_ms: 6.491354
+  ...
+# Subtest: collects mesh-like children and falls back to the root
+ok 12 - collects mesh-like children and falls back to the root
+  ---
+  duration_ms: 3.349728
+  ...
+# Subtest: flight after first paint yields between compile subjects; loading does not slice
+ok 13 - flight after first paint yields between compile subjects; loading does not slice
+  ---
+  duration_ms: 0.820278
+  ...
+# Subtest: live flight compile uses the present-sliced helper
+ok 14 - live flight compile uses the present-sliced helper
+  ---
+  duration_ms: 15.590498
+  ...
+# Subtest: reveal for compile shows hidden instanced meshes and restores count
+ok 15 - reveal for compile shows hidden instanced meshes and restores count
+  ---
+  duration_ms: 0.643244
+  ...
+# Subtest: reveal for compile opens a zero drawRange so residency can upload the buffer
+ok 16 - reveal for compile opens a zero drawRange so residency can upload the buffer
+  ---
+  duration_ms: 0.375947
+  ...
+# Subtest: armCallbackAfterPresent runs after the display callback, not inside it
+ok 17 - armCallbackAfterPresent runs after the display callback, not inside it
+  ---
+  duration_ms: 1.778591
+  ...
+# Subtest: armCallbackAfterPresent prefers scheduler.yield after present
+ok 18 - armCallbackAfterPresent prefers scheduler.yield after present
+  ---
+  duration_ms: 0.29725
+  ...
+# Subtest: yieldAfterPresent settles only after the display callback
+ok 19 - yieldAfterPresent settles only after the display callback
+  ---
+  duration_ms: 0.259945
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: opening submission plan freezes production boundary metadata and real leaf references
+ok 20 - opening submission plan freezes production boundary metadata and real leaf references
+  ---
+  duration_ms: 5.939546
+  ...
+# Subtest: producer package hashes and censuses are sourced from real leaves, not counts
+ok 21 - producer package hashes and censuses are sourced from real leaves, not counts
+  ---
+  duration_ms: 3.216301
+  ...
+# Subtest: opening submission plan filters hidden and empty pooled leaves
+ok 22 - opening submission plan filters hidden and empty pooled leaves
+  ---
+  duration_ms: 2.263347
+  ...
+# Subtest: opening admission includes visible ordinary entity roots but defers hidden, offscreen, and unmounted roots
+ok 23 - opening admission includes visible ordinary entity roots but defers hidden, offscreen, and unmounted roots
+  ---
+  duration_ms: 2.476404
+  ...
+# Subtest: opening admission excludes entity leaves masked by the live camera layer contract
+ok 24 - opening admission excludes entity leaves masked by the live camera layer contract
+  ---
+  duration_ms: 0.950694
+  ...
+# Subtest: opening admission adds off-camera roots that the first shadow pass will submit
+ok 25 - opening admission adds off-camera roots that the first shadow pass will submit
+  ---
+  duration_ms: 1.414235
+  ...
+# Subtest: the generated 47-A pod enters the shadow cohort with a verified producer recipe
+ok 26 - the generated 47-A pod enters the shadow cohort with a verified producer recipe
+  ---
+  duration_ms: 20.265686
+  ...
+# Subtest: opening submission plan admits only camera-contributing production leaves
+ok 27 - opening submission plan admits only camera-contributing production leaves
+  ---
+  duration_ms: 0.470465
+  ...
+# Subtest: opening program subject keys keep family shaders distinct when maps differ
+ok 28 - opening program subject keys keep family shaders distinct when maps differ
+  ---
+  duration_ms: 1.198792
+  ...
+# Subtest: first playable pipeline set is content-hash bound and defers global misses
+ok 29 - first playable pipeline set is content-hash bound and defers global misses
+  ---
+  duration_ms: 0.505532
+  ...
+# Subtest: opening submission plan remains incomplete when a blocking production root has no draw leaf
+ok 30 - opening submission plan remains incomplete when a blocking production root has no draw leaf
+  ---
+  duration_ms: 0.647682
+  ...
+# Subtest: opening submission plan fails closed when a blocking root has no verified content hash
+ok 31 - opening submission plan fails closed when a blocking root has no verified content hash
+  ---
+  duration_ms: 0.898616
+  ...
+# Subtest: opening submission plan fails closed when one blocking root loses its boundary hash
+ok 32 - opening submission plan fails closed when one blocking root loses its boundary hash
+  ---
+  duration_ms: 1.656881
+  ...
+# Subtest: opening submission plan fails closed when producer resource census is replaced
+ok 33 - opening submission plan fails closed when producer resource census is replaced
+  ---
+  duration_ms: 1.28715
+  ...
+# Subtest: producer package stamping cannot overwrite an existing producer boundary
+ok 34 - producer package stamping cannot overwrite an existing producer boundary
+  ---
+  duration_ms: 0.343396
+  ...
+# Subtest: opening submission receipt fails closed on an uncaptured first-draw resource
+ok 35 - opening submission receipt fails closed on an uncaptured first-draw resource
+  ---
+  duration_ms: 3.165788
+  ...
+# Subtest: declared pooled resources cover a 0-to-N first-draw growth but stay fail-closed
+ok 36 - declared pooled resources cover a 0-to-N first-draw growth but stay fail-closed
+  ---
+  duration_ms: 2.002412
+  ...
+# Subtest: opening submission receipt fails closed when an exact material has no live Three program binding
+ok 37 - opening submission receipt fails closed when an exact material has no live Three program binding
+  ---
+  duration_ms: 1.010038
+  ...
+# Subtest: production startup no longer invokes a hidden opening discovery render or global loading compile
+ok 38 - production startup no longer invokes a hidden opening discovery render or global loading compile
+  ---
+  duration_ms: 20.450587
+  ...
+# Subtest: pipeline auto-flush matches the pre-campaign released-punches-through formula
+ok 39 - pipeline auto-flush matches the pre-campaign released-punches-through formula
+  ---
+  duration_ms: 1.53807
+  ...
+# Subtest: live renderer wires the shipped defer policy
+ok 40 - live renderer wires the shipped defer policy
+  ---
+  duration_ms: 13.425772
+  ...
+# Subtest: receipt before absorbs live textures attached after the plan froze
+ok 41 - receipt before absorbs live textures attached after the plan froze
+  ---
+  duration_ms: 8.499206
+  ...
+# Subtest: yieldToNextPresent prefers scheduler.yield over stacked setTimeout(0)
+ok 42 - yieldToNextPresent prefers scheduler.yield over stacked setTimeout(0)
+  ---
+  duration_ms: 0.370531
+  ...
+# Subtest: player route keeps checkShaderErrors off via reporter; in-flight admission is sliced
+ok 43 - player route keeps checkShaderErrors off via reporter; in-flight admission is sliced
+  ---
+  duration_ms: 14.069077
+  ...
+# Subtest: three log reads are off and a linked program costs one link-status read, once
+ok 44 - three log reads are off and a linked program costs one link-status read, once
+  ---
+  duration_ms: 2.515783
+  ...
+# Subtest: a program that failed to link is reported with its logs and marked not runnable
+ok 45 - a program that failed to link is reported with its logs and marked not runnable
+  ---
+  duration_ms: 0.540663
+  ...
+# Subtest: the rebuilt program list is guarded after a context restore
+ok 46 - the rebuilt program list is guarded after a context restore
+  ---
+  duration_ms: 0.360509
+  ...
+# Subtest: a lost context or a released program is never queried
+ok 47 - a lost context or a released program is never queried
+  ---
+  duration_ms: 0.383348
+  ...
+# Subtest: installing twice guards each program once
+ok 48 - installing twice guards each program once
+  ---
+  duration_ms: 0.334126
+  ...
+# Subtest: the vendored three still has the program internals the reporter relies on
+ok 49 - the vendored three still has the program internals the reporter relies on
+  ---
+  duration_ms: 4.671108
+  ...
+1..49
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 625.183973
+EXIT:0

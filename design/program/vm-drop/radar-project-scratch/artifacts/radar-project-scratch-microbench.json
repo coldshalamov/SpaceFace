@@ -1,0 +1,15 @@
+{
+  "label": "radar-project-scratch",
+  "contacts": 64,
+  "draws": 8000,
+  "before": {
+    "ms": 59.38,
+    "checksum": 154783200.0000525
+  },
+  "after": {
+    "ms": 44.733,
+    "checksum": 154783200.0000525
+  },
+  "speedup": 1.327,
+  "checksumMatch": true
+}

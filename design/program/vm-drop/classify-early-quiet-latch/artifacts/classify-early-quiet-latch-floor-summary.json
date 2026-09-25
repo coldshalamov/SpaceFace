@@ -1,0 +1,16 @@
+{
+  "packageMedianRange": [
+    2.777,
+    2.869
+  ],
+  "packageFloorMin": 2.312,
+  "wake": {
+    "latchedMode": "early-quiet-latch",
+    "afterMoveMode": "incremental",
+    "beforeMem": "early-quiet-latch",
+    "afterMem": "incremental",
+    "beforeMine": "early-quiet-latch",
+    "afterMine": "incremental",
+    "dirtyWakeOk": true
+  }
+}

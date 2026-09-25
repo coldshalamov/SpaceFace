@@ -1,0 +1,18 @@
+{
+  "probe": "smooth-flight:crucible",
+  "seed": 4242,
+  "sha": "39861b3b5",
+  "label": "soft-GPU",
+  "metrics": {
+    "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "launch_to_flight_s": "10.4",
+    "fps_mean": "11.7",
+    "frame_p50_p95_p99_worst": "83.3 / 116.7 / 166.6 ms; worst 1067 ms",
+    "typical_ms": "callback 20.6  sim 9.7  present 10.8  render 6.2  vfx 1.1  ui 3.3  feel 0.1  admission 0.6",
+    "hitch_callbacks": "49 of 369 (world resumed two ticks on)",
+    "shed_sim": "192",
+    "game_speed_pct": "63.2",
+    "prepareOpeningGpuResources": "2291ms",
+    "firstPresentAdmission": "0ms"
+  }
+}

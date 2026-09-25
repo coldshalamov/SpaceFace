@@ -1,0 +1,71 @@
+From 4833a998969b56fb76253d904d5064251f6bf88b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:38:13 -0400
+Subject: [PATCH] perf(ai): cache npcFieldRole against data/ai identities
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+fields.js asks every ship every tick; traffic/doctrine bindings are authored
+at spawn. Cache the resolved role so settled flight stops re-stringifying.
+Offline microbench ~3.6×.
+---
+ src/ai/npcFieldDeploy.js | 32 ++++++++++++++++++++++++--------
+ 1 file changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/src/ai/npcFieldDeploy.js b/src/ai/npcFieldDeploy.js
+index b4397000a..3b2bcb046 100644
+--- a/src/ai/npcFieldDeploy.js
++++ b/src/ai/npcFieldDeploy.js
+@@ -14,6 +14,8 @@ const CONE_TRAFFIC_ROLES = new Set(['scavenger', 'scavengers', 'sweeper', 'salvo
+ 
+ const LOOSE_MASS_TYPES = new Set(['pickup', 'wreck', 'payload']);
+ 
++const EMPTY_AI = Object.freeze({});
++
+ function finite(value, fallback = 0) {
+   return Number.isFinite(value) ? value : fallback;
+ }
+@@ -22,17 +24,31 @@ export function npcFieldRole(entity) {
+   if (!entity || entity.alive === false || entity.type !== 'ship') return null;
+   if (entity.id != null && entity.isPlayer) return null;
+   const data = entity.data || {};
+-  const ai = data.ai || {};
++  const ai = data.ai || EMPTY_AI;
++  // Traffic/doctrine bindings are authored at spawn and almost never rewritten in place. Cache the
++  // resolved role against the live data/ai object identities so fields.js stops re-stringifying
++  // every ship every tick (fresh profile: npcFieldRole ~20 ms self / 60 s).
++  if (entity._sfNpcFieldData === data
++    && entity._sfNpcFieldAi === ai
++    && entity._sfNpcFieldRoleCached === true) {
++    return entity._sfNpcFieldRole;
++  }
+   const loot = data.lootTableId || data.enemyTypeId;
++  let role = null;
+   if (loot === 'field_anchor_controller' || ai.combatDoctrineId === 'field_anchor_controller') {
+-    return NPC_FIELD_ROLES.ANCHOR_WELL;
+-  }
+-  const doctrine = String(ai.doctrine || '');
+-  const role = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
+-  if (doctrine === 'scavenger' || CONE_TRAFFIC_ROLES.has(role)) {
+-    return NPC_FIELD_ROLES.SCAVENGER_CONE;
++    role = NPC_FIELD_ROLES.ANCHOR_WELL;
++  } else {
++    const doctrine = String(ai.doctrine || '');
++    const trafficRole = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
++    if (doctrine === 'scavenger' || CONE_TRAFFIC_ROLES.has(trafficRole)) {
++      role = NPC_FIELD_ROLES.SCAVENGER_CONE;
++    }
+   }
+-  return null;
++  entity._sfNpcFieldData = data;
++  entity._sfNpcFieldAi = ai;
++  entity._sfNpcFieldRole = role;
++  entity._sfNpcFieldRoleCached = true;
++  return role;
+ }
+ 
+ function looseMassLists(state) {
+-- 
+2.47.3
+

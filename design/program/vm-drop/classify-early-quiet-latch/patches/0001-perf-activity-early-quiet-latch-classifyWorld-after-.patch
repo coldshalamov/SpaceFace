@@ -1,0 +1,365 @@
+From 1d86cef4a379873c7dc43103683864302e227ae7 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 11:21:56 -0400
+Subject: [PATCH] =?UTF-8?q?perf(activity):=20early=20quiet-latch=20classif?=
+ =?UTF-8?q?yWorld=20after=20frame-retain=20(~2.8=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Short-circuit classifyWorld before extents / rebuildPinFacts / selectClassify
+when parked frame-retain is already proven. Pose-key verify keeps rock teleports
+honest. Different angle from held selectClassify id-replay (~1.16×).
+---
+ src/world/activityRuntime.js              | 113 +++++++++++++++-
+ test/classify-early-quiet-latch.test.mjs  | 154 ++++++++++++++++++++++
+ test/classify-frame-quiet-retain.test.mjs |   6 +-
+ 3 files changed, 270 insertions(+), 3 deletions(-)
+ create mode 100644 test/classify-early-quiet-latch.test.mjs
+
+diff --git a/src/world/activityRuntime.js b/src/world/activityRuntime.js
+index f95d4ce12..812577eb4 100644
+--- a/src/world/activityRuntime.js
++++ b/src/world/activityRuntime.js
+@@ -881,6 +881,106 @@ export function getClassifyFrameQuietRetainForBench() {
+   return CLASSIFY_FRAME_QUIET_RETAIN !== false;
+ }
+ 
++/**
++ * Bench A/B: production default ON. Early quiet latch short-circuits classifyWorld before
++ * extents / rebuildPinFacts / selectClassify / frame-retain re-arm when the parked frame is
++ * already proven stable. Different angle from held selectClassify id-replay (~1.16×) which
++ * still paid extents+pinFacts+retain walk.
++ */
++let CLASSIFY_EARLY_QUIET_LATCH = true;
++export function setClassifyEarlyQuietLatchForBench(enabled) {
++  CLASSIFY_EARLY_QUIET_LATCH = enabled !== false;
++}
++export function getClassifyEarlyQuietLatchForBench() {
++  return CLASSIFY_EARLY_QUIET_LATCH !== false;
++}
++
++/** Rescan while early-latched (0.5 s @ 60 Hz). */
++const CLASSIFY_EARLY_QUIET_RESCAN_TICKS = 30;
++
++function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
++  if (CLASSIFY_EARLY_QUIET_LATCH === false) return false;
++  const latch = runtime._earlyQuietLatch;
++  if (!latch || latch.armed !== true) return false;
++  if (!player || !player.pos) return false;
++  const pvx = finite(player.vel && player.vel.x);
++  const pvz = finite(player.vel && player.vel.z);
++  if ((pvx * pvx + pvz * pvz) > 0.25) return false;
++  const tick = state.tick | 0;
++  if ((tick - (latch.armedTick | 0)) >= CLASSIFY_EARLY_QUIET_RESCAN_TICKS) return false;
++  if (latch.originX !== origin.x || latch.originZ !== origin.z) return false;
++  const cam = simCamera(state);
++  if (latch.zoom !== cam.zoom || latch.fov !== cam.fov || latch.tilt !== cam.tilt) return false;
++  const membership = entityIndexVersion(state);
++  if (latch.membership !== membership) return false;
++  const staticAuthority = entityIndexPhysicsStaticVersion(state);
++  if (latch.staticAuthority !== staticAuthority) return false;
++  const maxSpeed = Math.max(TABLE_REFERENCE_SPEED_WU, finite(player.maxSpeed));
++  if (latch.maxSpeed !== maxSpeed) return false;
++  // Cheap pin-intent smoke: mining/dock/hail/target flips must wake without waiting for rescan.
++  const data = player.data || {};
++  const combat = data.combat || {};
++  if (latch.miningId !== (data.miningTargetId ?? null)) return false;
++  if (latch.dockId !== (data.dockTargetId ?? null)) return false;
++  if (latch.hailId !== (data.hailTargetId ?? null)) return false;
++  if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
++  // Pose-key verify (same contract as frame-retain): any visit pose drift wakes so a
++  // teleported rock cannot keep a stale glass/runway stamp under the early latch.
++  const retain = runtime._rockVisitRetain;
++  if (!retain || retain.framePrimed !== true) return false;
++  const n = retain.frameVisitCount | 0;
++  const ids = retain.frameVisitIds;
++  const poseKeys = retain.poseKeys;
++  const entities = state.entities;
++  if (!entities || typeof entities.get !== 'function' || !Array.isArray(ids) || !poseKeys) {
++    return false;
++  }
++  for (let i = 0; i < n; i++) {
++    const id = ids[i];
++    const entity = entities.get(id);
++    if (!entity || entity.alive === false) return false;
++    if (poseKeys.get(id) !== rockPoseRetainKey(entity)) return false;
++  }
++  runtime.classifyMode = 'early-quiet-latch';
++  runtime.classifyVisits = 0;
++  runtime.changedIds.length = 0;
++  runtime.wakeCandidates.length = 0;
++  runtime.wakeTokensById.clear();
++  runtime.wakeEventsById.clear();
++  runtime.wakeBoundaryTick = -1;
++  return true;
++}
++
++function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
++  if (CLASSIFY_EARLY_QUIET_LATCH === false) {
++    runtime._earlyQuietLatch = null;
++    return;
++  }
++  const cam = simCamera(state);
++  const data = player && player.data || {};
++  const combat = data.combat || {};
++  runtime._earlyQuietLatch = {
++    armed: true,
++    armedTick: state.tick | 0,
++    originX: origin.x,
++    originZ: origin.z,
++    zoom: cam.zoom,
++    fov: cam.fov,
++    tilt: cam.tilt,
++    membership: entityIndexVersion(state),
++    staticAuthority: entityIndexPhysicsStaticVersion(state),
++    maxSpeed: Math.max(TABLE_REFERENCE_SPEED_WU, finite(player && player.maxSpeed)),
++    miningId: data.miningTargetId ?? null,
++    dockId: data.dockTargetId ?? null,
++    hailId: data.hailTargetId ?? null,
++    targetId: combat.targetId ?? data.targetId ?? null,
++  };
++}
++
++function clearEarlyQuietClassifyLatch(runtime) {
++  if (runtime && runtime._earlyQuietLatch) runtime._earlyQuietLatch = null;
++}
++
+ /** Quantize XZ to ~0.25 wu so quiet parked rocks share a stable retain key. */
+ function rockPoseRetainKey(entity) {
+   const pos = entity && entity.pos;
+@@ -1030,6 +1130,9 @@ function classifyWorld(state, runtime) {
+     ? state.entities.get(state.playerId)
+     : null;
+   const origin = player && player.pos ? player.pos : { x: 0, z: 0 };
++  // Early quiet latch: parked + prior frame-retain proven → skip extents / pinFacts /
++  // selectClassify / retain re-arm. Wakes on move, camera, membership, pin intent, rescan.
++  if (tryEarlyQuietClassifyLatch(state, runtime, player, origin)) return;
+   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+   const cam = simCamera(state);
+   const glass = glassHalfExtents(cam.zoom, cam.fov, TABLE_SIM_ASPECT, cam.tilt);
+@@ -1073,10 +1176,14 @@ function classifyWorld(state, runtime) {
+     if ((pvx * pvx + pvz * pvz) <= 0.25) {
+       armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
+       armClassifyFrameVisit(runtime, visit);
++      armEarlyQuietClassifyLatch(state, runtime, player, origin);
+     } else if (runtime._rockVisitRetain) {
+       runtime._rockVisitRetain.primed = false;
+       runtime._rockVisitRetain.framePrimed = false;
++      clearEarlyQuietClassifyLatch(runtime);
+     }
++  } else {
++    clearEarlyQuietClassifyLatch(runtime);
+   }
+   if (!frameRetained) {
+   statics.length = 0;
+@@ -1319,9 +1426,12 @@ function classifyWorld(state, runtime) {
+     if ((pvx * pvx + pvz * pvz) <= 0.25) {
+       armRockVisitRetain(runtime, origin, glass, submit, prefetchR, facts);
+       armClassifyFrameVisit(runtime, visit);
++      // Do not arm early latch here — first parked pass must prove frame-retain next tick.
++      clearEarlyQuietClassifyLatch(runtime);
+     } else if (runtime._rockVisitRetain) {
+       runtime._rockVisitRetain.primed = false;
+       runtime._rockVisitRetain.framePrimed = false;
++      clearEarlyQuietClassifyLatch(runtime);
+     }
+   }
+   } // end !frameRetained visit path
+@@ -1342,7 +1452,8 @@ function classifyWorld(state, runtime) {
+   const membershipUnchanged = Number.isFinite(membership)
+     && membership === runtime.prunedMembership;
+   const pruneLikeIncremental = runtime.classifyMode === 'incremental'
+-    || runtime.classifyMode === 'frame-retain';
++    || runtime.classifyMode === 'frame-retain'
++    || runtime.classifyMode === 'early-quiet-latch';
+   if (!(pruneLikeIncremental && membershipUnchanged)) {
+     for (const id of runtime.signaturesById.keys()) {
+       const stillLive = pruneLikeIncremental
+diff --git a/test/classify-early-quiet-latch.test.mjs b/test/classify-early-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..4c145809f
+--- /dev/null
++++ b/test/classify-early-quiet-latch.test.mjs
+@@ -0,0 +1,154 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  ensureActivityClassified,
++  setClassifyFrameQuietRetainForBench,
++  setClassifyEarlyQuietLatchForBench,
++  getClassifyEarlyQuietLatchForBench,
++} from '../src/world/activityRuntime.js';
++
++function makeWorld(rockCount = 24) {
++  const rocks = [];
++  for (let i = 0; i < rockCount; i++) {
++    const a = (i / rockCount) * Math.PI * 2;
++    const r = 80 + (i % 7) * 30;
++    rocks.push({
++      id: 200 + i,
++      type: 'asteroid',
++      alive: true,
++      pos: { x: Math.cos(a) * r, z: Math.sin(a) * r },
++      vel: { x: 0, z: 0 },
++      radius: 10,
++      data: {},
++      flags: {},
++    });
++  }
++  const player = {
++    id: 1,
++    type: 'ship',
++    alive: true,
++    isPlayer: true,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    radius: 6,
++    maxSpeed: 120,
++    data: { combat: {} },
++    flags: {},
++  };
++  const entities = new Map([[1, player], ...rocks.map((r) => [r.id, r])]);
++  return {
++    tick: 1,
++    simTime: 1,
++    playerId: 1,
++    entities,
++    entityList: [player, ...rocks],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version: 1,
++      physicsStaticVersion: 1,
++      projectiles: [],
++      closedFormMovers: [],
++    },
++    camera: { zoom: 144, tilt: 60 },
++    settings: { video: { fov: 50 } },
++    runtime: { profileId: 'production' },
++    rocks,
++    player,
++  };
++}
++
++function step(state) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  return ensureActivityClassified(state);
++}
++
++function warmQuiet(state) {
++  setClassifyFrameQuietRetainForBench(true);
++  setClassifyEarlyQuietLatchForBench(true);
++  let mode = null;
++  for (let i = 0; i < 12; i++) mode = step(state).classifyMode;
++  return mode;
++}
++
++test('early quiet latch arms after frame-retain on parked disc', () => {
++  const state = makeWorld();
++  const mode = warmQuiet(state);
++  assert.equal(mode, 'early-quiet-latch');
++  assert.equal(getClassifyEarlyQuietLatchForBench(), true);
++  const glass = state.activityRuntime && state.activityRuntime.glassCount;
++  assert.ok(Number.isFinite(glass));
++});
++
++test('early quiet latch skips visit work while keys hold', () => {
++  const state = makeWorld();
++  warmQuiet(state);
++  const rt = step(state);
++  assert.equal(rt.classifyMode, 'early-quiet-latch');
++  assert.equal(rt.classifyVisits, 0);
++});
++
++test('player move wakes early quiet latch', () => {
++  const state = makeWorld();
++  warmQuiet(state);
++  assert.equal(step(state).classifyMode, 'early-quiet-latch');
++  state.player.pos.x += 40;
++  const woke = step(state);
++  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
++});
++
++test('membership bump wakes early quiet latch', () => {
++  const state = makeWorld();
++  warmQuiet(state);
++  assert.equal(step(state).classifyMode, 'early-quiet-latch');
++  state.entityIndex.version += 1;
++  const woke = step(state);
++  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
++});
++
++test('mining pin intent wakes early quiet latch', () => {
++  const state = makeWorld();
++  warmQuiet(state);
++  assert.equal(step(state).classifyMode, 'early-quiet-latch');
++  state.player.data.miningTargetId = state.rocks[0].id;
++  const woke = step(state);
++  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
++});
++
++test('bench toggle disables early quiet latch', () => {
++  const state = makeWorld();
++  setClassifyFrameQuietRetainForBench(true);
++  setClassifyEarlyQuietLatchForBench(false);
++  let mode = null;
++  for (let i = 0; i < 12; i++) mode = step(state).classifyMode;
++  assert.notEqual(mode, 'early-quiet-latch');
++  // frame-retain may still arm
++  assert.ok(mode === 'frame-retain' || mode === 'incremental' || mode === 'full');
++  setClassifyEarlyQuietLatchForBench(true);
++});
++
++test('flying player never early-latches', () => {
++  const state = makeWorld();
++  state.player.vel.x = 40;
++  setClassifyFrameQuietRetainForBench(true);
++  setClassifyEarlyQuietLatchForBench(true);
++  let sawEarly = false;
++  for (let i = 0; i < 20; i++) {
++    if (step(state).classifyMode === 'early-quiet-latch') sawEarly = true;
++  }
++  assert.equal(sawEarly, false);
++});
++
++test('rock pose jump wakes early quiet latch', () => {
++  const state = makeWorld();
++  warmQuiet(state);
++  assert.equal(step(state).classifyMode, 'early-quiet-latch');
++  const rock = state.rocks[0];
++  const before = rock.activity && rock.activity.presentationTier;
++  rock.pos.x += 500;
++  const woke = step(state);
++  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
++  const after = rock.activity && rock.activity.presentationTier;
++  assert.notEqual(after, before, 'pose jump must reclassify presentation tier');
++});
+diff --git a/test/classify-frame-quiet-retain.test.mjs b/test/classify-frame-quiet-retain.test.mjs
+index 696da06bf..2fc588b2f 100644
+--- a/test/classify-frame-quiet-retain.test.mjs
++++ b/test/classify-frame-quiet-retain.test.mjs
+@@ -70,7 +70,8 @@ test('frame quiet retain keeps glass/runway and reports frame-retain mode', () =
+   step(state); // arm
+   step(state); // first retain opportunity
+   const rt = step(state);
+-  assert.equal(rt.classifyMode, 'frame-retain');
++  assert.ok(rt.classifyMode === 'frame-retain' || rt.classifyMode === 'early-quiet-latch',
++    `expected frame-retain or early-quiet-latch, got ${rt.classifyMode}`);
+   const glassA = state.activityRuntime.glassCount;
+   const runwayA = state.activityRuntime.runwayCount;
+   assert.ok(glassA + runwayA > 0, 'expected rocks on glass/runway');
+@@ -93,7 +94,8 @@ test('frame quiet retain wakes on rock pose change', () => {
+   const rock = state.rocks[0];
+   rock.pos.x += 12;
+   const rt = step(state);
+-  assert.notEqual(rt.classifyMode, 'frame-retain');
++  assert.ok(rt.classifyMode !== 'frame-retain' && rt.classifyMode !== 'early-quiet-latch',
++    `pose jump must leave quiet retain, got ${rt.classifyMode}`);
+ });
+ 
+ test('frame quiet retain wakes on player speed', () => {
+-- 
+2.47.3
+

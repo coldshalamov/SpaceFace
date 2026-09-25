@@ -1,0 +1,88 @@
+{
+  "name": "energy-bolt-quiet-begin-commit",
+  "primary": "quiet-energy-bolt-begin-commit-latch",
+  "iterations": 200000,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 11.907603999999992,
+      "afterMs": 2.8116639999999933,
+      "speedup": 4.235073607657252,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 11.921505999999994,
+      "afterMs": 2.753440999999995,
+      "speedup": 4.329675486055454,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 12.296052000000003,
+      "afterMs": 2.7588850000000065,
+      "speedup": 4.456891824052098,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 12.091272000000004,
+      "afterMs": 2.5886679999999984,
+      "speedup": 4.6708469374983625,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 12.235011,
+      "afterMs": 2.7936440000000076,
+      "speedup": 4.379588451499177,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 11.825305999999998,
+      "afterMs": 2.6644080000000017,
+      "speedup": 4.438248946857985,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 12.580938000000003,
+      "afterMs": 2.7512550000000005,
+      "speedup": 4.572799685961498,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 17.322907999999998,
+      "afterMs": 3.033110999999991,
+      "speedup": 5.71126740828148,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 15.714082000000005,
+      "afterMs": 2.812981999999991,
+      "speedup": 5.586271792709677,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 11.853395000000006,
+      "afterMs": 3.058677000000003,
+      "speedup": 3.8753340087887653,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    },
+    {
+      "beforeMs": 14.683558999999988,
+      "afterMs": 2.770201,
+      "speedup": 5.300539202750987,
+      "beforeBegins": 203000,
+      "afterBegins": 1
+    }
+  ],
+  "medianSpeedup": 4.457,
+  "minSpeedup": 3.875,
+  "maxSpeedup": 5.711
+}

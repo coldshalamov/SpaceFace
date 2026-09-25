@@ -1,0 +1,43 @@
+{"floor":1,"median":29.423,"min":24.415,"max":30.694}
+{"floor":2,"median":29.966,"min":28.856,"max":30.674}
+{"floor":3,"median":29.523,"min":29.08,"max":30.664}
+{"floor":4,"median":29.745,"min":26.457,"max":33.049}
+{"floor":5,"median":29.806,"min":28.244,"max":30.907}
+{
+  "floors": [
+    {
+      "median": 29.423,
+      "min": 24.415,
+      "max": 30.694
+    },
+    {
+      "median": 29.966,
+      "min": 28.856,
+      "max": 30.674
+    },
+    {
+      "median": 29.523,
+      "min": 29.08,
+      "max": 30.664
+    },
+    {
+      "median": 29.745,
+      "min": 26.457,
+      "max": 33.049
+    },
+    {
+      "median": 29.806,
+      "min": 28.244,
+      "max": 30.907
+    }
+  ],
+  "packageFloorMin": 24.415,
+  "packageMedianRange": [
+    29.423,
+    29.966
+  ],
+  "primaryCite": {
+    "median": 29.31,
+    "min": 18.317
+  }
+}

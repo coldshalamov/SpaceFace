@@ -1,0 +1,26 @@
+{
+  "tag": "rebench4",
+  "medianSpeedup": 10.661,
+  "minSpeedup": 1.78,
+  "maxSpeedup": 17.014,
+  "pairs": [
+    1.78,
+    17.014,
+    3.949,
+    11.891,
+    9.705,
+    10.841,
+    10.86,
+    10.84,
+    10.509,
+    10.324,
+    10.661
+  ],
+  "speedup": 10.661,
+  "latched": true,
+  "wake": {
+    "wokeOnMembership": true,
+    "memBefore": 1,
+    "memAfter": 2
+  }
+}

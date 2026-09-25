@@ -1,0 +1,423 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: floor retain is on by default and bench toggle restores always-walk
+ok 1 - floor retain is on by default and bench toggle restores always-walk
+  ---
+  duration_ms: 1.168706
+  ...
+# Subtest: settled cam retains the same floor as a fresh walk
+ok 2 - settled cam retains the same floor as a fresh walk
+  ---
+  duration_ms: 2.054233
+  ...
+# Subtest: cam move forces a fresh walk (retain miss)
+ok 3 - cam move forces a fresh walk (retain miss)
+  ---
+  duration_ms: 0.613152
+  ...
+# Subtest: authored stamp change busts retain and refreshes the floor
+ok 4 - authored stamp change busts retain and refreshes the floor
+  ---
+  duration_ms: 1.057571
+  ...
+# Subtest: retain on/off agree across settled and moving cams
+ok 5 - retain on/off agree across settled and moving cams
+  ---
+  duration_ms: 1.051465
+  ...
+# Subtest: bench-off skips the retain cache
+ok 6 - bench-off skips the retain cache
+  ---
+  duration_ms: 0.501598
+  ...
+# Subtest: pos-quantize is on by default and bench toggle restores bit-identical keys
+ok 7 - pos-quantize is on by default and bench toggle restores bit-identical keys
+  ---
+  duration_ms: 0.15529
+  ...
+# Subtest: quiet chase drift within 0.25 WU cell retains off-roof floor
+ok 8 - quiet chase drift within 0.25 WU cell retains off-roof floor
+  ---
+  duration_ms: 0.405746
+  ...
+# Subtest: quantize-off misses retain on sub-cell chase drift
+ok 9 - quantize-off misses retain on sub-cell chase drift
+  ---
+  duration_ms: 0.62601
+  ...
+# Subtest: crossing a 0.25 WU cell forces a fresh off-roof walk
+ok 10 - crossing a 0.25 WU cell forces a fresh off-roof walk
+  ---
+  duration_ms: 0.545649
+  ...
+# Subtest: a stable bridle holds TWO_BODY indefinitely and never trips the governor
+ok 11 - a stable bridle holds TWO_BODY indefinitely and never trips the governor
+  ---
+  duration_ms: 11.117619
+  ...
+# Subtest: rapid re-takes trip the lock; the first re-latch stays a legitimate acquisition
+ok 12 - rapid re-takes trip the lock; the first re-latch stays a legitimate acquisition
+  ---
+  duration_ms: 2.793362
+  ...
+# Subtest: an entry after the window has fully elapsed never accumulates flap count
+ok 13 - an entry after the window has fully elapsed never accumulates flap count
+  ---
+  duration_ms: 1.758748
+  ...
+# Subtest: trip count sanity: the constants leave ordinary double-takes untouched
+ok 14 - trip count sanity: the constants leave ordinary double-takes untouched
+  ---
+  duration_ms: 0.284728
+  ...
+# camera-focus-separation tests loaded
+# Subtest: ordinary chase composition visits only the ready stable ship-like index
+ok 15 - ordinary chase composition visits only the ready stable ship-like index
+  ---
+  duration_ms: 8.740454
+  ...
+# Subtest: indexed chase preserves Map insertion order for an exact-distance hostile tie after rebuild
+ok 16 - indexed chase preserves Map insertion order for an exact-distance hostile tie after rebuild
+  ---
+  duration_ms: 1.593244
+  ...
+# Subtest: pair director threat context visits only ship-like roots without changing framing
+ok 17 - pair director threat context visits only ship-like roots without changing framing
+  ---
+  duration_ms: 17.360995
+  ...
+# Subtest: asteroid mining tether does not enter combat TETHER_PAIR or FOCUS_PAIR
+ok 18 - asteroid mining tether does not enter combat TETHER_PAIR or FOCUS_PAIR
+  ---
+  duration_ms: 0.597419
+  ...
+# Subtest: asteroid mining tether never zooms closer than normal tactical view
+ok 19 - asteroid mining tether never zooms closer than normal tactical view
+  ---
+  duration_ms: 0.518942
+  ...
+# Subtest: stale Focus lease on a mining tether fails closed and keeps threat-aware FOLLOW
+ok 20 - stale Focus lease on a mining tether fails closed and keeps threat-aware FOLLOW
+  ---
+  duration_ms: 0.502611
+  ...
+# Subtest: live mining camera never tightens inside tactical view while nearby threats remain active
+ok 21 - live mining camera never tightens inside tactical view while nearby threats remain active
+  ---
+  duration_ms: 14.76319
+  ...
+# Subtest: Focus arms on its own kinematics at every azimuth and never moves the camera
+ok 22 - Focus arms on its own kinematics at every azimuth and never moves the camera
+  ---
+  duration_ms: 2.254687
+  ...
+# Subtest: every azimuth of the combat pair either fits the authored band or reports its overflow
+ok 23 - every azimuth of the combat pair either fits the authored band or reports its overflow
+  ---
+  duration_ms: 6.350959
+  ...
+# Subtest: friendly non-hostile ship tether does not enter combat pair mode
+ok 24 - friendly non-hostile ship tether does not enter combat pair mode
+  ---
+  duration_ms: 0.388296
+  ...
+# Subtest: team mismatch without live hostility cannot authorize Focus or tether pair framing
+ok 25 - team mismatch without live hostility cannot authorize Focus or tether pair framing
+  ---
+  duration_ms: 0.355513
+  ...
+# Subtest: neutral team mismatch does not create false ordinary chase threat bias
+ok 26 - neutral team mismatch does not create false ordinary chase threat bias
+  ---
+  duration_ms: 0.195227
+  ...
+# Subtest: ordinary tether composition stays modest and keeps threat context bias
+ok 27 - ordinary tether composition stays modest and keeps threat context bias
+  ---
+  duration_ms: 0.178709
+  ...
+# Subtest: ordinary chase calculations can reuse caller-owned frame records without changing values
+ok 28 - ordinary chase calculations can reuse caller-owned frame records without changing values
+  ---
+  duration_ms: 0.996407
+  ...
+# Subtest: resolveCombatCompositionZoomCap preserves standard hull legibility at combat cap
+ok 29 - resolveCombatCompositionZoomCap preserves standard hull legibility at combat cap
+  ---
+  duration_ms: 0.770636
+  ...
+# Subtest: resolveCombatCompositionZoomCap responds to aspect, hull radius, and unknown-radius fallback
+ok 30 - resolveCombatCompositionZoomCap responds to aspect, hull radius, and unknown-radius fallback
+  ---
+  duration_ms: 0.488242
+  ...
+# Subtest: active attacker composition projects single threats at the production cap angles
+ok 31 - active attacker composition projects single threats at the production cap angles
+  ---
+  duration_ms: 1.259576
+  ...
+# Subtest: an unframeable group member cannot evict a frameable attacker
+ok 32 - an unframeable group member cannot evict a frameable attacker
+  ---
+  duration_ms: 0.599163
+  ...
+# Subtest: group fit repositions an infeasible centroid before dropping a frameable attacker
+ok 33 - group fit repositions an infeasible centroid before dropping a frameable attacker
+  ---
+  duration_ms: 32.099224
+  ...
+# Subtest: active attacker composition projects two attackers in the same frame
+ok 34 - active attacker composition projects two attackers in the same frame
+  ---
+  duration_ms: 0.560275
+  ...
+# Subtest: live chase composition is invariant across matching frame origins
+ok 35 - live chase composition is invariant across matching frame origins
+  ---
+  duration_ms: 9.122736
+  ...
+# Subtest: preallocated chase camera avoids constructor RNG and resets projection parameters
+ok 36 - preallocated chase camera avoids constructor RNG and resets projection parameters
+  ---
+  duration_ms: 0.875486
+  ...
+# Subtest: group-fit sticky lifecycle removes stale holders and preserves caller-owned output
+ok 37 - group-fit sticky lifecycle removes stale holders and preserves caller-owned output
+  ---
+  duration_ms: 0.678825
+  ...
+# Subtest: a live hostile Focus lease leaves the camera bit-identical to no lease at all
+ok 38 - a live hostile Focus lease leaves the camera bit-identical to no lease at all
+  ---
+  duration_ms: 0.402455
+  ...
+# Subtest: combat massline still frames player + exact hostile with 10% margins
+ok 39 - combat massline still frames player + exact hostile with 10% margins
+  ---
+  duration_ms: 0.443509
+  ...
+# Subtest: explicit allied onboarding trainer eases into the authored 10% / zoom-180 composition
+ok 40 - explicit allied onboarding trainer eases into the authored 10% / zoom-180 composition
+  ---
+  duration_ms: 0.378813
+  ...
+# Subtest: 300-unit hostile pair remains exact, eases smoothly, and truthfully reports authored overflow
+ok 41 - 300-unit hostile pair remains exact, eases smoothly, and truthfully reports authored overflow
+  ---
+  duration_ms: 0.362879
+  ...
+# Subtest: combat pair threat-aware zoom-out keeps nearby active hostile in frame
+ok 42 - combat pair threat-aware zoom-out keeps nearby active hostile in frame
+  ---
+  duration_ms: 0.445091
+  ...
+# Subtest: a hostile holding a live Focus lease is kept on screen by ordinary chase composition
+ok 43 - a hostile holding a live Focus lease is kept on screen by ordinary chase composition
+  ---
+  duration_ms: 0.378779
+  ...
+# Subtest: a lease granted on pass geometry alone still composes its contact as an attacker
+ok 44 - a lease granted on pass geometry alone still composes its contact as an attacker
+  ---
+  duration_ms: 0.511051
+  ...
+# Subtest: a hostile drone is threat composition, not an invisible entity type
+ok 45 - a hostile drone is threat composition, not an invisible entity type
+  ---
+  duration_ms: 1.385309
+  ...
+# Subtest: a Focus lease cannot promote a non-hostile contact into threat composition
+ok 46 - a Focus lease cannot promote a non-hostile contact into threat composition
+  ---
+  duration_ms: 0.369927
+  ...
+# Subtest: granting a Focus lease moves the live camera continuously, never with a cut
+ok 47 - granting a Focus lease moves the live camera continuously, never with a cut
+  ---
+  duration_ms: 14.914048
+  ...
+# Subtest: hostile ship combat tether still uses TETHER_PAIR pair framing
+ok 48 - hostile ship combat tether still uses TETHER_PAIR pair framing
+  ---
+  duration_ms: 0.583264
+  ...
+# Subtest: pair release returns to FOLLOW cleanly without sticky pair target
+ok 49 - pair release returns to FOLLOW cleanly without sticky pair target
+  ---
+  duration_ms: 0.495795
+  ...
+# Subtest: pair release and immediate same-target re-latch remain continuous
+ok 50 - pair release and immediate same-target re-latch remain continuous
+  ---
+  duration_ms: 1.044271
+  ...
+# Subtest: asteroid tether never arms Flyby Focus acquisition
+ok 51 - asteroid tether never arms Flyby Focus acquisition
+  ---
+  duration_ms: 0.305673
+  ...
+# Subtest: Flyby Focus only acquires valid high-speed hostile near-miss and owns timeEffects
+ok 52 - Flyby Focus only acquires valid high-speed hostile near-miss and owns timeEffects
+  ---
+  duration_ms: 4.538803
+  ...
+# Subtest: gate metrics use mounted authored bounds rather than the tiny collision radius
+ok 53 - gate metrics use mounted authored bounds rather than the tiny collision radius
+  ---
+  duration_ms: 0.478723
+  ...
+# Subtest: manual flight near an authored gate remains ordinary FOLLOW
+ok 54 - manual flight near an authored gate remains ordinary FOLLOW
+  ---
+  duration_ms: 0.199269
+  ...
+# Subtest: autopilot gate approach eases to player + aperture framing from actual bounds
+ok 55 - autopilot gate approach eases to player + aperture framing from actual bounds
+  ---
+  duration_ms: 0.900242
+  ...
+# Subtest: Flyby Focus remains authoritative over simultaneous gate autopilot
+ok 56 - Flyby Focus remains authoritative over simultaneous gate autopilot
+  ---
+  duration_ms: 0.5182
+  ...
+# Subtest: chase camera stays finite after death, missing player, or poisoned focus
+ok 57 - chase camera stays finite after death, missing player, or poisoned focus
+  ---
+  duration_ms: 0.588097
+  ...
+# Subtest: camera focus tracks interpolated player position during high-speed flight without jitter or reversals
+ok 58 - camera focus tracks interpolated player position during high-speed flight without jitter or reversals
+  ---
+  duration_ms: 4.24905
+  ...
+# Subtest: camera anchors to the presented hull pose, not the last sim-tick window
+ok 59 - camera anchors to the presented hull pose, not the last sim-tick window
+  ---
+  duration_ms: 1.560158
+  ...
+# Subtest: neutral traffic tether never enters combat pair framing
+ok 60 - neutral traffic tether never enters combat pair framing
+  ---
+  duration_ms: 2.882954
+  ...
+# Subtest: lawful patrol tether stays neutral while the player is not wanted
+ok 61 - lawful patrol tether stays neutral while the player is not wanted
+  ---
+  duration_ms: 0.553649
+  ...
+# Subtest: retain is on by default and bench toggle restores always-lookAt
+ok 62 - retain is on by default and bench toggle restores always-lookAt
+  ---
+  duration_ms: 1.234333
+  ...
+# Subtest: settled eye+target retains after the first lookAt
+ok 63 - settled eye+target retains after the first lookAt
+  ---
+  duration_ms: 1.437185
+  ...
+# Subtest: eye change forces a fresh lookAt
+ok 64 - eye change forces a fresh lookAt
+  ---
+  duration_ms: 0.405055
+  ...
+# Subtest: retain on/off agree on settled and moving sequences
+ok 65 - retain on/off agree on settled and moving sequences
+  ---
+  duration_ms: 2.330558
+  ...
+# Subtest: bench-off never retains
+ok 66 - bench-off never retains
+  ---
+  duration_ms: 0.327847
+  ...
+# Subtest: framing trusts sticky.hadActiveAttacker without shipLike scan
+ok 67 - framing trusts sticky.hadActiveAttacker without shipLike scan
+  ---
+  duration_ms: 2.348246
+  ...
+# Subtest: compose feeds sticky.hadActiveAttacker for the next framing call
+ok 68 - compose feeds sticky.hadActiveAttacker for the next framing call
+  ---
+  duration_ms: 1.878511
+  ...
+# Subtest: pure framing callers without hadActiveAttacker still scan
+ok 69 - pure framing callers without hadActiveAttacker still scan
+  ---
+  duration_ms: 0.252805
+  ...
+# Subtest: H1: FOV punch reaches full authored peak before decaying
+ok 70 - H1: FOV punch reaches full authored peak before decaying
+  ---
+  duration_ms: 1.525817
+  ...
+# Subtest: H1: dense recoil+hit stacking never exceeds FOV_PUNCH_RISE_RATE on the camera
+ok 71 - H1: dense recoil+hit stacking never exceeds FOV_PUNCH_RISE_RATE on the camera
+  ---
+  duration_ms: 0.389197
+  ...
+# Subtest: H1b: boost framing opens on keydown and eases back slowly (F5 asymmetric zoom)
+ok 72 - H1b: boost framing opens on keydown and eases back slowly (F5 asymmetric zoom)
+  ---
+  duration_ms: 0.385577
+  ...
+# Subtest: H1c: live boosted combat composition preserves standard player hull legibility
+ok 73 - H1c: live boosted combat composition preserves standard player hull legibility
+  ---
+  duration_ms: 25.009254
+  ...
+# Subtest: H2: punched view.fov must not shrink active-attacker minZoom vs base FOV
+ok 74 - H2: punched view.fov must not shrink active-attacker minZoom vs base FOV
+  ---
+  duration_ms: 0.477783
+  ...
+# Subtest: H4: active-attacker minZoom fits the threat even if focus were player-centered
+ok 75 - H4: active-attacker minZoom fits the threat even if focus were player-centered
+  ---
+  duration_ms: 0.287852
+  ...
+# Subtest: H3: sticky composition holds a threat through a brief nearer challenger blip
+ok 76 - H3: sticky composition holds a threat through a brief nearer challenger blip
+  ---
+  duration_ms: 0.431673
+  ...
+# Subtest: H3: a stale active hold cannot demote a live attacker after capability or lock loss
+ok 77 - H3: a stale active hold cannot demote a live attacker after capability or lock loss
+  ---
+  duration_ms: 2.954171
+  ...
+# Subtest: H3: playerHasActiveAttackerFraming is true when a hostile locks the player
+ok 78 - H3: playerHasActiveAttackerFraming is true when a hostile locks the player
+  ---
+  duration_ms: 0.343624
+  ...
+# Subtest: H3: chase follow keeps an active attacker inside the pair safe frame during a dodge
+ok 79 - H3: chase follow keeps an active attacker inside the pair safe frame during a dodge
+  ---
+  duration_ms: 4.70015
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: a capital wreck is a camera-clearance structure at the station span bar
+ok 80 - a capital wreck is a camera-clearance structure at the station span bar
+  ---
+  duration_ms: 3.260372
+  ...
+# Subtest: small wrecks and non-structural kinds never push the chase camera
+ok 81 - small wrecks and non-structural kinds never push the chase camera
+  ---
+  duration_ms: 0.61145
+  ...
+# Subtest: the clearance kinds list names wrecks in the live owner
+ok 82 - the clearance kinds list names wrecks in the live owner
+  ---
+  duration_ms: 3.168224
+  ...
+1..82
+# tests 82
+# suites 0
+# pass 82
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 766.681141

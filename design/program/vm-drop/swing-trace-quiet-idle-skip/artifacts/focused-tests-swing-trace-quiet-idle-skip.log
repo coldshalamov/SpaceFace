@@ -1,0 +1,164 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: docking cradle quiet-latches after idle fade and wakes on corridor berth
+ok 1 - docking cradle quiet-latches after idle fade and wakes on corridor berth
+  ---
+  duration_ms: 150.468235
+  ...
+# Subtest: docking cradle boundary reset clears quiet latch
+ok 2 - docking cradle boundary reset clears quiet latch
+  ---
+  duration_ms: 38.217167
+  ...
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 3 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.713748
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: law-heat quiet-latches after idle empty and wakes on scan accept
+ok 4 - law-heat quiet-latches after idle empty and wakes on scan accept
+  ---
+  duration_ms: 108.667831
+  ...
+# Subtest: law-heat quiet-latches wake on heat:changed suspicion
+ok 5 - law-heat quiet-latches wake on heat:changed suspicion
+  ---
+  duration_ms: 21.168427
+  ...
+# Subtest: law-heat boundary clear resets quiet latch
+ok 6 - law-heat boundary clear resets quiet latch
+  ---
+  duration_ms: 15.957196
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: tumble body language is multi-axis and thrash-then-failing
+ok 7 - tumble body language is multi-axis and thrash-then-failing
+  ---
+  duration_ms: 1.62944
+  ...
+# Subtest: recover pose eases thrash toward flight lean
+ok 8 - recover pose eases thrash toward flight lean
+  ---
+  duration_ms: 0.291952
+  ...
+# Subtest: force neon scales force cues above hull-neutral baseline
+ok 9 - force neon scales force cues above hull-neutral baseline
+  ---
+  duration_ms: 0.391105
+  ...
+# Subtest: feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+ok 10 - feel punches select clean/razor, important tumble, and whip tiers; motionReduce nulls
+  ---
+  duration_ms: 0.437821
+  ...
+# Subtest: readControlLossPresentation never tumbles the player; ships get status/drifting
+ok 11 - readControlLossPresentation never tumbles the player; ships get status/drifting
+  ---
+  duration_ms: 0.41981
+  ...
+# Subtest: control-loss presentation exposes only active strict player-caused throw truth
+ok 12 - control-loss presentation exposes only active strict player-caused throw truth
+  ---
+  duration_ms: 0.441974
+  ...
+# Subtest: continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+ok 13 - continuous VFX plan consumes hullBlur alongside thrash and spin ribbons
+  ---
+  duration_ms: 0.342036
+  ...
+# Subtest: _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+ok 14 - _engineDriveFor applies deadThruster kill without throwing and near-zeros drive
+  ---
+  duration_ms: 0.557352
+  ...
+# Subtest: _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+ok 15 - _engineDriveFor keeps nozzle lit when pilot holds W but physics main is zero
+  ---
+  duration_ms: 0.448367
+  ...
+# Subtest: tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+ok 16 - tether.whip_impact presentation style uses whip force-neon (not generic tether catch-all)
+  ---
+  duration_ms: 0.804021
+  ...
+# Subtest: updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+ok 17 - updateShipPitchPresentation owns bank/pitch while tumbling and clears thrash on idle
+  ---
+  duration_ms: 0.993155
+  ...
+# Subtest: release annulus stays on the captured world target and keeps anticipation distinct from ratings
+ok 18 - release annulus stays on the captured world target and keeps anticipation distinct from ratings
+  ---
+  duration_ms: 3.855645
+  ...
+# Subtest: messy/good/clean/razor are preserved and differ redundantly without relying on color
+ok 19 - messy/good/clean/razor are preserved and differ redundantly without relying on color
+  ---
+  duration_ms: 0.645969
+  ...
+# Subtest: geometry writes a caller-owned world-space annulus without replacing typed arrays
+ok 20 - geometry writes a caller-owned world-space annulus without replacing typed arrays
+  ---
+  duration_ms: 1.642288
+  ...
+# Subtest: reduced-motion and reduced-flash freeze cadence while retaining the quality distinctions
+ok 21 - reduced-motion and reduced-flash freeze cadence while retaining the quality distinctions
+  ---
+  duration_ms: 2.362349
+  ...
+# Subtest: invalid predictor/target/rating fails closed and clears the preallocated draw range
+ok 22 - invalid predictor/target/rating fails closed and clears the preallocated draw range
+  ---
+  duration_ms: 0.368481
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: swing-trace quiet-latches after idle empty and wakes on tether latch
+ok 23 - swing-trace quiet-latches after idle empty and wakes on tether latch
+  ---
+  duration_ms: 125.108663
+  ...
+# Subtest: swing-trace quiet-latches wake on remote massline
+ok 24 - swing-trace quiet-latches wake on remote massline
+  ---
+  duration_ms: 23.342449
+  ...
+# Subtest: swing-trace boundary reset clears quiet latch
+ok 25 - swing-trace boundary reset clears quiet latch
+  ---
+  duration_ms: 17.332355
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-save-restore-destroy",
+#   "saveRestore": {
+#     "liveParticles": 0,
+#     "liveSprites": 0,
+#     "activeLights": 0
+#   },
+#   "normalDestroy": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   },
+#   "combatReason": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   }
+# }
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+ok 7 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+  ---
+  duration_ms: 703.110714
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 726.146048

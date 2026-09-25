@@ -1,0 +1,75 @@
+{
+  "label": "camera-clearance-never-roof-exclude",
+  "asteroids": 60,
+  "stations": 3,
+  "frames": 20000,
+  "driftWu": 1.05,
+  "oracle": {
+    "capitalParity": true,
+    "stationParity": true,
+    "smallRejectedBoth": true,
+    "structuralWithExclude": 4,
+    "structuralWithoutExclude": 64,
+    "structuralReduced": true
+  },
+  "runs": [
+    {
+      "beforeMs": 83.273,
+      "afterMs": 52.04,
+      "speedup": 1.6,
+      "beforeSink": 1120000,
+      "afterSink": 1120000,
+      "beforeStructural": 64,
+      "afterStructural": 4
+    },
+    {
+      "beforeMs": 83.135,
+      "afterMs": 48.533,
+      "speedup": 1.713,
+      "beforeSink": 1120000,
+      "afterSink": 1120000,
+      "beforeStructural": 64,
+      "afterStructural": 4
+    },
+    {
+      "beforeMs": 78.564,
+      "afterMs": 44.214,
+      "speedup": 1.777,
+      "beforeSink": 1120000,
+      "afterSink": 1120000,
+      "beforeStructural": 64,
+      "afterStructural": 4
+    },
+    {
+      "beforeMs": 84.001,
+      "afterMs": 40.67,
+      "speedup": 2.065,
+      "beforeSink": 1120000,
+      "afterSink": 1120000,
+      "beforeStructural": 64,
+      "afterStructural": 4
+    },
+    {
+      "beforeMs": 91.262,
+      "afterMs": 40.894,
+      "speedup": 2.232,
+      "beforeSink": 1120000,
+      "afterSink": 1120000,
+      "beforeStructural": 64,
+      "afterStructural": 4
+    }
+  ],
+  "primary": {
+    "beforeMs": 78.564,
+    "afterMs": 44.214,
+    "speedup": 1.777,
+    "beforeSink": 1120000,
+    "afterSink": 1120000,
+    "beforeStructural": 64,
+    "afterStructural": 4
+  },
+  "minSpeedup": 1.6,
+  "medSpeedup": 1.777,
+  "maxSpeedup": 2.232,
+  "note": "Portable clearance residual after #63. Soft-GPU fps not claimed. Before=#63 span-reject structural walk with pos-cache bust; After=sticky never-roof structural exclude."
+}

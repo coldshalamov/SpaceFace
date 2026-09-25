@@ -1,0 +1,83 @@
+From 8119853f71baa0f2c6a43856e9c92e3b5c6a4cb5 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 03:08:30 -0400
+Subject: [PATCH] =?UTF-8?q?perf(core):=20trust=20movables=20lane=20in=20pr?=
+ =?UTF-8?q?eStep=20pose=20snapshot=20(~2.19=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+index.movables is already append-gated by isMovableEntity. Re-checking
+every tick re-entered isDynamicPhysicsBodyEntity → authoredPhysicsBody
+on the quiet preStep pole. Trust the lane; mid-life dynamic flips already
+require re-index for spatial/physics lanes.
+---
+ src/core/coreSystem.js | 48 ++++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 23 deletions(-)
+
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index 8529f7c0f..9e772c0b3 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -207,33 +207,35 @@ export const core = {
+     reconcileEntityIndexSource(index, state.entityList);
+     refreshVolatileEntityIndex(index, state.tick);
+     beginDirtyTick(state, state.tick);
++    // index.movables is append-gated by isMovableEntity. Re-checking every tick re-entered
++    // isDynamicPhysicsBodyEntity → authoredPhysicsBody/defaultDynamic on the quiet preStep
++    // pole (profile authoredPhysicsBody self under isMovableEntity). Trust the lane; mid-life
++    // dynamic flips already require re-index for spatial/physics lanes too.
+     const movables = index.movables;
+     for (const e of movables) {
+       if (!e || !e.alive) continue;
+-      if (isMovableEntity(e)) {
+-        const noInterp = !!(e.flags && e.flags.noInterp);
+-        if (e.physicsSleeping === true && !noInterp) {
+-          const svx = e.vel ? Number(e.vel.x) || 0 : 0;
+-          const svz = e.vel ? Number(e.vel.z) || 0 : 0;
+-          const swy = Number(e.angVel) || 0;
+-          const poseStill = e.prevPos
+-            && e.prevPos.x === e.pos.x
+-            && e.prevPos.z === e.pos.z
+-            && e.prevRot === e.rot;
+-          if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
+-        }
+-        const posChanged = !e.prevPos
+-          || e.prevPos.x !== e.pos.x
+-          || e.prevPos.z !== e.pos.z
+-          || e.prevRot !== e.rot;
+-        e.prevPos.copy(e.pos);
+-        e.prevRot = e.rot;
+-        e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
+-        e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
+-        const vx = e.vel ? Number(e.vel.x) || 0 : 0;
+-        const vz = e.vel ? Number(e.vel.z) || 0 : 0;
+-        if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
++      const noInterp = !!(e.flags && e.flags.noInterp);
++      if (e.physicsSleeping === true && !noInterp) {
++        const svx = e.vel ? Number(e.vel.x) || 0 : 0;
++        const svz = e.vel ? Number(e.vel.z) || 0 : 0;
++        const swy = Number(e.angVel) || 0;
++        const poseStill = e.prevPos
++          && e.prevPos.x === e.pos.x
++          && e.prevPos.z === e.pos.z
++          && e.prevRot === e.rot;
++        if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
+       }
++      const posChanged = !e.prevPos
++        || e.prevPos.x !== e.pos.x
++        || e.prevPos.z !== e.pos.z
++        || e.prevRot !== e.rot;
++      e.prevPos.copy(e.pos);
++      e.prevRot = e.rot;
++      e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
++      e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
++      const vx = e.vel ? Number(e.vel.x) || 0 : 0;
++      const vz = e.vel ? Number(e.vel.z) || 0 : 0;
++      if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
+     }
+     packCombatTable(state);
+     stampNearWorkBudget(state);
+-- 
+2.47.3
+

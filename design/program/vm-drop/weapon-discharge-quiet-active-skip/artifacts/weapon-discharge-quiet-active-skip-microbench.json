@@ -1,0 +1,67 @@
+{
+  "label": "weapon-discharge-quiet-active-skip",
+  "primary": "quiet-discharge-active-zero-update",
+  "iters": 200000,
+  "capacity": 48,
+  "pairs": [
+    {
+      "beforeMs": 14.959,
+      "afterMs": 3.076,
+      "speedup": 4.862
+    },
+    {
+      "beforeMs": 14.998,
+      "afterMs": 2.605,
+      "speedup": 5.757
+    },
+    {
+      "beforeMs": 15.16,
+      "afterMs": 2.539,
+      "speedup": 5.971
+    },
+    {
+      "beforeMs": 15.479,
+      "afterMs": 2.578,
+      "speedup": 6.004
+    },
+    {
+      "beforeMs": 15.251,
+      "afterMs": 2.333,
+      "speedup": 6.537
+    },
+    {
+      "beforeMs": 15.448,
+      "afterMs": 2.301,
+      "speedup": 6.715
+    },
+    {
+      "beforeMs": 15.715,
+      "afterMs": 2.323,
+      "speedup": 6.764
+    },
+    {
+      "beforeMs": 15.939,
+      "afterMs": 2.301,
+      "speedup": 6.928
+    },
+    {
+      "beforeMs": 15.774,
+      "afterMs": 2.195,
+      "speedup": 7.187
+    },
+    {
+      "beforeMs": 17.342,
+      "afterMs": 2.213,
+      "speedup": 7.837
+    },
+    {
+      "beforeMs": 27.254,
+      "afterMs": 2.379,
+      "speedup": 11.458
+    }
+  ],
+  "medianSpeedup": 6.715,
+  "minSpeedup": 4.862,
+  "maxSpeedup": 11.458,
+  "note": "Picture unchanged: no strips when idle; one idle publish then skip."
+}

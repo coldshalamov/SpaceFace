@@ -1,0 +1,9 @@
+{
+  "label": "classifyClosedFormScan",
+  "entities": 8000,
+  "closedForm": 24,
+  "beforeMs": 187.22,
+  "afterMs": 144.25,
+  "speedup": 1.3,
+  "iters": 3000
+}

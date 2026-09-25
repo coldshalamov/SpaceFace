@@ -1,0 +1,135 @@
+{
+  "label": "presentation-world-unchanged-refresh-skip",
+  "scenario": "quiet-180ents-2pct-movers",
+  "slots": 180,
+  "iters": 8000,
+  "moverFrac": 0.02,
+  "runs": 11,
+  "medianSpeedup": 1.6039946775351293,
+  "floorMinSpeedup": 1.5063972055199475,
+  "pairs": [
+    {
+      "beforeMs": 469.44950600000004,
+      "afterMs": 298.107311,
+      "speedup": 1.5747668328738174,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 476.73027900000005,
+      "afterMs": 277.90226299999995,
+      "speedup": 1.715460226389017,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 520.144259,
+      "afterMs": 290.927242,
+      "speedup": 1.7878843363867591,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 463.73747199999997,
+      "afterMs": 291.290695,
+      "speedup": 1.5920092195186666,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 451.60340600000006,
+      "afterMs": 280.184745,
+      "speedup": 1.6118058318985211,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 488.592546,
+      "afterMs": 285.40803000000005,
+      "speedup": 1.7119088975877796,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 435.247915,
+      "afterMs": 288.933034,
+      "speedup": 1.5063972055199475,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 465.25223400000004,
+      "afterMs": 296.91104000000007,
+      "speedup": 1.5669751923000235,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 448.0569239999999,
+      "afterMs": 292.02713000000006,
+      "speedup": 1.5342989673596417,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 463.69759600000003,
+      "afterMs": 282.84102200000007,
+      "speedup": 1.6394283711787745,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    },
+    {
+      "beforeMs": 438.863073,
+      "afterMs": 273.606315,
+      "speedup": 1.6039946775351293,
+      "beforeSink": 1440000,
+      "afterSink": 24000,
+      "checksumMatch": true,
+      "beforeChecksum": 167866.38000000003,
+      "afterChecksum": 167866.38000000003,
+      "skipEnabledAfter": true
+    }
+  ],
+  "allChecksumsMatch": true,
+  "note": "Primary KPI: refreshVisibleEntity. Soft-GPU fps not claimed."
+}

@@ -1,0 +1,10 @@
+{
+  "rows": 400,
+  "queries": 8000,
+  "radius": 4700,
+  "ms": 123.18,
+  "hits": 3061378,
+  "keyType": "number",
+  "keySample": 2199024304128,
+  "cell": 400
+}

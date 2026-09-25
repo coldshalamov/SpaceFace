@@ -1,0 +1,126 @@
+TAP version 13
+# Subtest: player and forced roots stay submitted; only true off-screen roots drop
+ok 1 - player and forced roots stay submitted; only true off-screen roots drop
+  ---
+  duration_ms: 1.139721
+  ...
+# Subtest: uncompiled ordinary roots stay off the submit list; the player still submits
+ok 2 - uncompiled ordinary roots stay off the submit list; the player still submits
+  ---
+  duration_ms: 0.140076
+  ...
+# Subtest: ordinary roots still decoding an authored body stay off the submit list
+ok 3 - ordinary roots still decoding an authored body stay off the submit list
+  ---
+  duration_ms: 0.099057
+  ...
+# Subtest: ordinary roots wait for 1x1 geometry residency before the first bloom submit
+ok 4 - ordinary roots wait for 1x1 geometry residency before the first bloom submit
+  ---
+  duration_ms: 0.115657
+  ...
+# Subtest: missing fenced poses retain protected roots but fail closed for ordinary roots
+ok 5 - missing fenced poses retain protected roots but fail closed for ordinary roots
+  ---
+  duration_ms: 0.175662
+  ...
+# Subtest: the completed activity frame owns glass submission while runway stays resident-only
+ok 6 - the completed activity frame owns glass submission while runway stays resident-only
+  ---
+  duration_ms: 0.245625
+  ...
+# Subtest: a root inside the live glass submits even when the sim frame still classes it runway
+ok 7 - a root inside the live glass submits even when the sim frame still classes it runway
+  ---
+  duration_ms: 0.24967
+  ...
+# Subtest: visibility helper only writes when the flag changes
+ok 8 - visibility helper only writes when the flag changes
+  ---
+  duration_ms: 0.217756
+  ...
+# Subtest: authored station and place commits merge static plates before freeze
+ok 9 - authored station and place commits merge static plates before freeze
+  ---
+  duration_ms: 10.204038
+  ...
+# Subtest: default video settings still request full picture quality
+ok 10 - default video settings still request full picture quality
+  ---
+  duration_ms: 1.185872
+  ...
+# Subtest: live entity view sync hides off-runway roots through the helper
+ok 11 - live entity view sync hides off-runway roots through the helper
+  ---
+  duration_ms: 9.117414
+  ...
+# Subtest: player and on-screen ships stay on the inner band; off-glass runway is middle
+ok 12 - player and on-screen ships stay on the inner band; off-glass runway is middle
+  ---
+  duration_ms: 1.545401
+  ...
+# Subtest: middle-band closures fire once per period, staggered by slot
+ok 13 - middle-band closures fire once per period, staggered by slot
+  ---
+  duration_ms: 0.254149
+  ...
+# Subtest: station HLOD keeps identity and hides far greebles at lod2
+ok 14 - station HLOD keeps identity and hides far greebles at lod2
+  ---
+  duration_ms: 3.201122
+  ...
+# Subtest: place HLOD uses the same projected-detail helper
+ok 15 - place HLOD uses the same projected-detail helper
+  ---
+  duration_ms: 0.54081
+  ...
+# Subtest: projectedWidthPx returns 0 instead of throwing when camera, pos, or viewport is missing
+ok 16 - projectedWidthPx returns 0 instead of throwing when camera, pos, or viewport is missing
+  ---
+  duration_ms: 1.427645
+  ...
+# Subtest: lod hysteresis ignores non-finite projected width instead of oscillating
+ok 17 - lod hysteresis ignores non-finite projected width instead of oscillating
+  ---
+  duration_ms: 0.206546
+  ...
+# Subtest: attachLodState does not throw on a missing mesh
+ok 18 - attachLodState does not throw on a missing mesh
+  ---
+  duration_ms: 0.237637
+  ...
+# Subtest: asteroid lod2 hides live far-detail after static merge, not detached originals
+ok 19 - asteroid lod2 hides live far-detail after static merge, not detached originals
+  ---
+  duration_ms: 18.359938
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: bench toggle defaults ON and restores always-call when false
+ok 20 - bench toggle defaults ON and restores always-call when false
+  ---
+  duration_ms: 1.171338
+  ...
+# Subtest: asteroid updateLod retains: second same-band call skips detail traverse
+ok 21 - asteroid updateLod retains: second same-band call skips detail traverse
+  ---
+  duration_ms: 0.834574
+  ...
+# Subtest: station hlod updateLod retains across unchanged band
+ok 22 - station hlod updateLod retains across unchanged band
+  ---
+  duration_ms: 1.519785
+  ...
+# Subtest: central retain stamp: same band skips, band change wakes
+ok 23 - central retain stamp: same band skips, band change wakes
+  ---
+  duration_ms: 0.273916
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 502.804925

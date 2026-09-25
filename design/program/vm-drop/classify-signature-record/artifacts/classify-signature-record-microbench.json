@@ -1,0 +1,17 @@
+{
+  "label": "classify-signature-record",
+  "entities": 120,
+  "iters": 20000,
+  "before": {
+    "label": "template-string-signature",
+    "ms": 397.026,
+    "changes": 369
+  },
+  "after": {
+    "label": "field-bitfield-record",
+    "ms": 36.56,
+    "changes": 369
+  },
+  "speedup": 10.86,
+  "note": "Portable classify stamp-churn stand-in after #37+#38. Soft-GPU fps not claimed."
+}

@@ -2,54 +2,78 @@
 > spaceface@0.1.0 probe:runtime-witness
 > node scripts/probe-runtime-witness.mjs
 
-[2026-09-22T04:42:12.317Z] launching isolated Electron
-Downloading Electron binary...
-[2026-09-22T04:43:46.064Z] probe failed: TimeoutError: CSP-safe page condition timed out after 90000ms
-    at waitForPageCondition (file:///workspace/spaceface-master-witness/scripts/lib/playwrightCspPolling.mjs:58:17)
-    at async file:///workspace/spaceface-master-witness/scripts/probe-runtime-witness.mjs:3169:3
-[2026-09-22T04:43:46.423Z] # Runtime witness
+[2026-09-23T00:44:41.111Z] launching isolated Electron
+[2026-09-23T00:45:07.125Z] new game
+[2026-09-23T00:45:09.429Z] loading stage=preparing-run sim=0 frames=43
+[2026-09-23T00:45:10.564Z] loading stage=authored-visuals sim=0 frames=53
+[2026-09-23T00:45:11.733Z] loading stage=authored-visuals sim=0 frames=54
+[2026-09-23T00:45:14.858Z] loading stage=authored-visuals sim=0 frames=57
+[2026-09-23T00:45:16.504Z] loading stage=authored-visuals sim=0 frames=60
+[2026-09-23T00:45:34.196Z] entered flight {"mode":"flight","simTime":0.8000000000000008}
+[2026-09-23T00:45:56.425Z] # Runtime witness
 
-Verdict: inconclusive
-Not enough runtime samples yet.
+Verdict: hitching
+The picture is updating, but 4 of the last 8 samples were hitches. Biggest bucket: admission.
 
-Next: Let the game run a few seconds, then read window.__SF_WITNESS__.verdict().
+Next: Only touch admission. Do not invent a system around the first file you open.
 
 ## Live
-- mode: n/a
-- simTime: n/a
-- clockScale: n/a
-- lifecycle: n/a
+- mode: flight
+- simTime: 5.20
+- clockScale: 1
+- lifecycle: foreground-visible
 - suspended: false
 - documentHidden: false
 - contextLost: false
-- executedFrames: n/a
-- rendererFrame: n/a
-- drawCalls: n/a
+- executedFrames: 226
+- rendererFrame: 962
+- drawCalls: 103
 - lastFrameError: none
-- gpu: n/a
+- gpu: ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5) (tier software)
 
 ## Where the last frames went (ms)
-- no phase ranking (perf runtime did not report)
+- admission: p95 105.6 / avg 21.3 / max 818.0
+- presentation: p95 28.2 / avg 34.7 / max 1321.7
+- render: p95 25.5 / avg 30.5 / max 1317.1
+- simFrame: p95 9.5 / avg 5.8 / max 23.7
+- sim: p95 4.9 / avg 2.9 / max 21.8
+- ui: p95 4.3 / avg 2.8 / max 9.1
 
 ## Sample deltas (tail)
-- simDelta: 0.00
-- executedFrames delta: 0
-- rendererFrame delta: 0
-- hitch samples: 0
-- canvas hashes: 0 unique 0
+- simDelta: 1.13
+- executedFrames delta: 32
+- rendererFrame delta: 107
+- hitch samples: 4
+- canvas hashes: 3 unique 3
 
 ## Console (loop/GPU)
-- [http.404] http://127.0.0.1:37343/src/data/emergentPrimitives.js
+- [console.log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5) software 1.00 1280 719
+- [http.404] http://127.0.0.1:46631/__spaceface_player_store
 - [console.error] Failed to load resource: the server responded with a status of 404 (Not Found)
+- [console.info] [render] opening ledger 14872 ms: opening.rockSurfaceLibrary 34ms resolved | opening.firstPresentAdmission 1110ms resolved | opening.planWait 13637ms resolved | opening.residency 4ms resolved (subjects=67,textureRefs=78,textures=79) | opening.postResources 85ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 14872ms resolved | lane samples 1
+- [console.warning] [GPU brick] bloomScene 329.1ms {"owners":[{"object":"Mesh","material":"ShaderMaterial","root":"sf-liquid-plasma-root","key":"69,70,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":["69,70,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal"],"visible":true},{"object":"Mesh","material":"ShaderMaterial","root":"sf-liquid-plasma-root","key":"67,68,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true},{"object":"sf-plasma-throat-0","material":"ShaderMaterial","root":"sf-liquid-plasma-root","key":"71,72,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true}],"newGeometries":[{"object":"plume-layer:core","root":"plume-system:hitch_kestrel_main_plume","geometry":"PlaneGeometry","uuid":"9cca75ff","visible":false,"count":0},{"object":"plume-layer:inner","root":"plume-system:hitch_kestrel_main_plume","geometry":"PlaneGeometry","uuid":"008a09b7","visible":false,"count":0},{"object":"plume-layer:sheath","root":"plume-system:hitch_kestrel_main_plume","geometry":"PlaneGeometry","uuid":"a7db1305","visible":false,"count":0},{"object":"plume-layer:vapor","root":"plume-system:hitch_kestrel_main_plume","geometry":"PlaneGeometry","uuid":"6677e42c","visible":false,"count":0},{"object":"plume-layer:distortion","root":"plume-system:hitch_kestrel_main_plume","geometry":"PlaneGeometry","uuid":"355bff2f","visible":false,"count":0},{"object":"rcs-layer:core","root":"rcs-system:hitch_kestrel_rcs_impulse","geometry":"PlaneGeometry","uuid":"30404de9","visible":false,"count":0},{"object":"rcs-layer:inner","root":"rcs-system:hitch_kestrel_rcs_impulse","geometry":"PlaneGeometry","uuid":"753e6c19","visible":false,"count":0},{"object":"rcs-layer:sheath","root":"rcs-system:hitch_kestrel_rcs_impulse","geometry":"PlaneGeometry","uuid":"bf549768","visible":false,"count":0},{"object":"rcs-layer:vapor","root":"rcs-system:hitch_kestrel_rcs_impulse","geometry":"PlaneGeometry","uuid":"01f3e4c5","visible":false,"count":0},{"object":"plume-layer:core","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"854fa994","visible":false,"count":0},{"object":"plume-layer:inner","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"1db2111b","visible":false,"count":0},{"object":"plume-layer:sheath","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"ebed5bfe","visible":false,"count":0},{"object":"plume-layer:vapor","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"46ea53d6","visible":false,"count":0},{"object":"plume-layer:distortion","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"d512f35c","visible":false,"count":0},{"object":"rcs-layer:core","root":"rcs-system:family_ion_twin_rcs_impulse","geometry":"PlaneGeometry","uuid":"cd3762d5","visible":true,"count":0},{"object":"rcs-layer:inner","root":"rcs-system:family_ion_twin_rcs_impulse","geometry":"PlaneGeometry","uuid":"62d6da55","visible":true,"count":0},{"object":"rcs-layer:sheath","root":"rcs-system:family_ion_twin_rcs_impulse","geometry":"PlaneGeometry","uuid":"32634d7f","visible":true,"count":0},{"object":"rcs-layer:vapor","root":"rcs-system:family_ion_twin_rcs_impulse","geometry":"PlaneGeometry","uuid":"8a8b670e","visible":true,"count":0},{"object":"plume-layer:core","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"fa9015e4","visible":false,"count":0},{"object":"plume-layer:inner","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"e15baf9c","visible":false,"count":0},{"object":"plume-layer:sheath","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"d528e558","visible":false,"count":0},{"object":"plume-layer:vapor","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"1465c447","visible":false,"count":0},{"object":"plume-layer:distortion","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"ed0e0bc0","visible":false,"count":0},{"object":"rcs-layer:core","root":"rcs-system:family_industrial_rcs_impulse","geometry":"PlaneGeometry","uuid":"a6a25f7c","visible":true,"count":0}],"unstampedVisible":[{"object":"AuthoredResolvingMarker","root":"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"AuthoredResolvingMarker","root":"ship_atlas_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"AuthoredResolvingMarker","root":"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"AuthoredResolvingMarker","root":"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"AuthoredResolvingMarker","root":"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"AuthoredResolvingMarker","root":"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary","geometry":"OctahedronGeometry","uuid":"5f033c38","drawRange":null},{"object":"SF_PlaceFallback_place_lane_pin_Hull","root":"SF_PlaceFallback_place_lane_pin_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"7f192fa7","drawRange":null},{"object":"SF_PlaceFallback_place_tally_post_Hull","root":"SF_PlaceFallback_place_tally_post_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"7f192fa7","drawRange":null},{"object":"Mesh","root":"sf-liquid-plasma-root","geometry":"BufferGeometry","uuid":"f948996e","drawRange":null},{"object":"Mesh","root":"sf-liquid-plasma-root","geometry":"BufferGeometry","uuid":"659ce622","drawRange":null},{"object":"sf-plasma-throat-0","root":"sf-liquid-plasma-root","geometry":"PlaneGeometry","uuid":"f6d0ac27","drawRange":null},{"object":"Mesh","root":"sf-energy-massline","geometry":"CylinderGeometry","uuid":"4d80ecba","drawRange":null},{"object":"Mesh","root":"sf-energy-massline","geometry":"CylinderGeometry","uuid":"4d80ecba","drawRange":null}],"programsBefore":74,"programsAfter":78,"geometriesBefore":127,"geometriesAfter":130,"texturesBefore":106,"texturesAfter":106,"newPrograms":["67,68,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","69,70,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","69,70,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","71,72,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal"]}
+- [console.warning] [GPU brick] bloomScene 1311.6ms {"owners":[],"newGeometries":[],"unstampedVisible":[],"programsBefore":102,"programsAfter":102,"geometriesBefore":340,"geometriesAfter":340,"texturesBefore":339,"texturesAfter":339,"newPrograms":[]}
+- [console.warning] [GPU brick] bloomScene 1174.5ms {"owners":[],"newGeometries":[],"unstampedVisible":[],"programsBefore":105,"programsAfter":105,"geometriesBefore":343,"geometriesAfter":343,"texturesBefore":354,"texturesAfter":354,"newPrograms":[]}
 
 ## Host load during the window
-- unavailable
+- logical CPUs: 8
+- CPU busy during window: 31%
+- memory: 10606 / 16013 MB
 ## Continue loading readiness
-- unavailable: no `game:loadingProgress` events were observed
+- 2.25 s: preparing-run (0.43 s until next stage)
+- 2.68 s: authored-library (0.05 s until next stage)
+- 2.72 s: authored-visuals (9.38 s until next stage)
+- 12.11 s: render-pipelines (0.00 s until next stage)
+- 12.11 s: gpu-resources (0.00 s until next stage)
+- 12.11 s: entering-flight
+- last loading snapshot: stage entering-flight; player authored; opening pending 2; ids 308:loading:ship:ship_mule:promise, 309:loading:ship:ship_atlas:promise; pipeline pending 2; pipeline admissions 0; GPU admissions 0
+- exact opening plan: complete; roots 5; leaves 67; admitted programs 43; deferred global programs 0; producer census matched
+- first visible draw identity gate: fail; uncaptured none
+- opening scene delta: programs 37 -> 71; geometries 54 -> 126; renderer textures 14 -> 103
 ## Opening frame render subphases
-- bloomScene: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
-- bloomDownsample: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
-- bloomComposite: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
+- bloomScene: samples 1; p95 2.8 ms; avg 2.8 ms; max 2.8 ms
+- bloomDownsample: samples 1; p95 0.1 ms; avg 0.1 ms; max 0.1 ms
+- bloomComposite: samples 1; p95 85.7 ms; avg 85.7 ms; max 85.7 ms
 ## Opening first-touch owner
 - disabled: pass `--opening-first-touch-owner` to arm the opt-in cold/warm owner capture
 ## Opening exact-owner micro-raster
@@ -58,26 +82,59 @@ Next: Let the game run a few seconds, then read window.__SF_WITNESS__.verdict().
 - disabled: pass `--no-submit-diagnostic` to replace scene submission with a constant clear
 ## Tabletop census (PQ-129.01)
 - route: New Game seed 47, held thrust, 20000 ms at 500 ms cadence
-- sim delta: 0.00 s; executed-frame delta: 0
-- bounded instrumentation: renderWork enabled for this probe only; prior state restored before shutdown: false
-- census unavailable: the live renderer did not publish a probe-gated table sample
+- sim delta: 4.20 s; executed-frame delta: 133
+- bounded instrumentation: renderWork enabled for this probe only; prior state restored before shutdown: true
+- last population: glass 4, runway 2, beyond 69, submitted 6, resident 20, landmarks 23
+- policy envelope: glass half-extents 221 x 143 WU; runway 146 WU
+- observed ranges: glass 4–8; runway 1–6; beyond 63–70; submitted 5–11; resident 8–20; landmarks 23–23
+- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.
 ## Sector-transition phase ledger
 - unavailable: no armed public jump event sequence was observed
 ## Live hitch attribution (PQ-129.02)
-- bounded instrumentation: classifier enabled for this probe only; prior state restored before shutdown: false
+- bounded instrumentation: classifier enabled for this probe only; prior state restored before shutdown: true
 - system timing coverage: prime-period-stratified
-- observed frames: 0; hitches: 0; named: 0; unknown: 0
-- hitch runs: first 0; echoes 0; longest streak 0
-- named coverage: 0.000
-- owner counts: none## Long tasks (main-thread blocks)
-- not captured
+- observed frames: 138; hitches: 118; named: 108; unknown: 10
+- hitch runs: first 18; echoes 100; longest streak 39
+- named coverage: 0.915
+- owner counts: compile 9; upload 2; compose 1; bloom 6; externalScheduling 90; unknown 10
+- unknown residual: mean 85.8 ms unattributed interval over 10 hitch frames; largest measured phase: externalScheduling 8 | bloom 1 | sim 1
+- frame interval vs measured callback interval: mean frameMs 130.5 | mean callbackInterval 168.1 | mean disagreement -37.6 ms over 117 hitch frames
+- interval disagreement: mean -37.6 | median -0.6 ms over 117 hitch frames (median over last 117 of 117); frames at the 250 ms frame-dt clamp: 17; mean disagreement on the clamped frames -262.3 ms
+- externalScheduling split: mean gap 121.5 ms | mean dispatch lag 35.7 ms | gap dominant 83 | dispatch dominant 7 over 90 frames## Long tasks (main-thread blocks)
+- JS heap MB over run: 377 500 508 378
+- economy stations/listings/history-points: 2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p
+- GPU geometries over run: 127 168 340 343
+- GPU textures over run:   106 143 339 354
+- count 60; total 23913 ms; max 3389 ms; >=50 ms 60; >=100 ms 52
+- 3389 ms at 35084 ms
+- 2250 ms at 30638 ms
+- 1919 ms at 39866 ms
+- 1330 ms at 66748 ms
+- 1190 ms at 70972 ms
+- 1154 ms at 28604 ms
+- 908 ms at 54172 ms
+- 834 ms at 68081 ms
+- 817 ms at 29778 ms
+- 611 ms at 65273 ms
+- 526 ms at 33739 ms
+- 483 ms at 32925 ms
 
 ## Bloom subphases (PQ-129.03)
-- bloomScene: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
-- bloomDownsample: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
-- bloomComposite: samples 0; p95 0.0 ms; avg 0.0 ms; max 0.0 ms
+- bloomScene: samples 138; p95 6.0 ms; avg 26.2 ms; max 1313.8 ms
+- bloomDownsample: samples 138; p95 0.2 ms; avg 0.1 ms; max 0.2 ms
+- bloomComposite: samples 138; p95 0.1 ms; avg 0.0 ms; max 0.3 ms
 ## Sampled simulation systems
-- unavailable: the bounded per-system sampler produced no samples
+- tacticalAI: samples 32; p95 1.40 ms; avg 1.01 ms; max 1.50 ms
+- physics: samples 68; p95 1.10 ms; avg 0.62 ms; max 1.50 ms
+- flight: samples 68; p95 0.50 ms; avg 0.34 ms; max 0.60 ms
+- tetherGameplay: samples 68; p95 0.40 ms; avg 0.10 ms; max 0.70 ms
+- story: samples 1; p95 0.30 ms; avg 0.30 ms; max 0.30 ms
+- core.preStep: samples 68; p95 0.20 ms; avg 0.09 ms; max 0.20 ms
+- input: samples 68; p95 0.20 ms; avg 0.11 ms; max 0.20 ms
+- travelLanes: samples 1; p95 0.20 ms; avg 0.20 ms; max 0.20 ms
+- world: samples 68; p95 0.20 ms; avg 0.10 ms; max 0.30 ms
+- npcJobsRuntime: samples 32; p95 0.20 ms; avg 0.08 ms; max 0.20 ms
+- traffic: samples 32; p95 0.20 ms; avg 0.13 ms; max 0.30 ms
+- masslineHud: samples 32; p95 0.20 ms; avg 0.15 ms; max 0.40 ms
 
-[2026-09-22T04:43:46.423Z] report /workspace/spaceface-master-witness/.devshots/runtime-witness/run1/report.md
-EXIT:1
+[2026-09-23T00:45:56.425Z] report /workspace/spaceface-master-witness/.devshots/runtime-witness/run1/report.md

@@ -1,0 +1,309 @@
+From f73561efd661d17b87972c7184a69fa05899b92b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:33:44 -0400
+Subject: [PATCH] =?UTF-8?q?perf(world):=20quiet-latch=20empty=20farActor?=
+ =?UTF-8?q?=20shelve=20walk=20(~29=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Skip ensureActivityClassified + shipLike/wreck shelve-candidate walk when the
+far table is empty and a probe found no S2/S3/S4 virt candidates. Always run
+the restore path when far rows exist. Wake on entity-index membership or a
+0.5 s rescan. Soft-GPU fps not claimed.
+---
+ src/world/farActorTable.js          |  77 +++++++++++++-
+ test/far-empty-quiet-latch.test.mjs | 157 ++++++++++++++++++++++++++++
+ 2 files changed, 233 insertions(+), 1 deletion(-)
+ create mode 100644 test/far-empty-quiet-latch.test.mjs
+
+diff --git a/src/world/farActorTable.js b/src/world/farActorTable.js
+index 94e850be8..41135a005 100644
+--- a/src/world/farActorTable.js
++++ b/src/world/farActorTable.js
+@@ -14,6 +14,37 @@ import { resolveFarEncounters } from './farEncounterOutcomes.js';
+ export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
+ export const FAR_ACTOR_CELL = 400;
+ 
++/** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
++let FAR_EMPTY_QUIET_LATCH = true;
++export function setFarEmptyQuietLatchForBench(enabled) {
++  FAR_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getFarEmptyQuietLatchForBench() {
++  return FAR_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const FAR_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version
++    : null;
++}
++
++function farRowCount(state) {
++  const table = state && state.world && state.world.farActors;
++  return table && Array.isArray(table.rows) ? table.rows.length : 0;
++}
++
++function publishFarQuiet(state, latched) {
++  const world = state.world || (state.world = {});
++  const rt = world.farActorsRuntime || (world.farActorsRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
++
+ function finite(n, fallback = 0) {
+   return Number.isFinite(n) ? n : fallback;
+ }
+@@ -557,15 +588,44 @@ function collectFarActorCandidateIds(state, out) {
+ 
+ export function tickFarActors(state, helpers, bus) {
+   if (!state || state.mode !== 'flight' || survivalHold(state)) return { shelved: 0, restored: 0 };
+-  ensureActivityClassified(state);
+   const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+   if (!player || !player.pos) return { shelved: 0, restored: 0 };
++
++  // Quiet settled flight: empty far table still paid ensureActivityClassified + shipLike/wreck
++  // shelve-candidate walk every tick when no S2/S3/S4 virt candidates existed. Latch when far
++  // rows are empty AND a probe found no virt candidates; wake on entity-index membership or a
++  // 0.5 s rescan. ALWAYS run the restore path when far rows exist (never skip promote-on-approach).
++  const farCount = farRowCount(state);
++  if (farCount > 0) {
++    // Rows present → full path (restore must stay live). Clear any empty latch.
++    tickFarActors._quiet = null;
++    publishFarQuiet(state, false);
++  } else if (FAR_EMPTY_QUIET_LATCH !== false) {
++    const membership = entityIndexVersion(state);
++    if (membership != null) {
++      const tick = state.tick | 0;
++      const quiet = tickFarActors._quiet;
++      if (quiet
++        && quiet.membership === membership
++        && ((tick - (quiet.armedTick | 0)) < FAR_EMPTY_QUIET_RESCAN_TICKS)) {
++        publishFarQuiet(state, true);
++        return { shelved: 0, restored: 0 };
++      }
++    } else if (tickFarActors._quiet) {
++      tickFarActors._quiet = null;
++    }
++  } else if (tickFarActors._quiet) {
++    tickFarActors._quiet = null;
++  }
++
++  ensureActivityClassified(state);
+   const radii = tableRadii(state, player);
+   const exit2 = radii.exit * radii.exit;
+   const enter2 = radii.enter * radii.enter;
+   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+   let shelved = 0;
+   let restored = 0;
++  let virtSeen = 0;
+ 
+   const farIds = tickFarActors._idScratch || (tickFarActors._idScratch = []);
+   collectFarActorCandidateIds(state, farIds);
+@@ -575,6 +635,7 @@ export function tickFarActors(state, helpers, bus) {
+       ? entities.get(farIds[i])
+       : null;
+     if (!shouldVirtualizeFarActor(entity, state)) continue;
++    virtSeen++;
+     if (dist2(entity.pos, player.pos) <= exit2) continue;
+     const rec = insertFarActor(state, entity, simTime);
+     const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+@@ -592,6 +653,7 @@ export function tickFarActors(state, helpers, bus) {
+     shelved++;
+   }
+ 
++  // Restore ALWAYS when rows may exist — query is cheap when empty; never gate this behind latch.
+   const hits = queryFarActors(state, player.pos, radii.enter, tickFarActors._scratch || (tickFarActors._scratch = []));
+   for (let i = 0; i < hits.length; i++) {
+     const rec = hits[i];
+@@ -614,6 +676,19 @@ export function tickFarActors(state, helpers, bus) {
+   }
+   resolveFarEncounters(state, simTime);
+   enforceFarRowBudget(state);
++
++  // Arm empty+no-virt latch only when far stayed empty and probe saw no virt candidates.
++  const farAfter = farRowCount(state);
++  if (FAR_EMPTY_QUIET_LATCH !== false && farAfter === 0 && virtSeen === 0) {
++    const membership = entityIndexVersion(state);
++    if (membership != null) {
++      tickFarActors._quiet = { membership, armedTick: state.tick | 0 };
++      publishFarQuiet(state, true);
++      return { shelved, restored };
++    }
++  }
++  tickFarActors._quiet = null;
++  publishFarQuiet(state, false);
+   return { shelved, restored };
+ }
+ 
+diff --git a/test/far-empty-quiet-latch.test.mjs b/test/far-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..01938fc4f
+--- /dev/null
++++ b/test/far-empty-quiet-latch.test.mjs
+@@ -0,0 +1,157 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import { SIM_TIER, NEAR_EXIT_PAD_WU } from '../src/world/activityClassification.js';
++import { ensureActivityClassified } from '../src/world/activityRuntime.js';
++import {
++  tickFarActors,
++  setFarEmptyQuietLatchForBench,
++  getFarEmptyQuietLatchForBench,
++  insertFarActor,
++  ensureFarActorTable,
++  getFarActor,
++  farActorCensus,
++} from '../src/world/farActorTable.js';
++
++function boot(opts = {}) {
++  const state = createGameState(opts.seed || 21);
++  state.mode = 'flight';
++  state.meta.seed = opts.seed || 21;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  player.activity = { simTier: SIM_TIER.S0_EXACT, pinnedExact: true };
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    if (!Number.isFinite(state.entityIndex.version)) state.entityIndex.version = 1;
++  }
++  return { state, bus, helpers, player };
++}
++
++function step(state, helpers, bus) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  return tickFarActors(state, helpers, bus);
++}
++
++test('quiet latch engages when far empty and no virt candidates', () => {
++  setFarEmptyQuietLatchForBench(true);
++  assert.equal(getFarEmptyQuietLatchForBench(), true);
++  const { state, helpers, bus } = boot();
++  // Nearby S1 ships only — not virtualizable.
++  for (let i = 0; i < 6; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 40 + i * 20, z: 10 },
++      radius: 8, mass: 20, hull: 80, hullMax: 80, collides: true,
++      data: { trafficRole: 'hauler', homeSectorId: 'sector_ceres_belt' },
++    });
++    e.activity = { simTier: SIM_TIER.S1_NEAR, pinnedExact: false };
++  }
++  ensureActivityClassified(state);
++  const r1 = step(state, helpers, bus);
++  assert.equal(r1.shelved, 0);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++  assert.ok(tickFarActors._quiet);
++  const r2 = step(state, helpers, bus);
++  assert.equal(r2.shelved, 0);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++});
++
++test('membership bump wakes empty quiet latch', () => {
++  setFarEmptyQuietLatchForBench(true);
++  const { state, helpers, bus } = boot();
++  step(state, helpers, bus);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++  const armed = tickFarActors._quiet.armedTick;
++  state.entityIndex.version++;
++  step(state, helpers, bus);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++  assert.notEqual(tickFarActors._quiet.armedTick, armed);
++  assert.equal(tickFarActors._quiet.membership, state.entityIndex.version);
++});
++
++test('bench toggle off refuses latch', () => {
++  setFarEmptyQuietLatchForBench(false);
++  const { state, helpers, bus } = boot();
++  step(state, helpers, bus);
++  assert.equal(!!(state.world && state.world.farActorsRuntime && state.world.farActorsRuntime.quietLatched), false);
++  assert.equal(tickFarActors._quiet, null);
++  setFarEmptyQuietLatchForBench(true);
++});
++
++test('far rows present never skip restore path', () => {
++  setFarEmptyQuietLatchForBench(true);
++  const { state, helpers, bus, player } = boot();
++  // Seed a shelved far row far away, then move player onto it.
++  const ghost = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 8000, z: 0 },
++    radius: 8, mass: 20, hull: 80, hullMax: 80, collides: true,
++    data: { trafficRole: 'hauler', homeSectorId: 'sector_ceres_belt' },
++  });
++  ghost.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
++  ensureFarActorTable(state);
++  const rec = insertFarActor(state, ghost, state.simTime || 0);
++  helpers.removeEntity(ghost.id, { immediate: true, reason: 'virtualize' });
++  assert.ok(getFarActor(state, rec.id));
++
++  // Latch must not arm while rows exist.
++  step(state, helpers, bus);
++  assert.equal(!!(state.world.farActorsRuntime && state.world.farActorsRuntime.quietLatched), false);
++  assert.equal(tickFarActors._quiet, null);
++
++  // Approach — restore must fire.
++  player.pos.x = 8000;
++  player.pos.z = 0;
++  const before = farActorCensus(state).farActors;
++  assert.ok(before >= 1);
++  const result = step(state, helpers, bus);
++  assert.ok(result.restored >= 1, `expected restore, got ${JSON.stringify(result)}`);
++  assert.equal(getFarActor(state, rec.id), null);
++});
++
++test('dormant far ship still shelves when latch off-window', () => {
++  setFarEmptyQuietLatchForBench(true);
++  const { state, helpers, bus, player } = boot();
++  const exit = NEAR_EXIT_PAD_WU + 4000;
++  const ship = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: exit, z: 0 },
++    radius: 8, mass: 20, hull: 80, hullMax: 80, collides: true,
++    data: { trafficRole: 'hauler', homeSectorId: 'sector_ceres_belt' },
++  });
++  ship.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
++  ensureActivityClassified(state);
++  // First tick probes and shelves (virtSeen > 0 → no latch).
++  const r = step(state, helpers, bus);
++  assert.ok(r.shelved >= 1);
++  assert.equal(!!(state.world.farActorsRuntime && state.world.farActorsRuntime.quietLatched), false);
++  assert.ok(getFarActor(state, ship.id));
++  void player;
++});
++
++test('rescan clears latch after window', () => {
++  setFarEmptyQuietLatchForBench(true);
++  const { state, helpers, bus } = boot();
++  step(state, helpers, bus);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++  const armed = tickFarActors._quiet.armedTick;
++  // Advance past 30-tick rescan without membership bump.
++  for (let i = 0; i < 31; i++) step(state, helpers, bus);
++  assert.equal(state.world.farActorsRuntime.quietLatched, true);
++  assert.notEqual(tickFarActors._quiet.armedTick, armed);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,226 @@
+From f69e5c84969379ededf6bca22ae6cf720333a475 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:27:44 -0400
+Subject: [PATCH] perf(opening): skip awaiting-authored markers so soft-GPU
+ plan completes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+DirectAuthoredAdmission wasp boundaries exposed only a resolving marker,
+which entered the opening entity census without a verified content hash and
+forced opening.plan to skip incomplete — leaving soft-GPU without residency
+or a first-draw receipt. Exclude resolving markers from submission leaves and
+skip awaiting/loading authored boundaries in the entity/shadow censuses.
+---
+ src/render/openingSubmissionPlan.js           |   6 +
+ src/render/renderer.js                        |  19 +++
+ ...ening-plan-awaiting-authored-skip.test.mjs | 133 ++++++++++++++++++
+ 3 files changed, 158 insertions(+)
+ create mode 100644 test/opening-plan-awaiting-authored-skip.test.mjs
+
+diff --git a/src/render/openingSubmissionPlan.js b/src/render/openingSubmissionPlan.js
+index 54a4abe11..b3dd2a8a8 100644
+--- a/src/render/openingSubmissionPlan.js
++++ b/src/render/openingSubmissionPlan.js
+@@ -252,6 +252,12 @@ function leafContributes(object, root, frustum, options = {}) {
+   if (!isDrawable(object) || !isVisibleInProductionGraph(object, root) || !hasDrawableInstance(object)) {
+     return false;
+   }
++  // Direct-authored admission mounts a temporary resolving marker while the real GLB is still
++  // pending. That marker is not first-picture production identity — counting it as a blocking
++  // opening leaf left soft-GPU plans incomplete (missing content hash) and skipped residency.
++  if (object.userData && object.userData.authoredResolvingMarker === true) {
++    return false;
++  }
+   // A real camera's layer mask is part of the first-picture route just like its frustum. Keep the
+   // historical fail-closed behavior when either side has no layer contract, but do not admit a
+   // drawable that the live camera cannot submit because its layer is masked out.
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..038f3c088 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -601,6 +601,10 @@ export function collectOpeningEntityRootCandidates(meshes, entities, options = {
+     if (scene && mesh.parent !== scene) continue;
+     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+     if (!entity || entity.alive === false || entity._noMesh) continue;
++    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
++    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
++    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
++    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
+     const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
+     if (leaves.length === 0) continue;
+     candidates.push({
+@@ -634,6 +638,8 @@ export function collectOpeningShadowCasterRootCandidates(meshes, entities, optio
+     if (scene && root.parent !== scene) continue;
+     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+     if (!entity || entity.alive === false || entity._noMesh) continue;
++    const authoredState = root.userData && root.userData.authoredAssetState;
++    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
+     const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
+     if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
+     candidates.push({
+@@ -8580,8 +8586,21 @@ export const render = {
+           || plan.firstPlayablePipelineSet.complete !== true) {
+           // Refusing here left New Game on gpu-resources until the 90s playable
+           // gate fired. Enter flight and keep admitting behind the first picture.
++          const failRole = Array.isArray(plan && plan.blockingReasons)
++            ? plan.blockingReasons.find((entry) => entry && (
++              entry.role === 'productionBoundary'
++              || entry.role === 'producerResourceIdentityCensus'
++              || entry.role === 'firstPlayablePipelineSet'
++              || (entry.reason && String(entry.reason).includes('no-currently-instantiated'))
++            ))
++            : null;
+           recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
+             reason: 'opening-plan-incomplete',
++            fail: failRole
++              ? `${failRole.role || ''}:${String(failRole.reason || '').slice(0, 48)}`
++              : (plan && plan.firstPlayablePipelineSet && plan.firstPlayablePipelineSet.reason)
++                || 'unknown',
++            drawLeaves: plan && Array.isArray(plan.drawLeaves) ? plan.drawLeaves.length : 0,
+           });
+           return { skipped: true, reason: 'opening-plan-incomplete' };
+         }
+diff --git a/test/opening-plan-awaiting-authored-skip.test.mjs b/test/opening-plan-awaiting-authored-skip.test.mjs
+new file mode 100644
+index 000000000..3ef9abc68
+--- /dev/null
++++ b/test/opening-plan-awaiting-authored-skip.test.mjs
+@@ -0,0 +1,133 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import {
++  collectOpeningSubmissionLeaves,
++  createOpeningSubmissionPlan,
++  createOpeningProducerCensus,
++  combineOpeningProducerCensuses,
++  stampOpeningSubmissionPackage,
++} from '../src/render/openingSubmissionPlan.js';
++import {
++  collectOpeningEntityRootCandidates,
++  collectOpeningShadowCasterRootCandidates,
++} from '../src/render/renderer.js';
++
++function stampedMesh(name) {
++  const material = new THREE.MeshStandardMaterial({ name: `${name}-mat` });
++  material.userData.openingProgramSubjectKey = `prog:${name}`;
++  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
++  mesh.name = name;
++  stampOpeningSubmissionPackage(mesh, {
++    schema: 'spaceface.testProducer.v1',
++    producer: 'test',
++    name,
++  }, { producer: 'test', assetId: name });
++  return mesh;
++}
++
++test('resolving-marker meshes are not opening submission leaves', () => {
++  const root = new THREE.Group();
++  root.name = 'ship_wasp_DirectAuthoredAdmission';
++  const marker = new THREE.Mesh(
++    new THREE.BoxGeometry(1, 1, 1),
++    new THREE.MeshBasicMaterial({ name: 'marker' }),
++  );
++  marker.name = 'AuthoredResolvingMarker';
++  marker.userData.authoredResolvingMarker = true;
++  root.add(marker);
++  assert.equal(collectOpeningSubmissionLeaves(root).length, 0);
++});
++
++test('awaiting-authored entity roots do not enter the opening entity census', () => {
++  const scene = new THREE.Group();
++  const player = stampedMesh('player-root');
++  scene.add(player);
++
++  const ready = stampedMesh('ready-ship');
++  scene.add(ready);
++
++  const awaiting = new THREE.Group();
++  awaiting.name = 'ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary';
++  awaiting.userData.authoredAssetState = 'awaiting-authored-admission';
++  const marker = new THREE.Mesh(
++    new THREE.BoxGeometry(2, 0.4, 1),
++    new THREE.MeshBasicMaterial({ name: 'marker' }),
++  );
++  marker.userData.authoredResolvingMarker = true;
++  marker.castShadow = true;
++  awaiting.add(marker);
++  scene.add(awaiting);
++
++  const meshes = new Map([
++    ['player', player],
++    ['ready', ready],
++    ['wasp', awaiting],
++  ]);
++  const entities = new Map([
++    ['player', { type: 'ship', alive: true }],
++    ['ready', { type: 'ship', alive: true }],
++    ['wasp', { type: 'ship', alive: true }],
++  ]);
++  const camera = {
++    frustum: { intersectsObject() { return true; } },
++    layers: { test() { return true; } },
++  };
++
++  const candidates = collectOpeningEntityRootCandidates(meshes, entities, {
++    playerId: 'player',
++    scene,
++    camera,
++  });
++  assert.deepEqual(candidates.map((c) => c.root.name), ['ready-ship']);
++
++  const shadow = collectOpeningShadowCasterRootCandidates(meshes, entities, {
++    playerId: 'player',
++    scene,
++    camera,
++    alreadyIncluded: candidates.map((c) => c.root),
++  });
++  assert.equal(shadow.length, 0, 'awaiting authored markers must not enter shadow census');
++});
++
++test('opening plan completes when only stamped production roots remain after skipping awaiting authored', () => {
++  const player = stampedMesh('player-root');
++  const ready = stampedMesh('ready-ship');
++  const route = { shadow: false, target: 'screen' };
++  const candidates = [
++    {
++      root: player,
++      role: 'player',
++      startupRole: 'player-flight-package',
++      blocking: true,
++      reason: 'player-control-and-first-picture-identity',
++      includeOffscreen: true,
++    },
++    {
++      root: ready,
++      role: 'opening-entity-root',
++      startupRole: 'first-picture-entity-root',
++      blocking: true,
++      reason: 'currently-visible-first-picture-entity-root',
++    },
++  ];
++  const producer = combineOpeningProducerCensuses(candidates.map((candidate) => (
++    createOpeningProducerCensus(candidate.root, {
++      includeOffscreen: candidate.includeOffscreen === true,
++      route,
++    })
++  )));
++  const plan = createOpeningSubmissionPlan({
++    candidates,
++    route: 'native',
++    shadows: false,
++    globalProgramKeys: producer.globalProgramKeys,
++    openingProgramKeys: producer.openingProgramKeys,
++    requiredContentHashes: producer.requiredContentHashes,
++    contentHashVerified: producer.contentHashesVerified,
++    producerCensus: producer,
++    producerResourceIdentitySets: producer.resourceIdentitySets,
++  });
++  assert.equal(plan.complete, true, `plan incomplete: ${JSON.stringify(plan.blockingReasons)}`);
++});
+-- 
+2.47.3
+
