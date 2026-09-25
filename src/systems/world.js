@@ -67,6 +67,11 @@ import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { compileOpticStructure, opticStructuresFor } from '../data/opticStructures.js';
 import {
+  OPTIC_SPEND_QUIET,
+  normalizeOpticSpendLedger,
+  recordOpticSpend,
+} from '../combat/opticField.js';
+import {
   FIELD_REGROWTH_BATCH_MAX,
   FIELD_REGROWTH_BATCH_MIN,
   FIELD_REGROWTH_YIELD_SCALE,
@@ -1137,6 +1142,19 @@ export const world = {
         });
         if (!ent) continue;
         this._stampHomeSector(ent, sector.id);
+        // A cell the player burned is durable state: restore it dark mid-quiet, or let a
+        // lattice that healed while shelved come back live and forget the stale entry.
+        const spentCells = this.state.world.opticSpent && this.state.world.opticSpent[spec.id];
+        const spentAt = spentCells ? spentCells[`${body.ix},${body.iz}`] : null;
+        if (Number.isFinite(spentAt)) {
+          const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+          if (now - spentAt >= OPTIC_SPEND_QUIET) {
+            delete spentCells[`${body.ix},${body.iz}`];
+            if (!Object.keys(spentCells).length) delete this.state.world.opticSpent[spec.id];
+          } else {
+            recordOpticSpend(ent, spentAt); // entity side only — the ledger already holds it
+          }
+        }
         ids.push(ent.id);
       }
     }
@@ -5447,6 +5465,10 @@ export const world = {
       // v9: entity/overlay positions are already galactic-global. Persist schema tag only —
       // frameOrigin / frameOriginSeq are runtime boundary values and must not re-offset poses.
       coordinateSchema: state.world.coordinateSchema || 'global_v1',
+      // Spent optic cells ride the world save: lattice bodies are recipe-spawned, so the dark
+      // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
+      // whose quiet stretch elapsed while the game was closed simply loads live.
+      opticSpent: cloneSaveTree(state.world.opticSpent || {}),
       sectorOwners: this._ownerOverlay(),
       jump: savedJump,
       fuel: { current: savedFuelCurrent, max: state.fuel.max },
@@ -5493,6 +5515,9 @@ export const world = {
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
     state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
+    // Dark optic cells come back through _ensureOpticStructures on the next materialize;
+    // absent (older saves) normalizes to an empty ledger.
+    state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
@@ -5551,6 +5576,7 @@ export const world = {
     state.world.arrangementVersion = ARRANGEMENT_VERSION;
     state.world.records = createEmptyRecordsBag();
     state.world.resourceBodies = createEmptyResourceBodyBag();
+    state.world.opticSpent = {};
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
     state.world.sectorContents = {};
