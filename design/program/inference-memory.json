@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "mission-silent-runner",
-      "date": "2026-08-17",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "High-risk covert missions now support the silent_runner physical condition rewarding unbroken cloak discipline",
-      "fingerprint": "verb=forbid-cloak-breach,subject=silent-runner,sector=any,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "cc96da92",
-      "verification": "focused_green"
-    },
-    {
       "id": "thermal-sink-module",
       "date": "2026-08-17",
       "wf": "WF-07",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "631165a2d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "helios-starter-miner-shift",
+      "date": "2026-09-25",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A Helios starter miner cuts one rock for a short shift, drops ore, and stops",
+      "fingerprint": "verb=cut,subject=starter-miner,sector=helios,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "a6cf28696",
       "verification": "focused_green"
     }
   ],
