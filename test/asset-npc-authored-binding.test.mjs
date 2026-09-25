@@ -156,7 +156,7 @@ test('authored assets preload ahead of visibility without decoding the whole act
     id: 8, type: 'station', homeSectorId: 'sector_helios_prime',
     pos: { x: 0, z: AUTHORED_ASSET_PREFETCH_RADIUS + 60 },
   };
-  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
+  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 3000, z: 0 } };
   const inboundTraffic = {
     id: 6,
     type: 'ship',

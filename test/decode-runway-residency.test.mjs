@@ -127,12 +127,12 @@ test('decode runway sees an inbound far hull and can request promote', () => {
 test('mesh collect surfaces a far hull on the decode runway before its build horizon', () => {
   const { state, player } = boot();
   player.vel = { x: 0, z: 0 };
-  // ~7 s to the glass at 160 WU/s — outside the 5.5 s promote horizon a boundary
+  // ~8 s to the glass at 160 WU/s — outside the 7.5 s promote horizon a boundary
   // build waits for, inside the decode runway the authored prefetch rides.
   const inbound = insertFarActor(state, {
     id: 601,
     type: 'ship',
-    pos: { x: 1400, z: 0 },
+    pos: { x: 1600, z: 0 },
     vel: { x: -160, z: 0 },
     rot: 0,
     radius: 8,
@@ -363,7 +363,7 @@ test('player motion leans the residency oval forward and lets the trailing edge 
   };
   const rockBehind = {
     id: 711, type: 'asteroid', alive: true, fieldResident: true,
-    pos: { x: -900, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, data: {},
+    pos: { x: -1400, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, data: {},
   };
   assert.equal(isEntityRenderRelevant(rockAhead, state), true,
     'a rock the player is flying into is collected before the static disc admits it');
@@ -569,7 +569,7 @@ test('first-flight hold admits static ledger rocks on player-vel collect horizon
   };
   const parkedShip = {
     id: 203, type: 'ship', alive: true,
-    pos: { x: 560, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
+    pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
   };
   const state = {
     mode: 'flight',
