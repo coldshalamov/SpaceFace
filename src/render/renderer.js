@@ -18,6 +18,7 @@ import {
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
 import {
+  IBL_PMREM_CUBE_SIZE,
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   loadFoundryIblTexture,
@@ -4409,6 +4410,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._envMapTarget = null;
   owner._foundryEnvTexture = null;
   owner._envMapSource = null;
+  owner._envBakeScene = null;
   owner._lostEnvMap = null;
   owner._contextRecovery = null;
   owner._adaptive = null;
@@ -11984,14 +11986,22 @@ export const render = {
         foundryTexture: this._foundryEnvTexture,
         background: scene.background,
       });
-      if (iblSource === IBL_SOURCE_FOUNDRY) {
-        envTarget = pmrem.fromEquirectangular(this._foundryEnvTexture);
-      } else if (iblSource === IBL_SOURCE_BACKGROUND) {
-        envTarget = pmrem.fromEquirectangular(scene.background);
+      if (iblSource === IBL_SOURCE_FOUNDRY || iblSource === IBL_SOURCE_BACKGROUND) {
+        // Equirect sources must not go through fromEquirectangular: it sizes the PMREM output
+        // from the input width, and the cubeUV height sits in every lit material's program key.
+        // Baking through a fixed-size scene capture keeps the key stable across env swaps.
+        const equirect = iblSource === IBL_SOURCE_FOUNDRY ? this._foundryEnvTexture : scene.background;
+        if (!this._envBakeScene) this._envBakeScene = new THREE.Scene();
+        this._envBakeScene.background = equirect;
+        envTarget = pmrem.fromScene(
+          this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE },
+        );
+        this._envBakeScene.background = null;
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(
           reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
+          { size: IBL_PMREM_CUBE_SIZE },
         );
       }
       this._envMapSource = iblSource;

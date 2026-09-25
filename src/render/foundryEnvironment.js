@@ -28,6 +28,15 @@ export const IBL_SOURCE_FOUNDRY = 'foundry';
 export const IBL_SOURCE_BACKGROUND = 'background';
 export const IBL_SOURCE_REFLECTION_CARDS = 'reflection-cards';
 
+// Every PMREM bake — foundry HDRI, sector-plate background, or card-rig fallback — must emit the
+// same cube-map size. The output texture's cubeUV height sits in each lit material's shader
+// program key (envMapCubeUVHeight), so a bake at a different resolution silently re-keys and
+// re-links every standard material on the next presented pass — a multi-second GPU brick on the
+// live route, not just in probes. Equirect sources size their bake from the input width, so
+// renderer._bakeEnv routes them through a fixed-size scene capture instead of fromEquirectangular.
+// 512 matches the foundry 2k HDRI's native cube size (width/4), so no source loses resolution.
+export const IBL_PMREM_CUBE_SIZE = 512;
+
 // Priority for the PMREM source: the foundry HDRI wins once loaded; until then the existing
 // chain holds (sector-plate background texture, else the emissive card rig). scene.background
 // is never reassigned from here — the resolver only reads it.

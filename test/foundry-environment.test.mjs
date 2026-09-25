@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import {
   FOUNDRY_IBL_TARGET_MEAN_RADIANCE,
   FOUNDRY_IBL_URL,
+  IBL_PMREM_CUBE_SIZE,
   IBL_SOURCE_BACKGROUND,
   IBL_SOURCE_FOUNDRY,
   IBL_SOURCE_REFLECTION_CARDS,
@@ -168,4 +169,18 @@ test('renderer wires the foundry as env input only — the visible sky is never 
   assert.doesNotMatch(src, /scene\.background\s*=\s*[^;]*foundry/i);
   const module = readFileSync(resolve(REPO, 'src/render/foundryEnvironment.js'), 'utf8');
   assert.doesNotMatch(module, /scene\.background\s*=/);
+});
+
+// The PMREM output texture's cubeUV height is part of every lit material's shader program key
+// (envMapCubeUVHeight). fromEquirectangular sizes the bake from the input width, so a bake source
+// swap mid-flight — foundry promotion on unfreeze, or a re-bake after context restore — would
+// re-key and re-link every standard material inside a presented pass. All sources must go through
+// a fixed-size scene capture so the key never moves when the env texture is upgraded.
+test('every PMREM bake pins one cube size so env swaps never rekey lit programs', () => {
+  assert.equal(IBL_PMREM_CUBE_SIZE, 512, 'pin must match the 2k foundry HDRI cube size (width/4)');
+  const src = readFileSync(RENDERER_PATH, 'utf8');
+  assert.doesNotMatch(src, /pmrem\.fromEquirectangular\(/,
+    'equirect bakes must not size the PMREM target from the input width');
+  const bakes = src.match(/pmrem\.fromScene\([^;]*size:\s*IBL_PMREM_CUBE_SIZE/gs) || [];
+  assert.equal(bakes.length, 2, 'both the equirect wrap scene and the card rig must bake pinned');
 });

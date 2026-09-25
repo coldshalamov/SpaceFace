@@ -3467,6 +3467,17 @@ async function sampleRafWindow(page, {
         gpuDrain = { drained: false, timedOut: false, pending: null, reason: 'drain-unavailable' };
       }
 
+      // timeScale is authored hit-stop dilation — transient runtime state, not a quality
+      // setting. A window that closes while the decay is still running would falsely trip the
+      // settings-stability contract, so give it a bounded moment to return to the value the
+      // window opened with. A genuinely stuck dilation never returns and still fails.
+      if (Number.isFinite(settingsStart?.timeScale)) {
+        const timeScaleDeadline = performance.now() + 2_000;
+        while (readSettingsSlice().timeScale !== settingsStart.timeScale
+          && performance.now() < timeScaleDeadline) {
+          await raf();
+        }
+      }
       const settingsEnd = readSettingsSlice();
       const routeEnd = readRouteProof();
       const sceneEnd = collectPerformanceSceneStructure({ state });
