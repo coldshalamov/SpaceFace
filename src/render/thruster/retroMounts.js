@@ -21,6 +21,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addSocket } from '../ships/shipKit.js';
 import { getEngineProfileBase, resolveEngineProfileId } from '../vfxProfiles.js';
 import { retroProfileFor } from './retroProfiles.js';
+import { buildSkinSeatIndex, flankSeat } from './retroSkinSeat.js';
 
 // The throat iris. Cold, the mouth is a dark machined aperture; the retro spool runs it up to a
 // lit point while the brake is held. Driven from vfx via socket.userData.retroIris.
@@ -106,41 +107,26 @@ function collectHullSkinMesh(hull, hullRecord) {
   }
   if (!soup.length) return null;
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(soup, 3));
-  return new THREE.Mesh(geometry, SKIN_RAYCAST_MATERIAL);
+  const attribute = new THREE.Float32BufferAttribute(soup, 3);
+  geometry.setAttribute('position', attribute);
+  const mesh = new THREE.Mesh(geometry, SKIN_RAYCAST_MATERIAL);
+  mesh.userData.skinSeatIndex = buildSkinSeatIndex(attribute.array);
+  return mesh;
 }
 
 // The skin's lateral position on one side at a given (x, y): a ray cast inward from far outboard
 // hits the outermost surface along that line — the exact face under the mount, which vertex
-// sampling cannot give on hulls whose flanks are a few long wedge faces.
-const _ray = new THREE.Raycaster();
-const _rayOrigin = new THREE.Vector3();
-const _rayDir = new THREE.Vector3();
+// sampling cannot give on hulls whose flanks are a few long wedge faces. flankSeat answers that
+// analytically over the soup index (see retroSkinSeat.js) instead of 7 full-soup raycasts.
 const RAY_FAR_Z = 4; // beyond any normalized hull half-width; ray ends at the centerline plane
-
-function raySkinHit(skinMesh, x, y, side) {
-  _rayOrigin.set(x, y, side * RAY_FAR_Z);
-  _rayDir.set(0, 0, -side);
-  _ray.set(_rayOrigin, _rayDir);
-  _ray.far = RAY_FAR_Z;
-  const hits = _ray.intersectObject(skinMesh, false);
-  for (const hit of hits) {
-    if (hit.point.z * side > 0) return hit.point;
-  }
-  return null;
-}
 
 // The surface a lateral-firing jet belongs on: the outermost skin point inside a tight vertical
 // window around the ideal mount height. One bare line misses thin wedge rims and flank chines —
 // the widest surface found is also where a side-firing plume clears the hull, so it is the
 // physically correct seat for the port.
 function flankSurfaceAt(skinMesh, x, y, side) {
-  let best = null;
-  for (const dy of [0, -0.03, 0.03, -0.06, 0.06, -0.1, 0.1]) {
-    const hit = raySkinHit(skinMesh, x, y + dy, side);
-    if (hit && (!best || Math.abs(hit.z) > Math.abs(best.z))) best = hit;
-  }
-  return best;
+  const index = skinMesh && skinMesh.userData && skinMesh.userData.skinSeatIndex;
+  return index ? flankSeat(index, x, y, side, RAY_FAR_Z) : null;
 }
 
 // One soup per authored hull record: identical for every ship built from it, so spawn-time

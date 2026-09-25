@@ -496,6 +496,11 @@ try {
     for (const row of cpuProfile.topSelf.slice(0, 20)) console.log(`    ${row.ms}ms  ${row.fn}`);
     console.log('  cpu top inclusive (game source):');
     for (const row of cpuProfile.topTotalInGameSource.slice(0, 30)) console.log(`    ${row.ms}ms  ${row.fn}`);
+    console.log('  longest busy stretches (what paid for the longest frames):');
+    for (const stretch of cpuProfile.longestStretches || []) {
+      console.log(`    ${stretch.ms}ms at +${stretch.atMs}ms`);
+      for (const row of stretch.top.slice(0, 8)) console.log(`      ${row.ms}ms  ${row.fn}`);
+    }
   }
   console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`);
   for (const e of flightLinkEvents.slice(0, 40)) {
