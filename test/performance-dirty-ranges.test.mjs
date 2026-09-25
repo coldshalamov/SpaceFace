@@ -38,6 +38,7 @@ function windowFixture(variantId, {
   logicalBytes = 12_000,
   requestedBytes,
   driverBytes,
+  managedDriverBytes = driverBytes,
   frameP95 = 16.8,
 } = {}) {
   return {
@@ -57,6 +58,14 @@ function windowFixture(variantId, {
         requestedUploadBytes: requestedBytes,
         uploadRangeCount: 900,
         probeFullUploads: variantId === DYNAMIC_BUFFER_FULL_SPAN_VARIANT ? 900 : 0,
+      },
+      partialUploadCensus: {
+        resolvedBytes: driverBytes,
+        unresolvedBytes: 0,
+        coordinatorOwnedBytes: managedDriverBytes,
+        coordinatorOwnedFullBytes: 0,
+        coordinatorTrackedViews: 12,
+        top: [],
       },
     },
     tier1: {
@@ -430,6 +439,44 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
     evaluateDirtyRangeComparison(noDriverGain, { runtimeKind: 'browser' }).failures.join(' '),
     /driver upload bytes/i,
   );
+});
+
+test('the driver leg grades coordinator-managed bytes, not ambient foreign traffic', () => {
+  // 2026-09-25: ambient writers (SF_WeaponRibbons re-poses its whole buffers every frame
+  // regardless of upload policy) dominated the raw tier-1 total and swung the driver ratio
+  // 13.8%↔58% between identical builds — the gate measured the combat phase that landed in
+  // each window, not the feature. The census attributes every driver write to its source
+  // view; the leg compares only bytes on coordinator-tracked views.
+  const ambientHeavy = {
+    windows: [
+      windowFixture('baseline', {
+        logicalBytes: 2_000_000,
+        requestedBytes: 2_200_000,
+        driverBytes: 34_500_000,
+        managedDriverBytes: 2_400_000,
+      }),
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, {
+        logicalBytes: 1_800_000,
+        requestedBytes: 21_750_000,
+        driverBytes: 39_150_000,
+        managedDriverBytes: 22_000_000,
+      }),
+    ],
+  };
+  const scoped = evaluateDirtyRangeComparison(ambientHeavy, { runtimeKind: 'browser' });
+  assert.equal(scoped.pass, true, `ambient-dominated totals must not fail the leg: ${scoped.failures}`);
+  assert.ok(scoped.metrics.driverUploadByteReductionFraction > 0.85);
+  assert.ok(scoped.metrics.rawDriverUploadByteReductionFraction < 0.25,
+    'the raw ambient-inclusive total stays on the record as diagnostic-only');
+
+  const noCensus = evaluateDirtyRangeComparison({
+    windows: ambientHeavy.windows.map((window) => ({
+      ...window,
+      dynamicBuffers: { ...window.dynamicBuffers, partialUploadCensus: null },
+    })),
+  }, { runtimeKind: 'browser' });
+  assert.match(noCensus.failures.join(' '), /partial-upload census/i,
+    'a window without census attribution must fail closed, not grade an unattributed total');
 });
 
 test('dirty-range comparator refuses missing and contaminated capture windows', () => {

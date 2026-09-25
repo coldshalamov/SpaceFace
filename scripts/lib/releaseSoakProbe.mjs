@@ -2840,20 +2840,40 @@ async function sampleRafWindow(page, {
           }
         });
       }
+      // Views the dynamic-range coordinator tracks, exposed as a non-enumerable getter on
+      // its diagnostics object. Census rows on those views are the driver bytes the
+      // dirty-range system actually controls; everything else is ambient foreign traffic.
+      const tracked = state?.render?.dynamicBufferRanges?.trackedViews;
+      const trackedSet = tracked instanceof Set ? tracked : null;
       let resolvedBytes = 0;
       let unresolvedBytes = 0;
+      let coordinatorOwnedBytes = 0;
+      let coordinatorOwnedFullBytes = 0;
       const rows = entries.map(([view, stat]) => {
         const owner = byView.get(view) ?? null;
+        const coordinatorOwned = trackedSet ? trackedSet.has(view) : false;
         if (owner) resolvedBytes += stat.bytes; else unresolvedBytes += stat.bytes;
+        if (coordinatorOwned) {
+          coordinatorOwnedBytes += stat.bytes;
+          coordinatorOwnedFullBytes += stat.fullBytes || 0;
+        }
         return {
           owner,
+          coordinatorOwned,
           sourceLength: Number(view.length) || null,
           calls: stat.calls,
           bytes: stat.bytes,
         };
       });
       rows.sort((a, b) => b.bytes - a.bytes);
-      return { resolvedBytes, unresolvedBytes, top: rows.slice(0, 24) };
+      return {
+        resolvedBytes,
+        unresolvedBytes,
+        coordinatorOwnedBytes,
+        coordinatorOwnedFullBytes,
+        coordinatorTrackedViews: trackedSet ? trackedSet.size : null,
+        top: rows.slice(0, 24),
+      };
     }
 
     function readRouteProof() {

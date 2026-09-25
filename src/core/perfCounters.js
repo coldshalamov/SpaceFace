@@ -452,13 +452,19 @@ export function createPerfCounters() {
       if (!enabled) return;
       record(full ? 'bufferFullUploads' : 'bufferPartialUploads', 1);
       record('bufferUploadBytes', Number.isFinite(bytes) && bytes > 0 ? bytes : 0);
-      // Armed by probes to answer "who wrote the ambient partial-upload traffic": a Map
+      // Armed by probes to answer "who wrote the ambient upload traffic": a Map
       // keyed by the CPU-side source view resolves buffer → geometry attribute in-page.
-      // Diagnostic-only — the map is null in normal play and costs nothing when disarmed.
-      if (!full && partialUploadCensus && sourceData && ArrayBuffer.isView(sourceData)) {
-        const entry = partialUploadCensus.get(sourceData) ?? { calls: 0, bytes: 0 };
+      // Fulls ride the same key so coordinator-owned bytes stay complete when an owner
+      // buffer takes the bufferData path. Diagnostic-only — the map is null in normal
+      // play and costs nothing when disarmed.
+      if (partialUploadCensus && sourceData && ArrayBuffer.isView(sourceData)) {
+        const entry = partialUploadCensus.get(sourceData) ?? { calls: 0, bytes: 0, fullCalls: 0, fullBytes: 0 };
         entry.calls += 1;
         entry.bytes += Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+        if (full) {
+          entry.fullCalls += 1;
+          entry.fullBytes += Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+        }
         partialUploadCensus.set(sourceData, entry);
       }
       // Full uploads are rare (new geometry / instanced-chunk buffers); partials are the
