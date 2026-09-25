@@ -1,0 +1,188 @@
+From 2911f4458b798f7f33aa67f49bfb06ac700f375e Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 14:51:29 -0400
+Subject: [PATCH] =?UTF-8?q?perf(core):=20trust=20physicsSleeping=20in=20pr?=
+ =?UTF-8?q?eStep=20movable=20walk=20(~2=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet Ceres keeps most movables physicsSleeping while the player flies; the
+preStep movable walk still paid Number(vel)/poseStill checks on every sleeper
+before continuing. Trust the Rapier island / physics-owner stamp the same way
+weapons/fields/spatialHash already do; awake movers still snapshot. Dirty-wake
+by clearing physicsSleeping. Different angle from held preStep-all-sleeping.
+Soft-GPU fps not claimed. Picture unchanged.
+---
+ src/core/coreSystem.js                       |  16 +++
+ test/prestep-trust-physics-sleeping.test.mjs | 120 +++++++++++++++++++
+ 2 files changed, 136 insertions(+)
+ create mode 100644 test/prestep-trust-physics-sleeping.test.mjs
+
+diff --git a/src/core/coreSystem.js b/src/core/coreSystem.js
+index 5e64e01cf..473150b37 100644
+--- a/src/core/coreSystem.js
++++ b/src/core/coreSystem.js
+@@ -23,6 +23,20 @@ export function getLifetimeSweepQuietClocksSkipForBench() {
+   return LIFETIME_SWEEP_QUIET_CLOCKS_SKIP !== false;
+ }
+ 
++// Bench A/B: production default ON. Quiet Ceres keeps most movables physicsSleeping while the
++// player flies — the preStep movable walk still paid Number(vel)/poseStill checks on every
++// sleeper before continuing. Trust physicsSleeping (Rapier island stamp / physics owner) the
++// same way weapons/fields/spatialHash already do; awake movers still snapshot. Dirty-wake:
++// clearing physicsSleeping restores the full snapshot path next preStep. Different angle from
++// held preStep-all-sleeping (whole-walk latch when ALL sleep — unfair with a live player).
++let PRESTEP_TRUST_PHYSICS_SLEEPING = true;
++export function setPreStepTrustPhysicsSleepingForBench(enabled) {
++  PRESTEP_TRUST_PHYSICS_SLEEPING = enabled !== false;
++}
++export function getPreStepTrustPhysicsSleepingForBench() {
++  return PRESTEP_TRUST_PHYSICS_SLEEPING !== false;
++}
++
+ function shortLivedClockLanesEmpty(index) {
+   if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+   const empty = (lane) => !lane || lane.length === 0;
+@@ -251,10 +265,12 @@ export const core = {
+     // pole (profile authoredPhysicsBody self under isMovableEntity). Trust the lane; mid-life
+     // dynamic flips already require re-index for spatial/physics lanes too.
+     const movables = index.movables;
++    const trustSleep = PRESTEP_TRUST_PHYSICS_SLEEPING !== false;
+     for (const e of movables) {
+       if (!e || !e.alive) continue;
+       const noInterp = !!(e.flags && e.flags.noInterp);
+       if (e.physicsSleeping === true && !noInterp) {
++        if (trustSleep) continue;
+         const svx = e.vel ? Number(e.vel.x) || 0 : 0;
+         const svz = e.vel ? Number(e.vel.z) || 0 : 0;
+         const swy = Number(e.angVel) || 0;
+diff --git a/test/prestep-trust-physics-sleeping.test.mjs b/test/prestep-trust-physics-sleeping.test.mjs
+new file mode 100644
+index 000000000..c5e6059c9
+--- /dev/null
++++ b/test/prestep-trust-physics-sleeping.test.mjs
+@@ -0,0 +1,120 @@
++/**
++ * #156 — preStep trusts physicsSleeping to skip sleeper vel/poseStill checks.
++ * Awake movers still snapshot; clearing physicsSleeping restores the walk (dirty-wake).
++ * Soft-GPU fps not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import {
++  core,
++  setPreStepTrustPhysicsSleepingForBench,
++  getPreStepTrustPhysicsSleepingForBench,
++} from '../src/core/coreSystem.js';
++import { hasDirty, DIRTY } from '../src/core/dirtyJournal.js';
++
++function boot(n = 12) {
++  const state = createGameState(15601);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  state.runtime = { profileId: 'production' };
++  state.meta = { seed: 15601, playtimeS: 0 };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 }, rot: 0,
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  player.physicsSleeping = false;
++  const sleepers = [];
++  for (let i = 0; i < n; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 200 + i * 20, z: 10 },
++      vel: { x: 0, z: 0 }, rot: 0,
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 0,
++      physicsSleeping: true,
++      data: {},
++    });
++    if (e.prevPos) { e.prevPos.x = e.pos.x; e.prevPos.z = e.pos.z; }
++    e.prevRot = e.rot;
++    sleepers.push(e);
++  }
++  for (let i = 0; i < 3; i++) core.preStep(1 / 60, state);
++  return { state, player, sleepers, helpers };
++}
++
++test('exports bench toggle default ON', () => {
++  setPreStepTrustPhysicsSleepingForBench(true);
++  assert.equal(getPreStepTrustPhysicsSleepingForBench(), true);
++  setPreStepTrustPhysicsSleepingForBench(false);
++  assert.equal(getPreStepTrustPhysicsSleepingForBench(), false);
++  setPreStepTrustPhysicsSleepingForBench(true);
++  assert.equal(getPreStepTrustPhysicsSleepingForBench(), true);
++});
++
++test('skips sleeper snapshot while trust is ON (prevPos stays latched)', () => {
++  setPreStepTrustPhysicsSleepingForBench(true);
++  const { state, sleepers } = boot(8);
++  const e = sleepers[0];
++  e.pos.x += 5;
++  const prevX = e.prevPos.x;
++  core.preStep(1 / 60, state);
++  assert.equal(e.prevPos.x, prevX);
++  assert.equal(e.physicsSleeping, true);
++});
++
++test('dirty-wake: clearing physicsSleeping restores snapshot + pose dirty', () => {
++  setPreStepTrustPhysicsSleepingForBench(true);
++  const { state, sleepers } = boot(8);
++  const e = sleepers[1];
++  e.pos.x += 7;
++  e.physicsSleeping = false;
++  core.preStep(1 / 60, state);
++  assert.equal(e.prevPos.x, e.pos.x);
++  assert.equal(hasDirty(state, DIRTY.POSE), true);
++});
++
++test('awake player still snapshots under trust ON', () => {
++  setPreStepTrustPhysicsSleepingForBench(true);
++  const { state, player } = boot(6);
++  player.physicsSleeping = false;
++  player.pos.x += 3;
++  core.preStep(1 / 60, state);
++  assert.equal(player.prevPos.x, player.pos.x);
++});
++
++test('noInterp sleeper still snapshots (trust does not cover noInterp)', () => {
++  setPreStepTrustPhysicsSleepingForBench(true);
++  const { state, sleepers } = boot(4);
++  const e = sleepers[0];
++  e.flags = e.flags || {};
++  e.flags.noInterp = true;
++  e.physicsSleeping = true;
++  e.pos.x += 4;
++  core.preStep(1 / 60, state);
++  assert.equal(e.prevPos.x, e.pos.x);
++});
++
++test('trust OFF restores vel/poseStill re-check (sleeper with pose drift snapshots)', () => {
++  setPreStepTrustPhysicsSleepingForBench(false);
++  try {
++    const { state, sleepers } = boot(4);
++    const e = sleepers[0];
++    e.physicsSleeping = true;
++    e.vel.x = 0;
++    e.vel.z = 0;
++    e.angVel = 0;
++    e.pos.x += 2;
++    core.preStep(1 / 60, state);
++    assert.equal(e.prevPos.x, e.pos.x);
++  } finally {
++    setPreStepTrustPhysicsSleepingForBench(true);
++  }
++});
+-- 
+2.53.0.windows.2
+

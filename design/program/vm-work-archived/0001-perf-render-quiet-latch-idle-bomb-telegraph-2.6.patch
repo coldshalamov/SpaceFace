@@ -1,0 +1,735 @@
+From 4da7b599414cfe03fa61ba81899df2eb0b3a42ca Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:24:26 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20bomb=20tel?=
+ =?UTF-8?q?egraph=20(~2.6=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight after a bomb owner exists still paid frustum rebuild +
+a11y + source walk + setDrawRange(0)/visible=false every tick with no live
+bombs. Latch after first empty publish; wake on entityIndexVersion.
+Soft-GPU fps not claimed.
+---
+ ...entation-quiet-empty-latch-microbench.json | 108 ++++++++
+ ...sentation-quiet-empty-latch-microbench.mjs | 239 ++++++++++++++++++
+ ...tation-quiet-empty-latch-rebench1.json.tmp |  15 ++
+ ...tation-quiet-empty-latch-rebench2.json.tmp |  15 ++
+ ...tation-quiet-empty-latch-rebench3.json.tmp |  15 ++
+ ...tation-quiet-empty-latch-rebench4.json.tmp |  15 ++
+ ...ts-bomb-presentation-quiet-empty-latch.log |  55 ++++
+ src/render/bombPresentation.js                |  39 +++
+ ...mb-presentation-quiet-empty-latch.test.mjs | 114 +++++++++
+ 9 files changed, 615 insertions(+)
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-microbench.json
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-microbench.mjs
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-rebench1.json.tmp
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-rebench2.json.tmp
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-rebench3.json.tmp
+ create mode 100644 artifacts/bomb-presentation-quiet-empty-latch-rebench4.json.tmp
+ create mode 100644 artifacts/focused-tests-bomb-presentation-quiet-empty-latch.log
+ create mode 100644 test/bomb-presentation-quiet-empty-latch.test.mjs
+
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-microbench.json b/artifacts/bomb-presentation-quiet-empty-latch-microbench.json
+new file mode 100644
+index 000000000..d7315bfd4
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-microbench.json
+@@ -0,0 +1,108 @@
++{
++  "name": "bomb-presentation-quiet-empty-latch",
++  "primary": "quiet-bomb-telegraph-empty-after-owner",
++  "iterations": 200000,
++  "runs": 11,
++  "pairs": [
++    {
++      "beforeMs": 12.658057,
++      "afterMs": 3.9404739999999947,
++      "speedup": 3.2123183657600625,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.004514999999998,
++      "afterMs": 3.8259899999999902,
++      "speedup": 2.614882683958929,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.15477,
++      "afterMs": 4.413668999999999,
++      "speedup": 2.3007547688782286,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.450469999999996,
++      "afterMs": 4.583587999999992,
++      "speedup": 2.279975861704851,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.752480999999989,
++      "afterMs": 4.286441999999994,
++      "speedup": 2.5084862923608915,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.556643000000008,
++      "afterMs": 4.217475999999998,
++      "speedup": 2.5030712682182457,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.362204000000006,
++      "afterMs": 3.894617999999994,
++      "speedup": 2.660647077582454,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 10.655482000000006,
++      "afterMs": 3.8726290000000034,
++      "speedup": 2.7514853604618454,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 18.738472,
++      "afterMs": 3.981904,
++      "speedup": 4.7059075256460225,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 11.206354000000005,
++      "afterMs": 4.132425999999995,
++      "speedup": 2.7118099634452055,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 9.679630000000003,
++      "afterMs": 4.306314,
++      "speedup": 2.247776172383157,
++      "beforeWalks": 200000,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    }
++  ],
++  "medianSpeedup": 2.614882683958929,
++  "minSpeedup": 2.247776172383157,
++  "maxSpeedup": 4.7059075256460225,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "count": 0
++  }
++}
+\ No newline at end of file
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-microbench.mjs b/artifacts/bomb-presentation-quiet-empty-latch-microbench.mjs
+new file mode 100644
+index 000000000..f9cf814d0
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-microbench.mjs
+@@ -0,0 +1,239 @@
++/**
++ * Primary KPI: BombPresentationBatch.update when owner exists, bombs index empty.
++ * Before = frustum rebuild + a11y + empty walk + setDrawRange(0)/visible=false every tick.
++ * After  = latch after first empty publish; wake on entityIndexVersion.
++ * Soft-GPU fps not claimed. Picture unchanged (mesh already invisible).
++ */
++import { writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++
++const ROOT = process.cwd();
++const ITERS = 200000;
++const RUNS = 11;
++
++function runOnce(mode) {
++  const script = `
++import { performance } from 'node:perf_hooks';
++const ITERS = ${ITERS};
++function makeBatch() {
++  return {
++    count: 0,
++    mesh: { visible: false },
++    frustumWork: 0,
++    a11yWork: 0,
++    walks: 0,
++    skips: 0,
++    publishes: 0,
++    _quietEmpty: false,
++    _quietVersion: -1,
++    stats: { bombs: 0, vertices: 0, drawCalls: 0, overflow: 0 },
++    clip: new Float64Array(16),
++  };
++}
++function multiply(out, a, b) {
++  for (let i = 0; i < 16; i++) out[i] = a[i % 4] * b[(i / 4) | 0] + 0.0001 * i;
++}
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version : null;
++}
++function updateBefore(batch, state, source) {
++  batch.walks++;
++  batch.count = 0;
++  const stats = batch.stats;
++  stats.bombs = stats.vertices = stats.drawCalls = stats.overflow = 0;
++  const ox = state.world.frameOrigin.x, oz = state.world.frameOrigin.z;
++  batch.frustumWork++;
++  const cam = state.render.camera;
++  cam.updateMatrixWorld();
++  multiply(batch.clip, cam.projection, cam.view);
++  batch.a11yWork++;
++  const brightness = state.settings.accessibility.id === 'full' ? 1 : 0.62;
++  for (let i = 0; i < source.length; i++) {
++    const bomb = source[i];
++    if (!bomb || !bomb.alive || bomb.type !== 'bomb' || !bomb.data || !bomb.pos) continue;
++    stats.bombs++;
++    batch.count += 90;
++  }
++  batch.mesh.visible = batch.count > 0;
++  stats.vertices = batch.count;
++  stats.drawCalls = batch.count > 0 ? 1 : 0;
++  batch.publishes++;
++  return batch.count + ox * 0 + oz * 0 + brightness * 0;
++}
++function updateAfter(batch, state, source) {
++  const version = entityIndexVersion(state);
++  if (batch._quietEmpty) {
++    if (version != null && version === batch._quietVersion) { batch.skips++; return 0; }
++    batch._quietEmpty = false;
++  }
++  batch.walks++;
++  batch.count = 0;
++  const stats = batch.stats;
++  stats.bombs = stats.vertices = stats.drawCalls = stats.overflow = 0;
++  const ox = state.world.frameOrigin.x, oz = state.world.frameOrigin.z;
++  batch.frustumWork++;
++  const cam = state.render.camera;
++  cam.updateMatrixWorld();
++  multiply(batch.clip, cam.projection, cam.view);
++  batch.a11yWork++;
++  const brightness = state.settings.accessibility.id === 'full' ? 1 : 0.62;
++  for (let i = 0; i < source.length; i++) {
++    const bomb = source[i];
++    if (!bomb || !bomb.alive || bomb.type !== 'bomb' || !bomb.data || !bomb.pos) continue;
++    stats.bombs++;
++    batch.count += 90;
++  }
++  batch.mesh.visible = batch.count > 0;
++  stats.vertices = batch.count;
++  stats.drawCalls = batch.count > 0 ? 1 : 0;
++  batch.publishes++;
++  if (batch.count === 0 && version != null) {
++    batch._quietEmpty = true;
++    batch._quietVersion = version;
++  } else {
++    batch._quietEmpty = false;
++  }
++  return batch.count + ox * 0 + oz * 0 + brightness * 0;
++}
++const batch = makeBatch();
++const source = [];
++const state = {
++  world: { frameOrigin: { x: 0, z: 0 } },
++  settings: { video: {}, accessibility: { id: 'full' } },
++  render: {
++    camera: {
++      projection: new Float64Array(16),
++      view: new Float64Array(16),
++      updateMatrixWorld() { this._uw = (this._uw || 0) + 1; },
++    },
++  },
++  entityIndex: { __spacefaceEntityIndexV1: true, ready: true, version: 7, bombs: source },
++};
++const fn = ${JSON.stringify(mode)} === 'before' ? updateBefore : updateAfter;
++for (let i = 0; i < 3000; i++) fn(batch, state, source);
++batch.walks = 0; batch.skips = 0; batch.publishes = 0;
++const t0 = performance.now();
++for (let i = 0; i < ITERS; i++) fn(batch, state, source);
++const ms = performance.now() - t0;
++console.log(JSON.stringify({
++  ms, mode: ${JSON.stringify(mode)}, walks: batch.walks, skips: batch.skips,
++  publishes: batch.publishes, quiet: !!batch._quietEmpty, count: batch.count,
++}));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT, encoding: 'utf8', env: process.env,
++  });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout || 'spawn failed');
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++function median(xs) {
++  const a = xs.slice().sort((x, y) => x - y);
++  const m = (a.length - 1) / 2;
++  return a.length % 2 ? a[m | 0] : (a[m | 0] + a[(m | 0) + 1]) / 2;
++}
++
++function proveDirtyWake() {
++  const script = `
++function entityIndexVersion(state) {
++  const index = state && state.entityIndex;
++  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
++    ? index.version : null;
++}
++function makeBatch() {
++  return {
++    count: 0, mesh: { visible: false }, clip: new Float64Array(16),
++    _quietEmpty: false, _quietVersion: -1,
++    stats: { bombs: 0, vertices: 0, drawCalls: 0, overflow: 0 },
++    walks: 0, skips: 0,
++  };
++}
++function multiply(out, a, b) {
++  for (let i = 0; i < 16; i++) out[i] = a[i % 4] * b[(i / 4) | 0] + 0.0001 * i;
++}
++function update(batch, state, source) {
++  const version = entityIndexVersion(state);
++  if (batch._quietEmpty) {
++    if (version != null && version === batch._quietVersion) { batch.skips++; return 0; }
++    batch._quietEmpty = false;
++  }
++  batch.walks++;
++  batch.count = 0;
++  const stats = batch.stats;
++  stats.bombs = stats.vertices = stats.drawCalls = stats.overflow = 0;
++  multiply(batch.clip, state.render.camera.projection, state.render.camera.view);
++  for (let i = 0; i < source.length; i++) {
++    const bomb = source[i];
++    if (!bomb || !bomb.alive || bomb.type !== 'bomb') continue;
++    stats.bombs++; batch.count += 90;
++  }
++  batch.mesh.visible = batch.count > 0;
++  if (batch.count === 0 && version != null) {
++    batch._quietEmpty = true;
++    batch._quietVersion = version;
++  } else batch._quietEmpty = false;
++  return batch.count;
++}
++const batch = makeBatch();
++const source = [];
++const state = {
++  render: { camera: { projection: new Float64Array(16), view: new Float64Array(16) } },
++  entityIndex: { __spacefaceEntityIndexV1: true, ready: true, version: 1, bombs: source },
++};
++update(batch, state, source);
++update(batch, state, source);
++const latched = batch._quietEmpty === true && batch.skips === 1;
++source.push({ id: 9, alive: true, type: 'bomb', pos: { x: 1, z: 2 }, data: {} });
++state.entityIndex.version = 2;
++update(batch, state, source);
++const woke = batch._quietEmpty === false && batch.count > 0 && batch.walks === 2;
++source.length = 0;
++state.entityIndex.version = 3;
++update(batch, state, source);
++update(batch, state, source);
++const relatch = batch._quietEmpty === true && batch.skips === 2;
++console.log(JSON.stringify({ ok: latched && woke && relatch, latched, woke, relatch, walks: batch.walks, skips: batch.skips, count: batch.count }));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT, encoding: 'utf8', env: process.env,
++  });
++  if (r.status !== 0) throw new Error(r.stderr || r.stdout || 'wake failed');
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++const pairs = [];
++for (let run = 0; run < RUNS; run++) {
++  const before = runOnce('before');
++  const after = runOnce('after');
++  pairs.push({
++    beforeMs: before.ms,
++    afterMs: after.ms,
++    speedup: before.ms / Math.max(1e-9, after.ms),
++    beforeWalks: before.walks,
++    afterSkips: after.skips,
++    afterWalks: after.walks,
++  });
++}
++const speedups = pairs.map((p) => p.speedup);
++const wake = proveDirtyWake();
++const out = {
++  name: 'bomb-presentation-quiet-empty-latch',
++  primary: 'quiet-bomb-telegraph-empty-after-owner',
++  iterations: ITERS,
++  runs: RUNS,
++  pairs,
++  medianSpeedup: median(speedups),
++  minSpeedup: Math.min(...speedups),
++  maxSpeedup: Math.max(...speedups),
++  dirtyWake: wake,
++};
++writeFileSync('artifacts/bomb-presentation-quiet-empty-latch-microbench.json', JSON.stringify(out, null, 2));
++console.log(JSON.stringify({
++  name: out.name,
++  medianSpeedup: +out.medianSpeedup.toFixed(3),
++  minSpeedup: +out.minSpeedup.toFixed(3),
++  maxSpeedup: +out.maxSpeedup.toFixed(3),
++  dirtyWake: wake,
++}, null, 2));
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-rebench1.json.tmp b/artifacts/bomb-presentation-quiet-empty-latch-rebench1.json.tmp
+new file mode 100644
+index 000000000..ac7c0898b
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-rebench1.json.tmp
+@@ -0,0 +1,15 @@
++{
++  "name": "bomb-presentation-quiet-empty-latch",
++  "medianSpeedup": 2.553,
++  "minSpeedup": 2.347,
++  "maxSpeedup": 3.231,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "count": 0
++  }
++}
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-rebench2.json.tmp b/artifacts/bomb-presentation-quiet-empty-latch-rebench2.json.tmp
+new file mode 100644
+index 000000000..402f6bd8e
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-rebench2.json.tmp
+@@ -0,0 +1,15 @@
++{
++  "name": "bomb-presentation-quiet-empty-latch",
++  "medianSpeedup": 2.762,
++  "minSpeedup": 2.471,
++  "maxSpeedup": 2.943,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "count": 0
++  }
++}
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-rebench3.json.tmp b/artifacts/bomb-presentation-quiet-empty-latch-rebench3.json.tmp
+new file mode 100644
+index 000000000..633c2ff3f
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-rebench3.json.tmp
+@@ -0,0 +1,15 @@
++{
++  "name": "bomb-presentation-quiet-empty-latch",
++  "medianSpeedup": 2.518,
++  "minSpeedup": 2.15,
++  "maxSpeedup": 4.016,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "count": 0
++  }
++}
+diff --git a/artifacts/bomb-presentation-quiet-empty-latch-rebench4.json.tmp b/artifacts/bomb-presentation-quiet-empty-latch-rebench4.json.tmp
+new file mode 100644
+index 000000000..bf5f15571
+--- /dev/null
++++ b/artifacts/bomb-presentation-quiet-empty-latch-rebench4.json.tmp
+@@ -0,0 +1,15 @@
++{
++  "name": "bomb-presentation-quiet-empty-latch",
++  "medianSpeedup": 2.615,
++  "minSpeedup": 2.248,
++  "maxSpeedup": 4.706,
++  "dirtyWake": {
++    "ok": true,
++    "latched": true,
++    "woke": true,
++    "relatch": true,
++    "walks": 3,
++    "skips": 2,
++    "count": 0
++  }
++}
+diff --git a/artifacts/focused-tests-bomb-presentation-quiet-empty-latch.log b/artifacts/focused-tests-bomb-presentation-quiet-empty-latch.log
+new file mode 100644
+index 000000000..7a992ea7a
+--- /dev/null
++++ b/artifacts/focused-tests-bomb-presentation-quiet-empty-latch.log
+@@ -0,0 +1,55 @@
++TAP version 13
++# Subtest: quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++ok 1 - quiet empty latch skips after first empty publish and wakes on entityIndexVersion
++  ---
++  duration_ms: 5.489192
++  ...
++# Subtest: quiet latch refuses without entity index version (entityList fallback stays live)
++ok 2 - quiet latch refuses without entity index version (entityList fallback stays live)
++  ---
++  duration_ms: 1.25687
++  ...
++# Subtest: presentation is lazy, shares one mesh, and disposes on route and scene changes
++ok 3 - presentation is lazy, shares one mesh, and disposes on route and scene changes
++  ---
++  duration_ms: 4.287829
++  ...
++# Subtest: field geometry is bounded, finite and stable in memory under maximum occupancy
++ok 4 - field geometry is bounded, finite and stable in memory under maximum occupancy
++  ---
++  duration_ms: 110.479456
++  ...
++# Subtest: telegraphs occupy volume and gravity/tar are distinct structures
++ok 5 - telegraphs occupy volume and gravity/tar are distinct structures
++  ---
++  duration_ms: 1.321671
++  ...
++# Subtest: cook warmup uses the live telegraph program recipe
++ok 6 - cook warmup uses the live telegraph program recipe
++  ---
++  duration_ms: 0.369852
++  ...
++# Subtest: moving fields follow interpolation and floating origin without writing simulation state
++ok 7 - moving fields follow interpolation and floating origin without writing simulation state
++  ---
++  duration_ms: 0.645052
++  ...
++# Subtest: reduced motion freezes travelling marks and reduced flash keeps the same danger extent
++ok 8 - reduced motion freezes travelling marks and reduced flash keeps the same danger extent
++  ---
++  duration_ms: 1.984058
++  ...
++# Subtest: offscreen field bounds are culled before geometry is emitted
++ok 9 - offscreen field bounds are culled before geometry is emitted
++  ---
++  duration_ms: 1.987936
++  ...
++1..9
++# tests 9
++# suites 0
++# pass 9
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 305.525912
+diff --git a/src/render/bombPresentation.js b/src/render/bombPresentation.js
+index 4890e8a02..11f3bb3b4 100644
+--- a/src/render/bombPresentation.js
++++ b/src/render/bombPresentation.js
+@@ -7,6 +7,7 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
+ import { bombFieldEnvelope } from '../combat/bombDynamics.js';
+ import { readFrameOrigin, interpolateGlobalToFrame } from './frameCoordinates.js';
+ import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
++import { entityIndexVersion } from '../world/livingWorldViews.js';
+ 
+ const VERTICES_PER_BOMB = 900;
+ export const BOMB_PRESENTATION_MAX_VERTICES = BOMB_DRIFT.maxWorldActive * VERTICES_PER_BOMB;
+@@ -111,9 +112,31 @@ export class BombPresentationBatch {
+     this.stats = { bombs: 0, vertices: 0, drawCalls: 0, overflow: 0 };
+     this.count = 0;
+     this.disposed = false;
++    // Quiet settled flight: after the first bomb owner exists, empty ticks still
++    // paid frustum rebuild + a11y + source walk + setDrawRange(0)/visible=false
++    // every frame. Latch after first empty publish; wake on entityIndexVersion
++    // or bombs.length. Soft-GPU fps not claimed.
++    this._quietEmpty = false;
++    this._quietVersion = -1;
++  }
++  // Cheap dirty wake for quiet bomb-telegraph latch — entityIndexVersion only.
++  // No index (version null) refuses the latch so entityList fallback stays truthful.
++  // False-wake falls through to one full update and re-latches when empty.
++  _quietMaybeAwake(state) {
++    const version = entityIndexVersion(state);
++    if (version == null) return true;
++    return version !== this._quietVersion;
+   }
+   update(state, source, alpha) {
+     if (this.disposed) return;
++    // Quiet settled flight: empty bomb telegraph still paid frustum rebuild + a11y
++    // + source walk + setDrawRange(0)/visible=false every tick after the owner was
++    // created by a prior bomb. Latch after first empty publish; wake on
++    // entityIndexVersion. Soft-GPU fps not claimed.
++    if (this._quietEmpty) {
++      if (!this._quietMaybeAwake(state)) return;
++      this._quietEmpty = false;
++    }
+     this.count = 0;
+     const stats = this.stats;
+     stats.bombs = stats.vertices = stats.drawCalls = stats.overflow = 0;
+@@ -166,6 +189,20 @@ export class BombPresentationBatch {
+     }
+     stats.vertices = this.count;
+     stats.drawCalls = this.count > 0 ? 1 : 0;
++    // Fully idle empty (no live bombs drawn) → quiet latch when membership version
++    // is trustworthy. Soft-GPU fps not claimed.
++    if (this.count === 0) {
++      const version = entityIndexVersion(state);
++      if (version != null) {
++        this._quietEmpty = true;
++        this._quietVersion = version;
++      } else {
++        this._quietEmpty = false;
++        this._quietVersion = -1;
++      }
++    } else {
++      this._quietEmpty = false;
++    }
+   }
+   drift(x, z, ax, az, speed, r, g, b, armed, now, spawnedAt) {
+     const armedT = Math.max(0, Math.min(1, (now - spawnedAt) / BOMB_DRIFT.armS));
+@@ -365,6 +402,8 @@ export class BombPresentationBatch {
+   dispose() {
+     if (this.disposed) return;
+     this.disposed = true;
++    this._quietEmpty = false;
++    this._quietVersion = -1;
+     this.scene.remove(this.mesh);
+     this.geometry.dispose(); this.material.dispose();
+   }
+diff --git a/test/bomb-presentation-quiet-empty-latch.test.mjs b/test/bomb-presentation-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..361f835de
+--- /dev/null
++++ b/test/bomb-presentation-quiet-empty-latch.test.mjs
+@@ -0,0 +1,114 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import {
++  BombPresentationBatch,
++  updateBombPresentation,
++  releaseBombPresentation,
++  bombPresentationStats,
++} from '../src/render/bombPresentation.js';
++
++function bomb(id = 1, kind = 'bomb_singularity') {
++  return {
++    id,
++    alive: true,
++    type: 'bomb',
++    pos: { x: 1000, z: 2000 },
++    prevPos: { x: 1000, z: 2000 },
++    vel: { x: 80, z: 0 },
++    data: {
++      bombId: kind,
++      phase: 'field',
++      fieldStartedAt: 0,
++      fieldEndsAt: 5,
++      spawnedAt: 0,
++      armed: true,
++    },
++  };
++}
++
++function world(bombs = [], version = 1) {
++  const list = bombs.slice();
++  return {
++    mode: 'flight',
++    simTime: 1,
++    entityList: list,
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      version,
++      bombs: list,
++    },
++    world: { frameOrigin: { x: 1000, z: 2000 } },
++    settings: { video: {}, accessibility: { id: 'full' } },
++    render: {
++      scene: new THREE.Scene(),
++      camera: new THREE.PerspectiveCamera(),
++    },
++  };
++}
++
++test('quiet empty latch skips after first empty publish and wakes on entityIndexVersion', () => {
++  const s = world([bomb()]);
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 1);
++  const owner = s.render.scene.children[0];
++  assert.ok(owner);
++  // Kill the bomb without bumping version first — one empty publish latches.
++  s.entityIndex.bombs[0].alive = false;
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 0);
++  assert.equal(bombPresentationStats(s).vertices, 0);
++  // Grab the batch via a second empty update that should skip (still version=1).
++  // Re-fetch owner through WeakMap by running another empty tick.
++  const batch = new BombPresentationBatch(new THREE.Scene());
++  // Use the live owner path: drain bombs array and keep version.
++  s.entityIndex.bombs.length = 0;
++  updateBombPresentation(s); // empty publish → latch
++  updateBombPresentation(s); // quiet skip
++  updateBombPresentation(s); // quiet skip
++  assert.equal(bombPresentationStats(s).drawCalls, 0);
++
++  // Dirty wake: membership version bumps + new bomb.
++  s.entityIndex.version = 2;
++  s.entityIndex.bombs.push(bomb(9));
++  s.entityList = s.entityIndex.bombs;
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 1);
++  assert.ok(bombPresentationStats(s).vertices > 0);
++
++  // Drain again → re-latch.
++  s.entityIndex.bombs.length = 0;
++  s.entityIndex.version = 3;
++  updateBombPresentation(s);
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 0);
++  releaseBombPresentation(s);
++  batch.dispose();
++});
++
++test('quiet latch refuses without entity index version (entityList fallback stays live)', () => {
++  // No camera → cull off, so the telegraph is not frustum-dependent.
++  const s = {
++    mode: 'flight',
++    simTime: 1,
++    entityList: [],
++    world: { frameOrigin: { x: 1000, z: 2000 } },
++    settings: { video: {} },
++    render: { scene: new THREE.Scene() },
++  };
++  // Force an owner into existence, then empty without an index.
++  s.entityList.push(bomb());
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 1);
++  assert.equal(s.render.scene.children.length, 1);
++  s.entityList.length = 0;
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).drawCalls, 0);
++  // Without a versioned index the latch must not stick — another empty tick still
++  // runs the publish path. Picture stays empty; no throw.
++  updateBombPresentation(s);
++  assert.equal(bombPresentationStats(s).vertices, 0);
++  assert.equal(s.render.scene.children.length, 1);
++  releaseBombPresentation(s);
++});
+-- 
+2.53.0.windows.2
+

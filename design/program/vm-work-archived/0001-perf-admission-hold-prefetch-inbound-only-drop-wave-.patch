@@ -1,0 +1,94 @@
+From 730e76ecb6fb50a44d827625f567cdb625272b3d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 23:03:04 -0400
+Subject: [PATCH] =?UTF-8?q?perf(admission):=20hold-prefetch=20inbound-only?=
+ =?UTF-8?q?=20=E2=80=94=20drop=20wave-catalog=20kick?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Keep first-flight hold exempt + kickDecode for contacts on the approach
+runway. Unwire run:wavePlanned whole-tier hull decode (soft-GPU hitch /
+game-speed regress class). Wave helpers remain for forensics.
+---
+ src/render/renderer.js                | 28 +++++++++------------------
+ test/wave-hull-decode-runway.test.mjs |  7 ++++---
+ 2 files changed, 13 insertions(+), 22 deletions(-)
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..ea764129b 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1545,31 +1545,19 @@ function kickDecodeRunwayAssets(owner, entities) {
+   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
+   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
+   const list = Array.isArray(entities) ? entities : [];
+-  // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop.
+-  const ordered = list.length > 1
+-    ? list.slice().sort((a, b) => {
+-      const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
+-      const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
+-      return aw - bw;
+-    })
+-    : list;
++  // Inbound-only: cook authored decode for contacts already on the approach runway
++  // (isEntityAuthoredUpgradeRelevant). Do not prefer or unlock via wave-catalog keys.
+   let started = 0;
+-  for (let i = 0; i < ordered.length && started < 2; i++) {
+-    const entity = ordered[i];
++  for (let i = 0; i < list.length && started < 2; i++) {
++    const entity = list[i];
+     if (!entity || entity.alive === false) continue;
+     if (entity.type !== 'ship' && entity.type !== 'station') continue;
+     if (!meshNeedsAuthoredDecode(owner, entity)) continue;
+     if (pending.has(entity.id)) continue;
+-    // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
+-    // once the schedule has named them.
+-    if (!entityMatchesWaveHullRunway(entity, state)
+-        && !isEntityAuthoredUpgradeRelevant(entity, state)) continue;
++    if (!isEntityAuthoredUpgradeRelevant(entity, state)) continue;
+     pending.add(entity.id);
+     started += 1;
+-    const opts = entityMatchesWaveHullRunway(entity, state)
+-      ? { residencyRole: 'wave-hull-decode-runway' }
+-      : {};
+-    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
++    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {})).catch(() => {}).finally(() => {
+       pending.delete(entity.id);
+     });
+   }
+@@ -9345,7 +9333,9 @@ export const render = {
+     // kicks decode/runway for the plan's real hull keys only — no exemplar mesh, no
+     // pipeline precompile (soft-GPU skips those anyway).
+     onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+-    onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
++    // Inbound-only hold-prefetch: do NOT kick whole-tier wave catalog decode on
++    // run:wavePlanned (soft-GPU hitch/game-speed regress — midflight-wave-hull miss).
++    // Approach contacts still cook via isHoldExemptMeshBuild + kickDecodeRunwayAssets.
+     onBus('run:ended', () => {
+       this._releaseSurvivalRosterPrewarm('run_ended');
+       clearWaveHullRunwayKeys(this.state);
+diff --git a/test/wave-hull-decode-runway.test.mjs b/test/wave-hull-decode-runway.test.mjs
+index 1f97f89c9..2588948b0 100644
+--- a/test/wave-hull-decode-runway.test.mjs
++++ b/test/wave-hull-decode-runway.test.mjs
+@@ -114,12 +114,13 @@ test('collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared sh
+   }
+ });
+ 
+-test('renderer wires run:wavePlanned to wave-hull decode runway (source contract)', async () => {
++test('renderer keeps wave-hull helpers but does not wire run:wavePlanned kick (inbound-only)', async () => {
+   const fs = await import('node:fs/promises');
+   const src = await fs.readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+-  assert.match(src, /onBus\('run:wavePlanned'/);
++  // Helpers remain for forensics / owner-GPU re-check; the soft-GPU hitch package
++  // must not auto-kick whole-tier wave catalog decode on plan.
+   assert.match(src, /_kickWaveHullDecodeRunway/);
+   assert.match(src, /kickWaveHullDecodeAssets/);
+   assert.match(src, /collectWaveHullDecodeKeys/);
+-  assert.doesNotMatch(src, /onBus\('run:wavePlanned'[\s\S]{0,200}_admitSurvivalRosterPrewarm/);
++  assert.doesNotMatch(src, /onBus\('run:wavePlanned'/);
+ });
+-- 
+2.53.0.windows.2
+

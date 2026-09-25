@@ -3941,6 +3941,17 @@ A local row changes code only to move a red number. Picture stays.
 Forbidden as a performance row: bloom off, shader-prewarm retries, a low preset, a Rust port, a
 WebGPU swap, a sim worker before D1 and D4 are green.
 
+**vm-drop import ledger (2026-09-24).** Imported to master: #166 zero-copy render-package digest,
+#167 single-copy embedded KTX2, #168 in-place GLB body + its after-#167 companion, #169 readiness
+polling without `isProgram`, #170 retail vendored-GLTFLoader alias. Still packaged and pending in
+`design/program/vm-drop/*/patches/`: the quiet-latch series #31–#165 (~135 folders; each folder's
+`IMPORT.md` gives apply order and `DONE.md` is the gate). Twelve unvetted VM scratch candidates the
+VM never packaged were archived to `design/program/vm-work-archived/` when `vm-work/*` was deleted.
+Owner calls open: (a) whether retail aliases the whole vendored `three` so the two dev-only
+`three.module.js` SpaceFace fixes (empty shadow-sampler depth texture; destroyed-program readiness)
+reach players — the #170 alias map would carry it; (b) the Rapier call-frequency experiment the VM
+shelved at ~1.1–1.2×. `origin/vm-drop` is permanent; `vm-work/*` scratch is gone.
+
 ### 22.7 Wave E — the rest of a ship
 
 A studio does not leave input, language, accessibility, or the front door unscheduled. These close
