@@ -380,8 +380,11 @@ test('tether hum sleeps while slack and wakes on the frame the line loads', () =
   host.state.player.tether = { active: true, strain: 0.5 };
   ctx.currentTime += 1 / 60;
   host._updateTetherHum();
-  const expectedFreq = 90 + 0.5 * 220;
-  const expectedGain = 0.006 + Math.pow(0.5, 1.25) * 0.13;
+  // resolveTetherTone owns the tone numbers and quantizes them (hz to 1/100, gain to 1e-6) so
+  // the bed's write-gate sees a held float — the decaying sidechain duck included — as unchanged.
+  // Mirror that quantization here, exactly as linearGain above mirrors the bus law.
+  const expectedFreq = Math.round((90 + 0.5 * 220) * 100) / 100;
+  const expectedGain = Math.round((0.006 + Math.pow(0.5, 1.25) * 0.13) * 1e6) / 1e6;
   assert.equal(rt.tetherOsc.frequency.scheduled, expectedFreq, 'pitch must track strain on the wake frame');
   assert.equal(rt.tetherHum.gain.scheduled, expectedGain, 'level must be the authored curve, unaltered');
   assert.equal(rt.tetherHum.gainValue, expectedGain, 'the gainValue mirror stays in step');
@@ -407,8 +410,11 @@ const BRAKE_GATE = [
   'if (cache.brakeGainNode !== rt.brakeGain || cache.brakeGain !== targetGain) {',
   'if (true) {',
 ];
+// The tether gate key is the full write signature — target AND rampS — so the anchor spans both
+// condition lines; forcing it true must restore a setTargetAtTime write on every frame.
 const TETHER_GATE = [
-  'if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain) {',
+  'if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain\n'
+    + '      || cache.tetherGainRamp !== rampS) {',
   'if (true) {',
 ];
 
