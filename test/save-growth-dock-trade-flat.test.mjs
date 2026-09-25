@@ -25,10 +25,12 @@
 // to satisfy this test.
 //
 // Structural invariants that fail on the unbounded channels regardless of the band:
-//   • far-actor rows: total <= FAR_ROW_BUDGET + durable set, where the durable set is rows
-//     whose worldRecordId resolves in world.records OR whose jobId resolves in npcJobs.byId;
-//     ORPHAN rows (carry an anchor id that resolves to NEITHER) must stay 0 — the far-row
-//     orphan channel is the one grower with no plateau.
+//   • far-actor rows: total <= FAR_ROW_BUDGET + durable + in-grace orphans, where the
+//     durable set is authored/owned rows (persistenceOwner/worldSite markers) plus rows
+//     whose worldRecordId resolves in world.records OR whose jobId resolves in npcJobs.byId.
+//     An unanchored row is legal for one FAR_ROW_ORPHAN_GRACE_S window after shelving (its
+//     record may still land); STALE orphans — unanchored past that window — must stay 0.
+//     That stale-orphan channel is the one grower with no plateau.
 //   • persistent entity count and npcJobs.byId key count stay under their early-run ceiling
 //     after cycle 5 (D28 regression guards). Literal non-increase would false-positive on
 //     normal job churn — the pre-fix soak oscillates persistent 3-8 and jobs 0-2 with no
@@ -118,7 +120,7 @@ import { COMBAT_FLAGS, MASSLINE2_FLAGS, TRAVEL_FLAGS } from '../src/data/feature
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NPC_JOB_KIND } from '../src/systems/npcJobs.js';
-import { FAR_ROW_BUDGET } from '../src/world/farActorTable.js';
+import { FAR_ROW_BUDGET, FAR_ROW_ORPHAN_GRACE_S } from '../src/world/farActorTable.js';
 import {
   RETENTION_CLASS,
   ensureWorldRecords,
@@ -199,26 +201,38 @@ async function bootSoakSim() {
 }
 
 // ── structural census: the far-row orphan channel ───────────────────────────────────────────
+// Mirrors the corrected sweep contract in src/world/farActorTable.js: authored/owned rows
+// (persistenceOwner/worldSite markers) and rows anchoring a live record or job are durable;
+// an unanchored row is legal for one FAR_ROW_ORPHAN_GRACE_S window after shelving (its
+// record may still land) and is a STALE orphan — the unbounded channel — only past that.
 function farRowCensus(state) {
   const table = state.world && state.world.farActors;
   const rows = table && Array.isArray(table.rows) ? table.rows : [];
   const records = (state.world && state.world.records && state.world.records.byId) || null;
   const jobs = (state.npcJobs && state.npcJobs.byId) || null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   let durable = 0;
-  let orphans = 0;
+  let orphansStale = 0;
+  let orphansYoung = 0;
   for (const rec of rows) {
     if (!rec) continue;
     const data = rec.data && typeof rec.data === 'object' ? rec.data : {};
     const jobId = rec.jobId != null ? rec.jobId : (data.jobId != null ? data.jobId : null);
     const recordId = rec.worldRecordId != null ? rec.worldRecordId
       : (data.worldRecordId != null ? data.worldRecordId : null);
+    const owned = (data.persistenceOwner != null && data.persistenceOwner !== 'worldRecords')
+      || data.worldSiteId != null || data.worldSiteComponentId != null;
     const jobResolves = jobId != null && !!jobs && Object.prototype.hasOwnProperty.call(jobs, jobId);
     const recordResolves = recordId != null && !!records
       && Object.prototype.hasOwnProperty.call(records, recordId);
-    if (jobResolves || recordResolves) durable += 1;
-    else if (jobId != null || recordId != null) orphans += 1; // anchored to nothing: spent
+    if (owned || jobResolves || recordResolves) durable += 1;
+    else if (jobId != null || recordId != null) {
+      const shelfT = Number(rec.virtualizedAt);
+      if (Number.isFinite(shelfT) && now - shelfT > FAR_ROW_ORPHAN_GRACE_S) orphansStale += 1;
+      else orphansYoung += 1;
+    }
   }
-  return { total: rows.length, durable, orphans };
+  return { total: rows.length, durable, orphansStale, orphansYoung };
 }
 
 function persistentEntityCount(state) {
@@ -241,7 +255,7 @@ function leastSquaresSlope(points) {
   return (n * sxy - sx * sy) / denom;
 }
 
-test('dock/trade save-load soak: serialized payload is flat in the tail window', { timeout: 0 }, async () => {
+test('dock/trade save-load soak: serialized payload is flat in the tail window', async () => {
   const sim = await bootSoakSim();
   const { state, bus, registry } = sim;
   const econ = registry.get('economy');
@@ -298,7 +312,8 @@ test('dock/trade save-load soak: serialized payload is flat in the tail window',
 
     console.log(`[save-growth] cycle ${String(c).padStart(2)} `
       + `bytes=${json.length} (${(json.length / 1024).toFixed(2)} KB) `
-      + `farRows=${census.total} durable=${census.durable} orphans=${census.orphans} `
+      + `farRows=${census.total} durable=${census.durable} `
+      + `orphansStale=${census.orphansStale} orphansYoung=${census.orphansYoung} `
       + `persistent=${persistentCounts[persistentCounts.length - 1]} `
       + `jobs=${jobCounts[jobCounts.length - 1]} sells=${sells}`);
   }
@@ -310,11 +325,12 @@ test('dock/trade save-load soak: serialized payload is flat in the tail window',
   // ── structural invariants (unbounded channels, independent of the byte band) ─────────────
   for (let i = 0; i < censuses.length; i++) {
     const c = censuses[i];
-    assert.ok(c.total <= FAR_ROW_BUDGET + c.durable,
-      `cycle ${i + 1}: far rows ${c.total} exceed budget+durable (${FAR_ROW_BUDGET}+${c.durable})`);
-    assert.equal(c.orphans, 0,
-      `cycle ${i + 1}: ${c.orphans} far rows anchor a record/job that no longer exists — `
-      + `the unbounded orphan channel (PQ-033.02 mechanism 2)`);
+    assert.ok(c.total <= FAR_ROW_BUDGET + c.durable + c.orphansYoung,
+      `cycle ${i + 1}: far rows ${c.total} exceed budget+durable+grace `
+      + `(${FAR_ROW_BUDGET}+${c.durable}+${c.orphansYoung})`);
+    assert.equal(c.orphansStale, 0,
+      `cycle ${i + 1}: ${c.orphansStale} far rows have anchored nothing for more than `
+      + `${FAR_ROW_ORPHAN_GRACE_S} s — the unbounded orphan channel (PQ-033.02 mechanism 2)`);
   }
   // D28 guards: after cycle 5 the counts never exceed the early-run ceiling. Normal job churn
   // oscillates (a new hauler takes a job as an old one completes), so the guard is a ceiling.
