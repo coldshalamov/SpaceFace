@@ -92,6 +92,44 @@ async function testEvictedSourceUrlTaskRetriesForEveryActiveObserver() {
   assert.equal(inactiveRuntime.assets.has(cacheKey), false);
 }
 
+async function testReleasedSourceUrlTaskRetriesThroughLoader() {
+  // A package whose cache lease released but whose residency entry survived under a live owner is
+  // still unmountable (retain()/createInstance() refuse while released). A fulfilled task serving
+  // that record must retry through the loader, which reacquires the entry instead of returning a
+  // record whose retain() would silently fail (D24 stale-task surface).
+  const url = 'assets/ships/release/parts/released-retry.glb';
+  const cacheKey = `${url}::hull`;
+  const pilot = {
+    metadataUrl: 'assets/ships/release/render-packages/released-retry/render-package.json',
+  };
+  const stale = renderPackageFixture(url, 'released-generation');
+  stale.renderPackage.released = true;
+  const fresh = renderPackageFixture(url, 'released-generation');
+  const staleRecord = assetLoader.assembleRenderPackageRecord(stale.renderPackage, url, 'released-retry');
+  const staleTask = Promise.resolve(staleRecord);
+  let loadCalls = 0;
+  const runtime = runtimeFixture();
+  runtime.assets.set(cacheKey, staleTask);
+  runtime.renderPackages = {
+    async load() {
+      loadCalls += 1;
+      fresh.renderPackage.released = false;
+      return fresh.renderPackage;
+    },
+  };
+
+  const record = await assetLoader.loadAuthoredRenderPackagePilot(runtime, pilot, url, {
+    slot: 'hull',
+    isResidencyOwnerActive: () => true,
+  });
+
+  assert.strictEqual(record.renderPackage, fresh.renderPackage,
+    'a released-generation record retries through the loader');
+  assert.equal(loadCalls, 1);
+  assert.notStrictEqual(runtime.assets.get(cacheKey), staleTask,
+    'the stale released task is replaced, not left cached');
+}
+
 async function testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns() {
   assert.equal(typeof assetLoader.admitAuthoredAssetTask, 'function',
     'assetLoader must export the task-admission boundary used by live loads');
@@ -490,6 +528,7 @@ async function testSharedKtx2CreationFailureDoesNotLeakRefs() {
 
 await testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns();
 await testEvictedSourceUrlTaskRetriesForEveryActiveObserver();
+await testReleasedSourceUrlTaskRetriesThroughLoader();
 await testImmediateRetirementOwnsAdmittedTaskBeforeFactoryRuns();
 await testRetirementWaitsForOwnedTasks();
 await testCacheInvalidationCannotHideOwnedTask();

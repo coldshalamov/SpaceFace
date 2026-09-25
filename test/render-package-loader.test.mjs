@@ -13,6 +13,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
+import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 
 const HASH = '1'.repeat(64);
@@ -1015,5 +1016,123 @@ test('cache hits claim the consumer owner before the shared package resolves', a
   const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
   assert.ok(row.roles.includes('live-boundary'),
     'a second consumer claims the shared decode on the hit path too');
+  loader.dispose();
+});
+
+const PILOT_SOURCE_URL = 'assets/ships/release/parts/fixture-hull.glb';
+
+function pilotRuntimeFixture(loader) {
+  return {
+    assets: new Map(),
+    failures: new Map(),
+    retiring: false,
+    renderPackages: loader,
+  };
+}
+
+test('D24: sector-exit eviction drops the stale source-url task instead of pinning the dead generation', async () => {
+  // Regression for the renderer heap slope: runtime.assets is keyed by source URL while the
+  // package loader evicts by content hash. Every sector-exit cache sweep evicted a decoded
+  // generation, but the fulfilled task kept record -> LoadedRenderPackage -> the whole decoded
+  // graph pinned until the same URL was requested again. Between requests the dead generations
+  // accumulated (~39 generations, ~749 MB of buffer payload in the D24 snapshot pair).
+  let decodeCount = 0;
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decodedFixture().scene };
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const options = { slot: 'hull' };
+  const cacheKey = `${PILOT_SOURCE_URL}::hull`;
+
+  const first = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(first, 'the pilot load resolves an assembled record');
+  assert.equal(runtime.assets.has(cacheKey), true, 'the admitted task is cached under its source url');
+  assert.equal(decodeCount, 1);
+
+  // applySectorExitResidency's sweep releases the sole render-package-cache owner; with no live
+  // boundary the entry is evicted, mirroring what happens to every cache-only package between
+  // save/load and dock/undock boundaries.
+  residency.releaseUnreferencedCacheOwners('test-sector-exit', { minAgeMs: 0 });
+  assert.equal(first.renderPackage.evicted, true, 'a cache-only package generation is evicted');
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'the fulfilled task must drop with its dead generation, not wait for a re-request');
+
+  const second = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(second);
+  assert.notStrictEqual(second.renderPackage, first.renderPackage,
+    'the next request decodes a fresh generation');
+  assert.equal(decodeCount, 2);
+  assert.equal(runtime.assets.size, 1);
+
+  for (let cycle = 0; cycle < 3; cycle++) {
+    residency.releaseUnreferencedCacheOwners(`test-cycle-${cycle}`, { minAgeMs: 0 });
+    assert.equal(runtime.assets.has(cacheKey), false,
+      `cycle ${cycle}: eviction purges the stale task immediately`);
+    const next = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+    assert.ok(next.renderPackage && next.renderPackage.evicted !== true);
+  }
+  assert.equal(decodeCount, 5);
+  assert.equal(runtime.assets.size, 1, 'only the live task survives in the source-url cache');
+  assert.equal(loader.diagnostics().cacheEntries, 1, 'only the live generation stays cached');
+  loader.dispose();
+});
+
+test('D24: a released package generation drops its task and reacquires without re-decoding', async () => {
+  // The package-cache lease is a separate owner from boundary retains: a consumer
+  // LoadedRenderPackage.release() leaves the entry resident under other owners but makes the
+  // generation unmountable (retain()/createInstance() refuse while released). The stale task
+  // must drop at release; the next request reacquires the still-cached entry instead of
+  // decoding again.
+  let decodeCount = 0;
+  const residency = createAssetResidencyRegistry();
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => {
+      decodeCount++;
+      return { scene: decoded.scene };
+    },
+    prepareDecoded: async () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  const metadata = packageMetadata();
+  const pilot = {
+    metadataUrl: metadata,
+    expectedContentHash: metadata.contentHash,
+    assetId: metadata.assetId,
+  };
+  const boundary = new THREE.Group();
+  const options = { slot: 'hull', residencyOwner: boundary, residencyRole: 'live-boundary' };
+  const cacheKey = `${PILOT_SOURCE_URL}::hull`;
+
+  const first = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(first);
+  assert.equal(first.renderPackage.release('test-consumer-departed'), true);
+  assert.equal(first.renderPackage.released, true);
+  assert.equal(first.renderPackage.evicted, false,
+    'the boundary owner keeps the entry resident; only the cache lease dropped');
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'the stale task drops at lease release, not at the next request');
+
+  const second = await loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, options);
+  assert.ok(second);
+  assert.notStrictEqual(second, first);
+  assert.strictEqual(second.renderPackage, first.renderPackage,
+    'the still-cached generation is reacquired rather than decoded again');
+  assert.equal(second.renderPackage.released, false);
+  assert.equal(decodeCount, 1, 'reacquisition reuses the decoded package');
+  residency.releaseOwner(boundary, 'test-boundary-departed');
   loader.dispose();
 });

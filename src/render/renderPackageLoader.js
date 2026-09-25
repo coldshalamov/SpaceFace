@@ -504,6 +504,7 @@ class LoadedRenderPackage {
   #template;
   #lifecycle;
   #counters;
+  #staleListeners;
 
   #plan;
 
@@ -523,12 +524,41 @@ class LoadedRenderPackage {
     this.#lifecycle = lifecycle;
     this.#counters = counters;
     this.#plan = plan;
+    this.#staleListeners = null;
     this.released = false;
     this.evicted = false;
   }
 
+  /**
+   * Subscribe to the moment this package generation stops being mountable — the package-cache
+   * lease released (the entry may be reacquired through the loader) or the residency entry
+   * evicted (a permanently dead generation). Outer caches such as assetLoader's runtime.assets
+   * hold assembled records, so their fulfilled tasks pin this entire decoded graph; without
+   * this signal a stale task only cleared when the same source URL was requested again, which
+   * kept every generation evicted between requests resident for the session (D24 heap slope).
+   * Listeners run synchronously; each fires at most once per stale transition. Returns an
+   * unsubscribe function.
+   */
+  onStale(listener) {
+    if (typeof listener !== 'function') return () => {};
+    const listeners = this.#staleListeners || (this.#staleListeners = new Set());
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  #notifyStale() {
+    const listeners = this.#staleListeners;
+    this.#staleListeners = null;
+    if (!listeners) return;
+    for (const listener of listeners) {
+      try { listener(this); } catch (_) {}
+    }
+  }
+
   markReleased() {
+    if (this.released) return;
     this.released = true;
+    this.#notifyStale();
   }
 
   markRetained() {
@@ -538,6 +568,7 @@ class LoadedRenderPackage {
   markEvicted() {
     this.released = true;
     this.evicted = true;
+    this.#notifyStale();
   }
 
   release(reason = 'render-package-released') {

@@ -955,9 +955,23 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
       residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       residencySectorId: options.sectorId || null,
-    }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
-      flightStaticV3: pilot.flightStaticV3 === true,
-    }))
+    }).then((renderPackage) => {
+      // This outer cache is keyed by source URL while the loader evicts by content hash, and a
+      // key only refreshes when the same URL is requested again — so a fulfilled task kept every
+      // released/evicted package generation pinned by its assembled record for the rest of the
+      // session (the D24 heap slope: each sector-exit cache sweep orphaned one). Drop the task
+      // the moment the package stops being mountable; the next request re-admits through the
+      // loader, which reacquires a still-cached entry or decodes a fresh generation. The exact-
+      // task guard keeps a stale listener from erasing a newer re-admission task.
+      if (renderPackage && typeof renderPackage.onStale === 'function') {
+        renderPackage.onStale(() => {
+          if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+        });
+      }
+      return assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
+        flightStaticV3: pilot.flightStaticV3 === true,
+      });
+    })
       .catch((error) => {
         if (!runtime.retiring) {
           runtime.failures.set(cacheKey, error);
@@ -970,7 +984,7 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
 
   const record = await task;
   if (!record) return null;
-  if (record.renderPackage?.evicted === true) {
+  if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
     // `renderPackageLoader` evicts by content hash, while this outer cache is keyed by source URL.
     // Every caller that observes the fulfilled stale task must retry; only its exact cache owner may
     // erase it, so a late observer cannot remove a newer re-admission task.
