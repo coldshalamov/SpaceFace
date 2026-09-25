@@ -284,11 +284,13 @@ export function storyMomentsFor(summary = {}) {
   const input = summary && typeof summary === 'object' ? summary : {};
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const moments = [];
+  // The swarm chain counts kills, not the combo meter's chained tricks — it is named for what
+  // it counts, so the results plate's two "chain" figures never read as one number.
   const best = num(input.bestChain);
   if (best > 0) {
     const wave = Number.isInteger(input.chainWave) && input.chainWave > 0
       ? ` on wave ${input.chainWave}` : '';
-    moments.push(`Best chain ${best}${wave}`);
+    moments.push(`Best kill chain ${best}${wave}`);
   }
   const waves = Array.isArray(input.waveStats) ? input.waveStats : [];
   let top = null;
@@ -355,6 +357,77 @@ export function buildCodeFor(picks) {
     steps.push(Number.isInteger(pick.wave) && pick.wave > 0 ? `W${pick.wave}:${verb}` : verb);
   }
   return steps.length ? steps.join(' / ') : 'stock';
+}
+
+/* --- PQ-146 Phase 3: the finished round's named tricks, as rows. ------------------------------
+ *
+ * The stunt module (stuntGrammar, the single writer) already keeps the round's combo ledger:
+ * settled banks (combo.banks[].acts[]), the still-open acts (combo.acts[]) and the last chain's
+ * mirror (combo.lastTricks). These builders turn that snapshot into [label, value] rows the
+ * results plate can print: the top named tricks with counts, the best chain, the banked total.
+ * Pure and deterministic — same snapshot in, same rows out, ties settled by name. An act is
+ * counted once per episodeId no matter which source it is met in, and an amendment rewrites its
+ * episode rather than adding a row.
+ * ------------------------------------------------------------------------------------------- */
+
+/** How many named tricks a plate lists. Bounded: a column, not a log. */
+export const STUNT_TRICK_ROW_LIMIT = 5;
+
+function comboActSources(combo) {
+  const c = combo && typeof combo === 'object' ? combo : {};
+  return [
+    ...((Array.isArray(c.banks) ? c.banks : []).flatMap((bank) => (bank && Array.isArray(bank.acts) ? bank.acts : []))),
+    ...(Array.isArray(c.acts) ? c.acts : []),
+    ...(Array.isArray(c.lastTricks) ? c.lastTricks : []),
+  ];
+}
+
+/**
+ * The round's top named tricks with counts, as [label, value] rows — e.g.
+ * ['Wrecking Ball', '×2 · 180 style']. Sorted by count, then style, then name; capped at
+ * `limit`. A combo with no named acts yields no rows (an honest empty, never a filler).
+ */
+export function trickCountRows(combo, { limit = STUNT_TRICK_ROW_LIMIT } = {}) {
+  const byName = new Map();
+  const seenEpisodes = new Set();
+  for (const act of comboActSources(combo)) {
+    if (!act || typeof act !== 'object') continue;
+    const name = typeof act.name === 'string' && act.name ? act.name : null;
+    if (!name) continue;
+    const episode = act.episodeId != null ? String(act.episodeId) : null;
+    if (episode != null) {
+      if (seenEpisodes.has(episode)) continue;
+      seenEpisodes.add(episode);
+    }
+    const points = Math.max(0, Number(act.points) || 0);
+    const row = byName.get(name) || { name, count: 0, points: 0 };
+    row.count += 1;
+    row.points += points;
+    byName.set(name, row);
+  }
+  return [...byName.values()]
+    .sort((a, b) => (b.count - a.count) || (b.points - a.points)
+      || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .slice(0, Math.max(1, limit))
+    .map((row) => [row.name, `×${row.count} · ${Math.floor(row.points)} style`]);
+}
+
+/**
+ * The full named-trick/combo rows for the finished round: the top named tricks with counts, the
+ * best chain (the combo's own chained-trick figure — the swarm kill chain is a different number
+ * and keeps its own row), and the banked style total. Empty when the round scored nothing.
+ */
+export function stuntRoundRows(combo, options = {}) {
+  const rows = trickCountRows(combo, options);
+  const c = combo && typeof combo === 'object' ? combo : {};
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const bestChain = n(c.bestChain);
+  if (bestChain > 0) {
+    rows.push(['Best chain', `${bestChain} trick${bestChain === 1 ? '' : 's'} · ${n(c.bestChainPoints)} banked`]);
+  }
+  const banked = n(c.banked);
+  if (banked > 0) rows.push(['Banked style', String(banked)]);
+  return rows;
 }
 
 export const survivalResults = {
@@ -838,6 +911,9 @@ export const survivalResults = {
       }
       : null;
     result.combo = this.state && this.state.stunts?.combo ? structuredClone(this.state.stunts.combo) : null;
+    // PQ-146 Phase 3: the round's named tricks with counts, best chain and banked total, read
+    // from the same combo snapshot — the results plate prints them beside the combo figures.
+    result.stuntRoundRows = stuntRoundRows(result.combo);
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();

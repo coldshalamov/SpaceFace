@@ -24,6 +24,7 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   requestCrucibleRun,
+  BLOCK_RULESET,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
@@ -32,7 +33,9 @@ import { createDeathDial } from '../orrery/deathDial.js';
 import {
   buildCodeFor,
   buildNameFor,
+  trickCountRows,
 } from '../../systems/survivalResults.js';
+import { ensureStuntCallout, releaseStuntCallout } from '../stuntCallout.js';
 import { killReplayActions, replaySampleAt, skipKillReplay } from '../../systems/killReplay.js';
 import {
   SWARM_DRAFT_EVERY,
@@ -322,6 +325,9 @@ function syncChoice(button, on) {
 const MODE_TILE = Object.freeze({
   swarm: 'assets/tiles/tile.mode.swarm.png',
   scored: 'assets/tiles/tile.mode.gauntlet.png',
+  // The bounded block plays the same authored Foundry the Gauntlet opens with; the Gauntlet
+  // tile is its face. No new art for a ruleset.
+  [BLOCK_RULESET]: 'assets/tiles/tile.mode.gauntlet.png',
 });
 const HULL_ICON = Object.freeze({
   web_weaver: 'line',
@@ -624,6 +630,10 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     let enterButton = null;
     ensurePhysicsLabRoute(ctx);
+    // PQ-146 Phase 3: the Crucible play view's trick callouts mount with the door — this screen
+    // family owns the layer (its own fixed overlay in src/ui/stuntCallout.js); the flight HUD is
+    // never touched. The layer gates itself to a live survival run and stays hidden otherwise.
+    try { ensureStuntCallout(ctx); } catch { /* presentation must never block the door */ }
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
     rootEl.dataset.kReady = '0';
@@ -1924,6 +1934,10 @@ function renderStory(band, result) {
 function renderCombo(band, summary) {
   const lead = comboLead(summary);
   if (lead) band.appendChild(el('p', 'k-sentence sf-crres__lead', lead));
+  // PQ-146 Phase 3: the round's top named tricks with counts, read from the same combo snapshot
+  // survivalResults rows from — what the player DID, not only what it scored.
+  const trickRows = trickCountRows(summary);
+  if (trickRows.length) band.appendChild(pairRows(trickRows, 'sf-crres__tricks'));
   band.appendChild(pairRows(comboRows(summary), 'sf-crd-grid'));
   const lines = comboTrickLines(summary);
   if (lines.length) {
@@ -2225,6 +2239,9 @@ export const crucibleResultsScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
     if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
+    // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
+    // The dispose below releases it — a finished run has nothing more to name.
+    try { ensureStuntCallout(ctx); } catch { /* presentation must never block the plate */ }
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
@@ -2469,6 +2486,9 @@ export const crucibleResultsScreen = {
   dispose() {
     if (this._dial) this._dial.dispose();
     this._dial = null;
+    // PQ-146 Phase 3: the run is told — the trick callout layer goes with the plate. A retry
+    // re-ensures it from the door or from the next results mount.
+    try { releaseStuntCallout(); } catch { /* release is best-effort */ }
   },
 };
 
