@@ -55,7 +55,14 @@ const CSS = `
   letter-spacing:.22em; fill:rgb(232 226 212 / .56); dominant-baseline:auto; }
 /* the emblem's lettering: its name round the rim, quiet wide capitals */
 .orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-variation-settings:"wght" 600, "wdth" 112;
-  letter-spacing:.3em; fill:rgb(232 226 212 / .5); }
+  letter-spacing:.3em; fill:rgb(232 226 212 / .58); }
+.orr-svg text.orr-arcrail__legend.is-lit { fill:rgb(246 241 230 / .92); }
+/* a grouped row: the awake word lights without growing, so it never eats the gap to its neighbour */
+.orr-arcrail-host--grouped .dp-lit__item[data-awake] { transform:none !important; }
+/* the extra fine row (the title's ARCHIVE and SANDBOX) is one line on its stop, one tick for both */
+.orr-arcrail-host > .orr-arcrail__extra { display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:baseline; gap:22px !important; }
+.orr-arcrail-host > .orr-arcrail__extra > li { position:static !important; margin:0 !important; flex:0 0 auto !important; width:auto !important; }
+@media (max-height:800px) { .orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { letter-spacing:.2em; } }
 /* a grouped row runs out over the held world: each word carries its own halo of dark (light, not a box) */
 .orr-arcrail-host--grouped .orr-arcrail__glow { background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .6) 45%, rgb(4 6 9 / .5) 60%, rgb(4 6 9 / .18) 82%, transparent); }
 .orr-arcrail-host--grouped .dp-lit__item { text-shadow:0 0 8px rgb(4 6 9 / .95), 0 0 18px rgb(4 6 9 / .85), 0 0 32px rgb(4 6 9 / .6) !important; }
@@ -179,7 +186,7 @@ function drawFace(p, re) {
   g.appendChild(svg('path', { d: arcD(p.x, p.y, re * 0.07, 0, 360), stroke: bone(0.18), 'stroke-width': 1.2 }));
   g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.16, 24, { len: re * 0.05, inward: true }), stroke: bone(0.1), 'stroke-width': 1 }));
   // three small bodies riding their orbits, each with its own thin ring
-  for (const [f, a, r] of [[0.66, 38, 9], [0.52, 128, 6], [0.9, 12, 5]]) {
+  for (const [f, a, r] of [[0.66, 58, 9], [0.52, 128, 6], [0.9, 12, 5]]) {
     const [bx, by] = polar(p.x, p.y, re * f, a);
     g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r, stroke: bone(0.3), 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .6)' }));
     g.appendChild(svg('path', { d: arcD(bx, by, r + 5, 0, 360), stroke: bone(0.14), 'stroke-width': 1 }));
@@ -366,8 +373,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     } else if (engraving) {
       // the emblem's name on its rim: a chosen bearing (the title letters its upper-left quarter) or past the verbs
       const big = engravingDeg != null;
-      layer.appendChild(circularText(pivot.x, pivot.y, re + (big ? 26 : 22), engraving.toUpperCase(),
-        { startDeg: big ? engravingDeg : a1 + 34, size: big ? 11 : 8, className: big ? 'orr-arcrail__lettering' : 'orr-micro', anchor: 'middle', upright: true }));
+      const words = String(typeof engraving === 'function' ? engraving(W, H) : engraving).toUpperCase();
+      layer.appendChild(circularText(pivot.x, pivot.y, re + (big ? 26 : 22), words,
+        { startDeg: big ? engravingDeg : a1 + 34, size: big ? (H <= 800 ? 9 : 11) : 8, className: big ? 'orr-arcrail__lettering' : 'orr-micro', anchor: 'middle', upright: true }));
     }
     // clearOf: the dial's face, rings and scales break round the screen's own words (the title's name and
     // kicker), the way a dial's rule breaks for its numeral; the Hand and the verbs stay whole
@@ -412,7 +420,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       let rowTop = y;
       // grouped: the group's name is the row's legend, on the tick's own line, and its verbs follow it
       if (grouped && row.group) {
-        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y + 4).toFixed(1), class: 'orr-arcrail__legend' });
+        const legend = svg('text', { x: (x + 8).toFixed(1), y: (y + 4).toFixed(1), class: 'orr-arcrail__legend', 'data-row': String(i) });
         legend.textContent = String(row.group).toUpperCase();
         layer.appendChild(legend);
         let lw = 0; try { lw = legend.getComputedTextLength(); } catch (_) { lw = 0; }
@@ -446,6 +454,8 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   }
 
   function lightTick(index) {
+    // a grouped dial: the row the Hand stops on lights its legend, so the row itself says which it is
+    if (grouped) for (const lg of layer.querySelectorAll('text.orr-arcrail__legend')) lg.classList.toggle('is-lit', Number(lg.getAttribute('data-row')) === index);
     ticks.forEach((t, i) => {
       t.setAttribute('class', `orr-core ${i === index ? 'orr-hand' : 'orr-hi'} orr-arcrail__tick`);
       t.setAttribute('opacity', i === index ? '1' : '.5');

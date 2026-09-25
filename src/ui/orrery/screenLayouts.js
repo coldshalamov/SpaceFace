@@ -19,6 +19,8 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-title.orr-title .dp-title__rule { display:none; }
 /* the name stands on the emblem: above the dial, each letter cut clear of the rings by a halo of dark */
 .of-title.orr-title .dp-title { position:relative; z-index:2; }
+/* the head is a stacking context of its own (deckplate light.js): it, not its title, must stand over the body's dial pool */
+.of-title.orr-title > .dp-frame__head { z-index:2 !important; pointer-events:none; }
 .of-title.orr-title .dp-logotype { filter:drop-shadow(0 0 1.5px rgb(4 6 9)) drop-shadow(0 0 3px rgb(4 6 9)) drop-shadow(0 0 6px rgb(4 6 9 / .95)) drop-shadow(0 2px 14px rgb(0 0 0 / .55)) !important; }
 .of-title.orr-title .dp-title__eyebrow { text-shadow:0 0 2px rgb(4 6 9), 0 0 3px rgb(4 6 9), 0 0 5px rgb(4 6 9), 0 0 9px rgb(4 6 9 / .95), 0 0 14px rgb(4 6 9 / .8); }
 .of-title.orr-title .dp-title__eyebrow { letter-spacing:.24em; }
@@ -51,6 +53,9 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-pause > .sf-pause-brief.orr-brief .sf-slot-name { display:flex; flex-direction:column; gap:6px; text-wrap:balance; }
 /* the heading, the brief and the key strip stand above the dial and its shadow pool */
 .of-pause.orr-pause .dp-title { position:relative; z-index:2; }
+.of-pause.orr-pause > .dp-frame__head { z-index:2 !important; pointer-events:none; }
+.of-pause.orr-pause .dp-title__eyebrow { color:rgb(232 226 212 / .62) !important; }
+.of-pause > .sf-pause-brief.orr-brief .dp-copy { text-wrap:pretty; }
 .of-pause.orr-pause > .sf-pause-brief.orr-brief { z-index:2; }
 .of-pause.orr-pause > .sf-pause-foot { position:relative; z-index:2; }
 /* a short screen: PAUSED sized by the height, clear of RESUME, and the dial's sector words tighter */
@@ -63,10 +68,10 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   font-size:22px; line-height:1.1; letter-spacing:.005em; text-transform:uppercase; color:rgb(246 241 230); }
 .orr-brief__read { display:flex; align-items:center; gap:10px; margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:rgb(232 226 212 / .72); }
-.orr-brief__read b { font-family:var(--dp-face-numeral, "Archivo"); font-size:28px; font-weight:250; font-variation-settings:"wght" 250, "wdth" 100; letter-spacing:-.01em; line-height:1; color:rgb(246 241 230); }
+.orr-brief__read b { font-family:var(--dp-face-numeral, "Archivo"); font-size:28px; font-weight:250; font-variation-settings:"wght" 250, "wdth" 100; letter-spacing:-.01em; line-height:1; color:var(--dp-phos, rgb(223 238 255)); }
 .orr-brief__ring { width:40px; height:40px; }
 .orr-brief__track { fill:none; stroke:rgb(232 226 212 / .35); stroke-width:1.2; }
-.orr-brief__fill { fill:none; stroke:rgb(246 241 230); stroke-width:2; stroke-linecap:round; }
+.orr-brief__fill { fill:none; stroke:var(--dp-phos, rgb(223 238 255)); stroke-width:2; stroke-linecap:round; }
 /* pause: the dial owns the left edge, so the flight brief is a reading on the right */
 .of-pause > .sf-pause-brief.orr-brief { position:absolute; right:clamp(24px, 3.4vw, 72px); top:clamp(84px, 11vh, 132px);
   width:min(520px, 34vw); margin:0; z-index:2; }

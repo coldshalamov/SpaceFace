@@ -78,7 +78,9 @@ const CSS = `
 .orr-svg .orr-crestorbit__rel.is-hostile { stroke:rgb(255 80 56 / .45); }
 .orr-svg .orr-crestorbit__rel-bloom { stroke:rgb(${BONE}); opacity:.13; }
 .orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.14; }
-.orr-svg .orr-crestorbit__rel-bead { fill:rgb(${BONE} / .85); }
+.orr-svg .orr-crestorbit__rel-bead { fill:rgb(${BONE} / .85); animation:orr-crest-bead-in 260ms ease-out both; animation-delay:calc(var(--orr-delay, 0ms) + 440ms); }
+@keyframes orr-crest-bead-in { from { opacity:0; } to { opacity:1; } }
+html.sf-reduce-motion .orr-svg .orr-crestorbit__rel-bead { animation:none; }
 .orr-svg .orr-crestorbit__rel-bead.is-hostile { fill:rgb(255 80 56 / .8); }
 .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) > img { opacity:.47; }
 .orr-crestorbit.has-relations .orr-crest.is-related > img { opacity:.92; }
@@ -169,6 +171,8 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
   let handDeg = 0;
   let armFromRim = false;
   let relG = null;
+  // the set of chords last drawn: they are built (and drawn in) once per set, and only moved on later frames
+  let relKey = '';
   const spring = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => paintHand(v) });
 
   const schedule = () => {
@@ -208,8 +212,12 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
   // emblem edge; a rim-to-rim beam bows toward the centre so it clears the sun; hostile ones red, all under the Hand
   function paintRelations(deg) {
     if (!relG || !geo || !data) return;
-    relG.textContent = '';
-    const rels = Array.isArray(data.relations) ? data.relations : [];
+    // allies draw first, rivals last; each chord draws from its origin out to the crest, its bead lands after it
+    const rels = (Array.isArray(data.relations) ? data.relations : []).slice().sort((a, b) => Number(a.weight < 0) - Number(b.weight < 0));
+    const key = `${data.selectedId}|${rels.map((r) => `${r.id}:${r.weight < 0 ? 'h' : 'a'}`).join(',')}`;
+    const rebuild = key !== relKey;
+    if (rebuild) { relG.textContent = ''; relKey = key; }
+    let order = 0;
     const n = data.items.length;
     const chosenIdx = Math.max(0, data.items.findIndex((i) => i.id === data.selectedId));
     const fromSun = !!(data.authorityId && data.items[chosenIdx] && data.items[chosenIdx].id === data.authorityId);
@@ -234,10 +242,18 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         d = `M ${f(ox)} ${f(oy)} Q ${f(mx)} ${f(my)} ${f(tx)} ${f(ty)}`;
       }
       const hostile = rel.weight < 0;
-      relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom${hostile ? ' is-hostile' : ''}`, 'stroke-width': 4 }));
-      relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1 }));
       const [bx, by] = polar(cx, cy, R - 36, tDeg);
-      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.5, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}` }));
+      if (!rebuild) {
+        for (const el of relG.querySelectorAll(`[data-rel="${rel.id}"]`)) {
+          if (el.tagName.toLowerCase() === 'circle') { el.setAttribute('cx', f(bx)); el.setAttribute('cy', f(by)); } else el.setAttribute('d', d);
+        }
+        continue;
+      }
+      const delay = `--orr-delay:${order * 90 + (hostile ? 180 : 0)}ms`;
+      order += 1;
+      relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 4, pathLength: 1, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1, pathLength: 1, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.5, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}`, style: delay, 'data-rel': rel.id }));
     }
     host.classList.toggle('has-relations', related.size > 0);
     for (const [id, el] of crestEls) el.classList.toggle('is-related', related.has(id));
@@ -301,6 +317,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       layer.appendChild(rise(rings, 0));
       // the chosen power's relations: beams of light across the orbit's interior, drawn under the Hand
       relG = svg('g', { class: 'orr-crestorbit__relations' });
+      relKey = '';
       armLayer.appendChild(relG);
       // the Hand: a bloom and a core from the centre crest to the rim, a bead where it meets the crest
       const hg = svg('g', { class: 'orr-crestorbit__hand' });

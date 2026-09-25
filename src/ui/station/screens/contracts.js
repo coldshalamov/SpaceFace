@@ -670,6 +670,7 @@ export function createContractsScreen(ctx) {
   // The tether: choosing a mission draws one line across the whole screen — the ladder's arm, the terms'
   // spine, the key, then this line from the key's edge across the glass into the orrery's origin, where
   // the beam takes over to the destination. The route reading (jumps, destination) rides the line.
+  let tetherSeq = 0;
   function layTether(dossier, routeHost, g) {
     try {
       const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -684,6 +685,28 @@ export function createContractsScreen(ctx) {
           el.setAttribute('class', cls);
           if (name === 'circle') el.setAttribute('r', '2.5');
           tether.appendChild(el);
+        }
+        // the pulse: a bead of ice rests at the key, flies the tether into this station, rests, and goes again --
+        // the one moving light on the tab, so the eye learns the key and the chart are one instrument
+        const reduce = document.documentElement && document.documentElement.classList.contains('sf-reduce-motion');
+        if (!reduce) {
+          const core = tether.querySelector('.sx-ct-tether__core');
+          const id = `sx-ct-tether-core-${++tetherSeq}`;
+          core.setAttribute('id', id);
+          const pulse = document.createElementNS(SVG_NS, 'g');
+          pulse.setAttribute('class', 'sx-ct-tether__pulse');
+          for (const [r, cls] of [['6', 'sx-ct-tether__pulse-bloom'], ['2.2', 'sx-ct-tether__pulse-dot']]) {
+            const c = document.createElementNS(SVG_NS, 'circle');
+            c.setAttribute('r', r); c.setAttribute('class', cls);
+            pulse.appendChild(c);
+          }
+          const motion = document.createElementNS(SVG_NS, 'animateMotion');
+          for (const [k, v] of [['dur', '3.6s'], ['repeatCount', 'indefinite'], ['calcMode', 'spline'], ['keyPoints', '0;0;1;1'], ['keyTimes', '0;0.3;0.78;1'], ['keySplines', '0 0 1 1;0.45 0 0.2 1;0 0 1 1']]) motion.setAttribute(k, v);
+          const mpath = document.createElementNS(SVG_NS, 'mpath');
+          mpath.setAttribute('href', `#${id}`);
+          motion.appendChild(mpath);
+          pulse.appendChild(motion);
+          tether.appendChild(pulse);
         }
         dossier.appendChild(tether);
       }

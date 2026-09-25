@@ -852,7 +852,7 @@ export const pauseScreen = {
     // UI-polish scope this cycle; a first-class station tab would be promotion).
     mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
+    if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', bank: true, icon: 'help' });
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
@@ -933,7 +933,9 @@ export const pauseScreen = {
     // One stop per group (ORRERY 3.2: an arc carries at most nine): Resume leads, then each group is one
     // tick with its name as the row's legend and its verbs on one line after it. The Hand swings to the row;
     // within it only the awake verb lights. Up/down steps between rows, left/right along one.
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56, pivotY: 0.57 });
+    // a smaller dial, higher: its lowest tick clears the key strip at every height
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
+      place: (W, H) => ({ pivot: { x: Math.min(112, Math.max(56, Math.round(W * 0.056))), y: Math.round(H * 0.55) }, re: Math.round(H * 0.3), centerDeg: 90 }) });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

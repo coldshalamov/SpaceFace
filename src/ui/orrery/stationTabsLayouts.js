@@ -1352,6 +1352,9 @@ ${T} .sx-dossier > .sx-ct-tether { position:absolute; left:0; top:0; width:100%;
 ${T} .sx-ct-tether__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.09; stroke-linejoin:round; }
 ${T} .sx-ct-tether__core { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
 ${T} .sx-ct-tether__bead { fill:rgb(248 244 234); filter:drop-shadow(0 0 3px rgb(248 244 234 / .7)); }
+${T} .sx-ct-tether__pulse-bloom { fill:rgb(143 203 255 / .28); }
+${T} .sx-ct-tether__pulse-dot { fill:rgb(223 238 255); }
+html.sf-reduce-motion ${T} .sx-ct-tether__pulse { display:none; }
 ${T} .sx-dossier > .sx-ct-tether__caption { position:absolute; margin:0; padding:0; display:flex; align-items:baseline; gap:10px; pointer-events:none; z-index:2; white-space:nowrap; grid-area:auto; }
 ${T} .sx-ct-tether__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:26px; line-height:1; letter-spacing:0; color:rgb(248 244 234); }
 ${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:10px; font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .66); }

@@ -402,9 +402,10 @@ export const mainMenuScreen = {
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
     arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
-      place: (W, H) => ({ pivot: { x: Math.round(H * 0.305), y: Math.round(H * 0.305) }, re: Math.round(H * 0.278), centerDeg: 112 }),
+      // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
+      place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
       span: 74,
-      engraving: 'SpaceFace · Orrery of the Helios Reach',
+      engraving: (W, H) => (H <= 800 ? 'Orrery of the Helios Reach' : 'SpaceFace · Orrery of the Helios Reach'),
       engravingDeg: 292,
       // the kicker's box spans the frame: its words' own extent (a range over its text, the dot included) is what clears
       clearOf: () => {
@@ -415,7 +416,12 @@ export const mainMenuScreen = {
           range.selectNodeContents(eyebrow);
           words = { getBoundingClientRect: () => { const r = range.getBoundingClientRect(); const e = eyebrow.getBoundingClientRect(); return { left: e.left, top: r.top, width: r.right - e.left, height: r.height }; } };
         }
-        return [rootEl.querySelector('.dp-logotype'), words];
+        // ONE knockout round the name and its kicker together, so no ring stub is left between them
+        const boxes = [rootEl.querySelector('.dp-logotype'), words].filter(Boolean).map((b) => b.getBoundingClientRect()).filter((r) => r && r.width > 0);
+        if (!boxes.length) return [];
+        const l = Math.min(...boxes.map((r) => r.left)); const t = Math.min(...boxes.map((r) => r.top));
+        const r = Math.max(...boxes.map((b) => b.left + b.width)); const b = Math.max(...boxes.map((x) => x.top + x.height));
+        return [{ getBoundingClientRect: () => ({ left: l, top: t, width: r - l, height: b - t }) }];
       },
     });
 
