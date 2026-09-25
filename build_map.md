@@ -1866,8 +1866,8 @@ Also true:
 - Corsair still shares the pirate Rig. Arclight has no route. Tanker and inspection cutter are held.
   **Yard tug is live.** Faction kits exist; nothing reads them. Dock / hulk / debris remaster is
   stuck at live presentation. Station fallback is still a fat cylinder plus hoops.
-- Distant cheap LODs exist for every player hull and are never switched in. That is a later
-  performance unlock, not this packet. Zoom-out does not swap hulls today. Do not show a box
+- Distant cheap LODs exist for every player hull and are never switched in. That is Wave F
+  below, not Waves A–E. Zoom-out does not swap hulls today. Do not show a box
   or modular kit while a body decodes. Garnish hide at a speck is the ceiling — not a cheaper
   species of ship, not an impostor. See the dynamic-graphics investigation.
 - `needed-assets.md` is stale (still calls Hitch / Pelican / Wasp blocked). Do not dispatch from it.
@@ -1928,9 +1928,29 @@ Reuse before authoring. A variant counts.
 | **`PQ-193.11`** | The four Helios lane marks wired 2026-09-09 hold at chase camera. | No cube foot/deck on tally, claim, ash pin, whistle. |
 | **`PQ-193.12`** | The fat-cylinder station fallback never appears on the default route. | Every station the player can reach loads its authored body. |
 
+### Wave F — every stand-in and every distant body is the same ship (owner, 2026-09-24) — PLANNED
+
+**Owner, 2026-09-24:** "things will load but they'll just be LOD so it'll load some box — not a
+weaker ship or the same ship at fewer polygons, literally a box — and it'll turn into a ship and back
+into a box." The same day's fix made the world stop *thrashing* (an entity the player flew away from
+and came back to was never re-admitted: no collider, no glass membership, so its mesh was evicted,
+rebuilt, and passed through the stand-in again — `test/activity-runtime.test.mjs` "rediscovers a
+station and a rock", `npm run probe:frame-solid`). What remains is the stand-in itself: whenever a
+body is legitimately still decoding, or a far LOD file is the right choice, what the player sees
+must read as that ship. This is a large asset + integration job; cut it into a packet before
+dispatch. Law: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md)
+(no box, no cheaper species, no blank lock).
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **F1 — inventory** | One table of every stand-in the live route can draw: the authored-admission resolving marker (`visualOverrides.js`), `partsLibrary.js` procedural fallbacks, modular-kit identities, station fat-cylinder fallback, and each whole-ship `_lod1`/`_lod2` file (Colossus, Ironback and Leviathan LOD1/LOD2 carry the identical triangle count — ~4–5k against a ~43–57k LOD0 — so LOD2 is not a distinct step). | Each row names where it draws, how often on a 10-minute default flight (`probe:frame-solid` offender log), and whether it reads as its ship at chase and 330 WU zoom-out. |
+| **F2 — honest LOD bodies** | Every `_lod1`/`_lod2` file is the same silhouette, paint and damage language as its LOD0 at the distance it serves; equal-count LOD1/LOD2 pairs get a real LOD1 step between. Blender material-truth preflight applies. | Matched stills at the switch distance: a stranger cannot name which is the LOD. Only then may a family join the live LOD allowlist. |
+| **F3 — no box while decoding** | The pending-body stand-in is a low-cost version of *that* hull (its own LOD2, preloaded with the sector), not a generic marker or kit. | On a cold New Game, no on-screen hull ever shows a shape that is not its own ship; `probe:frame-solid` regressions/rootSwaps stay 0. |
+| **F4 — distance swap live** | Whole-ship LOD1/LOD2 residency switching turns on for families that closed F2, with hysteresis and no swap while on the chase frame's hero band. | 330 WU zoom-out battle: CPU/GPU frame time down, zero visible identity changes, zero blink/root-swap counters. |
+
 ### Later — not this packet
 
-- Distant cheap LODs (LOD1/2 residency selector): performance, not broken.
+- Distant cheap LODs: now Wave F above.
 - Massline liner independent G7: `PQ-049.05`.
 - Hitch remaster: frozen.
 - New hull commissions while a shelf body can fill the slot.

@@ -216,6 +216,12 @@ test('authored world bounds expand render culling without changing gameplay radi
   const radius = entityVisualCullRadius({ radius: 72 }, mesh);
   assert(radius > 500);
   assert.equal(entityVisualCullRadius({ radius: 72 }, new THREE.Group()), 72);
+  // A station culls at its drawn dock envelope even before any mesh exists:
+  // entity.radius is the small collision proxy, not the visible footprint.
+  const station = { type: 'station', radius: 34, data: { dockRadius: 90 } };
+  assert.equal(entityVisualCullRadius(station), 90);
+  assert.equal(entityVisualCullRadius({ type: 'station', radius: 34, data: {} }), 34);
+  assert.equal(entityVisualCullRadius({ type: 'asteroid', radius: 30, data: { placeRadius: 55 } }), 55);
 });
 
 // 2ca4bc8e5 (2026-09-11, "Wait for the opening cook on this Intel laptop") made the opening's wait

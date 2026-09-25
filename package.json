@@ -541,6 +541,7 @@
     "probe:demo-path": "node scripts/probe-demo-path.mjs --headless",
     "probe:body-scale": "node scripts/probe-body-scale.mjs",
     "probe:solid-world": "node scripts/probe-solid-world.mjs --headless",
+    "probe:frame-solid": "node scripts/probe-frame-solid.mjs",
     "check:concept-index": "node scripts/check-concept-index.mjs",
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",

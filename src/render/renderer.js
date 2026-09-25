@@ -342,7 +342,7 @@ import {
   tableTravelSpeed,
   timeToEnterRadiusSeconds,
 } from './tabletopPolicy.js';
-import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
@@ -589,15 +589,18 @@ const SECTOR_POST_VIGNETTE = 0.12;
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */
 export function entityVisualCullRadius(entity, mesh = null) {
-  const simRadius = Math.max(0, Number(entity && entity.radius) || 0);
+  // Presence, not collision: a station's drawn envelope reaches data.dockRadius while
+  // entity.radius is only the small collision proxy, so a hull centred just off-screen
+  // still culls as the size it actually draws at.
+  const presence = entityPresenceRadius(entity);
   const hull = mesh && mesh.userData && mesh.userData.hull;
   const bounds = hull && hull.userData && hull.userData.visualBounds
     || mesh && mesh.userData && mesh.userData.visualBounds;
   const size = bounds && bounds.size;
-  if (!Array.isArray(size)) return simRadius;
+  if (!Array.isArray(size)) return presence;
   const x = Math.max(0, Number(size[0]) || 0);
   const z = Math.max(0, Number(size[2]) || 0);
-  return Math.max(simRadius, Math.hypot(x, z) * 0.5);
+  return Math.max(presence, Math.hypot(x, z) * 0.5);
 }
 
 /**
@@ -1512,7 +1515,7 @@ function entityIsOnReadableGlass(entity, state) {
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
     runwayWu: TABLE_FRAME_SKIRT_WU,
-    radius: entityVisualCullRadius(entity),
+    radius: entityVisualCullRadius(entity, entity.mesh),
   });
   return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
@@ -12730,9 +12733,10 @@ export const render = {
       // The sim-side activity frame classifies glass/runway at the requested zoom and a fixed
       // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
       // real screen. The presented pose inside the live glass extents wins over the runway deny.
+      const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
       const onLiveGlass = Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
-        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + lodRadius
-        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + lodRadius;
+        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + glassRadius
+        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + glassRadius;
       // The live-glass deadline only exists once the live screen does: a root
       // pending behind the loading shell is not on glass yet — its clock starts
       // at the first playable frame, same gate the admission lane serves.

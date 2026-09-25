@@ -11,6 +11,7 @@ import {
   ensureActivityClassified,
   entityNeedsAiThink,
   entityNeedsPhysics,
+  simGlassHalfExtentsFromState,
   skipUnstampedRescan,
 } from '../src/world/activityRuntime.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
@@ -532,4 +533,80 @@ test('incremental classify revisits fast non-physics movers the hash cannot see'
   assert.equal(second.classifyMode, 'incremental');
   assert.equal(laneHauler.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
   assert.ok(second.glassIds.includes(7), 'revisited hauler joins the glass set');
+});
+
+test('incremental classify rediscovers a station and a rock the player flies back to', () => {
+  // The production loop feeds the spatial hash from the PREVIOUS pass's physics
+  // set. An entity that drops to S3/R3 leaves the hash, so the hash radius query
+  // can never find it again — the classifier's list walk is the only authority
+  // that can rediscover it when the player returns. Player flies away from a
+  // station at the origin, dwells on a rock at x=3000, then comes back.
+  const player = {
+    id: 1, type: 'ship', alive: true, collides: true, radius: 8, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const station = {
+    id: 2, type: 'station', alive: true, collides: true, radius: 260,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const farRock = {
+    id: 3, type: 'asteroid', alive: true, collides: true, radius: 30,
+    pos: { x: 3000, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {}, flags: {},
+  };
+  const state = makeState([player, station, farRock], {
+    tick: 1,
+    simTime: 1 / 60,
+    runtime: { profileId: 'production' },
+    entityIndex: { __spacefaceEntityIndexV1: true, version: 1, ready: true, physicsStaticVersion: 0 },
+    spatialHash: new SpatialHash(64),
+  });
+  const step = (x) => {
+    player.pos.x = x;
+    state.tick += 180;
+    state.simTime += 3;
+    const runtime = ensureActivityClassified(state);
+    const layers = spatialHashLayersFromState(state);
+    state.spatialHash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
+    return runtime;
+  };
+  let runtime = null;
+  // The runtime arrays are reused scratch — membership must be sampled inside
+  // the step, not from the returned object after later passes overwrite it.
+  let rockStaticAt3000 = false;
+  let rockGlassAt3000 = false;
+  for (const x of [0, 500, 1500, 3000, 3000, 1500, 500, 100, 0]) {
+    runtime = step(x);
+    if (x === 3000) {
+      rockStaticAt3000 = runtime.physicsStatics.includes(farRock);
+      rockGlassAt3000 = runtime.glassIds.has(3);
+    }
+  }
+  assert.equal(runtime.classifyMode, 'incremental');
+  assert.ok(rockStaticAt3000,
+    'the rock under the player at x=3000 must be a physics static');
+  assert.ok(rockGlassAt3000, 'the rock under the player must be on the glass');
+  assert.ok(
+    station.activity.simTier === SIM_TIER.S0_EXACT || station.activity.simTier === SIM_TIER.S1_NEAR,
+    `station must be exact on return, got ${station.activity.simTier}`,
+  );
+  assert.ok(runtime.physicsStatics.includes(station),
+    'the station the player returned to must be a physics static');
+  assert.ok(runtime.glassIds.has(2), 'the station the player returned to must be on the glass');
+});
+
+test('station glass membership uses its dock envelope', () => {
+  // The drawn station extends to data.dockRadius (60-90) while its collision
+  // radius is 26-42. A hull whose centre sits just off the glass but whose dock
+  // envelope reaches it is on screen — it must classify R0_GLASS or the
+  // renderer evicts a visible body.
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const glass = simGlassHalfExtentsFromState(makeState([player]));
+  const station = {
+    id: 2, type: 'station', alive: true, collides: true, radius: 34,
+    pos: { x: glass.halfX + 60, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    data: { dockRadius: 90 }, flags: {},
+  };
+  const runtime = ensureActivityClassified(makeState([player, station]));
+  assert.equal(station.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
+  assert.ok(runtime.glassIds.has(2));
 });
