@@ -139,6 +139,7 @@ const server = spawn(process.execPath, ['server.js', String(port)], {
 });
 let browser = null;
 const consoleErrors = [];
+let shaderErrors = 0;
 const t0 = Date.now();
 try {
   const baseUrl = `http://127.0.0.1:${port}/?demo=1`;
@@ -155,7 +156,14 @@ try {
   page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (error) => consoleErrors.push(`[pageerror] ${String(error).slice(0, 300)}`));
   page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(`[console] ${msg.text().slice(0, 300)}`);
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    // The isolated store has no save drawer mounted: that 404 is by design (scripts/lib/browser-issues.mjs).
+    if (text.includes('404') && /__spaceface_player_store/.test(msg.location()?.url || text)) return;
+    // A failed program link draws nothing: on 2026-09-24 one dropped GLSL declaration made every
+    // hull and rock invisible for a whole adventure leg and the walk still "reached" each step.
+    if (/Shader Error|Program Info Log|undeclared identifier|VALIDATE_STATUS false/i.test(text)) shaderErrors += 1;
+    consoleErrors.push(`[console] ${text.slice(0, 300)}`);
   });
   await page.addInitScript(() => {
     window.__SF_DEMO_FRAMES__ = { stamps: [], lastT: null };
@@ -701,14 +709,15 @@ try {
     await dockAt('station_helios');
     const fit = await page.evaluate(() => {
       const st = window.SF.state;
-      const ship = st.ships && st.ships[1];
+      const shipIndex = st.player.activeShipIndex | 0;
+      const ship = st.player.ownedShips[shipIndex];
       const credits = st.economy.credits;
       // Cheapest affordable def that fills an empty slot; prefer the Swing Drive first-haul toy.
       return window.SF.bus && (async () => {
         const { MODULES } = await import('/src/data/modules.js');
         const { SHIPS } = await import('/src/data/ships.js');
         const { buildSlotList, fits } = await import('/src/systems/ships.js');
-        const slots = buildSlotList(SHIPS[ship.shipId]);
+        const slots = buildSlotList(SHIPS.find((def) => def.id === ship.defId));
         const fittings = ship.fittings || [];
         const candidates = Object.values(MODULES)
           .map((def) => ({ def, offer: (def.shopOffers && def.shopOffers.station_helios) || { price: def.price } }))
@@ -719,7 +728,7 @@ try {
           const idx = slots.findIndex((slot, i) => !fittings[i] && fits(slot, c.def));
           if (idx >= 0) {
             const before = credits;
-            window.SF.bus.emit('ui:buyModule', { defId: c.def.id, fitSlotIndex: idx, shipIndex: 1 });
+            window.SF.bus.emit('ui:buyModule', { defId: c.def.id, fitSlotIndex: idx, shipIndex });
             return { defId: c.def.id, price: c.offer.price, slot: idx, creditsBefore: before, creditsAfter: window.SF.state.economy.credits };
           }
         }
@@ -754,10 +763,14 @@ try {
       framesOver100: s.framesOver100, frames: s.frames, note: s.note,
       detail: s.detail, error: s.error, shot: s.shot && path.basename(s.shot),
     })),
+    shaderErrors,
+    clean: shaderErrors === 0 && steps.length > 0 && steps.every((s) => s.reached),
     consoleErrors: consoleErrors.slice(0, 40),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
-  console.log(`\nreport: ${path.join(OUT_DIR, 'report.json')}`);
+  if (shaderErrors > 0) console.log(`\nFAIL: ${shaderErrors} shader compile/link error(s) — bodies with those programs drew nothing`);
+  console.log(`\n${report.clean ? 'CLEAN PASS' : 'NOT CLEAN'} — report: ${path.join(OUT_DIR, 'report.json')}`);
+  process.exitCode = report.clean ? 0 : 1;
   if (browser) await browser.close().catch(() => {});
   server.kill();
 }
