@@ -24,7 +24,7 @@ import {
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
-import { createWaveform } from '../../orrery/waveform.js';
+import { createWaveform, voiceEnvelope } from '../../orrery/waveform.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
@@ -380,7 +380,10 @@ export function createBarScreen(ctx) {
       let nameW = 0;
       try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
       if (nameW > 0) host.style.width = `${Math.round(nameW)}px`;
-      wave = createWaveform(host, { bars: Math.max(30, Math.min(96, Math.round((nameW || 210) / 5.6))) });
+      const bars = Math.max(30, Math.min(96, Math.round((nameW || 210) / 5.6)));
+      // the rest frame is the line's own envelope: the words they said, or the line they open with
+      const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
+      wave = createWaveform(host, { bars, envelope: voiceEnvelope(lineEl ? lineEl.textContent : c.line, bars) });
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
     if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
@@ -404,7 +407,8 @@ export function createBarScreen(ctx) {
     let survey = null;
     try { survey = availableSurveyOffer(state, stationId); } catch (_) { survey = null; }
     let leads = [];
-    try { leads = (missionBoardSlots(state, stationId) || []).slice(0, 3); } catch (_) { leads = []; }
+    let boardCount = 0;
+    try { const all = missionBoardSlots(state, stationId) || []; boardCount = all.length; leads = all.slice(0, 3); } catch (_) { leads = []; }
     const credits = Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0));
 
     const intelHtml = tags.length
@@ -431,9 +435,10 @@ export function createBarScreen(ctx) {
       (surveyRow || leadRows
         ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}</button></li></ul>` +
-      `<p class="k-caps sx-intel__head">Intel</p>` +
-      intelHtml;
+      // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
+      // the one that matters here, so it rides the verb instead of a block of its own)
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li></ul>` +
+      `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
   }
 
@@ -455,6 +460,17 @@ export function createBarScreen(ctx) {
   railEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-contact]'); if (!b) return;
     selectContact(b.getAttribute('data-contact'), false);
+  });
+  // a reply's numeral is its key: 1..9 on the stage picks that reply
+  stageEl.addEventListener('keydown', (ev) => {
+    if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if (!/^[1-9]$/.test(ev.key)) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const btn = stageEl.querySelectorAll('.sx-talk__choices [data-choice]')[Number(ev.key) - 1];
+    if (!btn || btn.disabled) return;
+    ev.preventDefault();
+    btn.click();
   });
   railEl.addEventListener('keydown', (ev) => {
     const words = [...railEl.querySelectorAll('[data-contact]')];

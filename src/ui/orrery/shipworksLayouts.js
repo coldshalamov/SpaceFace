@@ -4,6 +4,7 @@
 // of light, the circuit as a column of readings. It styles the shared stage's existing nodes in the
 // dock host only (`.orr-station .sx-sw`; THE SHIP keeps its own sheet) and pins nothing.
 import { injectOrrery } from './tokens.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 import { arcD, polar, ticksD } from './svg.js';
 
 const f2 = (n) => Math.round(n * 100) / 100;
@@ -475,12 +476,12 @@ ${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
 
 /* ================================ ROUND 8 ==================================================== */
 /* the readouts: one ruled ledger column (name left, figure right); a name never truncates */
-${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr !important; gap:0 !important; }
+${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr !important; gap:0 !important; width:100% !important; max-width:none !important; min-width:0 !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:auto minmax(0, 1fr) !important; column-gap:12px; padding:4px 0 !important; align-items:baseline !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { overflow:visible !important; text-overflow:clip !important; white-space:nowrap !important; max-width:none !important; min-width:0; }
 ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { justify-self:end; white-space:nowrap; }
 /* For Sale: the hardpoints one per line; the rendered hull lit as an object on the jig, not a shadow in the bay */
-${W} .sx-spec__hp { display:block; }
+${W} .sx-spec__hp { display:block; white-space:nowrap; }
 ${W} .sx-sw__stage > .sx-sw__poster { filter:brightness(1.32) contrast(1.06); }
 ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absolute; left:14%; right:14%; top:14%; bottom:16%; z-index:0; pointer-events:none;
   background:radial-gradient(ellipse at 50% 56%, rgb(${BONE} / .15), rgb(${BONE} / .05) 42%, transparent 68%); }
@@ -528,6 +529,38 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
   ${W}.sx-sw--buying .sx-sw-hero { padding:0 0 4px !important; }
   ${W}.sx-sw--buying .sx-sw-bands { gap:6px 28px !important; }
 }
+
+${W} .orr-lampkey:disabled::after { display:block !important; }
+
+/* ================================ ROUND 9 ==================================================== */
+${SCROLL_EXTENT_CSS}
+/* a fitted column wears no fold: the fade only stands over a list that overflows */
+${W} .sx-sw__side, ${W} .sx-sw__stats { -webkit-mask-image:none !important; mask-image:none !important; }
+${W} .sx-sw__chooser[data-overflow="0"], ${W} .sx-sw__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+/* For Sale: the price is the number; the stage's second title goes; the render sits on a contact shadow */
+${W}.sx-sw--buying .sx-sw__stage > .sx-sw__nameplate { display:none !important; }
+${W}.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:clamp(56px, 7vh, 76px) !important; letter-spacing:-.02em !important; white-space:nowrap; }
+${W}.sx-sw--buying .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:40px !important; }
+${W} .sx-sw__stage.has-poster:not(.is-live)::after { content:""; position:absolute; left:26%; right:26%; bottom:20%; height:9%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / .55), rgb(0 0 0 / .2) 55%, transparent 75%); }
+/* one Lamp Key height; the price rides the Buy key as it rides Buy & Fit */
+${W} .sx-buybar .orr-lampkey, ${W} .sx-buybar .sx-btn-primary.orr-lampkey { min-height:38px !important; padding:0 22px 0 18px !important; font-size:13px !important; letter-spacing:.14em !important; }
+${W} .sx-buybar .orr-lampkey small { color:#3a2c0a !important; margin-left:10px; font-size:12px; font-weight:650; }
+/* an empty socket says nothing twice */
+${W} .sx-sw-rack__cell.is-empty .k-row__sub { display:none !important; }
+/* a name is ink; only a moving figure is ice */
+${W} .orr-sw-node.is-preview .orr-sw-node__name { color:rgb(248 244 234) !important; }
+${W} .orr-sw-node.is-preview .orr-sw-node__state { color:rgb(${BONE} / .62) !important; }
+/* the hardpoint separator stays with its item, so a wrap starts on an item */
+${W} .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\b7 " !important; }
+@media (max-height:800px) {
+  /* Save fit stays reachable at 720: the band folds to its verb */
+  ${W} .sx-sw-band--presets { display:block !important; }
+  ${W} .sx-sw-band--presets > .sx-sw-band__label, ${W} .sx-sw-band--presets .sx-sw-preset:not(.sx-sw-preset--save) { display:none !important; }
+}
+
+/* the readouts are a fitted column: no fold across the last row */
+${W} .orr-sw-readouts { -webkit-mask-image:none !important; mask-image:none !important; }
 
 `;
 

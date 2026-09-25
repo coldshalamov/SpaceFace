@@ -40,6 +40,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-svg .orr-hull__leader { transition:stroke .18s linear, opacity .18s linear; }
 .orr-svg .orr-hull__leader.is-lit { stroke:var(--dp-hand, #f2b950); opacity:.95; }
 .orr-svg .orr-hull__leader--hidden { stroke-dasharray:3 3; }
+.orr-svg .orr-hull__leader-halo { stroke:rgb(6 8 11 / .9); stroke-linecap:round; }
 .orr-svg .orr-hull__leader--hidden.is-lit { opacity:.85; }
 .orr-svg .orr-hull__bearing { font-size:10px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .5); }
 .orr-svg .orr-hull__leader-bloom { opacity:0; transition:opacity .18s linear; }
@@ -58,7 +59,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-hull__node.is-lit .orr-hull__ring { stroke:var(--dp-hand-hot, #ffd98c); stroke-dasharray:none; }
 .orr-hull__node.is-lit .orr-hull__core { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-hull__node.is-lit .orr-hull__glow { opacity:.24; }
-.orr-svg text.orr-hull__num { font-size:11.5px; font-weight:700; letter-spacing:.04em; fill:rgb(236 230 216 / .86);
+.orr-svg text.orr-hull__num { font-size:11.5px; font-weight:700; letter-spacing:.04em; fill:rgb(236 230 216 / .86); paint-order:stroke; stroke:rgb(6 8 11 / .85); stroke-width:3px; stroke-linejoin:round;
   paint-order:stroke; stroke:rgb(4 6 9 / .95); stroke-width:4px; stroke-linejoin:round; }
 .orr-svg .orr-hull__fitted { fill:none; stroke-linecap:butt; }
 .orr-svg .orr-hull__fitted.is-fitted { stroke:rgb(236 230 216 / .8); }
@@ -229,7 +230,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     const [ox, oy] = polar(hx, hy, R + 16, deg);
     const [ix, iy] = polar(hx, hy, R + 5, deg);
     hand.bloom.setAttribute('d', `M ${ox.toFixed(1)} ${oy.toFixed(1)} L ${ix.toFixed(1)} ${iy.toFixed(1)}`);
-    const g = arcD(hx, hy, R, deg - 9, deg + 9);
+    const [g0x, g0y] = polar(hx, hy, R - 10, deg);
+    const [g1x, g1y] = polar(hx, hy, R + 3, deg);
+    const g = `M ${g0x.toFixed(1)} ${g0y.toFixed(1)} L ${g1x.toFixed(1)} ${g1y.toFixed(1)}`;
     hand.glint.setAttribute('d', g);
     hand.glintBloom.setAttribute('d', g);
     const [cx, cy] = polar(hx, hy, R, deg);
@@ -483,11 +486,14 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       };
       const hiddenD = runs.filter((r) => r[2]).map(seg).join(' ');
       const openD = runs.filter((r) => !r[2]).map(seg).join(' ');
-      const lineUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });
+      // the hidden run crosses the drawing's own dense lines: a dark halo under the dashes keeps it a line
+      const haloUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-hull__leader-halo', 'stroke-width': 4, opacity: '.8', fill: 'none' });
+      const lineUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.7' });
       const lineOpen = svg('path', { d: openD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
       layer.appendChild(rise(lineOpen, 120 + i * 40));
       const bloom = svg('path', { d: outer, class: 'orr-bloom orr-hand orr-hull__leader-bloom', 'stroke-width': 5, opacity: '0' });
       const lineOver = svg('path', { d: `${outer} ${stop}`, class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
+      hidden.push(rise(haloUnder, 120 + i * 40));
       hidden.push(rise(lineUnder, 120 + i * 40));
       layer.appendChild(rise(bloom, 120 + i * 40));
       layer.appendChild(rise(lineOver, 120 + i * 40));

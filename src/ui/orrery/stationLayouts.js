@@ -265,6 +265,17 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-vital__value .orr-vden { font-size:10px !important; }
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
 }
+/* a short screen: the trade receipt stands over the comms words, never across UNDOCK */
+@media (max-height:800px) {
+  ${S} .sx-comms .sx-receipt, ${S} .sxb-ops .sx-receipt { position:absolute !important; left:0 !important; right:auto !important; top:auto !important; bottom:calc(100% + 6px) !important; max-width:min(420px, 46vw) !important; }
+}
+/* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
+@media (min-width:2200px) and (min-height:1200px) {
+  ${S} { zoom:1.25; --k-s:1; }
+}
+@media (min-width:3400px) and (min-height:1900px) {
+  ${S} { zoom:1.85; --k-s:1; }
+}
 `;
 
 export function injectOrreryStation(doc = globalThis.document) {

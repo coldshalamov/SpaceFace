@@ -1,6 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
@@ -441,6 +442,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function dressChooser() {
+    syncScrollExtent(chooserEl);
     ensureInteriorStyle();
     if (chooserEl.querySelector('.sf-state')) { dressState(chooserEl); return; }
     for (const label of chooserEl.querySelectorAll('.sx-chooser__kicker, .k-caps, h3')) paintLegend(label, true);
@@ -2083,6 +2085,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }).join('');
     }
     dressRail();
+    syncScrollExtent(railListEl);
     requestAnimationFrame(updateRailControls);
   }
 
@@ -2154,7 +2157,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<ul class="k-words k-words--row sx-buybar">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}${afford && availability.hullEnabled ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>`) +
         `</ul>`;
       dressSide();
       return;
