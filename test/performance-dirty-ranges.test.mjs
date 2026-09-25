@@ -608,6 +608,14 @@ test('mid-capture tree mutation exits are not primary acceptance failures', () =
   ].join('\n');
   assert.equal(isMeasurementIntegrityProbeError(worktreeText), true);
 
+  // A claim minted before a foreign commit lands is stale at the probe's
+  // authority gate — same family: no evidence produced, cause is tree churn.
+  const staleClaimText = [
+    'Error: PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: broker-claim-stale-digest',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(staleClaimText), true);
+
   const productFailureText = [
     '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
     'exitCode=1',

@@ -2297,7 +2297,10 @@ export function isEnvironmentBlockedProbeError(errorText) {
 export function isMeasurementIntegrityProbeError(errorText) {
   return typeof errorText === 'string'
     && (errorText.includes('worktree-not-clean-and-stable')
-      || errorText.includes('worktree changed during performance capture'));
+      || errorText.includes('worktree changed during performance capture')
+      // A tree mutation between claim mint and the probe's authority check
+      // legitimately rejects the claim; the probe never measured anything.
+      || errorText.includes('broker-claim-stale-digest'));
 }
 
 /**
