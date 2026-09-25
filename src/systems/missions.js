@@ -177,6 +177,7 @@ import {
   ensureCampaign47aState,
   buildMissionBoardContract,
   buildEndgameBoardOffers,
+  embodiedMissionAt,
   failEncounter,
   initCampaignSidecar,
   isBeatStepsComplete,
@@ -977,6 +978,57 @@ function b6DeploymentPayload(payload) {
   const definitionId = payload.defId || payload.claimSpecId;
   if (typeof definitionId !== 'string' || !definitionId.trim()) return null;
   return payload;
+}
+
+// ── 47-A route classification (PQ-032.02) ────────────────────────────────────────
+// The old bounty B2 stamped elroy_outcome; the live `rescue_under_fire` pod pull does
+// not. A missing outcome is therefore NOT proof of a legacy save — classify only on
+// positive marks each route actually writes:
+//   'legacy' — explicit elroy_outcome_legacy, or no evidence of the embodied route at
+//              all (pre-embodiment Continue saves). Keeps the old net-worth/rep endgame.
+//   'pinned' — an outcome token exists (old-route resolve or a hand-set save) without the
+//              legacy stamp: leftover stakes still pin B4's door and B6's program.
+//   'live'   — no outcome, but durable authored-route evidence (embodied_route flag or
+//              sidecar beat 1–3 step records — both written only by the real contracts).
+function campaign47aEmbodiedEvidence(state) {
+  const story = state && state.story;
+  const flags = (story && story.flags) || {};
+  if (flags.embodied_route                       // stamped when authored B1–B3 complete
+    || flags.pick_a_side_pending                 // live B4 door accepted, work pending
+    || flags.empire_seed_pending_id != null      // live B6 drone awaiting its program
+    || flags.empire_seed_asset_id != null        // live B6 seed bound
+    || flags.empire_seed_complete                // live B6 settled
+    || flags.deep_reach_asset_lost               // live B7 seed recovery in flight
+    || flags.deep_reach_operation_complete       // live B7 operation already done
+    || flags.deep_reach_variant) {
+    return true;
+  }
+  // The sidecar's per-beat step log is save-durable. B1–B3 steps only land through the
+  // authored campaign47a contracts; a legacy bounty B2 stamps elroy_outcome_legacy before
+  // it records, so the flag check in campaign47aRouteKind still wins for those saves.
+  const steps = story && story.campaign47a && story.campaign47a.stepProgress;
+  if (steps && typeof steps === 'object') {
+    for (const key of ['1', '2', '3']) {
+      const bucket = steps[key];
+      if (bucket && Array.isArray(bucket.completed) && bucket.completed.length) return true;
+    }
+  }
+  return false;
+}
+
+function campaign47aRouteKind(state) {
+  const flags = (state && state.story && state.story.flags) || {};
+  if (flags.elroy_outcome_legacy) return 'legacy';
+  if (flags.elroy_outcome) return 'pinned';
+  return campaign47aEmbodiedEvidence(state) ? 'live' : 'legacy';
+}
+
+/** The old-vocabulary token ('custody'|'force') the live route derives from the B4 door:
+ * the patrol door carries the custody flavour; traders and free read the force one. */
+function campaign47aOutcomeKey(state) {
+  const flags = (state && state.story && state.story.flags) || {};
+  if (flags.elroy_outcome === 'custody' || flags.elroy_outcome === 'force') return flags.elroy_outcome;
+  return (state && state.story && state.story.branch) === 'patrol' ? 'custody' : 'force';
 }
 
 export const missions = {
@@ -1893,10 +1945,12 @@ export const missions = {
     const flags = story && story.flags || {};
     const offer = buildMissionBoardContract(beat, {
       seed, epoch, branch, chainStep,
-      elroyOutcome: flags.elroy_outcome,
+      // PQ-032.02: the live route never writes elroy_outcome — derive the old-vocabulary
+      // flavour from the chosen door, and only true legacy evidence suppresses the offer.
+      elroyOutcome: campaign47aOutcomeKey(this.state),
       assetId: flags.empire_seed_asset_id,
       operationComplete: !!flags.deep_reach_operation_complete,
-      legacy: !!flags.elroy_outcome_legacy || !flags.elroy_outcome,
+      legacy: campaign47aRouteKind(this.state) === 'legacy',
     });
     const activeTags = new Set((this.state.missions.active || [])
       .filter((mission) => mission && mission.status === 'active' && mission.storyTag)
@@ -2118,9 +2172,12 @@ export const missions = {
     const story = this.state && this.state.story;
     const intro = info && BRANCH_INTRO_BY_FACTION.get(info.factionId);
     if (!story || story.beatIndex !== 4 || story.branch || !intro) return false;
-    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
-    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
-    if (!legacy && (info.id !== stake.stationId || intro.branch !== stake.branch)) return false;
+    // Only a hand-set/legacy-resolved outcome pins one door; the live route leaves all
+    // three introductions open until the player actually chooses (PQ-032.02).
+    const flags = story.flags || {};
+    const pinned = !flags.elroy_outcome_legacy && !!flags.elroy_outcome;
+    const stake = pinned ? getPickSideStake(flags.elroy_outcome) : null;
+    if (stake && (info.id !== stake.stationId || intro.branch !== stake.branch)) return false;
     const slots = board && Array.isArray(board.slots) ? board.slots : [];
     return !slots.some((offer) => (
       offer &&
@@ -2411,9 +2468,12 @@ export const missions = {
     if (!story || story.beatIndex !== 4 || story.branch) return null;
     const intro = BRANCH_INTRO_BY_FACTION.get(info.factionId);
     if (!intro) return null;
-    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
-    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
-    if (!legacy && (info.id !== stake.stationId || intro.branch !== stake.branch)) return null;
+    // Pinned saves (an outcome token already exists) earn only the stake door; live and
+    // legacy saves see all three introductions (PQ-032.02).
+    const flags = story.flags || {};
+    const pinned = !flags.elroy_outcome_legacy && !!flags.elroy_outcome;
+    const stake = pinned ? getPickSideStake(flags.elroy_outcome) : null;
+    if (stake && (info.id !== stake.stationId || intro.branch !== stake.branch)) return null;
     const offer = this._rollOffer(
       intro.type,
       info,
@@ -2435,7 +2495,7 @@ export const missions = {
     // B4 paperwork: one clearing administrator for all three doors.
     offer.adminField = 'V. DIRECTOR, ACTING / REF 44-C';
     offer.authorization = 'CLEARING: V. DIRECTOR, ACTING / REF 44-C';
-    if (!legacy) {
+    if (stake) {
       offer.storyStake = stake.id;
       offer.title = stake.label;
       offer.riskTier = Math.max(2, offer.riskTier || 0);
@@ -3609,15 +3669,29 @@ export const missions = {
       };
     }
     if (beat.beat === 4) {
-      const stake = getPickSideStake(state.story && state.story.flags && state.story.flags.elroy_outcome);
-      const info = STATION_INFO.get(stake.stationId);
-      const station = currentSectorId === stake.sectorId ? this._liveStation(stake.stationId) : null;
+      const flags = (state.story && state.story.flags) || {};
+      const stake = getPickSideStake(flags.elroy_outcome);
+      const authored = embodiedMissionAt(4) || {};
+      const loc = authored.location || {};
+      // PQ-032.02: the live route posts all three doors — none is "the" stake until the
+      // player picks, so point at the clearing administrator's authored desk instead of a
+      // flavour branch. Legacy/pinned saves keep their outcome-shaped stake pointer.
+      const target = campaign47aRouteKind(state) === 'live'
+        ? {
+          stationId: loc.stationId || stake.stationId,
+          sectorId: loc.sectorId || stake.sectorId,
+          label: storyBeatTitle(beat),
+          instruction: authored.recovery || stake.instruction,
+        }
+        : stake;
+      const info = STATION_INFO.get(target.stationId);
+      const station = currentSectorId === target.sectorId ? this._liveStation(target.stationId) : null;
       return {
         ...base,
-        label: stake.label,
-        reason: stake.instruction,
-        stationId: stake.stationId,
-        sectorId: stake.sectorId,
+        label: target.label,
+        reason: target.instruction,
+        stationId: target.stationId,
+        sectorId: target.sectorId,
         sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
         pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
       };
@@ -3640,7 +3714,7 @@ export const missions = {
       };
     }
     if (beat.beat === 6) {
-      const program = getEmpireSeedProgram(state.story && state.story.flags && state.story.flags.elroy_outcome);
+      const program = getEmpireSeedProgram(campaign47aOutcomeKey(state));
       const pending = state.story && state.story.flags && state.story.flags.empire_seed_pending_id;
       const asteroid = this._nearestAsteroid();
       return {
@@ -3654,13 +3728,13 @@ export const missions = {
     }
     if (beat.beat === 7 && state.story && state.story.flags && !state.story.flags.deep_reach_operation_complete) {
       const flags = state.story.flags;
-      const legacy = !!(flags.elroy_outcome_legacy) || !flags.elroy_outcome;
+      const legacy = campaign47aRouteKind(state) === 'legacy';
       const hasSeed = !!flags.empire_seed_asset_id;
       const replacing = !!(flags.deep_reach_asset_lost || flags.empire_seed_pending_id);
       // A legacy save advances on net worth and never posts the toy. Pointing it at a
       // blockade, siege, or tow that is not on the board is a lie.
       if (!legacy && (hasSeed || replacing)) {
-        const op = getDeepReachOperation(flags.elroy_outcome, state.story && state.story.branch);
+        const op = getDeepReachOperation(campaign47aOutcomeKey(state), state.story && state.story.branch);
         const info = STATION_INFO.get(op.stationId);
         const station = currentSectorId === (info && info.sectorId) ? this._liveStation(op.stationId) : null;
         return {
@@ -4500,8 +4574,7 @@ export const missions = {
     story.flags = story.flags || {};
     const deployment = b6DeploymentPayload(p);
     if (!deployment) return false;
-    const legacy = !!story.flags.elroy_outcome_legacy || !story.flags.elroy_outcome;
-    if (legacy) {
+    if (campaign47aRouteKind(this.state) === 'legacy') {
       this._storyTrigger('asset_deployed', deployment);
       return story.beatIndex !== 6;
     }
@@ -4530,7 +4603,7 @@ export const missions = {
   _onContract47aB6ProgramAssigned(p) {
     const story = this.state && this.state.story;
     if (story && story.beatIndex === 7 && story.flags && story.flags.deep_reach_asset_lost) {
-      const program = getEmpireSeedProgram(story.flags.elroy_outcome);
+      const program = getEmpireSeedProgram(campaign47aOutcomeKey(this.state));
       if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
       if (p.templateId !== program.templateId) return false;
       story.flags.empire_seed_asset_id = p.id;
@@ -4544,7 +4617,7 @@ export const missions = {
       return true;
     }
     if (!story || story.beatIndex !== 6 || !story.flags) return false;
-    const program = getEmpireSeedProgram(story.flags.elroy_outcome);
+    const program = getEmpireSeedProgram(campaign47aOutcomeKey(this.state));
     if (!p || p.kind !== 'drone' || p.id !== story.flags.empire_seed_pending_id) return false;
     if (p.templateId !== program.templateId) {
       this._sayStoryLine(`Assign ${program.templateId.replace(/_/g, ' ')} to this drone.`, 5);
@@ -5157,6 +5230,10 @@ export const missions = {
 
   /** B7: a finished convoy, heist, or disabled ship posts the next contract. Never a fail. */
   _offerSetPieceFollowOn(m) {
+    // Authored 47-A work is a story contract, not a sandbox set piece — finishing the
+    // Deep Reach blockade must not post the generic frigate-tow follow-on (PQ-032.02).
+    if (m && (m.campaign47aBeat != null
+      || String(m.storyTag || '').startsWith('campaign47a:'))) return false;
     const pieceId = m && m.params && m.params.authoredSetPieceId;
     const offer = setPieceFollowOnOffer(pieceId, m, this._epoch());
     if (!offer) return false;
@@ -7139,6 +7216,15 @@ export const missions = {
       story.flags.elroy_outcome = 'force';
       story.flags.elroy_outcome_legacy = true;
     }
+    // PQ-032.02: the live pod rescue intentionally leaves Elroy unresolved, so absence of an
+    // outcome cannot distinguish this save from a legacy one. The embodied_route mark — written
+    // only when an authored B1–B3 contract settles without an outcome stamp — is the durable
+    // positive evidence B4–B7 classify on. The bounty block above must run first so its legacy
+    // stamp keeps the old route classified legacy.
+    story.flags = story.flags || {};
+    if (!story.flags.elroy_outcome && !story.flags.elroy_outcome_legacy) {
+      story.flags.embodied_route = 'rescue';
+    }
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
@@ -7181,9 +7267,11 @@ export const missions = {
     if (story.chainProgress >= wantCount) {
       story.flags = story.flags || {};
       story.flags.proving_ground_complete = true;
-      story.flags.proving_ground_variant = story.flags.elroy_outcome === 'custody' && story.branch === 'patrol'
+      // The live route has no outcome token — the branch door carries its flavour.
+      const outcomeKey = campaign47aOutcomeKey(this.state);
+      story.flags.proving_ground_variant = outcomeKey === 'custody' && story.branch === 'patrol'
         ? 'custody_patrol'
-        : story.flags.elroy_outcome === 'force' && story.branch === 'traders'
+        : outcomeKey === 'force' && story.branch === 'traders'
           ? 'force_manifest'
           : `legacy_${story.branch}`;
       story.chainProgress = 0;
@@ -7204,9 +7292,12 @@ export const missions = {
     if (!isStoryBranchIntroOffer(inst, this.state)) return;
     const branch = inst.storyBranch || Object.keys(BRANCH_FACTION).find((b) => BRANCH_FACTION[b] === inst.factionId);
     if (!branch || BRANCH_FACTION[branch] !== inst.factionId || !BRANCH_INTRO_BY_BRANCH.has(branch)) return;
-    const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
-    const stake = getPickSideStake(story.flags && story.flags.elroy_outcome);
-    if (!legacy && (branch !== stake.branch || inst.factionId !== stake.factionId || inst.type !== stake.type)) return;
+    // PQ-032.02: only an outcome-pinned save is locked to the one stake door. The live
+    // route earns its branch by actually finishing whichever introduction it chose;
+    // legacy saves keep the instant settle.
+    const kind = campaign47aRouteKind(this.state);
+    const stake = kind === 'pinned' ? getPickSideStake(story.flags && story.flags.elroy_outcome) : null;
+    if (stake && (branch !== stake.branch || inst.factionId !== stake.factionId || inst.type !== stake.type)) return;
     // Sidecar observes/gates the live intro accept before canonical branch/reward mutation.
     this._ensureCampaignSidecar();
     const observed = recordBeatStep(this.state, 'mission:accepted', {
@@ -7219,13 +7310,14 @@ export const missions = {
     if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;
     inst.storyBranch = branch;
-    if (legacy) {
+    if (kind === 'legacy') {
       this._settleContract47aB4Branch(inst, branch, true);
       return;
     }
+    story.flags = story.flags || {};
     story.flags.pick_a_side_pending = branch;
-    story.flags.pick_a_side_stake = stake.id;
-    inst.storyStake = stake.id;
+    story.flags.pick_a_side_stake = stake ? stake.id : `intro_${branch}`;
+    inst.storyStake = story.flags.pick_a_side_stake;
     this._sayStoryLine('Contract accepted. Complete it before the branch settles.', 6);
   },
 
@@ -7246,7 +7338,11 @@ export const missions = {
     story.branch = branch;
     story.flags = story.flags || {};
     delete story.flags.pick_a_side_pending;
-    if (!story.flags.pick_a_side_stake) story.flags.pick_a_side_stake = getPickSideStake(story.flags.elroy_outcome).id;
+    if (!story.flags.pick_a_side_stake) {
+      story.flags.pick_a_side_stake = story.flags.elroy_outcome
+        ? getPickSideStake(story.flags.elroy_outcome).id
+        : `intro_${branch}`;
+    }
     // B4 reward: chosen faction +15, opposing -10 through canonical faction intents.
     this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: 15, reason: 'story_branch' });
     const opposing = branch === 'patrol' ? 'faction_free' : (branch === 'free' ? 'faction_scn' : 'faction_dmc');
@@ -7262,7 +7358,7 @@ export const missions = {
     if (!String(m.storyTag || '').startsWith('campaign47a:b7:')) return false;
     const assetId = m.params && m.params.assetId;
     if (!assetId || !story.flags || assetId !== story.flags.empire_seed_asset_id) return false;
-    const op = getDeepReachOperation(story.flags.elroy_outcome, story.branch);
+    const op = getDeepReachOperation(campaign47aOutcomeKey(this.state), story.branch);
     if (m.storyOperation !== op.id || m.type !== op.type) return false;
     story.flags.deep_reach_operation_complete = true;
     story.flags.deep_reach_variant = op.id;
@@ -7278,8 +7374,9 @@ export const missions = {
     if (!beat) return;
     const credits = this.state.player.credits | 0;
     if (beat.beat === 7) {
-      const legacy = !!(story.flags && story.flags.elroy_outcome_legacy) || !(story.flags && story.flags.elroy_outcome);
-      if (!legacy) return;
+      // PQ-032.02: the net-worth/rep gate is the LEGACY endgame. A live-route save reaches
+      // the ending through the authored Deep Reach operation, not the old soft lock.
+      if (campaign47aRouteKind(this.state) !== 'legacy') return;
       // North star: 100k net worth AND rep>=50 with chosen faction.
       const netWorth = this._netWorth();
       const facRep = story.branch ? this._repOf(BRANCH_FACTION[story.branch]) : this._maxRep();

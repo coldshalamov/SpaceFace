@@ -190,3 +190,160 @@ test('legacy Deep Reach does not point at a climax that is not on the board', ()
   const reason = (h.state.nav.waypoint && h.state.nav.waypoint.reason) || '';
   assert.doesNotMatch(reason, /Siege the Deep Reach|Run the Deep Reach|Tow the Deep Reach/);
 });
+
+// ── PQ-032.02: the live route ──────────────────────────────────────────────────
+// The real live B2 is `rescue_under_fire` — it deliberately leaves
+// `state.story.flags.elroy_outcome` unset. These harnesses model the save that actually
+// exists after the pod pull: no outcome token, only positive embodied-route evidence
+// (the `embodied_route` mark written when an authored B1–B3 contract settles).
+const LIVE_ROUTE = Object.freeze({
+  patrol: Object.freeze({ ...EXPECTED.custody }),
+  traders: Object.freeze({ ...EXPECTED.force }),
+  free: Object.freeze({ ...EXPECTED.free }),
+});
+
+function liveHarness(branch) {
+  const expected = LIVE_ROUTE[branch];
+  assert.ok(expected, `live route covers branch ${branch}`);
+  const state = createGameState(branch === 'patrol' ? 491 : branch === 'traders' ? 492 : 493);
+  state.mode = 'flight';
+  state.simTime = 80;
+  state.playerId = 1;
+  // Deliberately BELOW the legacy B7 gate: a live save must reach the climax on the
+  // authored operation, never on net worth or standing.
+  state.player.credits = 2000;
+  state.settings.gameplay.tutorialHints = false;
+  state.onboarding = { active: false, finished: true };
+  state.world.currentSectorId = 'sector_helios_prime';
+  for (const factionId of ['faction_scn', 'faction_mts', 'faction_free']) {
+    state.factions[factionId] = { ...(state.factions[factionId] || {}), rep: 0 };
+  }
+
+  let nextId = 40;
+  const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
+  state.entities.set(player.id, player);
+  const bus = createBus();
+  const credits = [];
+  const elroyResolved = [];
+  bus.on('economy:grantCredits', (payload) => credits.push(payload));
+  bus.on('story:elroyResolved', (payload) => elroyResolved.push(payload));
+  const helpers = {
+    hash32,
+    mulberry32,
+    player: () => player,
+    voice: { say: () => true },
+    spawnEntity: (spec) => {
+      const entity = { ...spec, id: nextId++, alive: true, pos: { ...spec.pos }, vel: spec.vel || { x: 0, z: 0 } };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+  };
+  const missions = Object.assign({}, missionsProto);
+  missions.init({ state, bus, helpers, registry: { get: () => null } });
+  missions.newGame();
+  state.missions.active = [];
+  state.ui.trackedMissionId = null;
+  state.nav.waypoint = null;
+  state.story.beatIndex = 7;
+  state.story.branch = branch;
+  // Positive live evidence, zero Elroy tokens — exactly what the pod-rescue save carries.
+  state.story.flags.embodied_route = 'rescue';
+  state.story.flags.proving_ground_complete = true;
+  state.story.flags.empire_seed_complete = true;
+  state.story.flags.empire_seed_asset_id = 'seed-7';
+  state.story.flags.empire_seed_variant = branch === 'patrol' ? 'custody_watch' : 'force_logistics';
+  missions._syncCampaignSidecarAfterAdvance();
+  missions._refreshNavigation({ forceStory: true, silent: true });
+  return { state, bus, missions, credits, elroyResolved, expected };
+}
+
+function boardOperationOffers(h) {
+  const board = h.missions.ensureBoard(h.expected.stationId);
+  return board.slots.filter((row) => String(row.storyTag || '').startsWith('campaign47a:b7:'));
+}
+
+test('live route: no Elroy outcome still posts the authored B7 operation per branch', () => {
+  for (const branch of ['patrol', 'traders', 'free']) {
+    const h = liveHarness(branch);
+    assert.equal(h.state.story.flags.elroy_outcome, undefined, `${branch}: live save has no outcome token`);
+    assert.equal(h.state.story.flags.elroy_outcome_legacy, undefined, `${branch}: live save has no legacy mark`);
+
+    // The legacy net-worth gate must NOT silently end a live save before the operation exists.
+    h.state.player.credits = 250_000;
+    h.missions.update(0.016, h.state);
+    assert.equal(h.state.story.flags.endgame, undefined, `${branch}: net worth alone cannot bypass the authored climax`);
+
+    const offers = boardOperationOffers(h);
+    assert.equal(offers.length, 1, `${branch}: exactly one Deep Reach offer posts`);
+    assert.equal(offers[0].storyOperation, h.expected.variant, `${branch}: branch selects the authored op`);
+    assert.equal(offers[0].type, h.expected.type);
+
+    // The waypoint must point at the physical operation, not the old credit gate.
+    h.missions._refreshNavigation({ forceStory: true, silent: true });
+    assert.equal(h.state.nav.waypoint.stationId, h.expected.stationId, `${branch}: nav leads to Ashfall`);
+    assert.match(h.state.nav.waypoint.reason, /Deep Reach/i);
+  }
+});
+
+test('live route: B7 offer accepts at low standing and survives board refresh', () => {
+  const h = liveHarness('traders');
+  assert.equal(h.state.factions.faction_mts.rep, 0, 'no faction standing');
+
+  for (let i = 0; i < 3; i++) {
+    h.missions.ensureBoard(h.expected.stationId);
+    assert.equal(boardOperationOffers(h).length, 1, `refresh ${i}: offer stays unique`);
+  }
+
+  const offer = boardOperationOffers(h)[0];
+  assert.equal(h.missions.acceptMission(offer.id), true, 'authored climax accepts without the old rep gate');
+
+  // Once active, board refresh must not re-post a duplicate.
+  h.missions._refreshEmbodiedStoryBoards();
+  h.missions.ensureBoard(h.expected.stationId);
+  assert.equal(boardOperationOffers(h).length, 0, 'active operation is not re-offered');
+  assert.equal(h.state.missions.active.filter((row) => String(row.storyTag || '').startsWith('campaign47a:b7:')).length, 1);
+});
+
+test('live route: completing the authored op mints no sandbox set-piece follow-on', () => {
+  const h = liveHarness('patrol');
+  const mission = acceptOperation(h);
+  assert.ok(mission && mission.storyOperation === 'ashfall_blockade');
+  completePhysicalOperation(h, mission);
+
+  assert.equal(h.state.story.flags.deep_reach_operation_complete, true);
+  assert.equal(h.state.story.flags.deep_reach_variant, 'ashfall_blockade');
+  assert.equal(h.state.story.flags.endgame, true);
+  assert.equal(h.state.story.flags.elroy_outcome, undefined, 'live route never stamps an outcome');
+  assert.equal(h.elroyResolved.length, 0, 'live route never resolves Elroy');
+
+  // The blockade's authoredSetPieceId has a generic follow-on def — the campaign op is a
+  // story contract, so no ordinary sandbox follow-on may board.
+  const followOns = Object.values(h.state.missions.boards || {})
+    .flatMap((board) => board && board.slots || [])
+    .filter((row) => row && row.source === 'setPieceFollowOn');
+  assert.equal(followOns.length, 0, 'no sandbox set-piece follow-on after the authored climax');
+});
+
+test('truly legacy saves keep the net-worth gate and never see the authored op', () => {
+  // No outcome, no legacy flag, and no embodied evidence — a pre-embodiment Continue save.
+  const h = harness('force');
+  delete h.state.story.flags.elroy_outcome;
+  delete h.state.story.flags.empire_seed_complete;
+  delete h.state.story.flags.empire_seed_asset_id;
+  delete h.state.story.flags.empire_seed_variant;
+  delete h.state.story.flags.proving_ground_complete;
+  delete h.state.story.campaign47a.stepProgress;
+
+  const board = h.missions.ensureBoard(h.expected.stationId);
+  assert.equal(
+    board.slots.filter((row) => String(row.storyTag || '').startsWith('campaign47a:b7:')).length,
+    0,
+    'legacy save posts no Deep Reach operation',
+  );
+
+  // The old north star still ends the run for saves that never took the embodied route.
+  h.state.player.credits = 100_000;
+  h.missions.update(0.016, h.state);
+  assert.equal(h.state.story.flags.endgame, true, 'legacy B7 advances on net worth + standing');
+});

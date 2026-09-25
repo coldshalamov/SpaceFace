@@ -353,7 +353,10 @@ function buildDeepReachOperationOffer(options) {
     type: op.type, storyTag, storyContractId: storyTag, storyOperation: op.id,
     factionId: op.factionId, stationId: op.stationId,
     destStationId: 'station_ashcache', destSectorId: 'sector_ashfall_reach',
-    reward_cr: 2200, collateral_cr: 0, riskTier: 4, minRep: 50, time_limit_s: 0, distance: 5200,
+    // PQ-032.02: the authored climax is mandatory story work, not a standing-gated job —
+    // same always-acceptable floor as the B1–B3 contracts. Ordinary offers keep their
+    // risk-tier reputation ladders.
+    reward_cr: 2200, collateral_cr: 0, riskTier: 4, minRep: -149, time_limit_s: 0, distance: 5200,
     params, title: op.label.toUpperCase(), expiresAtEpoch: epoch + 2,
     campaign47aBeat: 7, source: 'campaign47a.deep_reach',
   };
