@@ -1387,7 +1387,7 @@ ${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-
 
 /* ================================ ROUND 8: INDUSTRY ========================================= */
 ${T} .sx-fab-foot .orr-lampkey:disabled { opacity:1 !important; color:rgb(${BONE} / .5) !important; }
-${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .5) !important; }
+${T} .sx-fab-foot .orr-lampkey:disabled::before { background:transparent !important; box-shadow:none !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
 ${T} .sx-ind .orr-extent::before, ${T} .sx-ind__list .orr-extent::before, ${T} .sx-fab .orr-extent::before { opacity:.4 !important; }
 
@@ -1486,7 +1486,7 @@ ${T} .sx-ind-process__head .sx-ind-process__count { color:rgb(${BONE} / .62) !im
 ${T} .sx-ind__list { position:relative !important; }
 ${T} .sx-ind__list::before { content:""; position:absolute; left:7px; top:6px; bottom:6px; width:1px; background:rgb(${BONE} / .4); pointer-events:none; z-index:0; }
 ${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
-${T} .sx-ind__list .orr-extent { display:none !important; }
+/* (the ladder's light cursor rides the one spine again: see ROUND 11) */
 @media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:nowrap !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
 
 /* ================================ ROUND 10: BAR ============================================= */
@@ -1540,6 +1540,24 @@ ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected,
   ${T} .k-panel.sx-ct { grid-template-columns:345px minmax(0, 1fr) !important; }
   ${T} .sx-ct__jobs .sx-job .k-row__name, ${T} .sx-ct__jobs .sx-job .k-row__sub { display:block; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:215px; }
 }
+
+/* ================================ ROUND 11: INDUSTRY ======================================== */
+/* the state light lives on the words, not on the row (a row's opacity dimmed its own Hand and compounded into its sub-line) */
+${T} .sx-ind-process__items .sx-ind-row { opacity:1 !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-blocked .sx-ind-row__name { color:rgb(${BONE} / .56) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__name { color:rgb(${BONE} / .72) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-ready .sx-ind-row__name { color:rgb(250 247 238) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-blocked:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .82) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238 / .95) !important; }
+${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier, ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__qty { color:rgb(${BONE} / .56) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .66) !important; }
+/* every rung not ready says why on its own line (the header carries the group's shared reason) */
+${T} .sx-ind-process__items .sx-ind-row:is(.is-materials, .is-blocked) .sx-ind-row__why { display:inline !important; }
+/* the ladder's light cursor rides the one spine: a 3px bar at 60% with an end tick */
+${T} .sx-ind__list .orr-extent { display:block !important; }
+${T} .sx-ind__list .orr-extent::before { left:6px !important; width:3px !important; background:rgb(${BONE} / .6) !important; box-shadow:none !important; opacity:1 !important; }
+${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:9px; height:1.5px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 1.5px); background:rgb(${BONE} / .6); }
+${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
 
 `;
 

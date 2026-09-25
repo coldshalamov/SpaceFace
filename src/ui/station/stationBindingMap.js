@@ -49,6 +49,8 @@ export const STATION_CONTROLS = Object.freeze({
   fabricate: { label: 'Fabricate', role: 'primary' },
   faction: { label: 'Faction' },
   'faction-relation': { label: 'Relation' },
+  'relations-toggle': { label: 'Relations' },
+  'find-facility': { label: 'Find on the chart' },
   contact: { label: 'Contact' },
   choice: { label: 'Ask' },
   'buy-survey': { label: 'Buy' },

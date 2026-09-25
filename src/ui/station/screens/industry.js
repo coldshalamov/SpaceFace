@@ -142,7 +142,11 @@ export function createIndustryScreen(ctx) {
           // the group's reason is printed once on the header when at least half its rungs share a facility block
           const stationBlocked = readiness.filter((r) => r.state === 'station').length;
           const allStation = readiness.length > 0 && stationBlocked * 2 >= readiness.length;
-          const facility = allStation ? ((blueprints.find((bp, k) => readiness[k].state === 'station') || blueprints[0]).stationType === 'fab' ? 'fabricator' : 'refinery') : '';
+          // the header names the facility most of the group's blocked rungs lack; a rung that lacks a different one says so itself
+          const typeCount = {};
+          blueprints.forEach((bp, k) => { if (readiness[k].state === 'station') typeCount[bp.stationType] = (typeCount[bp.stationType] || 0) + 1; });
+          const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
+          const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
           const it = items(state);
           const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(it[id] || 0); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
@@ -152,7 +156,7 @@ export function createIndustryScreen(ctx) {
               const r = readiness[bi];
               const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
               // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
-              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r);
+              const why = r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && bp.stationType === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r);
               const selected = bp.id === selectedId;
               const outputName = niceName(bp.outputs.id, bp.outputs.kind);
               const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
@@ -266,7 +270,7 @@ export function createIndustryScreen(ctx) {
       output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
-      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" class="orr-chain__wayout" data-ind-chart="1">Find a refinery on the chart</button>` } : null,
+      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" ${stationControlAttrs('find-facility')} class="orr-chain__wayout" data-ind-chart="1">Find a ${bp.stationType === 'fab' ? 'fabricator' : 'refinery'} on the chart</button>` } : null,
       timeFrac: 1,
       progress: queue ? progress : null,
     });

@@ -262,7 +262,7 @@ export function createFactionsScreen(ctx) {
         // one figure: the standing, its tier above it; the two distances (to the next tier, above the
         // hostile line) are measured on the scale itself as brackets, not restated as a row of figures
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}: ${escapeHtml(tier.name)} ${signed(rep)}${next ? `, ${next.need} to ${escapeHtml(next.name)}` : ''}, ${buffer} above the hostile line">` +
-          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span><span class="sx-fac-num">${signed(rep)}</span>`, '', cls) +
+          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}${next ? '' : ' \u00b7 Peak held'}</span><span class="sx-fac-num">${signed(rep)}</span>`, '', cls) +
         `</div>` +
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
@@ -289,7 +289,7 @@ export function createFactionsScreen(ctx) {
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
             (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +
-            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">${relations.length ? 'Detail' : 'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
+            `<button type="button" ${stationControlAttrs('relations-toggle')} class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">${'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
             (relations.length
               ? `<ul class="k-rows sx-fac-network__rows" hidden>${relationRows}</ul>`
               : `<p class="k-empty sx-fac-network__empty" hidden>No material relations recorded.</p>`) +
