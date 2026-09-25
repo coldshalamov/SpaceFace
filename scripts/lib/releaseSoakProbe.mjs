@@ -2806,6 +2806,55 @@ async function sampleRafWindow(page, {
       };
     }
 
+    // The tier-1 byte total cannot name ambient writers that bypass the dynamic-range
+    // coordinator. The armed census keys each bufferSubData payload by its CPU-side view;
+    // here we resolve those views back to geometry attributes so the report names the
+    // largest upload owners in the window.
+    function collectPartialUploadCensusReport() {
+      const perf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const entries = perf && typeof perf.collectPartialUploadCensus === 'function'
+        ? perf.collectPartialUploadCensus()
+        : null;
+      if (!entries || !entries.length) return null;
+      const byView = new Map();
+      const indexView = (owner, attributeName, attribute) => {
+        const view = attribute && attribute.array;
+        if (view && ArrayBuffer.isView(view) && !byView.has(view)) {
+          byView.set(view, `${owner}.${attributeName}`);
+        }
+      };
+      const scene = state?.render?.scene ?? null;
+      if (scene && typeof scene.traverse === 'function') {
+        scene.traverse((object) => {
+          const label = object.name || object.type || 'object';
+          const attributes = object.geometry?.attributes;
+          if (attributes) {
+            for (const [name, attribute] of Object.entries(attributes)) {
+              indexView(label, name, attribute);
+            }
+          }
+          if (object.isInstancedMesh) {
+            indexView(label, 'instanceMatrix', object.instanceMatrix);
+            if (object.instanceColor) indexView(label, 'instanceColor', object.instanceColor);
+          }
+        });
+      }
+      let resolvedBytes = 0;
+      let unresolvedBytes = 0;
+      const rows = entries.map(([view, stat]) => {
+        const owner = byView.get(view) ?? null;
+        if (owner) resolvedBytes += stat.bytes; else unresolvedBytes += stat.bytes;
+        return {
+          owner,
+          sourceLength: Number(view.length) || null,
+          calls: stat.calls,
+          bytes: stat.bytes,
+        };
+      });
+      rows.sort((a, b) => b.bytes - a.bytes);
+      return { resolvedBytes, unresolvedBytes, top: rows.slice(0, 24) };
+    }
+
     function readRouteProof() {
       const perf = window.__SPACEFACE_PERF__ && typeof window.__SPACEFACE_PERF__.getReport === 'function'
         ? window.__SPACEFACE_PERF__.getReport()
@@ -2910,6 +2959,7 @@ async function sampleRafWindow(page, {
       gpuDrain,
       dynamicBufferStart,
       dynamicBufferEnd,
+      partialUploadCensus,
     }) {
       const perfApi = window.__SPACEFACE_PERF__ || state?.perfRuntime || null;
       const perf = perfApi && typeof perfApi.getReport === 'function'
@@ -3058,6 +3108,9 @@ async function sampleRafWindow(page, {
           start: dynamicBufferStart || null,
           end: dynamicBufferEnd || null,
           delta: metricDelta(dynamicBufferStart?.totals, dynamicBufferEnd?.totals),
+          // Names the largest ambient (non-coordinator) upload owners in this window when
+          // the diagnostic census was armed; null when disarmed or unsupported.
+          partialUploadCensus: partialUploadCensus || null,
         },
         tier1,
         capturedAt: new Date().toISOString(),
@@ -3300,6 +3353,12 @@ async function sampleRafWindow(page, {
     try {
       resetProbes();
       const dynamicBufferStart = readDynamicBufferSlice();
+      // Arm the diagnostic partial-upload census for the window so ambient (non-owner)
+      // bufferSubData traffic can be named by its owning attribute at the end slice.
+      const censusPerf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      if (censusPerf && typeof censusPerf.armPartialUploadCensus === 'function') {
+        try { censusPerf.armPartialUploadCensus(); } catch (_) { /* diagnostic-only */ }
+      }
 
       try {
         longTaskObserver = new PerformanceObserver((list) => {
@@ -3529,6 +3588,10 @@ async function sampleRafWindow(page, {
       const programInventoryEnd = collectPerformanceProgramInventory({ state });
       const heapEnd = readHeapSlice();
       const dynamicBufferEnd = readDynamicBufferSlice();
+      const partialUploadCensus = collectPartialUploadCensusReport();
+      if (censusPerf && typeof censusPerf.disarmPartialUploadCensus === 'function') {
+        try { censusPerf.disarmPartialUploadCensus(); } catch (_) { /* diagnostic-only */ }
+      }
 
       // Local percentile summary matching summarizeSamples contract keys.
       const values = samples.map((sample) => sample.frameMs).filter((v) => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
@@ -3584,6 +3647,7 @@ async function sampleRafWindow(page, {
         gpuDrain,
         dynamicBufferStart,
         dynamicBufferEnd,
+        partialUploadCensus,
       });
       return { samples, attribution };
     } finally {

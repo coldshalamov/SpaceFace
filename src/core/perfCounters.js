@@ -238,6 +238,9 @@ export function createPerfCounters() {
 
   const events = [];
   let eventsDropped = 0;
+  // Diagnostic-only census of partial buffer uploads, keyed by CPU source view. Armed by a
+  // probe via armPartialUploadCensus(); null in normal play so the hot path pays nothing.
+  let partialUploadCensus = null;
   // Monotonic "work was recorded" tick. Harness-facing only; see api.recordedUnits().
   let recordedUnits = 0;
   const stepsPerFrameHistogram = Object.create(null);
@@ -396,6 +399,21 @@ export function createPerfCounters() {
     // pays one store and nothing else; the name is resolved only on the rare link event.
     drawObject: null,
 
+    // Arms the diagnostic partial-upload census. Returns the live Map so the probe can hold
+    // the same reference across a window boundary; null disarms. resolvePartialUploadCensus
+    // hands back [sourceView, {calls,bytes}] pairs for in-page owner resolution — callers
+    // must resolve and strip references before serializing.
+    armPartialUploadCensus() {
+      partialUploadCensus = new Map();
+      return partialUploadCensus;
+    },
+    collectPartialUploadCensus() {
+      return partialUploadCensus ? [...partialUploadCensus.entries()] : [];
+    },
+    disarmPartialUploadCensus() {
+      partialUploadCensus = null;
+    },
+
     countShaderLink(cacheKey = '', name = '', glProgram = null) {
       if (!enabled) return;
       record('shaderLinks', 1);
@@ -434,6 +452,15 @@ export function createPerfCounters() {
       if (!enabled) return;
       record(full ? 'bufferFullUploads' : 'bufferPartialUploads', 1);
       record('bufferUploadBytes', Number.isFinite(bytes) && bytes > 0 ? bytes : 0);
+      // Armed by probes to answer "who wrote the ambient partial-upload traffic": a Map
+      // keyed by the CPU-side source view resolves buffer → geometry attribute in-page.
+      // Diagnostic-only — the map is null in normal play and costs nothing when disarmed.
+      if (!full && partialUploadCensus && sourceData && ArrayBuffer.isView(sourceData)) {
+        const entry = partialUploadCensus.get(sourceData) ?? { calls: 0, bytes: 0 };
+        entry.calls += 1;
+        entry.bytes += Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+        partialUploadCensus.set(sourceData, entry);
+      }
       // Full uploads are rare (new geometry / instanced-chunk buffers); partials are the
       // per-frame dynamic traffic and are never recorded. Tag the same subject as link
       // events so a residual upload wave names its admission. The CPU-side source array
