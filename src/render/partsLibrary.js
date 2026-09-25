@@ -4064,6 +4064,66 @@ function firstFlightShipCanPassBusyPlace(state) {
   return active.length === 1 && active[0].entity?.type !== 'ship';
 }
 
+// Steady flight runs the serial lane at concurrency 1, so a non-ship job whose inner await
+// never settles (a wedged decode/transcode/residency park — the critical-hub job sat in flight
+// ~11 min behind place_station_trade_hub.glb and starved every combat ship queued behind it)
+// would block the lane for the rest of the session. Past this bound the same one-extra-slot
+// escape the first-flight hold grants applies in steady flight too.
+const AUTHORED_UPGRADE_NONSHIP_STALL_MS = 120000;
+const STALLED_HOG_WAKE_MS = 5000;
+
+function stalledNonShipHogCanPassShip(state) {
+  if (!state || state.firstFlightHandoffHold === true || state.openingHandoffHold === true) {
+    return false;
+  }
+  if (!state.jobs.some((job) => job.entity && job.entity.type === 'ship'
+      && jobStillNeeded(state, job))) return false;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
+  if (active.length !== 1 || active[0].entity?.type === 'ship') return false;
+  const startedAt = Number(active[0].inFlightAtMs);
+  return Number.isFinite(startedAt) && monotonicNow() - startedAt >= AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+}
+
+/**
+ * The queue only re-enters on a scheduled frame, and a wedged in-flight job never schedules one —
+ * poll at a slow cadence while an unreleased non-ship hog holds the lane so the stall bypass can
+ * fire once the bound is crossed.
+ */
+function armStalledHogWake(state) {
+  if (!state || state.heldShipWakeTimer != null) return;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight');
+  if (!active.some((job) => job.entity?.type !== 'ship')) return;
+  state.heldShipWakeTimer = setTimeout(() => {
+    state.heldShipWakeTimer = null;
+    settleStalledNonShipDiagnostics(state);
+    scheduleNextUpgradeFrame(state);
+  }, STALLED_HOG_WAKE_MS);
+  state.heldShipWakeTimer.unref?.();
+}
+
+/**
+ * Close the 'running' diagnostic of a non-ship job whose inner await has outlived the stall
+ * bound. The job stays lifecycle 'in-flight' and keeps its serial slot accounting — its promise
+ * may still resolve and publish — but quiet-window gates that read activeJobs must not wait on
+ * a dead lane. finishUpgradeDiagnostic is idempotent, so the job's own settle path is a no-op
+ * whenever it eventually unwinds.
+ */
+function settleStalledNonShipDiagnostics(state) {
+  const now = monotonicNow();
+  for (const job of state.byBoundary.values()) {
+    if (!job || job.lifecycle !== 'in-flight') continue;
+    if (job.entity?.type === 'ship') continue;
+    const startedAt = Number(job.inFlightAtMs);
+    if (!Number.isFinite(startedAt) || now - startedAt < AUTHORED_UPGRADE_NONSHIP_STALL_MS) continue;
+    if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
+      job.upgradeDiagnostic.status = 'stalled-slot-released';
+    }
+    finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
+  }
+}
+
 export function waitForOpeningGraphPublicationRelease() {
   const render = authoredRuntimeState()?.render;
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
@@ -4360,6 +4420,7 @@ function scheduleNextUpgradeFrame(state) {
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
+    armStalledHogWake(state);
     return;
   }
   if (state.firstFlightHandoffHold === true
@@ -4369,7 +4430,11 @@ function scheduleNextUpgradeFrame(state) {
   }
   if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
   if (state.inFlight >= authoredUpgradeConcurrencyLimit()
-      && !firstFlightShipCanPassBusyPlace(state)) return;
+      && !firstFlightShipCanPassBusyPlace(state)
+      && !stalledNonShipHogCanPassShip(state)) {
+    armStalledHogWake(state);
+    return;
+  }
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
   state.frameScheduled = true;
@@ -4449,6 +4514,7 @@ function admitNextUpgradeJob(state) {
 
   job.lifecycle = 'in-flight';
   job.serialSlotReleased = false;
+  job.inFlightAtMs = monotonicNow();
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
   }
@@ -4488,9 +4554,13 @@ function admitNextUpgradeJob(state) {
   let failure = null;
   Promise.resolve().then(run).then((value) => {
     result = value;
-    diagnostic.status = job.boundary && job.boundary.userData
-      ? job.boundary.userData.authoredAssetState || 'completed'
-      : 'completed';
+    // A stall-released diagnostic keeps its verdict — the boundary's own state may sit at a
+    // mid-admission stage long after the watchdog closed the record.
+    if (diagnostic.endedAtMs == null) {
+      diagnostic.status = job.boundary && job.boundary.userData
+        ? job.boundary.userData.authoredAssetState || 'completed'
+        : 'completed';
+    }
   }).catch((error) => {
     failure = error;
     diagnostic.status = 'fallback-after-error';
@@ -4631,6 +4701,7 @@ function beginUpgradeDiagnostic(state, job) {
     backgroundJobId: backgroundJob?.backgroundJobId ?? null,
     backgroundJobOrigin: backgroundJob ? { ...backgroundJob.origin } : null,
   };
+  job.upgradeDiagnostic = diagnostic;
   state.diagnostics.jobs.push(diagnostic);
   if (state.diagnostics.jobs.length > 128) state.diagnostics.jobs.splice(0, state.diagnostics.jobs.length - 128);
   state.diagnostics.activeJobs++;
@@ -4648,6 +4719,9 @@ function beginUpgradeDiagnostic(state, job) {
 }
 
 function finishUpgradeDiagnostic(state, job, diagnostic) {
+  // A stalled hog's diagnostic is settled by the stall watchdog before its inner promise ever
+  // resolves; when the job's own chain finally unwinds, this must not double-count the release.
+  if (!diagnostic || diagnostic.endedAtMs != null) return;
   diagnostic.endedAtMs = monotonicNow();
   diagnostic.durationMs = Math.max(0, diagnostic.endedAtMs - diagnostic.startedAtMs);
   diagnostic.transferBytes = resourceBytesForUrls(job.assetUrls);

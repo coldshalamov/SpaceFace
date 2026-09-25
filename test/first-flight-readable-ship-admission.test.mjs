@@ -151,3 +151,73 @@ test('a slow station cannot occupy the only slot for a first-flight ship contact
     else globalThis.window = previousWindow;
   }
 });
+
+test('a non-ship job stalled in flight past the stall bound lets one queued ship pass', async () => {
+  const scheduled = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  const previousNow = performance.now.bind(performance);
+  let fakeNow = 0;
+  globalThis.requestAnimationFrame = (callback) => scheduled.push(callback);
+  globalThis.window = { SF: { state: {
+    mode: 'flight', playerId: 'player',
+    entities: new Map([['player', { pos: { x: 0, z: 0 } }]]),
+    render: { firstPlayableFrameAt: 1, sectorShellAdmission: false },
+  } } };
+  performance.now = () => fakeNow;
+  const scene = new THREE.Scene();
+  let finishStation;
+  const station = new THREE.Group();
+  station.userData.authoredAssetState = 'loading';
+  scene.add(station);
+  const stationEntity = { id: 'station', type: 'station', alive: true, mesh: station };
+  const ship = new THREE.Group();
+  ship.userData.authoredAssetState = 'loading';
+  scene.add(ship);
+  const shipEntity = {
+    id: 'ship', type: 'ship', alive: true, mesh: ship,
+    pos: { x: 100, z: 0 }, activity: { presentationTier: 'R0_GLASS' },
+    data: { defId: 'ship_wasp' },
+  };
+  globalThis.window.SF.state.entities.set('ship', shipEntity);
+  let shipStarted = false;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  try {
+    // No first-flight hold: steady flight, serial lane, the station goes in flight and never settles.
+    enqueueBoundaryUpgrade(scene, {
+      boundary: station, entity: stationEntity, options: {},
+      run: () => new Promise((resolve) => { finishStation = resolve; }),
+    });
+    scheduled.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
+    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 1);
+    enqueueBoundaryUpgrade(scene, {
+      boundary: ship, entity: shipEntity, options: {},
+      run: () => { shipStarted = true; ship.userData.authoredAssetState = 'authored'; },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(shipStarted, false, 'the serial lane must not overlap a fresh admission');
+    // The hog crosses the stall bound; the wake poll then releases its diagnostic and bypasses it.
+    fakeNow += 121_000;
+    await sleep(5_600);
+    while (scheduled.length) {
+      scheduled.shift()(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(shipStarted, true, 'a stalled non-ship hog cannot starve the serial ship lane');
+    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 0,
+      'the stalled job diagnostic must not hold upload-quiet gates open');
+    // The wedged promise still settles late — bookkeeping must not double-count its release.
+    finishStation();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 0);
+  } finally {
+    finishStation?.();
+    performance.now = previousNow;
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
