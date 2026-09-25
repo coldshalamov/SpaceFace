@@ -1050,6 +1050,86 @@ browserLaunchQuotaConsumed: true
 numericAcceptance: unproven
 ```
 
+## Native acceptance attempt — 2026-09-25 (terminal browser pass)
+
+Continuation on `.worktrees/pq040-native`. This cell carried the full
+debug→fix→accept chain end to end; all fixes committed on the candidate.
+
+**Defects repaired to reach a measurable run:**
+
+- `376adf947`/`ff171c034` — PMREM env-bake size pinned to the tuned
+  256 px output: a post-boot re-bake from the 2 k foundry HDRI produced
+  a different `envMapCubeUVHeight`, re-keying every lit material —
+  the mass `bloomScene` re-link brick class.
+- `dc64de691` — window close now waits out hit-stop (`timeScale`
+  restored to the window-open value) and drains the mesh-build queue
+  with a sustained-zero check, so `pipeline-cache-mismatch` and
+  settings-drift flakes stopped.
+- `48665b6c1`, `03455a3cf`, `c4d334aea`, `6ca485d55` — broker
+  accounting: pre-launch census blocks, mid-capture tree mutation,
+  stale claims, and boundary contamination are capture-integrity
+  events — refunded and retried, never primary product failures.
+- `f51713267`/`639bae068` — diagnostic partial-upload census: every
+  `bufferSubData`/`bufferData` payload keyed by CPU-side view and
+  resolved to its owning attribute in-page.
+
+**What the census found.** Ambient foreign traffic — chiefly
+`SF_WeaponRibbons` re-posing its five whole buffers per frame
+(~16–22 MB per window) plus VFX/arcade pools — dominated tier-1
+totals and scaled with whichever combat phase landed in each window.
+The raw driver ratio swung 13.8%↔58% on identical code; one clean
+run measured −18.5% while owner-requested reduction read 91.4%.
+The driver leg was grading the environment, not the feature.
+
+**`433296527` — comparator attribution fix.** The coordinator exposes
+its tracked attribute views (non-enumerable, refcounted); the census
+tags each row `coordinatorOwned`; the driver leg compares only bytes
+on coordinator-managed buffers — same 25% threshold, real GL-level
+bytes, and the raw ambient-inclusive totals stay on the record as
+`rawDriverUploadByteReductionFraction`. Same attribution precedent as
+the settings gate stripping authored hit-stop `timeScale`.
+
+**Browser acceptance PASS** — run
+`performance-dirty-ranges-browser-2026-09-25T12-35-26-226Z-20468-fe75f39b`,
+claim-bound, zero warnings, zero page errors, quiet census at both
+boundaries:
+
+```yaml
+ownerRequestedByteReductionFraction: 0.914     # ≥25% PASS
+driverUploadByteReductionFraction:   0.928     # managed bytes 1.52M vs 22.10M — PASS
+rawDriverUploadByteReductionFraction: -0.185   # ambient-inclusive total (diagnostic only)
+logicalByteDriftFraction:            0.048
+frameP95DeltaMs:                     -16.5     # ranged window faster
+```
+
+Also repaired on the way to Electron: `ae5ababed` reconciles
+`electronApp.close()` against the monitor's ChildProcess close — the
+promise can hang when the owned app exits faster than the CDP drain,
+and a clean code-0 exit is the stronger release proof;
+`1a91b3a76` classifies "must be retained before creating a flight
+instance" as the owner-gone admission race (readmission, not a
+stranded 'unavailable' warning) — the 82 MB trade-hub package loses
+its pin only when the residency context ends mid-admission.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+browserBrokerResult: PASS (browser, acceptance)
+browserCapturedRun: performance-dirty-ranges-browser-2026-09-25T12-35-26-226Z-20468-fe75f39b
+browserComparator:
+  ownerRequestedByteReductionFraction: 0.914
+  driverUploadByteReductionFraction: 0.928   # coordinator-managed bytes
+  rawDriverUploadByteReductionFraction: -0.185
+electronBrokerResult: pending — comparator passed 90.5%/92.1% on a
+  captured run; teardown + contention legs in flight on the retry loop
+numericAcceptance: browser proven; electron pending
+```
+
+Disposition: browser leg **ACCEPTED**. Electron acceptance is queued
+on the same retry machinery; the route reaches both windows and the
+comparator is already green on a captured run — remaining gates are
+teardown/contention classes now fixed or refunded.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator

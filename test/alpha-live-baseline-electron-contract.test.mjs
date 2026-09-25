@@ -163,6 +163,18 @@ assert.match(helperSource, /const groupPid\s*=\s*-pid[\s\S]*killProcessGroupImpl
 assert.doesNotMatch(helperSource, /\b(?:tasklist|Stop-Process|Get-Process|wmic)\b|\/IM\b/i,
   'force-close cannot enumerate or target ambient processes by name');
 assert.match(helperSource, /listen\(context, ['"]weberror['"]/, 'context-wide renderer errors attach before firstWindow');
+
+// Dock-approach recovery completeness: the stall watchdog's own brake pulse is the public
+// autopilot disengage, so a ship left manual inside the corridor can sit above the dock speed
+// gate where neither the nudge (<12 wu/s) nor the stranded re-arm (>90 WU) applies — observed
+// as 'autopilot did not reach a physical dock prompt' with autopilot manual at 66 wu/s / 41 WU.
+// The route must brake a manual ship back under the gate so recapture or a nudge can finish.
+assert.match(routeSource,
+  /autopilot\?\.active\s*!==\s*true\s*&&\s*nearBerth\s*&&\s*manualBrakes\s*<\s*3\s*&&\s*Number\(approachSnapshot\.speed\)\s*>\s*12/,
+  'a manual ship over the dock speed gate inside the corridor is braked back under the gate');
+assert.match(routeSource,
+  /dock-corridor-manual-brake[\s\S]{0,200}?keyboard\.down\(['"]Digit0['"]\)/,
+  'the manual-ship brake recovery pulses the public brake binding and is marked in route evidence');
 assert.match(helperSource, /consoleMessages[\s\S]*pageErrors[\s\S]*requests/,
   'supported Playwright page histories are backfilled explicitly');
 assert.match(helperSource, /floor:\s*\{\s*width:\s*1280,\s*height:\s*720,\s*unit:\s*['"]css-pixels['"]/,
