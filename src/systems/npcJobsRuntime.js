@@ -2685,7 +2685,23 @@ export const npcJobsRuntime = {
       }
       const flags = entity.flags;
       if (!flags || flags.persistent !== true) continue;
-      if (d && d.jobId != null) continue;
+      if (d && d.jobId != null) {
+        // A claim whose bag entry is gone AND whose record holds no live entry is provably
+        // dead: nothing can ever re-link this hull (release() cannot strip a virtualized
+        // hull — it has no entity to reach — so the claim rode the far row back). Left in
+        // place it keeps the persistence mark AND blinds traffic's idle-hull reuse gate
+        // (`ent.data.jobId`), so producers kept dispatching replacements: PQ-033.02 measured
+        // yard tugs piling up five-deep on one record this way after their jobs completed
+        // while shelved. Strip the dead claim so the hull returns to honest idle state; a
+        // hull whose record still anchors a live (virtual) entry stays claimable.
+        if (d.worldRecordId == null || !held.has(d.worldRecordId)) {
+          delete d.jobId;
+          if (d.jobPhase !== undefined) delete d.jobPhase;
+          if (d.jobProgress !== undefined) delete d.jobProgress;
+        } else {
+          continue; // re-link pending for this record — keep the claim and the mark
+        }
+      }
       if (d && d.worldRecordId != null && held.has(d.worldRecordId)) continue;
       releaseJobOwnedPersistence(entity);
     }
