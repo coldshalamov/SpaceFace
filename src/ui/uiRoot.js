@@ -630,6 +630,16 @@ export const ui = {
         if (toast) this.bus.emit('toast', toast);
       });
     }
+    const autoTargetFlightStick = document.createElement('div');
+    autoTargetFlightStick.id = 'auto-target-flight-stick';
+    autoTargetFlightStick.setAttribute('aria-hidden', 'true');
+    autoTargetFlightStick.innerHTML = '<div class="sf-combat-stick__base"><span class="sf-combat-stick__crosshair"></span><span class="sf-combat-stick__knob"></span></div>';
+    hudRoot.appendChild(autoTargetFlightStick);
+    const autoTargetStickKnob = autoTargetFlightStick.querySelector('.sf-combat-stick__knob');
+    let lastStickDisplay = null;
+    let lastStickTransform = null;
+    let lastStickActive = null;
+
     const autoTargetFlightPath = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     autoTargetFlightPath.id = 'auto-target-flight-path';
     autoTargetFlightPath.setAttribute('aria-hidden', 'true');
@@ -665,6 +675,7 @@ export const ui = {
       const active = !!(visible && pointer && pointer.active);
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
       const flightPath = st && st.input && st.input.autoTargetPath;
+      const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
@@ -680,6 +691,26 @@ export const ui = {
       if (lastReticleMode !== nextReticleMode) {
         lastReticleMode = nextReticleMode;
         reticleEl.dataset.mode = nextReticleMode;
+      }
+      const nextStickDisplay = autoTarget ? 'block' : 'none';
+      if (lastStickDisplay !== nextStickDisplay) {
+        lastStickDisplay = nextStickDisplay;
+        autoTargetFlightStick.style.display = nextStickDisplay;
+      }
+      if (autoTarget) {
+        const stickX = Number.isFinite(flightStick?.screenX) ? flightStick.screenX : 0;
+        const stickY = Number.isFinite(flightStick?.screenY) ? flightStick.screenY : 0;
+        const knobTravelPx = 38;
+        const nextStickTransform = `translate3d(${(stickX * knobTravelPx).toFixed(1)}px,${(stickY * knobTravelPx).toFixed(1)}px,0)`;
+        if (lastStickTransform !== nextStickTransform) {
+          lastStickTransform = nextStickTransform;
+          autoTargetStickKnob.style.transform = nextStickTransform;
+        }
+        const stickActive = flightStick?.active === true;
+        if (lastStickActive !== stickActive) {
+          lastStickActive = stickActive;
+          autoTargetFlightStick.classList.toggle('is-active', stickActive);
+        }
       }
       const nextFlightPathDisplay = autoTarget ? 'block' : 'none';
       if (lastFlightPathDisplay !== nextFlightPathDisplay) {
