@@ -69,14 +69,30 @@ const EMPIRE_SEED_PROGRAMS = B({
   custody: B({ id: 'custody_watch', templateId: 'patrol_guard', label: 'Custody Watch Drone' }),
   force: B({ id: 'force_logistics', templateId: 'mine_to_depot', label: 'Manifest Logistics Drone' }),
 });
-const DEEP_REACH_OPERATIONS = B({
-  custody: B({
-    id: 'custody_watch_reach', type: 'patrol_clear', stationId: 'station_coalition',
-    factionId: 'faction_scn', label: 'Deep Reach Watch', instruction: 'Carry the watch drone into the Deep Reach patrol',
+// PQ-032.02 — the Deep Reach climax is a toy. One linear spine, three branch verbs,
+// two solutions each. Patrol runs a blockade, traders siege with a wrecking ball,
+// free captains tow the evidence. Elroy still only chooses which door was earned.
+const DEEP_REACH_CLIMAX = B({
+  patrol: B({
+    id: 'ashfall_blockade', type: 'authored_set_piece', stationId: 'station_ashcache',
+    factionId: 'faction_scn', label: 'Deep Reach Blockade',
+    instruction: 'Run the Deep Reach blockade. Park the hulk on the Ashfall approach, or swing it through the wedge.',
+    headlineVerb: 'jam', authoredSetPieceId: 'station_door_jam', physicalVerb: 'jam',
+    completionMethods: B(['park_the_hulk', 'swing_the_wedge']), primaryRole: 'jam_hulk',
   }),
-  force: B({
-    id: 'force_manifest_reach', type: 'bulk_trade', stationId: 'station_tethys',
-    factionId: 'faction_mts', label: 'Deep Reach Manifest', instruction: 'Carry the logistics drone manifest into Deep Reach',
+  traders: B({
+    id: 'ashfall_siege', type: 'demolition', stationId: 'station_ashcache',
+    factionId: 'faction_mts', label: 'Deep Reach Siege',
+    instruction: 'Siege the Deep Reach tower. Swing mass through it, or cut it down.',
+    headlineVerb: 'knock', authoredSetPieceId: 'wrecking_ball', physicalVerb: 'knock_down',
+    completionMethods: B(['wrecking_ball', 'cut_down']), primaryRole: 'demolition_tower',
+  }),
+  free: B({
+    id: 'ashfall_evidence_tow', type: 'tow_recovery', stationId: 'station_ashcache',
+    factionId: 'faction_free', label: 'Deep Reach Evidence Tow',
+    instruction: 'Tow the Deep Reach evidence core into the cache, or sling it in.',
+    headlineVerb: 'tow', authoredSetPieceId: 'long_tow', physicalVerb: 'tow',
+    completionMethods: B(['tow_in', 'sling_in']), primaryRole: 'slag_core',
   }),
 });
 
@@ -211,7 +227,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
       gate: B({ netWorthCr: ENDGAME_NET_WORTH_CR, repMin: ENDGAME_REP_MIN }),
     }),
     missionBoardContract: null,
-    recovery: 'Carry the Empire Seed into Deep Reach, then dock the Ashfall cache. Desk before disposition.',
+    recovery: 'The climax is still open. Blockade, siege, or evidence tow, then dock the Ashfall cache.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
 ]);
@@ -236,9 +252,12 @@ export function getEmpireSeedProgram(elroyOutcome) {
   return { outcome: key, ...EMPIRE_SEED_PROGRAMS[key] };
 }
 
-export function getDeepReachOperation(elroyOutcome) {
-  const key = elroyOutcome === 'custody' ? 'custody' : 'force';
-  return { outcome: key, ...DEEP_REACH_OPERATIONS[key] };
+export function getDeepReachOperation(elroyOutcome, branch) {
+  const key = branch === 'free' || branch === 'patrol' || branch === 'traders'
+    ? branch
+    : (elroyOutcome === 'custody' ? 'patrol' : 'traders');
+  const outcome = elroyOutcome === 'custody' ? 'custody' : 'force';
+  return { outcome, ...DEEP_REACH_CLIMAX[key] };
 }
 
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
@@ -313,12 +332,22 @@ function buildDeepReachOperationOffer(options) {
   if (!options.assetId || options.operationComplete || options.legacy) return null;
   const seed = (Number(options.seed) >>> 0) || 1;
   const epoch = Math.max(0, Number(options.epoch) | 0);
-  const op = getDeepReachOperation(options.elroyOutcome);
+  const op = getDeepReachOperation(options.elroyOutcome, options.branch);
   const assetKey = String(options.assetId).replace(/[^a-zA-Z0-9_-]/g, '_');
-  const storyTag = `campaign47a:b7:${op.outcome}:${assetKey}`;
-  const params = op.type === 'patrol_clear'
-    ? { clearCount: 3, targetStrength: 2.6, assetId: options.assetId, fValue: 2.1, taskTime: 120 }
-    : { cmdtyId: 'cmdty_refined_metals', qty: 12, assetId: options.assetId, fValue: 2, taskTime: 90 };
+  const storyTag = `campaign47a:b7:${op.outcome}:${op.id}:${assetKey}`;
+  const params = {
+    assetId: options.assetId,
+    fValue: 2.1,
+    taskTime: 90,
+    physicalVerb: op.physicalVerb,
+    completionMethods: [...op.completionMethods],
+    authoredSetPieceId: op.authoredSetPieceId,
+    headlineVerb: op.headlineVerb,
+    primaryRole: op.primaryRole,
+    targetStrength: 2.4,
+    massU: op.type === 'tow_recovery' ? 48 : undefined,
+    scanLabel: op.type === 'tow_recovery' ? 'EVIDENCE CORE' : undefined,
+  };
   return {
     id: stableOfferId(seed, 7, epoch, 0, storyTag),
     type: op.type, storyTag, storyContractId: storyTag, storyOperation: op.id,

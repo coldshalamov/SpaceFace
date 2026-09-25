@@ -3654,21 +3654,27 @@ export const missions = {
     }
     if (beat.beat === 7 && state.story && state.story.flags && !state.story.flags.deep_reach_operation_complete) {
       const flags = state.story.flags;
-      const op = getDeepReachOperation(flags.elroy_outcome);
-      const info = STATION_INFO.get(op.stationId);
-      const station = currentSectorId === (info && info.sectorId) ? this._liveStation(op.stationId) : null;
-      const replacementPending = flags.deep_reach_asset_lost || flags.empire_seed_pending_id;
-      return {
-        ...base,
-        label: op.label,
-        reason: replacementPending
-          ? `Replace and program the lost seed before ${op.label}`
-          : op.instruction,
-        stationId: op.stationId,
-        sectorId: info && info.sectorId || currentSectorId,
-        sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
-        pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
-      };
+      const legacy = !!(flags.elroy_outcome_legacy) || !flags.elroy_outcome;
+      const hasSeed = !!flags.empire_seed_asset_id;
+      const replacing = !!(flags.deep_reach_asset_lost || flags.empire_seed_pending_id);
+      // A legacy save advances on net worth and never posts the toy. Pointing it at a
+      // blockade, siege, or tow that is not on the board is a lie.
+      if (!legacy && (hasSeed || replacing)) {
+        const op = getDeepReachOperation(flags.elroy_outcome, state.story && state.story.branch);
+        const info = STATION_INFO.get(op.stationId);
+        const station = currentSectorId === (info && info.sectorId) ? this._liveStation(op.stationId) : null;
+        return {
+          ...base,
+          label: op.label,
+          reason: replacing
+            ? `Replace and program the lost seed before ${op.label}`
+            : op.instruction,
+          stationId: op.stationId,
+          sectorId: info && info.sectorId || currentSectorId,
+          sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+          pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
+        };
+      }
     }
     const station = this._nearestStation();
     if (station) {
@@ -4624,10 +4630,11 @@ export const missions = {
       const ang = rng() * Math.PI * 2;
       const r = 220 + rng() * 80;
       const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
+      const cachePos = ashfallCacheApproachPos(m, -200);
       spawnAt(durableSlot, {
         type: 'asteroid',
         team: 2,
-        pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
         vel: { x: 0, z: 0 },
         rot: rng() * Math.PI * 2,
         radius: bodyRadius,
@@ -4650,10 +4657,11 @@ export const missions = {
       const rng = nextRng(durableSlot);
       const ang = rng() * Math.PI * 2;
       const r = 260 + rng() * 90;
+      const cachePos = ashfallCacheApproachPos(m, 260);
       spawnAt(durableSlot, {
         type: 'wreck',
         team: 2,
-        pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
         vel: { x: 0, z: 0 },
         rot: rng() * Math.PI * 2,
         radius: 26,
@@ -4737,8 +4745,10 @@ export const missions = {
     };
     const facilityPos = definition.facilityRole
       && this.state.world && this.state.world.currentSectorId === 'sector_tethys_junction'
+      && m.destSectorId !== 'sector_ashfall_reach'
       ? setPieceFacilityWorldPos(definition.facilityRole)
       : null;
+    const doorPos = ashfallBlockadeDoorPos(this, m, definition);
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
     for (const actor of encounter.actors || []) {
@@ -4749,7 +4759,12 @@ export const missions = {
         const rng = nextRng(durableSlot);
         const ang = rng() * Math.PI * 2;
         const r = 180 + rng() * 90;
-        const pos = facilityPos && actor.role === definition.primaryRole
+        const pos = doorPos && (actor.role === definition.primaryRole || actor.hostile)
+          ? {
+            x: doorPos.x + (actor.hostile ? Math.cos(ang) * 70 : 0),
+            z: doorPos.z + (actor.hostile ? Math.sin(ang) * 70 : 0),
+          }
+          : facilityPos && actor.role === definition.primaryRole
           ? {
             x: facilityPos.x + Math.cos(ang) * 40,
             z: facilityPos.z + Math.sin(ang) * 40,
@@ -7247,7 +7262,7 @@ export const missions = {
     if (!String(m.storyTag || '').startsWith('campaign47a:b7:')) return false;
     const assetId = m.params && m.params.assetId;
     if (!assetId || !story.flags || assetId !== story.flags.empire_seed_asset_id) return false;
-    const op = getDeepReachOperation(story.flags.elroy_outcome);
+    const op = getDeepReachOperation(story.flags.elroy_outcome, story.branch);
     if (m.storyOperation !== op.id || m.type !== op.type) return false;
     story.flags.deep_reach_operation_complete = true;
     story.flags.deep_reach_variant = op.id;
@@ -7864,6 +7879,36 @@ function lowestVacantSlot(occupied) {
   let slot = 0;
   while (occupied.has(slot)) slot++;
   return slot;
+}
+
+/** A point on the Ashfall cache approach, in galactic coordinates. `along` is world units on local +X. */
+function ashfallCacheApproachPos(mission, along) {
+  if (!mission || mission.destSectorId !== 'sector_ashfall_reach' || mission.destStationId !== 'station_ashcache') {
+    return null;
+  }
+  const anchors = SECTOR_ANCHORS.sector_ashfall_reach;
+  const station = anchors && Array.isArray(anchors.stations)
+    ? anchors.stations.find((row) => row && row.id === 'station_ashcache')
+    : null;
+  if (!station || !station.pos) return null;
+  return sectorLocalToGlobalForSector({
+    x: station.pos.x + along,
+    z: station.pos.z,
+  }, 'sector_ashfall_reach');
+}
+
+/** Deep Reach blockade: the jam hulk is the Ashfall cache door, not the Tethys ring. */
+function ashfallBlockadeDoorPos(missions, mission, definition) {
+  if (!mission || !definition || definition.facilityRole !== 'jam_hulk') return null;
+  const approach = ashfallCacheApproachPos(mission, 140);
+  if (!approach) return null;
+  const live = missions && typeof missions._liveStation === 'function'
+    ? missions._liveStation(mission.destStationId)
+    : null;
+  if (live && live.pos && Number.isFinite(live.pos.x) && Number.isFinite(live.pos.z)) {
+    return { x: live.pos.x + 140, z: live.pos.z };
+  }
+  return approach;
 }
 
 function stableEntityId(id) {
