@@ -105,8 +105,10 @@ function bootWorld(seed = 4242) {
 }
 
 test('both new stamps bind to real fight zones in sectors that are not Ceres', () => {
-  assert.equal(OPTIC_STRUCTURES.length, 3);
-  assert.equal(new Set(OPTIC_STRUCTURES.map((s) => s.id)).size, 3);
+  // The Io bolthole shelter (focus-and-shelter row) joined the registry after this
+  // fixture: it binds its own sector and is exercised by optic-focus-shelter.test.mjs.
+  assert.equal(OPTIC_STRUCTURES.length, 4);
+  assert.equal(new Set(OPTIC_STRUCTURES.map((s) => s.id)).size, 4);
 
   const sites = [
     { id: SKER_GATEMOUTH_WICK_ID, zoneType: 'ambush_lane' },

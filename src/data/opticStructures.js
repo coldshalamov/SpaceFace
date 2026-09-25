@@ -133,6 +133,45 @@ export function vestaFreighterPocketCells() {
   return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
 }
 
+export const IO_BOLTHOLE_ID = 'optic_io_bolthole';
+// North lee of the Cruiser Graveyard hulk, zone_io_derelict — the shelter stands
+// where the Vigilant's escorts died covering the lane, door facing the wreck.
+export const IO_BOLTHOLE_ORIGIN = Object.freeze({ x: -1420, z: -700 });
+
+/**
+ * Cruiser Graveyard, Io Reach — the bolthole. A survivor's box: a stone ring
+ * (the shell that eats bolts) sheathed in a diamond skin (the box that fights
+ * back once). The diamond apron ring is contiguous, so the first energy bolt
+ * that lands lights the whole skin like a fuse — every cell throws its ring
+ * outward at the besiegers while the liner eats the inward splinters — then
+ * every cell goes dark for the rest of the fight (OPTIC_SPEND_QUIET outlasts
+ * one engagement). The hide space is the norm<=1 interior; splinter geometry
+ * leaves every interior cell untouched by the shell's own ring.
+ *
+ * The only way in is the door: a one-cell gap at (0,-2) under a three-cell
+ * mouth clearing in the skin. The door lane is the structure's one leak —
+ * a bolt threaded through it reaches the interior. The lone metal sentinel
+ * at (0,-5) caps the lane: a shot dead on the axis bounces back at the
+ * shooter, and a shot grazing its rim banks into the skin's horn cells —
+ * the mirror lane of the row, several shot lines arriving at one diamond.
+ */
+export function ioBoltholeCells() {
+  const map = new Map();
+  // Diamond skin: the full apron ring, less the three-cell mouth clearing.
+  for (let ix = -3; ix <= 3; ix++) {
+    for (let iz = -3; iz <= 3; iz++) {
+      if (Math.max(Math.abs(ix), Math.abs(iz)) !== 3) continue;
+      if (iz === -3 && Math.abs(ix) <= 1) continue; // mouth clearing over the door
+      putCell(map, ix, iz, 'diamond');
+    }
+  }
+  // Stone liner: the closed ring with the one-cell door at (0,-2).
+  stonePocketCells(map, -2, 2, -2, 2, [{ ix: 0, iz: -2 }]);
+  // Door sentinel — the mirror that guards the lane.
+  putCell(map, 0, -5, 'metal');
+  return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
+}
+
 export function compileOpticCells(cells, spacing = OPTIC_LATTICE_SPACING, heading = 0) {
   const list = Array.isArray(cells) ? cells : [];
   const cos = Math.cos(heading);
@@ -212,6 +251,14 @@ export const OPTIC_STRUCTURES = Object.freeze([
     origin: VESTA_FREIGHTER_POCKET_ORIGIN,
     heading: Math.PI / 4,
     cells: vestaFreighterPocketCells,
+  }),
+  Object.freeze({
+    id: IO_BOLTHOLE_ID,
+    sectorId: 'sector_io_reach',
+    zoneId: 'zone_io_derelict',
+    origin: IO_BOLTHOLE_ORIGIN,
+    heading: 0,
+    cells: ioBoltholeCells,
   }),
 ]);
 
