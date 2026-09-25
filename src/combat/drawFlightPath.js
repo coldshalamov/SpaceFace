@@ -97,8 +97,15 @@ export function followDrawFlightPath(route, player, runtime, profile, dt) {
   if (c.nodes.length < 2 || !(c.total > 1e-5)) return null;
   const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
   const cruise = Math.max(1, finite(profile.combatSpeed, finite(profile.maxSpeed, 120)));
-  const radius = Math.max(speed, cruise * 0.4) / drawFlightTurnRate(profile);
-  const lookahead = Math.max(DRAW_FLIGHT.minLookahead, radius * DRAW_FLIGHT.lookaheadRadii);
+  const turnLook = Math.max(
+    DRAW_FLIGHT.minLookahead,
+    speed / drawFlightTurnRate(profile) * DRAW_FLIGHT.lookaheadRadii,
+  );
+  // A full turn-radius preview is longer than a short stroke, so the carrot sits on
+  // the exit and the run ends while the ship is still slow. Stay inside the ink ahead.
+  const remainingInk = Math.max(0, c.total - c.progressS);
+  const inkCap = Math.max(DRAW_FLIGHT.minLookahead, remainingInk * 0.45);
+  const lookahead = Math.min(turnLook, inkCap);
   const px = finite(player.pos?.x), pz = finite(player.pos?.z);
   const last = c.nodes.at(-1), prev = c.nodes.at(-2);
   const endHeading = Math.atan2(last.z - prev.z, last.x - prev.x);
