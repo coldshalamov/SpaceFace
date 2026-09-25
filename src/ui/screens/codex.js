@@ -300,6 +300,9 @@ export const SIGNAL_ARCHIVE = Object.freeze([
     video: 'assets/cinematics/C-INTRO-03_6s.mp4', caption: 'Violet core, live. Charted space ends here.' },
   { id: '04', title: 'Station Berth', poster: 'assets/cinematics/C-INTRO-04.jpg',
     video: 'assets/cinematics/C-INTRO-04_6s.mp4', caption: 'Docking wall ahead. Someone always logs the arrival.' },
+  { id: 'VZ', title: 'Corridor Visualizer', poster: 'assets/cinematics/intro-visualizer.jpg',
+    video: 'assets/cinematics/intro-visualizer.mp4',
+    caption: 'The boot relay, full length. Helmet, wreck field, courier burn, the ring at threshold.' },
 ]);
 
 // Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.

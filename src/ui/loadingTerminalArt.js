@@ -2091,6 +2091,131 @@ export function ensureBootTerminalCanvas(document = globalThis.document) {
   return canvas;
 }
 
+// ---------------------------------------------------------------------------
+// Baked intro cinematic video layer.
+//
+// The intro visualizer ships as a rendered clip (assets/cinematics/intro-
+// visualizer.mp4): a decoded video frame is far cheaper during load than the
+// live worker tableaux, and it's the authored look. The video sits above the
+// boot canvas (DOM order, both .boot-canvas). While it's confirmed playable the
+// overlay carries `boot-video-live`, the canvas is hidden, and the worker art
+// is never started. Any failure — missing file, dead source, rejected autoplay
+// — removes the element and falls back to the live tableaux, which is also the
+// whole behavior on hosts without mp4 support.
+export const BOOT_INTRO_VIDEO_SRC = 'assets/cinematics/intro-visualizer.mp4';
+export const BOOT_INTRO_VIDEO_POSTER = 'assets/cinematics/intro-visualizer.jpg';
+let bootVideoCtl = null;
+
+export function ensureBootIntroVideo(document = globalThis.document) {
+  if (!document || typeof document.getElementById !== 'function') return null;
+  const existing = document.getElementById('boot-intro-video');
+  if (existing) return existing;
+  const overlay = document.getElementById('boot-overlay');
+  if (!overlay || typeof document.createElement !== 'function' || typeof overlay.insertBefore !== 'function') {
+    return null;
+  }
+  const video = document.createElement('video');
+  video.id = 'boot-intro-video';
+  video.className = 'boot-canvas boot-video';
+  video.muted = true;
+  video.loop = true;
+  video.preload = 'auto';
+  video.poster = BOOT_INTRO_VIDEO_POSTER;
+  video.setAttribute('muted', '');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('aria-hidden', 'true');
+  const source = document.createElement('source');
+  source.src = BOOT_INTRO_VIDEO_SRC;
+  source.type = 'video/mp4';
+  video.appendChild(source);
+  // Above the tableaux canvas, below the scrim and lockup.
+  const scrim = typeof overlay.querySelector === 'function' ? overlay.querySelector('.boot-scrim') : null;
+  if (scrim && scrim.parentNode === overlay) overlay.insertBefore(video, scrim);
+  else overlay.appendChild(video);
+  return video;
+}
+
+function bootVideoReducedMotion(document) {
+  try {
+    if (document && document.documentElement && document.documentElement.classList
+        && document.documentElement.classList.contains('sf-reduce-motion')) return true;
+    if (typeof globalThis.matchMedia === 'function'
+        && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+  } catch (_) {}
+  return false;
+}
+
+/**
+ * Wire the baked clip into the boot overlay. Returns a controller, or null when
+ * the host can't use one (no DOM, no element, no mp4). `onFallback` runs if the
+ * video errors out — callers should start the live tableaux there.
+ */
+export function startBootIntroVideo({ document = globalThis.document, onFallback } = {}) {
+  if (bootVideoCtl && bootVideoCtl.alive) return bootVideoCtl;
+  const video = ensureBootIntroVideo(document);
+  const overlay = typeof document.getElementById === 'function' ? document.getElementById('boot-overlay') : null;
+  if (!video || !overlay) return null;
+  if (typeof video.canPlayType === 'function' && video.canPlayType('video/mp4; codecs="avc1.42E01E"') === '') {
+    try { video.remove ? video.remove() : video.parentNode && video.parentNode.removeChild(video); } catch (_) {}
+    return null;
+  }
+
+  let live = false;
+  let failed = false;
+  let timer = null;
+  const ctl = {
+    alive: true,
+    video,
+    isLive() { return live && !failed; },
+    pause() { try { video.pause(); } catch (_) {} },
+    resume() {
+      if (!ctl.isLive() || bootVideoReducedMotion(document)) return;
+      try {
+        video.currentTime = 0;
+        const p = video.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (_) {}
+    },
+    destroy() { ctl.pause(); },
+  };
+  const markLive = () => {
+    if (failed) return;
+    live = true;
+    if (timer) { clearTimeout(timer); timer = null; }
+    try { overlay.classList.add('boot-video-live'); } catch (_) {}
+  };
+  const fail = () => {
+    if (failed) return;
+    failed = true;
+    ctl.alive = false;
+    bootVideoCtl = null;
+    if (timer) { clearTimeout(timer); timer = null; }
+    try { overlay.classList.remove('boot-video-live'); } catch (_) {}
+    try { video.remove ? video.remove() : video.parentNode && video.parentNode.removeChild(video); } catch (_) {}
+    if (typeof onFallback === 'function') { try { onFallback(); } catch (_) {} }
+  };
+
+  video.addEventListener('error', fail);
+  const sourceEl = typeof video.querySelector === 'function' ? video.querySelector('source') : null;
+  if (sourceEl) sourceEl.addEventListener('error', fail);
+  video.addEventListener('canplay', () => {
+    // Reduced motion: hold on the poster frame — still the cinematic look, no motion.
+    if (bootVideoReducedMotion(document)) { markLive(); return; }
+    try {
+      const p = video.play();
+      if (p && typeof p.catch === 'function') p.catch(fail);
+    } catch (_) { fail(); }
+  });
+  video.addEventListener('playing', markLive);
+  // A missing file errors fast, but a stalled connection can sit — bound the probe.
+  timer = setTimeout(() => { if (!live) fail(); }, 6000);
+  try { video.load(); } catch (_) {}
+  bootVideoCtl = ctl;
+  return ctl;
+}
+
+export function getBootIntroVideoCtl() { return bootVideoCtl; }
+
 export function bootstrapLoadingTerminal(document = globalThis.document) {
   if (!document || typeof document.getElementById !== 'function') return null;
   if (activeTerminalInstance) return activeTerminalInstance;
@@ -2100,8 +2225,74 @@ export function bootstrapLoadingTerminal(document = globalThis.document) {
   const overlay = document.getElementById('boot-overlay');
 
   if (!canvas) return null;
-  const instance = createTerminalArtwork({ canvas, waveformCanvas, overlay, document });
-  instance.start();
+
+  const startLiveArt = () => {
+    const inst = createTerminalArtwork({ canvas, waveformCanvas, overlay, document });
+    try { inst.start(); } catch (err) {
+      try { console.warn('[boot] loading artwork start failed; continuing without it', err); } catch (_) {}
+    }
+    return inst;
+  };
+
+  const videoCtl = startBootIntroVideo({
+    document,
+    onFallback: () => {
+      if (activeTerminalInstance && activeTerminalInstance.__bootVideo) activeTerminalInstance = null;
+      if (canvas.__sfTerminalArt && canvas.__sfTerminalArt.__bootVideo) canvas.__sfTerminalArt = null;
+      activeTerminalInstance = startLiveArt();
+    },
+  });
+  if (videoCtl) {
+    // Facade matching the artwork instance surface so callers (presenter, dev
+    // lab, teardown paths) don't need to know which renderer is live. The
+    // elapsed clock still runs — it's DOM, driven by a light rAF here.
+    let clockRaf = null;
+    const raf = typeof globalThis.requestAnimationFrame === 'function'
+      ? globalThis.requestAnimationFrame.bind(globalThis) : null;
+    const caf = typeof globalThis.cancelAnimationFrame === 'function'
+      ? globalThis.cancelAnimationFrame.bind(globalThis) : null;
+    let clockStart = 0;
+    const tickClock = (ts) => {
+      if (!activeTerminalInstance || activeTerminalInstance !== inst) { clockRaf = null; return; }
+      if (!clockStart) clockStart = ts;
+      const clockEl = overlay && overlay.querySelector ? overlay.querySelector('[data-loading-clock]') : null;
+      if (clockEl) {
+        const elapsed = (ts - clockStart) / 1000;
+        const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const secs = String(Math.floor(elapsed % 60)).padStart(2, '0');
+        const ms = String(Math.floor((elapsed * 10) % 10));
+        clockEl.textContent = `00:${mins}:${secs}.${ms}`;
+      }
+      clockRaf = raf ? raf(tickClock) : null;
+    };
+    const inst = {
+      __bootVideo: true,
+      __status() { return videoCtl.isLive() ? 'video' : 'video-probing'; },
+      __engine: { receive() {} },
+      start() {
+        videoCtl.resume();
+        if (raf && clockRaf == null) clockRaf = raf(tickClock);
+      },
+      stop() { videoCtl.pause(); },
+      updateProgress() {},
+      destroy() {
+        videoCtl.destroy();
+        if (clockRaf != null && caf) caf(clockRaf);
+        clockRaf = null;
+        if (activeTerminalInstance === inst) activeTerminalInstance = null;
+        // NOTE: canvas.__sfTerminalArt is deliberately kept. The canvas was never
+        // transferred in video mode, so it stays reusable — and keeping the slot
+        // makes this facade authoritative for later loading screens too.
+      },
+    };
+    // Occupies the canvas's artwork slot so lazy callers (the presenter) get this
+    // facade instead of transferring the canvas to a worker while video is live.
+    canvas.__sfTerminalArt = inst;
+    activeTerminalInstance = inst;
+    return inst;
+  }
+
+  const instance = startLiveArt();
   return instance;
 }
 
