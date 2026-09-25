@@ -396,10 +396,13 @@ function poisonHiddenState(state, entity) {
 
 function assertFrameWhitelist(frame) {
   assertExactKeys(frame, ['contacts', 'events', 'self', 'tick'], 'SensorFrame');
+  // `tumbling` (INF-021) and `recovering` (INF-027) are intentional additions: aiPorts stamps both
+  // from live tumble status, contracts.js normalizes them, and maneuver planning relents while
+  // `self.tumbling` so a decontrolled ship drifts instead of fighting the yank.
   assertExactKeys(frame.self, [
     'activity', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
     'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'operationalMassBand', 'pos', 'radius',
-    'ramAuthorized', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'vel',
+    'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'vel',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');
   assertExactKeys(frame.self.vel, ['x', 'z'], 'SensorFrame.self.vel');

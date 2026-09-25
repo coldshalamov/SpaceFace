@@ -120,11 +120,16 @@ try {
     const cont = [...document.querySelectorAll('[data-screen="mainMenu"] button')]
       .find((b) => (b.textContent || '').trim() === 'Continue');
     const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
-    const rect = summary ? summary.getBoundingClientRect().toJSON() : null;
+    // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow
+    // (mainMenu.js sets `[data-role="title-status"]` to `Continue · <summary>`). The
+    // `.sf-menu-save-summary` node remains as the has-save styling hook, but the readable
+    // contract — visible, sized, carrying the save context — lives on the eyebrow.
+    const eyebrow = document.querySelector('[data-screen="mainMenu"] [data-role="title-status"]');
+    const rect = eyebrow ? eyebrow.getBoundingClientRect().toJSON() : null;
     return {
-      summary: text('[data-screen="mainMenu"] .sf-menu-save-summary'),
       summaryHasSave: !!summary && summary.classList.contains('has-save'),
-      summaryRect: rect,
+      eyebrow: text('[data-screen="mainMenu"] [data-role="title-status"]'),
+      eyebrowRect: rect,
       continueDisabled: cont ? cont.disabled : null,
       continueTitle: cont ? cont.title : '',
     };
@@ -132,15 +137,15 @@ try {
 
   assert.equal(report.summaryHasSave, true, 'title summary should render occupied-save styling');
   assert.equal(report.continueDisabled, false, 'Continue should be enabled when the save index has an occupied slot');
-  assert(report.summaryRect && report.summaryRect.width > 20 && report.summaryRect.height > 10,
-    'Continue summary should be visible on the title screen');
-  assert.match(report.summary, /^Continue:/, 'summary should explicitly label what Continue will load');
-  assert.match(report.summary, /Slot 3/, 'summary should pick the newest occupied slot');
-  assert.match(report.summary, /Tethys Gate/, 'summary should show latest save sector context');
-  assert.match(report.summary, /Kestrel Runner/, 'summary should show latest save ship context');
-  assert.match(report.summary, /Route: Tethys Trade Hub - Provisions/, 'summary should show latest save objective context');
-  assert.match(report.summary, /1h 1m played/, 'summary should show latest save playtime context');
-  assert.match(report.summary, /12,345 CR/, 'summary should show latest save credit context');
+  assert(report.eyebrowRect && report.eyebrowRect.width > 20 && report.eyebrowRect.height > 10,
+    'the eyebrow carrying the Continue summary should be visible on the title screen');
+  assert.match(report.eyebrow, /^Continue · /, 'the eyebrow should explicitly label what Continue will load');
+  assert.match(report.eyebrow, /Slot 3/, 'the eyebrow should pick the newest occupied slot');
+  assert.match(report.eyebrow, /Tethys Gate/, 'the eyebrow should show latest save sector context');
+  assert.match(report.eyebrow, /Kestrel Runner/, 'the eyebrow should show latest save ship context');
+  assert.match(report.eyebrow, /Route: Tethys Trade Hub - Provisions/, 'the eyebrow should show latest save objective context');
+  assert.match(report.eyebrow, /1h 1m played/, 'the eyebrow should show latest save playtime context');
+  assert.match(report.eyebrow, /12,345 CR/, 'the eyebrow should show latest save credit context');
   assert.match(report.continueTitle, /Load .*Slot 3/, 'Continue tooltip should match the resolved latest save');
 
   await page.evaluate(() => {

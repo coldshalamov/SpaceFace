@@ -576,7 +576,13 @@ function mountWith(state, { busEvents = [] } = {}) {
     executor.legs[1].target.z - TETHYS_ORIGIN.z,
   );
   assert.ok(expected > 900, 'sanity: the Tethys fixture must put real distance on the next leg');
-  assert.match(meta, /Next:/, 'the ribbon must name the next waypoint');
+  // The "Next:" literal was deliberately dropped: the active leg chip names the waypoint and the
+  // ETA row carries its "To next waypoint" qualifier — the prefix answered the question twice.
+  assert.match(meta, /next waypoint/i,
+    'the ribbon meta must tie its ETA to the next waypoint');
+  const activeChipName = legs[1].querySelector('.gm-ribbon-leg-n');
+  assert.ok(activeChipName && /tethys/i.test(activeChipName.textContent),
+    'the active leg chip must name the next waypoint');
   assert.match(meta, /ETA/, 'the ribbon must report an ETA row');
   assert.match(meta, /legs/, 'the ribbon must report legs remaining');
 
@@ -903,16 +909,19 @@ function mountWith(state, { busEvents = [] } = {}) {
   const first = root.querySelector('[data-ribbon-action="disengage"]');
   assert.ok(first, 'sanity: disengage must be present while transiting');
 
-  // Fly the ship for several frames. Distance and ETA change on every one of them.
+  // Fly the ship for several frames. The ribbon's change key carries the live next-waypoint
+  // distance and ETA, so it turns over on every one of them — the hazard this test exercises is
+  // "the ribbon re-renders while the ship is under way". (The meta TEXT no longer pins this:
+  // its distance line moved to the leg chip + foot row, and the remaining ETA/fuel fields are
+  // whole-second labels that can sit unchanged across a short move.)
   const player = state.entities.get('player');
-  const meta = root.querySelector('#gm-ribbon-meta');
-  const metaBefore = meta.textContent;
+  const keyBefore = galaxyMapScreen._lastRibbonKey;
   for (let i = 0; i < 6; i++) {
     player.pos.x += 37;
     galaxyMapScreen._draw();
   }
-  assert.notEqual(meta.textContent, metaBefore,
-    'sanity: the meta row MUST be changing, or this test is not exercising the hazard');
+  assert.notEqual(galaxyMapScreen._lastRibbonKey, keyBefore,
+    'sanity: the ribbon change key MUST be turning over, or this test is not exercising the hazard');
 
   const after = root.querySelector('[data-ribbon-action="disengage"]');
   assert.equal(after, first,

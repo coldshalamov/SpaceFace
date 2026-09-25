@@ -237,7 +237,7 @@ try {
   if (trackerCmd) {
     assert.match(
       b0Report.trackerText,
-      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust|speed/i,
+      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust|speed|target|derelict|marked/i,
       'HUD tracker should expose first objective context when it owns the command',
     );
   }

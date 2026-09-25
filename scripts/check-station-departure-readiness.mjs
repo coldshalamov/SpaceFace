@@ -126,8 +126,11 @@ console.log('ok    live shell: Undock reads live readiness, Departure Check + La
 // ── 4) Readiness stays live: refresh re-renders the tile from current state ──
 assert.match(uiRootSource, /def\.refresh\(this\.ctx, \{ periodic: true \}\)/,
   'the UI heartbeat must re-refresh modal screens so the Undock tile stays current');
-assert.match(app, /function refresh\(_nextCtx, options = \{\}\) \{\s*renderStatus\(\);/,
-  'every shell refresh must repaint status (vitals + Undock readiness) from live state');
+// INF-095: refresh short-circuits while the shell is hidden (onShow repaints everything from
+// live state), then paints status first thing when it IS shown — the guard is part of the
+// contract, not a violation of it.
+assert.match(app, /function refresh\(_nextCtx, options = \{\}\) \{\s*if \(!shown\) return;\s*renderStatus\(\);/,
+  'shell refresh must keep the hidden-screen guard, then repaint status (vitals + Undock readiness) from live state');
 console.log('ok    liveness: shell refresh repaints Undock readiness from live state each heartbeat');
 
 // ── 5) Chip projection keeps routing players to real destinations ────────────

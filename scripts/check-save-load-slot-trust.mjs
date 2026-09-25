@@ -70,7 +70,10 @@ assert.match(saveLoad, /if \(shouldOfferNewGameShortcut\(meta, saveAllowed\)\) \
 
 assert.match(pkg, /"check:save-load-slot-trust": "node scripts\/check-save-load-slot-trust\.mjs"/,
   'package.json must expose the focused Save/Load slot-trust check');
-assert.match(pkg, /check:title-continue-runtime && npm run check:save-load-slot-trust/,
+// The chain order is the contract (Continue trust gates slot trust); sibling checks such as
+// check:title-attract may sit between them, so tolerate intervening `npm run` entries inside
+// the one quoted "check" script rather than pinning adjacency.
+assert.match(pkg, /check:title-continue-runtime &&[^"]*npm run check:save-load-slot-trust/,
   'Full check must include Save/Load slot trust after title Continue trust');
 
 console.log('Save/Load slot trust OK - destructive confirmations repeat concrete slot context, and live Save/Load empty slots do not route to New Game.');

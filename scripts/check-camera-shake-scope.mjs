@@ -18,10 +18,12 @@
 //   2. THE CONSUMER HONORS IT — renderer.js reads `position` and applies the attenuation, and passes
 //      un-positioned payloads through unchanged (source pattern; the handler needs a live WebGL
 //      renderer to construct, so behavior is pinned at the curve and the emitters instead).
-//   3. THE WORLD EMITTERS TAG THEIR POSITION — the two world-event sites send `position`, and the
-//      player-scoped sites in combat.js deliberately do not.
+//   3. THE WORLD EMITTERS TAG THEIR POSITION — every emitter in src/ is enumerated and only the
+//      files that own world events may send `position`; player-scoped sites deliberately do not.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   SHAKE_CUTOFF_RADIUS_WU,
@@ -92,23 +94,103 @@ check('un-positioned shakes pass through the consumer unattenuated', () => {
 });
 
 // ---- 3. the emitters --------------------------------------------------------------------------
-check('the ship-destruction burst tags its world position', () => {
-  const vfxSrc = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
-  const emits = [...vfxSrc.matchAll(/emit\('camera:shake',\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g)].map((m) => m[1]);
-  assert(emits.length > 0, 'expected camera:shake emitters in vfx.js');
-  const destruction = emits.find((body) => body.includes('shake'));
-  assert(destruction, 'expected the destruction-burst emitter (amount derived from `shake`)');
-  assert(destruction.includes('position'), 'the destruction burst must send position so it can be attenuated');
+// The emitters no longer live only in combat.js — `camera:shake` sites now span systems/ and
+// render/ (combat, vfx, shipMicroMotion, drill, tetherGameplay, intervention, flybyFocus,
+// survivalAnnounce, presentationAdapters). The durable contract was always positional, never a
+// per-file count: a payload carrying `position` is a WORLD event the consumer attenuates by
+// distance, and every other emitter must stay un-positioned because it is player-scoped by
+// construction. So this section enumerates EVERY `emit('camera:shake', …)` site in src/ and pins
+// the positioned set to the files that own world events.
+
+const SRC_ROOT = fileURLToPath(new URL('../src/', import.meta.url));
+// The world events: destruction bursts and the death-spiral detonation happen where the ship
+// died; the entity:killed kick happens where the kill landed.
+const WORLD_SHAKE_FILES = new Set(['render/vfx.js', 'render/shipMicroMotion.js', 'systems/combat.js']);
+
+/** Capture the balanced `{…}` literal that starts at index 0 of `src` (src must start at `{`). */
+function balancedObjectLiteral(src) {
+  let depth = 0;
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}' && --depth === 0) return src.slice(0, i + 1);
+  }
+  return src;
+}
+
+/**
+ * Enumerate every `emit('camera:shake', …)` site in src/. Inline literals are read directly; an
+ * identifier payload (a reused pooled object, e.g. shipMicroMotion's `spiralShakePayload`) is
+ * resolved through its nearest preceding `ident = {…}` initializer plus any `ident.position`
+ * member writes, so the classification survives emitters that no regex on one line can see.
+ */
+function shakeEmitters() {
+  const sites = [];
+  const walk = (dir) => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, ent.name);
+      if (ent.isDirectory()) { walk(p); continue; }
+      if (!ent.name.endsWith('.js')) continue;
+      const src = readFileSync(p, 'utf8');
+      const rel = p.slice(SRC_ROOT.length).replace(/\\/g, '/');
+      for (const m of src.matchAll(/emit\(\s*'camera:shake'\s*,\s*/g)) {
+        const arg = src.slice(m.index + m[0].length).trimStart();
+        if (arg.startsWith('{')) {
+          sites.push({ file: rel, body: balancedObjectLiteral(arg) });
+          continue;
+        }
+        const ident = (/^[$\w]+/).exec(arg);
+        if (!ident) { sites.push({ file: rel, body: arg.slice(0, 60) }); continue; }
+        const name = ident[0];
+        const emitAt = m.index + m[0].length;
+        let body = '';
+        const defRe = new RegExp('\\b' + name + '\\s*=\\s*\\{', 'g');
+        let d;
+        while ((d = defRe.exec(src)) && d.index < emitAt) {
+          body = balancedObjectLiteral(src.slice(d.index + d[0].lastIndexOf('{')));
+        }
+        // `ident.position.x = …` member writes after the initializer still make it positioned.
+        if (new RegExp('\\b' + name + '\\s*\\.\\s*position\\b').test(src)) body += ' position:{}';
+        sites.push({ file: rel, body });
+      }
+    }
+  };
+  walk(SRC_ROOT);
+  return sites;
+}
+
+check('the ship-destruction bursts tag their world positions', () => {
+  const vfx = shakeEmitters().filter((s) => s.file === 'render/vfx.js');
+  assert(vfx.length > 0, 'expected camera:shake emitters in vfx.js');
+  assert(vfx.some((s) => s.body.includes('shake')),
+    'expected the destruction-burst emitter (amount derived from `shake`)');
+  for (const s of vfx) {
+    assert(s.body.includes('position'),
+      `vfx.js destruction shakes must send position so they can be attenuated (got: ${s.body.slice(0, 90)})`);
+  }
 });
 
 check('the entity-killed kick tags its world position, and player-scoped kicks do not', () => {
-  const combatSrc = readFileSync(new URL('../src/systems/combat.js', import.meta.url), 'utf8');
-  const emits = [...combatSrc.matchAll(/emit\('camera:shake',\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g)].map((m) => m[1]);
-  assert(emits.length >= 6, `expected the known camera:shake emitters in combat.js (found ${emits.length})`);
-  const positioned = emits.filter((body) => body.includes('position'));
+  const combat = shakeEmitters().filter((s) => s.file === 'systems/combat.js');
+  assert(combat.length >= 2, `expected camera:shake emitters in combat.js (found ${combat.length})`);
+  const positioned = combat.filter((s) => s.body.includes('position'));
   assert.equal(positioned.length, 1,
     'exactly one combat.js shake is a world event (entity:killed); the rest are player-scoped and must stay un-positioned');
-  assert(positioned[0].includes('0.5'), 'the positioned combat.js shake should be the 0.5 entity:killed kick');
+  assert(positioned[0].body.includes('0.5'), 'the positioned combat.js shake should be the 0.5 entity:killed kick');
+});
+
+check('only world-event files emit positioned shakes, wherever the emitters live', () => {
+  const sites = shakeEmitters();
+  assert(sites.length >= 8, `expected the known camera:shake emitter set across src/ (found ${sites.length})`);
+  const positioned = sites.filter((s) => s.body.includes('position'));
+  for (const s of positioned) {
+    assert(WORLD_SHAKE_FILES.has(s.file),
+      `${s.file} emitted a positioned shake — a new world event must tag position deliberately; `
+      + 'add the file to the world set only when the event is really world-scoped');
+  }
+  for (const file of WORLD_SHAKE_FILES) {
+    assert(positioned.some((s) => s.file === file),
+      `${file} must still tag its world-event shake with position`);
+  }
 });
 
 if (failures.length) {

@@ -18,7 +18,7 @@ assert.match(localmapSrc, /data\.stationId === stationId/,
   'localmap route metrics should fall back to entity.data.stationId lookup');
 assert.match(localmapSrc, /state\.player && state\.player\.cargo/,
   'localmap route capacity should read the live player cargo state');
-assert.match(localmapSrc, /import \{ applyTradeNavigation \} from '\.\/market\.js';/,
+assert.match(localmapSrc, /import \{ applyTradeNavigation \} from '\.\.\/market\/tradeLogic\.js';/,
   'localmap route cards should reuse the production market navigation hook');
 assert.match(localmapSrc, /data-act="route-nav"/,
   'localmap route cards should render as actionable navigation controls');
@@ -40,10 +40,12 @@ assert.match(localmapSrc, /Number\.isFinite\(Number\(r\.reliability\)\)/,
   'localmap stale-intel detection should not treat 0% reliability as fresh');
 assert.doesNotMatch(localmapSrc, /r\.reliability \|\| 1/,
   'localmap stale-intel detection must preserve explicit zero reliability');
-assert.match(localmapSrc, /title="' \+ escapeAttr\(routeActionLabel\)/,
-  'localmap route cards should expose full route commitment context as a title');
+// The duplicated `title=` tooltip was dropped (the visible action line + aria-label carry the
+// same commitment context); the pin stays on the accessible name, which is the durable contract.
 assert.match(localmapSrc, /aria-label="' \+ escapeAttr\(routeActionLabel\)/,
   'localmap route cards should expose full route commitment context to assistive tech');
+assert.doesNotMatch(localmapSrc, /title="' \+ escapeAttr\(routeActionLabel\)/,
+  'route cards must not grow a second copy of the commitment context as a hover-only tooltip');
 assert.doesNotMatch(localmapSrc, /state\.entities\.get\(id\)/,
   'localmap route metrics and labels must not treat station catalog ids as entity ids');
 
