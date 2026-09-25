@@ -257,8 +257,8 @@ export function createFactionsScreen(ctx) {
             // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
             standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: scaleWidth(), compact: compactHeight(), rungWords: !compactHeight(),
               brackets: [
-                ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: String(next.need) }] : []),
-                ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: String(buffer) }] : []),
+                ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: `${next.need} \u00b7 TO ${String(next.name).toUpperCase()}`, anchor: 'start' }] : []),
+                ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: `${buffer} \u00b7 ABOVE HOSTILE`, anchor: 'end' }] : []),
               ],
               rungs: factionContractLadderRows(rep).map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked' })) }) +
             ladderRows(standingLadder) +

@@ -5,7 +5,7 @@
 // bone (a shortfall is not a threat). When the line can run, pulses travel the beams; when it cannot,
 // the beams rest faint. Words stay the screen's own: the instrument places its labels as DOM.
 
-import { svg, arcD, ticksD } from './svg.js';
+import { svg, arcD, ticksD, polar } from './svg.js';
 import { injectOrrery } from './tokens.js';
 import { reducedMotion } from './motion.js';
 
@@ -28,10 +28,26 @@ const CSS = `
 .orr-chain__label.is-ghost { opacity:.38; }
 .orr-chain__label.is-after-block .orr-chain__verb { opacity:.5; }
 .orr-chain__process.is-blocked { opacity:.55; }
-.orr-svg .orr-chain__scale { stroke:rgb(${BONE} / .2); }
+.orr-svg .orr-chain__scale { stroke:rgb(${BONE} / .34); }
 .orr-svg .orr-chain__timearc { stroke:rgb(248 244 234 / .7); }
 .orr-svg .orr-chain__timearc-bloom { stroke:rgb(${BONE}); }
 .orr-svg .orr-chain__timearc--off { stroke:rgb(${BONE} / .28); }
+.orr-svg .orr-chain__track { stroke:rgb(${BONE} / .3); }
+.orr-svg .orr-chain__track-cap { fill:rgb(${BONE} / .6); }
+/* while the line is blocked, light stops at the block: the product is drawn at the ring's own alpha */
+.orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .45); }
+.orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .45); }
+.orr-chain__label.is-ghost { opacity:.5; }
+.orr-svg text.orr-chain__procarc { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .72); text-transform:uppercase; }
+.orr-svg text.orr-chain__procarc.is-blocked { fill:rgb(${BONE} / .42); }
+.orr-chain__tnum { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(46px * var(--orr-chain-t, 1)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); }
+.orr-chain__tnum.is-blocked { color:rgb(${BONE} / .45); }
+.orr-chain__tunit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9px * var(--orr-chain-s)); font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .6); margin-top:4px; }
+.orr-chain__reason.is-compact { font-size:calc(22px * var(--orr-chain-s)); text-align:left; }
+.orr-chain__label.is-left .orr-chain__verb { align-items:flex-start; text-align:left; }
+.orr-chain__verb > .orr-chain__blocknote::before { content:none; }
+.orr-chain__verb > .orr-chain__wayout { display:block; margin-top:6px; color:rgb(${BONE} / .64); }
+.orr-chain__verb > .orr-chain__wayout::before { content:"›  "; color:rgb(${BONE} / .45); }
 .orr-chain__label.is-right { align-items:flex-start; text-align:left; }
 .orr-chain__label.is-centre { align-items:center; text-align:center; }
 .orr-chain__name { font-family:var(--dp-face-body, "Instrument Sans"); font-size:calc(13px * var(--orr-chain-s)); font-weight:600; color:rgb(248 244 234); }
@@ -180,10 +196,14 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const toward = Math.atan2(y - cy, xIn - xProc);
       // the beam leaves the node at its rim and stops just inside the ring's stroke: no stub through a
       // dashed node, no knuckle where it meets the ring
-      const endX = xProc + (rProc - 1) * Math.cos(toward);
-      const endY = cy + (rProc - 1) * Math.sin(toward);
+      // the beam lands on the run track (the ring's outer gauge) and arrives flat: no knuckle on the ring's
+      // stroke, no hook where a small ring pulls the curve back on itself
+      const rT = rProc + 8 * scL;
+      const endX = xProc + (rT + 1) * Math.cos(toward);
+      const endY = cy + (rT + 1) * Math.sin(toward);
       const x0 = xIn + rIn;
-      const d = `M ${f(x0)} ${f(y)} C ${f(x0 + (xProc - x0) * 0.5)} ${f(y)}, ${f(xProc - (xProc - x0) * 0.3)} ${f(endY)}, ${f(endX)} ${f(endY)}`;
+      const run = Math.max(24, Math.min(60 * scL, (endX - x0) * 0.35));
+      const d = `M ${f(x0)} ${f(y)} C ${f(x0 + (endX - x0) * 0.45)} ${f(y)}, ${f(endX - run)} ${f(endY)}, ${f(endX)} ${f(endY)}`;
       layer.appendChild(riseG(svg('path', { d, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: short ? '.08' : '.22' }), 80 + i * 40));
       const beam = svg('path', { d, class: `orr-core orr-chain__beam${short ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.2 });
       layer.appendChild(rise(beam, 80 + i * 40));
@@ -219,27 +239,44 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const dT = arcD(xProc, cy, rProc - 9, 0, 360 * timeFrac);
       proc.appendChild(svg('path', { d: dT, class: 'orr-bloom orr-chain__timearc-bloom', 'stroke-width': 5, opacity: '.16' }));
       proc.appendChild(svg('path', { d: dT, class: 'orr-core orr-chain__timearc', 'stroke-width': 1.5 }));
-    } else if (blocked) {
-      proc.appendChild(svg('path', { d: arcD(xProc, cy, rProc + 8 * scL, 0, 360), class: 'orr-core orr-chain__timearc--off', 'stroke-width': 1 }));
     }
-    // a job on the line: its progress as an arc round the ring
+    // the run track: the ring's outer gauge, open at twelve o'clock (the reason's leader lands in the gap) and capped
+    // at both ends so an empty track reads as a track that will fill; a job's progress fills it clockwise from the gap
+    const rT = rProc + 8 * scL;
+    const gapDeg = (7 / (2 * Math.PI * rT)) * 360;
+    proc.appendChild(svg('path', { d: arcD(xProc, cy, rT, gapDeg, 360 - gapDeg), class: 'orr-core orr-chain__track', 'stroke-width': 1 }));
+    for (const a of [gapDeg, 360 - gapDeg]) { const [tx, ty] = polar(xProc, cy, rT, a); proc.appendChild(svg('circle', { cx: f(tx), cy: f(ty), r: 1.6, class: 'orr-chain__track-cap' })); }
     const progress = Number.isFinite(data.progress) ? Math.max(0, Math.min(1, data.progress)) : null;
     if (progress != null && progress > 0.005) {
-      proc.appendChild(svg('path', { d: arcD(xProc, cy, rProc + 6 * scL, 0, 360 * progress), class: 'orr-bloom orr-chain__progress-bloom', 'stroke-width': 5, opacity: '.2' }));
-      proc.appendChild(svg('path', { d: arcD(xProc, cy, rProc + 6 * scL, 0, 360 * progress), class: 'orr-core orr-chain__progress', 'stroke-width': 1.6 }));
+      const dP = arcD(xProc, cy, rT, gapDeg, gapDeg + (360 - 2 * gapDeg) * progress);
+      proc.appendChild(svg('path', { d: dP, class: 'orr-bloom orr-chain__progress-bloom', 'stroke-width': 5, opacity: '.2' }));
+      proc.appendChild(svg('path', { d: dP, class: 'orr-core orr-chain__progress', 'stroke-width': 1.6 }));
     }
+    // the process name rides the top of the ring's inner scale
+    const arcId = `orr-chain-arc-${++pathSeq}`;
+    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rProc - 15 * scL, -75, 75), fill: 'none', stroke: 'none' }));
+    const arcText = svg('text', { class: `orr-chain__procarc${blocked ? ' is-blocked' : ''}` });
+    const arcPath = svg('textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' });
+    arcPath.textContent = String(data.process || 'process').toUpperCase();
+    arcText.appendChild(arcPath);
+    proc.appendChild(arcText);
     layer.appendChild(rise(proc, 200));
-    // the verb is sized from its ring, so it always sits inside the stroke
-    const pl = label('is-centre', xProc - rProc, blocked ? cy - rProc * 0.62 : cy - rProc * 0.18, `<span class="orr-chain__process${blocked ? ' is-blocked' : ''}">${data.process || 'process'}</span>`);
+    // the run's time stands at the ring's centre as the thin display numeral: the ring is the gauge of the run
+    const tm = /^(\d+(?:\.\d+)?)\s*s$/i.exec(String(data.timeLabel || '').trim());
+    const instant = /instant/i.test(String(data.timeLabel || ''));
+    const tnum = blocked ? '\u2014' : tm ? tm[1] : instant ? '0' : String(data.timeLabel || '');
+    const tunit = blocked ? '' : tm ? 'S' : instant ? 'S \u00b7 INSTANT' : '';
+    const pl = label('is-centre', xProc - rProc, cy - 22 * scL, `<span class="orr-chain__tnum${blocked ? ' is-blocked' : ''}">${tnum}</span>${tunit ? `<span class="orr-chain__tunit">${tunit}</span>` : ''}`);
     pl.style.width = `${f(rProc * 2)}px`;
-    // the time under the ring; when the station cannot run the line, the reason takes that slot and the time stands over the ring
-    // a process that cannot run has no duration: the time stands under the ring only when the line is open
-    const tl = blocked ? null : label('is-centre', xProc - 60, cy + rProc + 10 * scL, `<span class="orr-chain__time">${data.timeLabel || ''}</span>`);
-    if (tl) tl.style.width = '120px';
+    pl.style.setProperty('--orr-chain-t', f(Math.max(0.55, Math.min(1, rProc / 130))));
+    const tl = null;
     if (blocked) {
       // the reason takes the twelve o'clock slot alone, at label weight in ink; a way out hangs under it when there is one
-      const rl = label('is-centre', xProc - 150, cy - rProc - 74 * scL, `<span class="orr-chain__reason">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
-      rl.style.width = '300px';
+      const compactW = W < 1000;
+      const rl = label(compactW ? 'is-left' : 'is-centre', compactW ? xProc - 20 : xProc - 150, cy - rProc - (compactW ? 58 : 74) * scL, `<span class="orr-chain__reason${compactW ? ' is-compact' : ''}">${blocked.reason}</span>${blocked.verbHtml ? `<span class="orr-chain__verb">${blocked.verbHtml}</span>` : ''}`);
+      rl.style.width = compactW ? '320px' : '300px';
+      // the block's last line (the way out) clears the leader: seat the block's foot 26px above the ring
+      if (rl.offsetHeight) rl.style.top = `${f(cy - rProc - 26 * scL - rl.offsetHeight)}px`;
       proc.appendChild(svg('path', { d: `M ${f(xProc)} ${f(cy - rProc - 2)} L ${f(xProc)} ${f(cy - rProc - 20 * scL)}`, class: 'orr-core orr-chain__reason-leader', 'stroke-width': 1.5 }));
       if (arriveNow) { rl.classList.add('orr-chain__rise'); rl.style.setProperty('--orr-delay', '260ms'); }
     }
@@ -268,7 +305,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     // the verb's seat: under the product's words, on the product's left edge
     ol.style.width = '220px';
     const yFoot = cy + rOut + 10 * scL + ((ol && ol.offsetHeight) || 60) + 12;
-    if (typeof onLayout === 'function') onLayout({ W, H, xOut, rOut, cy, gIn, scL, rProc, xProc, xFoot: xOut - 87, yFoot });
+    if (typeof onLayout === 'function') onLayout({ W, H, xOut, rOut, cy, gIn, scL, rProc, xProc, xFoot: xOut, yFoot });
   }
 
   return {

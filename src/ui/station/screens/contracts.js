@@ -530,6 +530,24 @@ export function createContractsScreen(ctx) {
       : (selectedId != null ? String(selectedId) : null);
   }
 
+  // a short screen's ladder window ends on a row boundary: the dissolve runs in the gap between rows, never
+  // through a live row. Measured after paint; a taller window keeps its CSS height.
+  function fitLadderWindow() {
+    try {
+      if (typeof window === 'undefined' || window.innerHeight > 800) { boardEl.style.maxHeight = ''; return; }
+      boardEl.style.maxHeight = '';
+      const top = boardEl.getBoundingClientRect().top;
+      const limit = top + boardEl.clientHeight;
+      const rows = [...boardEl.querySelectorAll('.sx-ct__rows .sx-ct-row, .sx-decision .sx-ct-row')];
+      let cut = 0;
+      for (const row of rows) {
+        const r = row.getBoundingClientRect();
+        if (r.bottom <= limit - 2) cut = r.bottom;
+        else { if (cut) boardEl.style.maxHeight = `${Math.round(cut - top + 4)}px`; return; }
+      }
+    } catch (_) { /* a headless host has no boxes to fit */ }
+  }
+
   function renderBoard(state) {
     const list = sortBoardOffers(offers(state), state, focusId());
     const stationId = state && state.ui && state.ui.dockedStationId;
@@ -627,6 +645,7 @@ export function createContractsScreen(ctx) {
       `</ul>`;
     dressBoard();
     syncScrollExtent(boardEl);
+    fitLadderWindow();
     if (arriving && !reducedMotion()) {
       const rows = boardEl.querySelectorAll('.sx-ct-row');
       stagger(rows, { base: 60, step: 34 });
@@ -648,6 +667,73 @@ export function createContractsScreen(ctx) {
   /** The ORRERY instruments on a rendered dossier: the route beam, the words that resolve, the
    *  rolling reward, the hold ring on Accept. Everything here is presentation over the markup the
    *  pure builder made; tests read that markup, not this. */
+  // The tether: choosing a mission draws one line across the whole screen — the ladder's arm, the terms'
+  // spine, the key, then this line from the key's edge across the glass into the orrery's origin, where
+  // the beam takes over to the destination. The route reading (jumps, destination) rides the line.
+  function layTether(dossier, routeHost, g) {
+    try {
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      let tether = dossier.querySelector(':scope > .sx-ct-tether');
+      let cap = dossier.querySelector(':scope > .sx-ct-tether__caption');
+      if (!tether) {
+        tether = document.createElementNS(SVG_NS, 'svg');
+        tether.setAttribute('class', 'sx-ct-tether');
+        tether.setAttribute('aria-hidden', 'true');
+        for (const [name, cls] of [['path', 'sx-ct-tether__bloom'], ['path', 'sx-ct-tether__core'], ['circle', 'sx-ct-tether__bead']]) {
+          const el = document.createElementNS(SVG_NS, name);
+          el.setAttribute('class', cls);
+          if (name === 'circle') el.setAttribute('r', '2.5');
+          tether.appendChild(el);
+        }
+        dossier.appendChild(tether);
+      }
+      if (!cap) {
+        cap = document.createElement('p');
+        cap.className = 'sx-ct-tether__caption';
+        cap.setAttribute('aria-hidden', 'true');
+        cap.innerHTML = '<span class="orr-route__jumps"></span><span class="orr-route__via"></span>';
+        dossier.appendChild(cap);
+      }
+      const key = dossier.querySelector('.sx-dossier__foot .orr-lampkey, .sx-dossier__foot button');
+      const dr = dossier.getBoundingClientRect();
+      const rr = routeHost.getBoundingClientRect();
+      const kr = key ? key.getBoundingClientRect() : null;
+      const hide = () => { tether.style.display = 'none'; cap.style.display = 'none'; };
+      if (!kr || !(dr.width > 0) || !(kr.width > 0)) { hide(); return; }
+      const kx = kr.right - dr.left + 12;
+      const ky = kr.top - dr.top + kr.height / 2;
+      const ox = rr.left - dr.left + g.origin.x;
+      const oy = rr.top - dr.top + g.origin.y;
+      if (!(ox > kx + 80)) { hide(); return; }
+      const dy = ky - oy;
+      const ex = ox - Math.abs(dy);
+      const d = ex > kx + 24 ? `M ${kx} ${ky} H ${ex.toFixed(1)} L ${ox.toFixed(1)} ${oy.toFixed(1)}` : `M ${kx} ${ky} L ${ox.toFixed(1)} ${oy.toFixed(1)}`;
+      tether.setAttribute('viewBox', `0 0 ${Math.max(1, dr.width)} ${Math.max(1, dr.height)}`);
+      tether.querySelector('.sx-ct-tether__core').setAttribute('d', d);
+      tether.querySelector('.sx-ct-tether__bloom').setAttribute('d', d);
+      const bead = tether.querySelector('.sx-ct-tether__bead');
+      bead.setAttribute('cx', String(kx)); bead.setAttribute('cy', String(ky));
+      cap.querySelector('.orr-route__jumps').textContent = g.jumpsText || '';
+      cap.querySelector('.orr-route__via').textContent = g.viaText || '';
+      cap.style.left = `${Math.round(kx + 22)}px`;
+      // the reading hangs from the line (never up into the terms at a short height)
+      cap.style.top = `${Math.round(ky + 8)}px`;
+      tether.style.display = '';
+      cap.style.display = '';
+      // the dossier settles after the orrery's first layout (the scales land, the key seats): measure again on
+      // the next frames and redraw if anything moved; at most two extra passes per layout
+      if (!g.__settled && typeof requestAnimationFrame === 'function') {
+        const again = (n) => requestAnimationFrame(() => {
+          const kr2 = key.getBoundingClientRect(); const dr2 = dossier.getBoundingClientRect();
+          const moved = Math.abs(kr2.top - kr.top) > 0.5 || Math.abs(kr2.right - kr.right) > 0.5 || Math.abs(dr2.top - dr.top) > 0.5 || Math.abs(dr2.left - dr.left) > 0.5 || Math.abs(dr2.width - dr.width) > 0.5;
+          if (moved) layTether(dossier, routeHost, { ...g, __settled: n >= 2 });
+          else if (n < 2) again(n + 1);
+        });
+        again(1);
+      }
+    } catch (_) { /* a headless host has no boxes to tether */ }
+  }
+
   function composeDossier(m, state) {
     const dossier = dossierEl.querySelector('.sx-dossier');
     if (!dossier) return;
@@ -659,7 +745,7 @@ export function createContractsScreen(ctx) {
     routeHost.className = 'orr-ct-route';
     routeHost.setAttribute('aria-hidden', 'true');
     dossier.appendChild(routeHost);
-    routeInstrument = createRouteOrrery(routeHost);
+    routeInstrument = createRouteOrrery(routeHost, { caption: 'tether', onLayout: (g) => layTether(dossier, routeHost, g) });
     routeInstrument.set({
       origin: originSectorId(state),
       originName: (ctx.station && ctx.station.name) || 'This station',

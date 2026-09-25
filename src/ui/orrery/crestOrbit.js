@@ -60,7 +60,7 @@ const CSS = `
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
 .orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-crestorbit__centre { z-index:1; }
-.orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:0; }
+.orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:2; }
 .orr-svg .orr-hand { stroke:var(--dp-hand, #f2b950); }
 .orr-crest > img { filter:grayscale(1) brightness(1.25); mix-blend-mode:screen; }
 .orr-crestorbit__centre > img { mix-blend-mode:screen; }
@@ -70,7 +70,7 @@ const CSS = `
 .orr-svg .orr-crestorbit__standing--against { stroke:var(--dp-danger, #ff5038); }
 .orr-svg .orr-crestorbit__standing--none { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-crestorbit__standing-bloom { opacity:.22; }
-.orr-svg .orr-crestorbit__ghost { stroke:rgb(${BONE} / .09); }
+.orr-svg .orr-crestorbit__ghost { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .5); }
 .orr-crestorbit__rise { opacity:0; animation:orr-crestorbit-rise .5s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-crestorbit-rise { to { opacity:1; } }
@@ -88,10 +88,11 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.32; }
 .orr-svg .orr-standing__tick { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
-.orr-svg text.orr-standing__name { font-size:11px; font-weight:650; letter-spacing:.14em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
+.orr-svg text.orr-standing__name { font-size:10.5px; font-weight:650; letter-spacing:.12em; fill:rgb(${BONE} / .52); text-transform:uppercase; paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-svg .orr-standing__bracket { stroke:rgb(${BONE} / .5); }
-.orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); }
+.orr-svg text.orr-standing__bracket-n { fill:rgb(248 244 234); font-family:var(--dp-face-label, "Archivo"); font-size:9.5px; font-weight:650; letter-spacing:.14em; }
 .orr-svg text.orr-standing__name.is-current { fill:rgb(248 244 234); }
+.orr-svg.is-compact text.orr-standing__name { font-size:9px; letter-spacing:.1em; }
 .orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
 .orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
 .orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:9px; font-weight:500; letter-spacing:.02em; fill:rgb(${BONE} / .42); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
@@ -169,9 +170,10 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     handDeg = deg;
     if (!hand || !geo) return;
     const { cx, cy, R } = geo;
-    // the arm pivots at the centre and runs under the authority's crest to the chosen crest's ring
-    const r0 = 0;
-    const r1 = R - (geo.cs || crestSize) / 2 - 4;
+    // the arm rises from the sun's outer ring (never across the emblem) to the seat ring round the chosen crest
+    const r0 = geo.centreNow ? geo.centreNow / 2 + 18 : 0;
+    const cs0 = geo.cs || crestSize;
+    const r1 = R - cs0 / 2 - 13;
     const [x0, y0] = polar(cx, cy, r0, deg);
     const [x1, y1] = polar(cx, cy, r1, deg);
     hand.bloom.setAttribute('d', `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`);
@@ -179,10 +181,12 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     const [bx, by] = polar(cx, cy, r1, deg);
     hand.bead.setAttribute('cx', f(bx));
     hand.bead.setAttribute('cy', f(by));
-    // the head pip: a short radial past the bead, where the arm meets the chosen ring
-    const [px0, py0] = polar(cx, cy, r1 + 3, deg);
-    const [px1, py1] = polar(cx, cy, r1 + 11, deg);
-    hand.tip.setAttribute('d', `M ${f(px0)} ${f(py0)} L ${f(px1)} ${f(py1)}`);
+    // the seat: one amber ring round the chosen crest, outside its standing arc, where the arm lands
+    const [sx, sy] = polar(cx, cy, R, deg);
+    hand.seat.setAttribute('cx', f(sx));
+    hand.seat.setAttribute('cy', f(sy));
+    hand.seat.setAttribute('r', f(cs0 / 2 + 11));
+    hand.tip.setAttribute('d', '');
   }
 
   function standDown() {
@@ -248,8 +252,9 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         core: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2 }),
         bead: svg('circle', { r: 3, fill: 'var(--dp-hand-hot, #ffd98c)' }),
         tip: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
+        seat: svg('circle', { r: 0, fill: 'none', class: 'orr-core orr-hand orr-crestorbit__seat', 'stroke-width': 1.2, opacity: '.85' }),
       };
-      hg.append(hand.bloom, hand.core, hand.tip, hand.bead);
+      hg.append(hand.bloom, hand.core, hand.tip, hand.seat, hand.bead);
       armLayer.appendChild(rise(hg, 360));
       // the crests on the ring, each with its standing arc
       const stale = new Map(crestEls);
@@ -264,7 +269,7 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         const steps = Number.isFinite(item.tierSteps) ? item.tierSteps : Math.sign(rep) * Math.min(4, Math.ceil(Math.abs(rep) / 250));
         const sweep = Math.max(30, Math.abs(steps) * 30);
         const arcs = svg('g', {});
-        arcs.appendChild(svg('path', { d: arcD(x, y, r, 0, 360), class: 'orr-core orr-crestorbit__ghost', 'stroke-width': 1 }));
+        arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-core orr-crestorbit__ghost', 'stroke-width': 1 }));
         // the zero tick on every crest: the arc's direction reads against it
         const [zx0, zy0] = polar(x, y, r - 2, 0); const [zx1, zy1] = polar(x, y, r + 4, 0);
         arcs.appendChild(svg('path', { d: `M ${f(zx0)} ${f(zy0)} L ${f(zx1)} ${f(zy1)}`, class: 'orr-core orr-crestorbit__zero', 'stroke-width': 1 }));
@@ -419,7 +424,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   const rowsUsed = placed.length ? Math.max(...placed.map((q) => q.row)) + 1 : 0;
   if (rungs.length && rungWords) h = 40 + top + rungTop + (rowsUsed - 1) * pitch + 11 + 10;
   else if (rungs.length) h = 74 + 10 + top;
-  let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
+  let out = `<svg class="orr-svg${compact ? ' is-compact' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   out += `<path class="orr-bloom orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="4" opacity=".12"/>`;
   out += `<path class="orr-core orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="1"/>`;
   out += `<path class="orr-core orr-standing__hostile" d="M ${x0} ${y} L ${f(xAt(aggroPos))} ${y}" stroke-width="1.5"/>`;
@@ -437,10 +442,15 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const name = String(t.name).toUpperCase();
     const anchor = 'middle';
     const nx = xAt(i + 0.5);
-    const rowY = i % 2 === 0 ? y - 24 : y - 12;
-    out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(nx)}" y="${rowY}" text-anchor="${anchor}">${name}</text>`;
+    const band = (x1 - x0) / n;
+    const sp = name.indexOf(' ');
+    const parts = name.length * 8.4 > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
+    parts.forEach((part, pi) => {
+      const py = y - 13 - (parts.length - 1 - pi) * 11;
+      out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(nx)}" y="${py}" text-anchor="${anchor}">${part}</text>`;
+    });
     // the boundary's value under its tick: a ruler is labelled like equipment
-    if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 20}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
+    if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 22}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
   });
   out += `<path class="orr-core orr-standing__tick" d="M ${f(xAt(n))} ${y - 7} L ${f(xAt(n))} ${y + 8}" stroke-width="1.2"/>`;
   const xc = xAt(posOf(cur));
@@ -456,7 +466,10 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const yb = y - 42;
     if (hi - lo < 1) return;
     pin += `<path class="orr-core orr-standing__bracket" d="M ${f(lo)} ${yb} L ${f(hi)} ${yb} M ${f(lo)} ${yb} L ${f(lo)} ${yb + 5} M ${f(hi)} ${yb} L ${f(hi)} ${yb + 5}" stroke-width="1"/>`;
-    pin += `<text class="orr-standing__rep orr-standing__bracket-n" x="${f((lo + hi) / 2)}" y="${yb - 5}" text-anchor="middle">${String(b.label)}</text>`;
+    // a label sits outward from the cursor when asked (two brackets meeting at the cursor never overprint)
+    const ba = b.anchor === 'start' ? 'start' : b.anchor === 'end' ? 'end' : 'middle';
+    const bx = ba === 'start' ? lo + 8 : ba === 'end' ? hi - 8 : (lo + hi) / 2;
+    pin += `<text class="orr-standing__rep orr-standing__bracket-n" x="${f(bx)}" y="${yb - 5}" text-anchor="${ba}">${String(b.label)}</text>`;
   });
   out = out.replace('<!--pin-->', pin);
   if (rungs.length) {

@@ -17,6 +17,7 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 import { createChainBeam } from '../../orrery/chainBeam.js';
+import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { COMMODITY_GLYPHS } from '../../views/commodityGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
@@ -233,7 +234,7 @@ export function createIndustryScreen(ctx) {
       output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
-      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span>` } : null,
+      blocked: !queue && r.state !== 'ready' && r.state !== 'materials' ? { reason: escapeHtml(shortBlockLabel(bp, r)), verbHtml: `<span class="orr-chain__blocknote">Not at this station</span><button type="button" class="orr-chain__wayout" data-ind-chart="1">Find a refinery on the chart</button>` } : null,
       timeFrac: 1,
       progress: queue ? progress : null,
     });
@@ -281,6 +282,12 @@ export function createIndustryScreen(ctx) {
     select(rows[next].getAttribute('data-bp'), true);
   });
   stageEl.addEventListener('click', (ev) => {
+    const chart = ev.target.closest('[data-ind-chart]');
+    if (chart) {
+      openGalaxyMap(ctx, { focus: (MAP_FOCUS && (MAP_FOCUS.GALAXY || MAP_FOCUS.SYSTEM)) || undefined, source: 'station-industry:wayout' });
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
     const source = ev.target.closest('[data-source-cmdty]');
     if (source) {
       if (!ctx.bus) return;

@@ -58,7 +58,7 @@ const CSS = `
 .orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
 .orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
 /* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
-.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1; }
+.orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
 .orr-lampkey .orr-lampkey__commit { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; }
 .orr-lampkey .orr-lampkey__commit-bloom { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:8; opacity:.28; }
 .orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;

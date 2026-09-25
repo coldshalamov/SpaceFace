@@ -1050,7 +1050,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // field-deploy verb is a question about what is bolted on, not about a number it produces.
       fittings,
     });
-    const condition = conditionFromEntity(viewedEntityForModel());
+    const conditionRaw = conditionFromEntity(viewedEntityForModel());
+    // the active hull docked here has no live entity to read, but it is docked, not stowed: STOWED
+    // belongs to the fleet's other hulls
+    const condition = conditionRaw && conditionRaw.ratio == null && viewIdx === activeFleetIndex()
+      ? { ...conditionRaw, verb: 'DOCKED' }
+      : conditionRaw;
     const scars = scarCalloutsForHull({
       shipId: def.id,
       livingHull: viewedLivingHullForModel(),

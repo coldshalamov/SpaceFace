@@ -31,6 +31,7 @@ const CSS = `
 .orr-route__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:400; font-size:24px; letter-spacing:0;
   color:rgb(248 244 234); font-variant-numeric:tabular-nums; line-height:1; }
 .orr-route.is-off::before, .orr-route.is-off > svg, .orr-route.is-off > .orr-route__caption { display:none; }
+.orr-route.is-tether > .orr-route__caption { display:none; }
 .orr-svg .orr-route__ring { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-route__ring--near { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-route__lane { stroke:rgb(${BONE} / .16); }
@@ -163,13 +164,14 @@ let pathSeq = 0;
  * @param {HTMLElement} host a block the instrument fills
  * @param {{ maxRings?: number }} [opts]
  */
-export function createRouteOrrery(host, { maxRings = 3 } = {}) {
+export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = 'foot', onLayout = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, relayout() {}, active: () => false, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
   injectOrrery(doc);
   injectStyle(doc);
   host.classList.add('orr-route', 'is-off');
+  if (captionMode === 'tether') host.classList.add('is-tether');
 
   const layer = svg('svg', { class: 'orr-svg orr-route__svg', 'aria-hidden': 'true', focusable: 'false' });
   host.appendChild(layer);
@@ -233,7 +235,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const routeDepth = dest ? (depth.get(dest) || 0) : 0;
     const rings = Math.max(1, Math.min(maxRings, Math.max(routeDepth, 1) + (routeDepth >= maxRings ? 0 : 1)));
     const pad = 34;
-    const capH = 26;
+    const capH = captionMode === 'tether' ? 0 : 26;
     const cx = W / 2;
     const cy = (H - capH) / 2;
     const R = Math.max(60, Math.min(W / 2 - pad, (H - capH) / 2 - pad + 14));
@@ -293,6 +295,14 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
     let destBox = null;
     const labelSize = (text, small) => ({ w: text.length * (small ? 7.4 : 8.6), h: small ? 11 : 12 });
+    const ringCrosses = (box) => {
+      const corners = [[box.l, box.t], [box.r, box.t], [box.l, box.b], [box.r, box.b]];
+      const ds = corners.map(([x, y]) => Math.hypot(x - cx, y - cy));
+      const nx = Math.max(box.l, Math.min(cx, box.r)); const ny = Math.max(box.t, Math.min(cy, box.b));
+      const dmin = Math.hypot(nx - cx, ny - cy); const dmax = Math.max(...ds);
+      for (let k = 1; k <= rings; k += 1) { const rr = ringR(k); if (dmin < rr + 4 && dmax > rr - 4) return true; }
+      return false;
+    };
     function placeName(p, lines, { isDest = false, reserve = false, outside = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
@@ -313,6 +323,8 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         const box = { l, r: l + w, t: cyText - h / 2, b: cyText + h / 2 };
         if (box.l < 2 || box.r > W - 2 || box.t < 2 || box.b > H - capH - 2) continue;
         if (nameBoxes.some((nb) => boxesTouch(nb, box, 3))) continue;
+        // a ring is a connector too: no name lies across one (its box must sit wholly inside or outside every ring)
+        if (ringCrosses(box)) continue;
         // the two reserved names (here, the destination) keep clear air: nothing lands within 24px of them
         if (!isDest && destBox && boxesTouch(destBox, box, 24)) continue;
         if (nodeBoxes.some((nb) => nb.id !== p.id && boxesTouch({ l: nb.l, r: nb.r, t: nb.t, b: nb.b }, box, 1))) continue;
@@ -499,6 +511,11 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       via.textContent = `${n === 1 ? 'JUMP' : 'JUMPS'} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
     }
     caption.append(jumps, via);
+    // the screen may draw the reading itself, on a line from its own key to this origin
+    if (typeof onLayout === 'function') {
+      const o = place.get(data.origin) || { x: cx, y: cy };
+      try { onLayout({ W, H, cx, cy, R, origin: { x: o.x, y: o.y }, jumpsText: jumps.textContent, viaText: via.textContent }); } catch (_) { /* the screen's overlay is cosmetic */ }
+    }
 
     // the arm swings from the last berth to this one (a spring with a little overshoot), and only
     // then does the route with its hops and pulse take its place

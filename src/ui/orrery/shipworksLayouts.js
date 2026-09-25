@@ -637,6 +637,18 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 /* the mode words carry no underline: weight says which is open */
 ${W} .sx-sw__mode .k-word::after, ${W} .sx-sw__modes .k-word::after, ${W} [data-sw-mode]::after, ${W} .sx-sw__hang > .k-words:first-child .k-word::after { display:none !important; }
 
+/* ================================ ROUND 11b ================================================== */
+/* the open mode word carries no bar under it: weight and light say which is open */
+${W} .sx-sw__rail .sx-seg__btn.is-on { background-image:none !important; background:transparent !important; }
+${W} .sx-sw__rail .sx-seg__btn { text-decoration:none !important; border-bottom:0 !important; }
+/* For Sale at 720: the hardpoints run inline and WRAP; a clipped "1× I" is not a reading */
+@media (max-height:800px) {
+  ${W}.sx-sw--buying .sx-spec > li, ${W}.sx-sw--buying .sx-spec__hp { white-space:normal !important; }
+  ${W}.sx-sw--buying .sx-spec > li { line-height:1.35 !important; }
+}
+
+@media (max-height:800px) { ${W}.sx-sw--buying .sx-sw-bar { display:none !important; } }
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

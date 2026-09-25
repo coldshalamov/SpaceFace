@@ -1311,6 +1311,73 @@ ${T} .orr-ledger-purse { width:280px; height:236px; margin-right:-6px; }
   ${T} .sx-ledger__right > .sx-ledger__read { padding-top:8px !important; }
 }
 
+/* ================================ ROUND 7: FACTIONS ========================================= */
+/* the watermark stands behind the numeral, not off in the corner */
+${T} .sx-fac-crest { left:-64px !important; right:auto !important; top:12px !important; width:340px !important; height:340px !important; opacity:.2 !important; }
+@media (max-height:800px) { ${T} .sx-fac-crest { width:220px !important; height:220px !important; left:-40px !important; top:0 !important; } }
+
+/* ================================ ROUND 9: MISSIONS ========================================= */
+/* the price is a fact on the title's line, twelve px after it, in the numeral face at 62%; the chosen row lifts it */
+${T} .sx-ct__rows .sx-ct-row { display:block !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { display:inline !important; }
+${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:inline !important; float:none !important; margin:0 0 0 12px !important; padding:0 !important; text-align:left !important; justify-self:auto !important;
+  font-family:var(--dp-face-numeral, "Archivo") !important; font-weight:600 !important; font-size:12.5px !important; letter-spacing:.02em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
+/* the bead sits at the rail junction (on the spine), the arm runs from it to the words */
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:5.5px !important; width:4.5px !important; height:4.5px !important; margin-top:-2.25px !important; border-radius:50% !important;
+  background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
+/* a sub-verb (Dispatch this job) is quieter than the job it hangs off until its row is chosen */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__name { color:rgb(${BONE} / .62) !important; font-weight:500 !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__sub { color:rgb(${BONE} / .5) !important; }
+/* one spine through the terms: the scales' rule continues down the ladder; the dashes are its ticks; the key is the last rung */
+${T} .sx-dossier__terms { position:relative !important; padding-bottom:0 !important; margin-bottom:0 !important; min-height:0 !important; }
+${T} .sx-dossier__terms::before { content:""; position:absolute; left:3px; top:-2px; bottom:6px; width:1px; background:rgb(${BONE} / .28); pointer-events:none; }
+${T} .sx-dossier__terms > li:last-child { margin-bottom:0 !important; }
+${T} .sx-dossier__foot { margin-top:6px !important; }
+/* the glass under the route orrery: the instrument is not part of the set */
+${T} .sx-dossier > .orr-ct-route::before { background:radial-gradient(circle, rgb(7 8 10 / .8), rgb(7 8 10 / .68) 60%, rgb(7 8 10 / 0) 76%) !important; -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+  -webkit-mask-image:radial-gradient(circle, #000 60%, transparent 76%); mask-image:radial-gradient(circle, #000 60%, transparent 76%); }
+@media (max-height:800px) {
+  /* the RISK rung breathes under the numeral's caption */
+  ${T} .orr-ct-scales { margin-top:10px !important; }
+  /* the ladder window dissolves inside the inter-row gap only (the height is snapped to a row boundary by the screen) */
+  ${T} .sx-ct__board[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 12px), transparent) !important; }
+  ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { font-size:11px !important; margin-left:8px !important; }
+}
+
+/* ================================ ROUND 9b: MISSIONS — the tether ============================= */
+${T} .sx-dossier { position:relative !important; }
+${T} .sx-dossier > .sx-ct-tether { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:1; grid-area:auto; }
+${T} .sx-ct-tether__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.09; stroke-linejoin:round; }
+${T} .sx-ct-tether__core { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
+${T} .sx-ct-tether__bead { fill:rgb(248 244 234); filter:drop-shadow(0 0 3px rgb(248 244 234 / .7)); }
+${T} .sx-dossier > .sx-ct-tether__caption { position:absolute; margin:0; padding:0; display:flex; align-items:baseline; gap:10px; pointer-events:none; z-index:2; white-space:nowrap; grid-area:auto; }
+${T} .sx-ct-tether__caption > .orr-route__jumps { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:26px; line-height:1; letter-spacing:0; color:rgb(248 244 234); }
+${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:10px; font-weight:650; letter-spacing:.16em; color:rgb(${BONE} / .66); }
+@media (max-height:800px) {
+  ${T} .sx-ct-tether__caption > .orr-route__jumps { font-size:20px; }
+  ${T} .sx-ct-tether__caption > .orr-route__via { font-size:9px; }
+}
+
+/* ================================ ROUND 7: INDUSTRY ========================================= */
+/* the key is centred on the product's axis at every size */
+${T} .sx-fab-foot { transform:translateX(-50%) !important; }
+@media (max-height:800px) {
+  ${T} .sx-fab-foot { left:var(--fab-foot-x, 0) !important; right:auto !important; top:var(--fab-foot-y, auto) !important; bottom:auto !important; }
+}
+/* the ladder's extent cursor is quieter than the instrument */
+${T} .sx-ind__list > .orr-extent::before { opacity:.4 !important; }
+
+/* ================================ ROUND 7: LEDGER =========================================== */
+/* the reading stands off its rule; unread cycle prefixes read as one column with the tape's */
+${T} .sx-ledger .sx-ledger__read.fh-plate, ${T} .sx-ledger__right > .sx-ledger__read { padding-left:12px !important; }
+${T} .sx-ledger .st-ledger-entry:not([aria-selected="true"]) .st-ledger-cycle { color:rgb(${BONE} / .62) !important; }
+${T} .sx-ledger__read::after { background:rgb(${BONE} / .5) !important; }
+
+/* the watermark IS the authority's crest: the old "no second authority mark" rule hid it; it paints currentColor */
+${T} .sx-fac-overview > .sx-fac-crest, ${T} .sx-fac-overview > .sx-fac-crest.is-authority { display:block !important; color:rgb(236 230 216); }
+${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-crest svg { display:block; width:100%; height:100%; color:rgb(236 230 216); }
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
