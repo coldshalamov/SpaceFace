@@ -2300,7 +2300,10 @@ export function isMeasurementIntegrityProbeError(errorText) {
       || errorText.includes('worktree changed during performance capture')
       // A tree mutation between claim mint and the probe's authority check
       // legitimately rejects the claim; the probe never measured anything.
-      || errorText.includes('broker-claim-stale-digest'));
+      || errorText.includes('broker-claim-stale-digest')
+      // Contamination observed at a capture boundary means every number in the
+      // run is confounded — invalid evidence, not a product verdict.
+      || errorText.includes('contaminating-process-or-authoring-activity'));
 }
 
 /**

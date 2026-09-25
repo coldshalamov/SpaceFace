@@ -616,6 +616,14 @@ test('mid-capture tree mutation exits are not primary acceptance failures', () =
   ].join('\n');
   assert.equal(isMeasurementIntegrityProbeError(staleClaimText), true);
 
+  // Boundary contamination confounds every byte count in the run — the
+  // measurement is invalid evidence, not a product verdict.
+  const contaminatedText = [
+    '[dirty-ranges] FAIL: measurement invalid: contaminating-process-or-authoring-activity | driver upload bytes did not fall by at least 25%',
+    'exitCode=1',
+  ].join('\n');
+  assert.equal(isMeasurementIntegrityProbeError(contaminatedText), true);
+
   const productFailureText = [
     '[dirty-ranges] FAIL: owner requested bytes did not fall by at least 25%',
     'exitCode=1',
