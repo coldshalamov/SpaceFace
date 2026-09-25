@@ -2811,7 +2811,8 @@ async function sampleRafWindow(page, {
     // here we resolve those views back to geometry attributes so the report names the
     // largest upload owners in the window.
     function collectPartialUploadCensusReport() {
-      const perf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const perfRuntime = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const perf = perfRuntime?.tier1 ?? perfRuntime;
       const entries = perf && typeof perf.collectPartialUploadCensus === 'function'
         ? perf.collectPartialUploadCensus()
         : null;
@@ -3355,7 +3356,8 @@ async function sampleRafWindow(page, {
       const dynamicBufferStart = readDynamicBufferSlice();
       // Arm the diagnostic partial-upload census for the window so ambient (non-owner)
       // bufferSubData traffic can be named by its owning attribute at the end slice.
-      const censusPerf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const censusPerfRuntime = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+      const censusPerf = censusPerfRuntime?.tier1 ?? censusPerfRuntime;
       if (censusPerf && typeof censusPerf.armPartialUploadCensus === 'function') {
         try { censusPerf.armPartialUploadCensus(); } catch (_) { /* diagnostic-only */ }
       }
