@@ -144,7 +144,7 @@ hostage while manufacturing a route harness, a fresh reviewer, or a perfect
 acceptance record. Headed captures are not the review method
 (`docs/AGENT_LESSONS.md`, owner 2026-09-16).
 
-## 3. The loop for every unit
+## 3. PRODUCTION-FIRST — the loop for every unit
 
 ```text
 CONSIDER  →  COMPLETE  →  PROVE  →  ROTATE
