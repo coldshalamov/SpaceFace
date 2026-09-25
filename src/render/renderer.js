@@ -11379,6 +11379,7 @@ export const render = {
     const packageInstances = [];
     let instantiated = 0;
     let paletteSubjects = 0;
+    let chunkPromotions = 0;
     // A census record is only cache/bootstrap-owned: retain each package under a dedicated warm
     // owner before createInstance (a released or evicted package re-acquires through the normal
     // loader), then drain every lease with one owner release at warm teardown.
@@ -11492,6 +11493,36 @@ export const render = {
                 paletteSubjects += 1;
               }
             }
+            // D44 — the wave-1 pack must join pool chunks that exist BEFORE flight, not create
+            // them at the round-zero boundary. Promotion needs a second same-key owner, and the
+            // exemplar/hulk composes that used to provide it race the shell: on a contended host
+            // the kick's serial slot releases after the budget (covered probe: 29 unready
+            // materials, 0 chunks at flight, +71 in-round bufferFullUploads as the pack spawned).
+            // The decoded RECORD is here, so promote its keys now the way the armory-dwell batch
+            // does — throwaway owner pairs, keys an exemplar/live boundary already claimed are
+            // skipped inside partsLibrary, activation publishes count-0 chunks whose GPU state the
+            // poolProgramSeal + firstFramePoolCensus barriers own. Scoped to the launch keep set
+            // (wave 1's field + the player hull): the unscoped catalog fleet was the measured
+            // launch regression; one or two files is the size the round actually pays for.
+            if (warm.profile === 'crucible' && warm.swarmScoped === true
+                && catalogHullFiles && launchHullKeepSet && launchHullKeepSet.size > 0
+                && launchHullKeepSet.has(normalizeFile(url))) {
+              const witnessPalettes = palettesFor(extras).map((palette) => {
+                const ownerA = new THREE.Group();
+                const ownerB = new THREE.Group();
+                ownerA.name = 'SF_CrucibleWarm_PoolWitness_A';
+                ownerB.name = 'SF_CrucibleWarm_PoolWitness_B';
+                holder.add(ownerA);
+                holder.add(ownerB);
+                return { ownerA, ownerB, palette };
+              });
+              try {
+                const promoted = await warmRenderPackageShipPool(scene, record, witnessPalettes);
+                chunkPromotions += promoted;
+              } catch (error) {
+                console.warn('[render] crucible warm pool witness promotion failed', record.assetId || url, error);
+              }
+            }
           }
         }
         canonicalizeObjectSurfaceProgramKeys(holder);
@@ -11539,6 +11570,7 @@ export const render = {
         instantiated,
         packageInstances: packageInstances.length,
         paletteSubjects,
+        chunkPromotions,
         shipKicks: kicks.length,
         shipStates: kicks.join(',').slice(0, 900),
       };
