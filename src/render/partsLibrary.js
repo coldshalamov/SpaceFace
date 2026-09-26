@@ -10404,6 +10404,8 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
     ordinal,
     scene,
     packageAdmission: null,
+    matrixSerial: 0,
+    submitPolicyMemo: null,
   };
   if (options.deferScenePublication === true) {
     chunk.packageAdmission = {
@@ -10558,6 +10560,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
 function writeInstanceChunkMatrix(chunk, index, matrix) {
   assertDynamicBufferOwnerWritable(chunk.dynamicBufferOwner);
   chunk.mesh.setMatrixAt(index, matrix);
+  // Every visibleIndices add/remove pairs with a write through this choke point, so the
+  // serial versions the submitted-matrix contents the chunk submit-policy verdict reads.
+  chunk.matrixSerial = (chunk.matrixSerial || 0) + 1;
   markDynamicBufferItems(chunk.dynamicBufferOwner, AUTHORED_INSTANCE_MATRIX, index);
 }
 
