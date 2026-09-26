@@ -4280,6 +4280,17 @@ function firstFlightReadableShipJob(job) {
         && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
 }
 
+// Flight keeps authored admissions serial so a stall cannot overlap two full compose jobs, but a
+// saturated queue is itself the pop-in defect: runway/glass bodies wait whole jobs behind dressing.
+// Past this depth the running job gets the pipeline-gate release — the next CPU compose overlaps
+// only the previous job's GPU stages, while admission still admits one job per frame.
+const AUTHORED_FLIGHT_OVERLAP_MIN_QUEUE = 8;
+function flightQueueDeepEnoughForOverlap(state) {
+  const live = authoredRuntimeState();
+  return !!(live && live.mode === 'flight'
+    && state && state.jobs.length > AUTHORED_FLIGHT_OVERLAP_MIN_QUEUE);
+}
+
 function scheduleHeldShipWake(state) {
   if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
@@ -4771,6 +4782,15 @@ function admitNextUpgradeJob(state) {
   job.serialSlotReleased = false;
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
+  }
+  if (job.options && job.options.overlapAuthoredPipelineCompile !== true
+      && Object.isExtensible(job.options)
+      && flightQueueDeepEnoughForOverlap(state)) {
+    // A deep flight queue means runway/glass bodies are waiting whole serial jobs for their
+    // first drawn frame. Releasing the slot at the pipeline gate lets the next compose build
+    // while this boundary's GPU stages finish on the ambient/urgent lanes — CPU composes still
+    // never overlap each other, and shallow queues keep the strict serial semantics.
+    job.options.overlapAuthoredPipelineCompile = true;
   }
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
