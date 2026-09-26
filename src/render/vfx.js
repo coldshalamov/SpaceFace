@@ -12382,7 +12382,23 @@ export const vfx = {
     const pz = player.pos.z || 0;
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const range2 = drawWu * drawWu;
+    // Motion/version latch: the verdict can only flip when the entity index changes, the draw
+    // radius changes, or the gap between the player and the nearest seam-bearing asteroid is
+    // closed by either side's motion. A full scan records that distance plus the movers' speeds;
+    // the latch also expires on a sim-time bound so a rock bumped onto a closing drift can't
+    // hold a stale "false" while the player sits parked.
+    const v = entityIndexVersion(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+    const last = this._seamRelCache;
+    if (last && last.v === v && last.drawWu === drawWu && last.versionMode === (v !== null)) {
+      const mdx = px - last.px;
+      const mdz = pz - last.pz;
+      if (mdx * mdx + mdz * mdz <= last.margin * last.margin
+        && now - last.t <= last.ttl) return last.result;
+    }
     const list = indexedTypeScan(state, 'asteroids');
+    let nearest2 = Infinity;
+    let seamSpeed = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -12390,9 +12406,29 @@ export const vfx = {
       if (!seams || !seams.length) continue;
       const dx = e.pos.x - px;
       const dz = e.pos.z - pz;
-      if (dx * dx + dz * dz <= range2) return true;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < nearest2) {
+        nearest2 = d2;
+        seamSpeed = Math.hypot(
+          e.vel && Number.isFinite(e.vel.x) ? e.vel.x : 0,
+          e.vel && Number.isFinite(e.vel.z) ? e.vel.z : 0,
+        );
+      }
     }
-    return false;
+    const result = nearest2 <= range2;
+    let margin = Infinity;
+    let ttl = Infinity;
+    if (Number.isFinite(nearest2)) {
+      const dist = Math.sqrt(nearest2);
+      margin = Math.abs(dist - drawWu) * 0.5;
+      const plSpeed = Math.hypot(
+        player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
+        player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
+      );
+      ttl = Math.min(2, margin / Math.max(plSpeed + seamSpeed, 1e-3));
+    }
+    this._seamRelCache = { v, drawWu, px, pz, t: now, margin, ttl, result, versionMode: v !== null };
+    return result;
   },
 
   _sleepSeamMarkers() {
