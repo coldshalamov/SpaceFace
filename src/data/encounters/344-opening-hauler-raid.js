@@ -166,6 +166,9 @@ export default defineEncounter(trigger, {
   squad: {
     anchorArchetype: 'reaver_pirate',
     archetypes: ['reaver_pirate', 'wasp_swarmer'],
+    // The opening fight must always field a throwable hull — a no-wasp draw leaves nothing
+    // in the raid lighter than the player's ship, so the scripted tether beat cannot exist.
+    guaranteeArchetypes: ['wasp_swarmer'],
     size: [3, 3],
     clusterRadius: 75,
     minSeparation: 38,

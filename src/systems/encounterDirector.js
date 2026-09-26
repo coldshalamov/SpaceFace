@@ -3724,9 +3724,15 @@ function ensureDirectorState(state) {
   if (d.escalationSeeds.length === 0 && savedLedger && savedLedger.length) {
     d.escalationSeeds = savedLedger.map(sanitizeEscalationSeed).filter(Boolean);
   }
-  d.escalationSeeds = d.escalationSeeds.map(sanitizeEscalationSeed).filter(Boolean)
+  // Perf: sanitize once and persist the same sanitized rows. ensureDirectorState runs several
+  // times per director pass, and persistEscalationLedger used to re-run the identical
+  // map/filter/slice over the array this line had just sanitized (sanitize is idempotent, so
+  // the rows it produced were content-equal — only the second allocation tree was wasted).
+  const sanitizedSeeds = d.escalationSeeds.map(sanitizeEscalationSeed).filter(Boolean)
     .slice(-ESCALATION_SEED_CAP);
-  persistEscalationLedger(d);
+  d.escalationSeeds = sanitizedSeeds;
+  if (sanitizedSeeds.length) d.stats.escalationLedger = sanitizedSeeds.slice();
+  else delete d.stats.escalationLedger;
   ensureNamed(d);
   return d;
 }
