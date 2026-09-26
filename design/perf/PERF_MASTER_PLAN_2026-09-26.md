@@ -63,6 +63,8 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | Mesh-build drain on poll frames | renderer.js (`serviceRenderMeshResidency`) | The `_drainMeshBuildQueue(8)` call only ran on the 'deferred'/'held-first-flight'/'drain' branches — 'full'/'poll' reconcile frames skipped it entirely, so a queued mesh-build sat a whole poll cadence (the `noMesh` asteroids at rows 38/14 of the probe). Now every pending-queue frame drains. Late-present gate + retry backoff unchanged. | noMesh residue in the 06-06Z honest run |
 | Submit-options scratch | renderer.js (`_submitVisibilityOptions`) + test update | The per-entity `shouldSubmitEntityMesh({...})` literal (~170–300 allocs/frame) is one module scratch, every field rewritten per call site so no stale flag leaks. The test's source contract moved from literal-regex to assignment-regex. | Pole E GC hygiene |
 | Calendar cohort straddle | catchupPolicy.js, authoritativeSystemManifest.js, test update | The 46 CALENDAR owners all fired on `tick%30===0` (step max 8.11 ms vs p50 2.49 ms). `calendarCohortIndex(id) = index%3` in CALENDAR_CLOCK_IDS → cohorts run `tick%30 ∈ {0,10,20}`; same 2 Hz cadence per system, manifest order preserved inside the tick (cohortQueues = all minus other cohorts). Boot ticks (<=1) and `clockWake.calendar` still run every cohort. **47a golden reproduces bit-identical** (`f542e2e9`) — legacy47a walks `all` every tick; straddle is production-profile only. | explorer: step max 8.11 ms vs p50 2.49 ms; barkDirector p95 1.42 ms |
+| lodFamily gate expansion | scripts/build-sg04-release-assets.mjs, scripts/check-sg04-release-assets.mjs | Both enumerated `part.file` + the hand-maintained WHOLE_SHIP_FILES list, never `part.lodFamily` — 23 manifest-managed lod1/lod2 release GLBs shipped byte-identical raws (~70 MB) with manifest rows claiming ktx2+meshopt, and 24 render-package lod renders embed the same raws. Both scripts expand lodFamily into the managed set; gate correctly reports `release.compressedAsset` until the staged rebuild lands. | Pole G census; confirmed by `.devshots/probe-check.mjs` (wasp lod2 flagged not-releaseReady) |
+| Pole A(b) CLOSED (already covered) | presentationSources.js + farActorTable.js + renderer.js | `appendNearbyLedgerRows` scans shelved far rows on a `(travel + TABLE_INBOUND_APPROACH_WU) × TABLE_DECODE_RUNWAY_SECONDS` disc, extrapolates `lastExactT`+vel, and admits rows closing within the runway into `collectMeshPresentationEntities` → `kickDecodeRunwayAssets` → `preloadAuthoredAssetsForEntity`. `meshNeedsAuthoredDecode` returns true for mesh-less ledger rows. No leaf needed — verified end-to-end this round. | verified via source trace |
 
 ## 2. The poles, ranked (evidence in §4)
 
@@ -167,12 +169,15 @@ snapshot fence, with a named island + copy-cost bench (PQ-083/PQ-091).
 
 ## 4. Instrumentation gaps found
 
-- Sim-hitch attribution: `framePhaseMs.sim` is overwritten per step (last step only);
-  catch-up steps are usually unsampled → "sim owner, simSystem=null". Fix: per-frame
-  steps[] array (count + per-step ms + measured flag); hitch-triggered one-frame
-  fullCoverage override on the NEXT frame. Measurement-only, zero hazard.
-- Upgrade-job latency histogram exists; add per-job `cacheStatus` + prefetch-hit
-  flag to see prefetch efficacy directly (cheap counter).
+- ~~Sim-hitch attribution~~ LANDED: `framePhaseMs.sim` is still last-step-only, but hitch
+  verdicts now carry `simStepMs[]` + `simStepMeasured[]` (bounded 8-step ring, written only
+  while `hitchAttributionEnabled` — alloc-free otherwise). The next-frame fullCoverage
+  override already existed (`simFollowupMeasureThisFrame`). A multi-step hitch now names
+  which step owned it instead of reporting the trailing cheap one.
+- ~~Upgrade-job latency histogram + per-job `cacheStatus`~~ ALREADY COVERED:
+  job diagnostics carry `cacheStatus: 'hit'|'miss'` (every plan file already
+  resident at job start = the prefetch runway worked) plus duration/latency —
+  the prefetch-efficacy counter exists.
 
 ## 5. Verification protocol
 
