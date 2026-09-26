@@ -4679,6 +4679,21 @@ export const vfx = {
     if (lane.includes('branch') || id.includes('branch')) {
       return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
     }
+    // Rated cluster detonation — the whole clump cooked off at once. A hot detonation punch,
+    // deliberately NOT the well's cool cyan sink pulse: this is the ammunition going off.
+    if (id.startsWith('fields.cluster')) {
+      return presentationStyle('#ffffff', '#ff8a40', SPR_FLASH, {
+        radial: true,
+        lightPeak: 4.2,
+        lightDistance: 200,
+        speed0: 56,
+        speedJitter: 48,
+        life0: 0.34,
+        size0: 2.2,
+        size1: 0.15,
+        drag: 1.1,
+      });
+    }
     // PQ-012 field deploy/collapse event beats (one-shot punch, NOT the continuous identity — that
     // is the swept force surfaces in _updateFieldGeometry). Distinct per kind; the boundary/direction
     // read lives in the continuous surfaces, so these are brief state-change pulses only.

@@ -458,6 +458,38 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0, particles: 14, lights: 0, voices: 0, uiPulses: 0 },
     tags: ['ordnance', 'expiry'],
   }),
+  // A rated cluster moment — the well piled hulls and a primed light cooked them off (PQ-147.03).
+  // The sim already rates and publishes fields:clusterDetonate; these recipes give the moment the
+  // same premium receipt a whip impact earns. Player-authored wells infer participant relevance;
+  // NPC clusters keep the world-scoped lanes only.
+  'fields.cluster_detonate': recipe({
+    importance: 0.82,
+    dedupeWindowTicks: 30,
+    material: 'field',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.cluster_detonate',
+      audio: 'audio.cluster_detonate',
+      ui: 'ui.cluster_detonate',
+      accessibility: 'accessibility.cluster_caption',
+    },
+    budgets: { cameraTrauma: 0.1, particles: 64, lights: 1, voices: 1, uiPulses: 1 },
+    tags: ['critical', 'field', 'cluster', 'detonation'],
+  }),
+  'fields.cluster_detonate.cascade': recipe({
+    importance: 0.86,
+    dedupeWindowTicks: 30,
+    material: 'field',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.cluster_detonate',
+      audio: 'audio.cluster_detonate',
+      ui: 'ui.cluster_detonate',
+      accessibility: 'accessibility.cluster_caption',
+    },
+    budgets: { cameraTrauma: 0.18, particles: 96, lights: 2, voices: 1, uiPulses: 1 },
+    tags: ['critical', 'field', 'cluster', 'cascade'],
+  }),
   'scenario.signal.pulse': recipe({
     importance: 0.68,
     dedupeWindowTicks: 30,

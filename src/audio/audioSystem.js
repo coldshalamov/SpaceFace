@@ -1030,6 +1030,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.escort_screen.break': 'sfx_doctrine_break',
   'presentation.combat.escort_screen.withdraw': 'sfx_doctrine_withdraw',
   'presentation.combat.damage_applied': 'sfx.hullHit',
+  // The rated cluster moment gets the authored layered boom — distinct from the per-link
+  // sfx_explosion_small the sympathetic cook-offs already play.
+  'presentation.fields.cluster_detonate': 'sfx_explosion_large',
   'presentation.combat.near_miss': 'sfx_combat_near_miss',
   'presentation.combat.player_hit': 'sfx.playerDamage',
   // Drift-bomb bay (PQ-205.01). Semantic ids from src/data/bombs.js — dedicated recipes, never

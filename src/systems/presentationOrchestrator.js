@@ -267,6 +267,9 @@ export const presentationOrchestrator = {
         sourceId: payload && payload.ownerId,
         material: 'ordnance',
       })),
+      // A rated cluster moment (well + primed light, >=3 secondaries) was published into a void —
+      // banner + caption + camera + audio + VFX ride the same lane machinery as whip impacts.
+      this.bus.on('fields:clusterDetonate', (payload) => this._onClusterDetonate(payload || {})),
       this.bus.on('scenario:branchResolved', (payload) => this._onScenarioBranchResolved(payload || {})),
       this.bus.on('game:new', () => this._resetRuntime()),
       this.bus.on('game:started', () => this._resetRuntime()),
@@ -1352,6 +1355,24 @@ export const presentationOrchestrator = {
       material: 'massline',
       magnitude: Math.max(1, finiteScore(payload && payload.releaseScore) * 100),
       tags: ['release', payload && payload.classification],
+    });
+  },
+
+  _onClusterDetonate(payload) {
+    const cueId = payload && payload.tier === 'cascade'
+      ? 'fields.cluster_detonate.cascade'
+      : 'fields.cluster_detonate';
+    const count = Math.max(0, finiteScore(payload && payload.count));
+    return this._emitCue(cueId, payload, {
+      sourceEvent: 'fields:clusterDetonate',
+      sourceId: payload ? (payload.ownerId ?? payload.sourceId ?? null) : null,
+      targetId: payload ? (payload.primedId ?? null) : null,
+      material: 'field',
+      magnitude: Math.max(1, count),
+      sequence: payload && payload.fieldId != null ? String(payload.fieldId) : null,
+      tags: ['cluster', payload && payload.tier === 'cascade' ? 'cascade' : 'detonation',
+        ...((payload && payload.kinds) || [])],
+      accessibilityText: `Cluster detonation — ${count || 'multiple'} secondary consequences.`,
     });
   },
 

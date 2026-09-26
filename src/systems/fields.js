@@ -1592,11 +1592,18 @@ export const fields = {
     ctx.primedTumbled = false;
     ctx.chainStarted = false;
     ctx.entityOf = (id) => (state.entities && state.entities.get ? state.entities.get(id) : null);
+    const field = this._kernel && typeof this._kernel.get === 'function' && fieldId != null
+      ? this._kernel.get(fieldId)
+      : null;
     rt.cluster = {
       fieldId: fieldId || null,
       primedId: null,
       actionTick: tick,
       sourceId: sourceId != null ? sourceId : null,
+      // fields:deployed's sourceId is the emitter entity, not the deployer — the field's own
+      // ownerId is the author of the moment.
+      ownerId: (field && field.ownerId != null) ? field.ownerId : (sourceId != null ? sourceId : null),
+      pos: (field && field.pos) ? { x: field.pos.x, z: field.pos.z } : null,
       count: 0,
       kinds: [],
       rated: false,
@@ -1665,6 +1672,9 @@ export const fields = {
     ctx.primedId = rt.cluster.primedId;
     ctx.nowTick = state.tick | 0;
     if (payload.tick == null) payload.tick = ctx.nowTick;
+    if (rt.cluster.pos == null && payload.pos && Number.isFinite(payload.pos.x)) {
+      rt.cluster.pos = { x: payload.pos.x, z: payload.pos.z };
+    }
     const incoming = classifyClusterReceipt(eventName, payload, ctx);
     if (!incoming.length) return;
     this._clusterSecondaries = mergeClusterSecondaries(this._clusterSecondaries, incoming);
@@ -1678,6 +1688,10 @@ export const fields = {
         schemaVersion: 1,
         fieldId: rt.cluster.fieldId,
         primedId: rt.cluster.primedId,
+        ownerId: rt.cluster.ownerId != null ? rt.cluster.ownerId : rt.cluster.sourceId,
+        sourceId: rt.cluster.sourceId,
+        pos: rt.cluster.pos || null,
+        tier: rating.tier,
         secondaries: this._clusterSecondaries.slice(),
         count: rating.count,
         kinds: rating.kinds,

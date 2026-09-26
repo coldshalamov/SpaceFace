@@ -261,6 +261,8 @@ export const WELL_CLUSTER = Object.freeze({
   flingMinAccel: 18,
   minNeighbors: 2,
   secondaryKinds: Object.freeze(['other_body_hit', 'cargo_thrown', 'second_tumble', 'terrain_slam']),
+  // The moment is rated at 3 secondaries; all four consequence kinds or six hits reads as a cascade.
+  cascadeMinCount: 6,
 });
 
 // Exact lifecycle reasons a field teardown can carry (mirrors MASS_SEED_CUT_REASONS shape so the
