@@ -118,6 +118,7 @@ test('runtime registers the beam in Eris, rotates it with the clock, and burns o
     hasExternal(id) { return !!this.byId[id]; },
   };
   const combat = {
+    state: null, // bound below — the burn route only routes through a kernel bound to live state
     ensureKernel() {
       return { routeDamage(req) { damaged.push(req); } };
     },
@@ -129,6 +130,7 @@ test('runtime registers the beam in Eris, rotates it with the clock, and burns o
     entities: new Map([[7, player]]),
     sites: { worldOrder: [], worldById: {} },
   };
+  combat.state = state;
   const bus = { on() { return () => {}; }, emit(name, payload) { events.push({ name, payload }); } };
   const system = Object.create(environmentalMachinery);
   const previous = FIELD_FLAGS.enabled;

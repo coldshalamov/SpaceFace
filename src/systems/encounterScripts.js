@@ -455,13 +455,74 @@ const patrolScan = {
   },
 
   event(d, live, state, name, p) {
-    if (name === 'contrabandScanned') live.data.scan = p;   // routed only while this scan is live
+    // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
+    // that docked the player, not to this patrol's open scan script.
+    if (name === 'contrabandScanned' && !(p && p.source === 'dock')) live.data.scan = p;
   },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // C. AMBUSH SNARE — telegraphed trap; snares cruise (one snare max), springs on proximity.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+function ambushOpening(live) {
+  const text = live.shape && typeof live.shape.telegraph === 'string' ? live.shape.telegraph.trim() : '';
+  if (!text) return null;
+  return text;
+}
+
+function sayAmbushOpen(d, live) {
+  const text = live.shape && live.shape.claimVictim ? ambushOpening(live) : null;
+  if (text) d.say(live, 'alert', text, null, { literal: true, primary: true });
+  else d.say(live, 'bark', 'ambush_tele', null, { primary: true });
+}
+
+function claimHostilesLeft(d, live) {
+  if (live.shape && live.shape.claimVictim) return d.aliveCount(live, 'squad');
+  return d.aliveCount(live);
+}
+
+function claimHostileDist2(d, live, p) {
+  if (!(live.shape && live.shape.claimVictim) || !p) return d.minDist2ToSquad(live, p);
+  let best = Infinity;
+  for (const e of d.entsOf(live, 'squad')) {
+    const dx = p.pos.x - e.pos.x;
+    const dz = p.pos.z - e.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < best) best = d2;
+  }
+  return best;
+}
+
+function releaseClaimVictims(live) {
+  if (!live.shape || !live.shape.claimVictim || !Array.isArray(live.ids)) return;
+  const keep = [];
+  for (const id of live.ids) {
+    if (live.roles && live.roles[id] === 'claim') {
+      delete live.roles[id];
+      continue;
+    }
+    keep.push(id);
+  }
+  live.ids = keep;
+}
+
+function spawnClaimVictim(d, live, ships) {
+  const victim = live.shape && live.shape.claimVictim;
+  if (!victim || typeof victim.archetype !== 'string' || !victim.archetype) return;
+  const anchor = (ships[0] && ships[0].pos) || live.anchor || { x: 0, z: 0 };
+  d.spawnShips(live, [{
+    archetype: victim.archetype,
+    level: (ships[0] && ships[0].level) || 1,
+    pos: { x: (anchor.x || 0) + 48, z: (anchor.z || 0) + 12 },
+    factionId: victim.factionId || 'faction_dmc',
+    team: 2,
+    passive: true,
+    role: 'claim',
+    scanLabel: victim.scanLabel || 'Miner — still cutting the claim',
+    context: 'encounter',
+  }]);
+}
+
 const ambush = {
   fire(d, live, state) {
     if (live.data && live.data.ceresActivityAmbush === true) {
@@ -478,6 +539,7 @@ const ambush = {
     const ships = live.plan.ships.map((sh) => ({ ...sh, passive: true }));
     const ids = d.spawnShips(live, ships);
     if (!ids.length) return d.abort(live, 'no_budget');
+    spawnClaimVictim(d, live, ships);
     // W05 shape 327: ghost_on_the_bearing spawns quiet_ghost actors as scanner ghosts
     // (isGhost / ghostConfidence / revealStage on entity.data — sim-truth path A).
     if (live.shapeId === 'ghost_on_the_bearing' && state.entities && typeof state.entities.get === 'function') {
@@ -507,7 +569,7 @@ const ambush = {
       d.offerChoices(live, live.shape.choices.map((c) => c.id), live.shape.timeoutChoice || 'refuse', live.deadlineAt);
     } else {
       live.deadlineAt = d.now() + 300;
-      d.say(live, 'bark', 'ambush_tele', null, { primary: true });
+      sayAmbushOpen(d, live);
     }
     // Cruise interdiction: one snare per shape instance, warned ≥1 s ahead — a vector break or
     // manual cruise-drop inside the warning defeats it (the counterplay IS the design).
@@ -544,11 +606,15 @@ const ambush = {
       return;
     }
     if (live.phase === 'conflict') {
-      if (d.aliveCount(live) === 0) {
+      if (claimHostilesLeft(d, live) === 0) {
         d.dangerImpulse(live, 'ambush_cleared', -0.02);
+        releaseClaimVictims(live);
         return d.resolve(live, 'cleared');
       }
-      if (d.minDist2ToSquad(live, p) >= ESCAPE_R * ESCAPE_R) return d.resolve(live, 'escaped');
+      if (claimHostileDist2(d, live, p) >= ESCAPE_R * ESCAPE_R) {
+        releaseClaimVictims(live);
+        return d.resolve(live, 'escaped');
+      }
     }
   },
 

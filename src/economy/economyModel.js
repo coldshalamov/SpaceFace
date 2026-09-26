@@ -157,7 +157,10 @@ export const TECH_WORK = deepFreeze({
 export const MISSION_WORK = deepFreeze({
   cargo_delivery:{ taskS:100, legs:1, consumesCargo:true },
   bulk_trade:{ taskS:120, legs:1, saleRevenue:true },
-  bounty_hunt:{ taskS:150, legs:2 },
+  // D59: a mark's on-site work is the approach plus the fight — the data-grounded EHP/DPS model
+  // kills a reference-strength mark in ~30s, and units scaling tracks real EHP growth. Pricing the
+  // hunt at 150s re-paid the same loop several times over every wage period.
+  bounty_hunt:{ taskS:30, legs:2 },
   mining_quota:{ taskS:210, legs:2, retainedLoot:true },
   salvage_retrieval:{ taskS:180, legs:2, consumesCargo:true, recoveredCargo:true },
   escort:{ taskS:190, legs:1 }, patrol_clear:{ taskS:200, legs:2 },
@@ -182,7 +185,7 @@ export const STATION_WORK = deepFreeze({
   military:{ cargo_delivery:1,bulk_trade:1,bounty_hunt:4,salvage_retrieval:2,escort:3,patrol_clear:4,passenger_transport:1,recon_scan:3,tow_recovery:1,demolition:2,rescue_under_fire:3 },
   research:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:4,tow_recovery:1,demolition:1,rescue_under_fire:2 },
   blackmarket:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:3,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:2,smuggling_run:4,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:2,rescue_under_fire:2 },
-  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:4,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3 },
+  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:5,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3 },
   contracts_hub:{ cargo_delivery:5,bulk_trade:4,bounty_hunt:2,salvage_retrieval:1,escort:5,patrol_clear:3,smuggling_run:1,passenger_transport:3,recon_scan:3 },
 });
 

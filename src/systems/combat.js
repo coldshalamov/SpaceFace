@@ -109,6 +109,11 @@ function resolveEnemyWeapon(w, slotIndex) {
     tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
     arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
     heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
+    // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
+    // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
+    // these — they must survive resolution or the mounts read as always-on primaries.
+    ...(w.occasional === true ? { occasional: true } : null),
+    ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
     _cooldown: 0, _heat: 0,
   };
 }
@@ -653,6 +658,18 @@ export const combat = {
     // The marker is written onto the victim by the wave materializer, so this reserves the
     // authored bounty/loot path for the run without asking whether a run happens to be live.
     const runOwns = runOwnsReward(t);
+    // The career kill tally: gameOver's recap, the Life Ledger, and the finale's combat-tally
+    // sentence all read stats.kills and nothing ever wrote it. Same adjudication as the
+    // telemetry sink — killerId === playerId only (NPC attrition, drone-owned kills, and the
+    // player's own death all excluded); Survival bodies stay run-scoped like the run wallet,
+    // while mission-owned kills still count (missions own the reward, not the fact). Ships only,
+    // matching aceMemory — the finale calls this "hulls you broke", and a popped mine, mass seed,
+    // payload, or station is not a hull.
+    if (state.playerId != null && killedByPlayer && !runOwns && t.type === 'ship') {
+      const p = state.player || (state.player = {});
+      const stats = (p.stats && typeof p.stats === 'object') ? p.stats : (p.stats = {});
+      stats.kills = Math.max(0, Math.floor(Number(stats.kills) || 0)) + 1;
+    }
     const authoredRewardEligible = killedByPlayer && !missionOwns && !runOwns;
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
       ? lethal.factionLawful
@@ -827,7 +844,12 @@ export const combat = {
         cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
       }
       if (plan.costCr > 0) {
-        this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: 'recovery:deductible' });
+        // An uninsured recovery is a hull share, not a deductible — the session ledger
+        // would otherwise file a 6,000-cr uninsured charge under 'insurance'.
+        this.bus.emit('economy:chargeCredits', {
+          amount: plan.costCr,
+          reason: plan.insured ? 'recovery:deductible' : 'recovery:hull_share',
+        });
       }
 
       this._pendingPlayerRecovery = null;
@@ -924,6 +946,7 @@ export const combat = {
       stationId,
       shipId: t.data && t.data.defId,
       refundCr,
+      invulnS: UNDOCK_INVULN_S,
       cargoLost: cargoLostQty > 0,
       cargoLostQty,
     });

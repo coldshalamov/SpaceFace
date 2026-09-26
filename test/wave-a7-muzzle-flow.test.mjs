@@ -13,7 +13,13 @@ const STARTERS = [
 ];
 
 test('starter discharge flow stays steady until the shot ends and crosses the muzzle', () => {
-  assert.match(SURFACE_VERTEX, /float motionTime = age \* uMotion/);
+  // The pin is that band travel is a function of the flash's own AGE scaled by uMotion —
+  // never the session uTime clock, which made the band crawl at ignition and thrash after
+  // a long flight. The exact motionTime expression may carry extra age-derived terms
+  // (e.g. a post-release coast residue); those extend travel past release, which is a
+  // superset of this row's contract.
+  assert.match(SURFACE_VERTEX, /float motionTime = [^;]*\bage\b[^;]*\* uMotion/);
+  assert.doesNotMatch(SURFACE_VERTEX, /float motionTime = [^;]*\buTime\b[^;]*\* uMotion/);
   for (const [variant, source, life] of STARTERS) {
     assert.equal(weaponSignature(variant).source, source, variant);
     const speed = DISCHARGE_FLOW[source];

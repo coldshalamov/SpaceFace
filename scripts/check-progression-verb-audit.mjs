@@ -77,7 +77,7 @@ const VERB_MOD_KEYS = Object.freeze({
 // ─── Vocabulary: reads / intel — their own class, neither pure stat nor combat verb ───
 const INTEL_MOD_KEYS = Object.freeze({
   revealCargo: 'read another ship\'s cargo (contactHail/comms)',
-  marketIntel: 'market price intel (systems/economy.js)',
+  marketIntel: 'sector-wide live price feed (systems/economy.js uplink sync)',
   scanRpBonus: 'research points per freeflight scan pulse (systems/missions.js)',
   scannerRadiusMult: 'scanner ping radius (systems/scanner.js)',
   pingPersistMult: 'ping persistence (systems/scanner.js)',

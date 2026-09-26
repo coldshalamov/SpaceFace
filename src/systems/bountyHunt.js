@@ -14,7 +14,28 @@ import {
 } from '../data/hunterTricks.js';
 import { mineLayerWakePoint } from '../ai/mineLayerVerb.js';
 import { chaffDecoyPoint } from './countermeasures.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+
+/** Bench A/B: production default ON. Quiet latch skips bountyHunt shipLike census
+ * when no live bounty hunters remain. Soft-GPU fps not claimed. Fresh law/wanted-
+ * adjacent residual after #148 salvage (not salvage/sanctuary/cones/catch-nets). */
+let BOUNTY_HUNT_EMPTY_QUIET_LATCH = true;
+export function setBountyHuntEmptyQuietLatchForBench(enabled) {
+  BOUNTY_HUNT_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getBountyHuntEmptyQuietLatchForBench() {
+  return BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const BOUNTY_HUNT_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishBountyHuntQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.bountyHuntRuntime || (state.bountyHuntRuntime = {});
+  rt.emptyQuietLatched = !!latched;
+}
+
 
 export {
   BOUNTY_HUNTER_NEUTRAL_CONTEXT,
@@ -39,22 +60,80 @@ export const bountyHunt = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._subs = [];
+    this._huntersQuiet = null;
+    this._hunterWakeSeq = 0;
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
+    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+  },
+
+  /** External wake when a hunter role is stamped without a fresh spawn index bump. */
+  noteHunterWake() {
+    this._hunterWakeSeq = (this._hunterWakeSeq | 0) + 1;
+    this._huntersQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload && payload.entity;
+    if (!isBountyHunter(entity)) return;
+    this.noteHunterWake();
   },
 
   newGame() {
     if (this.state) this.state.bountyHunt = freshState();
+    this._huntersQuiet = null;
+    this._hunterWakeSeq = 0;
+    publishBountyHuntQuiet(this.state, false);
   },
 
   update(_dt, state) {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     this.state = state;
     ensureState(state);
+    // Quiet open flight: no live bounty hunters still paid a full shipLike
+    // census (isBountyHunter / normalize / trick) every tick. Latch when the
+    // census stays empty; wake on membership, hunter spawn/tag, or 0.5 s rescan.
+    // Soft-GPU fps not claimed. Fresh bounty residual after #148 salvage.
+    if (BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._hunterWakeSeq | 0;
+      const quiet = this._huntersQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < BOUNTY_HUNT_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishBountyHuntQuiet(state, true);
+        return;
+      }
+    } else if (this._huntersQuiet) {
+      this._huntersQuiet = null;
+      publishBountyHuntQuiet(state, false);
+    }
+
+    let anyHunter = false;
     for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
+        anyHunter = true;
         normalizeHunter(entity, state);
         tickHunterTrick(entity, state, this);
+      }
+    }
+    if (BOUNTY_HUNT_EMPTY_QUIET_LATCH !== false) {
+      if (!anyHunter) {
+        const membership = entityIndexVersion(state);
+        if (membership != null) {
+          this._huntersQuiet = {
+            membership,
+            wakeSeq: this._hunterWakeSeq | 0,
+            armedTick: state.tick | 0,
+          };
+          publishBountyHuntQuiet(state, true);
+        }
+      } else {
+        this._huntersQuiet = null;
+        publishBountyHuntQuiet(state, false);
       }
     }
   },
@@ -285,7 +364,10 @@ function applyHunterTrick(entity, state, trick, payload) {
       intent.weaponId = 'mine_dropper';
       break;
     case 'phase-jammer':
-      data.cm = { ...(data.cm || {}), effectT: 1.4, effect: { cfg: { kind: 'ecm' } } };
+      // ECM effect loop reads cfg.radius for the jam ring and cfg.turnRateMult for the
+      // steering write — a cfg without them jams with NaN radius/turnRate. Module tune:
+      // mod_ecm_jammer_l (520/0.0); the trick only shortens the window via effectT.
+      data.cm = { ...(data.cm || {}), effectT: 1.4, effect: { cfg: { kind: 'ecm', radius: 520, turnRateMult: 0 } } };
       break;
     case 'shield-turtle':
       entity.shield = Math.min(finite(entity.shieldMax, 0), finite(entity.shield, 0) + Math.max(10, finite(entity.shieldMax, 0) * 0.35));

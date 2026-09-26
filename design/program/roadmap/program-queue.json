@@ -5752,7 +5752,7 @@
       "parentId": "PQ-189",
       "priority": 53,
       "title": "The control contract, generated from the bindings",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "ui-labels"
@@ -5782,7 +5782,7 @@
       "parentId": "PQ-173",
       "priority": 54,
       "title": "The critic's verdict: blockers, intent result, play judgment",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "fun-loop-instrument"
@@ -8754,7 +8754,7 @@
       "priority": 160,
       "title": "The mechanic",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8776,8 +8776,10 @@
         "npm run check:baseline",
         "npm run check:bar:narrative"
       ],
-      "receiptRefs": [],
-      "brief": "A named voice at the home berth who reads scars, repairs, and rap sheet back as one line each; the ship becomes 'my fucking ship' through them. DONE WHEN: Every scar class has a line; the berth screen shows the mechanic with the hull."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-150.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: the home berth mechanic names the ship and leads with the worst real scar, the line wraps, and the bay seats that hull. A clean hull invents no scar. Receipt: design/program/roadmap/receipts/PQ-150.01-REPORT.md."
     },
     {
       "id": "PQ-150.02",
@@ -9774,7 +9776,7 @@
       "priority": 191,
       "title": "The ticker and event cards",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9799,8 +9801,10 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. DONE WHEN: Every ticker line traces to a sim event; capture of a blockade line and its card."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: every ticker line traces to a sim event; a seeded blockade produces its line and the berth dock card, and a spontaneous economy roll reaches the HUD tape without injection. Receipt: design/program/roadmap/receipts/PQ-177.00-REPORT.md. Original: One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. DONE WHEN: Every ticker line traces to a sim event; capture of a blockade line and its card."
     },
     {
       "id": "PQ-177.01",
@@ -9808,7 +9812,7 @@
       "priority": 192,
       "title": "Charts with a forecast cone",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9833,8 +9837,10 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Per-commodity sparkline of the last ten minutes plus the forecast band and regime label; profit readout on sale from cost basis. DONE WHEN: A player who reads the cone beats one who does not by ≥ 30 % profit over a seeded hour (telemetry archetypes)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: the chart band is the sim's stock-drift band, stated at 99 percent. Held-out seeds 17701011 and 17701012 contained 180/180 chart arrivals and 180/180 haul arrivals. Stale survey, fresh quote, and modelled past read apart. The sale line is the whole batch after slippage, travel, and operating cost. Receipt: design/program/roadmap/receipts/PQ-177.01-REPORT.md."
     },
     {
       "id": "PQ-177.02",
@@ -9842,7 +9848,7 @@
       "priority": 193,
       "title": "Supply-chain glyphs",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9867,8 +9873,10 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. DONE WHEN: Blind test: a player names where to sell ore and why after one screen."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177.02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: the selected commodity inspector paints producedBy to consumedBy and names a live consumer dock; the Helios market capture reads Mining to Refinery and Trade Hub - This dock buys it. Receipt: design/program/roadmap/receipts/PQ-177.02-REPORT.md. Original: Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. DONE WHEN: Blind test: a player names where to sell ore and why after one screen."
     },
     {
       "id": "PQ-177.03",
@@ -9876,7 +9884,7 @@
       "priority": 194,
       "title": "Contracts that twist",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.04",
         "PQ-138.00",
@@ -9902,8 +9910,10 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). DONE WHEN: ≥ 5 twist clauses live on boards; each has a scenario."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: seed 15230 boards carry all five twist clauses and every clause mutates into a live scenario (hunt, recovery, reroute, hunt, field-clear) in test/pq-152-03-twist-clauses.test.mjs. Receipt: design/program/roadmap/receipts/PQ-177.03-REPORT.md. Original: Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). DONE WHEN: ≥ 5 twist clauses live on boards; each has a scenario."
     },
     {
       "id": "PQ-177.04",
@@ -9911,7 +9921,7 @@
       "priority": 195,
       "title": "The black market",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-148.02",
         "PQ-151.02",
@@ -9938,8 +9948,10 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "IMPLEMENTED 2026-09-13: Tethys contact supplies one persistent Pallas parcel; an unscanned physical customs-and-catch run opens Smuggler Den docking, trade, and laundering exactly once. The seeded loop washes cargo, shows the ledger receipt, and shifts its next quote; focused save/residency and independent review pass. Full headed player-route acceptance remains open."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177.04-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-26: the seeded smuggling loop completes — physical customs-and-catch delivery opens Smuggler Den, the 35 percent wash cut lands in the persistent laundering ledger, and the berth own-supply moves its next quote. Stale 616-cut pin re-pinned to live catalog math. Receipt: design/program/roadmap/receipts/PQ-177.04-REPORT.md. Original: IMPLEMENTED 2026-09-13: Tethys contact supplies one persistent Pallas parcel; an unscanned physical customs-and-catch run opens Smuggler Den docking, trade, and laundering exactly once. The seeded loop washes cargo, shows the ledger receipt, and shifts its next quote; focused save/residency and independent review pass. Full headed player-route acceptance remains open."
     },
     {
       "id": "PQ-177.05",
@@ -12439,7 +12451,7 @@
       "priority": 274,
       "title": "Landmarks fielded",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12461,7 +12473,9 @@
         "npm run check:atlas-integrity",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-153.02-REPORT.md"
+      ],
       "brief": "The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. DONE WHEN: Six landmarks reachable; still review passes."
     },
     {
@@ -13594,7 +13608,7 @@
       "priority": 313,
       "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-049.01"
       ],
@@ -13616,7 +13630,9 @@
         "npm run check:assets:live",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049.02-REPORT.md"
+      ],
       "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
     },
     {
@@ -13625,7 +13641,7 @@
       "priority": 314,
       "title": "Build the Massline express-liner render package",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.02"
       ],
@@ -13646,7 +13662,9 @@
         "npm run check:render-package-plan",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049.03-REPORT.md"
+      ],
       "brief": "Add the exact new release source to the pilot input and generate its shipping `massline-express-liner-v1` render package and generated runtime manifest through the sanctioned builder. Prove pilot, package, instance-plan, and no-fallback binding before any `express` selection changes."
     },
     {
@@ -13655,7 +13673,7 @@
       "priority": 315,
       "title": "Map only existing express traffic to the Massline express-liner",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-049.03"
       ],
@@ -13674,7 +13692,9 @@
         "npm run check:assets:live",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049.04-REPORT.md"
+      ],
       "brief": "After current writers release `partsLibrary.js`, add only the `express` entries to its traffic-role whole-ship file and asset-ID maps, then prove an existing passenger-only express record resolves the new release body. Do not touch `ship_mule`, traffic, itinerary, passenger custody, cargo/economy, or any other role mapping."
     },
     {
@@ -15550,7 +15570,7 @@
       "priority": 382,
       "title": "Surface receipt + Ricochet Foundry vertical slice (Phase 4)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.03"
       ],
@@ -15571,7 +15591,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (c1629d1b): the KERNEL half landed - authoritative physics-owned surface-contact receipt, material response, reflection continuation on the same body, and Bank Shot + Smart Bank compiled traits (3 stable digests, deterministic bounce, bounce spends the shared lineage proc budget). STILL OPEN for this leaf: greybox Foundry arena, ten wave recipes, Mirrorjaw Foreman boss, causal VFX/audio, and route + perf acceptance - all of which need art and the GPU lane. State deliberately left `ready` because the leaf is not done."
+        "design/program/roadmap/receipts/PQ-133.04-REPORT.md"
       ],
       "brief": "Physics surface-contact receipt with point/normal/material/velocity (CRU-025), ricochet continuation through physics with bounded energy and enemy asymmetry (CRU-026), Smart Bank (CRU-027), Foundry greybox geometry/plates/furnace/gates/camera (CRU-028), moving shutters + loose reflective plate (CRU-029), ten Foundry wave recipes (CRU-030), Mirrorjaw Foreman boss (CRU-031), causal VFX/audio hooks, route + performance acceptance."
     },
@@ -15748,7 +15768,8 @@
       ],
       "receiptRefs": [
         "partial 2026-08-23 (fc5eae50): unlock catalog, local records, run history and challenge mutators landed. All 14 unlocks are zero on all seven power axes, and the freely-available Pulse (44 DPS) is the hardest-hitting weapon in the set - the unlockables are 32, 31, 0.75, 0.6 - so a fresh account cannot be out-gunned by a returning one. DEFERRED because a concurrent lane held the wave/arena files: endless recipes past wave 30, the boss circuit, the extraction experiment, versioned build codes. All UI (unlock surface, run-history screen) still owed. State left `ready`.",
-        "systems COMPLETE 2026-08-23 (b223d13e): 10b added deterministic opt-in endless past wave 30 (11 distinct archetypes over waves 31-90, 9 distinct plan hashes, 6-7 bodies against a cap of 24), a five-room boss circuit, extraction windows at waves 10/20/30 that end the run `aborted` with reason `extracted` and are explicitly NOT the authored victory, and build codes that name a stale catalog instead of failing generically. With 10a the phase systems are done. STILL OWED: the unlock/records UI shipped on the Crucible door (5c92f7c7) but a dedicated results-history screen and the causal score tags in results are not built."
+        "systems COMPLETE 2026-08-23 (b223d13e): 10b added deterministic opt-in endless past wave 30 (11 distinct archetypes over waves 31-90, 9 distinct plan hashes, 6-7 bodies against a cap of 24), a five-room boss circuit, extraction windows at waves 10/20/30 that end the run `aborted` with reason `extracted` and are explicitly NOT the authored victory, and build codes that name a stale catalog instead of failing generically. With 10a the phase systems are done. STILL OWED: the unlock/records UI shipped on the Crucible door (5c92f7c7) but a dedicated results-history screen and the causal score tags in results are not built.",
+        "gate wiring 2026-09-26 (9fa69865f): crucible-phase-10b.test.mjs (endless/boss-circuit/extraction/build-codes) was orphaned from every gate; wired into check:crucible:meta and the check chain. Stale flat dreadnought_boss pin repaired to per-step authored bossEnemyId; fresh-starter pin updated for shipped mirror_demonstrator. UI residuals (results-history screen, causal score tags) still owed - row stays ready."
       ],
       "brief": "Unlock catalog of possibility not stats (CRU-055), deterministic endless recipe (CRU-056), challenge rulesets (CRU-057), local records, versioned build codes."
     },
@@ -15833,7 +15854,7 @@
       "priority": 392,
       "title": "Pull feat/arcade-vfx-foundation to master",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "arcade-structural-fx"
@@ -15844,7 +15865,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-134-00-REPORT.md"
+      ],
       "brief": "One commit, one new file src/render/combat/arcadeStructuralFx.js. Cherry-picked as ce340812."
     },
     {
@@ -15882,7 +15905,7 @@
       "priority": 394,
       "title": "Causal VFX/audio grammar (CRU-051)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-134.01",
         "PQ-133.05"
@@ -15899,7 +15922,9 @@
         "npm run check:baseline",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-134.02-REPORT.md"
+      ],
       "brief": "Direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants; four-way capture at play size."
     },
     {
@@ -16784,7 +16809,7 @@
       "priority": 425,
       "title": "Matrix and acceptance",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -16803,7 +16828,8 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
+        "design/program/roadmap/receipts/PQ-185.01-REPORT.md"
       ],
       "brief": "PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The grammar-matrix pass and the PQ-130 acceptance re-run were NOT done. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -17608,7 +17634,7 @@
       "priority": 452,
       "title": "Min-spec floors and soak",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -17800,7 +17826,7 @@
       "priority": 458,
       "title": "JSON content loader",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17827,7 +17853,7 @@
       "priority": 459,
       "title": "Workshop",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],

@@ -104,6 +104,15 @@ const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burn
 const WEAPON_RECHARGE_MULT = 1.15;
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+
+// Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
+// combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
+// phase per mount so twin racks don't volley in lockstep — and `defensiveOnly` answers only
+// while a live target is inside this fraction of the mount's own envelope. Flag-less mounts
+// and the player's battery never touch this gate.
+const OCCASIONAL_PERIOD_S = 12;
+const OCCASIONAL_WINDOW_S = 4;
+const DEFENSIVE_ENVELOPE_FRAC = 0.8;
 // Forced heat vent is AUTHORITATIVE combat behavior (lockout + heat dump). Gate on runtime features
 // / process combat flags — never `typeof window` (N1: Node/browser must not diverge by host).
 // legacy47a keeps weaponHeatVent false so 47-A goldens stay stable; production enables it.
@@ -189,6 +198,79 @@ function arcadeGunTarget(e, target, state) {
     && isHostileToPlayer(target, e.team, state));
 }
 
+
+/** Bench A/B: production default ON. Quiet NPC weapon idle latch. */
+let WEAPONS_NPC_QUIET_LATCH = true;
+export function setWeaponsNpcQuietLatchForBench(enabled) {
+  WEAPONS_NPC_QUIET_LATCH = enabled !== false;
+}
+export function getWeaponsNpcQuietLatchForBench() {
+  return WEAPONS_NPC_QUIET_LATCH !== false;
+}
+
+/** Membership / idle rescan while latched (0.5 s @ 60 Hz). */
+const WEAPONS_NPC_QUIET_RESCAN_TICKS = 30;
+
+function weaponsEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function readyProjectilesBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.projectiles));
+}
+
+function readyVectorMinesBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.vectorMines));
+}
+
+function anyIndexedProjectile(state) {
+  if (!readyProjectilesBucket(state)) return true; // refuse latch without typed lane
+  const list = state.entityIndex.projectiles;
+  // Quiet path: typed lane length is authoritative (dead rows are compacted on remove).
+  return list.length > 0;
+}
+
+function anyIndexedVectorMine(state) {
+  if (!readyVectorMinesBucket(state)) return true; // refuse latch without typed lane
+  const list = state.entityIndex.vectorMines;
+  return list.length > 0;
+}
+
+function publishWeaponsQuiet(state, latched) {
+  const rt = state.weaponRuntime || (state.weaponRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+/**
+ * True when every non-player weapon ship is sleeping with no cooldown/heat/vent/plant/fire.
+ * Refuses (returns false) without a ready weaponShips/ships index so entityList fallback stays live.
+ */
+function npcWeaponsSubsystemQuiet(state) {
+  const index = state && state.entityIndex;
+  if (!index || !index.__spacefaceEntityIndexV1 || index.ready !== true) return false;
+  const ships = Array.isArray(index.weaponShips) ? index.weaponShips
+    : (Array.isArray(index.ships) ? index.ships : null);
+  if (!ships) return false;
+  const playerId = state.playerId;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
+    if (!e || e.alive === false || e.type !== 'ship' || e.id === playerId) continue;
+    if (e.physicsSleeping !== true) return false;
+    if (npcWeaponsNeedTick(e, state)) return false;
+    const intent = e.data && e.data.intent;
+    if (intent && intent.fire) return false;
+  }
+  return true;
+}
+
+
 export const weapons = {
   name: 'weapons',
 
@@ -223,6 +305,7 @@ export const weapons = {
     this._attackMetrics = emptyAttackMetrics();
     this._attackLive = new Map();
     this._attackQueryScratch = [];
+    this._weaponsQuiet = null;  // NPC-idle quiet latch
     this._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
     this._shuntImpulseA = { x: 0, y: 0, z: 0 };
     this._shuntImpulseB = { x: 0, y: 0, z: 0 };
@@ -280,16 +363,72 @@ export const weapons = {
       // sector:enter fires after materialization, so cells the durable ledger restored dark
       // are live entities here — pick their ids up for the rekindle watch.
       this._opticSpent = collectOpticSpentIds(this.state);
+      // Review fix: a boundary transition can land a fresh version lineage under a
+      // latched membership — drop the quiet latch so the first tick re-evaluates.
+      this._weaponsQuiet = null;
     });
     this._playerIncomingLock = false;
     this._opticSpent = new Set();
-    on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
-    on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
-    on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); });
+    on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+    on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+    on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
   },
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+
+    // Quiet Ceres / open flight: sleeping NPCs with cold weapons still paid full
+    // weaponShips walks (_tickWeapons + NPC fire service) every tick. Latch when the
+    // typed projectile/vectorMine lanes are empty and every non-player weapon ship is
+    // sleeping with no cooldown/heat/vent/plant/fire; player service stays live.
+    // Wake on membership, live projectiles/mines, attack bag, beam owners, or 0.5 s rescan.
+    // Soft-GPU fps not claimed. Different angle from held packCombat single-dirty /
+    // sampleProjectileEvidence surface-cadence / preStep-all-sleeping.
+    if (WEAPONS_NPC_QUIET_LATCH !== false) {
+      const membership = weaponsEntityIndexVersion(state);
+      const tick = state.tick | 0;
+      const attackEmpty = !this._attackLive || this._attackLive.size === 0;
+      const beamsIdle = this._beamFiring.size === 0 && this._beamFiringPrev.size === 0;
+      const projectilesIdle = !anyIndexedProjectile(state);
+      const minesIdle = !anyIndexedVectorMine(state);
+      const quiet = this._weaponsQuiet;
+      // Tactical AI runs earlier in the registry tick and publishes quietLatched.
+      // When AI is awake, NPCs may take fire intent without membership churn — wake with it.
+      // Absent tactical runtime (fixtures) keeps membership/rescan/projectile wakes only.
+      const tacticalQuiet = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && attackEmpty
+        && beamsIdle
+        && projectilesIdle
+        && minesIdle
+        && tacticalQuiet
+        && ((tick - (quiet.armedTick | 0)) < WEAPONS_NPC_QUIET_RESCAN_TICKS)) {
+        this._runWeaponsNpcQuietIdle(dt, state);
+        return;
+      }
+      const tacticalQuietArm = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (membership != null
+        && attackEmpty
+        && beamsIdle
+        && projectilesIdle
+        && minesIdle
+        && tacticalQuietArm
+        && npcWeaponsSubsystemQuiet(state)) {
+        this._weaponsQuiet = { membership, armedTick: tick };
+        this._runWeaponsNpcQuietIdle(dt, state);
+        return;
+      }
+      this._weaponsQuiet = null;
+    } else if (this._weaponsQuiet) {
+      // Bench disable mid-latch: drop dead latch state (the flag republishes false
+      // on this tick's normal-path tail).
+      this._weaponsQuiet = null;
+    }
+
     sampleProjectileEvidence(state,this.bus);
     ensureWeaponRuntime(this);
     pruneAttackLive(this, state);
@@ -393,6 +532,106 @@ export const weapons = {
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
     state.weaponRuntime.attack = this._attackMetrics;
+    publishWeaponsQuiet(state, false);
+  },
+
+  /**
+   * NPC-idle quiet path: stunt evidence + player weapon tick/service only.
+   * Skips sleeping-NPC _tickWeapons walk, NPC fire loop, homing steer, and mines.
+   */
+  _runWeaponsNpcQuietIdle(dt, state) {
+    sampleProjectileEvidence(state, this.bus);
+    ensureWeaponRuntime(this);
+    // attackLive proven empty by latch predicate — skip prune walk
+    resetWeaponDiagnostics(this._diag);
+    if (state.combat) {
+      if (!Array.isArray(state.combat.beams)) state.combat.beams = [];
+      else state.combat.beams.length = 0;
+    }
+    // beamsIdle proven by latch — sets already empty; keep clears for identity
+    this._beamFiringPrev.clear();
+    this._beamFiring.clear();
+
+    this._tickPlayerWeaponsOnly(dt, state);
+    // Review fix: the quiet path must still service optic rekindle — a spent prism
+    // heals after OPTIC_SPEND_QUIET sim-seconds untouched and _opticSpent is not a
+    // latch predicate, so omitting this call kept discharged cells dark forever
+    // during sustained quiet. Empty Set makes the call near-free.
+    serviceOpticRekindle(this, state);
+
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.alive && !player.flags.docked) {
+      const cruise = state.player && state.player.cruise;
+      const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
+      let firing = false;
+      let forcedTarget = null;
+      if (!playerFireBlocked) {
+        firing = !!state.input.fire;
+        if (state.input.actions?.tetherFire) firing = false;
+      }
+      let tetherGate = null;
+      const fireControl = massline2Flag('fireControl');
+      if (fireControl) {
+        tetherGate = this._tetherFireSolution(player, state);
+        if (tetherGate) forcedTarget = tetherGate.target;
+      }
+      if (!forcedTarget) {
+        const autoAim = state.input && state.input.autoAim;
+        if (autoAim && autoAim.targetId != null) {
+          const autoTarget = this.helpers.getEntity(autoAim.targetId);
+          if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
+        }
+      }
+      // Quiet idle: no trigger / forced target / tether gate → skip mount service.
+      // Cooldown/heat already advanced in _tickPlayerWeaponsOnly.
+      if (firing || forcedTarget || tetherGate) {
+        const aimAngle = tetherGate
+          ? tetherGate.angle
+          : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
+        if (fireControl) {
+          state.player.gunTargetId = forcedTarget && forcedTarget.id != null
+            ? forcedTarget.id
+            : (state.player.targetId != null ? state.player.targetId : null);
+        }
+        this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
+      } else if (fireControl && state.player) {
+        // Review fix: mirror the normal path's per-tick mirror — a non-firing
+        // player holding a selected target must keep gunTargetId == targetId;
+        // nulling it blanks the target panel while latched.
+        state.player.gunTargetId = state.player.targetId != null
+          ? state.player.targetId
+          : null;
+      }
+    } else if (state.player && state.player.gunTargetId != null) {
+      state.player.gunTargetId = null;
+    }
+
+    // beamsIdle — prev/current empty; emit is a no-op Set walk
+    this._emitStoppedBeams();
+    state.weaponRuntime = state.weaponRuntime || {};
+    state.weaponRuntime.diagnostics = this._diag;
+    state.weaponRuntime.attack = this._attackMetrics;
+    publishWeaponsQuiet(state, true);
+  },
+
+  _tickPlayerWeaponsOnly(dt, state) {
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.alive && player.type === 'ship') {
+      const ws = player.data && player.data.weapons;
+      if (ws) {
+        for (const w of ws) {
+          const def = this._byId.get(w.defId) || {};
+          if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
+          const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+        }
+        this._tickVent(player, dt, state);
+        this._tickLock(player, dt);
+      }
+      tickMomentumSinkPlant(state, player, this._momentumSinkImpulse, this._entityGetter);
+    }
+    this._publishIncomingLock(state);
   },
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
@@ -414,7 +653,7 @@ export const weapons = {
         // freshly-pegged gun trips the vent this tick.
         this._tickVent(e, dt, state);
         // Missile lock build/decay lives on the ship's combat block.
-        this._tickLock(e, dt);
+        this._tickLock(e, dt, state);
       }
       tickMomentumSinkPlant(state, e, this._momentumSinkImpulse, this._entityGetter);
     }
@@ -523,21 +762,29 @@ export const weapons = {
     return true;
   },
 
-  _tickLock(e, dt) {
+  _tickLock(e, dt, state) {
+    // A caller that forgets `state` must not produce a permanently-frozen occasional window —
+    // fall back to the system's bound state rather than evaluating simTime as 0.
+    state = state || this.state;
     const ws = e.data && e.data.weapons;
     const combat = e.data && e.data.combat;
     if (!ws || !combat) return;
-    // Does this ship carry any lock-requiring weapon?
-    let needsLock = false, lockTimeS = 1.2;
+    // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
+    // rack is ignored while its window is closed so the incoming-lock warning re-arms per
+    // actual launch window instead of crying wolf between volleys.
+    let needsLock = false, lockTimeS = Infinity;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
-      if (tracking === 'homing') {
+      if (tracking === 'homing' && this._mountRoleOpen(e, w, def, state)) {
         needsLock = true;
         const lt = w.lockTimeS != null ? w.lockTimeS : def.lockTimeS;
         if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
       }
     }
+    // Fastest open mount governs the warn/launch cadence; the 1.2 s floor is only the default
+    // for racks that author no time — starting there silently ignored slower authored locks.
+    if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
     if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; return; }
     const tgt = this._resolveTarget(e);
     if (tgt && this._inLockCone(e, tgt)) {
@@ -683,6 +930,34 @@ export const weapons = {
     };
   },
 
+  // Mount-role permission for the authored enemy flags. An `occasional` mount only fires while
+  // its deterministic window is open — a hash-seeded phase per mount so a count:2 rack doesn't
+  // volley in lockstep — and a `defensiveOnly` mount only answers while a live target is inside
+  // its own close envelope (a fraction of the mount's range, so a ship kited at beam range stops
+  // cycling flak it could never land). Flag-less mounts and the player's battery return early and
+  // keep legacy behavior; cooldown/heat still tick while closed so the first open tick is ready.
+  _mountRoleOpen(e, w, def, state, forceTarget = null, fireGate = null) {
+    if (w.occasional !== true && w.defensiveOnly !== true) return true;
+    if (w.occasional === true) {
+      if (!Number.isFinite(w._occPhase)) {
+        const h = this.helpers.hash32(0, String(e.id), String(w.defId || w.id || ''), String(w.slotIndex | 0));
+        w._occPhase = (h % (OCCASIONAL_PERIOD_S * 1000)) / 1000;
+      }
+      const t = ((state && state.simTime) || 0) + w._occPhase;
+      if (((t % OCCASIONAL_PERIOD_S) + OCCASIONAL_PERIOD_S) % OCCASIONAL_PERIOD_S >= OCCASIONAL_WINDOW_S) return false;
+    }
+    if (w.defensiveOnly === true) {
+      const tgt = (fireGate && fireGate.target) || forceTarget || this._resolveTarget(e);
+      if (!tgt || !tgt.pos || tgt.alive === false) return false;
+      const range = (w.range != null ? w.range : def.range) || 0;
+      if (!(range > 0)) return false;
+      const envelope = range * DEFENSIVE_ENVELOPE_FRAC;
+      const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+      if (dx * dx + dz * dz > envelope * envelope) return false;
+    }
+    return true;
+  },
+
   // --- fire all weapons on a ship if it is firing this tick ---
   // aimAngle: the world angle to gimbal/turret toward (player mouse aim or NPC lead).
   // forceTarget: an explicit target entity (Massline tether / missile-lock); null = selected target.
@@ -700,6 +975,13 @@ export const weapons = {
     if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
+      if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
+        // A sustained emergent ray opened by this mount would leak into world.ray forever if the
+        // role gate simply skips its service — _serviceEmergent's !firing branch is the only
+        // clearer. No authored flagged mount is emergent today; this is insurance against one.
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
       if (def.emergentPrimitive) {
         capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
         continue;
@@ -1197,6 +1479,8 @@ export const weapons = {
     for(const off of this._weaponsUnsubs||[])off();
     this._weaponsUnsubs=[];
     this._playerIncomingLock = false;
+    this._weaponsQuiet = null;
+    if (this.state) publishWeaponsQuiet(this.state, false);
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------

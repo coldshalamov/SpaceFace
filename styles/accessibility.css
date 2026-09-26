@@ -115,27 +115,31 @@ html.sf-high-contrast #hud,
 html.sf-high-contrast .sf-barrow__num,
 html.sf-high-contrast .sf-stat__v { text-shadow: 0 1px 2px #000, 0 0 1px #000; }
 
-/* Always give keyboard users a visible focus ring, even outside high-contrast (motor/keyboard a11y). */
-:focus-visible { outline: 2px solid var(--accent, #4f8fdd); outline-offset: 2px; }
+/* Always give keyboard users a visible focus ring, even outside high-contrast (motor/keyboard a11y).
+   The ring is the lamp's hot end where Deckplate is present — the same light as every other live
+   state — and the legacy blue where it is not. */
+:focus-visible { outline: 2px solid var(--dp-lamp-hot, var(--accent, #4f8fdd)); outline-offset: 2px; }
 /* Gamepad navigation moves focus programmatically, which can retain the browser's pointer heuristic
    and suppress :focus-visible. The UI input router marks pad-owned focus until the next pointerdown. */
 html.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
-  outline: 3px solid var(--accent, #4f8fdd);
+  outline: 3px solid var(--dp-lamp-hot, var(--accent, #4f8fdd));
   outline-offset: 3px;
-  box-shadow: 0 0 0 2px rgba(3, 8, 16, .92), 0 0 0 5px color-mix(in srgb, var(--accent, #4f8fdd) 35%, transparent);
+  box-shadow: 0 0 0 2px rgba(3, 8, 16, .92), 0 0 0 5px color-mix(in srgb, var(--dp-lamp-hot, var(--accent, #4f8fdd)) 35%, transparent);
 }
 html.sf-high-contrast.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
   outline-color: #ffe14d;
 }
 
 /* ============================================================================================
-   REDUCED MOTION — both the OS preference AND an explicit in-game class (sf-reduce-motion). These are
-   belt-and-suspenders: the class is driven by settings.video.motionReduce via accessibility.js; the
-   media query catches users who never opened settings. This handles CSS transitions/animations; the
-   3D camera shake / FOV punch is suppressed in JS (feel.js reads motionReduce; vfx via getMotionReduced).
+   REDUCED MOTION — the in-game class (sf-reduce-motion) is the source of truth, resolved from the
+   motion preference (Full / Reduce / System) by accessibility.js. The OS media query below applies
+   ONLY under an explicit System preference (html.sf-motion-system): honoring it alone stripped every
+   effect from players who never asked (their desktop tweak is not a game choice). This handles CSS
+   transitions/animations; the 3D camera shake / FOV punch is suppressed in JS (feel.js reads
+   motionReduce; vfx via getMotionReduced).
    ============================================================================================ */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  html.sf-motion-system *, html.sf-motion-system *::before, html.sf-motion-system *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;

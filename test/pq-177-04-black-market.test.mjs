@@ -17,6 +17,7 @@ import * as marketScreen from '../src/ui/station/screens/market.js';
 import { buildReply } from '../src/ui/station/barContacts.js';
 import { RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { resolveDockDeny } from '../src/ui/dockDenyBanner.js';
+import { launderCutCredits, launderCutFrac } from '../src/data/salvageLegality.js';
 
 const SEED = 17704;
 const GOOD = 'cmdty_narcotics';
@@ -119,7 +120,8 @@ test(`seed ${SEED}: physical smuggling reaches the outlaw market, pays a visible
     assert.equal(pod.data.laundered, true);
     assert.equal(pod.data.legality, 'legal');
     const wash = state.player.launderLedger[0];
-    assert.equal(wash.cut, 616);
+    assert.equal(wash.cut, launderCutCredits(GOOD, UNITS, 0), 'unfriendlied wash charges the base-frac cut of live catalog value');
+    assert.equal(wash.cutFrac, launderCutFrac(0));
     assert.equal(state.player.credits, creditsBeforeWash - wash.cut);
     bus.emit('dock:launder', { stationId: OUTLAW });
     assert.equal(state.player.launderLedger.length, 1, 'repeated dock intents cannot re-charge washed cargo');
@@ -148,7 +150,7 @@ test(`seed ${SEED}: physical smuggling reaches the outlaw market, pays a visible
     assert.match(visibleLedger, /Laundering ledger/);
     assert.match(visibleLedger, /Narcotics/);
     assert.match(visibleLedger, /8 u/);
-    assert.match(visibleLedger, /616 cr/);
+    assert.match(visibleLedger, new RegExp(wash.cut.toLocaleString('en-US') + ' cr'));
     assert.match(visibleLedger, /35%/);
     assert.equal(marketScreen.marketLaunderLedgerHtml({ ...state, player: JSON.parse(JSON.stringify(state.player)) }), visibleLedger,
       'the persisted player ledger renders the same receipt after a JSON round trip');

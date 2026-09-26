@@ -385,6 +385,7 @@ export function controlSections(state) {
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],
+      ['Throw impulse charge (sticks where it lands; detonate later)', 'chargeThrow'],
       ['Detonate armed charge', 'chargeDetonate'],
       ['Travel burn (latch a long burn)', 'travelBurn'],
     ]],

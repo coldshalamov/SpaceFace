@@ -32,7 +32,7 @@ import {
   sectorBedToBandIntent,
 } from './themeMatrix.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, MECHANIC_LINES } from './barkVoice.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
@@ -1064,6 +1064,17 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.comms.priority': 'sfx_ui_alert',
   'presentation.objective.split': 'sfx_objective_priority_split',
   'presentation.branch.resolved': 'sfx_branch_resolved',
+  // Causal grammar family voices (causalVfxGrammar.audioCue). field/reaction are the
+  // currently-unvoiced families and actually play; the rest ride the bus for observability
+  // behind playbackOwnedByRaw while their raw receipts keep ownership.
+  'combat.causal.direct': 'sfx.hullHit',
+  'combat.causal.bank': 'sfx.armorHit',
+  'combat.causal.chain': 'sfx.hullHit',
+  'combat.causal.collision': 'sfx_hull_scrape',
+  'combat.causal.terrain': 'sfx_mining_impact',
+  'combat.causal.tether': 'sfx.tetherSnap',
+  'combat.causal.field': 'sfx_mining_field_settle',
+  'combat.causal.reaction': 'sfx_reactor_overload_shudder',
 });
 
 export function resolveAudioCueRecipeId(cueId) {
@@ -4429,7 +4440,8 @@ export const audio = {
     // Start ambient station hum loop (faction-tinted when possible)
     this._startStationHum(p);
     const hullLines = leftoverMechanicLines(this.state);
-    const mechanicLine = (hullLines && hullLines[0]) || MECHANIC_LINES[0];
+    // A stock graze is a lie when this hull has nothing filed. Silence beats an invented scar.
+    const mechanicLine = hullLines && hullLines[0];
     if (mechanicLine) this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
   },
 

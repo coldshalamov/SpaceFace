@@ -167,7 +167,7 @@ export const EAST_SECTORS = Object.freeze([
         factionId: 'faction_quiet',
         size: 'M',
         services: Object.freeze(['black_market', 'repair', 'refuel', 'missions']),
-        chartNote: 'Positive Quiet standing opens the berth. At the well-mouth, active pulses find what proximity sensors miss.',
+        chartNote: 'Quiet standing opens the berth; at the well-mouth, active pulses find what sensors miss.',
         repGated: true,
       }),
     ]),

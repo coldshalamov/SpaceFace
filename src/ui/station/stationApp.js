@@ -19,7 +19,7 @@ import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
 import { createStationCommands } from './stationCommands.js';
-import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
+import { berthSeatDefId, buildDockArrival, writeBerthArrival } from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -109,13 +109,11 @@ function createBerth(canvas, ctx) {
      * Seat the player's live hull. The stage resolves a ship def to its authored whole-ship asset,
      * so the berth shows the ship you actually fly rather than a stand-in.
      */
-    show(state) {
+    show(state, hull) {
       const request = stageRequest();
       if (!request || request.scene !== 'berth') return;
-      const player = state && state.player;
-      const ships = (player && player.ownedShips) || [];
-      const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
-      const defId = (ship && ship.defId) || 'ship_kestrel';
+      // Same identity the mechanic line was read from. Not a second living-hull writer.
+      const defId = berthSeatDefId(state, hull);
       if (request.hullDefId === defId) return;
       // Re-request rather than mutate. A new request object is the signal: the stage compares the
       // hull it was built for against the hull the live request names and rebuilds on a mismatch,
@@ -302,6 +300,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   /** One auto-open per dock session so refreshes do not yank the player mid-flow. */
   let attentionAutoOpenedThisDock = false;
   const receiptHistory = [];
+  const pendingReceipts = [];
   const subscriptions = [];
 
   // ---------- popover ----------
@@ -711,9 +710,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   commsToggle.addEventListener('click', () => setCommsOpen(!commsOpen));
 
   function showReceipt(kind, title, delta = '') {
-    // INF-095: receipts are a shown-tree concern. Skipping while hidden also stops stale
-    // flight-time receipts greeting the next dock.
-    if (!shown) return;
+    // INF-095: receipts are a shown-tree concern. Hidden ones QUEUE (a berth-service debit like
+    // the customs toll posts before the screen mounts and must still be witnessed); flight-time
+    // noise stays out because producers gate on dock:docked themselves.
+    if (!shown) {
+      pendingReceipts.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
+      if (pendingReceipts.length > 6) pendingReceipts.shift();
+      return;
+    }
     if (receiptTimer) clearTimeout(receiptTimer);
     receiptHistory.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
     if (receiptHistory.length > 12) receiptHistory.shift();
@@ -895,13 +899,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const cancelling = Number(quote.amount) === 0;
       const ok = await confirm(cancelling ? {
         title: 'Cancel hull insurance?',
-        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
+        body: 'Recovery on death goes back to the full uninsured hull-share fee instead of the flat deductible. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
         confirmLabel: 'Cancel Insurance',
         cancelLabel: 'Keep Insurance',
         danger: true,
       } : {
-        title: 'Insure installed modules?',
-        body: `${quote.detail} · ${fmtCr(quote.cost)} cr`,
+        title: 'Insure hull recovery?',
+        body: `${quote.detail} · ${fmtCr(quote.cost)} cr. If this hull is lost, station recovery charges the flat deductible instead of the uninsured share. Fitted modules are never at risk.`,
         confirmLabel: `Purchase · ${fmtCr(quote.cost)} cr`,
         cancelLabel: 'Not Now',
       });
@@ -1147,6 +1151,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       arrival,
       '',
     );
+    // Shipworks borrows the bay to preview another hull. Everywhere else the ship in the bay
+    // is the hull the mechanic just read.
+    if (activeId !== 'shipworks') berth.show(s, arrival && arrival.hull);
     renderHandoff();
   }
 
@@ -1297,6 +1304,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       berth.setActive(activeId !== 'shipworks');
       // Arrival (moment 4) on the station's first show after dock:docked.
       if (pendingArrival) { pendingArrival = false; arrive(); }
+      // Berth-service receipts that posted before this show (dock toll, scan-adjacent charges)
+      // were queued by showReceipt's hidden gate — drain them now that the surface is live.
+      while (pendingReceipts.length) {
+        const row = pendingReceipts.shift();
+        showReceipt(row.kind, row.title, row.delta);
+      }
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile

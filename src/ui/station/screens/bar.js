@@ -407,12 +407,15 @@ export function createBarScreen(ctx) {
         // the words' own extent (a range over the text), not the element's box
         let mr = spokenEl.getBoundingClientRect();
         try { const rg = document.createRange(); rg.selectNodeContents(spokenEl); const rr = rg.getBoundingClientRect(); if (rr.width > 0) mr = rr; } catch (_) { /* the box stands in */ }
-        if (ar && ar.width > 120 && sr.width > 0) {
-          const compact = sr.width < 1000;
-          const cx = ar.left - sr.left + ar.width * 0.48;
-          const cy = ar.top - sr.top + ar.height * 0.44;
-          const r = ar.width * 0.42;
-          const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: mr.right - sr.left, y: mr.top - sr.top + mr.height / 2 } });
+        // the voice arc draws in the stage's own css px (its viewBox is clientWidth x clientHeight); at 1440p the
+        // shell is zoomed and rects come back in zoomed px, so every rect offset is divided by the zoom
+        const z = stageEl.offsetWidth > 0 ? sr.width / stageEl.offsetWidth : 1;
+        if (ar && ar.width > 120 * z && sr.width > 0) {
+          const compact = sr.width / z < 1000;
+          const cx = (ar.left - sr.left + ar.width * 0.48) / z;
+          const cy = (ar.top - sr.top + ar.height * 0.44) / z;
+          const r = (ar.width * 0.42) / z;
+          const speak = createVoiceArc(stageEl, { text: lineText, cx, cy, r, bars: compact ? 48 : 64, leaderFrom: { x: (mr.right - sr.left) / z, y: (mr.top - sr.top + mr.height / 2) / z } });
           if (speak) wave = { speak() {}, idle() {}, dispose() { speak.dispose(); } };
         }
       } catch (_) { wave = null; }
@@ -495,16 +498,19 @@ export function createBarScreen(ctx) {
       const last = leadsEl.querySelector('[data-station-control="open-board"]') || leadsEl.querySelector('.sx-bar__log') || leadsEl;
       if (!hang || !first || !last) return;
       const hr = hang.getBoundingClientRect();
-      const top = first.getBoundingClientRect().top - hr.top + hang.scrollTop;
+      // css px: rects are zoomed at 1440p, scrollTop and the custom properties are not
+      const z = hang.offsetWidth > 0 ? hr.width / hang.offsetWidth : 1;
+      const top = (first.getBoundingClientRect().top - hr.top) / z + hang.scrollTop;
       // never past the rail's visible box: the fade completes inside it instead of being cut by the scroll edge
-      const bottom = Math.min(last.getBoundingClientRect().bottom - hr.top + hang.scrollTop + 12, hang.scrollTop + hang.clientHeight - 1);
+      const bottom = Math.min((last.getBoundingClientRect().bottom - hr.top) / z + hang.scrollTop + 12, hang.scrollTop + hang.clientHeight - 1);
       hang.style.setProperty('--bar-spine-top', `${Math.round(top)}px`);
       hang.style.setProperty('--bar-spine-h', `${Math.max(0, Math.round(bottom - top))}px`);
       // the contacts' minor ticks: one lands on the Hand's row
       const rows = railEl.querySelector('.sx-bar__rows');
       const chosen = rows && rows.querySelector('.sx-bar-row.is-active, .sx-bar-row[aria-selected="true"], .sx-bar-row[aria-current="true"]');
       if (rows && chosen) {
-        const rr = rows.getBoundingClientRect(); const cr = chosen.getBoundingClientRect();
+        const rrRect = rows.getBoundingClientRect(); const crRect = chosen.getBoundingClientRect();
+        const rr = { top: rrRect.top / z }; const cr = { top: crRect.top / z, height: crRect.height / z };
         const armY = Math.floor(cr.top + cr.height / 2);
         const top0 = Math.round(rr.top);
         rows.style.setProperty('--bar-tick-y', `${(((armY - top0) % 8) + 8) % 8}px`);

@@ -105,6 +105,25 @@ const GLYPHRASE = Object.freeze({
   faction_dmc: Object.freeze({ warm: 'Drift approving', cool: 'Drift wary' }),
 });
 
+/** Authored phrase for one (faction, lean) pair — the same wording the dominant glyph uses. */
+export function conscienceLeanLabel(factionId, lean) {
+  return (GLYPHRASE[factionId] && GLYPHRASE[factionId][lean]) || `${factionId} ${lean}`;
+}
+
+/**
+ * holdLeanChips(cargo) -> [{factionId, lean, magnitude, label}] — every lean, not just the
+ * dominant, each already resolved to its authored phrase. The cargo panel renders one chip per
+ * entry; a neutral hold returns [] (renders nothing — never a fake label). PURE.
+ */
+export function holdLeanChips(cargo) {
+  return holdSentiment(cargo).leans.map((l) => ({
+    factionId: l.factionId,
+    lean: l.lean,
+    magnitude: l.magnitude,
+    label: conscienceLeanLabel(l.factionId, l.lean),
+  }));
+}
+
 // ── registry SYSTEMS-only entry (no update; refreshes additive UI state; zero voice) ───────────
 //
 // The conscience refreshes state.ui.cargoConscience on cargo change + dock so the cargo panel can
@@ -117,10 +136,15 @@ export const cargoConscience = {
     this._bus = ctx && ctx.bus;
     this._onCargo = () => this._refresh();
     this._onDock = () => this._refresh();
+    this._onSaveLoad = () => this._refresh();
     if (this._bus && this._bus.on) {
       // cargo.js emits cargo:changed on any add/remove; dock:docked is a stable refresh point.
       this._bus.on('cargo:changed', this._onCargo);
       this._bus.on('dock:docked', this._onDock);
+      // state.ui is not serialized — a loaded or fresh game must recompute, or the panel would
+      // show the boot-time (or previous session's) leans until the first cargo change.
+      this._bus.on('save:loaded', this._onSaveLoad);
+      this._bus.on('game:newGame', this._onSaveLoad);
     }
     this._refresh();
   },
@@ -140,9 +164,14 @@ export const cargoConscience = {
     if (this._bus && this._bus.off) {
       if (this._onCargo) this._bus.off('cargo:changed', this._onCargo);
       if (this._onDock) this._bus.off('dock:docked', this._onDock);
+      if (this._onSaveLoad) {
+        this._bus.off('save:loaded', this._onSaveLoad);
+        this._bus.off('game:newGame', this._onSaveLoad);
+      }
     }
     this._onCargo = null;
     this._onDock = null;
+    this._onSaveLoad = null;
   },
 };
 

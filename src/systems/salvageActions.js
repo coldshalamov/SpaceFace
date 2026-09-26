@@ -6,8 +6,29 @@
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
+import { entityIndexVersion, indexedTypeScan } from '../world/livingWorldViews.js';
 
 const TETHER_AWAY_DISTANCE = 260;
+
+/** Bench A/B: production default ON. Quiet latch skips salvage unstable-reactor
+ * entities.values() census when no live unstable reactors remain. Soft-GPU fps not
+ * claimed. Fresh salvage residual after #146 catch-nets / #147 sanctuary. */
+let SALVAGE_UNSTABLE_QUIET_LATCH = true;
+export function setSalvageUnstableQuietLatchForBench(enabled) {
+  SALVAGE_UNSTABLE_QUIET_LATCH = enabled !== false;
+}
+export function getSalvageUnstableQuietLatchForBench() {
+  return SALVAGE_UNSTABLE_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const SALVAGE_UNSTABLE_QUIET_RESCAN_TICKS = 30;
+
+function publishSalvageUnstableQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.salvageActionsRuntime || (state.salvageActionsRuntime = {});
+  rt.unstableQuietLatched = !!latched;
+}
 
 function ensureUi(state) {
   if (!state.ui || typeof state.ui !== 'object') state.ui = {};
@@ -62,20 +83,41 @@ export const salvageActions = {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
     this._registry = ctx && ctx.registry;
+    this._unstableQuiet = null;
+    this._unstableWakeSeq = 0;
     this._onEntitySpawned = (p) => this._annotate(p && p.entity);
     this._onScan = (p) => this._onScanCompleted(p);
     this._onVent = (p) => this._vent(p && (p.wreckId != null ? p.wreckId : p.targetId));
+    this._onBoundaryWake = () => this.noteUnstableWake();
     if (this._bus && this._bus.on) {
       this._bus.on('entity:spawned', this._onEntitySpawned);
       this._bus.on('scan:completed', this._onScan);
       this._bus.on('salvage:ventReactor', this._onVent);
+      // Boundary wakes: this system is not in FRESH_RUN_SYSTEMS — save/run/sector
+      // transitions reach it only through the bus.
+      this._bus.on('save:loaded', this._onBoundaryWake);
+      this._bus.on('game:new', this._onBoundaryWake);
+      this._bus.on('game:newGame', this._onBoundaryWake);
+      this._bus.on('sector:enter', this._onBoundaryWake);
     }
+  },
+
+  /** External wake when a reactor could appear without a spawn/annotate call. */
+  noteUnstableWake() {
+    this._unstableWakeSeq = (this._unstableWakeSeq | 0) + 1;
+    this._unstableQuiet = null;
   },
 
   configureAuthoredWreck(entity, options = {}) {
     const now = (this._state && this._state.simTime) || 0;
     const data = applyAuthoredWreckConfiguration(entity, options, now);
     if (!data) return null;
+    if (data.unstableReactor
+      && !data.unstableReactor.vented
+      && !data.unstableReactor.burst
+      && !data.unstableReactor.towedClear) {
+      this.noteUnstableWake();
+    }
     this._annotate(entity);
     return data;
   },
@@ -114,6 +156,8 @@ export const salvageActions = {
       burst: !!existing.burst,
       towedClear: !!existing.towedClear,
     };
+    // Live unstable reactor: wake quiet latch so the dueAt / tow census resumes.
+    this.noteUnstableWake();
   },
 
   _onScanCompleted(p) {
@@ -143,11 +187,45 @@ export const salvageActions = {
   },
 
   update(_dt, state) {
-    if (!state || !state.entities || !state.entities.values) return;
-    for (const entity of state.entities.values()) {
+    if (!state) return;
+    // Quiet open flight: no live unstable reactors still paid a full entities.values()
+    // walk (isWreck / unstableReactor bag) every tick. Latch when the census stays
+    // empty; wake on membership, reactor arm/annotate, or 0.5 s rescan. Soft-GPU fps
+    // not claimed. Fresh salvage residual after #146 catch-nets / #147 sanctuary.
+    if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._unstableWakeSeq | 0;
+      const quiet = this._unstableQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < SALVAGE_UNSTABLE_QUIET_RESCAN_TICKS)) {
+        publishSalvageUnstableQuiet(state, true);
+        return;
+      }
+    } else if (this._unstableQuiet) {
+      this._unstableQuiet = null;
+      publishSalvageUnstableQuiet(state, false);
+    }
+
+    const index = state.entityIndex;
+    const useWrecks = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.wrecks));
+    const list = useWrecks
+      ? indexedTypeScan(state, 'wrecks')
+      : (state.entities && typeof state.entities.values === 'function'
+        ? state.entities.values()
+        : null);
+    if (!list) return;
+
+    let liveUnstable = 0;
+    for (const entity of list) {
       if (!isWreck(entity) || entity.alive === false) continue;
       const unstable = entity.data && entity.data.unstableReactor;
       if (!unstable || unstable.vented || unstable.burst || unstable.towedClear) continue;
+      liveUnstable++;
       if (this._isTowedClear(entity, state)) {
         unstable.towedClear = true;
         if (this._bus && this._bus.emit) {
@@ -156,6 +234,21 @@ export const salvageActions = {
         continue;
       }
       if ((state.simTime || 0) >= unstable.dueAt) this._burst(entity, unstable, state);
+    }
+
+    if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      if (membership != null && liveUnstable === 0) {
+        this._unstableQuiet = {
+          membership,
+          wakeSeq: this._unstableWakeSeq | 0,
+          armedTick: state.tick | 0,
+        };
+        publishSalvageUnstableQuiet(state, true);
+      } else {
+        this._unstableQuiet = null;
+        publishSalvageUnstableQuiet(state, false);
+      }
     }
   },
 

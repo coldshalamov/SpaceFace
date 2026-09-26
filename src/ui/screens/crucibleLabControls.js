@@ -499,7 +499,10 @@ function showFlightToy(ctx) {
   host.setAttribute('aria-label', 'Physics lab');
   if (host.style) {
     host.style.position = 'fixed';
-    host.style.left = '16px';
+    // Bottom-center: the left corner already carries the speed readout, hull ring, and
+    // hull/shield/armor/heat stack; the practice rack must not cover the instruments it exists to demo.
+    host.style.left = '50%';
+    host.style.transform = 'translateX(-50%)';
     host.style.bottom = '16px';
     host.style.zIndex = '20';
     host.style.maxWidth = '440px';

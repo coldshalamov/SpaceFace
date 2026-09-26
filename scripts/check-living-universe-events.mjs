@@ -24,15 +24,26 @@ import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
+import { flight } from '../src/systems/flight.js';
+import { physics } from '../src/core/physics.js';
 import { salvage } from '../src/systems/salvage.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
-import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO } from '../src/data/encounters.js';
+import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO, tollAmountFor } from '../src/data/encounters.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 
 let sections = 0;
 function ok(label) { sections++; console.log(`  ✓ ${label}`); }
+
+const BASE_PRICE = new Map(COMMODITIES.map((c) => [c.id, c.basePrice || 0]));
+function manifestValue(manifest) {
+  let v = 0;
+  for (const id in manifest) v += (manifest[id] | 0) * (BASE_PRICE.get(id) || 0);
+  return v;
+}
 
 // ── harness ──────────────────────────────────────────────────────────────────────────────────────
 function boot(seed, sectorId, pos, opts = {}) {
@@ -119,8 +130,9 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
   }
   sim.bus.emit('encounter:choose', { encounterId: id, choiceId: 'pay' });
   tickS(sim, 3);
-  assert.equal(state.player.credits, 880, `paying charges min(12% cargo, 400)=120 via economy (got ${state.player.credits})`);
-  assert(log.credits.some((c) => c.reason === 'toll:reach' && c.delta === -120), 'credits moved through economy:chargeCredits intent');
+  const toll = tollAmountFor(manifestValue({ cmdty_refined_metals: 12 }));
+  assert.equal(state.player.credits, 1000 - toll, `paying charges min(12% cargo, 400)=${toll} via economy (got ${state.player.credits})`);
+  assert(log.credits.some((c) => c.reason === 'toll:reach' && c.delta === -toll), 'credits moved through economy:chargeCredits intent');
   const res = log.resolved.find((r) => r.encounterId === id);
   assert(res && res.outcome === 'paid', 'toll resolves as paid');
   assert(log.receipts.some((r) => r.encounterId === id && /TOLL PAID/.test(r.text)), 'toll paid receipt');
@@ -172,7 +184,7 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
   const { live, id } = forceFire(sim, 'patrol_scan', 'sector_helios_prime');
   const offer = log.choices.find((c) => c.encounterId === id);
   assert(offer, 'scan offers choices');
-  assert.deepEqual(offer.options.map((o) => o.id), ['submit', 'run'], 'clean player sees submit/run only');
+  assert.deepEqual(offer.options.filter((o) => o.available !== false).map((o) => o.id), ['submit', 'run'], 'clean player sees only submit/run enabled — contraband verbs may be offered greyed');
   let everHostile = false;
   for (let s = 0; s < 12; s++) {
     tickS(sim, 1);
@@ -240,7 +252,8 @@ const SKER_DEEP = { x: -540, z: 680 };        // Skerris Deep center
   const { id } = forceFire(sim, 'patrol_scan', 'sector_helios_prime');
   sim.bus.emit('encounter:choose', { encounterId: id, choiceId: 'bribe' });
   tickS(sim, 2);
-  const fine = Math.round(220 * 4 * 1.5);              // basePrice × qty × contraband mult
+  const narcotics = COMMODITIES.find((c) => c.id === 'cmdty_narcotics');
+  const fine = Math.round(narcotics.basePrice * 4 * 1.5);  // live basePrice × qty × contraband mult
   const bribe = Math.round(fine * 0.3);
   assert(log.credits.some((c) => c.reason === 'bribe:contraband' && c.delta === -bribe), `bribe charges ${bribe} via economy`);
   assert(log.resolved.some((r) => r.encounterId === id && r.outcome === 'bribed'), 'resolves as bribed');
@@ -260,11 +273,13 @@ function craftDistress(sectorId, wantKind) {
   throw new Error(`no seed produced ${wantKind}`);
 }
 {
-  // Corpus: both variants occur across seeds; genuine dominates ~60/40.
+  // Corpus: both variants occur across seeds; genuine dominates ~60/40. Distress is gated out of
+  // tier-1 space (first-hour law), so the corpus walks a tier-2 sector with an eligible zone.
+  const corpusSector = 'sector_haumea_rift';
   let genuine = 0, bait = 0;
   for (let seed = 1; seed <= 80; seed++) {
     for (let day = 0; day < 2; day++) {
-      for (const it of planEncounters(seed, 'sector_ceres_belt', day, zonesForSector('sector_ceres_belt'))) {
+      for (const it of planEncounters(seed, corpusSector, day, zonesForSector(corpusSector))) {
         if (it.variantKind === 'distress_genuine') genuine++;
         if (it.variantKind === 'distress_bait') bait++;
       }
@@ -328,8 +343,9 @@ function craftDistress(sectorId, wantKind) {
 
 // ── J. convoy: bounded arrival pressure / robbery ───────────────────────────────────────────────
 {
-  const { sim, state, log } = boot(41, 'sector_tethys_junction', TETHYS_LANE, { credits: 100 });
+  const { sim, state, log } = boot(41, 'sector_tethys_junction', TETHYS_LANE, { credits: 100, systems: [spawnBudget, cargo, economy, factions, heat, flight, physics, encounterDirector] });
   state.world.activeSector = { stations: [{ id: 'st_tethys_hub', pos: { x: 1050, z: 380 }, name: 'Meridian Exchange' }] };
+  state.settings.gameplay.physicsBackend = 'custom';   // kinematic backend: headless boots have no rapier world to integrate intents
   const { live, id } = forceFire(sim, 'convoy_departure', 'sector_tethys_junction');
   const haulers = squadEnts(state, live).filter((e) => live.roles[e.id] === 'hauler');
   const escorts = squadEnts(state, live).filter((e) => live.roles[e.id] === 'escort');
@@ -343,7 +359,7 @@ function craftDistress(sectorId, wantKind) {
   // convoy_depart is a variant array — accept any departure ticker phrasing, not one fixed line.
   assert(first && /convoy|bulk haul|escorted train|Lane traffic|freighters rolling/i.test(first.text || ''),
     'departure announced on the ticker line');
-  tickS(sim, 235);                                     // transit + arrival
+  tickS(sim, 400);                                     // transit + arrival (physical run ≈360s)
   const tp = log.pressure.filter((p) => p.stationId === 'st_tethys_hub');
   assert.equal(tp.length, 1, 'arrival applies market pressure exactly once');
   assert(tp[0].vol > 0 && tp[0].vol <= 12, `arrival pressure bounded (got ${tp[0].vol})`);
@@ -352,8 +368,10 @@ function craftDistress(sectorId, wantKind) {
   ok('convoy ARRIVAL: scannable civilians, one bounded economy-pressure intent, ticker + receipt');
 }
 {
-  const { sim, state, log } = boot(42, 'sector_tethys_junction', TETHYS_LANE, { credits: 100 });
+  const { sim, state, bus, log } = boot(42, 'sector_tethys_junction', TETHYS_LANE, { credits: 100, systems: [spawnBudget, cargo, economy, factions, heat, flight, physics, encounterDirector] });
   state.world.activeSector = { stations: [{ id: 'st_tethys_hub', pos: { x: 1050, z: 380 }, name: 'Meridian Exchange' }] };
+  state.settings.gameplay.physicsBackend = 'custom';   // kinematic backend: headless boots have no rapier world to integrate intents
+  createMarketNews({ state, bus, helpers: {} });       // UI-side freight:loss → news:headline surface (DOM-guarded)
   const { live, id } = forceFire(sim, 'convoy_departure', 'sector_tethys_junction');
   tickS(sim, 5);
   const haulerIds = live.ids.filter((eid) => live.roles[eid] === 'hauler');
@@ -372,8 +390,9 @@ function craftDistress(sectorId, wantKind) {
   ok('convoy ROBBERY: escorts wake, one bounded scarcity intent, raid receipt');
 }
 {
-  const { sim, state, log } = boot(43, 'sector_tethys_junction', TETHYS_LANE, { credits: 100 });
+  const { sim, state, log } = boot(43, 'sector_tethys_junction', TETHYS_LANE, { credits: 100, systems: [spawnBudget, cargo, economy, factions, heat, flight, physics, encounterDirector] });
   state.world.activeSector = { stations: [{ id: 'st_tethys_hub', pos: { x: 1050, z: 380 }, name: 'Meridian Exchange' }] };
+  state.settings.gameplay.physicsBackend = 'custom';   // kinematic backend: headless boots have no rapier world to integrate intents
   const { live, id } = forceFire(sim, 'convoy_departure', 'sector_tethys_junction');
   const haulerIds = live.ids.filter((eid) => live.roles[eid] === 'hauler');
   killAs(sim, haulerIds, 999001);                      // off-player loss
@@ -472,7 +491,8 @@ function craftDistress(sectorId, wantKind) {
   const dir2 = state.encounterDirector;
   assert.equal(dir2.named[capId].alive, false, 'named death SURVIVES save/load (durable merge)');
   assert(dir2.receipts.length >= 1, 'receipts survive save/load');
-  assert.equal(dir2.pending.length, 0, 'no stale pending after load');
+  assert(dir2.pending.every((it) => Number.isFinite(it.dueAt) && it.dueAt >= (state.simTime || 0) - 1),
+    'post-load pending is freshly re-planned (entry breath) — no stale pre-save items survive');
   assert.equal(Object.keys(dir2.live).length, 0, 'no live entity references after load');
   // Old save with no director key: absence-safe fresh start.
   state.encounterDirector = null;

@@ -159,7 +159,7 @@ test('fresh account remains viable: same build, identical power, smaller option 
 
   const freshOpts = availableOptions(fresh);
   const fullOpts = availableOptions(full);
-  assert.deepEqual(freshOpts.starters, ['energy_baseline', 'kinetic_baseline', 'ricochet_runner']);
+  assert.deepEqual(freshOpts.starters, ['energy_baseline', 'kinetic_baseline', 'mirror_demonstrator', 'ricochet_runner']);
   assert.equal(freshOpts.modes.includes('boss_circuit'), false);
   assert.equal(freshOpts.mutators.length, 0);
   assert.equal(freshOpts.trials.length, 0);

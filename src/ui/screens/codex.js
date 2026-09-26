@@ -26,10 +26,11 @@ import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
 import {
-  archivePlateSvg, archiveGaugeSvg, archiveScramble, archiveHash, archiveWedgeSvg, archiveZoom, createLadderHand,
+  archivePlateSvg, archiveBladeSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
+  archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
 import { decrypt, rollTo } from '../orrery/text.js';
-import { reducedMotion } from '../orrery/motion.js';
+import { reducedMotion, createSpring } from '../orrery/motion.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 
@@ -109,6 +110,9 @@ export const SIGNAL_ARCHIVE = Object.freeze([
     video: 'assets/cinematics/C-INTRO-03_6s.mp4', caption: 'Violet core, live. Charted space ends here.' },
   { id: '04', title: 'Station Berth', poster: 'assets/cinematics/C-INTRO-04.jpg',
     video: 'assets/cinematics/C-INTRO-04_6s.mp4', caption: 'Docking wall ahead. Someone always logs the arrival.' },
+  { id: 'VZ', title: 'Corridor Visualizer', poster: 'assets/cinematics/intro-visualizer.jpg',
+    video: 'assets/cinematics/intro-visualizer.mp4',
+    caption: 'The boot relay, full length. Helmet, wreck field, courier burn, the ring at threshold.' },
 ]);
 
 // Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.
@@ -344,7 +348,7 @@ const CIPHER_FILLER = 'the record exists and is sealed until the archive has a r
  * the body as sentences inside a measure, the note as the emphasised sentence under a hairline.
  * `signal` marks the filed endgame choice; `image` is produced art the plate stands in its aperture.
  */
-function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null, mark = '' }) {
+function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null, mark = '', art = null }) {
   const article = el('article', 'sf-codex-entry' + (locked ? ' is-locked' : ''));
   const heading = el('h2', 'k-display k-t-title');
   const titleText = title != null ? title : name;
@@ -374,7 +378,7 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
   article.appendChild(measure);
   return {
     id, name, sub, signal, locked, article, measure, mark, heading, titleSpan, titleText,
-    image: typeof image === 'string' && image ? image : null, requested: false,
+    image: typeof image === 'string' && image ? image : null, art, requested: false,
   };
 }
 
@@ -383,16 +387,6 @@ function undressEntry(entry) {
   if (!entry || !entry.article || typeof entry.article.querySelectorAll !== 'function') return;
   for (const node of [...entry.article.querySelectorAll(':scope > .cx-chrome')]) node.remove();
 }
-
-/** The glyph a tab's entries stand in the plate when they carry no produced art. */
-const TAB_GLYPHS = Object.freeze({
-  Story: 'story',
-  Comms: 'comms',
-  Discoveries: 'discoveries',
-  Graffiti: 'graffiti',
-  Figures: 'figures',
-  Ship: 'ship',
-});
 
 /** Produced art for a figure: the canonical portrait, else the faction's generated crest. */
 function figureArt(figureKey) {
@@ -417,6 +411,29 @@ function codexPlate(entry) {
   if (beat && Number(beat[1]) <= 7) return CODEX_PLATE_ROOT + 'beat' + beat[1] + '.webp';
   if (id.startsWith('endgame:')) return CODEX_PLATE_ROOT + 'beat7.webp';
   return null;
+}
+
+/**
+ * Produced art for a comms entry: the station that sent it (its establishing art), where the sender
+ * names one; the signal stills otherwise (a jump ring, the lane every relay speaks across).
+ */
+const STATION_ART_ROOT = 'assets/ui/generated/stations/';
+const SENDER_STATIONS = Object.freeze([
+  [/HELIOS/, 'station_helios'], [/CUSTOMS|GATE 3/, 'station_customs'], [/DRIFT MINERS/, 'station_drift'],
+  [/OUTPOST 9|BAR COMMS/, 'station_beltout'], [/VEIL/, 'station_veil'], [/CRIMSON REACH|ASHFALL/, 'station_reach'],
+  [/CINDER/, 'station_rhea_cinder'], [/BOURSE|MERIDIAN|TRADING POST|EXCHANGE/, 'station_tethys'],
+  [/CONCORD|VALE|ADMIN|REGISTRY|PATROL|ALA/, 'station_coalition'], [/HOLLOW/, 'station_hyperion_claim'],
+  [/HELIX/, 'station_kepler_scar'], [/FRONTIER/, 'station_sker'],
+]);
+const SIGNAL_STILLS = Object.freeze({
+  relay: 'assets/cinematics/C-INTRO-01.jpg',
+  wall: 'assets/cinematics/C-INTRO-04.jpg',
+  anomaly: 'assets/cinematics/C-INTRO-03.jpg',
+});
+function senderArt(sender) {
+  const s = String(sender || '').toUpperCase();
+  for (const [re, station] of SENDER_STATIONS) if (re.test(s)) return STATION_ART_ROOT + station + '.webp';
+  return SIGNAL_STILLS.relay;
 }
 
 /** The ship you fly, as its produced render: the Tessera's pages stand the hull it is today. */
@@ -545,19 +562,39 @@ export const codexScreen = {
     close.type = 'button'; close.dataset.action = 'close';
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
-    const tape = el('div', 'cx-tape');
-    tape.setAttribute('role', 'slider');
-    tape.setAttribute('aria-label', 'Scrub the archive');
-    tape.setAttribute('aria-orientation', 'horizontal');
-    tape.tabIndex = 0;
-    tape.hidden = true;
-    foot.appendChild(tape);
-    this._tape = tape;
-    this._bindTape(tape);
     rootEl.appendChild(foot);
 
-    // The plate leans toward the pointer (a Tilt Plate), a sheen crossing its art.
-    this._bindTilt(stage);
+    // The plate: the entry's art in an aperture ringed by every entry of the open section. The ring
+    // is the archive's dial — drag round it (or turn it with the wheel or the arrow keys) and the
+    // pages turn under the Hand, an amber blade across the ring.
+    const plateHost = el('div', 'cx-plate-host');
+    plateHost.hidden = true;
+    const plate = el('div', 'cx-plate');
+    plate.setAttribute('role', 'slider');
+    plate.setAttribute('aria-label', 'Turn the archive');
+    plate.tabIndex = 0;
+    const aperture = el('div', 'cx-plate__art');
+    const rings = el('div', 'cx-plate__rings');
+    const blade = el('div', 'cx-plate__blade');
+    blade.innerHTML = archiveBladeSvg();
+    plate.appendChild(aperture);
+    plate.appendChild(rings);
+    plate.appendChild(blade);
+    const caption = el('div', 'cx-plate__caption');
+    caption.hidden = true;
+    caption.setAttribute('aria-hidden', 'true');
+    plateHost.appendChild(plate);
+    plateHost.appendChild(caption);
+    rootEl.appendChild(plateHost);
+    const arm = typeof blade.querySelector === 'function' ? blade.querySelector('.cx-blade__arm') : null;
+    this._dial = { host: plateHost, plate, aperture, rings, blade, arm, caption, angle: 0 };
+    this._dial.spring = createSpring({ value: 0, preset: 'swing', onUpdate: (deg) => {
+      this._dial.angle = deg;
+      if (arm && arm.style) arm.style.transform = 'rotate(' + deg.toFixed(2) + 'deg)';
+    } });
+    this._tape = plate;
+    this._bindDial(plate);
+    this._bindTilt(plate);
     if (!this._platesWarm && typeof Image === 'function') {
       this._platesWarm = [];
       for (let i = 0; i <= 7; i += 1) {
@@ -622,6 +659,10 @@ export const codexScreen = {
     // return test calls onShow without a mounted screen.
     this._shownId = null;
     this._arrive();
+    // the type settles once the faces load: the Hand and the fan are measured again then
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { this._placeHand(true); this._drawWedge(); }).catch(() => {});
+    }
     if (this._regions && typeof requestAnimationFrame === 'function') {
       try {
         cue('open');
@@ -712,11 +753,10 @@ export const codexScreen = {
         row.classList.add('is-unlocking');
         setTimeout(() => { if (row.classList) row.classList.remove('is-unlocking'); }, 1800);
       }
-      const tick = this._tape && typeof this._tape.querySelector === 'function'
-        ? [...this._tape.querySelectorAll('.cx-tape__tick')].find((node) => node.dataset.id === entry.id) : null;
-      if (tick && tick.classList) {
-        tick.classList.add('is-unlocking');
-        setTimeout(() => { if (tick.classList) tick.classList.remove('is-unlocking'); }, 1800);
+      if (this._dial && this._dial.plate && this._dial.plate.classList) {
+        const plate = this._dial.plate;
+        plate.classList.add('is-unlocking');
+        setTimeout(() => { if (plate.classList) plate.classList.remove('is-unlocking'); }, 1800);
       }
       if (entry.id === this._shownId && entry.titleSpan) decrypt(entry.titleSpan, entry.titleText, { duration: 900 });
     }
@@ -729,120 +769,72 @@ export const codexScreen = {
   },
 
   /**
-   * The tape: one tick per entry of the open section (after the search), a long tick and a name at
-   * each section's first entry, the cursor on the entry being read. Built with the DOM (no markup
-   * strings), positions as fractions of the tape so no layout is needed to draw it.
+   * The dial's entries: every entry of the open section (after the search) round the ring, a long
+   * graduation where each sub-section starts. The ring itself is drawn when an entry is shown.
    */
   _renderTape(sections) {
-    const tape = this._tape;
-    if (!tape) return;
     const list = sections.flatMap((section) => section.entries);
     this._tapeEntries = list;
-    tape.innerHTML = '';
-    tape.hidden = list.length < 2;
-    if (list.length < 2) return;
-    const n = list.length;
-    const at = (i) => ((i + 0.5) / n) * 100;
-    const place = (node, pct) => { if (node.style) node.style.left = pct.toFixed(3) + '%'; return node; };
-    tape.appendChild(el('span', 'cx-tape__rule'));
-    // the stretches of the archive the player has opened are lit bands on the rule; locked ones stay dark
-    for (let a = 0; a < n;) {
-      if (list[a].locked) { a += 1; continue; }
-      let b = a;
-      while (b + 1 < n && !list[b + 1].locked) b += 1;
-      const band = place(el('span', 'cx-tape__lit'), (a / n) * 100);
-      if (band.style) band.style.width = (((b - a + 1) / n) * 100).toFixed(3) + '%';
-      tape.appendChild(band);
-      a = b + 1;
-    }
-    const width = typeof tape.getBoundingClientRect === 'function' ? tape.getBoundingClientRect().width : 0;
-    // section names on the tape: the larger sections claim their place first, none overlaps another
     const starts = [];
     let first = 0;
     for (const section of sections) {
       if (!section.entries.length) continue;
-      starts.push({ name: sectionTitle(section.label), i: first, size: section.entries.length });
+      starts.push(first);
       first += section.entries.length;
     }
-    const claimed = [];
-    for (const s of [...starts].sort((a, b) => b.size - a.size || a.i - b.i)) {
-      const len = s.name.length * 7.4 + 12;
-      const tick = (at(s.i) / 100) * width;
-      // a name that would run off the tape's end reads leftward from its tick instead
-      const toLeft = width > 0 && tick + len > width;
-      const x0 = toLeft ? tick - len : tick;
-      const x1 = toLeft ? tick : tick + len;
-      if (width && claimed.some(([a, b]) => x0 < b && x1 > a)) continue;
-      claimed.push([x0, x1]);
-      tape.appendChild(place(el('span', 'cx-tape__sec' + (toLeft ? ' is-end' : ''), s.name), at(s.i)));
-    }
-    let i = 0;
-    for (const section of sections) {
-      if (!section.entries.length) continue;
-      section.entries.forEach((entry, k) => {
-        const tick = place(el('span', 'cx-tape__tick' + (entry.locked ? ' is-locked' : '') + (k === 0 ? ' is-major' : '')), at(i));
-        tick.dataset.i = String(i);
-        tick.dataset.id = entry.id;
-        tape.appendChild(tick);
-        if (n <= 14 || (i + 1) % 5 === 0 || i === 0) tape.appendChild(place(el('span', 'cx-tape__num' + (entry.locked ? ' is-locked' : ''), pad2(i + 1)), at(i)));
-        i += 1;
-      });
-    }
-    const cursor = el('span', 'cx-tape__cursor');
-    cursor.appendChild(el('i', 'cx-tape__cursor-pip'));
-    tape.appendChild(cursor);
-    const hover = el('span', 'cx-tape__hover');
-    hover.hidden = true;
-    hover.appendChild(el('span', 'cx-tape__hover-name'));
-    tape.appendChild(hover);
-    this._syncTape();
+    this._tapeStarts = starts;
+    if (!list.length && this._dial) { this._dial.host.hidden = true; if (this._codexRoot) this._codexRoot.dataset.plate = 'off'; }
   },
 
-  /** Seat the tape's cursor and its slider reading on the entry being read. */
-  _syncTape() {
-    const tape = this._tape;
+  /** Seat the dial's slider reading, and the Hand, on the entry being read. */
+  _syncTape({ instant = false } = {}) {
+    const dial = this._dial;
     const list = this._tapeEntries || [];
-    if (!tape || list.length < 2) return;
+    if (!dial || !list.length) return;
     const cur = this._currentEntry();
     const i = Math.max(0, list.indexOf(cur));
-    const cursor = tape.querySelector('.cx-tape__cursor');
-    if (cursor && cursor.style) cursor.style.left = (((i + 0.5) / list.length) * 100).toFixed(3) + '%';
-    for (const tick of tape.querySelectorAll('.cx-tape__tick')) {
-      if (tick.classList && typeof tick.classList.toggle === 'function') tick.classList.toggle('is-now', tick.dataset.i === String(i));
-    }
-    tape.setAttribute('aria-valuemin', '1');
-    tape.setAttribute('aria-valuemax', String(list.length));
-    tape.setAttribute('aria-valuenow', String(i + 1));
-    tape.setAttribute('aria-valuetext', cur ? (cur.locked ? 'Locked entry' : cur.name) + ', ' + (i + 1) + ' of ' + list.length : '');
+    const plate = dial.plate;
+    plate.setAttribute('aria-valuemin', '1');
+    plate.setAttribute('aria-valuemax', String(list.length));
+    plate.setAttribute('aria-valuenow', String(i + 1));
+    plate.setAttribute('aria-valuetext', cur ? (cur.locked ? 'Locked entry' : cur.name) + ', ' + (i + 1) + ' of ' + list.length : '');
+    if (this._dragging) return;
+    this._swingBlade(archiveDialAngle(i, list.length), { instant });
   },
 
-  /** Point at tick `i` under the pointer: its name floats over it (cipher when it is locked). */
+  /** Swing the blade to `deg` the short way round (the spring keeps its own unwound angle). */
+  _swingBlade(deg, { instant = false } = {}) {
+    const dial = this._dial;
+    if (!dial || !dial.spring) return;
+    const now = dial.spring.target;
+    let target = deg;
+    while (target - now > 180) target -= 360;
+    while (target - now < -180) target += 360;
+    dial.spring.set(target, { instant: instant || !this._bladeShown });
+    this._bladeShown = true;
+  },
+
+  /** The name of the entry under the pointer, under the plate (its cipher when it is locked). */
   _hoverTape(i) {
-    const tape = this._tape;
-    const hover = tape && tape.querySelector('.cx-tape__hover');
-    if (!hover) return;
+    const dial = this._dial;
+    if (!dial) return;
     const list = this._tapeEntries || [];
     const entry = i >= 0 ? list[i] : null;
-    for (const tick of tape.querySelectorAll('.cx-tape__tick.is-hover')) tick.classList.remove('is-hover');
-    if (!entry) { hover.hidden = true; this._hoverI = -1; return; }
-    if (i === this._hoverI && !hover.hidden) return;
+    if (!entry) { dial.caption.hidden = true; this._hoverI = -1; return; }
+    if (i === this._hoverI && !dial.caption.hidden) return;
     this._hoverI = i;
-    const tick = tape.querySelector('.cx-tape__tick[data-i="' + i + '"]');
-    if (tick) tick.classList.add('is-hover');
-    const name = hover.querySelector('.cx-tape__hover-name');
-    hover.hidden = false;
-    hover.classList.toggle('is-locked', !!entry.locked);
-    const pct = ((i + 0.5) / list.length) * 100;
-    if (hover.style) {
-      hover.style.left = pct.toFixed(3) + '%';
-      hover.style.setProperty('--cx-hover-shift', pct < 12 ? '0%' : pct > 88 ? '-100%' : '-50%');
-    }
-    // a locked entry's cipher shuffles each time the cursor lands on it: the archive trying the lock
-    if (name) {
-      if (entry.locked) {
-        const parts = lockedNameParts(entry.id + ':' + (this._hoverTry = (this._hoverTry || 0) + 1), entry.name);
-        name.textContent = parts.code + parts.cipher;
-      } else name.textContent = entry.name;
+    dial.caption.hidden = false;
+    dial.caption.textContent = '';
+    dial.caption.appendChild(el('span', 'cx-plate__caption-at', pad2(i + 1) + ' / ' + pad2(list.length)));
+    if (entry.locked) {
+      // the same cipher the ladder shows for this entry
+      const parts = lockedNameParts(entry.id, entry.name);
+      const name = el('span', 'cx-plate__caption-name is-locked');
+      if (parts.code) name.appendChild(el('span', 'cx-code', parts.code));
+      name.appendChild(el('span', 'cx-cipher', parts.cipher));
+      dial.caption.appendChild(name);
+    } else {
+      dial.caption.appendChild(el('span', 'cx-plate__caption-name', entry.name));
     }
   },
 
@@ -857,14 +849,17 @@ export const codexScreen = {
     }
   },
 
-  _bindTape(tape) {
-    if (!tape || typeof tape.addEventListener !== 'function') return;
-    const indexAt = (clientX) => {
-      const list = this._tapeEntries || [];
-      if (!list.length || typeof tape.getBoundingClientRect !== 'function') return -1;
-      const r = tape.getBoundingClientRect();
-      const t = (clientX - r.left) / Math.max(1, r.width);
-      return Math.max(0, Math.min(list.length - 1, Math.floor(t * list.length)));
+  _bindDial(plate) {
+    if (!plate || typeof plate.addEventListener !== 'function') return;
+    // the pointer's bearing from the plate's centre (0 = up, clockwise) and its reach (0 centre .. 1 rim)
+    const bearing = (ev) => {
+      if (typeof plate.getBoundingClientRect !== 'function') return null;
+      const r = plate.getBoundingClientRect();
+      if (!(r.width > 0)) return null;
+      const dx = ev.clientX - (r.left + r.width / 2);
+      const dy = ev.clientY - (r.top + r.height / 2);
+      const deg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+      return { deg: (deg + 360) % 360, reach: Math.hypot(dx, dy) / (r.width / 2) };
     };
     let pending = -1;
     let frame = 0;
@@ -872,33 +867,53 @@ export const codexScreen = {
     const commit = () => { frame = 0; if (pending < 0) return; const i = pending; pending = -1; this._scrubTo(i); };
     const queue = (i) => { if (i < 0) return; pending = i; if (!frame) frame = later(commit); };
     const finish = () => {
-      if (!this._scrubbing) return;
+      if (!this._dragging) return;
+      this._dragging = false;
       this._scrubbing = false;
-      tape.classList.remove('is-scrubbing');
-      // the page the scrub stopped on arrives properly: its plate draws, its title decrypts
+      plate.classList.remove('is-dragging');
+      this._hoverTape(-1);
+      // the page the drag stopped on arrives properly, and the Hand settles on its arc
       const entry = this._currentEntry();
       if (entry) { this._shownId = null; this._showEntry(entry); this._placeHand(); }
+      this._syncTape();
     };
-    tape.addEventListener('pointerdown', (ev) => {
+    plate.addEventListener('pointerdown', (ev) => {
       if (ev.button != null && ev.button !== 0) return;
+      const b = bearing(ev);
+      const n = (this._tapeEntries || []).length;
+      if (!b || !n) return;
+      this._dragging = true;
       this._scrubbing = true;
-      tape.classList.add('is-scrubbing');
-      try { tape.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic pointer */ }
-      try { tape.focus({ preventScroll: true }); } catch (_) { /* no focus in this host */ }
-      queue(indexAt(ev.clientX));
-      this._hoverTape(indexAt(ev.clientX));
+      plate.classList.add('is-dragging');
+      try { plate.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic pointer */ }
+      try { plate.focus({ preventScroll: true }); } catch (_) { /* no focus in this host */ }
+      this._swingBlade(b.deg);
+      const i = archiveDialIndex(b.deg, n);
+      this._hoverTape(i);
+      queue(i);
       if (typeof ev.preventDefault === 'function') ev.preventDefault();
     });
-    tape.addEventListener('pointermove', (ev) => {
-      const i = indexAt(ev.clientX);
-      this._hoverTape(i);
-      if (this._scrubbing) queue(i);
+    plate.addEventListener('pointermove', (ev) => {
+      const b = bearing(ev);
+      const n = (this._tapeEntries || []).length;
+      if (!b || !n) return;
+      const i = archiveDialIndex(b.deg, n);
+      if (this._dragging) {
+        // the blade rides the pointer round the ring; the page follows it arc by arc
+        this._swingBlade(b.deg);
+        this._hoverTape(i);
+        queue(i);
+        return;
+      }
+      // over the ring (not the art), the entry under the pointer names itself
+      this._hoverTape(b.reach > 0.72 && b.reach < 1.02 ? i : -1);
+      plate.classList.toggle('is-over-ring', b.reach > 0.72 && b.reach < 1.02);
     });
-    tape.addEventListener('pointerup', finish);
-    tape.addEventListener('pointercancel', finish);
-    tape.addEventListener('lostpointercapture', finish);
-    tape.addEventListener('pointerleave', () => { if (!this._scrubbing) this._hoverTape(-1); });
-    tape.addEventListener('keydown', (ev) => {
+    plate.addEventListener('pointerup', finish);
+    plate.addEventListener('pointercancel', finish);
+    plate.addEventListener('lostpointercapture', finish);
+    plate.addEventListener('pointerleave', () => { if (!this._dragging) { this._hoverTape(-1); plate.classList.remove('is-over-ring'); } });
+    plate.addEventListener('keydown', (ev) => {
       const list = this._tapeEntries || [];
       if (!list.length) return;
       const i = Math.max(0, list.indexOf(this._currentEntry()));
@@ -913,7 +928,7 @@ export const codexScreen = {
       ev.preventDefault();
       this._scrubTo(Math.max(0, Math.min(list.length - 1, next)));
     });
-    tape.addEventListener('wheel', (ev) => {
+    plate.addEventListener('wheel', (ev) => {
       const list = this._tapeEntries || [];
       if (!list.length || !ev.deltaY) return;
       ev.preventDefault();
@@ -930,11 +945,11 @@ export const codexScreen = {
     const later = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
     const apply = () => {
       frame = 0;
-      const plate = this._body && typeof this._body.querySelector === 'function' ? this._body.querySelector('.cx-reader__plate') : null;
+      const plate = this._dial && this._dial.plate;
       if (!plate || !plate.style || typeof plate.getBoundingClientRect !== 'function') return;
       const r = plate.getBoundingClientRect();
       const inside = last && r.width > 0 && last.x >= r.left && last.x <= r.right && last.y >= r.top && last.y <= r.bottom;
-      if (!inside || reducedMotion()) {
+      if (!inside || reducedMotion() || this._dragging) {
         plate.style.setProperty('--cx-tilt-x', '0deg');
         plate.style.setProperty('--cx-tilt-y', '0deg');
         plate.classList.remove('is-lit');
@@ -969,7 +984,7 @@ export const codexScreen = {
   /** The Hand swings to the entry being read (or stands down when the open section has none). */
   _placeHand(instant = false) {
     if (!this._index) return;
-    if (!this._hand) this._hand = createLadderHand(this._index);
+    if (!this._hand) this._hand = createLadderHand(this._index, { className: 'orr-arc-hand orr-arc-hand--bone', nodeY: 15 });
     const row = this._list && typeof this._list.querySelector === 'function'
       ? this._list.querySelector('.k-row[aria-selected="true"]') : null;
     this._hand.moveTo(row, { instant });
@@ -989,8 +1004,22 @@ export const codexScreen = {
     if (!tab || !list || !ladder || !list.isConnected || typeof list.getBoundingClientRect !== 'function') { wedge.innerHTML = ''; return; }
     const h = hang.getBoundingClientRect();
     const t = tab.getBoundingClientRect();
-    const l = list.getBoundingClientRect();
     const v = ladder.getBoundingClientRect();
+    // the fan opens onto the sub-section being read (its heading down to its last entry), not the whole list
+    let l = list.getBoundingClientRect();
+    const focusId = this._focusByTab && this._focusByTab[this._activeTab];
+    const section = focusId && this._sectionOf ? this._sectionOf.get(focusId) : null;
+    if (section && section.entries.length) {
+      const rows = [...list.querySelectorAll('.k-row[data-id]')];
+      const ids = new Set(section.entries.map((entry) => entry.id));
+      const own = rows.filter((row) => ids.has(row.dataset.id));
+      if (own.length) {
+        const head = own[0].previousElementSibling && own[0].previousElementSibling.classList.contains('k-row--static') ? own[0].previousElementSibling : own[0];
+        const a = head.getBoundingClientRect();
+        const b = own[own.length - 1].getBoundingClientRect();
+        l = { left: l.left, top: a.top, bottom: b.bottom };
+      }
+    }
     const bar = tab.closest ? tab.closest('.sf-tabbar') : null;
     // screen pixels to the hang's own (a 1440p screen zooms the whole codex)
     const z = archiveZoom(hang, h);
@@ -1073,6 +1102,7 @@ export const codexScreen = {
     const gal = galaxyExplorationSummary(state);
     // The survey as the first entry: three hero numbers with a word each, then the one sentence.
     const survey = makeEntry({
+      art: { src: SIGNAL_STILLS.anomaly, kind: 'still' },
       id: 'survey',
       name: 'Survey status',
       sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
@@ -1108,6 +1138,7 @@ export const codexScreen = {
         if (sectorRest) meta.appendChild(document.createTextNode(sectorRest));
       }
       const entry = makeEntry({
+        art: { src: SIGNAL_STILLS.anomaly, kind: 'still' },
         id: 'plate:' + plate.id,
         name: plate.title,
         sub: sectorName || '',
@@ -1282,10 +1313,10 @@ export const codexScreen = {
     this._index.appendChild(list);
     this._list = list;
     syncScrollExtent(this._index);
+    this._renderTape(sections);
     if (focus) this._showEntry(focus);
     else { this._body.innerHTML = ''; this._shownId = null; }
     this._placeHand();
-    this._renderTape(sections);
   },
 
   _focus(id) {
@@ -1305,6 +1336,7 @@ export const codexScreen = {
     this._showEntry(entry);
     this._placeHand();
     this._syncTape();
+    this._drawWedge();
   },
 
   /**
@@ -1320,53 +1352,19 @@ export const codexScreen = {
     const inSection = section ? section.entries.filter((candidate) => visible.includes(candidate)) : [entry];
     const at = inSection.indexOf(entry);
     const sectionName = section ? sectionTitle(section.label) : '';
-    const filed = el('p', 'cx-chrome cx-reader__filed',
-      [this._activeTab, sectionName, inSection.length > 1 ? (at + 1) + ' of ' + inSection.length : '']
-        .filter(Boolean).join(' · '));
+    const filed = el('p', 'cx-chrome cx-reader__filed', [this._activeTab, sectionName].filter(Boolean).join(' · '));
     article.prepend(filed);
-    // The plate: produced art where the entry has it (a discovery still, a figure's portrait or its
-    // faction's crest), else the section's glyph; ringed by the section, one arc per entry.
-    const figureKey = String(entry.id).startsWith('figure:') ? entry.id.slice(7) : '';
-    const plateSrc = codexPlate(entry);
-    const hullSrc = this._activeTab === 'Ship' ? flownHullRender(this._ctx && this._ctx.state) : null;
-    const art = entry.locked ? null
-      : (entry.image ? { src: entry.image, kind: 'photo' }
-        : (figureArt(figureKey) || (plateSrc ? { src: plateSrc, kind: 'plate' } : null) || (hullSrc ? { src: hullSrc, kind: 'hull' } : null)));
-    const plate = el('div', 'cx-chrome cx-reader__plate' + (fresh ? ' is-fresh' : ''));
-    plate.setAttribute('aria-hidden', 'true');
-    const kind = art ? ' is-' + art.kind : ' is-glyph';
-    const aperture = el('div', 'cx-plate__art' + kind);
-    plate.appendChild(aperture);
-    const rings = (glyph) => {
-      const svgHost = el('div', 'cx-plate__rings');
-      svgHost.innerHTML = archivePlateSvg({
-        segments: inSection.map((candidate) => (candidate.locked ? 'locked' : 'open')),
-        current: at,
-        top: ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · '),
-        bottom: 'Entry ' + pad2(at + 1) + ' of ' + pad2(Math.max(1, inSection.length)),
-        glyph,
-        locked: entry.locked,
-      });
-      return svgHost.firstChild;
-    };
-    const glyphName = entry.locked ? 'locked' : (TAB_GLYPHS[this._activeTab] || 'story');
-    let drawn = rings(art ? '' : glyphName);
-    if (drawn) plate.appendChild(drawn);
-    if (art) {
-      const img = el('img');
-      img.alt = '';
-      img.decoding = 'async';
-      // art that fails to load gives its aperture back to the section's glyph
-      img.addEventListener('error', () => {
-        img.remove();
-        aperture.className = 'cx-plate__art is-glyph';
-        const again = rings(glyphName);
-        if (again && drawn && drawn.parentNode === plate) { plate.replaceChild(again, drawn); drawn = again; }
-      }, { once: true });
-      img.src = art.src;
-      aperture.appendChild(img);
+    // the entry's place in the open section, as a reading: a thin, large numeral over its title
+    const list = this._tapeEntries || [];
+    const place = list.indexOf(entry);
+    if (place >= 0) {
+      const num = el('p', 'cx-chrome cx-reader__num');
+      num.setAttribute('aria-hidden', 'true');
+      num.appendChild(el('span', 'cx-reader__num-n', pad2(place + 1)));
+      num.appendChild(el('span', 'cx-reader__num-of', '/ ' + pad2(list.length)));
+      article.insertBefore(num, filed);
     }
-    article.insertBefore(plate, filed.nextSibling);
+    this._paintPlate(entry, fresh);
     const index = visible.indexOf(entry);
     if (visible.length > 1) {
       const turn = el('nav', 'cx-chrome cx-reader__turn');
@@ -1390,6 +1388,74 @@ export const codexScreen = {
       turn.appendChild(word('Next', next, 'next'));
       article.appendChild(turn);
     }
+  },
+
+  /**
+   * The dial for the entry being read: its art in the aperture (dimmed and blurred behind its cipher
+   * when it is locked), the ring of the open section with this entry's arc lit, the engraving.
+   */
+  _paintPlate(entry, fresh = false) {
+    const dial = this._dial;
+    if (!dial) return;
+    const list = this._tapeEntries || [];
+    const at = list.indexOf(entry);
+    if (at < 0) { dial.host.hidden = true; if (this._codexRoot) this._codexRoot.dataset.plate = 'off'; return; }
+    dial.host.hidden = false;
+    if (this._codexRoot) this._codexRoot.dataset.plate = 'on';
+    if (!this._readIds) this._readIds = new Set();
+    if (!entry.locked) this._readIds.add(entry.id);
+    const section = this._sectionOf && this._sectionOf.get(entry.id);
+    const sectionName = section ? sectionTitle(section.label) : '';
+    const art = this._artFor(entry);
+    const aperture = dial.aperture;
+    aperture.className = 'cx-plate__art' + (art ? ' is-' + art.kind : ' is-empty') + (entry.locked ? ' is-locked' : '');
+    const img = aperture.querySelector && aperture.querySelector('img');
+    if (art) {
+      if (!img || img.getAttribute('src') !== art.src) {
+        aperture.textContent = '';
+        const pic = el('img');
+        pic.alt = '';
+        pic.decoding = 'async';
+        pic.addEventListener('error', () => { pic.remove(); aperture.className = 'cx-plate__art is-empty'; }, { once: true });
+        pic.src = art.src;
+        aperture.appendChild(pic);
+      }
+    } else aperture.textContent = '';
+    const parts = entry.locked ? lockedNameParts(entry.id, entry.name) : null;
+    dial.rings.innerHTML = archivePlateSvg({
+      entries: list.map((candidate) => (candidate.locked ? 'locked' : (this._readIds.has(candidate.id) ? 'read' : 'open'))),
+      current: at,
+      starts: this._tapeStarts || [],
+      top: ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · '),
+      bottom: 'Entry ' + pad2(at + 1) + ' of ' + pad2(list.length),
+      locked: entry.locked,
+      cipher: parts ? (parts.cipher + '  ·  ').repeat(6) : '',
+    });
+    dial.plate.classList.toggle('is-fresh', !!fresh);
+    if (fresh) {
+      // replay the arrival (the ring draws, the art opens) on a fresh page
+      dial.plate.classList.remove('is-arriving');
+      if (typeof dial.plate.getBoundingClientRect === 'function') dial.plate.getBoundingClientRect();
+      dial.plate.classList.add('is-arriving');
+    }
+    this._syncTape();
+  },
+
+  /** The produced art an entry stands in the aperture (locked entries show theirs dimmed, blurred). */
+  _artFor(entry) {
+    const id = String(entry.id || '');
+    const figureKey = id.startsWith('figure:') ? id.slice(7) : '';
+    if (entry.image) return { src: entry.image, kind: 'photo' };
+    const figure = figureArt(figureKey);
+    if (figure) return figure;
+    const plate = codexPlate(entry);
+    if (plate) return { src: plate, kind: 'plate' };
+    if (entry.art) return entry.art;
+    if (this._activeTab === 'Ship') {
+      const hull = flownHullRender(this._ctx && this._ctx.state);
+      if (hull) return { src: hull, kind: 'hull' };
+    }
+    return null;
   },
 
   _showEntry(entry) {
@@ -1469,6 +1535,7 @@ export const codexScreen = {
 
     // Cold start lines (B0 — always seen once a new game has begun).
     this._section('Cold Start', COLD_START.map((c) => makeEntry({
+      art: { src: senderArt(c.sender), kind: 'station' },
       id: 'comm:' + c.id,
       name: c.sender,
       sub: c.category,
@@ -1492,6 +1559,7 @@ export const codexScreen = {
         continue;
       }
       this._section(sectionLabel, visible.map((c) => makeEntry({
+        art: { src: senderArt(c.sender), kind: 'station' },
         id: 'comm:' + key + ':' + c.id,
         name: c.sender || c.id,
         sub: key.replace(/s$/, ''),
@@ -1509,7 +1577,9 @@ export const codexScreen = {
     const shown = s.graffitiShown || {};
     const beat = storyBeatIndex(s);
 
+    const hullRender = flownHullRender(ctx && ctx.state);
     this._section('Bulkhead — The Previous Crew', [makeEntry({
+      art: hullRender ? { src: hullRender, kind: 'hull' } : { src: SIGNAL_STILLS.wall, kind: 'still' },
       id: 'graffiti:bulkhead',
       name: GRAFFITI.GANG_DIDNT_MAKE_IT,
       sub: 'Bulkhead',
@@ -1523,7 +1593,8 @@ export const codexScreen = {
       const line = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key;
       if (!line) continue;
       const where = key.includes(':') ? key.slice(0, key.indexOf(':')) : '?';
-      encountered.push(makeEntry({ id: 'graffiti:' + key, name: line, sub: where, meta: where }));
+      const stationArt = /^station_[a-z0-9_]+$/.test(where) ? STATION_ART_ROOT + where + '.webp' : SIGNAL_STILLS.wall;
+      encountered.push(makeEntry({ id: 'graffiti:' + key, name: line, sub: where, meta: where, art: { src: stationArt, kind: 'station' } }));
     }
     this._section('Encountered', encountered,
       beat > 0 ? 'No location graffiti encountered yet.' : '— nothing encountered yet —');

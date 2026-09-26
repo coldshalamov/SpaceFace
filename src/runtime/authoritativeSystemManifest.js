@@ -56,7 +56,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   'massSeedHud', 'fieldHud', 'planetHud', 'survivalHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
-  'hazardHints', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
+  'hazardHints', 'noFireAdvisory', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   // impoundPayPrompt and moralTrapPrompt are event-only like customsPrompt — init order
   // matters (bus subscriptions); both are deliberately absent from PRODUCTION_UPDATE_ORDER.
   'impoundPayPrompt', 'moralTrapPrompt',
@@ -119,6 +119,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // crucibleFocus: hides campaign-only panels while a Crucible run is live. Reads the phase after
   // the readout above has, and only ever toggles one class on the UI root.
   'crucibleFocus',
+  // noFireAdvisory: the station no-fire ring watch. Its tick only tracks ring inside/outside so an
+  // exit re-arms the advisory bark — observer-only, writes nothing the sim consumes.
+  'noFireAdvisory',
   'voiceArbiter',
   'save',
 ]);

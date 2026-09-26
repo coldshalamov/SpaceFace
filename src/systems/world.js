@@ -2413,7 +2413,13 @@ export const world = {
             : 1600,
           memorialHull: true,
           scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
-          visualRadius: 14,
+          // PQ-153.02 still review: carriers that render as nothing fail the shipping-camera
+          // bar — the census saw the ring, the camera saw one hull and bare space. The
+          // shared dead-hulk GLB at half scale is the stand-in silhouette (H1c owns the
+          // bespoke dark-freighter art); `hidden` keeps them off contacts as before.
+          placeId: 'place_dead_hulk',
+          placeScale: 0.5,
+          visualRadius: 21,
         });
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
           const angle = (shipIndex / fleetCount) * Math.PI * 2;
@@ -2426,7 +2432,7 @@ export const world = {
             ? this.helpers.spawnEntity({
               type: 'fx',
               pos: hullPos,
-              radius: 14,
+              radius: 21,
               mass: 0,
               collides: false,
               physicsBody: false,
@@ -2435,7 +2441,7 @@ export const world = {
             })
             : insertDressingRow(this.state, {
               pos: hullPos,
-              radius: 14,
+              radius: 21,
               homeSectorId: sector.id,
               data: hullFleetData(shipIndex),
             });
@@ -4185,7 +4191,7 @@ export const world = {
   },
 
   // Named-zone awareness (WORLD_OVERHAUL_2_1): announce when the player crosses into a named zone so
-  // the world reads as inhabited/territorial ("⟢ Belt-Shadow Ambush") instead of anonymous space.
+  // the world reads as inhabited/territorial ("Belt-Shadow Ambush") instead of anonymous space.
   // Also publishes state.world.currentZone for the HUD/map to label the player's surroundings.
   _tickZoneLabel(state) {
     const player = state.entities.get(state.playerId);
@@ -4205,7 +4211,7 @@ export const world = {
       const threat = zoneThreat(zone);
       const kind = threat >= 3 ? 'danger' : (threat >= 2 ? 'warn' : 'info');
       this.bus.emit('world:zoneEntered', { zoneId: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat, reason: zone.reason });
-      this.bus.emit('toast', { text: `⟢ ${zone.name}`, kind, ttl: 2.5 });
+      this.bus.emit('toast', { text: zone.name, kind, ttl: 2.5 });
     } else {
       this.bus.emit('world:zoneExited', { zoneId: prevId });
     }
@@ -4424,6 +4430,10 @@ export const world = {
 
     const reject = (reason) => this.bus.emit('jump:chargeAbort', { reason });
 
+    // A jump request issued while docked (or outside flight) is rejected outright: the charge
+    // state machine ticks under the flight sim, so accepting here would wedge CHARGING with no
+    // player-visible path to it. Emitters on the docked surface should surface 'docked'.
+    if ((state.ui && state.ui.docked) || state.mode !== 'flight') return reject('docked');
     if (!target) return reject('unknown_target');
     if (jump.state !== 'IDLE') return reject('busy');
     if (jump.cooldownT > 0) return reject('cooldown');

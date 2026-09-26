@@ -104,7 +104,7 @@ import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { attachConditions } from './contractClauses.js';
+import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
@@ -136,6 +136,7 @@ import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
+import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
@@ -959,7 +960,9 @@ function missionNavReason(m, station, sector) {
     case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'passenger_transport': return `Transport passenger to ${stationName}`;
     case 'escort': return `Escort convoy to ${stationName}`;
-    case 'bounty_hunt': return `Find the bounty near ${sectorName}`;
+    case 'bounty_hunt': return p.markName
+      ? `Find ${p.markName} near ${sectorName}`
+      : `Find the bounty near ${sectorName}`;
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
     case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
@@ -1128,6 +1131,8 @@ export const missions = {
       this._onKill(p);
       this._onPhysicalKill(p);
     });
+    // contractClauses judged this kill clean of every observed clause; the objective still owes.
+    bus.on('contract:clauseSettledKill', (p) => this._onClauseSettledKill(p));
     // escort fail: escortee destroyed.
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
@@ -1256,6 +1261,9 @@ export const missions = {
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
+      }
+      if (m.type === 'bounty_hunt' && m.storyTarget) {
+        this._maybeMarkHail(m, state);
       }
     }
     // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
@@ -2378,18 +2386,43 @@ export const missions = {
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
     const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
+    // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
+    // fights, more return fire), never the priced rate. Pricing destination/standing escalation into
+    // the rate re-paid the same loop at operator-to-industrial wages and walked the hunter route out
+    // of its healthy band within one session.
+    const bountyPay = typeId === 'bounty_hunt';
+    let payRiskTier = riskTier;
+    let payTier = null;
+    if (bountyPay) {
+      const boardSector = SECTOR_BY_ID.get(info.sectorId);
+      payRiskTier = clamp(boardSector ? dangerTier(boardSector) : 1, rLo, rHi);
+      payTier = Math.max(info?.sectorTier ?? info?.tier ?? 0, payRiskTier);
+    }
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
 
+    // The writ wall names a person at a place: generated single-mark bounties carry a
+    // deterministic storyTarget (seeded by offer id — never an rng draw, so every other rolled
+    // field stays bit-identical). Ghost-convoy offers already own their place fiction.
+    const offerId = `mo_${info.id}_${epoch}_${idx}`;
+    const bountyMark = (typeId === 'bounty_hunt' && !(params && params.ghostConvoy))
+      ? rollBountyMark({ seed: this.state.meta.seed, offerId, sectorId: destSectorId,
+          riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId) })
+      : null;
+    if (bountyMark) { params.markName = bountyMark.name; params.markPlace = bountyMark.placeName; }
+    // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
+    const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
+
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier,distance,params,
+    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
     const reward_cr = economyTerms.rewardCr;
     const time_limit_s = economyTerms.deadlineS;
     const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
-    const id = `mo_${info.id}_${epoch}_${idx}`;
+    const id = offerId;
     const offer = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
@@ -2400,6 +2433,8 @@ export const missions = {
       brief: this._briefFor(typeId, params, dest, info),
       expiresAtEpoch: epoch + 1,
       storyTag: null,
+      // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
+      ...(bountyMark ? { storyTarget: markStoryTarget } : {}),
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -2421,7 +2456,10 @@ export const missions = {
     const seed = (this.helpers && this.helpers.hash32)
       ? this.helpers.hash32(this.state.meta.seed, 'conditions', epoch)
       : (((this.state.meta.seed || 0) ^ 0x5bf03635) >>> 0);
-    const withTerms = attachConditions(offer, seed, { isFragile: isFragileCommodity });
+    // Fine print runs FIRST: attachClauses assigns offer.clauses outright while conditions,
+    // twists, and traps append through `existing`. Its 'clause' hash key is disjoint from the
+    // 'condition'/'twist'/'trap' streams, so no prior draw moves.
+    const withTerms = attachConditions(attachClauses(offer, seed), seed, { isFragile: isFragileCommodity });
     const twistSeed = (this.helpers && this.helpers.hash32)
       ? this.helpers.hash32(this.state.meta.seed, 'twists', epoch)
       : (((this.state.meta.seed || 0) ^ 0x71c3a91b) >>> 0);
@@ -2531,7 +2569,8 @@ export const missions = {
     // Mining quota: deliver to origin (it buys ore). Recon/bounty/patrol: pick a nearby sector.
     if (typeId === 'mining_quota') return info;
     // Prefer a discovered/known station; fall back to any in the catalog within a few hops.
-    const candidates = ALL_STATIONS.filter((s) => s.id !== info.id);
+    const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
+      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan')));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -2648,7 +2687,9 @@ export const missions = {
       case 'mining_quota': return `Mine ${p.qty}u ${cName(p.cmdtyId)}`;
       case 'salvage_retrieval': return `Recover ${p.qty}u ${cName(p.cmdtyId)} for ${destName}`;
       case 'smuggling_run': return `Smuggle ${p.qty}u ${cName(p.cmdtyId)} to ${destName}`;
-      case 'bounty_hunt': return `Eliminate a wanted target near ${destName}`;
+      case 'bounty_hunt': return p.markName
+        ? `Eliminate ${p.markName}${p.markPlace ? ` — ${p.markPlace}` : ` near ${destName}`}`
+        : `Eliminate a wanted target near ${destName}`;
       case 'escort': return `Escort a convoy to ${destName}`;
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
@@ -2691,7 +2732,9 @@ export const missions = {
         line = `${p.qty}u ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
         break;
       case 'bounty_hunt':
-        line = `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
+        line = p.markName
+          ? `${destName} posted a writ on ${p.markName}${p.markPlace ? `, holding ${p.markPlace}` : ''}. Pay on hull, not on story.`
+          : `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
         break;
       case 'escort':
         line = `Convoy runs to ${destName}. Paid on arrivals, not on kills.`;
@@ -3450,7 +3493,8 @@ export const missions = {
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
-      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
+      const markName = m.params && m.params.markName;
+      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: markName ? `Intercept ${markName}` : 'Intercept the marked hostile' };
       return base;
     }
 
@@ -3960,22 +4004,56 @@ export const missions = {
       // contractClauses observes this same synchronous event after missions. Never let the kill
       // objective pay/complete first; the observer will emit the one canonical breach intent.
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
-      if (!m.targetEntityIds.includes(p.id)) continue;
-      if (m.storyTag === CONTRACT_47A_B2_TAG) {
-        this._resolveContract47aB2(m, i, 'force', p.id);
+      this._settleBountyTargetKill(m, i, p);
+    }
+  },
+
+  /**
+   * Objective settlement for a bounty/patrol target kill. Called directly from the entity:killed
+   * loop for clause-free missions, and via `contract:clauseSettledKill` for clause-observing ones
+   * after contractClauses has judged the kill — a kill no clause fails must still complete.
+   */
+  _settleBountyTargetKill(m, i, p) {
+    if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
+    if (m.storyTag === CONTRACT_47A_B2_TAG) {
+      this._resolveContract47aB2(m, i, 'force', p.id);
+      return;
+    }
+    const defeated = this.state.entities && this.state.entities.get(p.id);
+    const defeatedSlot = missionTargetSlotOf(defeated, m.id);
+    if (defeatedSlot != null) {
+      const completed = completedMissionTargetSlots(m);
+      completed.add(defeatedSlot);
+      m.completedTargetSlots = [...completed].sort((a, b) => a - b);
+    }
+    m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
+    m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
+    if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
+    else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+  },
+
+  /**
+   * A kill contractClauses judged clean — no clause failed, so the mission owes whatever the
+   * entity:killed loop would have done with it. Same dispatch as _onKill: non-player kills
+   * take the INF-067 fair-void half (deposit back, never credited), and only bounty/patrol
+   * targets settle — an escortee also sits in targetEntityIds and must never "complete".
+   */
+  _onClauseSettledKill(p) {
+    if (!p || !p.missionId) return;
+    const byPlayer = p.killerId === this.state.playerId;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.id !== p.missionId || m.status !== 'active') continue;
+      if (!byPlayer) {
+        const gone = (id) => {
+          const e = this.state.entities && this.state.entities.get(id);
+          return !e || e.alive === false;
+        };
+        if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
         continue;
       }
-      const defeated = this.state.entities && this.state.entities.get(p.id);
-      const defeatedSlot = missionTargetSlotOf(defeated, m.id);
-      if (defeatedSlot != null) {
-        const completed = completedMissionTargetSlots(m);
-        completed.add(defeatedSlot);
-        m.completedTargetSlots = [...completed].sort((a, b) => a - b);
-      }
-      m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
-      m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
-      if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+      if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
+      this._settleBountyTargetKill(m, i, { ...p, id: p.entityId });
     }
   },
 
@@ -6609,6 +6687,17 @@ export const missions = {
       if (player && player.team != null) {
         ai.hostileTeams = [player.team];
       }
+      // Re-stamp person identity from the mission record: Continue-adopted hosts restore
+      // `ai.name` through the durable record but not `data.name`/`scanLabel`, so a rematerialized
+      // mark (or ghost-pack anchor) must be re-dressed here to keep its face on the scanner. Only
+      // the mark's own host takes the identity — pack-mates sharing the mission tag stay anonymous,
+      // and a stale label on a rematerialized host is overwritten to match.
+      if (m.storyTarget && m.storyTarget.name
+        && (durableSlot === 0 || ent.data.storyTargetId === m.storyTarget.id)) {
+        ent.data.name = m.storyTarget.name;
+        ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
+        ent.data.ai.name = m.storyTarget.name;
+      }
     }
     ent.flags = ent.flags || {};
     ent.flags.missionPinned = true;
@@ -6652,6 +6741,33 @@ export const missions = {
       armed++;
     }
     return armed;
+  },
+
+  /**
+   * The board mark speaks once: when the player closes inside the approach band on the spawned
+   * writ target, the person behind the posting acknowledges the board that sent the hull. One
+   * shot per mission — `_markHailed` rides the ordinary active-mission serialization, so a save
+   * mid-stalk does not replay the line. Only `board_writ` roles speak this register — authored
+   * career and legacy writs keep their own fiction.
+   */
+  _maybeMarkHail(m, state) {
+    if (!m || !m.storyTarget || m.storyTarget.role !== 'board_writ'
+      || !m.storyTarget.name || m._markHailed) return;
+    const targetId = (m.targetEntityIds || [])[0];
+    const mark = targetId != null && state.entities && state.entities.get(targetId);
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!mark || mark.alive === false || !player || !mark.pos || !player.pos) return;
+    const dx = mark.pos.x - player.pos.x;
+    const dz = mark.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > MARK_HAIL_RANGE_WU * MARK_HAIL_RANGE_WU) return;
+    m._markHailed = true;
+    const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
+    const voice = this.helpers && this.helpers.voice;
+    // A line the arbiter already voiced stays out of the live feed — `_viaVoice` logs it to the
+    // backlog only, so the player never reads the same hail twice.
+    const said = !!(voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'comms', text, kind: 'bountyMark', ttl: 4, id: `bountyMark:${m.id}` }));
+    this.bus.emit('comms:popup', { sender: m.storyTarget.name, text, category: 'personal', ttl: 6, _viaVoice: said });
   },
 
   _spawnTargetsFor(m) {
@@ -6747,13 +6863,9 @@ export const missions = {
       // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
       // with the starter Pulse Laser S; higher risk opens tougher hulls.
       const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
-      const pool = riskTier <= 1
-        ? ['wasp_swarmer', 'wasp_swarmer', 'reaver_pirate']
-        : riskTier <= 2
-          ? ['wasp_swarmer', 'reaver_pirate', 'reaver_pirate']
-          : riskTier <= 3
-            ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
-            : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
+      // Single source with the board-writ hull pick so a named mark's implied hull is always one
+      // this table could roll.
+      const pool = markArchetypePoolFor(riskTier);
       let spawned = 0;
       for (let i = 0; i < grant; i++) {
         const durableSlot = vacantSlots[i];
@@ -8046,9 +8158,14 @@ function missionStoryTargetSpawnPos(mission, target, rng) {
   if (anchorCenter) {
     const angle = rng() * Math.PI * 2;
     const authoredRadius = Number(target.anchorRadius);
-    const radius = Math.sqrt(rng()) * (Number.isFinite(authoredRadius)
+    const maxRadius = Number.isFinite(authoredRadius)
       ? Math.max(0, Math.min(320, authoredRadius))
-      : 120);
+      : 120;
+    // An authored floor keeps the scatter off solid bodies (gate proxies post a mark beside
+    // the transit ring, never inside it).
+    const authoredMin = Number(target.anchorMinRadius);
+    const minRadius = Number.isFinite(authoredMin) ? Math.max(0, Math.min(maxRadius, authoredMin)) : 0;
+    const radius = minRadius + Math.sqrt(rng()) * (maxRadius - minRadius);
     return sectorLocalToGlobalForSector({
       x: anchorCenter.x + Math.cos(angle) * radius,
       z: anchorCenter.z + Math.sin(angle) * radius,

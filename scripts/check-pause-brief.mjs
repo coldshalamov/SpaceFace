@@ -25,8 +25,11 @@ assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,
   'pause brief should name inter-system route commitment before the player resumes');
 assert.match(pauseSrc, /no jump route is required/,
   'pause brief should explicitly separate local routes from jump-route commitments');
-assert.match(pauseSrc, /mk\('Review ' \+ mapAction\.label/,
+// ORRERY pause: the action wears the live map binding label and routes through openPauseMapReview.
+assert.match(pauseSrc, /if \(mapAction\) mk\(mapAction\.label, \(\) => openPauseMapReview\(ctx, mapAction\)/,
   'pause menu should expose a waypoint map review action when nav is set');
+assert.match(pauseSrc, /function openPauseMapReview\(ctx, mapAction\)[\s\S]{0,400}focus: mapAction\.focus/,
+  'the pause map review action must open the map at the waypoint focus');
 assert.match(pauseSrc, /export function pauseExitConfirmBody/,
   'pause exit confirmation policy should stay directly testable');
 assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'load'\)/,

@@ -3,8 +3,9 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
+import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
 
 export function factionPresenceServiceRows(state, stationId) {
@@ -65,7 +66,7 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
-  { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
+  { type: 'insurance', label: 'Hull Insurance', desc: 'Caps the station recovery fee; cargo loss still applies', requires: [] },
   { type: 'redeem_rights', label: 'Redeem Salvage Rights', desc: 'A Pitborn yard buys out claimed wreck rights', requires: [] },
 ]);
 
@@ -420,31 +421,65 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'insurance') {
-    const ins = p.insurance || {};
-    const active = !!ins.insuredModules;
-    const deductible = Math.max(0, Math.round(ins.deductibleCr || 0));
-    const recovery = 'station recovery · cargo loss still applies';
+    // Ironman permadeath returns before the recovery path — no charge ever occurs, so a
+    // policy can never pay. Say so instead of selling a strict no-op.
+    const difficulty = state && state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    if (difficulty === 'ironman') {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Permadeath — there is no recovery for a policy to cover.',
+        buttonLabel: 'Purchase',
+        disabled: true,
+        disabledReason: 'ironman runs have no recovery to insure',
+        chips: [{ text: 'no-op on ironman', kind: 'bad' }],
+      };
+    }
+    // No policy on file prices exactly what the purchase click will charge: the lazy write
+    // seeds INSURANCE_DEFAULTS before debiting, so quoting `{}` would promise a free 0-cr
+    // deductible the click does not deliver.
+    const ins = (p.insurance && typeof p.insurance === 'object')
+      ? p.insurance
+      : { rate: INSURANCE_DEFAULTS.rate, deductibleCr: INSURANCE_DEFAULTS.deductibleCr, insuredModules: false };
+    const index = Math.max(0, Math.floor(Number(p.activeShipIndex) || 0));
+    const owned = Array.isArray(p.ownedShips) ? p.ownedShips[index] : null;
+    // Same hull the recovery plan would price: owned record, then the live entity's defId.
+    const quote = recoveryCostQuote(
+      (owned && owned.defId) || (entity && entity.data && entity.data.defId) || 'ship_kestrel', ins);
+    const active = quote.insured === true;
+    const deductible = quote.deductibleCr;
+    const recovery = 'cargo loss still applies';
     if (active) {
       return {
         amount: 0,
         cost: 0,
-        detail: 'Active · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
+        detail: quote.starter
+          ? 'Active · ' + quote.shipName + ' recovery is the flat ' + fmtCr(deductible) + ' cr deductible either way · ' + recovery
+          : 'Active · ' + quote.shipName + ' recovery ' + fmtCr(quote.uninsuredCostCr) + ' cr → ' + fmtCr(quote.insuredCostCr) + ' cr deductible · ' + recovery,
         buttonLabel: 'Cancel',
         disabled: false,
-        chips: [{ text: 'active', kind: 'ok' }],
+        chips: quote.starter
+          ? [{ text: 'active', kind: 'ok' }]
+          : [{ text: 'active', kind: 'ok' }, { text: 'covers ' + fmtCr(quote.coveredCostCr) + ' cr/loss', kind: 'gain' }],
       };
     }
     const disabled = credits < deductible;
     return {
       amount: 1,
       cost: deductible,
-      detail: 'Inactive · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
+      detail: quote.starter
+        ? 'Recovery on ' + quote.shipName + ' is the flat ' + fmtCr(deductible) + ' cr deductible either way — insurance pays on bigger hulls · ' + recovery
+        : 'Recovery on ' + quote.shipName + ' · ' + fmtCr(quote.uninsuredCostCr) + ' cr uninsured → ' + fmtCr(quote.insuredCostCr) + ' cr insured · ' + recovery,
       buttonLabel: 'Purchase',
       disabled,
       disabledReason: disabled ? 'need ' + fmtCr(deductible - credits) + ' cr' : '',
       chips: disabled
         ? [{ text: fmtCr(deductible) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(deductible - credits) + ' cr', kind: 'bad' }]
-        : [{ text: fmtCr(deductible) + ' cr', kind: 'cost' }, afterCreditsChip(credits, deductible)],
+        : [{ text: fmtCr(deductible) + ' cr', kind: 'cost' },
+           ...(quote.starter || quote.coveredCostCr <= 0
+             ? []
+             : [{ text: 'saves ' + fmtCr(quote.coveredCostCr) + ' cr/loss', kind: 'gain' }]),
+           afterCreditsChip(credits, deductible)],
     };
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };

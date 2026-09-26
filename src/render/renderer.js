@@ -1841,7 +1841,19 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
 // bounds return null so a corrupt subtree can never push the camera off the world.
 const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
 const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
+// Whole-boundary AABBs are the right floor for compact structures. Above this span — the
+// authored mega-stations are ~1300 WU across — one box reports the city's tallest tower as
+// the floor for every XZ inside the footprint, pinning the camera at ~380 WU for the entire
+// dock approach (the approach leg then renders roofs, not the hull). Wide roots instead get
+// a coarse occupancy grid: per-column ceiling measured from real triangle coverage, built
+// once per authored commit, so the floor tracks the roof actually under the camera.
+const CAMERA_CLEARANCE_GRID_MIN_SPAN_WU = 240;
+const CAMERA_CLEARANCE_GRID_CELL_WU = 24;
+const CAMERA_CLEARANCE_GRID_MAX_CELLS = 128;
 const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
+const _clearanceVecA = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+const _clearanceVecB = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+const _clearanceVecC = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 
 function clearanceBoundUnsettled(data) {
   if (!data) return true;
@@ -1871,10 +1883,11 @@ function cameraClearanceBoxForMesh(mesh) {
   const cached = data.cameraClearanceBox;
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.posX === posX && cached.posZ === posZ) {
-    return cached.box;
+    return cached;
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
+  let grid = null;
   if (!_clearanceBoxScratch.isEmpty()) {
     const b = _clearanceBoxScratch;
     const finite = Number.isFinite(b.min.x) && Number.isFinite(b.min.y) && Number.isFinite(b.min.z)
@@ -1888,6 +1901,9 @@ function cameraClearanceBoxForMesh(mesh) {
       };
       box.minX = b.min.x; box.minY = b.min.y; box.minZ = b.min.z;
       box.maxX = b.max.x; box.maxY = b.max.y; box.maxZ = b.max.z;
+      if (Math.max(b.max.x - b.min.x, b.max.z - b.min.z) >= CAMERA_CLEARANCE_GRID_MIN_SPAN_WU) {
+        grid = buildClearanceGrid(mesh, box);
+      }
     }
   }
   const rec = cached || (data.cameraClearanceBox = {});
@@ -1896,7 +1912,83 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.posX = posX;
   rec.posZ = posZ;
   rec.box = box;
-  return box;
+  rec.grid = grid;
+  return rec;
+}
+
+// Rasterize each structural triangle's XZ extent into column cells, recording the column's
+// highest face height. Exact for the triangle soup itself (a face's own max Y is a vertex or
+// its span covers the cell), and it catches the giant deck plates that vertex-only binning
+// misses. Additive/transparent runs are glows, markers and glass — not camera mass.
+function buildClearanceGrid(mesh, box) {
+  const spanX = box.maxX - box.minX;
+  const spanZ = box.maxZ - box.minZ;
+  const nx = Math.min(CAMERA_CLEARANCE_GRID_MAX_CELLS, Math.max(1, Math.ceil(spanX / CAMERA_CLEARANCE_GRID_CELL_WU)));
+  const nz = Math.min(CAMERA_CLEARANCE_GRID_MAX_CELLS, Math.max(1, Math.ceil(spanZ / CAMERA_CLEARANCE_GRID_CELL_WU)));
+  const cw = spanX / nx;
+  const cd = spanZ / nz;
+  const heights = new Float32Array(nx * nz).fill(-Infinity);
+  const fill = (minX, minZ, maxX, maxZ, top) => {
+    let gx0 = Math.floor((minX - box.minX) / cw); let gx1 = Math.floor((maxX - box.minX) / cw);
+    let gz0 = Math.floor((minZ - box.minZ) / cd); let gz1 = Math.floor((maxZ - box.minZ) / cd);
+    gx0 = Math.max(0, gx0); gz0 = Math.max(0, gz0);
+    gx1 = Math.min(nx - 1, gx1); gz1 = Math.min(nz - 1, gz1);
+    for (let gz = gz0; gz <= gz1; gz++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const i = gz * nx + gx;
+        if (top > heights[i]) heights[i] = top;
+      }
+    }
+  };
+  mesh.updateMatrixWorld(true);
+  mesh.traverse((o) => {
+    if (!o.isMesh || o.visible === false || o.isInstancedMesh) return;
+    if (o.userData && (o.userData.worldSitePresentationOwned || o.userData.clearanceExempt)) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.some((m) => m && (m.transparent || m.blending === THREE.AdditiveBlending || m.depthWrite === false))) return;
+    const pos = o.geometry && o.geometry.attributes && o.geometry.attributes.position;
+    if (!pos || !pos.count) return;
+    const index = o.geometry.index;
+    const triCount = index ? index.count / 3 : pos.count / 3;
+    for (let t = 0; t < triCount; t++) {
+      const a = index ? index.getX(t * 3) : t * 3;
+      const b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
+      const c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+      _clearanceVecA.fromBufferAttribute(pos, a).applyMatrix4(o.matrixWorld);
+      _clearanceVecB.fromBufferAttribute(pos, b).applyMatrix4(o.matrixWorld);
+      _clearanceVecC.fromBufferAttribute(pos, c).applyMatrix4(o.matrixWorld);
+      const minX = Math.min(_clearanceVecA.x, _clearanceVecB.x, _clearanceVecC.x);
+      const maxX = Math.max(_clearanceVecA.x, _clearanceVecB.x, _clearanceVecC.x);
+      const minZ = Math.min(_clearanceVecA.z, _clearanceVecB.z, _clearanceVecC.z);
+      const maxZ = Math.max(_clearanceVecA.z, _clearanceVecB.z, _clearanceVecC.z);
+      const top = Math.max(_clearanceVecA.y, _clearanceVecB.y, _clearanceVecC.y);
+      fill(minX, minZ, maxX, maxZ, top);
+    }
+  });
+  // An all-empty grid (e.g. every body instanced or material-skipped) carries no roof data —
+  // the caller keeps the coarse box rather than clearing nothing at all.
+  let any = false;
+  for (let i = 0; i < heights.length; i++) { if (heights[i] !== -Infinity) { any = true; break; } }
+  return any ? { minX: box.minX, minZ: box.minZ, cw, cd, nx, nz, heights } : null;
+}
+
+function clearanceGridFloor(grid, camX, camZ) {
+  const gx = Math.floor((camX - grid.minX) / grid.cw);
+  const gz = Math.floor((camZ - grid.minZ) / grid.cd);
+  if (gx < -1 || gz < -1 || gx > grid.nx || gz > grid.nz) return -Infinity;
+  let floor = -Infinity;
+  // A 3x3 neighborhood covers boundary-adjacent roofs the camera's own width can straddle.
+  for (let dz = -1; dz <= 1; dz++) {
+    const z = gz + dz;
+    if (z < 0 || z >= grid.nz) continue;
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = gx + dx;
+      if (x < 0 || x >= grid.nx) continue;
+      const h = grid.heights[z * grid.nx + x];
+      if (h > floor) floor = h;
+    }
+  }
+  return floor === -Infinity ? -Infinity : floor + CAMERA_CLEARANCE_MARGIN_WU;
 }
 
 const _liveViewFrustum = typeof THREE !== 'undefined' ? new THREE.Frustum() : null;
@@ -1937,7 +2029,15 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
   }
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
-    const box = cameraClearanceBoxForMesh(structural[i]);
+    const rec = cameraClearanceBoxForMesh(structural[i]);
+    if (!rec) continue;
+    if (rec.grid) {
+      const roof = clearanceGridFloor(rec.grid, camX, camZ);
+      if (camY >= roof) continue;
+      if (roof > floor) floor = roof;
+      continue;
+    }
+    const box = rec.box;
     if (!box) continue;
     if (camX < box.minX - CAMERA_CLEARANCE_MARGIN_WU || camX > box.maxX + CAMERA_CLEARANCE_MARGIN_WU) continue;
     if (camZ < box.minZ - CAMERA_CLEARANCE_MARGIN_WU || camZ > box.maxZ + CAMERA_CLEARANCE_MARGIN_WU) continue;
@@ -3493,8 +3593,16 @@ export async function publishSectorBoundaryRecordSnapshot(records, options = {})
   if (!Array.isArray(published)
       || published.length !== candidates.length
       || published.some((value) => value !== true)) {
+    // Per-candidate status at throw time distinguishes a genuine publish loss (still
+    // claimed by this generation) from a mid-await supersede/abort rotation.
+    const detail = candidates.map((prepared, i) => {
+      const live = typeof options.currentRecordForId === 'function'
+        ? options.currentRecordForId(prepared?.id)
+        : undefined;
+      return `${prepared?.id ?? 'unknown'}=${published?.[i] === true ? 'ok' : `fail(active=${prepared?.active},state=${prepared?.state},inMap=${live === prepared ? 'yes' : 'no'})`}`;
+    }).join(',');
     throw failClosedSectorPrewarm(
-      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish`),
+      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish [${detail}]`),
     );
   }
   return true;
@@ -9872,6 +9980,7 @@ export const render = {
         publishBoundaryRecords: options.publish === true
           ? (boundarySnapshot) => publishSectorBoundaryRecordSnapshot(boundarySnapshot, {
             publishRecords: (records) => this._sectorBoundaryPreparations.publishRecords(records),
+            currentRecordForId: (id) => this._sectorBoundaryPreparations.get(id),
             sectorId: record.sectorId,
           })
           : null,

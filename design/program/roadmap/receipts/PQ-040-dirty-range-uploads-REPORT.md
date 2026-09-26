@@ -639,6 +639,105 @@ packet's ≥25% driver-reduction bar was missed on this run and all capture
 windows were demoted. Electron produced no dirty-vs-full numbers: three
 launches all died upstream of the comparator.
 
+## Native acceptance attempt — 2026-09-25/26 (overnight continuation)
+
+Adopted the stale `NOW.md` row and continued the established isolated-candidate
+certification path (`.worktrees/pq040-native`, branch `pq040-native`, junctioned
+`node_modules`, own broker state). The worktree carried the same unit's 09-25
+daytime session: a **Browser acceptance PASS** at 12:39Z on candidate `9f15cf5f`
+(`browser/latest-run-result.json`: status pass, exit 0), an Electron run at
+20:28Z that completed the entire public route **and both attribution windows**
+with the comparator passing (owner requested bytes −91.23%, driver upload bytes
+−92.95%) but was demoted by capture validity — the authoring session's own
+mid-capture tree edits plus an unclean browser close — and two later Electron
+quota failures (20:43Z 30 s page condition; 22:12Z the 150 s launch-readiness
+wait expiring with the game still compositing its loading progress at 96% and a
+live timer).
+
+### Candidate work this session (worktree branch only; master untouched)
+
+Three commits, each acceptance-evidence-driven, each carrying its contract pin:
+
+- `8bec926b3` — launch-readiness budget 150 s → 240 s. The 22:12Z failure bound
+  the harness budget, not the product: the same candidate measured 123 s
+  new-game→flight-ready on the quiet 20:28Z run and was still compositing at
+  96% when the 150 s wait expired. The gate waits for readiness; the
+  performance windows keep their own budgets.
+- `3790417e9` — `combat_vfx_burst` pipeline-settle patience 20 s → 30 s (the
+  probe's own hard cap). The settle phase waits for pipeline counters to hold
+  stable before a window opens and measures nothing; at 100 % host load
+  background compilation outlasted 20 s and both windows demoted
+  `pipeline-warmup-unsettled`. A genuinely unsettled pipeline still fails the
+  window contract.
+- `5230372b4` — regression-set pins for both budgets in
+  `test/performance-dirty-ranges.test.mjs` (one budget constant feeding the
+  route default and both probe entry points; the scenario settle value asserted
+  through the scenario table). Required: after the 07:18Z primary failure the
+  broker refuses re-mint until the regression digest changes
+  (`regression-required-after-acceptance-failure`), which is why every fix in
+  this series rode with a test change.
+
+Fast gates on the final candidate `5230372b4` (candidate digest `3812423a`):
+gate 1 **65 pass / 0 fail**, gate 2 **6 pass / 0 fail**, render hot-path
+contract **OK**.
+
+### Overnight acceptance attempts
+
+The shared host ran co-tenant agent builds at 85–100 % `LoadPercentage` for
+multi-hour stretches (02:35–03:38, 04:45–07:08 EDT and again past 07:14); a
+quota-safe retry loop (deep-lull gate, fire only on 4 sustained minutes < 35 %)
+executed the exact Browser broker command eight times:
+
+- Four pre-launch or preflight environment blocks (census per-process quiet at
+  0.03–0.07 cores but system-CPU leg saturated; one `blocked_unresolved_failure`
+  refusal before the regression pins existed; one silent exit-2 during gate 1
+  with no claim minted and no state change). Every environment block and every
+  integrity-classified demotion **refunded** the launch reservation — quota
+  bounds measured launches, not contested-host events.
+- 05:35Z — census passed, both windows measured, comparator **PASS**
+  (owner −90.36 %, driver −91.49 %); demoted by end-census contamination plus
+  `windows[0]-pipeline-cache-mismatch` → integrity-classified, refunded.
+- 07:18Z — census passed at 100 % host load, comparator **PASS** again
+  (owner −91.51 %, driver −93.08 %); both windows demoted
+  `pipeline-warmup-unsettled` → the one **primary** failure of the night
+  (quota consumed, manifest locked), re-authorized by `5230372b4`.
+- 10:07Z — both windows measured; demoted by `windows[1] settings changed
+  during capture`, end-census contamination, and observed page runtime errors
+  → integrity-classified, refunded.
+
+The Electron manifest was deliberately **not** invoked: the paired contract
+wants Browser then Electron on one candidate, every Electron launch is
+one-shot per candidate, and the 09-21 precedent shows a saturated host fails
+the Electron route upstream of the comparator and re-locks the manifest. The
+Electron side is authorized and quota-fresh for candidate `3812423a` (its
+failure pointer and spent quota both key to the superseded `8aa76a9d`).
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: 5230372b4
+candidateWorktree: .worktrees/pq040-native
+candidateDigest: 3812423a
+fastGateResult: 65/0 + 6/0 + render hot-path OK
+browserManifestInvocations: 8
+browserAcceptanceRuntimeLaunches: 3
+browserComparatorsPassed: 3   # 05:35Z owner 0.9036/driver 0.9149; 07:18Z 0.9151/0.9308; (09-25 12:39Z candidate 9f15cf5f full PASS)
+browserPrimaryFailure: 07:18Z pipeline-warmup-unsettled both windows at 100% host load; quota consumed, then re-authorized by 5230372b4
+browserQuotaNow: 0 consumed for candidate 3812423a
+electronManifestInvocations: 0   # held for the paired run; authorized and quota-fresh
+hostCondition: co-tenant builds at 85-100% LoadPercentage for multi-hour stretches; brief lulls only
+numericAcceptance: unproven
+```
+
+Disposition: **BLOCKED** on one uncontended capture window, as every prior
+attempt. The causal claim itself is no longer in doubt — three comparator
+passes across both runtimes land 90–93 % owner/driver requested-byte reduction
+against the 25 % threshold with unchanged quality settings — but the packet's
+primary acceptance requires the whole capture to hold: census-quiet at both
+ends, settled warmups, unchanged settings, and a clean page. The candidate is
+gate-green, quota-fresh, and authorized for both manifests; the next session
+needs only a quiet host and the same two broker commands.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator

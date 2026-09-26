@@ -278,6 +278,10 @@ function applyMotionPreference(settings, root) {
   // effective value while accessibility.motionPreference remains the persisted user choice.
   if (settings && settings.video && typeof settings.video === 'object') settings.video.motionReduce = reduced;
   if (root && root.classList) root.classList.toggle('sf-reduce-motion', reduced);
+  // The OS hint is honored only under an explicit System preference — never alone. CSS scopes its
+  // own prefers-reduced-motion rules to this class, so Full keeps its motion on a reduce-OS machine
+  // and Reduce keeps its stillness on a full-motion one (orrery/tokens.js states the rule).
+  if (root && root.classList) root.classList.toggle('sf-motion-system', preference === 'system');
   return { preference, reduced };
 }
 

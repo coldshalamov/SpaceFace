@@ -17,6 +17,7 @@ import {
   missions as missionsProto,
 } from '../src/systems/missions.js';
 import {
+  BEATS,
   buildOnboardingObjectiveWaypoint,
   onboarding as onboardingProto,
 } from '../src/systems/onboarding.js';
@@ -100,12 +101,17 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
     assert.notEqual(wp0.kind, 'mission', 'mission kind must not own the opening marker during tutorial');
   }
 
-  // Onboarding lesson stamps a beat-stable opening marker; mission refresh must not clobber it.
-  h.state.onboarding.currentBeat = 0;
+  // Onboarding lesson stamps a beat-stable marker; mission refresh must not clobber it.
+  // The thrust lesson was B0 when this test was written. The thesis-first route (614bec27d,
+  // design/program/roadmap/receipts/onboarding/2026-09-19-thesis-first-first-hour.md) moved the
+  // Massline attach to beat 0 (tether -> raid -> claimed -> thrust ...), so drive the thrust
+  // lesson by key, as the other beat-FSM tests do; the ownership contract is unchanged.
+  h.state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'thrust');
+  assert.ok(h.state.onboarding.currentBeat >= 0, 'the authored rail still teaches thrust');
   h.state.onboarding.beatAction = 'Thrust toward the beacon.';
   h.onboarding._setObjectiveWaypoint(true);
   const onboardingWp = h.state.nav.waypoint;
-  assert.ok(onboardingWp, 'B0 thrust must plant an opening waypoint');
+  assert.ok(onboardingWp, 'the thrust lesson must plant its beacon waypoint');
   assert.equal(onboardingWp.onboarding, true);
   assert.equal(onboardingWp.markerId, 'onboarding:thrust');
   assert.deepEqual(onboardingWp.pos, h.beacon.pos);

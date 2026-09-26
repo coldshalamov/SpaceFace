@@ -7,6 +7,7 @@ import {
   buildDefeatReceipt,
   buildRecoveryPlan,
   formatDefeatCause,
+  recoveryCostQuote,
 } from '../src/combat/playerDefeat.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { protectedStationAt } from '../src/ai/engagementAuthority.js';
@@ -294,7 +295,40 @@ test('insurance quote distinguishes insured deductible from uninsured hull share
   plan = buildRecoveryPlan(state, state.entities.get(1));
   assert.equal(plan.quotedCostCr, 500);
   assert.equal(plan.costCr, 500);
-  assert.equal(plan.insuranceStatus, 'INSURED · 60% COVERAGE');
+  assert.equal(plan.insuranceStatus, 'INSURED · COVERED 5,500 CR');
+});
+
+test('recoveryCostQuote prices the active hull the plan will charge', () => {
+  const uninsured = { rate: 0.6, deductibleCr: 500, insuredModules: false };
+  const insured = { ...uninsured, insuredModules: true };
+
+  const pelican = recoveryCostQuote('ship_pelican', uninsured);
+  assert.equal(pelican.uninsuredCostCr, 6000);
+  assert.equal(pelican.insuredCostCr, 500);
+  assert.equal(pelican.coveredCostCr, 5500);
+  assert.equal(pelican.starter, false);
+
+  const kestrel = recoveryCostQuote('ship_kestrel', uninsured);
+  assert.equal(kestrel.uninsuredCostCr, 500);
+  assert.equal(kestrel.insuredCostCr, 500);
+  assert.equal(kestrel.coveredCostCr, 0);
+  assert.equal(kestrel.starter, true);
+
+  const drifter = recoveryCostQuote('ship_drifter', insured);
+  assert.equal(drifter.uninsuredCostCr, 38000);
+  assert.equal(drifter.insuredCostCr, 500);
+  assert.equal(drifter.coveredCostCr, 37500);
+
+  const state = makeState();
+  state.player.credits = 50000;
+  for (const [defId, ins] of [['ship_pelican', uninsured], ['ship_pelican', insured], ['ship_kestrel', uninsured]]) {
+    state.player.ownedShips[0].defId = defId;
+    state.entities.get(1).data.defId = defId;
+    state.player.insurance = { ...ins };
+    const plan = buildRecoveryPlan(state, state.entities.get(1));
+    const quote = recoveryCostQuote(defId, ins);
+    assert.equal(plan.quotedCostCr, quote.insured ? quote.insuredCostCr : quote.uninsuredCostCr, `${defId}/${ins.insuredModules}`);
+  }
 });
 
 test('standard death freezes once, emits one recoverable defeat, and applies consequences only after retry intent', () => {

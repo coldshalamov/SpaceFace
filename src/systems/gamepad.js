@@ -6,8 +6,8 @@
 // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
 //
 // Standard mapping (Xbox / PlayStation equivalent):
-//   0  A / Cross      -> accept / dock when prompted; otherwise Massline thumb action in flight
-//   1  B / Circle      -> cancel / back
+//   0  A / Cross      -> accept / Massline thumb action in flight
+//   1  B / Circle      -> cancel / back; dock when the station prompt is up in flight
 //   2  X / Square      -> cycle target
 //   3  Y / Triangle    -> codex / journal
 //   4  LB / L1         -> brake / reverse thrust

@@ -773,6 +773,8 @@ export const newGameScreen = {
     // The word reads "Launching..." while the run boots and restores on game:startFailed.
     const setLaunching = (active) => {
       launching = !!active;
+      // the launch beat: the run's beads light in sequence while the run boots
+      if (rootEl.classList) rootEl.classList.toggle('is-launching', launching);
       const setWord = (b, disabled) => { if (disabled) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled'); };
       setWord(launch, launching);
       setWord(back, launching);

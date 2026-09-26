@@ -134,6 +134,18 @@ const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per t
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
+// Coincident-center guard: a Rapier narrow phase on nearly-concentric collider centers
+// degenerates to a ~10^6-unit penetration and the step teleports both bodies — co-created
+// spawns land on it deterministically (the aftermath wreck and the manifest payload both spawn
+// at victim.pos; the A4 witnessed-kill run flung the pair ±0.76/1.74 MWU at seed 4242).
+// Measured on the live descriptors: the degenerate window runs ~±1.5 WU along a capsule
+// partner's own axis, so the guard claims the smallest free slot on a +x ladder at 2.5 WU —
+// a point that cannot sit near-axis AND near-center of a partner at any capsule orientation.
+// The band stays generous (2 WU) because near-coincident pickups inside a hull are a bad game
+// state anyway, and the nudged pair still overlaps into an ordinary shallow contact.
+const COINCIDENT_SPAWN_BAND = 2.0;           // coincidence window on each axis, WU
+const COINCIDENT_SPAWN_NUDGE = 2.5;          // WU per ladder step — past the measured window
+const COINCIDENT_SPAWN_MAX_NUDGES = 64;      // 160 WU of pile; a fuller pile keeps the walked slot
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
 export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.25;
@@ -1192,12 +1204,31 @@ export class Sg02DynamicBodyOwner {
   _createRecord(entity, spec) {
     const R = this.RAPIER;
     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
-    const posX = local.x;
+    let posX = local.x;
     const posZ = local.z;
-    const globalX = finite(entity.pos && entity.pos.x);
-    const globalZ = finite(entity.pos && entity.pos.z);
     const vel = vector3(entity.vel);
     const material = contactMaterialFor(entity, spec);
+    // Coincident-center guard (see COINCIDENT_SPAWN_* above). Ghost-material bodies skip the
+    // ladder entirely: their collision groups join no contact pairs and a projectile's swept
+    // segment must keep its authored line. The writeback to entity.pos is required — pose
+    // resync reads entity.pos as authored truth, so an unmirrored nudge would be reverted on
+    // the next sync for dt=0 init, noInterp, sleep-eligible, and static records alike.
+    if (!material.ghost && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+      const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, spec.dynamic === true);
+      if (slotted !== posX) {
+        posX = slotted;
+        const g = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
+        entity.pos.x = g.x;
+        entity.pos.z = g.z;
+        if (entity.prevPos && typeof entity.prevPos === 'object') {
+          entity.prevPos.x = g.x;
+          entity.prevPos.z = g.z;
+        }
+      }
+    }
+    const globalX = finite(entity.pos && entity.pos.x);
+    const globalZ = finite(entity.pos && entity.pos.z);
     const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : R.RigidBodyDesc.fixed())
       .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
@@ -1314,12 +1345,48 @@ export class Sg02DynamicBodyOwner {
     return record;
   }
 
+  // Smallest free +x slot for a new body whose center would otherwise coincide with an existing
+  // body (see COINCIDENT_SPAWN_*). Partners are filtered to bodies that can actually form a
+  // contact pair with the candidate: ghost materials join no pairs, fixed-fixed pairs never
+  // touch, and a dead entity's record is already on its way out. The scan reads the
+  // _bodyPoseX/Z mirrors — every setTranslation site maintains them, and a solver-moved body is
+  // always awake (sleep-skipped records keep pose), so the mirrors equal the WASM poses and the
+  // scan costs no WASM calls.
+  // Note: the scan compares body centers, not individual collider centers — compound-proxy
+  // records can carry primitives offset from the body origin, so a spawn concentric with an
+  // offset collider escapes detection. No data authors nonzero centerOfMass today; single-
+  // collider partners (the measured hazard class) are exact.
+  _resolveCoincidentSpawnSlot(posX, posZ, candidateDynamic, exclude = null) {
+    for (let attempts = 0; attempts < COINCIDENT_SPAWN_MAX_NUDGES; attempts++) {
+      let coincident = false;
+      for (const other of this.records.values()) {
+        if (!other || other === exclude) continue;
+        if (!candidateDynamic && !(other.spec && other.spec.dynamic)) continue;
+        if (!other.entity || other.entity.alive === false) continue;
+        if (contactMaterialFor(other.entity, other.spec).ghost) continue;
+        const dx = finite(other._bodyPoseX, NaN) - posX;
+        if (!Number.isFinite(dx)) continue;
+        const dz = finite(other._bodyPoseZ, NaN) - posZ;
+        if (Math.abs(dx) < COINCIDENT_SPAWN_BAND && Math.abs(dz) < COINCIDENT_SPAWN_BAND) {
+          coincident = true;
+          break;
+        }
+      }
+      if (!coincident) return posX;
+      posX += COINCIDENT_SPAWN_NUDGE;
+    }
+    return posX;
+  }
+
+  // Returns false when a live attachment refuses the remove: the body stays in the world and
+  // this record stays managed, so the caller must not create a replacement — that would leave
+  // an orphaned body still stepped and colliding but invisible to every records-map consumer.
   _removeRecord(id, rec) {
     this._reboundEntityIds.delete(id);
     const live = rec && rec.entity && rec.entity.alive !== false;
     if (live) {
       for (const attachment of this.attachments.values()) {
-        if (attachment.owner === rec || attachment.target === rec) return;
+        if (attachment.owner === rec || attachment.target === rec) return false;
       }
     }
     for (const attachment of Array.from(this.attachments.values())) {
@@ -1338,7 +1405,7 @@ export class Sg02DynamicBodyOwner {
       bucket.push({ body: rec.body, colliders });
       for (const collider of colliders) this._colliderOwners.delete(collider.handle);
       this.records.delete(id);
-      return;
+      return true;
     }
     for (const collider of colliders) {
       this._colliderOwners.delete(collider.handle);
@@ -1346,6 +1413,7 @@ export class Sg02DynamicBodyOwner {
     }
     this.world.removeRigidBody(rec.body);
     this.records.delete(id);
+    return true;
   }
 
   _takePooledGhostBody(key) {
@@ -1370,7 +1438,12 @@ export class Sg02DynamicBodyOwner {
         return rec;
       }
       this._reboundEntityIds.delete(entity.id);
-      if (rec) this._removeRecord(entity.id, rec);
+      if (rec && this._removeRecord(entity.id, rec) === false) {
+        // A live attachment holds the old body; keep the existing record so its replacement
+        // would not orphan a body that stays in the world. The spec change retries each sync.
+        rec.entity = entity;
+        return rec;
+      }
       const next = this._createRecord(entity, spec);
       this.records.set(entity.id, next);
       if (next.spec.dynamic) this.dynamicRecords.add(next);
@@ -1533,16 +1606,33 @@ export class Sg02DynamicBodyOwner {
     const noInterp = !!(entity.flags && entity.flags.noInterp);
     if (!noInterp && dx * dx + dz * dz <= POSE_RESYNC_EPS2) return false;
 
+    let resyncX = local.x;
+    const resyncZ = local.z;
+    // Coincident-center guard (same invariant as _createRecord): a scripted teleport must not
+    // land the body concentric with another either — the degenerate narrow phase does not care
+    // how the pair got there. The record is excluded so it can never match itself.
+    if (!contactMaterialFor(entity, rec.spec).ghost && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+      const slotted = this._resolveCoincidentSpawnSlot(
+        resyncX, resyncZ, rec.spec && rec.spec.dynamic === true, rec);
+      if (slotted !== resyncX) {
+        resyncX = slotted;
+        const g = frameToGlobal({ x: resyncX, z: resyncZ }, this._frameOrigin, this._globalScratch);
+        entity.pos.x = g.x;
+        entity.pos.z = g.z;
+      }
+    }
+
     const yaw = finite(entity.rot);
     const vx = finite(entity.vel && entity.vel.x);
     const vz = finite(entity.vel && entity.vel.z);
     const wy = finite(entity.angVel);
-    _vecWriteScratch.x = local.x;
+    _vecWriteScratch.x = resyncX;
     _vecWriteScratch.y = 0;
-    _vecWriteScratch.z = local.z;
+    _vecWriteScratch.z = resyncZ;
     rec.body.setTranslation(_vecWriteScratch, true);
-    rec._bodyPoseX = Math.fround(local.x);
-    rec._bodyPoseZ = Math.fround(local.z);
+    rec._bodyPoseX = Math.fround(resyncX);
+    rec._bodyPoseZ = Math.fround(resyncZ);
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
@@ -1555,8 +1645,8 @@ export class Sg02DynamicBodyOwner {
     if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     if (rec.entity) rec.entity.physicsSleeping = false;
     const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
-    kin.x = local.x;
-    kin.z = local.z;
+    kin.x = resyncX;
+    kin.z = resyncZ;
     kin.vx = vx;
     kin.vz = vz;
     kin.yaw = yaw;

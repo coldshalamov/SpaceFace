@@ -36,7 +36,17 @@ const TRAVEL_DIR = resolve(OUT_DIR, 'travel');
 const REPORT = resolve(OUT_DIR, 'route-report.json');
 const EVIDENCE = resolve(OUT_DIR, 'evidence.json');
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
-const DAMAGE_TIMEOUT_MS = 240_000;
+// Sim-bound waits budget in simulation time; wall deadlines exist only to catch a page whose sim
+// has stopped entirely. On a saturated host sim crawls to single-digit percent of wall, so each
+// backstop is sized to cover its sim budget at ~4% realtime — the env knob tightens or loosens it.
+const msEnv = (name, fallback) => Number.isFinite(Number(process.env[name]))
+  ? Number(process.env[name]) : fallback;
+const DAMAGE_TIMEOUT_MS = msEnv('SPACEFACE_M3_DAMAGE_MS', 3_000_000);
+// The warranted mark's Tab-lock waits on the render lane admitting its authored body
+// (presentationAllowsTargetLock). (Declared here, not beside the helper — the route runs at
+// module top level and would hit TDZ.)
+const ACQUIRE_BUDGET_SIM_S = 90;
+const ACQUIRE_WALL_MS = msEnv('SPACEFACE_M3_ACQUIRE_MS', 2_400_000);
 
 let browser = null;
 let server = null;
@@ -65,8 +75,11 @@ try {
 
   const baselinePage = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   const baselineIssues = collectPageIssues(baselinePage, { ignoreProbeWarnings: true });
-  await baselinePage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await baselinePage.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 180_000 });
+  await baselinePage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+  // Boot is wall-clock work on the host (server fetch + first-frame pipeline); on a saturated
+  // machine it legitimately needs several minutes. SPACEFACE_M3_BOOT_MS overrides.
+  await baselinePage.waitForFunction(() => !!(window.SF && window.SF.state), null,
+    { timeout: msEnv('SPACEFACE_M3_BOOT_MS', 600_000) });
   // Install the combat/law observer before the baseline route starts so a death anywhere on the
   // public path — including the autopilot approach, which can kill the player before the hunter
   // leg's own install runs — leaves evidence of what fired, hit, and dispatched. Observer only:
@@ -99,6 +112,32 @@ try {
     window.SF.bus.on('law:dispatchStarted', (payload) => {
       window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, event: 'dispatch', atTick: window.SF.state.tick });
     });
+    // The hit-direction marker lives ~0.75–1.1 wall s — far shorter than any Node-side poll on a
+    // saturated host. Record each displayed cue in-page so the readable-damage asserts read a
+    // latched observation rather than point-sampling a retiring DOM state.
+    window.__M3_DAMAGE_OBSERVER__.markerCues = [];
+    let lastCue = { marker: null, atWallMs: 0 };
+    setInterval(() => {
+      const observer = window.__M3_DAMAGE_OBSERVER__;
+      if (!observer) return;
+      for (const marker of document.querySelectorAll('.sf-dmgind-marker')) {
+        const style = getComputedStyle(marker);
+        const glyph = String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim();
+        if (style.display === 'none' || Number(style.opacity) <= 0.05 || !/^[SAH]$/.test(glyph)) continue;
+        const now = performance.now();
+        if (lastCue.marker === marker && now - lastCue.atWallMs < 400) continue;
+        lastCue = { marker, atWallMs: now };
+        observer.markerCues.push({
+          glyph,
+          layer: [...marker.classList].find((name) => name.startsWith('layer-')) || null,
+          severity: [...marker.classList].find((name) => name.startsWith('severity-')) || null,
+          transform: marker.style.transform || null,
+          atSimTime: Number(window.SF?.state?.simTime) || null,
+          atWallMs: now,
+        });
+        if (observer.markerCues.length > 64) observer.markerCues.splice(0, observer.markerCues.length - 64);
+      }
+    }, 50);
   });
   const baseline = await runBrowserPublicRoute({
     page: baselinePage,
@@ -138,6 +177,12 @@ try {
     outputDir: TRAVEL_DIR,
     expectedRootUrl: server.baseUrl,
     log: (line) => process.stdout.write(`${line}\n`),
+    // Same starved-host class as the sim-budgeted legs: the cold Continue gate drains the
+    // render-readiness queue, and the gate flight/jump waits are sim-bound too.
+    flightTimeoutMs: msEnv('SPACEFACE_M3_FLIGHT_MS', 600_000),
+    approachTimeoutMs: msEnv('SPACEFACE_M3_APPROACH_MS', 900_000),
+    jumpTimeoutMs: msEnv('SPACEFACE_M3_JUMP_MS', 300_000),
+    continueTimeoutMs: msEnv('SPACEFACE_M3_CONTINUE_MS', 900_000),
     issues: travelIssues,
   });
   const rawTravelIssues = travelIssues.errorIssues();
@@ -268,7 +313,10 @@ async function proveEngineeringPreview(page) {
   await page.mouse.click(shipworksBox.x + shipworksBox.width / 2, shipworksBox.y + shipworksBox.height / 2);
   await station.locator('.sx-sw').waitFor({ state: 'visible', timeout: 30_000 });
   const canvas = station.locator('.sx-sw__canvas');
-  await canvas.waitFor({ state: 'visible', timeout: 20_000 });
+  // Attached, not visible: the ORRERY hull jig legitimately hides the poster canvas
+  // (visibility:hidden) while it is itself the authored preview — the dataset gate below
+  // proves readiness either way.
+  await canvas.waitFor({ state: 'attached', timeout: 20_000 });
   await page.waitForFunction(() => {
     const el = document.querySelector('[data-screen="station"] .sx-sw__canvas');
     return el?.dataset?.authoredRequired === 'true'
@@ -276,7 +324,11 @@ async function proveEngineeringPreview(page) {
       && el?.dataset?.previewReady === 'true';
   }, null, { timeout: 120_000 });
 
-  const slot = station.locator('.sx-hardpoint[data-spatial-slot]').first();
+  // In the ORRERY hull-jig presentation the .sx-hardpoint buttons keep working (focus, Enter) but
+  // render their children off and take pointer-events:none — the live on-glass affordance is the
+  // jig's .orr-sw-node, which forwards to openChooser. Accept whichever control the current
+  // presentation exposes; the chooser contract below is identical either way.
+  const slot = station.locator('.sx-hardpoint[data-spatial-slot]:visible, .orr-sw-node[data-slot]:visible').first();
   await slot.waitFor({ state: 'visible', timeout: 20_000 });
   const slotBox = await slot.boundingBox();
   assert(slotBox && slotBox.width > 2 && slotBox.height > 2, 'Shipworks loadout slot must expose a pointer target');
@@ -319,6 +371,7 @@ async function proveEngineeringPreview(page) {
     });
     const canvasEl = document.querySelector('[data-screen="station"] .sx-sw__canvas');
     const statsEl = document.querySelector('[data-screen="station"] .sx-sw__stats');
+    const jigEl = document.querySelector('[data-screen="station"] .orr-sw-jig');
     return {
       moduleId: wanted,
       shipDefId: owned.defId,
@@ -329,7 +382,10 @@ async function proveEngineeringPreview(page) {
         stationShell: document.querySelector('[data-screen="station"] .sx-app') ? 'orbital-command' : null,
         rowText: String(document.querySelector(`.sx-modrow[data-preview-module="${CSS.escape(wanted)}"]`)?.innerText || '')
           .replace(/\s+/g, ' ').trim(),
+        // The authored preview the player sees is whichever presentation is live: the poster
+        // canvas, or the ORRERY hull jig that replaced it (canvas is visibility:hidden then).
         previewCanvasVisible: visible(canvasEl),
+        jigHullOn: !!(jigEl && jigEl.classList.contains('orr-hull--on') && visible(jigEl)),
         previewReady: canvasEl?.dataset?.previewReady === 'true',
         fallbackAllowed: canvasEl?.dataset?.fallbackAllowed || null,
         previewDefId: canvasEl?.dataset?.previewDefId || null,
@@ -351,7 +407,7 @@ async function proveEngineeringPreview(page) {
 
   assert.equal(snapshot.expectedPreview.ok, true, 'canonical fit presenter must accept the visible preview');
   assert.equal(snapshot.expectedDelta.ok, true, 'canonical shop delta presenter must accept the visible preview');
-  assert.equal(snapshot.actual.previewCanvasVisible, true, 'authored ship preview must be visible');
+  assert.equal(snapshot.actual.previewCanvasVisible || snapshot.actual.jigHullOn, true, 'authored ship preview must be visible');
   assert.equal(snapshot.actual.previewReady, true, 'live Shipworks must render the requested hull/loadout');
   assert.equal(snapshot.actual.fallbackAllowed, 'false', 'live Shipworks must refuse fabricated preview geometry');
   assert.equal(snapshot.actual.previewDefId, snapshot.shipDefId, 'preview geometry must use the owned runtime hull');
@@ -417,6 +473,32 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
     window.SF.bus.on('law:dispatchStarted', (payload) => {
       window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, event: 'dispatch', atTick: window.SF.state.tick });
     });
+    // The hit-direction marker lives ~0.75–1.1 wall s — far shorter than any Node-side poll on a
+    // saturated host. Record each displayed cue in-page so the readable-damage asserts read a
+    // latched observation rather than point-sampling a retiring DOM state.
+    window.__M3_DAMAGE_OBSERVER__.markerCues = [];
+    let lastCue = { marker: null, atWallMs: 0 };
+    setInterval(() => {
+      const observer = window.__M3_DAMAGE_OBSERVER__;
+      if (!observer) return;
+      for (const marker of document.querySelectorAll('.sf-dmgind-marker')) {
+        const style = getComputedStyle(marker);
+        const glyph = String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim();
+        if (style.display === 'none' || Number(style.opacity) <= 0.05 || !/^[SAH]$/.test(glyph)) continue;
+        const now = performance.now();
+        if (lastCue.marker === marker && now - lastCue.atWallMs < 400) continue;
+        lastCue = { marker, atWallMs: now };
+        observer.markerCues.push({
+          glyph,
+          layer: [...marker.classList].find((name) => name.startsWith('layer-')) || null,
+          severity: [...marker.classList].find((name) => name.startsWith('severity-')) || null,
+          transform: marker.style.transform || null,
+          atSimTime: Number(window.SF?.state?.simTime) || null,
+          atWallMs: now,
+        });
+        if (observer.markerCues.length > 64) observer.markerCues.splice(0, observer.markerCues.length - 64);
+      }
+    }, 50);
   });
 
   const canvas = page.locator('#gl-canvas');
@@ -598,7 +680,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   await canvas.focus();
   await page.keyboard.press('KeyO');
 
-  const hostile = await acquireAuthoredMissionHostile(page, authoredMission, 150_000);
+  const hostile = await acquireAuthoredMissionHostile(page, authoredMission);
   assert.equal(hostile.hostile, true, `public Tab must lock the warranted hostile: ${JSON.stringify(hostile)}`);
   await page.keyboard.press('KeyG');
   await page.waitForFunction((missionId) => {
@@ -613,10 +695,15 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   // Poll the readable-damage wait instead of blocking blind: the timeout alone cannot
   // distinguish a passive quarry, a pursuit that never closed, or a quarry the player's own
   // autoFire killed before it landed a hit. Sample the hunt state so a timeout names the cause.
+  // Budget is sim time (mark arming + authored response window + approach + fire), the wall
+  // deadline only guards a wedged page — SPACEFACE_M3_DAMAGE_MS overrides it on starved hosts.
+  const HUNT_BUDGET_SIM_S = 150;
+  const huntWallDeadline = Date.now() + (Number.isFinite(Number(process.env.SPACEFACE_M3_DAMAGE_MS))
+    ? Number(process.env.SPACEFACE_M3_DAMAGE_MS) : DAMAGE_TIMEOUT_MS);
   const huntSamples = [];
-  const huntDeadline = Date.now() + DAMAGE_TIMEOUT_MS;
+  let huntStartSim = null;
   let huntReady = false;
-  while (Date.now() < huntDeadline && !huntReady) {
+  while (Date.now() < huntWallDeadline && !huntReady) {
     const sample = await page.evaluate((missionId) => {
       const state = window.SF?.state;
       const player = state?.entities?.get?.(state.playerId);
@@ -624,13 +711,16 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         .find((item) => String(item?.id) === String(missionId));
       const quarry = (mission?.targetEntityIds || [])
         .map((id) => state?.entities?.get?.(id)).find((entity) => entity) || null;
+      const cues = window.__M3_DAMAGE_OBSERVER__?.markerCues || [];
       return {
-        t: Math.round(state?.simTime || 0),
+        t: Number.isFinite(state?.simTime) ? state.simTime : null,
         playerHits: window.__M3_DAMAGE_OBSERVER__?.playerHits?.length || 0,
+        latestCue: cues.length ? cues[cues.length - 1] : null,
         quarry: quarry ? {
           alive: quarry.alive !== false,
           hull: Number(quarry.hull || 0),
-          dist: player?.pos ? Math.round(Math.hypot(quarry.pos.x - player.pos.x, quarry.pos.z - player.pos.z)) : null,
+          dist: player?.pos && quarry.pos
+            ? Math.round(Math.hypot(quarry.pos.x - player.pos.x, quarry.pos.z - player.pos.z)) : null,
         } : null,
         autopilot: state?.nav?.autopilot ? {
           active: state.nav.autopilot.active, status: state.nav.autopilot.status,
@@ -638,43 +728,37 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         playerVitals: player ? {
           shield: Number(player.shield || 0), hull: Number(player.hull || 0), alive: player.alive !== false,
         } : null,
-        marker: [...document.querySelectorAll('.sf-dmgind-marker')].some((marker) => {
-          const style = getComputedStyle(marker);
-          const glyph = String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim();
-          return style.display !== 'none' && Number(style.opacity) > 0.05 && /^[SAH]$/.test(glyph);
-        }),
       };
     }, authoredMission.id);
     huntSamples.push(sample);
-    if (sample.playerHits > 0 && sample.marker) {
+    if (huntStartSim == null && Number.isFinite(sample.t)) huntStartSim = sample.t;
+    // A latched cue proves the direction marker actually displayed; require it at or after the
+    // leg's start so a stale cue from an earlier leg cannot satisfy the gate.
+    const freshCue = sample.latestCue && Number.isFinite(sample.latestCue.atSimTime)
+      && Number.isFinite(huntStartSim) && sample.latestCue.atSimTime >= huntStartSim - 1;
+    if (sample.playerHits > 0 && freshCue) {
       huntReady = true;
       break;
     }
+    if (sample.playerVitals && sample.playerVitals.alive === false) break;
     if (sample.quarry && sample.quarry.alive === false && sample.playerHits <= 0) {
       break;
     }
+    if (Number.isFinite(sample.t) && sample.t - huntStartSim >= HUNT_BUDGET_SIM_S) break;
     await page.waitForTimeout(5_000);
   }
-  assert(huntReady, `readable natural damage never arrived: ${JSON.stringify(huntSamples.slice(-8))}`);
+  assert(huntReady, `readable natural damage never arrived within ${HUNT_BUDGET_SIM_S} sim s: ${JSON.stringify(huntSamples.slice(-8))}`);
   const damageReadout = await page.evaluate(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
-    const marker = [...document.querySelectorAll('.sf-dmgind-marker')].find((candidate) => {
-      const style = getComputedStyle(candidate);
-      return style.display !== 'none' && Number(style.opacity) > 0.05;
-    });
+    const cues = window.__M3_DAMAGE_OBSERVER__?.markerCues || [];
     return {
       sectorId: state.world?.currentSectorId || null,
       targetId: state.player.targetId || null,
       vitals: {
         shield: Number(player.shield || 0), armor: Number(player.armor || 0), hull: Number(player.hull || 0),
       },
-      damageCue: marker ? {
-        glyph: String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim(),
-        layer: [...marker.classList].find((name) => name.startsWith('layer-')) || null,
-        severity: [...marker.classList].find((name) => name.startsWith('severity-')) || null,
-        transform: marker.style.transform || null,
-      } : null,
+      damageCue: cues.length ? cues[cues.length - 1] : null,
       hit: window.__M3_DAMAGE_OBSERVER__.playerHits.at(-1) || null,
       rosterText: String(document.querySelector('.sf-overview')?.innerText || '')
         .replace(/\s+/g, ' ').trim().slice(0, 500),
@@ -763,20 +847,63 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   // Ride the public autopilot back inside the station's weapon envelope, then take the dedicated
   // Digit0 brake (disarms the flight computer and holds the ship in place — exempt from the
   // above-cap earned-momentum settle cutoff, so return speed and any hit impulse get spent).
-  await page.waitForFunction((stationId) => {
-    const state = window.SF?.state;
-    const player = state?.entities?.get?.(state.playerId);
-    const station = state?.entities?.get?.(stationId);
-    if (!player?.pos || !station?.pos) return false;
-    return Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z) < 500;
-  }, stationRef.id, { timeout: 180_000 });
+  // Transit is sim-bound: budget in sim seconds with a wall backstop (SPACEFACE_M3_RETURN_MS).
+  const RETURN_BUDGET_SIM_S = 120;
+  const returnWallDeadline = Date.now() + (Number.isFinite(Number(process.env.SPACEFACE_M3_RETURN_MS))
+    ? Number(process.env.SPACEFACE_M3_RETURN_MS) : 900_000);
+  let returnStartSim = null;
+  let returnArrived = false;
+  let returnLast = null;
+  while (Date.now() < returnWallDeadline && !returnArrived) {
+    returnLast = await page.evaluate((stationId) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state.playerId);
+      const station = state?.entities?.get?.(stationId);
+      if (!player?.pos || !station?.pos) return { t: state?.simTime || null };
+      return {
+        t: state?.simTime || null,
+        dist: Math.round(Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z)),
+        autopilot: state?.nav?.autopilot ? {
+          active: state.nav.autopilot.active, status: state.nav.autopilot.status,
+        } : null,
+      };
+    }, stationRef.id);
+    returnArrived = Number.isFinite(returnLast?.dist) && returnLast.dist < 500;
+    if (Number.isFinite(returnLast?.t)) {
+      if (returnStartSim == null) returnStartSim = returnLast.t;
+      if (returnLast.t - returnStartSim >= RETURN_BUDGET_SIM_S) break;
+    }
+    if (!returnArrived) await page.waitForTimeout(2_000);
+  }
+  assert(returnArrived,
+    `autopilot return to Helios Station never closed inside ${RETURN_BUDGET_SIM_S} sim s: ${JSON.stringify(returnLast)}`);
   await page.keyboard.down('Digit0');
-  await page.waitForFunction(() => {
-    const state = window.SF?.state;
-    const player = state?.entities?.get?.(state.playerId);
-    return state?.flight?.mode === 'manual' && player?.vel
-      && Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) < 20;
-  }, null, { timeout: 30_000 });
+  const BRAKE_BUDGET_SIM_S = 45;
+  const brakeWallDeadline = Date.now() + msEnv('SPACEFACE_M3_BRAKE_MS', 900_000);
+  let brakeStartSim = null;
+  let brakeSettled = false;
+  let brakeLast = null;
+  while (Date.now() < brakeWallDeadline && !brakeSettled) {
+    brakeLast = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state.playerId);
+      const vx = player?.vel ? Number(player.vel.x) : NaN;
+      const vz = player?.vel ? Number(player.vel.z) : NaN;
+      return {
+        t: state?.simTime || null,
+        mode: state?.flight?.mode || null,
+        speed: Number.isFinite(vx) && Number.isFinite(vz) ? Math.round(Math.hypot(vx, vz)) : null,
+      };
+    });
+    brakeSettled = brakeLast.mode === 'manual' && Number.isFinite(brakeLast.speed) && brakeLast.speed < 20;
+    if (Number.isFinite(brakeLast.t)) {
+      if (brakeStartSim == null) brakeStartSim = brakeLast.t;
+      if (brakeLast.t - brakeStartSim >= BRAKE_BUDGET_SIM_S) break;
+    }
+    if (!brakeSettled) await page.waitForTimeout(1_000);
+  }
+  assert(brakeSettled,
+    `Digit0 brake never settled the ship within ${BRAKE_BUDGET_SIM_S} sim s: ${JSON.stringify(brakeLast)}`);
 
   // Aim the real cursor at the station's projected screen position and hold LMB — the public
   // trigger. One landed round on a lawful hull inside its own jurisdiction is a witnessed
@@ -818,27 +945,49 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   // observed since the last press, release and re-press the public trigger.
   let assaultIncident = null;
   let triggerPresses = 1;
-  const assaultDeadline = Date.now() + 90_000;
+  // The incident opens on a landed player round — a sim-bound event. Budget 60 sim s (the first
+  // round arrives in a few), with a wall backstop for a page whose sim has stopped entirely.
+  const ASSAULT_BUDGET_SIM_S = 60;
+  const assaultWallDeadline = Date.now() + msEnv('SPACEFACE_M3_ASSAULT_MS', 1_200_000);
+  let assaultStartSim = null;
   let lastFireCount = 0;
-  while (Date.now() < assaultDeadline) {
+  let fireCountSimAtChange = null;
+  while (Date.now() < assaultWallDeadline) {
     assaultIncident = await page.evaluate(() => {
       const incidents = window.__M3_DAMAGE_OBSERVER__?.lawIncidents || [];
       return incidents.find((entry) => /player_assault|player_piracy/.test(String(entry?.cause || ''))) || null;
     });
     if (assaultIncident) break;
     const fireCount = await page.evaluate(() => window.__M3_DAMAGE_OBSERVER__?.fires?.length || 0);
-    if (fireCount <= lastFireCount) {
+    const assaultSim = await page.evaluate(() => window.SF?.state?.simTime || null);
+    // Re-press only when the sim has run ≥2 s without a new round (or ≥2 s since the last press
+    // attempt while still zero) — a wall-time check would re-press every poll on a slow host and
+    // could never distinguish a dropped press from a slow refire.
+    const pressStalled = Number.isFinite(assaultSim)
+      && ((fireCount > 0 && Number.isFinite(fireCountSimAtChange) && assaultSim - fireCountSimAtChange >= 2)
+        || (fireCount <= 0 && Number.isFinite(fireCountSimAtChange) && assaultSim - fireCountSimAtChange >= 2));
+    if (pressStalled) {
       await page.mouse.up().catch(() => {});
       await page.mouse.down();
       triggerPresses += 1;
+      fireCountSimAtChange = assaultSim;
+    } else if (fireCount > lastFireCount) {
+      fireCountSimAtChange = assaultSim;
     }
     lastFireCount = Math.max(lastFireCount, fireCount);
+    if (Number.isFinite(assaultSim)) {
+      if (assaultStartSim == null) {
+        assaultStartSim = assaultSim;
+        fireCountSimAtChange = assaultSim;
+      }
+      if (assaultSim - assaultStartSim >= ASSAULT_BUDGET_SIM_S) break;
+    }
     await page.waitForTimeout(3_000);
   }
   await page.mouse.up().catch(() => {});
   assert(assaultIncident,
     `firing on the station inside its lawful jurisdiction must open a CONTROL incident ` +
-    `(trigger pressed ${triggerPresses}x, ${lastFireCount} player rounds observed)`);
+    `within ${ASSAULT_BUDGET_SIM_S} sim s (trigger pressed ${triggerPresses}x, ${lastFireCount} player rounds observed)`);
   await page.mouse.down();
 
   // Poll rather than a bare waitFor: if the response never engages (no dispatch, responders
@@ -851,6 +1000,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   // covers it with margin while still failing a response that never engages. The wall deadline
   // stays only as a backstop for a page whose sim has stopped entirely.
   const DEATH_WATCH_SIM_TICKS = 15_000;
+  const deathWallMs = msEnv('SPACEFACE_M3_DEATH_MS', 5_000_000);
   const deathWatch = [];
   let gameOverShown = false;
   let watchStartTick = null;
@@ -858,7 +1008,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   let watchFireCount = null;
   let watchFireStall = 0;
   let watchPresses = 0;
-  const deathDeadline = Date.now() + 600_000;
+  const deathDeadline = Date.now() + deathWallMs;
   while (Date.now() < deathDeadline && watchSimElapsed < DEATH_WATCH_SIM_TICKS) {
     gameOverShown = await page.locator('[data-screen="gameOver"]').isVisible().catch(() => false);
     if (gameOverShown) break;
@@ -1135,14 +1285,19 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   };
 }
 
-async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
+async function acquireAuthoredMissionHostile(page, authoredMission) {
+  assert(authoredMission && authoredMission.id != null,
+    `acquireAuthoredMissionHostile requires a mission identity: ${JSON.stringify(authoredMission)}`);
+  const wallDeadline = Date.now() + ACQUIRE_WALL_MS;
+  let simStart = null;
   let last = null;
-  while (Date.now() < deadline) {
+  while (Date.now() < wallDeadline) {
     await page.keyboard.press('Tab');
     await page.waitForTimeout(450);
     last = await page.evaluate(async (missionId) => {
       const { isHostileToPlayer } = await import('/src/systems/scanner.js');
+      const { presentationAllowsTargetLock } = await import('/src/core/presentationAdmission.js');
+      const { verbAcceptsType } = await import('/src/data/interactionDescriptorCatalog.js');
       const state = window.SF.state;
       const player = state.entities.get(state.playerId);
       const target = state.entities.get(state.player.targetId);
@@ -1166,6 +1321,10 @@ async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
         quarrySpeed: quarry?.vel ? Math.round(Math.hypot(quarry.vel.x, quarry.vel.z)) : null,
         quarryDist: (player?.pos && quarry?.pos)
           ? Math.round(Math.hypot(player.pos.x - quarry.pos.x, player.pos.z - quarry.pos.z)) : null,
+        quarryAdmission: quarry?.presentationAdmission ?? null,
+        quarryHostile: !!(quarry && player && isHostileToPlayer(quarry, player.team, state)),
+        quarryLockOk: !!(quarry && presentationAllowsTargetLock(quarry, state)),
+        quarryAcceptsType: !!(quarry && verbAcceptsType('target', quarry.type)),
         liveQuarryId,
         autopilot: autopilot
           ? { active: autopilot.active === true, targetEntityId: autopilot.targetEntityId ?? null }
@@ -1174,22 +1333,27 @@ async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
         targetName: target?.data?.callsign || target?.data?.name || target?.type || null,
         targetTeam: target?.team ?? null,
         targetMissionId: target?.data?.missionId || target?.data?.missionTag || null,
-        hostile: !!(target && isHostileToPlayer(target, player.team, state)),
-        distance: target ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : null,
+        hostile: !!(target && player && isHostileToPlayer(target, player.team, state)),
+        distance: (target?.pos && player?.pos)
+          ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : null,
         contactsVisible: [...document.querySelectorAll('.sf-overview-row')]
           .filter((el) => getComputedStyle(el).display !== 'none').length,
       };
     }, authoredMission && authoredMission.id != null ? authoredMission.id : null);
     assert.equal(last.playerAlive, true, `player died before public hostile lock: ${JSON.stringify(last)}`);
+    if (simStart == null && Number.isFinite(last.simTime)) simStart = last.simTime;
     // The warranted hostile is whoever the mission currently owns — missionTag is stamped on
     // respawn too, so ownership survives entity-id churn that a first-spawn snapshot cannot.
     if (last.hostile && String(last.targetMissionId) === String(authoredMission.id)) return last;
-    if (Math.floor((deadline - Date.now()) / 1000) % 20 === 0) {
+    const simElapsed = (simStart != null && Number.isFinite(last.simTime))
+      ? last.simTime - simStart : 0;
+    if (Number.isFinite(last.simTime) && simElapsed >= ACQUIRE_BUDGET_SIM_S) break;
+    if (Math.floor((wallDeadline - Date.now()) / 1000) % 20 === 0) {
       console.log('[route] hunt-acquire', JSON.stringify(last));
     }
     await page.waitForTimeout(550);
   }
-  throw new Error(`Warranted mission hostile did not enter public targeting range within ${timeoutMs} ms; mission=${JSON.stringify(authoredMission)} last=${JSON.stringify(last)}`);
+  throw new Error(`Warranted mission hostile did not enter public targeting range within ${ACQUIRE_BUDGET_SIM_S} sim-s; mission=${JSON.stringify(authoredMission)} last=${JSON.stringify(last)}`);
 }
 
 async function pointerClick(page, locator, label) {
@@ -1245,6 +1409,14 @@ async function startServer() {
     if (!(await isPortFree(port))) continue;
     const child = spawn(process.execPath, ['server.js', String(port)], {
       cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+      // Isolate the shared drawers: an unset env mounts the REAL player saves and the platform
+      // mods dir (server.js deliberately defaults dev launches there). A test run must boot with
+      // no store and no mods; an operator may still override by setting the vars explicitly.
+      env: {
+        ...process.env,
+        SPACEFACE_PLAYER_STORE_DIR: process.env.SPACEFACE_PLAYER_STORE_DIR ?? '',
+        SPACEFACE_USER_CONTENT_DIR: process.env.SPACEFACE_USER_CONTENT_DIR ?? '',
+      },
     });
     let output = '';
     child.stdout.on('data', (chunk) => { output = (output + chunk).slice(-4000); });

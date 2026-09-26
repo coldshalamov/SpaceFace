@@ -22,7 +22,7 @@
 //   bare ←/→ yaw, W/↑ + ←/→ strafe.
 //
 //   ALL schemes: RMB mining beam (group 2) · Shift boost/dash · X countermeasure · G auto-target
-//   toggle (owned by autoTargetAssist — guns lead the lock and trackpad motion draws a flight route) ·
+//   toggle (owned by autoTargetAssist — guns lead the lock and relative motion becomes a dynamic combat stick) ·
 //   Space/F Massline (tap latch/cut, hold line control) · Q charge throw (helm) · R detonate
 //   charges · C scanner pulse · V cruise.
 //   New verbs land on state.input.actions.* as edge-triggered flags (the LOCKED input contract in
@@ -41,7 +41,8 @@
 // both KeyW and ArrowUp) so WASD-and-arrows both work out of the box. The settings layer stores an
 // array per action; the UI lets the player set a primary + keeps the arrow-cluster as a secondary
 // for movement so arrow-key players aren't stranded.
-import { DRAW_GESTURE_IDLE_MS, emptyDrawFlightPath, emptyDrawFlightGesture, recordDrawFlightGesture } from './drawFlightInput.js';
+import { emptyDrawFlightPath, emptyDrawFlightGesture } from './drawFlightInput.js';
+import { projectDynamicFlightStick, recordDynamicFlightStick, resetDynamicFlightStick } from './dynamicFlightStick.js';
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
 import { createMasslineInputGrammar } from './masslineInputGrammar.js';
@@ -602,16 +603,26 @@ export function shouldNeutralizeFlightInput(state, modalActive = false) {
     || modalActive === true || !!(state.input && state.input.blocked);
 }
 
-function writeAutoTargetVector(inp, worldX = 0, worldZ = 0, active = false) {
+function writeAutoTargetVector(
+  inp,
+  worldX = 0,
+  worldZ = 0,
+  active = false,
+  screenX = worldX,
+  screenY = worldZ,
+  magnitudeOverride = null,
+) {
   const vector = inp.autoTargetVector && typeof inp.autoTargetVector === 'object'
     ? inp.autoTargetVector
     : (inp.autoTargetVector = neutralAutoTargetVector());
   const x = Number.isFinite(worldX) ? worldX : 0;
   const z = Number.isFinite(worldZ) ? worldZ : 0;
-  const magnitude = active ? Math.min(1, Math.hypot(x, z)) : 0;
+  const magnitude = active
+    ? Math.min(1, Number.isFinite(magnitudeOverride) ? magnitudeOverride : Math.hypot(x, z))
+    : 0;
   vector.active = magnitude > 0.001;
-  vector.screenX = vector.active ? x : 0;
-  vector.screenY = vector.active ? z : 0;
+  vector.screenX = Number.isFinite(screenX) ? Math.max(-1, Math.min(1, screenX)) : 0;
+  vector.screenY = Number.isFinite(screenY) ? Math.max(-1, Math.min(1, screenY)) : 0;
   vector.worldX = vector.active ? x : 0;
   vector.worldZ = vector.active ? z : 0;
   vector.magnitude = vector.active ? magnitude : 0;
@@ -626,20 +637,23 @@ function resetAutoTargetPath(host, state = host && host.state) {
   }
 }
 
-function recordAutoTargetPath(host, movementX, movementY, now) {
+function recordAutoTargetStick(host, movementX, movementY) {
   const { width, height } = viewportSize();
-  return recordDrawFlightGesture(host, movementX, movementY, now, width, height);
+  return recordDynamicFlightStick(host, movementX, movementY, width, height);
 }
 
-function updateAutoTargetPathDrawing(host, now) {
-  const route = host.state && host.state.input && host.state.input.autoTargetPath;
-  const gesture = host._autoTargetGesture;
-  if (!route || !route.active || !route.drawing || !gesture) return;
-  // Prefer sim-clock stamp when present (N2); fall back to wall stamp from DOM path samples.
-  const last = Number.isFinite(gesture.lastSimMs) ? gesture.lastSimMs : gesture.lastMs;
-  if (!Number.isFinite(last) || now - last > DRAW_GESTURE_IDLE_MS) {
-    route.drawing = false;
-  }
+function publishAutoTargetStick(host, inp) {
+  const { width, height } = viewportSize();
+  const vector = projectDynamicFlightStick(host, width, height);
+  return writeAutoTargetVector(
+    inp,
+    vector.worldX,
+    vector.worldZ,
+    vector.active,
+    vector.screenX,
+    vector.screenY,
+    vector.magnitude,
+  );
 }
 
 /** Deterministic ms clock from simTime (gameplay paths). N2. */
@@ -667,6 +681,7 @@ export const input = {
     const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
+    resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._cmHeld = false;
     this._gamepadLifecycleQuarantine = {
@@ -754,16 +769,14 @@ export const input = {
       const geometry = centeredPointer();
       if (this.state && this.state.input && this.state.input.autoFire) {
         if (shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e.target)) return;
-        // Draw-to-fly records from the mousemove stream ONLY. Browsers dispatch a compatibility
-        // mousemove for every pointermove, so accepting both counted each hand movement twice
-        // whenever pointer lock was absent — the drawn trail ran at 2x the hand and landed where
-        // the player never aimed. mousemove carries movementX/Y both locked and unlocked.
+        // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers dispatch a
+        // compatibility mousemove for every pointermove, so accepting both would double the stick
+        // displacement whenever pointer lock is absent.
         if (e.type === 'pointermove') return;
         const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
         const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
         if (movementX === 0 && movementY === 0) return;
-        // F4/N2: path recording uses sim clock, not wall time.
-        recordAutoTargetPath(this, movementX, movementY, simClockMs(this.state));
+        recordAutoTargetStick(this, movementX, movementY);
         this._screen.x = geometry.cx;
         this._screen.y = geometry.cy;
         this._screen.active = true;
@@ -1000,7 +1013,9 @@ export const input = {
       this._screen.active = autoTargetPointer;
       this._ndc.x = 0;
       this._ndc.y = 0;
-      if (!autoTargetPointer || !inp.autoTargetPath?.active) resetAutoTargetPath(this, state);
+      resetAutoTargetPath(this, state);
+      const geometryForStick = centeredPointer();
+      resetDynamicFlightStick(this, geometryForStick.width, geometryForStick.height);
       syncPointerScreen(state, this._screen.x, this._screen.y);
       inp.pointerScreen.active = autoTargetPointer;
       writeAutoTargetVector(inp);
@@ -1234,10 +1249,11 @@ export const input = {
       pointerScreen.y = this._screen.y;
       pointerScreen.active = this._screen.active;
       inp.aimIntentActive = pointerScreen.active === true;
-      writeAutoTargetVector(inp);
-      // N2: flight-profile-affecting path drawing uses deterministic sim clock, not wall time.
-      if (inp.autoFire) updateAutoTargetPathDrawing(this, simClockMs(state));
-      else resetAutoTargetPath(this, state);
+      if (inp.autoFire) publishAutoTargetStick(this, inp);
+      else {
+        writeAutoTargetVector(inp);
+        resetAutoTargetPath(this, state);
+      }
     }
 
     // Middle-click has no hidden flight authority. G auto-target is owned by autoTargetAssist.

@@ -148,7 +148,7 @@ test('a contact leaving removes only its row; the row that replaces it is the on
     }
     assert.ok(after.has('Ambient One'), 'the promoted contact gains a row');
     assert.equal(before.has('Ambient One'), false, 'and it genuinely is a new node');
-    assert.equal(fx.overview.querySelector('.sf-overview-footer').textContent, '+1 · 1 OTHER',
+    assert.equal(fx.overview.querySelector('.sf-overview-footer').textContent, '+1 OTHER',
       'overflow receipt still counts the omitted contacts truthfully');
     assert.equal(fx.overview.rebuildCount, 0, 'a departure is a targeted removal, not a rebuild');
   } finally {
@@ -203,7 +203,7 @@ test('clicking a row reorders retained nodes and moves the selected class', () =
     assert.equal(after.filter((row) => row.classList.contains('selected')).length, 1,
       'exactly one row carries the selected class after the swap');
     assert.equal(after[0].classList.contains('selected'), true);
-    assert.equal(fx.overview.querySelector('.sf-overview-footer').textContent, '+2 · 2 OTHERS',
+    assert.equal(fx.overview.querySelector('.sf-overview-footer').textContent, '+2 OTHERS',
       'the overflow footer stays last');
     assert.equal(fx.overview.children.at(-1).className, 'sf-overview-footer',
       'the footer is the final child even after rows move');

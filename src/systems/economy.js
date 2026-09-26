@@ -51,7 +51,7 @@ import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
-  serializeCycles, deserializeCycles, applyCycleToMid,
+  serializeCycles, deserializeCycles, applyCycleToMid, stockDriftTarget,
 } from './economyCycles.js';
 import {
   hiddenHoldCapacity,
@@ -64,6 +64,7 @@ import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -159,9 +160,16 @@ export const INSURANCE_DEFAULTS = Object.freeze({
   deductibleCr: 500,
 });
 
+// A station that posts 'toll'/'scan' is a working checkpoint (Customs Gate, Dione Customs):
+// docking there reads the hold and collects the plate instead of sitting as a refuel stop in
+// costume. The toll curve mirrors the gate-jump plates (50 + 200·security).
+const DOCK_SCAN_SECURITY = 0.98;   // berth-grade sweep — same certainty lawful inspections use
+const DOCK_TOLL_BASE_CR = 50;
+const DOCK_TOLL_SECURITY_CR = 200;
+
 /** PQ-155.02 — named debit stories. Economy writes the receipt; the ledger only prints it. */
 export const SESSION_SINK_KINDS = Object.freeze([
-  'repair', 'fine', 'insurance', 'restitution', 'impound',
+  'repair', 'fine', 'insurance', 'restitution', 'impound', 'toll',
 ]);
 export const SESSION_SINK_LEDGER_MAX = 48;
 export const SESSION_SINK_CAUSES = Object.freeze({
@@ -170,6 +178,7 @@ export const SESSION_SINK_CAUSES = Object.freeze({
   insurance: 'hull deductible',
   restitution: 'spilled cargo',
   impound: 'wanted hull',
+  toll: 'berth plate',
 });
 const SESSION_SINK_KIND_SET = new Set(SESSION_SINK_KINDS);
 
@@ -178,8 +187,10 @@ export function classifySessionSink(reason) {
   if (r === 'service:repair' || r === 'beam:repair') return 'repair';
   if (r === 'fine:contraband' || r.startsWith('fine:')) return 'fine';
   if (r === 'service:insurance' || r === 'recovery:deductible') return 'insurance';
+  if (r === 'recovery:hull_share') return 'repair';
   if (r === 'restitution' || r.startsWith('restitution:')) return 'restitution';
   if (r === 'impound:pay' || r.startsWith('impound:')) return 'impound';
+  if (r === 'service:dock_toll' || r.startsWith('toll:')) return 'toll';
   return null;
 }
 
@@ -386,10 +397,8 @@ function effectiveEq(entry, state, stationId, cmdtyId) {
     ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
     : null;
   const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
-  // Soft structural pull: 70% role equilibrium + 30% cycle-scaled, so hauling still matters
-  // but formula waves do not empty/flood stock on their own.
-  const soft = 0.70 + 0.30 * cf;
-  return entry.equilibrium * m * soft;
+  // Same structural mix the forecast band uses.
+  return stockDriftTarget(entry.equilibrium, cf, m);
 }
 
 function cycleRngFor(state, stationId, cmdtyId) {
@@ -406,7 +415,7 @@ function spreadOf(entry, frontierPenalty) {
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
 }
 
-function pricePointAt(entry, def, cycle, t) {
+function pricePointAt(entry, def, cycle, t, origin) {
   const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
   const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
   const mid = Math.max(1, round(cycle
@@ -414,7 +423,13 @@ function pricePointAt(entry, def, cycle, t) {
     : persistentMid));
   // The chart only needs its mid-price trace; current bid/ask remains on the listing. Keeping
   // snapshots this small preserves a long lived history without bloating save files.
-  return { t: Number(t) || 0, mid };
+  // Origin is session display only and non-enumerable, so saves stay [t, mid] pairs and a
+  // loaded trace does not pretend to remember which points were backfilled.
+  const point = { t: Number(t) || 0, mid };
+  if (origin === 'modelled' || origin === 'observed') {
+    Object.defineProperty(point, 'origin', { value: origin, enumerable: false, writable: true });
+  }
+  return point;
 }
 
 function sanitizeHistory(raw) {
@@ -888,6 +903,7 @@ export const economy = {
         this._stationServiceBerth = p.stationId;
         this.ensureStationMarkets(p.stationId);
         this.snapshotIntel(p.stationId);
+        this._runDockedCustomsPost(p.stationId);
       }
     });
     bus.on('dock:undocked', () => {
@@ -984,9 +1000,13 @@ export const economy = {
       }
     }
 
-    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited.
+    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited —
+    // unless a fitted Market Data Uplink streams the whole sector on the same cadence.
     if (this._lastDockedStation && markets[this._lastDockedStation]) {
       this.snapshotIntel(this._lastDockedStation);
+    }
+    if (this._uplinkFitted(state)) {
+      this._syncUplinkIntel(state);
     }
 
     // 4) propagate event pressure to neighbour stations (along the sector graph)
@@ -1057,7 +1077,7 @@ export const economy = {
     entry.history = [];
     for (let i = 0; i < HISTORY_POINT_LIMIT; i++) {
       const t = now - HISTORY_SPAN_S + i * HISTORY_SAMPLE_S;
-      entry.history.push(pricePointAt(entry, def, cycle, t));
+      entry.history.push(pricePointAt(entry, def, cycle, t, 'modelled'));
     }
     return entry.history;
   },
@@ -1072,7 +1092,7 @@ export const economy = {
     const history = entry.history;
     const last = history[history.length - 1];
     if (!force && last && (now - Number(last.t)) < HISTORY_SAMPLE_S) return history;
-    const point = pricePointAt(entry, def, cycle, now);
+    const point = pricePointAt(entry, def, cycle, now, 'observed');
     if (last && Math.abs(Number(last.t) - now) < 0.001) history[history.length - 1] = point;
     else history.push(point);
     if (history.length > HISTORY_POINT_LIMIT) history.splice(0, history.length - HISTORY_POINT_LIMIT);
@@ -1296,10 +1316,11 @@ export const economy = {
     }
     if (!stations) return;
     for (const st of stations) this.ensureMarket(st.id, st.type, st.size);
+    if (this._uplinkFitted(state)) this._syncUplinkIntel(state);
   },
 
   /** Cache a price snapshot for the map / route-planner UI (marketIntel). */
-  snapshotIntel(stationId) {
+  snapshotIntel(stationId, options = null) {
     const state = this.state;
     const market = state.economy.markets[stationId];
     if (!market) return;
@@ -1312,8 +1333,43 @@ export const economy = {
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
     }
-    state.economy.marketIntel[stationId] = { snapshot, seenAtT: state.simTime };
-    this.recordMarketMemory(stationId, snapshot);
+    const source = options && options.source === 'uplink' ? 'uplink' : null;
+    const record = { snapshot, seenAtT: state.simTime };
+    if (source) record.source = source;
+    state.economy.marketIntel[stationId] = record;
+    this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
+  },
+
+  /** Any fitted module carrying the marketIntel flag powers the feed — the flag, not the defId. */
+  _uplinkFitted(state) {
+    const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive === false) return false;
+    return fittedModuleDefs(state).some((def) => def.mods && def.mods.marketIntel === true);
+  },
+
+  /**
+   * Fitted Market Data Uplink: streams one live exchange quote per station in the current sector
+   * on the docked-feed cadence. Records carry provenance 'uplink' so the intel surfaces can say
+   * "market uplink" instead of pretending the player berthed there. The currently-docked berth is
+   * left to the dock writer, and a prior dock observation keeps its provenance under the feed —
+   * the visit happened; only the quotes refresh.
+   */
+  _syncUplinkIntel(state) {
+    const sectorId = state && state.world && state.world.currentSectorId;
+    if (!sectorId) return 0;
+    const sec = (state.content && state.content.sectors && (Array.isArray(state.content.sectors)
+      ? state.content.sectors.find((s) => s.id === sectorId)
+      : state.content.sectors[sectorId]))
+      || SECTORS.find((s) => s.id === sectorId);
+    if (!sec || !Array.isArray(sec.stations)) return 0;
+    let count = 0;
+    for (const st of sec.stations) {
+      if (!st || !st.id || st.id === this._lastDockedStation) continue;
+      this.ensureMarket(st.id, st.type, st.size);
+      this.snapshotIntel(st.id, { source: 'uplink' });
+      count++;
+    }
+    return count;
   },
 
   /**
@@ -1347,7 +1403,7 @@ export const economy = {
     if (!stationId || !state || !state.player) return null;
     const market = snapshot || (state.economy && state.economy.markets && state.economy.markets[stationId]);
     if (!market) return null;
-    const source = options && options.source === 'survey' ? 'survey' : null;
+    const source = options && (options.source === 'survey' || options.source === 'uplink') ? options.source : null;
     const memory = ensurePlayerMarketMemory(state.player);
     const stationMemory = memory[stationId] || (memory[stationId] = {});
     for (const cid in market) {
@@ -1367,7 +1423,10 @@ export const economy = {
         demandMult: Number(e.demandMult) || 1,
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
-      if (source) record.source = source;
+      // A berth the player physically made outranks the feed: the uplink may refresh the quotes,
+      // but the record keeps its dock provenance — the visit is the stronger fact.
+      const keepDockProvenance = source === 'uplink' && prior && prior.source == null;
+      if (source && !keepDockProvenance) record.source = source;
       stationMemory[cid] = record;
     }
     return stationMemory;
@@ -2373,13 +2432,74 @@ export const economy = {
     return this.smugglingCapabilities(state).scannerCloak;
   },
 
+  /** Bonded contract freight: a mission that preloaded cargo destined for this berth commissioned
+   *  the manifest the post is reading — its stacks are sealed, so the sweep exempts up to the
+   *  contracted qty. Smuggling types never qualify: running contraband into a scan post is the
+   *  one arrival the fiction says gets read. Returns Map(commodityId -> exempt qty). */
+  _bondedDockCargo(stationId) {
+    const exempt = new Map();
+    const list = this.state.missions && Array.isArray(this.state.missions.active)
+      ? this.state.missions.active : [];
+    for (const m of list) {
+      if (!m || m.status !== 'active' || m.type === 'smuggling_run') continue;
+      if (m.destStationId !== stationId || m.preloadedCargo !== true) continue;
+      const id = m.params && m.params.cmdtyId;
+      if (typeof id !== 'string' || !id) continue;
+      exempt.set(id, (exempt.get(id) || 0) + Math.max(1, Number(m.params.qty) || 1));
+    }
+    return exempt;
+  },
+
+  // A station posting 'toll'/'scan' is a working checkpoint: it reads every berthing hold and
+  // collects its plate. Clean sweeps leave a line; exposed contraband resolves through the same
+  // runScan path the gate-jump and patrol scans already use — so bust clauses, hot-faction
+  // memory, and the customs surface all consume one authority. The 'dock' source tag marks
+  // berth-sourced sweeps so flight-side consumers (the customs verb deck, a live patrolScan
+  // script) don't answer a scan the station already handled.
+  _runDockedCustomsPost(stationId) {
+    const state = this.state;
+    // Runs that are not the campaign (survival, combat lab) keep their own fiction and wallet —
+    // a lab arena parked in a shared sector must not collect customs plates or read a lab hold.
+    if (state.run && state.run.kind !== 'adventure' && state.run.phase !== 'inactive') return;
+    const info = stationInfo(state, stationId);
+    const services = info && Array.isArray(info.services) ? info.services : [];
+    if (services.includes('scan')) {
+      const res = this.runScan({
+        security: DOCK_SCAN_SECURITY,
+        factionId: (info && info.factionId) || this.scanningFaction(state),
+        stationId,
+        source: 'dock',
+        bondedCargo: this._bondedDockCargo(stationId),
+      });
+      if (!res || res.found !== true) {
+        this.bus.emit('toast', { text: 'CUSTOMS SWEEP — manifest reads clean.', kind: 'info', ttl: 3 });
+      }
+    }
+    if (services.includes('toll')) {
+      const sec = Number(info && info.security) || 0;
+      const toll = Math.round(DOCK_TOLL_BASE_CR + DOCK_TOLL_SECURITY_CR * sec);
+      if (toll > 0 && normalizeCredits(state.player && state.player.credits) > 0) {
+        this.chargeCredits(toll, 'service:dock_toll');
+        // The berth-session receipt surface isn't up yet when the toll posts (economy runs
+        // before ui on dock:docked), so name the debit on the toast rail — silent ~180 cr.
+        this.bus.emit('toast', { text: `BERTH TOLL — ${toll} cr posted.`, kind: 'info', ttl: 3 });
+      }
+    }
+  },
+
   /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
    *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
    *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
    *  is the incident/strike ledger; it must not apply a second reputation hit. */
   runScan(p) {
     const state = this.state;
-    const illicit = this.illicitCargo(state);
+    let illicit = this.illicitCargo(state);
+    const bonded = p && p.bondedCargo;
+    if (bonded && bonded.size > 0 && illicit.length) {
+      illicit = illicit
+        .map((s) => ({ ...s, qty: s.qty - Math.max(0, Number(bonded.get(s.commodityId)) || 0) }))
+        .filter((s) => s.qty > 0);
+    }
     const hasContraband = illicit.length > 0;
     // A lawfulInspectionCaseId is a caller-owned correlation token, not a new scan result. Keep
     // ordinary scan packets byte-for-byte shaped as before so existing customs/UI consumers retain
@@ -2389,6 +2509,8 @@ export const economy = {
       : null;
     const scannedPayload = { hasContraband };
     if (lawfulInspectionCaseId) scannedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    if (p.source) scannedPayload.source = p.source;
+    if (p.stationId) scannedPayload.stationId = p.stationId;
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
     const security = p.security != null ? p.security : this.currentSecurity();
@@ -2408,7 +2530,7 @@ export const economy = {
           state.simTime + HOT_DURATION_S,
         );
       }
-      return { found: false }; // evaded; this faction's gates remember the run
+      return { found: false, evaded: true }; // evaded; this faction's gates remember the run
     }
     // CAUGHT — compute fine, confiscate, rep hit
     let fine = 0;
@@ -2447,6 +2569,7 @@ export const economy = {
       bribeCost: round(fine * BRIBE_FRAC),
     };
     if (lawfulInspectionCaseId) contrabandPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    if (p.source) contrabandPayload.source = p.source;
     this.bus.emit('contraband:scanned', contrabandPayload);
     return { found: true, fine, confiscated, factionId, repHit };
   },

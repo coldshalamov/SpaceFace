@@ -34,6 +34,13 @@ export const LANDMARK_ROWS = Object.freeze([
     sector: 'sector_ceres_belt', kind: 'worldSite', id: 'world_site_wreck_cathedral',
     name: 'Wreck Cathedral', targetRef: 'landmark_c1_wreck_cathedral_concord_vigilant',
     glb: 'place_landmark_wreck_cathedral',
+    // Round-1 still review: the default extent+40 park sat at the 360 WU bounding sphere's
+    // empty southern fringe and the wreck showed as a hairline sliver. The verified-visible
+    // composition (admission probe screenshot, 2026-09-26) is the southern approach at
+    // ~(0,-150): the split hull's southern wall fills the upper frame there. Farther out the
+    // wall slides past the frame top (round 7 at -190: edge slabs only); inside the cavity
+    // the single-sided hull reads as bare space (rounds 3-5).
+    parkOffsetWU: Object.freeze({ x: 0, z: -150 }),
   }),
   Object.freeze({
     sector: 'sector_tethys_junction', kind: 'planet', id: 'zone_tethys_anvil',
@@ -43,6 +50,10 @@ export const LANDMARK_ROWS = Object.freeze([
     sector: 'sector_vesta_forge', kind: 'poi', id: 'poi_vesta_resonant_cathedral',
     name: 'The Resonant Cathedral', targetRef: 'landmark_c13e_resonant_cathedral',
     glb: 'place_maintenance_gantry',
+    // Round-1 still review: parked south, the tall gantry's height displacement pushed the
+    // whole structure over the shipping frame's top edge. Park on the north side instead —
+    // the landmark reads down-screen and its height displaces toward frame centre.
+    parkSide: 'north',
   }),
   Object.freeze({
     sector: 'sector_pallas_drift', kind: 'poi', id: 'poi_quiessence',
@@ -120,6 +131,19 @@ function skerDenseZoneCenter() {
  */
 export function planetAnchorStandoffWU() {
   return PLANET_SITE.bands.influence + 96;
+}
+
+/**
+ * Landmark anchor standoff: the skim corridor's outer edge. The PQ-153.02 round-1 still
+ * review failed the influence-edge park — at 2696 WU the colossal body is ~18 shipping
+ * view-heights off-camera and the frame is bare space, which is not a landmark portrait.
+ * r=1040 is the skim/sling boundary: heat is zero on the sling side, and the sphere
+ * (radius 700, crest +180) fills the frame. The live well does pull here; the strip's
+ * census reports the actual drift instead of assuming it.
+ * @returns {number} WU from the site centre.
+ */
+export function planetLandmarkStandoffWU() {
+  return PLANET_SITE.bands.skim;
 }
 
 /** The Anvil's global centre, resolved from its authored zone anchor (fallback when

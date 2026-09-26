@@ -793,10 +793,12 @@ export const saveLoadScreen = {
     if (orr) vacant.appendChild(el('span', 'sf-save-vacant__word', 'No hull on file'));
     stage.appendChild(vacant);
     // ORRERY: the reading is its own column beside the hull (not a caption hung off the stage's foot),
-    // and the hull stands alone on the glass: no dock interior behind it, no photograph.
+    // and the hull stands alone on its berth: no dock interior behind it, no photograph. The produced
+    // render is the stage (one ship, one pose, one light; the live mount drifted round to the ship's
+    // dark stern); a hull with no render still gets the live mount.
     if (orr) { caption.remove(); rootEl.appendChild(caption); }
     rootEl.appendChild(stage);
-    this.hull = createStageHull(stage, { rootEl, dock: !orr });
+    this.hull = createStageHull(stage, { rootEl, dock: !orr, live: !orr });
     // Loading a save hands the stage to the loading shell for the whole load, and this screen stays
     // laid out underneath it, so the hull kept drifting, linking and uploading on its own WebGL
     // context until flight: the waste the New Game stage had (2.2 s of drift renders, and a second
@@ -1090,7 +1092,7 @@ export const saveLoadScreen = {
 
     // The hull as it is in that save (def id + fittings from the envelope when the index has them).
     const showKey = defId ? defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '') : null;
-    if (defId && this.hull && this.hull.hasMount() && refs.shownShipId !== showKey) {
+    if (defId && this.hull && (this.hull.hasMount() || refs.orr) && refs.shownShipId !== showKey) {
       refs.shownShipId = showKey;
       this.hull.show(defId, { fittings: Array.isArray(fittings) ? fittings : null });
     }

@@ -56,8 +56,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 160 -> 161 init / 119 -> 120 update: the kill-cam recorder (DEMO_READINESS §4). A
   // read-only pose ring one slot after the kill-replay ring; it writes nothing but its
   // own buffers, so the update order grows by one pure observer.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 161);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 120);
+  // 161 -> 162 init / 120 -> 121 update: INFERENCE-30 noFireAdvisory — the station no-fire
+  // ring watch; an observer whose tick only tracks ring inside/outside so exits re-arm.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 162);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 121);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -199,7 +201,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 160 with moralTrapPrompt (same adapter posture; init order only).
   // 161 with the kill-cam recorder (one system in both orders; reads poses after the
   // kill-replay ring, writes only its own ring buffers).
-  assert.equal(registry.systems.length, 161);
+  // 162 with noFireAdvisory (one system in both orders; the no-fire ring watch — observer).
+  assert.equal(registry.systems.length, 162);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

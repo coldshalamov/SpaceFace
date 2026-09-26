@@ -124,7 +124,10 @@ ${SL} > .sf-save-stage::after { content:""; position:absolute; left:12%; right:1
 ${SL} > .sf-save-stage.is-vacant::after { display:none; }
 ${SL} > .sf-save-stage > :is(.k-stage__poster, .k-world--stage) { position:absolute !important; left:0 !important; right:auto !important; top:4% !important; bottom:auto !important;
   width:100% !important; height:90% !important; inset:auto; z-index:-1; }
-${SL} > .sf-save-stage > .k-stage__poster { object-fit:contain; object-position:50% 50%; }
+${SL} > .sf-save-stage > .k-stage__poster { object-fit:contain; object-position:50% 50%; animation:sf-save-hull-ride 9s ease-in-out infinite alternate; }
+/* the hull rides its berth: a slow breath on the compositor, still under reduced motion */
+@keyframes sf-save-hull-ride { from { transform:translateY(0); } to { transform:translateY(-7px); } }
+html.sf-reduce-motion ${SL} > .sf-save-stage > .k-stage__poster { animation:none; }
 ${SL} > .sf-save-stage > .sf-save-vacant { left:0 !important; right:0 !important; top:0; bottom:0; }
 ${SL} > .sf-save-stage > .sf-save-vacant .dp-mark { display:none; }
 ${SL} > .sf-save-stage > .sf-save-vacant::before { content:""; width:min(46%, 52vh); aspect-ratio:1; border-radius:50%;
@@ -204,7 +207,7 @@ ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b95
 const GO = 'html body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover';
 const GAME_OVER = `
 /* ---- the report on the left, the career ring on the right; the rays behind both ---- */
-${GO} { --sv:var(--k-s, 1); --r:calc(150px * var(--sv));
+${GO} { --sv:var(--k-s, 1); --r:calc(170px * var(--sv));
   padding:clamp(28px, 5.4vh, 112px) clamp(40px, 5vw, 128px) !important;
   grid-template-columns:minmax(0, 1fr) auto !important;
   grid-template-rows:minmax(0, 1fr) auto auto auto minmax(0, 1.25fr) !important;

@@ -47,6 +47,8 @@ ${T} .con-read__w { ${LABEL} font-size:clamp(10px, .6vw, 12.5px); line-height:1.
 ${T} > .k-stage.con-stage { grid-area:auto; grid-column:1; grid-row:1 / 3; position:relative; z-index:0; min-width:0; min-height:0; margin:0; padding:0; border:0 !important; background:none !important; box-shadow:none !important;
   overflow:visible; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; }
 ${T} .con-skyhost { position:absolute; inset:0; }
+/* a star's focus is its own ring of light (the instrument draws it), never the kit's square outline */
+${T} .con-star-btn:is(:focus, :focus-visible) { outline:none !important; box-shadow:none !important; }
 
 /* the reading beside the dial */
 ${T} > .con-side { grid-area:side; position:relative; z-index:1; min-width:0; min-height:0; align-self:stretch; box-sizing:border-box;
@@ -68,10 +70,11 @@ ${T} .con-cost__fill { fill:none; stroke:rgb(${WARM}); stroke-width:2.6; stroke-
 ${T} .con-cost[data-short="1"] .con-cost__fill { stroke:rgb(${BONE} / .72); }
 ${T} .con-cost[data-free="1"] .con-cost__fill { stroke:rgb(${BONE} / .42); }
 ${T} .con-cost dt { ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .64); white-space:nowrap; }
-${T} .con-cost dd { margin:2px 0 0; ${NUMERAL} font-size:clamp(24px, min(1.8vw, 3.4vh), 46px); line-height:1; color:rgb(${WARM}); }
+${T} .con-cost dd { margin:2px 0 0; text-transform:uppercase; ${NUMERAL} font-size:clamp(24px, min(1.8vw, 3.4vh), 46px); line-height:1; color:rgb(${WARM}); }
 ${T} .con-cost__sub { margin-top:3px; ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.14em; color:rgb(${BONE} / .64); white-space:nowrap; }
 ${T} .con-cost[data-short="1"] .con-cost__sub { color:rgb(${WARM} / .9); }
-${T} .con-dossier__cost.is-owned .con-cost dd { color:rgb(${BONE} / .7); }
+${T} .con-cost__tick { fill:none; stroke:rgb(${WARM}); stroke-width:1.5; stroke-linecap:butt; }
+${T} .con-dossier__paid { margin:clamp(2px, .5vh, 6px) 0 !important; ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .72); }
 ${T} .con-actions { margin:clamp(2px, .6vh, 8px) 0 clamp(4px, 1vh, 12px); }
 ${T} .con-actions .orr-lampkey { min-width:clamp(150px, 11vw, 220px); justify-content:center; }
 /* a node you cannot research yet: its reason in words where the key would be, never a box */
@@ -81,8 +84,16 @@ ${T} .con-why::before { content:"›"; position:absolute; left:0; top:5px; color
 ${T} .con-actions[data-state="researched"] .con-why::before { content:"✓"; }
 ${T} .con-why:focus-visible { outline:none !important; color:rgb(${WARM}); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-caps { margin:clamp(4px, .9vh, 12px) 0 0; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.24em; color:rgb(${BONE} / .62); }
-${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0; display:flex; flex-direction:column; }
-${T} .con-row { display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
+${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0 0 0 14px; display:flex; flex-direction:column; position:relative; }
+${T} .con-rows::before { content:""; position:absolute; left:3px; top:4px; bottom:4px; width:1.5px; background:rgb(${BONE} / .34); }
+${T} .con-row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
+${T} .con-row::before { content:""; position:absolute; left:-11px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
+${T} .con-row.has-art { grid-template-columns:clamp(34px, 2.3vw, 44px) minmax(0, 1fr) auto; align-items:center; }
+${T} .con-row__art { display:grid; place-items:center; width:clamp(34px, 2.3vw, 44px); height:clamp(28px, 1.9vw, 36px); color:rgb(${WARM} / .9); }
+${T} .con-row__art svg { width:70%; height:70%; }
+${T} .con-row__art svg .accent { fill:currentColor; }
+${T} .con-row__art .con-row__img { width:100%; height:100%; object-fit:contain; transform:rotate(90deg) scale(1.2); opacity:.95; }
+${T} .con-reqs .con-row[data-met="1"]::before { background:rgb(${WARM}); }
 ${T} .con-row__name { ${READ} font-size:clamp(14px, .82vw, 17px); line-height:1.3; color:rgb(${WARM}); min-width:0; }
 ${T} .con-row__sub { ${LABEL} font-size:clamp(9.5px, .54vw, 11px); letter-spacing:.16em; color:rgb(${BONE} / .62); white-space:nowrap; }
 ${T} .con-reqs .con-row[data-met="0"] .con-row__name { color:rgb(${BONE} / .76); }
@@ -107,6 +118,9 @@ ${T} .con-view__reset::before { content:"› "; color:rgb(${BONE} / .55); }
 ${T} .con-view__reset[hidden] { display:none; }
 ${T} .con-view__reset:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-picker { display:flex; align-items:center; gap:14px; margin-left:auto; }
+/* the picker sleeps as a zero-size point until it is focused: a 1 px clip left the select's real
+   box wandering past the frame's edge, so the box itself collapses instead */
+${T} .con-picker:not(:focus-within) { position:absolute; transform:scale(0); }
 ${T} .con-picker__label { ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.2em; color:rgb(${BONE} / .66); }
 ${T} select.k-select.con-select { min-width:clamp(180px, 13vw, 280px); min-height:36px; ${READ} font-size:clamp(14px, .8vw, 16px) !important; color:rgb(${WARM}) !important;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ece6d8' stroke-width='1.4'/%3E%3C/svg%3E") right 4px center / 10px 6px no-repeat,
@@ -137,15 +151,15 @@ const A = 'html body #screens > .k-screen.con-achievements';
 const ACHIEVEMENTS = `
 ${A} { box-sizing:border-box; display:grid !important;
   padding:clamp(20px, 3.4vh, 52px) clamp(24px, 3.2vw, 80px) clamp(14px, 2.4vh, 36px) !important;
-  grid-template-columns:minmax(0, 1fr) clamp(290px, 25vw, 520px) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
-  grid-template-areas:"title read" "hang read" "stage read" "foot foot" !important; column-gap:clamp(18px, 3vw, 72px) !important; row-gap:clamp(6px, 1.4vh, 20px) !important; }
+  grid-template-columns:minmax(0, 1fr) clamp(290px, 25vw, 520px) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+  grid-template-areas:"title read" "stage read" "foot foot" !important; column-gap:clamp(18px, 3vw, 72px) !important; row-gap:clamp(6px, 1.4vh, 20px) !important; }
 ${A}::before { background:radial-gradient(120% 90% at 32% 50%, rgb(5 7 10 / .76), rgb(5 7 10 / .88) 70%) !important; }
 ${A} > .k-title { grid-area:title; max-width:none; padding-right:0 !important; display:block; }
 ${A} > .k-title .con-title { width:fit-content; margin:0; ${DISPLAY} font-size:clamp(32px, min(3.1vw, 5.6vh), 84px) !important; line-height:.92 !important;
   letter-spacing:.02em !important; color:rgb(${WARM}) !important; white-space:nowrap; ${HALO} }
 ${A} > .k-title .con-sub { margin:clamp(6px, 1vh, 12px) 0 0 !important; ${READ} font-size:clamp(14px, min(.9vw, 1.7vh), 19px) !important; line-height:1.35; color:rgb(${BONE} / .8) !important; ${HALO} }
 /* the categories: words standing on a ruler, a bone bead under the one in view */
-${A} > .k-hang.con-filters { grid-area:hang; overflow:visible !important; max-height:none; min-width:0; }
+${A} .k-hang.con-filters { grid-area:auto; overflow:visible !important; max-height:none; min-width:0; margin:0 0 0 clamp(24px, 3.4vw, 72px); align-self:flex-end; }
 ${A} .con-filters .k-words { display:flex !important; flex-direction:row !important; flex-wrap:nowrap; gap:clamp(14px, 2vw, 44px) !important; margin:0; padding:0 8px; list-style:none; }
 ${A} .con-filters .k-words > li { margin:0; padding:0; }
 ${A} .con-filters .k-word { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; min-height:36px; cursor:pointer; position:relative;
@@ -153,20 +167,26 @@ ${A} .con-filters .k-word { all:unset; box-sizing:border-box; display:inline-fle
 ${A} .con-filters .k-word::before, ${A} .con-filters .k-word::after { content:none !important; display:none !important; }
 ${A} .con-filters .k-word:hover { color:rgb(${WARM}); }
 ${A} .con-filters .k-word[aria-current="true"] { color:rgb(${WARM}); }
-${A} .con-filters .k-word:focus-visible { outline:none !important; color:rgb(${WARM}); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:6px; }
+${A} .con-filters .k-word:focus-visible { outline:none !important; color:rgb(${WARM}); }
+${A} .con-filters .k-word:focus-visible::before { content:"" !important; display:block !important; position:absolute; left:-9px; top:50%; width:2px; height:14px; margin-top:-7px;
+  background:rgb(${WARM}); box-shadow:0 0 6px rgb(${WARM} / .6); }
 /* the grid of medals */
-${A} > .k-stage.con-medal-stage { grid-area:stage; position:relative; min-width:0; min-height:0; margin:0; padding:clamp(12px, 2.6vh, 32px) 0 0 !important; border:0 !important;
-  background:none !important; box-shadow:none !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; max-width:none !important;
-  --con-medal:clamp(64px, min(6vw, 9.4vh), 150px); --con-glyph:calc(var(--con-medal) * .27); --con-medal-px:clamp(11px, .64vw, 14px); --con-row-gap:clamp(8px, 1.6vh, 26px); }
-${A} > .k-stage.con-medal-stage::before { ${POOL('-6% -4%')} }
-${A} .con-medal { max-width:clamp(150px, 13vw, 280px); }
-${A} .con-medal:focus-visible { outline:none !important; }
+${A} > .k-title, ${A} > .k-foot { position:relative; z-index:3; }
+${A} > .k-stage.con-medal-stage { grid-area:auto; grid-column:1; grid-row:1 / 3; position:relative; z-index:1; min-width:0; min-height:0; margin:0; padding:0 !important; border:0 !important;
+  background:none !important; box-shadow:none !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; max-width:none !important; }
 /* the chosen medal's line */
 ${A} > .con-medal-read { grid-area:read; position:relative; z-index:1; align-self:center; display:flex; flex-direction:column; align-items:flex-start; gap:clamp(6px, 1.1vh, 14px);
   min-width:0; padding:0 0 clamp(20px, 6vh, 90px); }
 ${A} > .con-medal-read::before { ${POOL('-14% -20% -8% -24%')} }
 ${A} .con-medal-read > * { margin:0; }
-${A} .con-medal-read__dial { position:relative; width:clamp(140px, 11.5vw, 260px); height:clamp(140px, 11.5vw, 260px); margin-bottom:clamp(4px, 1vh, 14px) !important; --con-glyph:calc(clamp(140px, 11.5vw, 260px) * .3); }
+${A} .con-medal-read__dial { position:relative; width:clamp(150px, 12vw, 280px); height:clamp(150px, 12vw, 280px); margin:0 0 clamp(6px, 1.4vh, 18px) !important; --ms:clamp(150px, 12vw, 280px); }
+${A} .con-medal-read__dial > .con-medal__body { position:absolute; inset:5%; border-radius:50% !important; background:rgb(6 8 11 / .96); }
+${A} .con-medal-read__dial > .con-medal__art { position:absolute; left:7%; top:7%; width:86%; height:86%; object-fit:contain; }
+${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal__emblem) { opacity:.4; }
+${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
+${A} .con-medal-read__dial .orr-svg .con-medal__bloom { stroke-width:10; }
+${A} .con-medal-read__rim { position:absolute; left:-30px; top:-30px; width:calc(100% + 60px); height:calc(100% + 60px); overflow:visible; }
+${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
 ${A} .con-medal-read__dial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 ${A} .con-medal-read__dial > .con-medal__art { opacity:.34; }
 ${A} .con-medal-read__dial[data-state="going"] > .con-medal__art { opacity:.66; }
@@ -186,12 +206,12 @@ ${A} .con-medal-read__kicker span { margin:0 .3em; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 44px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .86); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
-${A} .con-medal-read__n { ${NUMERAL} font-size:clamp(34px, min(2.8vw, 5vh), 72px); line-height:.95; color:rgb(${WARM}); }
-${A} .con-medal-read[data-state="locked"] .con-medal-read__n { color:rgb(${BONE} / .7); }
+${A} .con-medal-read__n { ${NUMERAL} font-size:clamp(44px, min(3.4vw, 6vh), 88px); line-height:.9; color:var(--dp-phos, #dfeeff); }
+${A} .con-medal-read[data-state="locked"] .con-medal-read__n { color:var(--dp-phos, #dfeeff); }
 ${A} .con-medal-read__of { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .66); }
 ${A} .con-medal-read__status { ${LABEL} font-size:clamp(10.5px, .6vw, 12.5px); letter-spacing:.16em; color:rgb(${BONE} / .64); }
 /* Back, a word */
-${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; min-height:0; margin:0; padding:0; border:0; background:none; }
+${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:flex-end; min-height:0; margin:0; padding:0; border:0; background:none; }
 ${A} > .k-foot .k-words { display:flex; margin:0; padding:0; list-style:none; }
 ${A} .con-back.sf-back.k-word { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:0; min-height:40px; cursor:pointer;
   ${LABEL} font-size:clamp(12px, .72vw, 15px); letter-spacing:.2em; color:rgb(${WARM}); }

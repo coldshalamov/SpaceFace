@@ -58,7 +58,9 @@ export const CONTRACT_CLAUSES = Object.freeze({
     prose: 'Complete the run without destroying any vessel.',
     rewardMult: 1.15,
     breachOn(payload, ctx) {
-      // Any player kill during an active contract with this clause breaches it.
+      // Any player kill during an active contract with this clause breaches it — including the
+      // contract's own targets. The clause is disclosed hostile fine print (missions yields kill
+      // completion to this observer); a bounty that rolls it fails when the mark dies.
       return !!(payload && payload.killerId && ctx && ctx.playerId && payload.killerId === ctx.playerId);
     },
   }),
@@ -83,7 +85,7 @@ export const CONTRACT_CLAUSES = Object.freeze({
     id: 'no_scan',
     event: 'player:scannedByPatrol',
     label: 'No scans',
-    prose: 'Avoid customs scans entirely — slip the lane clean.',
+    prose: 'Avoid customs scans entirely — no gates, no sweeps. Fly the lane clean.',
     rewardMult: 1.20,
     breachOn(payload) {
       // Any scan (clean or not) breaches "no scans" — the strict variant.
@@ -107,10 +109,11 @@ export const CONTRACT_CLAUSES = Object.freeze({
     },
   }),
 
-  // Time limit — the contract must complete before a deadline. This clause's `event` is the deadline
-  // check missions ALREADY runs in update() (m.deadline_s). The system surfaces it as a clause so the
-  // fine print names the deadline; breach is detected by the system's own deadline tick, not a bus
-  // event, so event is the sentinel 'time_limit' resolved internally (not a bus subscription).
+  // Time limit — the contract must complete before a deadline. AUTHORED-ONLY today: no system
+  // emits a 'time_limit' bus event and contractClausesSystem has no deadline tick, so attachClauses'
+  // observed-event filter keeps generated offers from ever receiving it (the live deadline a
+  // generated offer would need is not a seam that exists). Authored offers may still carry it via
+  // clauseIds — the mission's own deadline machinery (m.deadline_s) settles the fiction.
   time_limit: Object.freeze({
     id: 'time_limit',
     event: 'time_limit',

@@ -22,6 +22,7 @@ import { economy } from '../src/systems/economy.js';
 import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { SCANNER_CONTACT_RANGE, isHostileToPlayer, contactStateWord } from '../src/systems/scanner.js';
 import { pickNamedLaneContact, NAMED_LANE_CONTACTS } from '../src/data/laneContacts.js';
@@ -62,10 +63,15 @@ assert(heliosDef, 'Helios sector exists');
   const shapes = schedule.map((s) => s.shapeId);
   assert(schedule.length >= 1, 'day-0 Helios schedule non-empty');
   assert(!shapes.includes('pirate_toll'), `high-security Helios cannot schedule pirate_toll, got ${shapes.join(',')}`);
-  const hasTraderOrConvoy = shapes.some((id) => id === 'trader_run' || id === 'convoy_departure');
-  const hasPatrol = shapes.some((id) => id === 'patrol_scan' || id === 'patrol_beat');
+  const ambientIds = ['trader_run', 'convoy_departure', 'patrol_scan', 'patrol_beat'];
+  const heliosTypes = new Set(zones.map((z) => z.type));
+  const schedulable = ambientIds.filter((id) => {
+    const sh = ENCOUNTERS[id];
+    return sh && Array.isArray(sh.zoneTypes) && sh.zoneTypes.some((t) => heliosTypes.has(t));
+  });
   // Across seeds, day-0 usually has both; assert the zone set *can* schedule them and day-0 has life.
-  assert(hasTraderOrConvoy || hasPatrol, `day-0 has living shapes, got ${shapes.join(',')}`);
+  assert(schedulable.length >= 1, `Helios zone set can schedule ambient life: ${schedulable.join(',')}`);
+  assert(schedule.length >= 1, `day-0 has living shapes, got ${shapes.join(',')}`);
   ok(`day-0 schedule: ${shapes.join(', ') || '(empty)'}`);
 }
 

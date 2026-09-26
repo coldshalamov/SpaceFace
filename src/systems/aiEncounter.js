@@ -2,7 +2,29 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { ENCOUNTER_COMMAND_RING_CAPACITY } from './aiPorts.js';
+
+
+/** Bench A/B: production default ON. Quiet latch skips shipLike reinforcement-author
+ * scans when no unrecalled reinforcement packages remain and no pending spawn/command
+ * work is live. Soft-GPU fps not claimed. Fresh registry.step residual (#161). */
+let AI_ENCOUNTER_QUIET_LATCH = true;
+export function setAiEncounterQuietLatchForBench(enabled) {
+  AI_ENCOUNTER_QUIET_LATCH = enabled !== false;
+}
+export function getAiEncounterQuietLatchForBench() {
+  return AI_ENCOUNTER_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const AI_ENCOUNTER_QUIET_RESCAN_TICKS = 30;
+
+function publishAiEncounterQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.aiEncounterRuntime || (state.aiEncounterRuntime = {});
+  rt.quietLatched = !!latched;
+}
 
 const HISTORY_CAPACITY = 128;
 
@@ -71,13 +93,62 @@ export const aiEncounter = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || (ctx.helpers = {});
+    this._aiEncounterQuiet = null;
+    this._aiEncounterWakeSeq = 0;
+    this._unsubs = [];
     ensureOwnerState(this.state);
     this.helpers.inspectAIEncounter = () => this.inspect();
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs = [
+        this.bus.on('entity:spawned', () => this._wakeAiEncounterQuiet()),
+        this.bus.on('entity:destroyed', () => this._wakeAiEncounterQuiet()),
+        this.bus.on('combat:damage', () => this._wakeAiEncounterQuiet()),
+        this.bus.on('save:loaded', () => this._wakeAiEncounterQuiet()),
+        this.bus.on('sector:enter', () => this._wakeAiEncounterQuiet()),
+        this.bus.on('game:new', () => this._wakeAiEncounterQuiet()),
+      ].filter(Boolean);
+    }
   },
 
   update(_dt, state) {
+    // Quiet open flight: every tick walked shipLike for authored reinforcement callers even
+    // when no unrecalled packages existed and no pending spawn/command work was live.
+    // Quiet latch short-circuits that scan (and ensure*); wakes on membership,
+    // combat/spawn/save/sector, command/pending churn, or 0.5 s rescan. Soft-GPU fps not claimed.
+    if (AI_ENCOUNTER_QUIET_LATCH !== false) {
+      const quiet = this._aiEncounterQuiet;
+      if (quiet) {
+        const membership = entityIndexVersion(state);
+        const tick = state.tick | 0;
+        const wakeSeq = this._aiEncounterWakeSeq | 0;
+        const enc = state.aiEncounter;
+        const owner = enc && enc.owner;
+        const cmdLen = enc && Array.isArray(enc.commands) ? enc.commands.length : 0;
+        const pendingLen = owner && Array.isArray(owner.pendingReinforcements)
+          ? owner.pendingReinforcements.length : 0;
+        const nextSeq = enc ? (enc.nextSeq | 0) : 0;
+        const lastApplied = owner ? (owner.lastAppliedSeq | 0) : 0;
+        if (membership != null
+          && quiet.membership === membership
+          && quiet.wakeSeq === wakeSeq
+          && quiet.cmdLen === cmdLen
+          && quiet.pendingLen === pendingLen
+          && quiet.nextSeq === nextSeq
+          && quiet.lastApplied === lastApplied
+          && pendingLen === 0
+          && lastApplied >= (nextSeq - 1)
+          && ((tick - (quiet.armedTick | 0)) < AI_ENCOUNTER_QUIET_RESCAN_TICKS)) {
+          publishAiEncounterQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._aiEncounterQuiet) {
+      this._aiEncounterQuiet = null;
+    }
+
     const encounter = ensureEncounterState(state);
     const owner = ensureOwnerState(state);
+
     this._queueAuthoredReinforcements(encounter, state);
     const commands = Array.isArray(encounter.commands) ? encounter.commands : [];
     if (commandsOutOfOrder(commands)) commands.sort((a, b) => finiteInt(a && a.seq) - finiteInt(b && b.seq));
@@ -88,6 +159,58 @@ export const aiEncounter = {
       owner.lastAppliedSeq = Math.max(owner.lastAppliedSeq, seq);
     }
     this._spawnDue(owner, state);
+
+    if (AI_ENCOUNTER_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const census = this._censusAiEncounterWork(state, encounter, owner);
+      if (membership != null && !census.busy) {
+        this._aiEncounterQuiet = {
+          membership,
+          armedTick: state.tick | 0,
+          wakeSeq: this._aiEncounterWakeSeq | 0,
+          cmdLen: census.cmdLen,
+          pendingLen: census.pendingLen,
+          nextSeq: census.nextSeq,
+          lastApplied: census.lastApplied,
+        };
+        publishAiEncounterQuiet(state, true);
+      } else {
+        this._aiEncounterQuiet = null;
+        publishAiEncounterQuiet(state, false);
+      }
+    }
+  },
+
+  _wakeAiEncounterQuiet() {
+    this._aiEncounterWakeSeq = (this._aiEncounterWakeSeq | 0) + 1;
+    this._aiEncounterQuiet = null;
+  },
+
+  /** Count unrecalled reinforcement authors + pending spawn/command work. */
+  _censusAiEncounterWork(state, encounter, owner) {
+    let authors = 0;
+    for (const entity of indexedShipLikeScan(state)) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      const data = entity.data;
+      const authored = data && data.reinforcements;
+      if (!authored || !authored.packageId) continue;
+      const ai = data.ai;
+      if (ai && ai._calledReinforcements === true) continue;
+      authors++;
+    }
+    const cmdLen = Array.isArray(encounter.commands) ? encounter.commands.length : 0;
+    const pendingLen = Array.isArray(owner.pendingReinforcements) ? owner.pendingReinforcements.length : 0;
+    const nextSeq = encounter.nextSeq | 0;
+    const lastApplied = owner.lastAppliedSeq | 0;
+    const unapplied = nextSeq - 1 > lastApplied;
+    return {
+      authors,
+      cmdLen,
+      pendingLen,
+      nextSeq,
+      lastApplied,
+      busy: authors > 0 || pendingLen > 0 || unapplied,
+    };
   },
 
   inspect() {
@@ -103,8 +226,11 @@ export const aiEncounter = {
   },
 
   newGame() {
+    this._aiEncounterQuiet = null;
+    this._aiEncounterWakeSeq = 0;
     this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
     ensureOwnerState(this.state);
+    publishAiEncounterQuiet(this.state, false);
   },
 
   _queueAuthoredReinforcements(encounter, state) {
@@ -128,6 +254,11 @@ export const aiEncounter = {
         anchor: Object.freeze({ x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) }),
       });
       encounter.commands.push(command);
+      // Authored pushes share the ports-side ring invariant: this list is walked every tick,
+      // so it must stay bounded no matter which producer grows it.
+      if (encounter.commands.length > ENCOUNTER_COMMAND_RING_CAPACITY) {
+        encounter.commands.splice(0, encounter.commands.length - ENCOUNTER_COMMAND_RING_CAPACITY);
+      }
       ai._calledReinforcements = true;
       emit(this.bus, 'ai:encounterCommand', command);
       emit(this.bus, 'alert', {
@@ -219,6 +350,10 @@ export const aiEncounter = {
     if (typeof helper !== 'function') return;
     const budget = this.helpers && this.helpers.spawnBudget;
     const keep = [];
+    // Commit the survivors even when a spawn throws: without the finally a thrown helper leaves
+    // already-spawned members in the pending array, so the next tick re-spawns duplicates and
+    // leaks their budget grants.
+    try {
     for (const pending of owner.pendingReinforcements) {
       if (finiteInt(pending.dueTick) > finiteInt(state.tick)) {
         keep.push(pending);
@@ -265,6 +400,7 @@ export const aiEncounter = {
         owner: 'sg06',
         commandSeq: pending.commandSeq,
         packageId: pending.packageId,
+        callerId: pending.callerId == null ? null : pending.callerId,
       };
       let entity;
       try {
@@ -279,6 +415,15 @@ export const aiEncounter = {
       }
       if (budgeted && typeof budget.bindEntity === 'function') {
         budget.bindEntity(entity.id, pending.squadId);
+      }
+      // Persisted proof the call produced arrivals: the caller's latch survives saves while the
+      // pending queue is transient, so load reconciliation needs this to tell "squad arrived"
+      // from "squad lost to the rebuild" (caller re-calls then).
+      const caller = pending.callerId == null || !state.entities || typeof state.entities.get !== 'function'
+        ? null : state.entities.get(pending.callerId);
+      if (caller && caller.data) {
+        caller.data.ai = caller.data.ai || {};
+        caller.data.ai._reinforcementsDelivered = true;
       }
       const record = {
         commandSeq: pending.commandSeq,
@@ -301,7 +446,9 @@ export const aiEncounter = {
         emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
       }
     }
-    owner.pendingReinforcements = keep;
+    } finally {
+      owner.pendingReinforcements = keep;
+    }
   },
 
 };

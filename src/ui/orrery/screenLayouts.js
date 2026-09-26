@@ -764,11 +764,11 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 /* the pilot's choices on the left (name, difficulty, seed, then LAUNCH under them); the hull's choice,
    its numbers and the run it opens are one instrument on the right, round the hull */
 #screens .k-screen.orr-newgame { grid-template-columns:clamp(340px, 25vw, 470px) minmax(0, 1fr) !important;
-  grid-template-rows:auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-rows:auto minmax(0, 1fr) auto auto auto !important;
   grid-template-areas:"title stage" "hang stage" "foot stage" "note stage" ". stage" !important;
   column-gap:clamp(40px, 4.4vw, 104px) !important; row-gap:clamp(16px, 2.6vh, 34px) !important; }
 #screens .orr-newgame > .sf-ng-header { grid-area:title !important; }
-#screens .orr-newgame > .sf-ng-body { grid-area:hang !important; overflow:visible !important; min-height:0; }
+#screens .orr-newgame > .sf-ng-body { grid-area:hang !important; overflow-y:auto !important; overflow-x:hidden !important; min-height:0; }
 #screens .orr-newgame > .sf-ng-footer { grid-area:foot !important; justify-content:flex-start !important; gap:32px !important; margin:0 !important; }
 #screens .orr-newgame > .k-fine { position:static !important; grid-area:note !important; max-width:420px !important; margin:0 !important; inset:auto !important; }
 #screens .orr-newgame > .k-stage { grid-area:stage !important; position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; }
@@ -882,6 +882,36 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 #screens .orr-newgame .orr-ng-input:focus { background-size:100% 2px !important; }
 /* the difficulty dial in the form column */
 #screens .orr-newgame .orr-stoparc { margin:6px 0 0 !important; max-width:100%; }
+
+/* ================================ NEW GAME r5 ================================================== */
+/* both field rules with the same body */
+#screens .orr-newgame .orr-ng-input { background-size:100% 2px !important; }
+#screens .orr-newgame .orr-ng-input:focus { background-size:100% 2.5px !important; }
+/* the rear hull names read at bone .66 (they are choices, not captions) */
+#screens .orr-newgame .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { color:rgb(232 226 212 / .7) !important; }
+#screens .orr-newgame .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { color:rgb(232 226 212 / .62) !important; }
+/* a large screen: the form column scales with the stage so the columns keep their proportion */
+@media (min-width:2200px) and (min-height:1200px) {
+  #screens .orr-newgame > :is(.sf-ng-header, .sf-ng-body, .sf-ng-footer, .k-fine) { zoom:1.3; }
+  /* the stage's own words scale with the form: the hull's sentence, its loadout and the run's tape */
+  #screens .orr-newgame .orr-ng-caption > :is(.k-sentence, .sf-ng-route), #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { zoom:1.3; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__num { font-size:32px; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__num tspan { font-size:13px; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__label { font-size:12px; }
+  #screens .orr-newgame .orr-yard > .orr-turntable__row > li .k-word { font-size:19px !important; }
+  #screens .orr-newgame .orr-yard > .orr-turntable__row > li .k-word-sub { font-size:12px !important; }
+}
+/* the launch beat: on LAUNCH the run's four beads light in sequence (it plays while the run boots) */
+/* the beads' rest look is !important (it must beat the kit), and an animation cannot override !important:
+   the lit look is set !important under .is-launching and TRANSITIONS in, each bead a beat after the last */
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { background:rgb(252 249 240) !important;
+  box-shadow:0 0 0 2px rgb(252 249 240), 0 0 14px 3px rgb(255 240 214 / .55) !important; transition:background 240ms ease-out, box-shadow 240ms ease-out; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(2)::before { transition-delay:140ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(3)::before { transition-delay:280ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(4)::before { transition-delay:420ms; }
+html.sf-reduce-motion #screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { transition:none; }
+/* no lone word on the last line of the hull's sentence (1280 left "way." alone) */
+#screens .orr-newgame .orr-ng-caption > .k-sentence { text-wrap:pretty; }
 
 `;
 

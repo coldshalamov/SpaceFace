@@ -604,9 +604,9 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.tick();
 }
 
-// The mouse serves TWO distinct pointing verbs and both must survive a refactor: an absolute
-// software cursor in ordinary flight, and relative gesture motion for draw-to-fly. The second
-// one has no keyboard or pad equivalent, so if the mousemove path is dropped it is simply gone.
+// The mouse serves TWO distinct pointing verbs: absolute weapon aim in ordinary flight and,
+// under G, a relative bounded combat stick. G keeps the pointer centered while displacement moves
+// autoTargetVector; no persistent path geometry is authored.
 {
   const s = newSession();
   s.tick();
@@ -621,16 +621,21 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.state.input.autoFire = true;
   s.tick();
   checkEqual(s.state.input.autoTargetPath.points.length, 0,
-    'entering draw-to-fly clears any stale gesture path');
-  for (let i = 0; i < 6; i += 1) {
+    'entering combat-stick mode clears stale draw-path geometry');
+  // The harness emits movementX/Y=1 per move. Cross the authored 10 px deadzone deliberately;
+  // sub-deadzone tremor is supposed to remain neutral.
+  for (let i = 0; i < 18; i += 1) {
     s.dom.move(300 + i * 12, 220 + i * 9);
     s.tick();
   }
-  check(s.state.input.autoTargetPath.active && s.state.input.autoTargetPath.drawing
-    && s.state.input.autoTargetPath.points.length > 0,
-    'relative mouse motion records the draw-to-fly gesture path');
-  check(s.state.input.pointerScreen.x !== 300,
-    'draw-to-fly re-centres the software pointer instead of letting the cursor escape');
+  check(s.state.input.autoTargetVector.active
+    && Math.hypot(s.state.input.autoTargetVector.screenX, s.state.input.autoTargetVector.screenY) <= 1.0001,
+    'relative mouse motion publishes a bounded dynamic combat-stick vector');
+  checkEqual(s.state.input.autoTargetPath.active, false,
+    'dynamic combat-stick motion must not revive persistent path following');
+  check(Math.abs(s.state.input.pointerScreen.x - 640) < 1
+    && Math.abs(s.state.input.pointerScreen.y - 400) < 1,
+    'combat-stick mode re-centres the software pointer instead of letting the cursor escape');
 }
 
 // Controller parity for the accepted PQ-007 contract: explicit toggle, then a clutchable direct
@@ -658,7 +663,7 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   const directVector = { ...s.state.input.autoTargetVector };
   autoTargetAssist.update(1 / 60, s.state);
   check(directVector.active && directVector.worldX > 0.5 && directVector.worldZ > 0.2,
-    'right stick publishes an active world-space draw-to-fly vector only while held');
+    'right stick publishes an active world-space combat-stick vector only while held');
   check(Math.abs(s.state.input.turnIntent) > 0.05 || Math.abs(s.state.input.moveX) > 0.05,
     'auto-target owner consumes the held controller vector as direct flight intent');
 
@@ -673,9 +678,9 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   checkEqual(s.state.input.autoTargetVector.active, false,
     'releasing the right stick clutches draw-to-fly out immediately');
   checkEqual(s.state.input.turnIntent, ordinaryTurn,
-    'released draw-to-fly does not replace ordinary left-stick steering');
+    'released combat stick does not replace ordinary left-stick steering');
   checkEqual(s.state.input.moveZ, ordinaryThrust,
-    'released draw-to-fly does not replace ordinary left-stick thrust');
+    'released combat stick does not replace ordinary left-stick thrust');
   autoTargetAssist.destroy();
 }
 

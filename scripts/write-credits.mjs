@@ -68,7 +68,8 @@ const oflText = readLicenseText(path.join(ROOT, 'styles', 'fonts')).trim()
 const fontFiles = readdirSync(path.join(ROOT, 'styles', 'fonts')).filter((f) => /\.woff2$/i.test(f));
 const has = (prefix) => fontFiles.some((f) => f.startsWith(prefix));
 const type = [
-  has('bricolage-grotesque') && { name: 'Bricolage Grotesque', author: 'Mathieu Triay', license: 'OFL 1.1', role: 'display face' },
+  has('archivo') && { name: 'Archivo', author: 'Omnibus-Type', license: 'OFL 1.1', role: 'display face, labels and numerals' },
+  has('bricolage-grotesque') && { name: 'Bricolage Grotesque', author: 'Mathieu Triay', license: 'OFL 1.1', role: 'secondary display face' },
   has('instrument-sans') && { name: 'Instrument Sans', author: 'Instrument', license: 'OFL 1.1', role: 'text face' },
   has('spline-sans-mono') && { name: 'Spline Sans Mono', author: 'Eben Sorkin, Mirko Velimirović', license: 'OFL 1.1', role: 'Asteroid Works numerals' },
   has('plex-sans') && { name: 'IBM Plex Sans', author: 'IBM', license: 'OFL 1.1', role: 'legacy instrument face' },

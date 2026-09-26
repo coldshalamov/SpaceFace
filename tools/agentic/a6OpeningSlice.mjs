@@ -60,7 +60,8 @@ const WATCHED_EVENTS = [
   'law:responseDeferred', 'law:distressRaised', 'heat:changed',
   'massline:releaseCommitted', 'massline:releaseCancelled', 'tether:latchDenied',
   'massline:tangentMeeting', 'massline:throw', 'economy:grantCredits', 'combat:fire',
-  'economy:cargoSold', 'mission:failed', 'encounter:resolved',
+  'economy:cargoSold', 'mission:failed', 'encounter:resolved', 'salvage:completed',
+  'pickup:collected', 'world:playerRelocated',
 ];
 
 /** Live law responders: incident-assigned plus anything already running enforcement AI. */
@@ -105,6 +106,15 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
   const events = [];
   for (const ev of WATCHED_EVENTS) bus.on(ev, (p) => events.push({ t: state.simTime, ev, p }));
+  // Full-fidelity tap for the position-jump hunt: record every emission verbatim so the
+  // teleport cause can't hide behind the watch list. Verbose-only so the fixture stays lean.
+  if (verbose) {
+    const origEmit = bus.emit.bind(bus);
+    bus.emit = (name, payload) => {
+      events.push({ t: state.simTime, ev: `*${name}`, p: payload });
+      return origEmit(name, payload);
+    };
+  }
 
   // boot to flight — the same new-game route as the live default
   state.mode = 'flight';
@@ -137,9 +147,19 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
   // ---- helpers ---------------------------------------------------------------
   const shipsNear = (r) => (state.entityList || []).filter(e =>
-    e && e.alive !== false && e.type === 'ship' && e.id !== playerId && dist(e.pos, player.pos) < r);
+    e && e.alive !== false && e.type === 'ship' && e.id !== playerId && e.pos && dist(e.pos, player.pos) < r);
+  // Law responders are cover, not targets: every patrol answer comes in on team 1
+  // with no friendly marker, so the raw team check would count the rescue as a
+  // threat — the pilot could shoot the law (assault -> wanted heat -> warrant
+  // hunter -> dock fine) and the "pocket clear" test could never empty. A law hull
+  // only counts hostile when it has genuinely turned on the player: a warrant
+  // hunter, or a responder assigned the player as its security target.
+  let lawIds = new Set();
   const isHostileToPlayer = (e) => {
-    const host = e.data && e.data.ai && e.data.ai.hostile;
+    const ai = e.data && e.data.ai;
+    if (ai && (ai.motive === 'wanted_warrant' || ai.securityTargetId === playerId)) return true;
+    if (lawIds.has(e.id)) return false;
+    const host = ai && ai.hostile;
     return host === true || (e.team != null && e.team !== player.team && e.team !== 2 && e.team !== 0);
   };
   const raiders = () => shipsNear(3000).filter(e =>
@@ -247,9 +267,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     const deny = resolveDockDeny(state, STATION);
     if (deny) return false;
     clearAutopilot();
+    state.ui.docked = true; state.ui.dockedStationId = STATION;
     bus.emit('dock:attempt', { stationId: STATION });
     bus.emit('dock:docked', { stationId: STATION });
-    state.ui.docked = true; state.ui.dockedStationId = STATION;
     beat('dock', { hot: true });
     return true;
   }
@@ -260,13 +280,15 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   let phase = 'wait_raid';
   let lastPhase = phase;
   let payloadId = null, haulerId = null, swingStart = null, armPressedAt = null, throwTries = 0;
-  let docked = false, bought = false, collectTargetId = null, resumePhase = null;
+  let docked = false, bought = false, collectTargetId = null, resumePhase = null, lastPos = null;
+  let lastFrameOrigin = null, lastAct = null, sweepCovered = false;
   let killPos = null, expectedVictimId = null, releasedAt = null;
   let phaseStart = state.simTime;
 
   const MAX_TICKS = Math.round(maxSimSeconds * 60);
   for (let i = 0; i < MAX_TICKS && phase !== 'done'; i++) {
     const t = state.simTime;
+    lawIds = new Set(lawResponders(state).map(e => e.id));
     masslineIdle();
     input.fire = false;
     input.actions.throwArm = false;
@@ -279,6 +301,43 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
     if (phase !== lastPhase) { log(`  -> phase ${lastPhase} => ${phase} t=${t.toFixed(1)}`); lastPhase = phase; }
 
+    // frame-origin watch: entity.pos = frameOrigin + bodyLocal, so a runaway origin
+    // reads as a teleport. The origin is derived from the player pos — a shift should
+    // never outrun the hull by more than the 4096 quantum.
+    const fo = state.world && state.world.frameOrigin;
+    if (fo && lastFrameOrigin && (fo.x !== lastFrameOrigin.x || fo.z !== lastFrameOrigin.z)) {
+      log(`  FRAME ORIGIN t=${t.toFixed(1)} (${lastFrameOrigin.x},${lastFrameOrigin.z}) -> (${fo.x},${fo.z}) seq=${state.world.frameOriginSeq} player=(${player.pos.x.toFixed(0)},${player.pos.z.toFixed(0)})`);
+    }
+    lastFrameOrigin = fo ? { x: fo.x, z: fo.z } : lastFrameOrigin;
+
+    // activity-stamp watch: catchUpEntity fires on a non-exact -> exact promotion and
+    // adds vel * (simTime - lastExactT) on top of the live-synced pos — a stale stamp
+    // reads as a velocity-preserving teleport. Log the player's stamp transitions.
+    const act = player.activity;
+    if (act && lastAct
+      && (act.simTier !== lastAct.simTier
+        || act.lastExactT < lastAct.lastExactT - 1e-4
+        || act.lastExactT > lastAct.lastExactT + 1
+        || act.graceUntilT !== lastAct.graceUntilT)) {
+      log(`  ACT STAMP t=${t.toFixed(1)} tier=${lastAct.simTier}->${act.simTier} lastExactT=${lastAct.lastExactT}->${act.lastExactT} grace=${act.graceUntilT} simT=${t.toFixed(3)}`);
+    }
+    if (act) lastAct = { simTier: act.simTier, lastExactT: act.lastExactT, graceUntilT: act.graceUntilT };
+
+    // ejection watch: a teleport-scale position jump means something threw the hull —
+    // catch the tick it happens and who was nearby.
+    if (lastPos && dist(player.pos, lastPos) > 300) {
+      log(`  !!POSITION JUMP t=${t.toFixed(1)} (${lastPos.x.toFixed(0)},${lastPos.z.toFixed(0)}) -> (${player.pos.x.toFixed(0)},${player.pos.z.toFixed(0)}) v=${Math.hypot(player.vel?.x || 0, player.vel?.z || 0).toFixed(0)} phase=${phase} sector=${state.world && state.world.currentSectorId} mode=${state.mode} docked=${!!(state.ui && state.ui.docked)} auto=${JSON.stringify(state.nav && state.nav.autopilot && state.nav.autopilot.target)}`);
+      for (const e of events.slice(-20)) {
+        let ps = '';
+        try { ps = e.p ? JSON.stringify(e.p).slice(0, 200) : ''; } catch (_) { ps = '[unserializable]'; }
+        log(`    evt ${e.t.toFixed(2)} ${e.ev} ${ps}`);
+      }
+      const near = (state.entityList || []).filter(e => e && e.id !== playerId && e.pos && dist(e.pos, player.pos) < 800)
+        .map(e => `${e.id}:${e.type}@${dist(e.pos, player.pos).toFixed(0)}`);
+      log(`    near(after): ${JSON.stringify(near.slice(0, 30))}`);
+    }
+    lastPos = { x: player.pos.x, z: player.pos.z };
+
     // patrol-in-frame is an OBSERVATION beat, not a phase: the raid's hostile_fire incidents
     // already dispatched responders that are fighting around us. Log it the first tick one
     // sits inside the composed chase frame — checked every tick so loiter phases see it.
@@ -290,6 +349,34 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         const focus = resolveChaseComposition(state, player, player.pos, { followZoom: 72 });
         const cam = camForFocus(focus, focus.minZoom || 72);
         if (responders.some(e => inFrame(cam, e.pos))) beat('patrol_in_frame', { responders: responders.length });
+      }
+    }
+
+    // collect is an observation beat too: the magnet banks chips during ANY phase — a
+    // defend joust still sweeps pods in passing — so gating the beat on the collect
+    // phase was what stranded it inside the defend<->collect joust loop.
+    if (player.alive !== false
+      && !beats.some(b => b.name === 'collect')
+      && beats.some(b => b.name === 'throw_kill')) {
+      const tk = beats.find(b => b.name === 'throw_kill').t;
+      const got = events.some(e => {
+        // same-tick events share simTime with the beat — >= admits them; a scoop
+        // during the swing (before the kill lands) must not bank the beat.
+        if (!(e.t >= tk)) return false;
+        if (e.ev === 'pickup:collected') {
+          // only the player's own scoop counts — a raider securing a custody pod
+          // emits the same event, and rejected scoops emit it with acceptedAmount 0.
+          const p = e.p || {};
+          if (p.collectorId != null && String(p.collectorId) !== String(playerId)) return false;
+          if (p.acceptedAmount != null && !(p.acceptedAmount > 0)) return false;
+          return true;
+        }
+        return e.ev === 'loot:collected' || e.ev === 'cargo:itemAdded'
+          || e.ev === 'cargo:changed' || e.ev === 'salvage:completed';
+      });
+      if (got) {
+        beat('collect', {});
+        if (phase === 'collect') { phase = 'collect2'; phaseStart = t; continue; }
       }
     }
 
@@ -333,6 +420,8 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         log('payload', payloadId, 'hauler', haulerId, 'raider dist', dist(byMass[0].pos, player.pos).toFixed(0));
         phase = 'latch'; phaseStart = t;
       }
+      // the day-0 guarantee is [60,170]s; a silent no_budget waits 14 min otherwise
+      if (t - phaseStart > 240) { log('raid never fired'); phase = 'fail_raid'; break; }
     } else if (phase === 'latch') {
       let target = payloadId != null ? state.entities.get(payloadId) : null;
       if (!target || target.alive === false) {
@@ -361,16 +450,63 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       if (t - phaseStart > 30) { log('latch window missed'); phase = 'fail_latch'; break; }
     } else if (phase === 'swing' || phase === 'release') {
       const payload = state.entities.get(payloadId);
-      if (!payload || payload.alive === false) { phase = 'post_throw'; phaseStart = t; continue; }
+      if (!payload || payload.alive === false) {
+        // 'the throw kills whoever the ray crossed first' — including the payload
+        // on a rock. A tethered hull that dies at swing speed is still the throw
+        // doing the killing; count it instead of waiting for a release that
+        // can never come now that the line's target is gone.
+        // Terrain slams attribute to the victim itself; whip/meeting kills attribute to the
+        // player. A shooter's bullet is not the throw — never credit weapons fire.
+        const kill = events.slice().reverse().find(e => e.ev === 'entity:killed' && e.p
+          && e.p.id === payloadId && t - e.t <= 3
+          && (e.p.killerId == null || e.p.killerId === payloadId || e.p.killerId === playerId));
+        if (kill) {
+          log(`  mid-swing kill t=${t.toFixed(1)}: payload ${payloadId} died on the line (killer=${kill.p.killerId})`);
+          beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId, via: 'mid_swing' });
+          killPos = kill.p.pos || (payload ? { ...payload.pos } : null);
+          phase = 'collect'; phaseStart = t; continue;
+        }
+        log(`  swing end t=${t.toFixed(1)}: payload ${payloadId} dead/absent alive=${payload && payload.alive}`);
+        for (const e of events.slice(-12)) log(`    ${e.t.toFixed(2)} ${e.ev} ${e.p ? JSON.stringify(e.p).slice(0, 200) : ''}`);
+        if (releasedAt == null) {
+          payloadId = null; armPressedAt = null; swingStart = null; expectedVictimId = null;
+          phase = 'latch';
+        } else { phase = 'post_throw'; }
+        phaseStart = t; continue;
+      }
       const tether = state.player.tether;
-      if (!tether || !tether.active || tether.targetId !== payloadId) { phase = 'post_throw'; phaseStart = t; continue; }
+      if (!tether || !tether.active || tether.targetId !== payloadId) {
+        const why = events.slice().reverse().find(e => /tether:/.test(e.ev));
+        log(`  swing end t=${t.toFixed(1)}: tether=${tether ? `${tether.phase} active=${tether.active} target=${tether.targetId} strain=${Number(tether.strain).toFixed(2)}` : 'none'} last=${why ? `${why.ev}@${why.t.toFixed(1)} ${JSON.stringify(why.p)}` : 'none'}`);
+        phase = 'post_throw'; phaseStart = t; continue;
+      }
       input.tetherMode = null;
       const aim = throwAimTarget();
       if (aim) {
         input.aimWorld = { x: aim.pos.x, z: aim.pos.z };
         input.aimIntentActive = true;
         state.player.targetId = aim.id;
-        steerTo(aim, { arrivalRadius: 120 }); // the throw's reach is short
+      }
+      // Never steer INTO the aim during the swing: in the starter field the nearest heavy
+      // body is usually a rock, and dragging the shortening arc across its face kills the
+      // payload on terrain (self-attributed — no kill burst) before the meeting develops.
+      // A player keeps the arc clear instead: put distance between the hull and the
+      // nearest rock face, hauling the tethered payload toward open space.
+      if (phase === 'swing') {
+        let rock = null, rd = Infinity;
+        for (const e of state.entityList || []) {
+          if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+          const d = dist(e.pos, player.pos);
+          if (d < rd) { rd = d; rock = e; }
+        }
+        if (rock && rd < 520) {
+          const ax = (player.pos.x - rock.pos.x) / (rd || 1), az = (player.pos.z - rock.pos.z) / (rd || 1);
+          steerTo({ pos: { x: player.pos.x + ax * 900, z: player.pos.z + az * 900 } }, { arrivalRadius: 60 });
+        } else {
+          clearAutopilot();
+        }
+      } else {
+        clearAutopilot();
       }
       const kin = payload.vel || {};
       // short line = fast orbit; pump builds the swing
@@ -379,7 +515,10 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       const rvx = (kin.x || 0) - (player.vel.x || 0), rvz = (kin.z || 0) - (player.vel.z || 0);
       const tangential = rvx * (-rz / rl) + rvz * (rx / rl);
       const orbitSign = tangential >= 0 ? 1 : -1;
-      masslineCmd({ lineControl: true, reelIn: 1, orbitDirection: orbitSign, pump: true });
+      // lineLength is the reel axis the control law reads (negative = haul in); reelIn is dead
+      // weight — the swing used to run the full latch distance out on a wide arc and the payload
+      // could slam a field rock before the meeting geometry developed.
+      masslineCmd({ lineControl: true, lineLength: -1, orbitDirection: orbitSign, pump: true });
       if (swingStart == null) swingStart = t;
       // the designed throw: a taut tangential release whips the lighter hull into the
       // player's ship with player attribution (masslineThrow._commitTangentMeeting).
@@ -414,13 +553,19 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       }
     } else if (phase === 'post_throw') {
       if (releasedAt == null) {
-        const rel = events.slice().reverse().find(e => e.ev === 'tether:released' && e.p && e.p.targetId === payloadId);
+        // a break is a release too — the payload leaves the line with whatever
+        // the swing gave it, and the kill window should follow it ballistically.
+        const rel = events.slice().reverse().find(e => (e.ev === 'tether:released' || e.ev === 'tether:broken')
+          && e.p && e.p.targetId === payloadId);
         if (rel) releasedAt = rel.t;
       }
       const payload = state.entities.get(payloadId);
-      // the throw kills whoever the ray crossed first — the payload on a rock, or the victim
+      // the throw kills whoever the ray crossed first — the payload on a rock, or the victim.
+      // same attribution guard as the mid-swing scan: terrain (self) and whip (player) kills
+      // count; a stray bullet's kill does not.
       const kill = events.find(e => e.ev === 'entity:killed' && e.p && releasedAt != null && e.t >= releasedAt - 0.5 && e.t <= releasedAt + 12
-        && (e.p.id === payloadId || e.p.id === expectedVictimId));
+        && (e.p.id === payloadId || e.p.id === expectedVictimId)
+        && (e.p.killerId == null || e.p.killerId === payloadId || e.p.killerId === playerId));
       if (kill) {
         beat('throw_kill', { victim: kill.p.id, expected: expectedVictimId, killerId: kill.p.killerId });
         killPos = kill.p.pos || (payload ? { ...payload.pos } : null);
@@ -433,43 +578,115 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         else { phase = 'fail_no_kill'; break; }
       } else if (t - phaseStart > 20) {
         const tether = state.player.tether;
-        if (tether && tether.active && tether.targetId === payloadId) { armPressedAt = null; swingStart = null; phase = 'swing'; phaseStart = t; }
+        armPressedAt = null; swingStart = null; releasedAt = null;
+        if (tether && tether.active && tether.targetId === payloadId) { phase = 'swing'; phaseStart = t; }
         else { phase = 'latch'; phaseStart = t; }
       }
     } else if (phase === 'collect' || phase === 'collect2') {
-      // hoover every collectible in reach — salvage wrecks, credit chips, custody pods.
-      // salvage bodies are dead entities, so the alive check doesn't apply to them.
+      // banked-but-returned: the collect beat can land inside defend; on resume this
+      // phase re-enters with a fresh timer — promote instead of letting the timer
+      // report fail_collect on an already-earned beat.
+      if (phase === 'collect' && beats.some(b => b.name === 'collect')) {
+        phase = 'collect2'; phaseStart = t; continue;
+      }
+      // hoover every collectible in reach — salvage wrecks, credit chips. salvage
+      // bodies are dead entities, so the alive check doesn't apply to them.
+      // Two filters a real pilot applies without thinking:
+      //  - VALUE: a bare markerId/empty payload husk carries nothing — never chase it.
+      //  - OWNERSHIP: a jettisoned/manifest pod whose owner isn't us is cargo theft;
+      //    lawSecurity reports payload_theft on collection, and the wanted heat buys
+      //    a clearance fine at dock plus a warrant hunter on our tail.
+      // Honest limit: the magnet homes every pickup within ~800 u regardless of the
+      // steering filter, so a hot pod in the kill site's spray can still be scooped
+      // in passing — that is the design's authored theft option, not a driver bug.
+      const podOwner = (e) => {
+        const d = e.data || {};
+        const v = d.ownerId ?? e.ownerId ?? (d.ownership && d.ownership.ownerId)
+          ?? (d.cargoIdentity && d.cargoIdentity.ownerId);
+        return v == null || v === '' ? null : String(v);
+      };
+      const isTheft = (e) => {
+        const d = e.data || {};
+        // freight custody pods don't carry payloadType — the annotation object does.
+        // Pods spilled off a lawful carrier stay the carrier's property (theft);
+        // pods a raider stole and died holding are the law's free loot — the theft
+        // report explicitly skips hostile_raider respills.
+        const fcp = d.freightCustodyPod;
+        if (fcp) return fcp.custodySourceKind !== 'hostile_raider';
+        const pt = d.payloadType;
+        if (pt !== 'jettisoned_cargo' && pt !== 'civilian_manifest') return false;
+        const owner = podOwner(e);
+        return owner != null && owner !== String(playerId);
+      };
+      const hasValue = (e) => {
+        const d = e.data;
+        return (d.amount || 0) > 0
+          || (d.salvagePool && Object.keys(d.salvagePool).length > 0)
+          || !!d.freightCustodyPod
+          || !!d.lootShard;
+      };
       const pickups = (state.entityList || []).filter(e => e && e.id !== playerId
         && (e.type === 'payload' || e.type === 'loot' || e.type === 'pickup' || e.type === 'debris' || e.type === 'wreck')
-        && (e.data && (e.data.salvagePool || e.data.markerId || e.data.lootShard || e.data.pickup || e.data.freightCustodyPod || e.data.amount > 0))
+        && e.data && hasValue(e) && !isTheft(e)
         && dist(e.pos, player.pos) < 3000);
-      // prefer the nearest thing; pods coast away so grab them while they're close
-      pickups.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
+      // Kite-sweep: under fire a pilot doesn't park on a pod — it keeps moving on the
+      // escape bearing toward the station/law and hoovers what lies along that line.
+      // Nearest-first when the pocket is quiet; station-ward bias while pressed.
+      const pressed = (state.entityList || []).filter(e => e && e.alive !== false && e.id !== playerId
+        && e.type === 'ship' && e.pos && dist(e.pos, player.pos) < 900 && isHostileToPlayer(e));
+      pressed.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
+      const station = helios();
+      const covered = beats.some(b => b.name === 'patrol_in_frame');
+      if (pressed.length && station && !covered) {
+        const sx = station.pos.x - player.pos.x, sz = station.pos.z - player.pos.z;
+        const sl = Math.hypot(sx, sz) || 1;
+        const score = (e) => {
+          const ex = e.pos.x - player.pos.x, ez = e.pos.z - player.pos.z;
+          const along = (ex * sx + ez * sz) / (sl * (Math.hypot(ex, ez) || 1));
+          return dist(e.pos, player.pos) - along * 600;
+        };
+        pickups.sort((a, b) => score(a) - score(b));
+      } else {
+        pickups.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
+      }
       collectTargetId = pickups.length ? pickups[0].id : null;
-      if (phase === 'collect') {
-        const got = events.some(e => (e.ev === 'loot:collected' || e.ev === 'cargo:itemAdded' || e.ev === 'cargo:changed' || e.ev === 'salvage:completed') && e.t >= beats[beats.length - 1].t - 0.5);
-        // the beat only needs the first collect; keep sweeping the field for the Drive stake
-        if (got) { beat('collect', {}); phase = 'collect2'; phaseStart = t; continue; }
+      // Point-blank or dying means stop sweeping and run for the law outright;
+      // anything short of that, the magnet can keep working while we move.
+      // With the patrol in frame a bail returns to survive_patrol — it holds under
+      // cover until the pocket clears, then grants the one covered sweep; only once
+      // that sweep is spent does a bail go straight to the dock run.
+      const bailTo = (beats.some(b => b.name === 'patrol_in_frame') && sweepCovered)
+        ? 'fly_dock' : 'survive_patrol';
+      if (phase === 'collect2' && pressed.length
+        && (dist(pressed[0].pos, player.pos) < 280 || (player.hull || 0) < 60)) {
+        input.fireGroup = 0;
+        phase = bailTo; phaseStart = t; continue;
       }
       const tgt = collectTargetId != null ? state.entities.get(collectTargetId) : null;
       if (tgt && tgt.pos) {
         const d = steerTo(tgt, { arrivalRadius: 40 });
-        if (d < 220) {
-          // sit on the pickup with the mining beam — that's how salvage/cargo is collected
+        // the beam only works parked on the target — with a hostile inside 600 u
+        // standing still is how the hull dies; chips still bank on the flyby.
+        const clear = !pressed.length || dist(pressed[0].pos, player.pos) > 600;
+        if (d < 220 && clear) {
           input.aimAngle = Math.atan2(tgt.pos.z - player.pos.z, tgt.pos.x - player.pos.x);
           input.fireGroup = 2;
         } else {
           input.fireGroup = 0;
         }
-        if (i % 60 === 0) log(`  ${phase} dbg t=${t.toFixed(1)} tgt=${tgt.id}:${tgt.type} d=${d.toFixed(0)} n=${pickups.length} cargo=${JSON.stringify(state.player.cargo && state.player.cargo.items)}`);
+        if (i % 60 === 0) {
+          const valued = pickups.map(e => `${e.id}:${e.type} amt=${e.data && e.data.amount || 0} pod=${e.data && e.data.freightCustodyPod ? 'y' : 'n'} pool=${e.data && e.data.salvagePool ? Object.keys(e.data.salvagePool).length : 0}`);
+          log(`  ${phase} dbg t=${t.toFixed(1)} tgt=${tgt.id}:${tgt.type} d=${d.toFixed(0)} n=${pickups.length} cargo=${JSON.stringify(state.player.cargo && state.player.cargo.items)} credits=${state.player.credits}`);
+          for (const v of valued.slice(0, 10)) log(`    ${v}`);
+        }
       } else {
         // nothing left in reach — move on
         input.fireGroup = 0;
-        if (phase === 'collect2') { phase = 'survive_patrol'; phaseStart = t; continue; }
+        if (phase === 'collect2') { phase = bailTo; phaseStart = t; continue; }
         if (killPos) steerTo(killPos, { arrivalRadius: 10 });
       }
       if (t - phaseStart > (phase === 'collect2' ? 90 : 60)) {
-        if (phase === 'collect2') { input.fireGroup = 0; phase = 'survive_patrol'; phaseStart = t; continue; }
+        if (phase === 'collect2') { input.fireGroup = 0; phase = bailTo; phaseStart = t; continue; }
         const near = (state.entityList || []).filter(e => e && e.alive !== false && e.id !== playerId && dist(e.pos, killPos || player.pos) < 2000)
           .map(e => `${e.id}:${e.type}@${dist(e.pos, killPos || player.pos).toFixed(0)}`);
         log('nothing collectible arrived; near kill:', JSON.stringify(near.slice(0, 40)));
@@ -480,21 +697,47 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       // responders are en route or fighting. Run toward their cover and shoot back at
       // whatever is chasing; the Hitch loses every joust above a Wasp.
       const responders = lawResponders(state);
-      // the observation block above logs the beat — once it lands, the dock run is next
-      if (beats.some(b => b.name === 'patrol_in_frame')) {
+      // the observation block above logs the beat. Once the law is visibly holding the
+      // pocket, a survivor doesn't dock empty — but it doesn't sweep into gunfire
+      // either: hold under the responders' cover until the hostiles are cleared (or
+      // the wait runs out), then take ONE covered sweep through the aftermath —
+      // chips on the flyby, wrecks beamed while the guns are quiet — and dock.
+      // sweepCovered makes the reprieve one-shot.
+      const patrolBeat = beats.find(b => b.name === 'patrol_in_frame');
+      if (patrolBeat) {
         input.fire = false; input.fireGroup = 0;
-        phase = 'fly_dock'; phaseStart = t; continue;
+        const remaining = (state.entityList || []).filter(e => e && e.alive !== false && e.id !== playerId
+          && e.type === 'ship' && e.pos && dist(e.pos, player.pos) < 1500 && isHostileToPlayer(e));
+        if (remaining.length === 0 && !sweepCovered) {
+          sweepCovered = true; phase = 'collect2'; phaseStart = t; continue;
+        }
+        if (sweepCovered || t - patrolBeat.t > 150) { phase = 'fly_dock'; phaseStart = t; continue; }
+        // hostiles still on the field — hold with the law and let their guns finish it
       }
       responders.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
-      const dest = responders[0] || helios();
-      if (dest) steerTo(dest, { arrivalRadius: 60 });
-      // defensive fire at the closest pursuer while running
+      const cover = responders[0] || helios();
       const threats = (state.entityList || []).filter(e => e && e.alive !== false && e.id !== playerId
         && e.type === 'ship' && e.pos && dist(e.pos, player.pos) < 450 && isHostileToPlayer(e));
       threats.sort((a, b) => dist(a.pos, player.pos) - dist(b.pos, player.pos));
+      if (cover && patrolBeat && threats.length) {
+        // kite the cover, don't park on it: anchor on the far side of the nearest
+        // responder from the closest threat so pursuit carries the hostile through
+        // the law's firing line — a stationary hull next to the law still eats the
+        // hits aimed at it.
+        const dx = cover.pos.x - threats[0].pos.x, dz = cover.pos.z - threats[0].pos.z;
+        const l = Math.hypot(dx, dz) || 1;
+        steerTo({ pos: { x: cover.pos.x + (dx / l) * 380, z: cover.pos.z + (dz / l) * 380 } }, { arrivalRadius: 90 });
+      } else if (cover) {
+        steerTo(cover, { arrivalRadius: cover.type === 'station' ? 60 : 120 });
+      }
       if (threats.length) aimAndFire(threats[0], 450);
       if (i % 90 === 0) log(`  survive dbg t=${t.toFixed(1)} resp=${responders.length} near=${threats.length ? threats[0].id : '-'} hull=${player.hull}`);
-      if (t - phaseStart > 120) { phase = 'crime'; phaseStart = t; continue; }
+      // under a failing hull the wait is a death sentence — summon the patrol early;
+      // once the patrol is already in frame the assault-summon has nothing left to buy
+      // (and only buys a wanted charge) — run the dock instead.
+      if (t - phaseStart > ((player.hull || 0) < 60 ? 25 : 120)) {
+        phase = patrolBeat ? 'fly_dock' : 'crime'; phaseStart = t; continue;
+      }
     } else if (phase === 'defend') {
       // something is shooting us while we loiter — put responder guns between us and the
       // pursuer and return fire; only a failing hull turns it into a real run for the dock
@@ -516,7 +759,16 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       const tgt = threats[0];
       if (tgt && dist(tgt.pos, player.pos) < 450) aimAndFire(tgt, 450);
       if (i % 90 === 0) log(`  defend dbg t=${t.toFixed(1)} tgt=${tgt ? `${tgt.id}:${tgt.data?.defId}` : 'unseen'} left=${threats.length}`);
-      if (t - phaseStart > 60) { phase = resumePhase || 'survive_patrol'; phaseStart = t; }
+      // a dying Hitch stops trading and runs for the law — outnumbered above a Wasp,
+      // jousting the survivors is how the hull reaches zero. Once the collect beat is
+      // banked the sweep is optional income: exiting back to it just re-arms the
+      // self-preservation check into another joust cycle, so run for the law instead.
+      // Before the beat lands, resume the interrupted collection — it is the only
+      // path that lets patrol_in_frame (and so the ordered beat chain) still fire.
+      const collectDone = beats.some(b => b.name === 'collect');
+      const fleeTo = collectDone ? 'survive_patrol' : (resumePhase || 'survive_patrol');
+      if ((player.hull || 0) < 60 && t - phaseStart > 5) { input.fire = false; phase = fleeTo; phaseStart = t; continue; }
+      if (t - phaseStart > 60) { phase = fleeTo; phaseStart = t; }
     } else if (phase === 'crime') {
       // fallback when no raid responder ever enters the frame: one damaging hit on a lawful
       // ship inside the protection ring opens player_assault — the patrol answers the assault
@@ -537,10 +789,11 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       if (!victim) {
         if (i % 90 === 0) log(`  crime dbg t=${t.toFixed(1)} no lawful target near inc=${inc.length}`);
         if (t - phaseStart > 120) { log('no lawful target to assault'); phase = 'fail_crime'; break; }
-        continue;
-      }
+        // no continue here: falling through to runTicks is what lets a trader drift
+        // into range — continuing would freeze simTime and livelock the run.
+      } else {
       // stand OFF the hull — parked inside the victim's disc, shots never register entry
-      const standoff = Math.max(170, (victim.radius || 0) + 130);
+      const standoff = Math.min(220, Math.max(170, (victim.radius || 0) + 130));
       const d = dist(victim.pos, player.pos);
       const ux = d > 1e-3 ? (player.pos.x - victim.pos.x) / d : 1;
       const uz = d > 1e-3 ? (player.pos.z - victim.pos.z) / d : 0;
@@ -552,6 +805,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       input.aimAngle = Math.atan2(victim.pos.z + hv.z * lead - player.pos.z, victim.pos.x + hv.x * lead - player.pos.x);
       input.fireGroup = 1;
       input.fire = d < 235;
+      }
       if (t - phaseStart > 120) { log('could not land a hit on the hauler'); phase = 'fail_crime'; break; }
     } else if (phase === 'await_patrol') {
       // wait for a law responder inside the composed frame (the observation block logs it)
@@ -565,9 +819,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         clearAutopilot();
         const deny = resolveDockDeny(state, STATION);
         if (deny) { log('dock denied:', JSON.stringify(deny)); phase = 'fail_dockdeny'; break; }
+        state.ui.docked = true; state.ui.dockedStationId = STATION;
         bus.emit('dock:attempt', { stationId: STATION });
         bus.emit('dock:docked', { stationId: STATION });
-        state.ui.docked = true; state.ui.dockedStationId = STATION;
         docked = true;
         beat('dock', {});
         phase = 'docked'; phaseStart = t;
@@ -588,6 +842,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           } catch (e) { log('sell err', cid, e.message); }
         }
         log('docked: credits', state.player.credits, 'cargo', JSON.stringify(cargoItems));
+        for (const e of events) if (/^economy:|bounty|custody|reward/.test(e.ev)) log(`    ${e.t.toFixed(1)} ${e.ev} ${JSON.stringify(e.p).slice(0, 220)}`);
         const slots = buildSlotList(SHIPS.find(s => s.id === 'ship_kestrel'));
         const utilIdx = slots.findIndex(s => s.type === 'utility');
         bus.emit('ui:buyModule', { defId: SWING_DRIVE, fitSlotIndex: utilIdx });

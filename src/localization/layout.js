@@ -57,7 +57,9 @@ export function classifyKey(key, message = '') {
   if (HUD_KEY_RE.test(k)) {
     if (k.includes('.attr.aria')) return 'hud-aria';
     if (k.includes('field.body') || long) return 'hud-body';
-    if (k.includes('field.title') || k.includes('dom.textcontent')) return 'hud-label';
+    if (k.includes('field.title') || k.includes('dom.textcontent') || k.includes('field.text')) {
+      return 'hud-label';
+    }
     return 'hud-chip';
   }
   if (k.includes('.attr.aria') || k.includes('.attr.placeholder') || k.includes('.attr.alt')) {

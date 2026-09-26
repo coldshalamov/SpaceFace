@@ -45,6 +45,10 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'lossInvestigation',
   'careerContracts',
   'cloak',
+  // Session-scoped advisory watches hold per-entry latches keyed on entity ids that New Game
+  // recycles — a stale latch could suppress the first legitimate bark of the next run.
+  'noFireAdvisory',
+  'hazardHints',
 ]);
 
 export function resetFreshRunSystems(registry, options = {}) {

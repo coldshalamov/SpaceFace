@@ -8,7 +8,29 @@ import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+
+/** Bench A/B: production default ON. Quiet latch skips pirateDisengage's dual
+ * shipLike census (lawfulPatrols + combatantSquads) when no active combatants
+ * remain. Soft-GPU fps not claimed. Fresh combat residual after #149 bountyHunt
+ * (not bounty/salvage/sanctuary/cones/catch-nets/weapons deepen). */
+let PIRATE_DISENGAGE_EMPTY_QUIET_LATCH = true;
+export function setPirateDisengageEmptyQuietLatchForBench(enabled) {
+  PIRATE_DISENGAGE_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getPirateDisengageEmptyQuietLatchForBench() {
+  return PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const PIRATE_DISENGAGE_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishPirateDisengageQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.pirateDisengageRuntime || (state.pirateDisengageRuntime = {});
+  rt.emptyQuietLatched = !!latched;
+}
+
 
 const PATROL_RADIUS = 900;
 const NERVE_DELAY_S = 1.0;
@@ -30,18 +52,94 @@ export const pirateDisengage = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this._subs = [];
+    this._combatantsQuiet = null;
+    this._combatantWakeSeq = 0;
+    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Boundary wakes: newGame() is not dispatched on the live route (this system is
+    // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
+    // A parley resolution can stamp forcePlayerTarget without a spawn — wake there too.
+    this._listen('save:loaded', () => this.noteCombatantWake());
+    this._listen('game:new', () => this.noteCombatantWake());
+    this._listen('game:newGame', () => this.noteCombatantWake());
+    this._listen('sector:enter', () => this.noteCombatantWake());
+    this._listen('pirateParley:resolved', () => this.noteCombatantWake());
+  },
+
+  /** External wake when a combatant role is stamped without a fresh spawn index bump. */
+  noteCombatantWake() {
+    this._combatantWakeSeq = (this._combatantWakeSeq | 0) + 1;
+    this._combatantsQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload && payload.entity;
+    if (!entity || !this.state) return;
+    if (!isActiveCombatant(entity, this.state)) return;
+    this.noteCombatantWake();
+  },
+
+  _listen(evt, fn) {
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    const off = this.bus.on(evt, fn);
+    if (typeof off === 'function') this._subs.push(off);
   },
 
   newGame() {
     if (this.state) this.state.pirateDisengage = freshState();
+    this._combatantsQuiet = null;
+    this._combatantWakeSeq = 0;
+    publishPirateDisengageQuiet(this.state, false);
   },
 
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    this.state = state;
     const own = ensureState(state);
+    // Quiet open flight: no active pirate/hostile combatants still paid TWO full
+    // shipLike censuses (lawfulPatrols + combatantSquads / isActiveCombatant) every
+    // tick. Latch when combatantSquads stays empty; wake on membership, combatant
+    // spawn/tag, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual
+    // after #149 bountyHunt (not bounty/salvage/sanctuary/cones/catch-nets).
+    if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._combatantWakeSeq | 0;
+      const quiet = this._combatantsQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < PIRATE_DISENGAGE_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishPirateDisengageQuiet(state, true);
+        return;
+      }
+    } else if (this._combatantsQuiet) {
+      this._combatantsQuiet = null;
+      publishPirateDisengageQuiet(state, false);
+    }
     const now = state.simTime || 0;
     const patrols = lawfulPatrols(state);
     const squads = combatantSquads(state);
+    if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
+      if (squads.size === 0) {
+        const membership = entityIndexVersion(state);
+        if (membership != null) {
+          this._combatantsQuiet = {
+            membership,
+            wakeSeq: this._combatantWakeSeq | 0,
+            armedTick: state.tick | 0,
+          };
+          publishPirateDisengageQuiet(state, true);
+        } else {
+          this._combatantsQuiet = null;
+          publishPirateDisengageQuiet(state, false);
+        }
+        return;
+      }
+      this._combatantsQuiet = null;
+      publishPirateDisengageQuiet(state, false);
+    }
     for (const [squadId, members] of squads) {
       let rec = own.squads[squadId];
       if (rec && rec.disengaged) continue;
@@ -157,6 +255,12 @@ export const pirateDisengage = {
 
   _emit(evt, payload) {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(evt, payload);
+  },
+  destroy() {
+    for (const off of this._subs || []) {
+      try { off(); } catch (err) { /* cleanup must not throw */ }
+    }
+    this._subs = [];
   },
 };
 

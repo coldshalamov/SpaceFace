@@ -16,7 +16,7 @@
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass
 import { weaponHeatSummary } from '../weaponHeat.js';
-import { readRailModel, RAIL_SLOTS, resolveSlotLabels } from '../powerRail.js';
+import { readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { SHIPS } from '../../data/ships.js';
 import { injectOrrery } from './tokens.js';
@@ -32,13 +32,22 @@ const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether:
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
 export function buildOrdnanceGroups(bindings) {
   const labels = resolveSlotLabels(bindings);
+  const keys = resolveSlotKeys(bindings);
   const groups = [];
   const byName = new Map();
   for (const slot of RAIL_SLOTS) {
     const name = GROUP_NAME[slot.band] || String(slot.band);
     let g = byName.get(name);
     if (!g) { g = { name, icon: GROUP_ICON[name] || 'weapon', slots: [] }; byName.set(name, g); groups.push(g); }
-    g.slots.push({ id: String(slot.index), key: labels[slot.index] || '—', name: slot.name, icon: SLOT_ICON[slot.glyph] || slot.glyph || 'weapon' });
+    g.slots.push({
+      id: String(slot.index), key: labels[slot.index] || '—', name: slot.name,
+      icon: SLOT_ICON[slot.glyph] || slot.glyph || 'weapon',
+      keys: keys[slot.index] || '', description: slotDescription(slot.index),
+    });
+  }
+  // A collapsed node answers "what is in this band" without unfolding it.
+  for (const g of groups) {
+    g.tip = `${g.name} — ${g.slots.map((s) => `${s.name} ${s.key}`).join(' · ')}`;
   }
   return groups;
 }
@@ -62,8 +71,10 @@ export function createCooldownTracker() {
 const REST_SLOT_INDEX = (RAIL_SLOTS.find((slot) => slot.action === 'tether') || RAIL_SLOTS[0] || { index: 1 }).index;
 const RAIL_STATE = Object.freeze({ ready: 'ready', armed: 'armed', cooling: 'cooldown', empty: 'empty', locked: 'locked', unaffordable: 'locked' });
 
-export function readOrdnanceModel(state, tracker) {
+export function readOrdnanceModel(state, tracker, bindings) {
   const rail = readRailModel(state, Number(state && state.simTime) || 0);
+  const labels = resolveSlotLabels(bindings);
+  const keys = resolveSlotKeys(bindings);
   const out = {};
   for (const slot of RAIL_SLOTS) {
     const r = rail[slot.index] || {};
@@ -72,6 +83,14 @@ export function readOrdnanceModel(state, tracker) {
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     const count = /×(\d+)/.exec(String(r.name || ''));
     if (count) entry.count = Number(count[1]);
+    // The tier-2 reveal phrase for this verb: the bank sentence, the live keys, the live state.
+    // Composed here (not in the Cluster) so every surface explains a verb in the same words.
+    entry.tip = railSlotTip({
+      name: r.name || slot.name,
+      keys: keys[slot.index] || labels[slot.index] || '',
+      description: r.description || slotDescription(slot.index),
+      why: r.why || '',
+    });
     out[String(slot.index)] = entry;
   }
   return out;
@@ -80,7 +99,7 @@ export function readOrdnanceModel(state, tracker) {
 function finite(n, d = 0) { return Number.isFinite(n) ? n : d; }
 
 /** The Cluster's model for this frame, from the player entity and state. Pure apart from `tracker`. */
-export function readClusterModel(state, p, { tracker = null, ordnance = null } = {}) {
+export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null } = {}) {
   if (!p) return null;
   const vx = finite(p.vel && p.vel.x);
   const vz = finite(p.vel && p.vel.z);
@@ -113,7 +132,7 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null } =
     speed, speedRef: finite(p.maxSpeed, 180),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
     drift,
-    ordnance: ordnance || readOrdnanceModel(state, tracker),
+    ordnance: ordnance || readOrdnanceModel(state, tracker, bindings),
     tether: tetherModel,
   };
 }
@@ -165,7 +184,7 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
     host,
     update(liveState, p, slow) {
       if (!p) return;
-      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker);
+      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
       const model = readClusterModel(liveState, p, { ordnance });
       if (model) cluster.update(model);
     },

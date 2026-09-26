@@ -250,36 +250,44 @@ function applyTransitWear(ctx, damageHp) {
   if (!e || !(e.hullMax > 0)) return;
   const dmg = Math.max(0, Number(damageHp) || 0);
   const before = e.hull || e.hullMax;
-  const damagePacket = scalarHitToDamagePacket({
-    // Compensate for the combat model's subsystem share so this remains about 6 hull HP per leg.
-    damage: dmg * 4.2,
-    damageType: 'kinetic',
-    penetration: 0,
-    shieldBypass: 1,
-    pos: { x: e.pos.x, z: e.pos.z },
-    source: { kind: 'transit_wear', id: 'courier_public_route' },
-  });
-  damagePacket.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, ignoreInvulnerability: true };
-  const result = ctx.combat && typeof ctx.combat.onHit === 'function'
-    ? ctx.combat.onHit({
-      targetId: e.id,
-      ownerId: null,
-      damagePacket,
+  // 5507700e0 (QoL overhaul): while the player's shield is up the damage router forces
+  // penetration and shieldBypass to 0, so a single wear packet now lands on the regenerating
+  // shield only. The same attrition keeps meaning ~dmg hull HP per leg: packets repeat until
+  // that much hull damage lands, bounded — every packet still routed through combat.onHit.
+  let applied = 0;
+  for (let hit = 0; hit < 40 && applied < dmg && e.alive !== false; hit += 1) {
+    const damagePacket = scalarHitToDamagePacket({
+      // Compensate for the combat model's subsystem share so this remains about 6 hull HP per leg.
+      damage: dmg * 4.2,
+      damageType: 'kinetic',
+      penetration: 0,
+      shieldBypass: 1,
       pos: { x: e.pos.x, z: e.pos.z },
-      origin: { kind: 'transit_wear', id: 'courier_public_route' },
-    })
-    : null;
-  if (Array.isArray(ctx.transitDamageReceipts)) {
-    ctx.transitDamageReceipts.push({
-      atS: round1(ctx.state.simTime || 0),
-      ok: !!(result && result.ok),
-      reason: result && result.reason || null,
-      hullDamage: round2(result && result.hullDamage || 0),
-      armorDamage: round2(result && result.armorDamage || 0),
-      shieldDamage: round2(result && result.shieldDamage || 0),
+      source: { kind: 'transit_wear', id: 'courier_public_route' },
     });
+    damagePacket.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, ignoreInvulnerability: true };
+    const result = ctx.combat && typeof ctx.combat.onHit === 'function'
+      ? ctx.combat.onHit({
+        targetId: e.id,
+        ownerId: null,
+        damagePacket,
+        pos: { x: e.pos.x, z: e.pos.z },
+        origin: { kind: 'transit_wear', id: 'courier_public_route' },
+      })
+      : null;
+    if (Array.isArray(ctx.transitDamageReceipts)) {
+      ctx.transitDamageReceipts.push({
+        atS: round1(ctx.state.simTime || 0),
+        ok: !!(result && result.ok),
+        reason: result && result.reason || null,
+        hullDamage: round2(result && result.hullDamage || 0),
+        armorDamage: round2(result && result.armorDamage || 0),
+        shieldDamage: round2(result && result.shieldDamage || 0),
+      });
+    }
+    if (!result || result.ok === false) break;
+    applied += Math.max(0, result.hullDamage || 0);
   }
-  if (!result || result.ok === false) return;
   if ((e.hull || 0) > before) return;
   ctx.hullDamageHp = Math.max(0, e.hullMax - e.hull);
 }
@@ -519,7 +527,11 @@ function findBoardOffer(ctx, typeId, stationIds, options = {}) {
       && !String(s.storyTag || '').startsWith('campaign47a:')
       && !String(s.storyTag || '').startsWith('origin.')
       && !String(s.storyTag || '').startsWith('ladder.')
-      && !String(s.id || '').startsWith('offer_sp1_'));
+      && !String(s.id || '').startsWith('offer_sp1_')
+      // Rep-/cargo-gated offers are visible on the board but un-acceptable; a competent
+      // player skips them, and acceptMission refuses them loudly. Filter with the same
+      // authority's preflight so the probe does not burn loop time on gated contracts.
+      && (!ctx.missions._acceptPreflight || ctx.missions._acceptPreflight(s).ok));
     if (!offer) continue;
     const boardSector = STATION_TO_SECTOR.get(stationId)?.id;
     if (sameSectorOnly && preferSectorId && boardSector !== preferSectorId) continue;
@@ -614,21 +626,60 @@ function executeMarketTrade(ctx, stationId, cmdtyId, side, qty, costs, receipt) 
 function selectArbitrage(ctx, buyStationId, sellStationId) {
   ctx.econ.ensureMarket(buyStationId);
   ctx.econ.ensureMarket(sellStationId);
-  let best = null;
+  // ff6a0cae9 (Economy Pulse): bulk quotes integrate the price curve over the stock range a
+  // trade actually moves, buys round up and sales down — a qty-1 margin overstates the spread.
+  // Probe each candidate at the quantity the loop would really move.
+  const freeVol = (ctx.state.player.cargo.capVolume || NEW_GAME.cargoCapacity)
+    - (ctx.state.player.cargo.usedVolume || 0);
+  const maxUnits = Number.isFinite(COURIER_ROUTE_PACING.arbMaxUnits)
+    ? COURIER_ROUTE_PACING.arbMaxUnits
+    : Number.POSITIVE_INFINITY;
+  const credits = ctx.state.player.credits | 0;
+  const lots = [];
+  let holdFree = freeVol;
+  let wallet = credits;
   for (const c of COMMODITIES) {
     if (c.legality !== 'legal' || c.basePrice > 200) continue;
-    const qb = ctx.econ.quote(buyStationId, c.id, 'buy', 1);
-    const qs = ctx.econ.quote(sellStationId, c.id, 'sell', 1);
-    if (!qb.ok || !qs.ok) continue;
-    const margin = qs.unitAvg - qb.unitAvg;
-    if (!(margin > 0)) continue;
-    if (!best || margin > best.margin) {
-      best = {
-        cmdtyId: c.id, name: c.name, margin, buy: qb.unitAvg, sell: qs.unitAvg, vol: c.volPerU || 1,
-      };
+    const volU = c.volPerU || 1;
+    if (holdFree < volU || wallet <= 0) continue;
+    const entry = ctx.state.economy.markets[buyStationId]?.[c.id];
+    let want = Math.min(
+      Math.floor(holdFree / volU),
+      Math.max(0, Math.floor((entry && entry.stock) - 1)),
+      maxUnits,
+    );
+    // Scan the lot size down: price impact makes the unit margin a function of quantity, so a
+    // competent trader moves the quantity with the best realized profit, not the largest lot
+    // whose average still clears.
+    let lot = null;
+    while (want >= 2) {
+      const trialBuy = ctx.econ.quote(buyStationId, c.id, 'buy', want);
+      if (trialBuy.ok && trialBuy.total <= wallet) {
+        const qty = Math.min(want, trialBuy.qty || want);
+        const trialSell = ctx.econ.quote(sellStationId, c.id, 'sell', qty);
+        if (trialSell.ok) {
+          const margin = trialSell.unitAvg - trialBuy.unitAvg;
+          const profit = margin * qty;
+          if (profit > 0 && (!lot || profit > lot.profit)) {
+            lot = {
+              qty, margin, profit, buy: trialBuy.unitAvg, sell: trialSell.unitAvg, total: trialBuy.total,
+            };
+          }
+        }
+      }
+      want = Math.floor(want * 0.85);
     }
+    if (!lot) continue;
+    // The hold is filled across lines: the next commodity prices against the volume and wallet
+    // actually left after committing this lot.
+    lots.push({
+      cmdtyId: c.id, name: c.name, vol: volU,
+      qty: lot.qty, margin: lot.margin, profit: lot.profit, buy: lot.buy, sell: lot.sell,
+    });
+    holdFree -= lot.qty * volU;
+    wallet -= lot.total;
   }
-  return best;
+  return lots.length ? { lots } : null;
 }
 
 function rebindCtx(ctx, restored) {
@@ -1461,13 +1512,14 @@ export function runCourierPublicRoute(options = {}) {
       receipt.bottlenecks.push({ code: 'no_freight_stations' });
       break;
     }
-    const best = selectArbitrage(ctx, buyStationId, sellStationId);
-    if (!best) {
+    const arb = selectArbitrage(ctx, buyStationId, sellStationId);
+    if (!arb) {
       receipt.bottlenecks.push({ code: 'no_positive_spread', detail: `t=${round1(ctx.state.simTime)}` });
       advanceTime(ctx, 60, budget, 'idleS');
       if (budget.idleS > horizonS * 0.35) break;
       continue;
     }
+    const lots = arb.lots;
 
     const leg1S = travelTimeS(currentSectorId, buySector.id) + DOCK_OVERHEAD_S;
     if (ctx.state.simTime + leg1S > horizonS) break;
@@ -1489,35 +1541,51 @@ export function runCourierPublicRoute(options = {}) {
     ctx.currentStationId = buyStationId;
 
     const shipCargo = ctx.state.player.cargo.capVolume || NEW_GAME.cargoCapacity;
-    const freeVol = shipCargo - (ctx.state.player.cargo.usedVolume || 0);
-    let want = Math.floor(freeVol / (best.vol || 1));
-    const entry = ctx.state.economy.markets[buyStationId]?.[best.cmdtyId];
-    const stockAvail = Math.max(0, Math.floor((entry && entry.stock) - 1));
-    want = Math.min(
-      want,
-      stockAvail,
-      Number.isFinite(COURIER_ROUTE_PACING.arbMaxUnits)
-        ? COURIER_ROUTE_PACING.arbMaxUnits
-        : Number.POSITIVE_INFINITY,
-    );
-    while (want > 0) {
-      const q = ctx.econ.quote(buyStationId, best.cmdtyId, 'buy', want);
-      if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;
-      want = Math.floor(want * 0.85);
+    const trades = [];
+    let arbBuyTotal = 0;
+    let arbBuyQty = 0;
+    let firstLotFailed = false;
+    let buyFailedFatal = false;
+    for (const lot of lots) {
+      const entry = ctx.state.economy.markets[buyStationId]?.[lot.cmdtyId];
+      const stockAvail = Math.max(0, Math.floor((entry && entry.stock) - 1));
+      let want = Math.min(
+        Math.floor((shipCargo - (ctx.state.player.cargo.usedVolume || 0)) / (lot.vol || 1)),
+        stockAvail,
+        lot.qty,
+      );
+      while (want > 0) {
+        const q = ctx.econ.quote(buyStationId, lot.cmdtyId, 'buy', want);
+        if (q.ok && q.total <= (ctx.state.player.credits | 0)) break;
+        want = Math.floor(want * 0.85);
+      }
+      if (want <= 0) {
+        if (!trades.length) {
+          receipt.bottlenecks.push({ code: 'capital_or_stock_bind', detail: lot.cmdtyId });
+          firstLotFailed = true;
+        }
+        break;
+      }
+      const buyRes = executeMarketTrade(ctx, buyStationId, lot.cmdtyId, 'buy', want, costs, receipt);
+      if (!buyRes.ok) {
+        if (!trades.length) {
+          receipt.bottlenecks.push({ code: 'arb_buy_failed', detail: buyRes.reason });
+          buyFailedFatal = true;
+        }
+        break;
+      }
+      trades.push({ cmdtyId: lot.cmdtyId, qty: buyRes.qty || 0, total: buyRes.total || 0 });
+      arbBuyTotal += buyRes.total || 0;
+      arbBuyQty += buyRes.qty || 0;
+      advanceTime(ctx, COURIER_ROUTE_PACING.marketTicketS, budget, 'actionS');
+      receipt.cargoAuthorityEvents += 1;
     }
-    if (want <= 0) {
-      receipt.bottlenecks.push({ code: 'capital_or_stock_bind', detail: best.cmdtyId });
+    if (buyFailedFatal) break;
+    if (firstLotFailed) {
       advanceTime(ctx, 45, budget, 'idleS');
       if (budget.idleS > horizonS * 0.4) break;
       continue;
     }
-    const buyRes = executeMarketTrade(ctx, buyStationId, best.cmdtyId, 'buy', want, costs, receipt);
-    if (!buyRes.ok) {
-      receipt.bottlenecks.push({ code: 'arb_buy_failed', detail: buyRes.reason });
-      break;
-    }
-    advanceTime(ctx, COURIER_ROUTE_PACING.marketTicketS, budget, 'actionS');
-    receipt.cargoAuthorityEvents += 1;
 
     const leg2S = travelTimeS(currentSectorId, sellSector.id) + DOCK_OVERHEAD_S;
     if (ctx.state.simTime + leg2S > horizonS) break;
@@ -1537,13 +1605,23 @@ export function runCourierPublicRoute(options = {}) {
     currentSectorId = sellSector.id;
     ctx.bus.emit('dock:docked', { stationId: sellStationId });
     ctx.currentStationId = sellStationId;
-    const have = cargoQty(ctx, best.cmdtyId);
-    const sellRes = executeMarketTrade(ctx, sellStationId, best.cmdtyId, 'sell', have, costs, receipt);
-    if (!sellRes.ok) {
-      receipt.bottlenecks.push({ code: 'arb_sell_failed', detail: sellRes.reason });
-      break;
+    let arbSellTotal = 0;
+    let arbSellQty = 0;
+    let sellFailed = false;
+    for (const trade of trades) {
+      const have = cargoQty(ctx, trade.cmdtyId);
+      if (!(have > 0)) continue;
+      const sellRes = executeMarketTrade(ctx, sellStationId, trade.cmdtyId, 'sell', have, costs, receipt);
+      if (!sellRes.ok) {
+        receipt.bottlenecks.push({ code: 'arb_sell_failed', detail: sellRes.reason });
+        sellFailed = true;
+        break;
+      }
+      arbSellTotal += sellRes.total || 0;
+      arbSellQty += sellRes.qty || 0;
+      advanceTime(ctx, COURIER_ROUTE_PACING.marketTicketS, budget, 'actionS');
     }
-    advanceTime(ctx, COURIER_ROUTE_PACING.marketTicketS, budget, 'actionS');
+    if (sellFailed) break;
     const repairInfo = applyDamageAndRepair(ctx, costs, budget, {
       minCreditsAfter: 400,
       readinessGate: 0.9,
@@ -1559,21 +1637,21 @@ export function runCourierPublicRoute(options = {}) {
       loop: boardLoop,
       outcome: 'completed',
       t: round1(ctx.state.simTime),
-      cmdtyId: best.cmdtyId,
-      bought: buyRes.qty,
-      sold: sellRes.qty,
-      buyTotal: buyRes.total,
-      sellTotal: sellRes.total,
+      cmdtyId: trades.map((t) => t.cmdtyId).join('+'),
+      bought: arbBuyQty,
+      sold: arbSellQty,
+      buyTotal: arbBuyTotal,
+      sellTotal: arbSellTotal,
       repairSpent: repairInfo.spent,
       creditsAfter: ctx.state.player.credits | 0,
     });
     markAuthority(receipt, {
       kind: 'market_arbitrage',
-      cmdtyId: best.cmdtyId,
+      cmdtyId: trades.map((t) => t.cmdtyId).join('+'),
       buyStationId,
       sellStationId,
-      qty: sellRes.qty,
-      marginCr: (sellRes.total || 0) - (buyRes.total || 0),
+      qty: arbSellQty,
+      marginCr: arbSellTotal - arbBuyTotal,
       atS: round1(ctx.state.simTime),
       authority: 'economy.execute buy/sell (cargo single-writer)',
     });

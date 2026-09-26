@@ -3117,6 +3117,11 @@ export const save = {
       this.state.interventions = [];
       this.state.drill = null;
       this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+      // The pending-squad queue above is deliberately transient, but the caller's
+      // _calledReinforcements latch rides its serialized entity. A caller whose announced squad
+      // died in the rebuild must be allowed to call again — while a caller whose squad actually
+      // arrived keeps the once-ever contract.
+      this._reconcileReinforcementLatches(entityIdRemap);
       this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
@@ -3375,6 +3380,38 @@ export const save = {
         entities: state.entityList || [],
       });
       if (binding && typeof sys.rebind === 'function') sys.rebind(record.fightId, binding);
+    }
+  },
+
+  // SG-06 reinforcement squads are announced, then queued on transient encounter owner state that
+  // the load path rebuilds empty. The caller's data.ai._calledReinforcements latch persists on its
+  // serialized entity, so a save inside the call→arrival window permanently silenced a squad the
+  // player was told is inbound — and the caller could never call again. Clear the latch only for
+  // callers whose call produced no surviving squad: a delivered stamp, a caller-tagged arrival,
+  // or (for saves written before the tag existed) a squad member inside the leash all count as
+  // delivered and keep the once-ever contract.
+  _reconcileReinforcementLatches(entityIdRemap) {
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.values !== 'function') return;
+    const fielded = [];
+    for (const e of state.entities.values()) {
+      if (e && e.data && e.data.ai && e.data.ai.spawnContext === 'sg06_reinforcement') {
+        fielded.push(e);
+      }
+    }
+    for (const e of state.entities.values()) {
+      const ai = e && e.data && e.data.ai;
+      if (!ai || ai._calledReinforcements !== true || ai._reinforcementsDelivered === true) continue;
+      const arrived = fielded.some((s) => {
+        const enc = s.data && s.data.encounter;
+        if (enc && enc.callerId != null) {
+          const mapped = entityIdRemap && entityIdRemap.get(String(enc.callerId));
+          return (mapped == null ? enc.callerId : mapped) === e.id;
+        }
+        return e.pos && s.pos
+          && Math.hypot(s.pos.x - e.pos.x, s.pos.z - e.pos.z) <= 2600;
+      });
+      if (!arrived) ai._calledReinforcements = false;
     }
   },
 

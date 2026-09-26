@@ -27,6 +27,7 @@
 
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -65,6 +66,47 @@ function ensureCm(e) {
   return e.data.cm;
 }
 
+/** Bench A/B: production default ON. Quiet latch skips ship walks when no CM/PDS interest. */
+let COUNTERMEASURES_QUIET_LATCH = true;
+export function setCountermeasuresQuietLatchForBench(enabled) {
+  COUNTERMEASURES_QUIET_LATCH = enabled !== false;
+}
+export function getCountermeasuresQuietLatchForBench() {
+  return COUNTERMEASURES_QUIET_LATCH !== false;
+}
+
+/** Membership / fittings rescan while latched (0.5 s @ 60 Hz). */
+const CM_QUIET_RESCAN_TICKS = 30;
+
+function publishCmQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.countermeasureRuntime || (state.countermeasureRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+function shipHasCountermeasureInterest(e) {
+  if (!e || e.alive === false || e.type !== 'ship') return false;
+  const data = e.data;
+  if (!data) return false;
+  const cm = data.cm;
+  if (cm && ((cm.cooldownT > 0) || (cm.effectT > 0) || cm.effect)) return true;
+  const pds = data.pds;
+  if (pds && pds.cooldownT > 0) return true;
+  const fittings = data.fittings;
+  if (!fittings) return false;
+  if (equippedCountermeasure(fittings)) return true;
+  if (equippedPointDefense(fittings)) return true;
+  return false;
+}
+
+function anyCountermeasureInterest(state) {
+  const ships = countermeasureShipCandidates(state);
+  for (let i = 0; i < ships.length; i++) {
+    if (shipHasCountermeasureInterest(ships[i])) return true;
+  }
+  return false;
+}
+
 export const countermeasures = {
   name: 'countermeasures',
 
@@ -72,20 +114,77 @@ export const countermeasures = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._cmQuiet = null;
+    this._subs = [];
     this._projectileScratch = [];
     this._diag = {
       threatSpatialQueries: 0,
       effectSpatialQueries: 0,
       projectileCandidates: 0,
     };
+    // Same wake contract as the sibling latches: entity-index version is monotonic, but a run
+    // boundary still gets an explicit drop so a stale armed record can never straddle a game.
+    if (this.bus && typeof this.bus.on === 'function') {
+      const wake = () => {
+        this._cmQuiet = null;
+        publishCmQuiet(this.state, false);
+      };
+      this._subs.push(this.bus.on('game:new', wake));
+      this._subs.push(this.bus.on('game:newGame', wake));
+      this._subs.push(this.bus.on('save:loaded', wake));
+    }
   },
 
-  newGame() { /* no global state — per-ship runtime state is transient */ },
+  newGame() {
+    this._cmQuiet = null;
+    publishCmQuiet(this.state, false);
+  },
+
+  destroy() {
+    for (const off of this._subs || []) { if (typeof off === 'function') off(); }
+    this._subs = [];
+  },
 
   update(dt, state) {
-    if (state.mode !== 'flight') return;
+    if (state.mode !== 'flight') {
+      publishCmQuiet(state, false);
+      return;
+    }
     ensureCountermeasureRuntime(this);
     resetCountermeasureDiagnostics(this._diag);
+
+    // Quiet Ceres / open flight: four full ships walks every tick even when nobody carries a
+    // countermeasure or PDS. Latch when the roster has no CM/PDS interest; wake on deploy input,
+    // entity-index membership, live cm/pds timers, or a 0.5 s rescan for mid-life fitting changes.
+    const inpEarly = state.input;
+    const deployEdge = !!(inpEarly && inpEarly.deployCountermeasure);
+    if (COUNTERMEASURES_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      let quiet = this._cmQuiet;
+      const sinceArm = tick - (quiet ? (quiet.armedTick | 0) : tick);
+      if (quiet
+        && membership != null
+        && !deployEdge
+        && quiet.membership === membership
+        && sinceArm >= 0 && sinceArm < CM_QUIET_RESCAN_TICKS) {
+        state.countermeasureRuntime = state.countermeasureRuntime || {};
+        state.countermeasureRuntime.diagnostics = this._diag;
+        state.countermeasureRuntime.quietLatched = true;
+        return;
+      }
+      if (!deployEdge && membership != null && !anyCountermeasureInterest(state)) {
+        this._cmQuiet = { membership, armedTick: tick };
+        state.countermeasureRuntime = state.countermeasureRuntime || {};
+        state.countermeasureRuntime.diagnostics = this._diag;
+        state.countermeasureRuntime.quietLatched = true;
+        return;
+      }
+      this._cmQuiet = null;
+    } else if (this._cmQuiet) {
+      this._cmQuiet = null;
+      publishCmQuiet(state, false);
+    }
 
     // 1. Tick cooldowns + active-effect timers on every ship, and expire finished effects. When an
     //    ECM effect expires, restore the turnRate on missiles it jammed (stored in _jammedTurnRate).
@@ -233,6 +332,7 @@ export const countermeasures = {
     }
     state.countermeasureRuntime = state.countermeasureRuntime || {};
     state.countermeasureRuntime.diagnostics = this._diag;
+    state.countermeasureRuntime.quietLatched = false;
   },
 
   // Attempt to deploy the countermeasure on ship e. No-op if no module equipped, on cooldown, or
@@ -274,6 +374,7 @@ export const countermeasures = {
     cm.cooldownT = cfg.cooldownS;
 
     // Emit for VFX (chaff puff / ECM shimmer) + audio + a HUD cue.
+    this._cmQuiet = null;
     this.bus.emit('countermeasure:deployed', {
       shipId: e.id, kind: cfg.kind, x: e.pos.x, z: e.pos.z,
       radius: cfg.radius, durationS: cfg.durationS, decoyId,

@@ -152,7 +152,8 @@ test('boss circuit is five authored bosses with compressed refits', () => {
     assert.equal(plan.draftExpectation.choices, null);
     const peak = peakConcurrentDemand(plan.packages);
     assert.ok(peak <= 24, `circuit ${wave} peak ${peak}`);
-    assert.ok(plan.packages.some((pkg) => pkg.enemyId === 'dreadnought_boss'));
+    assert.ok(plan.packages.some((pkg) => pkg.enemyId === step.bossEnemyId),
+      `circuit ${wave} carries authored boss ${step.bossEnemyId}`);
   }
 
   const missing = planWave({ seed: SEED, arenaId: ARENA, wave: 6, mode: 'boss_circuit' });

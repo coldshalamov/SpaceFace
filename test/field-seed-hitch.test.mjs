@@ -137,6 +137,23 @@ test('a rope-delivered body latches on ring entry; the ring clamps it', () => {
   });
 });
 
+test('roping the anchor itself never self-hitches', () => {
+  withFlag(true, () => {
+    const t = boot();
+    const ent = deploySeedToActive(t);
+    const rt = t.state.fields;
+    // The seed IS the rope anchor — towing it is the feature's primary verb. A self-hitch
+    // would fire toast/cue noise and burn a slot every time.
+    t.state.player.tether = { active: true, targetId: ent.id, phase: 'taut' };
+    t.sim.step();
+    t.sim.step();
+    assert.equal(rt.hitches[ent.id], undefined, 'the anchor cannot be its own catch');
+    assert.equal(rt.hitches[String(ent.id)], undefined);
+    assert.ok(!t.emitted.some((e) => e.name === 'toast' && /Hitched to the anchor/.test(e.payload?.text || '')),
+      'no hitched toast for the anchor itself');
+  });
+});
+
 test('release the rope and the body stays parked; re-roping pulls it free', () => {
   withFlag(true, () => {
     const t = boot();

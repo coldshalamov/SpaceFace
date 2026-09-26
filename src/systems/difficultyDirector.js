@@ -25,6 +25,28 @@
 
 import { PACING_INCOMING_FLOOR, PACING_OUTGOING_CAP } from '../data/difficulty.js';
 
+/** Bench A/B: production default ON. Quiet latch skips per-tick pacing eval when
+ * stance is steady, mults are settled at 1, damage books + flee holds are empty.
+ * Wakes on combat:damage / newGame / save:loaded / 0.5 s rescan. Soft-GPU fps not
+ * claimed. Fresh registry.step residual (#162). */
+let DIFFICULTY_DIRECTOR_QUIET_LATCH = true;
+export function setDifficultyDirectorQuietLatchForBench(enabled) {
+  DIFFICULTY_DIRECTOR_QUIET_LATCH = enabled !== false;
+}
+export function getDifficultyDirectorQuietLatchForBench() {
+  return DIFFICULTY_DIRECTOR_QUIET_LATCH !== false;
+}
+
+/** Rescan while latched (0.5 s). Sim-time based so scripted tests that advance
+ * simTime without tick still re-evaluate credit trend / stance. */
+const DIFFICULTY_QUIET_RESCAN_S = 0.5;
+
+function publishDifficultyQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.difficultyRuntime || (state.difficultyRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 const DAMAGE_WINDOW_S = 120;       // trailing window for recent-damage reads
 const CREDIT_SAMPLE_S = 5;         // credits trend sample cadence
 const CREDIT_WINDOW_S = 180;       // trend window kept
@@ -127,17 +149,30 @@ export const difficultyDirector = {
     this.bus = ctx.bus || null;
     this._registry = ctx.registry || null;
     this._w = freshInternals();
+    this._difficultyQuiet = null;
+    this._difficultyWakeSeq = 0;
+    this._unsubs = [];
     ensureDifficultyState(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
-      this._onDamage = (p) => this._recordDamage(p);
+      this._onDamage = (p) => {
+        this._wakeDifficultyQuiet();
+        this._recordDamage(p);
+      };
       this.bus.on('combat:damage', this._onDamage);
+      this._unsubs = [
+        this.bus.on('save:loaded', () => this._wakeDifficultyQuiet()),
+        this.bus.on('game:new', () => this._wakeDifficultyQuiet()),
+        this.bus.on('sector:enter', () => this._wakeDifficultyQuiet()),
+      ].filter(Boolean);
     }
   },
 
   newGame() {
     this._w = freshInternals();
+    this._wakeDifficultyQuiet();
     if (this.state) {
       this.state.difficulty = { pacing: freshPublished(Number(this.state.simTime) || 0) };
+      publishDifficultyQuiet(this.state, false);
     }
   },
 
@@ -325,6 +360,26 @@ export const difficultyDirector = {
 
   // ── tick ─────────────────────────────────────────────────────────────────────────────
   update(dt, state) {
+    // Quiet open flight: every tick still evaluated pacing scores / credit trend / pin watch
+    // even when stance was already steady, mults settled at 1, and damage books + flee holds
+    // were empty. Quiet latch short-circuits that work; wakes on combat:damage / new-game /
+    // save / sector enter / 0.5 s rescan. Soft-GPU fps not claimed.
+    if (DIFFICULTY_DIRECTOR_QUIET_LATCH !== false) {
+      const quiet = this._difficultyQuiet;
+      if (quiet) {
+        const wakeSeq = this._difficultyWakeSeq | 0;
+        const nowS = Number(state.simTime) || 0;
+        if (quiet.wakeSeq === wakeSeq
+          && (nowS - (Number(quiet.armedSimT) || 0)) < DIFFICULTY_QUIET_RESCAN_S) {
+          publishDifficultyQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._difficultyQuiet) {
+      this._difficultyQuiet = null;
+      publishDifficultyQuiet(state, false);
+    }
+
     const diff = ensureDifficultyState(state);
     const pacing = diff.pacing;
     const w = this._w || (this._w = freshInternals());
@@ -366,11 +421,45 @@ export const difficultyDirector = {
     pacing.ease = ease;
 
     this._pinTick(state, now);
+
+    if (DIFFICULTY_DIRECTOR_QUIET_LATCH !== false) {
+      // Do not latch while survival is active or player is dead/missing — arena / inert
+      // contracts keep publishing every tick. Quiet open flight often sits in surge
+      // (healthy + unpressured); arm whenever mults have settled at the stance targets
+      // and damage books + flee holds are empty.
+      const latchTargets = this._targetsFor(w.stance);
+      const canLatch = !inert
+        && Math.abs(w.incomingMult - latchTargets.incoming) < 1e-4
+        && Math.abs(w.outgoingMult - latchTargets.outgoing) < 1e-4
+        && w.incoming.size === 0
+        && w.outgoing.size === 0
+        && w.fleeHolds.size === 0;
+      if (canLatch) {
+        this._difficultyQuiet = {
+          armedTick: state.tick | 0,
+          armedSimT: Number(state.simTime) || 0,
+          wakeSeq: this._difficultyWakeSeq | 0,
+        };
+        publishDifficultyQuiet(state, true);
+      } else {
+        this._difficultyQuiet = null;
+        publishDifficultyQuiet(state, false);
+      }
+    }
+  },
+
+  _wakeDifficultyQuiet() {
+    this._difficultyWakeSeq = (this._difficultyWakeSeq | 0) + 1;
+    this._difficultyQuiet = null;
   },
 
   destroy() {
     if (this.bus && this.bus.off && this._onDamage) this.bus.off('combat:damage', this._onDamage);
     this._onDamage = null;
+    if (this._unsubs) {
+      for (const u of this._unsubs) { if (typeof u === 'function') u(); }
+      this._unsubs = [];
+    }
   },
 };
 

@@ -328,11 +328,11 @@ for (const id of [
 // ── §3 menu polish ───────────────────────────────────────────────────────────────────────────
 assert.match(mainMenuSrc, /_startIdleAttract/, 'main menu must start a 12s idle attract (spec2/03 §3)');
 assert.match(mainMenuSrc, /ATTRACT_IDLE_MS = 12_000/, 'idle attract must trigger after 12s of no input');
-assert.match(mainMenuSrc, /sf-stagger/, 'main menu items must stagger-in 90ms on first show');
+assert.match(mainMenuSrc, /stamp\(refs\.list\.children, \{ gap: 60/, 'main menu items must stamp in on a per-item delay on first show (kit motion; was sf-stagger/90 ms pre-ORRERY)');
 assert.match(mainMenuSrc, /sf-continue-fade/, 'CONTINUE must fade to game with a location label');
 assert.match(newGameSrc, /showFirstRunSplash/, 'NEW GAME first-run must show the splash line');
 assert.match(newGameSrc, /Helios System\. Third shift\. The manifest is wrong\./, 'first-run splash line must be verbatim (spec2/03 §3)');
-assert.match(newGameSrc, /veilTimer = setTimeout\(showWarmupVeil, 300\)/, 'START disabled-state must be veiled after 300ms (spec2/03 §3)');
+assert.match(newGameSrc, /launch\.disabled = launching/, 'START must disable itself while the launch hand-off covers the screen (was warmup veil after 300 ms pre-ORRERY)');
 
 // Difficulty copy must remain authored and safe for the inline option-card surface.
 const diffMatches = newGameSrc.match(/DIFFICULTIES\s*=\s*\[([\s\S]*?)\];/);
@@ -366,34 +366,16 @@ for (const desc of diffDescs) {
   assert.match(hudSrc, /mtObj|sf-mt-obj/,
     'HUD tracker must expose an objective line (sf-mt-obj / mtObj) for the single B0 verb');
 
-  // firstFlight must not fire on a bare 3s flight timer while B0 is active.
-  // Accept the real production gate (_firstFlightB0Released) or any B0/wake/silence
-  // expression between the pending-timer and _showHint — not a fictional helper whitelist.
-  const ffTimerIdx = onboardingSrc.search(/_firstFlightPending\s*&&\s*state\.mode\s*===\s*['"]flight['"]/);
-  assert.ok(ffTimerIdx >= 0, 'firstFlight pending timer must run only in flight mode');
-  const ffShowIdx = (() => {
-    const a = onboardingSrc.indexOf("_showHint('firstFlight'", ffTimerIdx);
-    const b = onboardingSrc.indexOf('_showHint("firstFlight"', ffTimerIdx);
-    if (a < 0) return b;
-    if (b < 0) return a;
-    return Math.min(a, b);
-  })();
-  assert.ok(ffShowIdx >= 0, 'firstFlight timer path must still call _showHint(\'firstFlight\') after the deferral gate');
-  // Span from pending-timer to showHint only — pre-B0 bare 3s path has no gate markers here.
-  const ffGateSpan = onboardingSrc.slice(ffTimerIdx, ffShowIdx);
-  const hasFirstFlightB0Gate =
-    /_firstFlightB0Released\s*\(/.test(ffGateSpan)
-    || /beatDoneAt/.test(ffGateSpan)
-    || /['"]wake['"]/.test(ffGateSpan)
-    || /currentBeat\s*[>\=!]+\s*0/.test(ffGateSpan)
-    || /SILENCE_S/.test(ffGateSpan)
-    || /_lastTextAtS/.test(ffGateSpan)
-    || /\.finished\b/.test(ffGateSpan)
-    || /oneVerb|b0Complete|wakeDone|firstFlightAllowed|deferFirstFlight|B0Released/i.test(ffGateSpan);
-  assert.ok(hasFirstFlightB0Gate,
-    'firstFlight hint wall must defer until B0 completion/silence '
-    + '(gate on wake DONE + silence — e.g. _firstFlightB0Released — between the pending timer and '
-    + '_showHint; bare 3s fire with no B0 gate must fail)');
+  // The one-teacher contract. The staged rail absorbed the old firstFlight pending-timer hint;
+  // "no second instruction while B0 speaks" is now openingInstructionSolo — secondary text
+  // surfaces retire while an objective is pending inside the opening window (hudAttention.js).
+  const hudAttentionSrc = read('src/ui/hudAttention.js');
+  assert.match(hudAttentionSrc, /ob\.active && !ob\.finished/,
+    'hudAttention must treat the unfinished rail as a pending objective');
+  assert.match(hudAttentionSrc, /export function openingInstructionSolo/,
+    'the single-instruction gate (openingInstructionSolo) must exist');
+  assert.match(hudAttentionSrc, /openingWindowActive\(state\) && openingObjectivePending\(state\)/,
+    'the solo gate must hold while an objective is pending inside the opening window');
 
   // Panel must demote/suppress non-empty B0 objective title while the HUD tracker owns the command.
   // Acceptable shapes: empty title for wake, key!=='wake' gate, display/aria hide, or demote flag.

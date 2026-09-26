@@ -66,21 +66,40 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // cone, skim and line exist nowhere else in the game — because it was drawn for these sockets. The
 // old values borrowed generic menu line-icons (`danger` twice, `target` for Seed, `boost` for
 // Repel); two slots wearing the same outline is precisely what made the rail unreadable at a glance.
+//
+// `description` is the player-facing "what pressing this does" bank. It is enumerated here, at the
+// one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
+// the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
 export const RAIL_SLOTS = Object.freeze([
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
-  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions' },
-  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast' },
-  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'tether' },
-  { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed' },
-  { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'well' },
+  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions',
+    description: 'throw an impulse charge that sticks where it lands' },
+  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast',
+    description: 'detonate every armed charge and drift bomb at once' },
+  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'tether',
+    description: 'throw the tether line onto a body and haul it — tap to latch or cut' },
+  { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed',
+    description: 'launch an anchor Mass Seed toward the aim point — it locks where it lands' },
+  { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'well',
+    description: 'drop an attractive Well at the aim point — it pulls light bodies and shots' },
   // Display name shortened to fit the slot's 38px label row untruncated; the verb family
   // (deployRepulsor, help text) keeps the full "Repulsor" name.
-  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'repel' },
-  { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'cone' },
-  { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'skim' },
-  { index: 9, band: BAND_BAY, action: 'dropBomb', name: 'Bomb', glyph: 'weapon' },
+  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'repel',
+    description: 'drop a Repulsor at the ship — it shoves bodies outward' },
+  { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'cone',
+    description: 'toggle the forward Clearing Cone — a gravitic snowplow that sweeps debris ahead' },
+  { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'skim',
+    description: 'toggle the scoop sheet and harvest by grazing a planet band' },
+  { index: 9, band: BAND_BAY, action: 'dropBomb', name: 'Bomb', glyph: 'weapon',
+    description: 'release the selected drift bomb at ship velocity' },
 ]);
+
+/** Static description for a slot index, or '' — the enumerated bank above, read verbatim. */
+export function slotDescription(index) {
+  const slot = RAIL_SLOTS.find((s) => s.index === index);
+  return (slot && slot.description) || '';
+}
 
 const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
 
@@ -115,17 +134,60 @@ export function codeToLabel(code) {
  * Resolve each slot's live key label from a binding table shaped like input.js's
  * `{ actionName: ['Digit4', ...] }`. An action with no binding returns '' so the slot can render as
  * an empty socket instead of claiming a key that does nothing.
+ *
+ * A slot prefers the DIGIT that matches its own rank (`1`–`9`) when the action carries one, so the
+ * rank reads as one hotbar instead of `Y R SPACE 4 5 6 7 8 9` — the number row is the row the
+ * player reaches for (and the row prompts borrow via the slot-claim contract). The digit is a real
+ * binding, never a decoration: unbind it and the label falls back to the action's primary code.
  */
 export function resolveSlotLabels(bindings) {
   const table = bindings || {};
   const out = {};
   for (const slot of RAIL_SLOTS) {
     if (!slot.action) { out[slot.index] = ''; continue; }
-    const codes = table[slot.action];
-    const code = Array.isArray(codes) ? codes[0] : codes;
-    out[slot.index] = codeToLabel(code);
+    const codes = slotCodes(table, slot.action);
+    const ownDigit = codes.find((c) => c === `Digit${slot.index}`);
+    out[slot.index] = codeToLabel(ownDigit || codes[0]);
   }
   return out;
+}
+
+/**
+ * Every key a player can press for each slot, `['3', 'Space', 'F']` — the tip's key line. The
+ * displayed label first (what the socket prints), then the rest in binding order.
+ */
+export function resolveSlotKeys(bindings) {
+  const table = bindings || {};
+  const out = {};
+  const labels = resolveSlotLabels(table);
+  for (const slot of RAIL_SLOTS) {
+    if (!slot.action) { out[slot.index] = ''; continue; }
+    const rest = slotCodes(table, slot.action)
+      .map(codeToLabel)
+      .filter((l) => l && l !== labels[slot.index]);
+    out[slot.index] = [labels[slot.index], ...rest].filter(Boolean).join(' · ');
+  }
+  return out;
+}
+
+function slotCodes(table, action) {
+  const codes = table[action];
+  return Array.isArray(codes) ? codes.filter(Boolean) : (codes ? [codes] : []);
+}
+
+/**
+ * The tier-2 `[data-why]` phrase for one verb slot — composed ONCE here so every surface (the
+ * Cluster's ordnance keys, the rail, help) says the same words:
+ *
+ *   Line — throw the tether line onto a body and haul it — tap to latch or cut (Space · F · 3)
+ *   Ready
+ *
+ * `keys`/`why` may be empty; nothing is invented to fill a gap (empty why renders no state line).
+ */
+export function railSlotTip({ name, keys = '', description = '', why = '' } = {}) {
+  const what = [name, description].filter(Boolean).join(' — ');
+  const head = keys ? `${what} (${keys})` : what;
+  return [head, why].filter(Boolean).join('\n');
 }
 
 /** Most severe of two states, per SLOT_STATES order. */
@@ -219,14 +281,19 @@ export function readRailModel(state, nowS) {
     // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,
-      state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000 },
+      state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
+      why: charges <= 0 ? 'No impulse charges in cargo'
+        : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready' },
     2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
-      description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.' },
-    3: { state: player.tether?.active ? 'armed' : 'ready' },
-    4: seedCd || { state: 'ready' },
-    5: wellCd || { state: 'ready' },
-    6: repCd || { state: 'ready' },
-    7: { state: fields.coneActive ? 'armed' : 'ready' },
+      description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.',
+      why: armed || bay.armedCount > 0 ? 'Armed — press to detonate' : 'Nothing armed to detonate' },
+    3: { state: player.tether?.active ? 'armed' : 'ready',
+      why: player.tether?.active ? 'Line is live' : 'Ready' },
+    4: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    5: wellCd ? { ...wellCd, why: `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    6: repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    7: { state: fields.coneActive ? 'armed' : 'ready',
+      why: fields.coneActive ? 'Cone is on' : 'Ready' },
     8: skimSlotState(s),
     9: bay,
   };
@@ -263,6 +330,7 @@ export function readBombBayModel(state, nowS) {
       state: locked ? 'locked' : 'empty',
       cooldownMs: 0, deployed, armedCount, fields,
       badge: 'RACK EMPTY',
+      why: locked ? 'Undock to use the bay' : 'Rack empty — restock at a station shipworks',
       description: `Bomb rack empty — re-arm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
     };
   }
@@ -273,6 +341,9 @@ export function readBombBayModel(state, nowS) {
     // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
     // magazine. The legend counts drifting bombs only while there are some.
     badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive}` : 'BAY',
+    why: locked ? (full ? 'Bay is full — trigger armed ordnance' : 'Undock to use the bay')
+      : full ? 'Bay is full — trigger armed ordnance'
+        : until > nowS ? `Recharging — ${Math.ceil(until - nowS)}s` : 'Ready',
     // Rack honesty: the loaded magazine count rides the description, never the name.
     description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };
@@ -280,10 +351,10 @@ export function readBombBayModel(state, nowS) {
 
 function skimSlotState(state) {
   const rt = state.planetRuntime || state.planet || null;
-  if (!rt) return { state: 'locked' };
+  if (!rt) return { state: 'locked', why: 'Only works grazing a planet band' };
   const rec = rt.record || rt.current || rt;
-  if (!rec || typeof rec.collectorOn === 'undefined') return { state: 'locked' };
-  return { state: rec.collectorOn ? 'armed' : 'ready' };
+  if (!rec || typeof rec.collectorOn === 'undefined') return { state: 'locked', why: 'Only works grazing a planet band' };
+  return { state: rec.collectorOn ? 'armed' : 'ready', why: rec.collectorOn ? 'Collector is on' : 'Ready' };
 }
 
 function sweepSvg() {
@@ -361,7 +432,9 @@ export function createPowerRail(options = {}) {
         name: given.name || slot.name,
         glyph: given.glyph || slot.glyph,
         badge: given.badge || '',
-        description: (given.description || '') + (slot.index === 9 ? ` Cycle: ${cycleLabel}. Detonate: ${labels[2] || 'unbound'}.` : ''),
+        description: (given.description || slot.description || '')
+          + (slot.index === 9 ? ` Cycle: ${cycleLabel}. Detonate: ${labels[2] || 'unbound'}.` : ''),
+        why: given.why || '',
         state: bound ? (given.state || 'ready') : 'empty',
         cooldownMs: Number(given.cooldownMs) || 0,
         answer: null,
@@ -375,7 +448,7 @@ export function createPowerRail(options = {}) {
     // Signature covers everything that changes pixels EXCEPT cooldown remaining — that animates in
     // CSS, so letting it into the signature would rebuild the DOM every frame and defeat the point.
     const signature = resolved.slots
-      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}`)
+      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}:${s.why}`)
       .join('|');
     if (signature === lastSignature) return;
     lastSignature = signature;

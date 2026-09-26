@@ -299,7 +299,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_railgun_m', dmgOverride: 36, rofOverride: 0.65, projSpeedOverride: 720, rangeOverride: 1050 },
       { id: 'wpn_emp_disruptor_m', occasional: true },
     ],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 3200 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 620, leashRadius: 3200 },
     telegraph: { bark: 'scan', line: 'Ghost already has the shot.', cue: 'sensor_ghost' },
     counterHint: 'break_lock_close_under_cover',
     behavior: 'low-signature sniper; disengages after first alpha, returns from a new bearing',

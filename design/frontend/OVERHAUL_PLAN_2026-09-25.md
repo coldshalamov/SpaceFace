@@ -47,6 +47,14 @@ Produced art replaces line drawings wherever an OBJECT is shown: sector bodies o
 plates, research stars, emblem faces, crests (exist), hulls (exist). Codex generates transparent PNGs →
 `assets/ui/generated/<surface>/*.webp`.
 
+### 2.1 The measured bar (critics, 2026-09-26)
+The library default `.orr-band` (7 px at alpha .085) renders at 1.16:1 against the glass — invisible — so a ring
+drawn with it reads as its 1.5 px core: a wire. A band counts as body only at **>= 2:1** (about lum 70 at rest on
+glass ~10; ~100 hover; ~130 active), set per instrument with `--orr-band-a` / `--orr-w-band` and measured on the
+pixels. Grip and dial rings are best an inward **annulus** with ticks cut through it and labels riding inside.
+Stock web shapes fail (a) too: round-thumb sliders, corner brackets, icon-in-box lists, tab grids, pills. And (b)
+fails when the gesture drives nothing else on screen.
+
 ## 3. Magic-UI-grade life (shared, reduced-motion safe)
 
 Number ticker (`rollTo`, exists) · beams that travel along a path (tether pulse, route pulse, chain beam) ·
@@ -57,28 +65,28 @@ compose them.
 
 ## 4. Every surface — its mini-app and its signature
 
-Status as of 2026-09-25 late (scores are ORRERY-letter scores; none is yet approved against §1(a)/(b)).
+Status as of 2026-09-26. **APPROVED** = passed §1 including (a) and (b). Other scores are critic scores under the owner criteria unless marked "letter" (scored before the criteria existed).
 
 | Surface (bench id) | Mini-app | Signature interaction (distinct) | Assets | Status |
 |---|---|---|---|---|
 | Title (`title`) | The emblem orrery behind the name | The Hand follows the pointer round the dial; the rings answer with parallax | — | 8.1 letter; weight pass due |
 | Pause (`pause`) | Seven-stop dial over the held world | Rows as stops: the Hand steps row to row, left/right along a row | — | 8.0 letter; weight pass due |
-| New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | 7.9; builder |
+| New Game (`new-game`) | The yard: the hull on a turntable ring | **Spin the yard**: drag the ring; each hull's mass sets its swing (heavy drags, light flicks); the stat arcs sweep between hulls; release settles with overshoot; hold LAUNCH runs light down the run's scale into the jump | new backdrop (done), Pelican poster to hero grade | **APPROVED 8.2** (r7, 5d855f9cc + follow-ups) — (a) yes, (b) yes |
 | Loading (`boot`) | The emblem spinning up | Real load stages as ticks lighting round the ring | — | to audit |
-| Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | builder (wave 1) |
-| Save/Load (`save-load*`) | Filmstrip on a curved rail | Scrub the rail; the chosen save's hull and facts decrypt in | poster hulls | builder (wave 1) |
-| Game Over (`game-over`) | The cooled world | The cause decrypts; the career record is an instrument; restore = Lamp Key | — | builder (wave 1) |
-| Codex (`codex`) | The archive | Scrub the ladder; plates reveal, locked entries decrypt as you pass | generated plates | builder (wave 1) |
-| Mission Log (`mission-log`) | Tracing-beam timeline | Trace the beam; each mission lights along it | — | builder (wave 1) |
-| Research (`tech-tree*`) | Constellation | Pan the sky with a lens; unlocking sweeps light down the link | generated stars per branch | builder (wave 1) |
-| Achievements (`achievements`) | Ring grid of medal gauges | Turn the medal ring; each medal's arc fills to its progress | generated medal set | builder (wave 1) |
-| Credits (`credits`) | Scroll reveal over the drift field | Scroll-driven reveal | — | builder (wave 1) |
+| Settings (`settings`) | Mixer + live HUD preview | Ride a slider and the miniature Cluster/mixer answers live | — | r1 built (9c0486c03…1acbb0caa); critic r1 running |
+| Save/Load (`save-load*`) | Filmstrip on a curved rail | Scrub the rail; the chosen save's hull and facts decrypt in | poster hulls | r1 built (4c6710549, f35eb7471); critic r1 running |
+| Game Over (`game-over`) | The cooled world | The cause decrypts; the career record is an instrument; restore = Lamp Key | — | r1 built; critic r1 running |
+| Codex (`codex`) | The archive | **Turn the plate's ring** (r10): every entry on the ring, the Hand a blade that swings as you drag; plates reveal, locked entries decrypt | generated plates (8 story; Comms/Graffiti/Discoveries pending) | 7.0 r1 — fails (a)(b); builder r10 |
+| Mission Log (`mission-log`) | Tracing-beam timeline | Trace the beam **and it drives a route band** that previews the traced contract's route and clock | — | 6.2 r1 — fails (a)(b); builder r10 |
+| Research (`tech-tree*`) | Constellation | Pan the sky with a lens; **the unlock ignites**: light runs the Hand into the star, sweeps down each new link, lights the next stars | generated stars per branch | 7.2 r1 — fails (a)(b); builder |
+| Achievements (`achievements`) | Ring grid of medal gauges | **Turn the orrery**: medals on four orbits round a hero gauge; a category turns its ring under the Hand | generated medal set (5 stock faces to replace) | 6.3 r1 — fails (a)(b); builder |
+| Credits (`credits`) | Scroll reveal over the drift field | Scroll-driven reveal | — | r1 built; critic r1 running |
 | Help (`help`) | The controls rig | **Press anything**: the pressed key/pad button lights its verb on a ship-and-controller instrument (live input echo) | controller + ship silhouette art | wave 2 |
-| Chart (`chart*`, `localmap`, `starmap`) | The galaxy as an orrery | Pan/zoom the orrery; a Lens under the pointer; drag a route and watch the amber beam lay itself; the inspector unfolds from the body | generated sector tokens (belt, gas giant, hub, gate, nebula…) — belt proven | wave 2 |
+| Chart (`chart*`, `localmap`, `starmap`) | The galaxy as an orrery | Pan/zoom the orrery; a Lens under the pointer; drag a route and watch the amber beam lay itself; the inspector unfolds from the body | 24 sector tokens rendered in Blender (`assets/ui/deckplate/tools/render_sector_tokens.py` → `assets/ui/generated/chart/<sector id>.webp`) | builder r1 running |
 | Station shell | Tab rail + berth | Dock-style magnification on the tab rail | — | 8 letter; weight pass due |
 | Market (`station-market`) | Price dial | Turn the quantity dial; the ledger ticker streams prices | — | 8 letter; weight pass due |
 | Missions (`station-contracts`) | Route orrery + tether | Hold to accept: the tether pulse runs key → station → berth | — | 8.07 letter; weight pass |
-| Shipworks (`station-shipworks`) | The jig / the sale disc | Drag the ring to turn the hull; the For Sale ghost of your own hull | posters, Pelican hero grade | 7.8; builder |
+| Shipworks (`station-shipworks`) | The jig / the sale disc | Turn the hull on the disc (For Sale); **Exploded Schematic** (Fleet) | posters, Pelican hero grade | 7.9 r15 — fails (a); builder r16 (inward bezel annulus) |
 | Industry (`station-industry`) | Chain beam | Hold FABRICATE and the beam runs inputs → ring → output | — | 8.1 letter; weight pass |
 | Factions (`station-factions`) | Crest orbit | Turn the orbit to a crest; its relation chords draw | crests (exist) | 8.0 letter; weight pass |
 | Bar (`station-bar`) | The conversation | The voice arc speaks each line; replies as a dial | portraits (exist) | 8.1 letter; weight pass |

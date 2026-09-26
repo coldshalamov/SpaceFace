@@ -507,4 +507,15 @@ html.sf-motion-reduce .dp-menu__item:is(:hover, :focus-visible) { transform:none
   .dp-title__name, .dp-title__eyebrow { color:CanvasText; text-shadow:none; }
   .dp-title__rule { background:CanvasText; box-shadow:none; }
 }
+
+/* Scrollbars in the machine's own metal. The blessed scroll host (.dp-frame__scroll above) owns
+   its own; this covers every other scroller under #screens so a legacy list never shows the
+   platform's default bright bar. scrollbar-color inherits, so one declaration themes the stack;
+   WebKit engines get the pseudo-elements. Forced-colors keeps the system bars (untouched here). */
+#screens { scrollbar-width:thin; scrollbar-color:var(--dp-metal-4) transparent; }
+#screens ::-webkit-scrollbar { width:10px; height:10px; }
+#screens ::-webkit-scrollbar-track { background:transparent; }
+#screens ::-webkit-scrollbar-thumb { background:var(--dp-metal-3); border:2px solid transparent; background-clip:content-box; border-radius:6px; }
+#screens ::-webkit-scrollbar-thumb:hover { background:var(--dp-metal-4); border:2px solid transparent; background-clip:content-box; }
+#screens ::-webkit-scrollbar-corner { background:transparent; }
 `;

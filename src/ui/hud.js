@@ -40,6 +40,7 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
+import { holdLeanChips } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
@@ -253,12 +254,18 @@ function respawnStationName(id) {
 
 export function respawnToastText(payload = {}) {
   const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
+  const cost = Math.max(0, Math.round(Number(payload.costCr) || 0));
+  if (cost > 0) parts.push('recovery ' + cost.toLocaleString('en-US') + ' cr');
+  if (typeof payload.insuranceStatus === 'string' && payload.insuranceStatus) {
+    parts.push(payload.insuranceStatus.toLowerCase());
+  }
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
   if (refund > 0) parts.push('insurance +' + refund.toLocaleString('en-US') + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
   if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
   else if (payload.cargoLost) parts.push('cargo lost');
-  parts.push('3s shields online');
+  const invulnS = Math.max(0, Math.round(Number(payload.invulnS) || 0));
+  if (invulnS > 0) parts.push(invulnS + 's shields online');
   return parts.join(' - ');
 }
 
@@ -693,6 +700,7 @@ export function contactOverflowSummary(contacts, visibleCount) {
   for (const [key, count] of Object.entries(counts)) {
     if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
   }
+  if (parts.length === 1) return `+${parts[0]}`;
   return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
@@ -1281,6 +1289,13 @@ function injectTravelTapeStyle() {
      takes the cleared bottom-centre band above the receipt lane. */
   #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:86px; margin:0;
     transform:translateX(-50%); }
+  /* Below the 1280 floor the band between the Cluster's ordnance crescent and the right dock is
+     narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
+     (--sf-vtape-fit steps are set with --sf-hud-edge-fit in hudStyles). */
+  @media (max-width: 1279px), (max-height: 719px) {
+    #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 276px) + 36px);
+      transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
+  }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
   @media (prefers-reduced-motion: reduce) {
@@ -1399,16 +1414,28 @@ export function createHud(ctx, alerts) {
   clusterChassis.appendChild(bars);
   // The comms strip shares the left edge with the cluster. Publish the cluster's height so the
   // strip always stops short of it; a ResizeObserver fires only when the size changes, so this
-  // costs no per-frame layout read.
+  // costs no per-frame layout read. While ORRERY owns the bottom-left the chassis stays mounted
+  // but hidden — its (often much taller, compact-wrapped) layout height must not eat the strip,
+  // so the reserve is measured off the ORRERY Cluster's rendered box instead. Neither a chassis
+  // resize nor a viewport-driven --orr-cluster-scale step is observable by the other signal, so
+  // both feed the same publisher.
+  const publishClusterReserve = () => {
+    const orrery = root.dataset && root.dataset.hud === 'orrery';
+    const occupant = orrery ? root.querySelector('.orr-hud-cluster .orr-cluster') : clusterChassis;
+    if (!occupant) return;
+    const rect = occupant.getBoundingClientRect();
+    const h = orrery
+      ? Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 0) - rect.top)
+      : rect.height;
+    root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
+  };
   let clusterSizeObserver = null;
   if (typeof ResizeObserver === 'function') {
-    clusterSizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[entries.length - 1];
-      const box = entry && entry.borderBoxSize && entry.borderBoxSize[0];
-      const h = box ? box.blockSize : (entry && entry.contentRect ? entry.contentRect.height : 0);
-      root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
-    });
+    clusterSizeObserver = new ResizeObserver(publishClusterReserve);
     clusterSizeObserver.observe(clusterChassis);
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('resize', publishClusterReserve);
   }
   leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
@@ -1911,6 +1938,8 @@ export function createHud(ctx, alerts) {
   // parent and it lands on the cluster's ordnance crescent. Re-seat it on #hud so it takes the
   // cleared bottom-centre band (the data-hud="orrery" rule in injectTravelTapeStyle).
   if (orreryCluster) root.appendChild(vtape);
+  // The bottom-left occupant the comms strip reserves space for just changed hands.
+  if (orreryCluster) publishClusterReserve();
   // Prompts borrow the number row rather than racing the rail for it.
   const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
   const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
@@ -2714,6 +2743,10 @@ export function createHud(ctx, alerts) {
   .sf-cargo-panel.open {
     display: flex;
   }
+  /* Same HUD-overlay contract as the comms feed: a modal screen owns the frame while it is up;
+     the hold stays open in state and returns when the screen closes. */
+  body.ui-modal-open .sf-cargo-panel.open,
+  body.ui-live-screen .sf-cargo-panel.open { display: none; }
   .sf-cargo-panel__head {
     display: flex;
     align-items: center;
@@ -2757,6 +2790,8 @@ export function createHud(ctx, alerts) {
     font-weight: bold;
     color: var(--visor-cyan);
   }
+  .sf-cargo-lean--warm { color: var(--visor-cyan); }
+  .sf-cargo-lean--cool { color: var(--warn); }
   .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
   .sf-cargo-panel__close:hover,
   .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
@@ -3142,6 +3177,9 @@ export function createHud(ctx, alerts) {
         <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
           <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
         </div>
+        <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
+          <span class="sf-gauge-label">HOLD READS: <span class="sf-cargo-summary-lean"></span></span>
+        </div>
       </div>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
     </div>
@@ -3474,6 +3512,32 @@ export function createHud(ctx, alerts) {
     }
     applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
     cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
+
+    // HOLD READS — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
+    // never a rep delta; a neutral hold renders '—' rather than a fake label.
+    const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
+    if (leanHost) {
+      // Pure recompute per panel refresh — O(item types) — so a loaded save can never print a
+      // stale session's leans (state.ui is not serialized; cargoConscience keeps its own
+      // authoritative copy for system readers/tests).
+      const chips = holdLeanChips(c);
+      leanHost.replaceChildren();
+      const labels = [];
+      chips.forEach((entry) => {
+        if (!entry || (entry.lean !== 'warm' && entry.lean !== 'cool')) return;
+        labels.push(entry.label);
+        if (labels.length > 1) leanHost.appendChild(document.createTextNode(' · '));
+        const chip = document.createElement('span');
+        chip.className = `sf-cargo-lean sf-cargo-lean--${entry.lean}`;
+        chip.textContent = entry.label;
+        leanHost.appendChild(chip);
+      });
+      if (!labels.length) leanHost.textContent = '—';
+      const gaugeItem = leanHost.closest('.sf-cargo-gauge-item') || leanHost;
+      gaugeItem.setAttribute('role', 'status');
+      gaugeItem.setAttribute('aria-label',
+        labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
+    }
 
     const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
     const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
@@ -5610,6 +5674,9 @@ export function createHud(ctx, alerts) {
       forkInstrument.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', publishClusterReserve);
+      }
     },
   };
 }

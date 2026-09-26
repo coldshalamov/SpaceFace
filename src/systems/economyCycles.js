@@ -16,6 +16,8 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { recoverStock } from '../economy/economyMath.js';
+import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -509,10 +511,97 @@ function pruneExpiredBlend(cycle, simTime) {
   return pruned;
 }
 
+// Structural stock target: 70% role equilibrium, 30% cycle-scaled. economy.effectiveEq
+// calls this so the forecast band and the live drift share one mix. The 0.25–4 clamp is
+// the same event-equilibrium bound economy applies before the mix.
+const EQ_EVENT_MULT_LO = 0.25;
+const EQ_EVENT_MULT_HI = 4;
+const FORECAST_TICK_S = 5;
+
+/** Stock units per second from authored regional recipes. Positive adds stock. */
+const REGIONAL_STOCK_PER_SEC = new Map();
+for (const recipes of Object.values(allRegionalPressureRecipes())) {
+  for (const recipe of recipes || []) {
+    if (!recipe || !recipe.stationId || !recipe.commodityId) continue;
+    const units = Number(recipe.units) || 0;
+    if (!units) continue;
+    const signed = recipe.role === 'consume' ? -units : units;
+    const key = `${recipe.stationId}\u001f${recipe.commodityId}`;
+    REGIONAL_STOCK_PER_SEC.set(key, (REGIONAL_STOCK_PER_SEC.get(key) || 0) + signed / 60);
+  }
+}
+
+export function stockDriftTarget(equilibrium, cycleFactor, equilibriumMult = 1) {
+  const eq = Number(equilibrium);
+  if (!(eq > 0)) return 0;
+  let mult = Number(equilibriumMult);
+  if (!Number.isFinite(mult) || mult <= 0) mult = 1;
+  if (mult < EQ_EVENT_MULT_LO) mult = EQ_EVENT_MULT_LO;
+  if (mult > EQ_EVENT_MULT_HI) mult = EQ_EVENT_MULT_HI;
+  const cf = Number.isFinite(Number(cycleFactor)) ? Number(cycleFactor) : 1;
+  // Literal 0.70 + 0.30, not (1 - share), so the mix stays bit-identical with the
+  // previous effectiveEq expression. A one-ULP change here reprices the galaxy.
+  const soft = 0.70 + 0.30 * cf;
+  return eq * mult * soft;
+}
+
+function eventFieldMult(entry, field) {
+  let mult = 1;
+  const mods = entry && entry.eventMods;
+  if (!mods) return mult;
+  for (let i = 0; i < mods.length; i++) {
+    if (mods[i] && mods[i].field === field) mult *= Number(mods[i].mult) || 1;
+  }
+  return mult;
+}
+
+function listingStockMid(def, entry, stock) {
+  const baseEq = Math.max(entry.baseEq, 1);
+  const elasticity = def.elasticity > 0 ? def.elasticity : 0.4;
+  const demand = Number(entry.demandMult) > 0 ? Number(entry.demandMult) : 1;
+  return def.basePrice * Math.pow(Math.max(stock, 1) / baseEq, -elasticity) * demand;
+}
+
+// Primary-wave half-width in credits. SPEC3-F1 draws the cone as ±(amplitude · basePrice):
+// the regime's own wiggle, not an oracle line. At least one credit so a flat wave is still a band.
+function waveHalfWidth(cycle, basePrice) {
+  const amp = Math.abs(Number(cycle && cycle.amplitude) || 0);
+  const base = Math.max(1, Number(basePrice) || 1);
+  return Math.max(1, Math.round(amp * base));
+}
+
+function advanceDriftStock(entry, cycle, def, stationId, cmdtyId, stock, fromT, toT) {
+  const half = (BALANCE.commodities[def.id] && BALANCE.commodities[def.id].recoveryHalfLifeS)
+    || BALANCE.market.halfLifeS;
+  const perSec = REGIONAL_STOCK_PER_SEC.get(`${stationId}\u001f${cmdtyId}`) || 0;
+  const eqMult = eventFieldMult(entry, 'equilibrium');
+  const driftMult = eventFieldMult(entry, 'drift');
+  let next = stock;
+  let t = fromT;
+  while (t + 1e-9 < toT) {
+    const dt = Math.min(FORECAST_TICK_S, toT - t);
+    t += dt;
+    next = perSec < 0 ? Math.max(1, next + perSec * dt) : next + perSec * dt;
+    const target = stockDriftTarget(entry.equilibrium, cycleFactorAt(cycle, t), eqMult);
+    next = recoverStock(next, target, dt, half, driftMult);
+  }
+  return next;
+}
+
+/**
+ * Coverage of this cone at its arrival (the last step), on Helios and Ceres listings.
+ * Measured for the drift-plus-wave band below. It is not a price target: do not retune
+ * yields to move it. Re-measure on fresh seeds if the band definition changes.
+ */
+export const FORECAST_CONE_STATED_RATE = 0.99;
+
 /**
  * Predict future mid-price curve from current market state.
- * Holds stock/events constant; only the cycle equation evolves — the skill bet.
- * Returns array of { t, mid }.
+ * `mid` holds stock and events constant and lets only the cycle equation evolve — the skill bet.
+ * `lo`/`hi` are the band around that bet: the deterministic stock drift (recovery + regional
+ * pressure + mods already on the listing) and ±(amplitude · basePrice). Future events and
+ * regime re-rolls are why the stated rate is not 1.
+ * Returns an array of { t, mid, lo, hi, statedRate }. The array also carries `statedRate`.
  */
 export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS = 5) {
   const econ = state && state.economy;
@@ -521,17 +610,29 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   const def = CMDTY_BY_ID.get(cmdtyId);
   if (!entry || !def) return [];
   const cycle = getCycle(state, stationId, cmdtyId, null, state.simTime || 0);
-  const stockMid = def.basePrice * Math.pow(
-    Math.max(entry.stock, 1) / Math.max(entry.baseEq, 1),
-    -(def.elasticity > 0 ? def.elasticity : 0.4),
-  ) * (Number(entry.demandMult) > 0 ? Number(entry.demandMult) : 1);
+  const frozenStock = Number(entry.stock);
+  const stockMid = listingStockMid(def, entry, frozenStock);
+  const half = waveHalfWidth(cycle, def.basePrice);
   const out = [];
   const now = Math.max(0, state.simTime || 0);
+  let driftedStock = frozenStock;
+  let driftedFrom = now;
   for (let i = 1; i <= steps; i++) {
     const t = now + i * stepS;
-    const mid = applyCycleToMid(def.basePrice, stockMid, cycle, t);
-    out.push({ t, mid: Math.max(1, Math.round(mid)) });
+    const mid = Math.max(1, Math.round(applyCycleToMid(def.basePrice, stockMid, cycle, t)));
+    driftedStock = advanceDriftStock(entry, cycle, def, stationId, cmdtyId, driftedStock, driftedFrom, t);
+    driftedFrom = t;
+    const driftedMid = Math.max(1, Math.round(applyCycleToMid(
+      def.basePrice,
+      listingStockMid(def, entry, driftedStock),
+      cycle,
+      t,
+    )));
+    const lo = Math.max(1, Math.min(mid, driftedMid) - half);
+    const hi = Math.max(lo, Math.max(mid, driftedMid) + half);
+    out.push({ t, mid, lo, hi, statedRate: FORECAST_CONE_STATED_RATE });
   }
+  out.statedRate = FORECAST_CONE_STATED_RATE;
   return out;
 }
 

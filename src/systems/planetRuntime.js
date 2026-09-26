@@ -120,7 +120,12 @@ export const planetRuntime = {
       rt = ensureRuntime(state); // _unwind replaces state.planet — never keep the stale reference
     }
     if (site && !rt.active) this._register(state, rt, site, sectorId);
-    if (!rt.active || !site) return;
+    if (!rt.active || !site) {
+      // Away from a planet band the skim toggle would otherwise evaporate in silence — the key
+      // answers why it cannot fire here, the same way a deploy cooldown does.
+      this._denySkimToggle(state);
+      return;
+    }
 
     // The kernel is cleared by fields._clearAll on lifecycle boundaries; re-bind when missing so
     // the profile and the body can never drift apart (identity transaction stays whole).
@@ -482,6 +487,13 @@ export const planetRuntime = {
   },
 
   // ── skim harvest (yield = path × density through the explicit collector) ──────────────────────
+
+  _denySkimToggle(state) {
+    const actions = state.input && state.input.actions;
+    if (!actions || !actions.toggleSkimCollector) return;
+    actions.toggleSkimCollector = false;
+    this.bus.emit('toast', { text: 'Skim collector needs a planet band', kind: 'info', ttl: 1.6 });
+  },
 
   _tickHarvest(dt, state, rt, site, ) {
     const actions = state.input && state.input.actions;

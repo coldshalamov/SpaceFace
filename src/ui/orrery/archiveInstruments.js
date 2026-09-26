@@ -53,75 +53,97 @@ function arcText(cx, cy, r, text, { lower = false, size = 9, cls = 'orr-arc-engr
     + `<text class="${cls}" font-size="${size}" text-anchor="middle"><textPath href="#${id}" startOffset="50%">${esc(text)}</textPath></text>`;
 }
 
-/**
- * The section glyphs, drawn in the ORRERY icon hand (a 24 grid, one stroke weight). A codex entry
- * that has no produced art stands its section's glyph in the plate's aperture.
- */
-export const ARCHIVE_GLYPHS = Object.freeze({
-  story: 'M12 6.2C9.4 4.7 6.4 4.5 3.6 5.5V19c2.8-1 5.8-.8 8.4.7 2.6-1.5 5.6-1.7 8.4-.7V5.5c-2.8-1-5.8-.8-8.4.7ZM12 6.2v13.5M6.2 8.6c1.4-.3 2.9-.2 4.2.3M6.2 11.6c1.4-.3 2.9-.2 4.2.3M13.6 8.9c1.3-.5 2.8-.6 4.2-.3',
-  comms: 'M12 14.5v6M8.6 20.5h6.8M10.75 13.2a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0-2.5 0M9.3 10.4a3.9 3.9 0 0 1 5.4 0M6.9 8a7.3 7.3 0 0 1 10.2 0M4.5 5.6a10.7 10.7 0 0 1 15 0',
-  discoveries: 'M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 1 0 0-11ZM12 9.6l2.4 2.4-2.4 2.4-2.4-2.4Z',
-  graffiti: 'M3.8 16.4c1.6-5.2 3.2 2.7 4.9-2.6 1.3-4.1 2.7-4.3 3.6-.5.7 3 2 3.7 3.4.6 1-2.2 2.2-4.8 4.5-6.4M5.6 19.6h12.8',
-  figures: 'M12 4a3.6 3.6 0 1 0 0 7.2A3.6 3.6 0 1 0 12 4ZM4.8 20.2c.6-4.2 3.4-6.6 7.2-6.6s6.6 2.4 7.2 6.6',
-  ship: 'M12 3.2 15.6 10.6 20.2 19.4 12 16.2 3.8 19.4 8.4 10.6ZM12 3.2v13M8.4 10.6h7.2',
-  archive: 'M4 6.5h16v11H4ZM4 9.2h16M4 14.8h16M6.5 6.5v2.7M9.5 6.5v2.7M12.5 6.5v2.7M15.5 6.5v2.7M6.5 14.8v2.7M9.5 14.8v2.7M12.5 14.8v2.7M15.5 14.8v2.7',
-  ledger: 'M6 3.8h9.2l2.8 2.8v13.6H6ZM15.2 3.8v2.8H18M8.8 10h6.4M8.8 13h6.4M8.8 16h4',
-  locked: 'M8 10.8V8.3a4 4 0 0 1 8 0v2.5M6.4 10.8h11.2v9H6.4ZM12 14.1v2.6',
-});
+/** The archive dial's geometry, in its own 400-unit box (shared by the drawing and the pointer). */
+export const ARCHIVE_DIAL = Object.freeze({ C: 200, ENTRY_R: 174, RIM_R: 140, BLADE_R0: 161, BLADE_R1: 199 });
+
+/** The angle (degrees, 0 = up, clockwise) at the middle of entry `i` of `n` round the dial. */
+export function archiveDialAngle(i, n) {
+  return n > 0 ? ((i + 0.5) * 360) / n : 0;
+}
+
+/** Which of `n` entries lies under the angle `deg`. */
+export function archiveDialIndex(deg, n) {
+  if (!(n > 0)) return -1;
+  const a = ((deg % 360) + 360) % 360;
+  return Math.max(0, Math.min(n - 1, Math.floor((a / 360) * n)));
+}
 
 /**
- * The archive plate: the entry's aperture (produced art or its glyph sits under it in HTML) inside a
- * ring instrument. The segment ring is the entry's section, one arc per entry, the one being read
- * lit; the engraving names the section over the top and the entry's place under it.
- * @param {{segments?: string[], current?: number, top?: string, bottom?: string, glyph?: string, locked?: boolean}} o
- *   segments: one state per entry in the section ('open' | 'locked'); current: the index being read.
+ * The archive dial: the entry's aperture (its produced art sits under it in HTML) ringed by every
+ * entry of the open tab, one arc each — the one being read lit in phosphor, the ones already read
+ * brighter than the ones still to read, the locked ones dark — with a long graduation where each
+ * section starts. The engraving names the section over the top and the entry's place under it.
+ * A locked entry's cipher runs round the aperture's rim. The Hand is a separate drawing (the blade).
+ * @param {{entries?: string[], current?: number, starts?: number[], top?: string, bottom?: string, cipher?: string, locked?: boolean}} o
+ *   entries: one state per entry ('read' | 'open' | 'locked'); starts: the indices where a section begins.
  */
-export function archivePlateSvg({ segments = [], current = -1, top = '', bottom = '', glyph = '', locked = false } = {}) {
-  const C = 200;
+export function archivePlateSvg({ entries = [], current = -1, starts = [], top = '', bottom = '', cipher = '', locked = false } = {}) {
+  const { C, ENTRY_R, RIM_R } = ARCHIVE_DIAL;
   const parts = [];
-  // the outer scale turns slowly: 120 graduations, a major every tenth
-  parts.push(`<g class="orr-arc-drift"><path class="orr-arc-tick" d="${ticksD(C, C, 197, 120, { len: 3, major: 10, majorLen: 8 })}"/></g>`);
-  parts.push(`<path class="orr-arc-band" stroke-width="10" d="${arcD(C, C, 186, 0, 360)}"/>`);
-  parts.push(`<path class="orr-arc-ring orr-arc-ring--outer orr-arc-draw" pathLength="1" d="${arcD(C, C, 186, 0, 360)}"/>`);
-  // the section: one arc per entry
-  const n = Math.max(0, segments.length | 0);
+  // the outer scale: a major every 15 degrees, turning slowly
+  parts.push(`<g class="orr-arc-drift"><path class="orr-arc-major" d="${ticksD(C, C, 199, 24, { len: 4 })}"/></g>`);
+  // the entry ring: a soft band under every arc, the arcs themselves as bands of light
+  parts.push(`<path class="orr-arc-band orr-arc-draw" pathLength="1" stroke-width="22" d="${arcD(C, C, ENTRY_R, 0, 360)}"/>`);
+  const n = Math.max(0, entries.length | 0);
   if (n) {
     const span = 360 / n;
-    const gap = n > 48 ? 0.7 : n > 20 ? 1.4 : n > 8 ? 2.6 : 4;
-    const segs = { open: [], locked: [] };
+    const gap = n > 48 ? 0.8 : n > 20 ? 1.5 : n > 8 ? 2.6 : 4;
+    const groups = { read: [], open: [], locked: [] };
     for (let i = 0; i < n; i += 1) {
       if (i === current) continue;
-      const a0 = i * span + gap / 2;
-      const a1 = (i + 1) * span - gap / 2;
-      (segments[i] === 'locked' ? segs.locked : segs.open).push(arcD(C, C, 172, a0, a1));
+      const d = arcD(C, C, ENTRY_R, i * span + gap / 2, (i + 1) * span - gap / 2);
+      (groups[entries[i]] || groups.open).push(d);
     }
-    if (segs.open.length) parts.push(`<path class="orr-arc-seg orr-arc-seg--open" d="${segs.open.join(' ')}"/>`);
-    if (segs.locked.length) parts.push(`<path class="orr-arc-seg orr-arc-seg--locked" d="${segs.locked.join(' ')}"/>`);
+    for (const kind of ['locked', 'open', 'read']) {
+      if (!groups[kind].length) continue;
+      const d = groups[kind].join(' ');
+      parts.push(`<path class="orr-arc-seg-glow orr-arc-seg-glow--${kind}" d="${d}"/><path class="orr-arc-seg orr-arc-seg--${kind}" d="${d}"/>`);
+    }
+    // a section starts: a long graduation across the ring
+    const majors = [];
+    for (const s of starts) {
+      if (!(s > 0 && s < n)) continue;
+      const a = s * span;
+      const [x0, y0] = polar(C, C, ENTRY_R - 12, a);
+      const [x1, y1] = polar(C, C, ENTRY_R + 14, a);
+      majors.push(`M ${q(x0)} ${q(y0)} L ${q(x1)} ${q(y1)}`);
+    }
+    if (majors.length) parts.push(`<path class="orr-arc-start" d="${majors.join(' ')}"/>`);
     if (current >= 0 && current < n) {
-      const a0 = current * span + gap / 2;
-      const a1 = (current + 1) * span - gap / 2;
-      const d = arcD(C, C, 172, a0, a1);
-      const mid = (a0 + a1) / 2;
-      const [t0x, t0y] = polar(C, C, 179, mid);
-      const [t1x, t1y] = polar(C, C, 191, mid);
-      parts.push(`<g class="orr-arc-now${locked ? ' is-locked' : ''}"><path class="orr-arc-seg-bloom" d="${d}"/><path class="orr-arc-seg orr-arc-seg--now" d="${d}"/>`
-        + `<path class="orr-arc-now-tick" d="M ${q(t0x)} ${q(t0y)} L ${q(t1x)} ${q(t1y)}"/></g>`);
+      const d = arcD(C, C, ENTRY_R, current * span + gap / 2, (current + 1) * span - gap / 2);
+      parts.push(`<g class="orr-arc-now${locked ? ' is-locked' : ''}"><path class="orr-arc-seg-bloom" d="${d}"/><path class="orr-arc-seg orr-arc-seg--now" d="${d}"/></g>`);
     }
   }
-  // the engraved band: the section over the top, the entry's place under it
-  parts.push(`<path class="orr-arc-ring" d="${arcD(C, C, 160, 0, 360)}"/>`);
-  if (top) parts.push(arcText(C, C, 146, top, { size: 9.5 }));
-  if (bottom) parts.push(arcText(C, C, 152, bottom, { lower: true, size: 9.5 }));
-  // the aperture's rim and its four index marks
-  parts.push(`<path class="orr-arc-band" stroke-width="12" d="${arcD(C, C, 134, 0, 360)}"/>`);
-  parts.push(`<path class="orr-arc-ring orr-arc-ring--rim" d="${arcD(C, C, 132, 0, 360)}"/>`);
-  parts.push(`<path class="orr-arc-tick orr-arc-tick--hi" d="${ticksD(C, C, 132, 4, { len: 9 })}"/>`);
-  if (glyph && ARCHIVE_GLYPHS[glyph]) {
-    // the glyph at the aperture's heart: 24 grid scaled to 110, centred
-    const s = 110 / 24;
-    parts.push(`<g class="orr-arc-glyph${locked ? ' is-locked' : ''}" transform="translate(${q(C - 55)} ${q(C - 55)}) scale(${q(s)})"><path d="${ARCHIVE_GLYPHS[glyph]}"/></g>`);
+  // the engraving
+  if (top) parts.push(arcText(C, C, 150, top, { size: 9.5 }));
+  if (bottom) parts.push(arcText(C, C, 157, bottom, { lower: true, size: 9.5 }));
+  // the aperture's rim, lit, and its four index marks
+  parts.push(`<path class="orr-arc-band" stroke-width="14" d="${arcD(C, C, RIM_R, 0, 360)}"/>`);
+  parts.push(`<path class="orr-arc-ring orr-arc-ring--rim" d="${arcD(C, C, RIM_R, 0, 360)}"/>`);
+  parts.push(`<path class="orr-arc-tick orr-arc-tick--hi" d="${ticksD(C, C, RIM_R, 4, { len: 10 })}"/>`);
+  // a locked entry: its cipher runs round the inside of the rim
+  if (locked && cipher) {
+    const id = uid('orr-arc-ci');
+    const r = RIM_R - 11;
+    parts.push(`<path id="${id}" d="${arcD(C, C, r, 0, 359.9)}" fill="none" stroke="none"/>`
+      + `<text class="orr-arc-cipher" font-size="11"><textPath href="#${id}">${esc(cipher)}</textPath></text>`);
   }
   return `<svg class="orr-svg orr-arc-plate__svg" viewBox="0 0 400 400" aria-hidden="true" focusable="false">${parts.join('')}</svg>`;
+}
+
+/**
+ * The Hand on the archive dial: an amber blade across the entry ring (the arm of the hero
+ * instrument IS the Hand). Drawn pointing straight up; the screen turns its group to the entry.
+ * The bloom is geometry (a wider stroke of the same path), never a filter.
+ */
+export function archiveBladeSvg() {
+  const { C, ENTRY_R, BLADE_R0, BLADE_R1 } = ARCHIVE_DIAL;
+  const d = `M ${C} ${C - BLADE_R0} L ${C} ${C - BLADE_R1}`;
+  const pip = `M ${C} ${C - ENTRY_R - 6} L ${C + 5} ${C - ENTRY_R} L ${C} ${C - ENTRY_R + 6} L ${C - 5} ${C - ENTRY_R} Z`;
+  const tip = `M ${C - 5} ${C - BLADE_R0 + 1} L ${C} ${C - BLADE_R0 - 7} L ${C + 5} ${C - BLADE_R0 + 1}`;
+  return `<svg class="orr-svg cx-blade" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><g class="cx-blade__arm">`
+    + `<path class="cx-blade__bloom" d="${d}"/><path class="cx-blade__core" d="${d}"/>`
+    + `<path class="cx-blade__tip" d="${tip}"/><path class="cx-blade__pip" d="${pip}"/></g></svg>`;
 }
 
 /**
@@ -136,7 +158,7 @@ export function archiveGaugeSvg(frac, { count = 0 } = {}) {
   const ticks = ticksD(C, C, r + 3, n, { len: 3, from, to, inward: false });
   const [hx, hy] = polar(C, C, r, from + (to - from) * v);
   return `<svg class="orr-svg orr-arc-gauge" viewBox="0 0 64 64" aria-hidden="true" focusable="false" style="--v:${q(v)}">`
-    + `<path class="orr-arc-gauge__track" d="${d}"/>`
+    + `<path class="orr-arc-gauge__trackglow" d="${d}"/><path class="orr-arc-gauge__track" d="${d}"/>`
     + `<path class="orr-arc-gauge__ticks" d="${ticks}"/>`
     + (v > 0.004
       ? `<path class="orr-arc-gauge__bloom" d="${d}" pathLength="1" stroke-dasharray="${q(v)} 1"/>`
@@ -196,9 +218,13 @@ export function archiveWedgeSvg({ w, h, x0, y0, x1, top, bottom }) {
   const H = Math.max(1, Math.round(h));
   const fan = `M ${q(x0)} ${q(y0)} L ${q(x1)} ${q(top)} L ${q(x1)} ${q(bottom)} Z`;
   const edges = `M ${q(x0)} ${q(y0)} L ${q(x1)} ${q(top)} M ${q(x0)} ${q(y0)} L ${q(x1)} ${q(bottom)}`;
+  // the fill is light graded from the graduation (brightest) out to the rail; the edges are light with a bloom
+  const g = uid('cx-wedge-g');
   return `<svg class="cx-wedge__svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false">`
-    + `<path class="cx-wedge__fan" d="${fan}"/><path class="cx-wedge__edge" d="${edges}"/>`
-    + `<circle class="cx-wedge__pip" cx="${q(x0)}" cy="${q(y0)}" r="2.6"/></svg>`;
+    + `<defs><linearGradient id="${g}" gradientUnits="userSpaceOnUse" x1="${q(x0)}" y1="0" x2="${q(x1)}" y2="0">`
+    + `<stop offset="0" stop-color="rgb(236,230,216)" stop-opacity=".16"/><stop offset="1" stop-color="rgb(236,230,216)" stop-opacity=".04"/></linearGradient></defs>`
+    + `<path class="cx-wedge__fan" fill="url(#${g})" d="${fan}"/><path class="cx-wedge__bloom" d="${edges}"/><path class="cx-wedge__edge" d="${edges}"/>`
+    + `<circle class="cx-wedge__pip" cx="${q(x0)}" cy="${q(y0)}" r="3.4"/></svg>`;
 }
 
 /**

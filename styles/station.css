@@ -713,6 +713,15 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The mechanic reads more than one fact (scar, weld, rap). A 36-character clip
+   kept only the mildest opening and hid the ship. This article wraps. */
+#screens .sx-berth .sxb-berth__mechanic .sxb-event__body {
+  display: block;
+  max-width: 46ch;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
 #screens .sx-berth .sxb-handoff { margin: calc(10px * var(--k-s)) 0 0 calc(20px * var(--k-s)); }
 
 /* == THE HEAD BAND =============================================================================

@@ -25,7 +25,7 @@ import {
 const SEEDS = [4242, 8008];
 // Combat-bearing sectors pin the catalog property; the demo route pins its thin edge (exactly
 // three combat shapes today — one authored loss turns this red).
-const SECTORS = ['sector_nyx_march', 'sector_io_reach', 'sector_helios_prime'];
+const SECTORS = ['sector_nyx_march', 'sector_io_reach', 'sector_helios_prime', 'sector_ceres_belt'];
 const HOURS = 10;
 const DAYS = Math.round((HOURS * ENCOUNTER_SHAPE_HOUR_SECONDS) / ENCOUNTER_REPETITION_DAY_SECONDS);
 

@@ -65,7 +65,9 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     sys += `<path class="orr-power__sys ${state}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
       + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
   });
-  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`
+  // the words ride outside the arc, so the ink box is wider than the drawing: the viewBox carries
+  // their reach (measured -18..267 on a 0..232 dial) or the rail's clip takes the first letters
+  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="-24 0 ${w + 64} ${h}" aria-hidden="true" focusable="false">`
     + `<path class="orr-power__band" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 5, from, to, inward: false })}"/>`
@@ -299,8 +301,10 @@ ${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; 
   mask-composite:intersect; }
 ${W} .sx-sw-circuit__identity { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:none; letter-spacing:.04em; }
-${W} .sx-sw-circuit__core { position:relative; width:176px; height:118px; margin:6px 0 10px !important; display:block !important; }
-${W} .sx-sw-circuit__core .orr-power { position:absolute; inset:0; width:176px; height:118px; overflow:visible; }
+/* the core borrows the side's padding: the dial's words ride past the drawing, so the box must be
+   wider than the content column or the rail's clip eats the first and last letters */
+${W} .sx-sw-circuit__core { position:relative; width:auto; height:118px; margin:6px -28px 10px !important; display:block !important; }
+${W} .sx-sw-circuit__core .orr-power { position:absolute; inset:0; width:auto; height:auto; overflow:visible; }
 ${W} .orr-power path { fill:none; }
 ${W} .sx-sw-circuit__core .orr-power .orr-power__track { stroke:rgb(${BONE} / .2) !important; stroke-width:3; fill:none !important; }
 ${W} .orr-power__ticks { stroke:rgb(${BONE} / .42); stroke-width:1; }
@@ -309,8 +313,10 @@ ${W} .orr-power__notch { stroke:rgb(7 8 10); stroke-width:2; }
 ${W} .orr-power.is-over .orr-power__lit { stroke:var(--dp-danger, #ff5038); }
 ${W} .orr-power__ghost { stroke:var(--dp-ice, #8fcbff); stroke-width:1.6; stroke-dasharray:4 3; }
 ${W} .orr-power__ghost.is-over { stroke:var(--dp-danger, #ff5038); }
-${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:0; top:44px; text-align:center; line-height:1 !important; }
-${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:0; top:88px; text-align:center; }
+/* the dial sits at 47.3% of the widened box (its viewBox pads left less than right): the number
+   and the word centre on the dial, not the box */
+${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; top:44px; text-align:center; line-height:1 !important; }
+${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
@@ -409,7 +415,7 @@ ${W} .sx-sw-rack__cell:is(:hover, :focus-visible)::before { border-color:var(--d
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand-hot, #ffd98c) !important; }
 /* the circuit: the dial says it all; the seven-row table and the instruction retire */
 ${W} .sx-sw-circuit__flows, ${W} .sx-sw-circuit__instruction { display:none !important; }
-${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:232px; height:150px; }
+${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:150px; }
 ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
@@ -434,7 +440,7 @@ ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
   ${W} .sx-sw-bar { padding:3px 0 !important; }
   ${W} .sx-sw-hero { padding:0 0 4px !important; }
   ${W}.orr-sw--jig .sx-sw-bands { gap:6px 14px !important; }
-  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:200px; height:130px; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:130px; }
   ${W} .sx-sw-circuit__core .k-hero__n { top:50px; font-size:28px !important; }
   ${W} .sx-sw-circuit__core .k-hero__w { top:88px; }
   ${W} .sx-sw-side__name { font-size:24px !important; }
@@ -508,8 +514,8 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
   ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:1fr !important; padding:1px 0 !important; row-gap:0; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.1; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:12px !important; justify-self:start; text-align:left; line-height:1.15; }
-  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:184px; height:119px; }
-  ${W} .sx-sw-circuit__core { margin:4px 0 4px !important; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:119px; }
+  ${W} .sx-sw-circuit__core { margin:4px -28px !important; }
   ${W} .sx-sw-circuit__core .k-hero__n { top:45px; font-size:26px !important; }
   ${W} .sx-sw-circuit__core .k-hero__w { top:80px; }
   ${W} .sx-sw-rack { margin-top:8px !important; }
@@ -902,6 +908,52 @@ ${W} .sx-buybar [data-buyship] > .sx-buykey__rim path { stroke-width:1.5px !impo
 /* the readings need no rule over them */
 @media (min-height:801px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:none !important; } }
 @media (max-height:800px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)) 0 0 / 100% 1.5px no-repeat !important; } }
+
+/* ================================ ROUND 16: a bezel with a body ================================ */
+/* the For Sale ring is a bezel you grip: a band with a body (lum ~70 at rest, ~100 under the pointer, ~130 while
+   it turns), edged at both radii, its scale cut across it (dark notches, bright majors) */
+${W} .sx-sw__salering { --bezel-a:.27; --bezel-edge-a:.58; }
+${W} .sx-sw__stage:has(> .sx-sw__turn:hover) > .sx-sw__salering { --bezel-a:.40; --bezel-edge-a:.72; }
+${W} .sx-sw__stage.is-turning > .sx-sw__salering { --bezel-a:.53; --bezel-edge-a:.82; }
+${W} :is(.sx-sw__salering, .sx-sw__jigband) .sx-sw__bezel-band { fill:none; stroke:rgb(${BONE} / var(--bezel-a, .27)); stroke-linecap:butt; }
+${W} :is(.sx-sw__salering, .sx-sw__jigband) .sx-sw__bezel-edge { fill:none; stroke:rgb(${BONE} / var(--bezel-edge-a, .58)); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-edge.sx-sw__salering-ring { stroke:rgb(${BONE} / var(--bezel-edge-a, .58)); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-notch { fill:none; stroke:rgb(4 6 9 / .8); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-major { fill:none; stroke:rgb(252 249 240 / .95); stroke-width:2px; }
+${W} .sx-sw__salering .sx-sw__bezel-lit { fill:none; stroke:rgb(246 242 232 / .96); stroke-linecap:butt; }
+${W} .sx-sw__salering .sx-sw__bezel-index { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2px; stroke-linecap:butt; }
+${W} .sx-sw__salering .sx-sw__bezel-index.is-detent { stroke:rgb(255 252 244); }
+/* the view words ride inside the band, turned along it; the current one is dark ink on its lit stretch */
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transform:var(--vw-rot, none) !important; translate:none !important; scale:none !important; transform-origin:50% 50% !important;
+  font-size:10px !important; font-weight:600 !important; font-variation-settings:"wdth" 112, "wght" 600 !important; letter-spacing:.16em !important; line-height:1 !important;
+  padding:2px 3px !important; color:rgb(250 247 238 / .96) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(12 14 18) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]:is(:hover, :focus-visible):not(.is-current) { color:rgb(255 253 246) !important; }
+@media (max-height:800px) {
+  ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { font-size:9px !important; letter-spacing:.12em !important; padding:1px 2px !important; }
+}
+/* the jig's bearing numerals would sit under the bezel's inner edge: the band's own scale carries the bearing */
+${W} .orr-sw-jig text.orr-hull__bearing { display:none !important; }
+/* the hand-over: poster and live hull cross-fade in 180 ms, the live hull graded like the poster */
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas, ${W} .sx-sw__stage.has-salering > .sx-sw__poster { transition:opacity 180ms linear !important; }
+${W.replace('html body', 'html.sf-reduce-motion body')} .sx-sw__stage.has-salering > .sx-sw__canvas, ${W.replace('html body', 'html.sf-reduce-motion body')} .sx-sw__stage.has-salering > .sx-sw__poster { transition:none !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__poster { filter:brightness(1.14) contrast(1.04) !important; }
+/* the fit dial's unlit capacity has a body too */
+${W} .orr-power__band { stroke:rgb(${BONE} / .21) !important; }
+/* the handling scales are readings, not sliders: a square band, the lit fill ending in a 2px bright head */
+${W} .sx-sw-bar__track { border-radius:0 !important; }
+${W} .sx-sw-bar__track > .k-bar__fill { border-radius:0 !important; background:rgb(236 230 216 / .78) !important; }
+${W} .sx-sw-bar__track > .k-bar__fill::before { content:none !important; display:none !important; }
+${W} .sx-sw-bar__track > .k-bar__fill::after { right:-1px !important; top:50% !important; width:2px !important; height:9px !important; margin-top:-4.5px !important; border-radius:0 !important;
+  background:rgb(255 252 244) !important; box-shadow:none !important; }
+/* the exploded schematic: the module riding its leader out of the socket */
+${W} .orr-sw-jig > .sx-sw__explode { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:6; }
+${W} .sx-sw__explode .sx-sw__module-well { fill:rgb(4 6 9 / .92); }
+${W} .sx-sw__explode .sx-sw__module-bloom { fill:none; stroke:rgb(255 240 214 / .22); stroke-width:6px; }
+${W} .sx-sw__explode .sx-sw__module { fill:none; stroke:rgb(250 247 238); stroke-width:2px; }
+${W} .sx-sw__explode .sx-sw__module-core { fill:rgb(250 247 238 / .55); }
+${W} .sx-sw__explode.is-seated .sx-sw__module { fill:rgb(250 247 238); }
+${W} .sx-sw__explode.is-seated .sx-sw__module-core { fill:rgb(12 14 18); }
 
 `;
 

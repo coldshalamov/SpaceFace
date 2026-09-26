@@ -40,7 +40,7 @@ const CSS = `
 .orr-crest:is(:hover, :focus-visible) > img { opacity:.82; transform:scale(1.12); }
 .orr-crest:focus-visible { outline:none; }
 .orr-crest.is-chosen > img { opacity:1; }
-.orr-crest.is-authority::after { display:none; } / .45); pointer-events:none; }
+.orr-crest.is-authority::after { display:none; }
 .orr-crest__words { position:absolute; display:flex; flex-direction:column; gap:1px; pointer-events:none; white-space:nowrap; hyphens:none; word-break:keep-all; }
 .orr-crest.is-south .orr-crest__words { left:50%; top:calc(100% + 14px); transform:translateX(-50%); align-items:center; }
 .orr-crest.is-north .orr-crest__words { left:50%; top:auto; bottom:calc(100% + 14px); transform:translateX(-50%); align-items:center; flex-direction:column-reverse; }
@@ -58,7 +58,7 @@ const CSS = `
 .orr-crestorbit__centre > img { display:block; width:100%; height:100%; opacity:1; filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); transition:opacity .22s linear; }
 .orr-crestorbit__centre.is-pivot > img { opacity:.3; }
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
-.orr-svg .orr-crestorbit__sunring { stroke:rgb(${BONE} / .3); }
+.orr-svg .orr-crestorbit__sunring { --orr-edge-a:.56; --orr-band-a:.26; --orr-w-band:6px; }
 .orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-crestorbit__centre { z-index:1; }
 .orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:2; }
@@ -66,19 +66,23 @@ const CSS = `
 .orr-crest > img { filter:grayscale(1) brightness(1.25); mix-blend-mode:screen; }
 .orr-crestorbit__centre > img { mix-blend-mode:screen; }
 .orr-crestorbit__centre.is-swapping > img { opacity:0; }
-.orr-svg .orr-crestorbit__ring { stroke:rgb(${BONE} / .26); }
+/* weight, not wire: the orbit is a luminous band under a crisp edge, broken at every emblem */
+.orr-svg .orr-crestorbit__ring { --orr-edge-a:.62; --orr-band-a:.28; --orr-w-band:7px; stroke-linecap:butt; }
 .orr-svg .orr-crestorbit__standing { stroke:rgb(248 244 234); }
 .orr-svg .orr-crestorbit__standing--against { stroke:var(--dp-danger, #ff5038); }
 .orr-svg .orr-crestorbit__standing--none { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-crestorbit__standing-bloom { opacity:.22; }
-.orr-svg .orr-crestorbit__ghost { stroke:rgb(${BONE} / .18); }
-.orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .5); }
-.orr-svg .orr-crestorbit__rel { stroke:rgb(${BONE} / .4); }
-.orr-crestorbit.is-small .orr-svg .orr-crestorbit__rel { stroke-width:1.5px; }
-.orr-svg .orr-crestorbit__rel.is-hostile { stroke:rgb(255 80 56 / .45); }
+.orr-svg .orr-crestorbit__ghost { --orr-edge-a:.5; --orr-band-a:.27; --orr-w-band:5px; stroke-linecap:butt; }
+.orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .62); }
+.orr-svg .orr-crestorbit__rel { stroke:rgb(${BONE} / .6); }
+.orr-crestorbit.is-small .orr-svg .orr-crestorbit__rel { stroke-width:1.8px; }
+.orr-svg .orr-crestorbit__rel.is-hostile { stroke:rgb(255 80 56 / .6); }
 .orr-svg .orr-crestorbit__rel-bloom { stroke:rgb(${BONE}); opacity:.13; }
-.orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.14; }
-.orr-svg .orr-crestorbit__rel-bead { fill:rgb(${BONE} / .85); animation:orr-crest-bead-in 260ms ease-out both; animation-delay:calc(var(--orr-delay, 0ms) + 440ms); }
+.orr-svg .orr-crestorbit__rel-bloom.is-hostile { stroke:rgb(255 80 56); opacity:.15; }
+.orr-svg .orr-crestorbit__rel-beadbloom { fill:rgb(${BONE} / .2); animation:orr-crest-bead-in 260ms ease-out both; animation-delay:calc(var(--orr-delay, 0ms) + 440ms); }
+.orr-svg .orr-crestorbit__rel-beadbloom.is-hostile { fill:rgb(255 80 56 / .22); }
+html.sf-reduce-motion .orr-svg .orr-crestorbit__rel-beadbloom { animation:none; }
+.orr-svg .orr-crestorbit__rel-bead { fill:rgb(248 244 234 / .92); animation:orr-crest-bead-in 260ms ease-out both; animation-delay:calc(var(--orr-delay, 0ms) + 440ms); }
 @keyframes orr-crest-bead-in { from { opacity:0; } to { opacity:1; } }
 html.sf-reduce-motion .orr-svg .orr-crestorbit__rel-bead { animation:none; }
 .orr-svg .orr-crestorbit__rel-bead.is-hostile { fill:rgb(255 80 56 / .8); }
@@ -96,7 +100,7 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 /* the standing scale: a ruler from Sworn Enemy to Hero, the light cursor at the rep */
 .orr-standing { position:relative; width:100%; height:74px; }
 .orr-standing > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
-.orr-svg .orr-standing__rule { stroke:rgb(${BONE} / .32); }
+.orr-svg .orr-standing__rule { --orr-w-band:7px; --orr-band-a:.28; --orr-w-edge:2px; --orr-edge-a:.66; }
 .orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.32; }
 .orr-svg .orr-standing__tick { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
@@ -108,8 +112,8 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg.is-compact text.orr-standing__name { font-size:9px; letter-spacing:.1em; }
 .orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
 .orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
-.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:9px; font-weight:500; letter-spacing:.02em; fill:rgb(${BONE} / .42); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
-.orr-svg text.orr-standing__val.is-hostile { fill:rgb(215 68 48); }
+.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:10px; font-weight:600; letter-spacing:.02em; fill:rgb(${BONE} / .7); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
+.orr-svg text.orr-standing__val.is-hostile { fill:rgb(255 104 82); }
 .orr-svg .orr-standing__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__cursor-bloom { stroke:rgb(248 244 234); opacity:.25; }
 .orr-svg .orr-standing__rung-leader { stroke:rgb(${BONE} / .32); }
@@ -251,9 +255,10 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       }
       const delay = `--orr-delay:${order * 90 + (hostile ? 180 : 0)}ms`;
       order += 1;
-      relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 4, pathLength: 1, style: delay, 'data-rel': rel.id }));
-      relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1, pathLength: 1, style: delay, 'data-rel': rel.id }));
-      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 2.5, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}`, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('path', { d, class: `orr-bloom orr-crestorbit__rel-bloom orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 8, pathLength: 1, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('path', { d, class: `orr-core orr-crestorbit__rel orr-draw${hostile ? ' is-hostile' : ''}`, 'stroke-width': 1.8, pathLength: 1, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 6.5, class: `orr-crestorbit__rel-beadbloom${hostile ? ' is-hostile' : ''}`, style: delay, 'data-rel': rel.id }));
+      relG.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 3.2, class: `orr-crestorbit__rel-bead${hostile ? ' is-hostile' : ''}`, style: delay, 'data-rel': rel.id }));
     }
     host.classList.toggle('has-relations', related.size > 0);
     for (const [id, el] of crestEls) el.classList.toggle('is-related', related.has(id));
@@ -304,15 +309,16 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       const ringD = n > 0
         ? Array.from({ length: n }, (_, i) => arcD(cx, cy, R, (360 * i) / n + gapDeg, (360 * (i + 1)) / n - gapDeg)).join(' ')
         : arcD(cx, cy, R, 0, 360);
-      rings.appendChild(svg('path', { d: ringD, class: 'orr-bloom orr-crestorbit__ring', 'stroke-width': 5, opacity: '.12' }));
-      rings.appendChild(svg('path', { d: ringD, class: 'orr-core orr-crestorbit__ring', 'stroke-width': 1 }));
+      rings.appendChild(svg('path', { d: ringD, class: 'orr-band orr-crestorbit__ring' }));
+      rings.appendChild(svg('path', { d: ringD, class: 'orr-edge orr-crestorbit__ring' }));
       const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${f(cx)}px ${f(cy)}px; --orr-drift-s:720s` });
       // the drift field runs inside the crests, under the arm, where it cuts no figure and no name
-      drift.appendChild(svg('path', { d: ticksD(cx, cy, R - cs / 2 - 12, 56, { len: 3, major: 4, majorLen: 8, inward: true }), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+      drift.appendChild(svg('path', { d: ticksD(cx, cy, R - cs / 2 - 12, 56, { len: 3, major: 4, majorLen: 8, inward: true }), class: 'orr-tick', style: 'stroke:rgb(236 230 216 / .26)' }));
       rings.appendChild(drift);
       const sunRings = svg('g', { class: 'orr-crestorbit__sunrings' });
-      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-core orr-crestorbit__sunring', 'stroke-width': 1 }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 4, 0, 360), class: 'orr-edge', style: '--orr-edge-a:.22' }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-band orr-crestorbit__sunring' }));
+      sunRings.appendChild(svg('path', { d: arcD(cx, cy, centreNow / 2 + 18, 0, 360), class: 'orr-edge orr-crestorbit__sunring' }));
       rings.appendChild(sunRings);
       layer.appendChild(rise(rings, 0));
       // the chosen power's relations: beams of light across the orbit's interior, drawn under the Hand
@@ -322,11 +328,11 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
       // the Hand: a bloom and a core from the centre crest to the rim, a bead where it meets the crest
       const hg = svg('g', { class: 'orr-crestorbit__hand' });
       hand = {
-        bloom: svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.24' }),
-        core: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2 }),
-        bead: svg('circle', { r: 3, fill: 'var(--dp-hand-hot, #ffd98c)' }),
-        tip: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
-        seat: svg('circle', { r: 0, fill: 'none', class: 'orr-core orr-hand orr-crestorbit__seat', 'stroke-width': 1.2, opacity: '.85' }),
+        bloom: svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 11, opacity: '.22' }),
+        core: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2.6 }),
+        bead: svg('circle', { r: 4, fill: 'var(--dp-hand-hot, #ffd98c)' }),
+        tip: svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2.2 }),
+        seat: svg('circle', { r: 0, fill: 'none', class: 'orr-core orr-hand orr-crestorbit__seat', 'stroke-width': 2, opacity: '.9' }),
       };
       hg.append(hand.bloom, hand.core, hand.tip, hand.seat, hand.bead);
       armLayer.appendChild(rise(hg, 360));
@@ -345,15 +351,16 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
         const pos = Number.isFinite(item.bandPos) ? item.bandPos : steps;
         const sweep = Math.max(12, Math.min(150, Math.abs(pos) * 22));
         const arcs = svg('g', {});
-        arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-core orr-crestorbit__ghost', 'stroke-width': 1 }));
+        arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-band orr-crestorbit__ghost' }));
+        arcs.appendChild(svg('path', { d: arcD(x, y, r, -50, 50), class: 'orr-edge orr-crestorbit__ghost' }));
         // the zero tick on every crest: the arc's direction reads against it
         const [zx0, zy0] = polar(x, y, r - 2, 0); const [zx1, zy1] = polar(x, y, r + 4, 0);
-        arcs.appendChild(svg('path', { d: `M ${f(zx0)} ${f(zy0)} L ${f(zx1)} ${f(zy1)}`, class: 'orr-core orr-crestorbit__zero', 'stroke-width': 1 }));
+        arcs.appendChild(svg('path', { d: `M ${f(zx0)} ${f(zy0)} L ${f(zx1)} ${f(zy1)}`, class: 'orr-core orr-crestorbit__zero', 'stroke-width': 2 }));
         if (steps || Math.abs(pos) > 0.05) {
           const cls = item.hostile ? 'orr-crestorbit__standing orr-crestorbit__standing--against' : 'orr-crestorbit__standing';
           const d = rep < 0 ? arcD(x, y, r, -sweep, 0) : arcD(x, y, r, 0, sweep);
           arcs.appendChild(svg('path', { d, class: `orr-bloom ${cls} orr-crestorbit__standing-bloom`, 'stroke-width': 7, opacity: '.24' }));
-          arcs.appendChild(svg('path', { d, class: `orr-core ${cls}`, 'stroke-width': 3, 'stroke-linecap': 'butt' }));
+          arcs.appendChild(svg('path', { d, class: `orr-core ${cls}`, 'stroke-width': 3.4, 'stroke-linecap': 'butt' }));
         }
         layer.appendChild(rise(arcs, 120 + i * 30));
         let btn = stale.get(item.id);
@@ -501,19 +508,19 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   if (rungs.length && rungWords) h = 40 + top + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
   else if (rungs.length) h = 74 + 10 + top;
   let out = `<svg class="orr-svg${compact ? ' is-compact' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
-  out += `<path class="orr-bloom orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="4" opacity=".12"/>`;
-  out += `<path class="orr-core orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}" stroke-width="1"/>`;
-  out += `<path class="orr-core orr-standing__hostile" d="M ${x0} ${y} L ${f(xAt(aggroPos))} ${y}" stroke-width="1.5"/>`;
+  out += `<path class="orr-band orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
+  out += `<path class="orr-edge orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
+  out += `<path class="orr-core orr-standing__hostile" d="M ${x0} ${y} L ${f(xAt(aggroPos))} ${y}" stroke-width="3"/>`;
   // minor ticks every 25 points of standing: their density shows each tier's true width
   let fine = '';
   const repMin = tiers.length ? tiers[0].min : -REP_CAP;
-  for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y} L ${f(x)} ${y + 3} `; }
-  out += `<path class="orr-core orr-faint" d="${fine}" stroke-width="1"/>`;
+  for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y + 1} L ${f(x)} ${y + 5.5} `; }
+  out += `<path class="orr-tick" d="${fine}" style="stroke:rgb(236 230 216 / .3)"/>`;
   out += '<!--pin-->';
   tiers.forEach((t, i) => {
     const x = xAt(i);
     const hostile = t.min <= aggro;
-    out += `<path class="orr-core orr-standing__tick${Math.abs(t.min - aggro) < 1 ? ' orr-standing__tick--aggro' : ''}" d="M ${f(x)} ${y - 7} L ${f(x)} ${y + 8}" stroke-width="1.2"/>`;
+    out += `<path class="orr-core orr-standing__tick${Math.abs(t.min - aggro) < 1 ? ' orr-standing__tick--aggro' : ''}" d="M ${f(x)} ${y - 7} L ${f(x)} ${y + 8}" stroke-width="2"/>`;
     // a tier's name sits in the middle of its band (the tick is where the band begins)
     const name = String(t.name).toUpperCase();
     const anchor = 'middle';
@@ -528,21 +535,21 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     // the boundary's value under its tick: a ruler is labelled like equipment
     if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 22}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
   });
-  out += `<path class="orr-core orr-standing__tick" d="M ${f(xAt(n))} ${y - 7} L ${f(xAt(n))} ${y + 8}" stroke-width="1.2"/>`;
+  out += `<path class="orr-core orr-standing__tick" d="M ${f(xAt(n))} ${y - 7} L ${f(xAt(n))} ${y + 8}" stroke-width="2"/>`;
   const xc = xAt(posOf(cur));
   // the pin: from the bracket line (when there is one) down through the rule; it runs behind the names
   const pinTop = brackets.length ? y - 42 : y - 8;
   const pinD = `M ${f(xc)} ${pinTop} L ${f(xc)} ${y - 24} M ${f(xc)} ${y - 9} L ${f(xc)} ${y + 14}`;
-  let pin = `<path class="orr-bloom orr-standing__cursor-bloom" d="${pinD}" stroke-width="6"/>`;
-  pin += `<path class="orr-core orr-standing__cursor" d="${pinD}" stroke-width="1.6"/>`;
-  pin += `<path d="M ${f(xc - 4)} ${y + 18} L ${f(xc)} ${y + 14} L ${f(xc + 4)} ${y + 18}" class="orr-core orr-standing__cursor" stroke-width="1.2" fill="none"/>`;
+  let pin = `<path class="orr-bloom orr-standing__cursor-bloom" d="${pinD}" stroke-width="10"/>`;
+  pin += `<path class="orr-core orr-standing__cursor" d="${pinD}" stroke-width="2.4"/>`;
+  pin += `<path d="M ${f(xc - 4)} ${y + 18} L ${f(xc)} ${y + 14} L ${f(xc + 4)} ${y + 18}" class="orr-core orr-standing__cursor" stroke-width="1.8" fill="none"/>`;
   // dimension brackets: a line between two points of the rule with a drop at each end and the distance riding it
   brackets.forEach((b) => {
     const xa = xAt(posOf(b.from)); const xb = xAt(posOf(b.to));
     const lo = Math.min(xa, xb); const hi = Math.max(xa, xb);
     const yb = y - 42;
     if (hi - lo < 1) return;
-    pin += `<path class="orr-core orr-standing__bracket" d="M ${f(lo)} ${yb} L ${f(hi)} ${yb} M ${f(lo)} ${yb} L ${f(lo)} ${yb + 5} M ${f(hi)} ${yb} L ${f(hi)} ${yb + 5}" stroke-width="1"/>`;
+    pin += `<path class="orr-core orr-standing__bracket" d="M ${f(lo)} ${yb} L ${f(hi)} ${yb} M ${f(lo)} ${yb} L ${f(lo)} ${yb + 5} M ${f(hi)} ${yb} L ${f(hi)} ${yb + 5}" stroke-width="1.5"/>`;
     // a label sits outward from the cursor when asked (two brackets meeting at the cursor never overprint)
     const ba = b.anchor === 'start' ? 'start' : b.anchor === 'end' ? 'end' : 'middle';
     const bx = ba === 'start' ? lo + 8 : ba === 'end' ? hi - 8 : (lo + hi) / 2;
@@ -558,12 +565,12 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       const state = rung.state === 'reached' ? 'is-reached' : rung.state === 'sealed' ? 'is-sealed' : 'is-locked';
       if (!rungWords) {
         // a short screen: the rungs are ticks under the rule (reached ones in the light); the reading names the next
-        out += `<path class="orr-core orr-standing__rung-tick ${state}" d="M ${f(x)} ${y + 10} L ${f(x)} ${y + 18}" stroke-width="1.4"/>`;
+        out += `<path class="orr-core orr-standing__rung-tick ${state}" d="M ${f(x)} ${y + 10} L ${f(x)} ${y + 18}" stroke-width="2"/>`;
         return;
       }
       const rowY = y + rungTop + row * pitch;
       // the leader: down from the rule, a 45-degree elbow of 12px, the word after it
-      out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 10} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1"/>`;
+      out += `<path class="orr-core orr-standing__rung-leader" d="M ${f(x)} ${y + 10} L ${f(x)} ${rowY - 15} L ${f(x + 12)} ${rowY - 3}" stroke-width="1.5"/>`;
       out += `<text class="orr-standing__rung ${state}${Array.isArray(rung.detail) && rung.detail.length ? ' is-next' : ''}" x="${f(x + 15)}" y="${rowY}" text-anchor="start">${lines.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${l}</tspan>`).join('')}</text>`;
       if (Array.isArray(rung.detail) && rung.detail.length) {
         out += `<text class="orr-standing__rung-detail" x="${f(x + 15)}" y="${rowY + lines.length * 11 + 4}" text-anchor="start">${rung.detail.map((l, li) => `<tspan x="${f(x + 15)}" dy="${li ? 11 : 0}">${String(l)}</tspan>`).join('')}</text>`;

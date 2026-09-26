@@ -570,7 +570,9 @@ function knownMarketSnapshots(state) {
   const intel = econ && econ.marketIntel;
   if (intel) {
     for (const sid in intel) {
-      if (intel[sid] && intel[sid].snapshot) out[sid] = { ...intel[sid], intelSource: 'scanned' };
+      if (intel[sid] && intel[sid].snapshot) {
+        out[sid] = { ...intel[sid], intelSource: intel[sid].source === 'uplink' ? 'uplink' : 'scanned' };
+      }
     }
   }
   if (hasPlayerMemory) return out;
@@ -612,7 +614,8 @@ export function describeTradeIntel(state, trade) {
   const now = Math.max(0, Number(state && state.simTime) || 0);
   const seen = Math.max(0, Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0);
   const ageS = Math.max(0, now - seen);
-  const base = trade.intelSource === 'scanned' ? 'scan' : 'price memory';
+  const base = trade.intelSource === 'scanned' ? 'scan'
+    : trade.intelSource === 'uplink' ? 'uplink' : 'price memory';
   if (ageS < 120) return `${base} · fresh`;
   const minutes = Math.max(1, Math.round(ageS / 60));
   return `${minutes >= 15 ? 'stale ' : ''}${base} · ${minutes}m old`;

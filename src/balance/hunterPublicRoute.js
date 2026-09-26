@@ -329,10 +329,13 @@ function applyCombatDamage(ctx, attacker, damageTaken, receipt) {
   try {
     // The timing harness abstracts aim/weapon cadence, not damage authority. Repeated bounded hits
     // route through the registered combat kernel until the data-grounded enemy return-DPS has
-    // produced the intended non-lethal hull loss.
+    // produced the intended non-lethal hull loss. The kernel never applies more hull damage than
+    // the packet carries (kinetic hull multiplier 1.0, difficulty scale <= 1), so clamping the
+    // packet to the remaining allowance keeps every hit non-lethal even when the modeled return
+    // damage exceeds the whole hull pool (targetHull = 1).
     while (e.alive !== false && e.hull > targetHull + 0.01 && attempts < 128) {
       const remainingHull = e.hull - targetHull;
-      const hitDamage = Math.max(8, Math.min(e.hullMax * 0.2, remainingHull * 4 + 8));
+      const hitDamage = Math.max(0.25, Math.min(e.hullMax * 0.2, remainingHull * 4 + 8, remainingHull));
       lastResult = ctx.combat.onHit({
         targetId: e.id,
         ownerId: attacker && attacker.id != null ? attacker.id : null,

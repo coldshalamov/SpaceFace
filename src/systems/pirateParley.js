@@ -11,7 +11,39 @@ import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { effectiveLawSecurity } from './lawSecurity.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+
+
+/** Bench A/B: production default ON. Quiet latch skips pirateParley shipLike
+ * census (eligiblePlan / robberyEligibility) when no toll-doctrine squads and
+ * no unresolved parley records remain. Soft-GPU fps not claimed. Fresh combat
+ * residual after #150 pirateDisengage (not pirateDisengage / bounty / salvage /
+ * sanctuary / cones / catch-nets). */
+let PIRATE_PARLEY_EMPTY_QUIET_LATCH = true;
+export function setPirateParleyEmptyQuietLatchForBench(enabled) {
+  PIRATE_PARLEY_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getPirateParleyEmptyQuietLatchForBench() {
+  return PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const PIRATE_PARLEY_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishPirateParleyQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.pirateParleyRuntime || (state.pirateParleyRuntime = {});
+  rt.emptyQuietLatched = !!latched;
+}
+
+function hasUnresolvedParleySquads(own) {
+  if (!own || !own.squads) return false;
+  for (const squadId of Object.keys(own.squads)) {
+    const rec = own.squads[squadId];
+    if (rec && !rec.resolved) return true;
+  }
+  return false;
+}
 
 const SCAN_TO_DEMAND_S = 2.0;
 // Eight seconds is long enough to read a concrete demand and make one deliberate flight decision,
@@ -37,20 +69,74 @@ export const pirateParley = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
+    this._subs = [];
+    this._parleyQuiet = null;
+    this._parleyWakeSeq = 0;
     this._onChoice = (p) => this._choose(p);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('pirateParley:choose', this._onChoice);
     }
+    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Boundary wakes: newGame() is not dispatched on the live route (this system is
+    // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
+    this._listen('save:loaded', () => this.noteParleyWake());
+    this._listen('game:new', () => this.noteParleyWake());
+    this._listen('game:newGame', () => this.noteParleyWake());
+    this._listen('sector:enter', () => this.noteParleyWake());
+  },
+
+  /** External wake when a toll doctrine is stamped without a fresh spawn index bump. */
+  noteParleyWake() {
+    this._parleyWakeSeq = (this._parleyWakeSeq | 0) + 1;
+    this._parleyQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload && payload.entity;
+    if (!eligiblePlan(entity)) return;
+    this.noteParleyWake();
+  },
+
+  _listen(evt, fn) {
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    const off = this.bus.on(evt, fn);
+    if (typeof off === 'function') this._subs.push(off);
   },
 
   newGame() {
     if (this.state) this.state.pirateParley = freshState();
+    this._parleyQuiet = null;
+    this._parleyWakeSeq = 0;
+    publishPirateParleyQuiet(this.state, false);
   },
 
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
     const now = state.simTime || 0;
+    // Quiet open flight: no toll-doctrine / unresolved parley squads still paid a
+    // full shipLike census (eligiblePlan / robberyEligibility / Map alloc) every
+    // tick. Latch when both stay empty; wake on membership, toll spawn/tag, or
+    // 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual after #150.
+    if (PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._parleyWakeSeq | 0;
+      const quiet = this._parleyQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && !hasUnresolvedParleySquads(own)
+        && ((tick - (quiet.armedTick | 0)) < PIRATE_PARLEY_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishPirateParleyQuiet(state, true);
+        return;
+      }
+    } else if (this._parleyQuiet) {
+      this._parleyQuiet = null;
+      publishPirateParleyQuiet(state, false);
+    }
+
     const groups = collectParleySquads(state);
 
     for (const [squadId, members] of groups) {
@@ -103,6 +189,28 @@ export const pirateParley = {
           continue;
         }
         if (now >= rec.deadlineAt) this._escalate(rec, 'timeout');
+      }
+    }
+
+    if (PIRATE_PARLEY_EMPTY_QUIET_LATCH !== false) {
+      const emptyGroups = !groups || groups.size === 0;
+      const unresolved = hasUnresolvedParleySquads(own);
+      if (emptyGroups && !unresolved) {
+        const membership = entityIndexVersion(state);
+        if (membership != null) {
+          this._parleyQuiet = {
+            membership,
+            wakeSeq: this._parleyWakeSeq | 0,
+            armedTick: state.tick | 0,
+          };
+          publishPirateParleyQuiet(state, true);
+        } else {
+          this._parleyQuiet = null;
+          publishPirateParleyQuiet(state, false);
+        }
+      } else {
+        this._parleyQuiet = null;
+        publishPirateParleyQuiet(state, false);
       }
     }
   },
@@ -260,10 +368,15 @@ export const pirateParley = {
   },
 
   destroy() {
+    for (const off of this._subs || []) {
+      try { off(); } catch (err) { /* cleanup must not throw */ }
+    }
+    this._subs = [];
     if (this.bus && this._onChoice && typeof this.bus.off === 'function') {
       this.bus.off('pirateParley:choose', this._onChoice);
     }
     this._onChoice = null;
+    this._parleyQuiet = null;
   },
 };
 

@@ -36,11 +36,13 @@ export const STALE_CAVEAT = 'best known — prices may have moved';
 export const PROVENANCE = Object.freeze({
   dock: 'dock',
   survey: 'survey',
+  uplink: 'uplink',
 });
 
 const PROVENANCE_LABEL = Object.freeze({
   dock: 'visited dock',
   survey: 'survey packet',
+  uplink: 'market uplink',
 });
 
 /**
@@ -97,6 +99,9 @@ export function quoteProvenance(quote) {
   }
   if (raw === PROVENANCE.survey) {
     return { source: PROVENANCE.survey, label: PROVENANCE_LABEL.survey };
+  }
+  if (raw === PROVENANCE.uplink) {
+    return { source: PROVENANCE.uplink, label: PROVENANCE_LABEL.uplink };
   }
   return null; // unknown provenance — fail closed
 }

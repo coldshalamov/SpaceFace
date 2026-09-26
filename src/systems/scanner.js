@@ -25,6 +25,12 @@ import {
   pallasHiddenCacheSignalCopy,
 } from '../data/pallasHiddenCache.js';
 import {
+  PLANET_STATE_DEFS,
+  PLANET_SIGNAL_RANGE,
+  planetSignalAnchor,
+  planetStatesForSector,
+} from '../data/planetStates.js';
+import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
@@ -628,6 +634,31 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     });
   }
 
+  // A planet is a signal environment, not scenery: W1 planet-state assignments carry an authored
+  // scannerSignal the sky should answer for. The anchor hangs outside the playable rim, so the
+  // return is far, never trackable, and resolves to the world's own name on full classification.
+  for (const assignment of planetStatesForSector(sectorId)) {
+    const signal = assignment && assignment.scannerSignal;
+    if (!signal) continue;
+    add({
+      id: signal.id,
+      kind: signal.kind,
+      sourceId: signal.sourceId,
+      entityId: null,
+      pos: planetSignalAnchor(assignment),
+      range: PLANET_SIGNAL_RANGE,
+      trackable: false,
+      scanLabel: signal.label,
+      // The anchor ring is physically visitable — a parked ship must not let the distance
+      // shortcut skip the three-pass arc, and an authored reveal stays authored until the
+      // signature resolves (stage 1 reads generic so an ambush-tag world doesn't pre-leak).
+      noProximityStage: true,
+      planetName: (signal.bodyName
+        || (PLANET_STATE_DEFS[assignment.stateId] && PLANET_STATE_DEFS[assignment.stateId].label)
+        || '').toUpperCase(),
+    });
+  }
+
   return [...byId.values()].sort(compareSignalRows);
 }
 
@@ -935,7 +966,12 @@ export const scanner = {
     if (signals.length) this.bus.emit('signal:scanResults', {
       sectorId,
       scannedAt: now,
-      primary: { ...signals[0], pos: { ...signals[0].pos } },
+      // A read-only return (a planet, an investigated record) carries no verb — the headline
+      // goes to the first row the player can still act on, or the top row if none.
+      primary: (() => {
+        const primary = signals.find((row) => row.trackable !== false) || signals[0];
+        return { ...primary, pos: { ...primary.pos } };
+      })(),
       signals: signals.map((row) => ({ ...row, pos: { ...row.pos } })),
       total: signals.length,
     });
@@ -1049,7 +1085,9 @@ export const scanner = {
         }
       }
       const scanCount = (previous && previous.scanCount || 0) + 1;
-      const stage = signalClassificationStage(scanCount, candidate.distance);
+      const stage = candidate.noProximityStage
+        ? Math.min(3, Math.max(1, Math.floor(scanCount)))
+        : signalClassificationStage(scanCount, candidate.distance);
       const strength = signalStrengthFor(candidate.distance, candidate.range);
       const confidence = Math.min(0.98, 0.24 + (stage - 1) * 0.27 + strength * 0.2);
       const record = {
@@ -1077,6 +1115,10 @@ export const scanner = {
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
+      if (candidate.trackable === false) record.trackable = false;
+      if (candidate.scanLabel && (!candidate.noProximityStage || stage >= 2)) record.detail = candidate.scanLabel;
+      // A world names itself once the signature resolves — until then it reads as its kind class.
+      if (stage >= 3 && candidate.planetName) record.classification = candidate.planetName;
       const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
         || pallasHiddenCacheSignalCopy(candidate.sourceId);
       if (discoveryCopy) {
@@ -1378,7 +1420,7 @@ export const scanner = {
     const own = this.state && ensureSignalState(this.state);
     const id = String(payload && (payload.signalId || payload.id) || '');
     const record = own && own.records[id];
-    if (!record || own.completed[id]) return false;
+    if (!record || own.completed[id] || record.trackable === false) return false;
     return this._finishSignalRecord(record);
   },
 

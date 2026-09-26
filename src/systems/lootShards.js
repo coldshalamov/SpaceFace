@@ -53,7 +53,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
-import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -86,6 +86,27 @@ export const SUPERDENSE_FIELD_RESPONSE = 2.5;
 
 /** PQ-148.02 — outlaw catch-net body that stops a flying pod past a customs cone. */
 export const OUTLAW_CATCH_NET_TYPE = 'outlaw_catch_net';
+
+/** Bench A/B: production default ON. Quiet latch skips catch-net census
+ * (payloads + shipLike isOutlawCatchNet / isJettisonedCargoPod) when both bags
+ * stay empty. Soft-GPU fps not claimed. */
+let CATCH_NETS_EMPTY_QUIET_LATCH = true;
+export function setCatchNetsEmptyQuietLatchForBench(enabled) {
+  CATCH_NETS_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCatchNetsEmptyQuietLatchForBench() {
+  return CATCH_NETS_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CATCH_NETS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCatchNetsQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lootShardsRuntime || (state.lootShardsRuntime = {});
+  rt.catchNetsQuietLatched = !!latched;
+}
+
 
 const LEGALITY_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, row.legality || 'legal']));
 
@@ -509,12 +530,16 @@ export const lootShards = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry || null;
+    this._catchNetsQuiet = null;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
       this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
-      this._unsubs.push(this.bus.on('game:started', () => { if (this._magnetTracked) this._magnetTracked.clear(); }));
+      this._unsubs.push(this.bus.on('game:started', () => {
+        if (this._magnetTracked) this._magnetTracked.clear();
+        this._catchNetsQuiet = null;
+      }));
     }
   },
 
@@ -586,20 +611,51 @@ export const lootShards = {
   },
 
   _catchPodsInNets(state) {
-    if (!state || state.mode !== 'flight') return;
+    if (!state || state.mode !== 'flight') {
+      publishCatchNetsQuiet(state, false);
+      return;
+    }
+    // Quiet open flight: any non-jettisoned payloads still force a payloads+shipLike
+    // census of isOutlawCatchNet / isJettisonedCargoPod every tick while no nets and
+    // no flying pods exist. Latch when both bags stay empty; wake on membership, a
+    // live net/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh lootShards
+    // residual after #145 customs cones (same helpers, different owner).
+    if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._catchNetsQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CATCH_NETS_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCatchNetsQuiet(state, true);
+        return;
+      }
+    } else if (this._catchNetsQuiet) {
+      this._catchNetsQuiet = null;
+      publishCatchNetsQuiet(state, false);
+    }
     const index = state.entityIndex;
-    // Pods are payloads. No payload bucket means no pods to catch.
+    // Prior empty-payloads early-out: no payload bucket means no pods to catch.
+    // Preserve it (nets authored as payloads today). Latch covers the residual when
+    // non-jettisoned payloads exist but neither nets nor flying pods do.
     if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
       && index.payloads.length === 0) {
+      if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null) {
+          this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
+          publishCatchNetsQuiet(state, true);
+        }
+      }
       return;
     }
     const nets = _catchNetScratch;
     const pods = _catchPodScratch;
     nets.length = 0;
     pods.length = 0;
-    const entityIndex = state.entityIndex;
-    const indexed = !!(entityIndex && entityIndex.__spacefaceEntityIndexV1 && entityIndex.ready === true
-      && Array.isArray(entityIndex.payloads) && Array.isArray(entityIndex.shipLike));
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads) && Array.isArray(index.shipLike));
     if (indexed) {
       for (const entity of indexedTypeScan(state, 'payloads')) {
         if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
@@ -618,7 +674,21 @@ export const lootShards = {
         }
       });
     }
-    if (nets.length === 0 || pods.length === 0) return;
+    if (nets.length === 0 || pods.length === 0) {
+      if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null && nets.length === 0 && pods.length === 0) {
+          this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
+          publishCatchNetsQuiet(state, true);
+        } else {
+          this._catchNetsQuiet = null;
+          publishCatchNetsQuiet(state, false);
+        }
+      }
+      return;
+    }
+    this._catchNetsQuiet = null;
+    publishCatchNetsQuiet(state, false);
     for (let n = 0; n < nets.length; n++) {
       const net = nets[n];
       const netR = Math.max(1, Number(net.radius) || 8);

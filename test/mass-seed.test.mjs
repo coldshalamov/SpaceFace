@@ -815,6 +815,9 @@ test('manual override: cursor paint beats the seed — and can deliberately pick
     for (let i = 0; i < 20; i++) t.sim.step();
 
     // Paint the ROCK: an unambiguous cursor paint must beat every ranked candidate, seed included.
+    // A paint is live pointer intent (input.js stamps aimIntentActive); a stale aimWorld alone is
+    // deliberately ignored by acquisitionCursorActive.
+    t.state.input.aimIntentActive = true;
     t.state.input.aimWorld = { x: rock.pos.x, z: rock.pos.z };
     assert(runUntil(t, () => {
       const sel = t.state.masslineAcquisition && t.state.masslineAcquisition.selected;

@@ -10,7 +10,7 @@ export const MISSION_TUNING = {
     // Generated compatibility values. economyMissionTerms is the canonical live quote.
     cargo_delivery: 411,
     bulk_trade: 453,
-    bounty_hunt: 552,
+    bounty_hunt: 303,
     mining_quota: 677,
     salvage_retrieval: 614,
     escort: 598,
@@ -1807,7 +1807,7 @@ export const OFFER_MIX = {
   military: withPhysicalMix([1,1,4,0,2,3,4,0,1,3], 1, 2, 3),
   research: withPhysicalMix([2,1,1,1,3,1,1,0,1,4], 1, 1, 2),
   blackmarket: withPhysicalMix([2,1,3,1,3,1,2,4,1,2], 2, 2, 2),
-  bounty_board: withPhysicalMix([1,0,7,0,4,1,5,1,0,3], 0, 0, 0),
+  bounty_board: withPhysicalMix([1,0,7,0,5,1,5,1,0,3], 0, 0, 0),
   contracts_hub: withPhysicalMix([5,4,2,0,1,5,3,1,3,3], 0, 0, 0),
 };
 

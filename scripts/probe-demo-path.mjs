@@ -910,6 +910,17 @@ try {
         fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
         throw new Error(`rammed the swarm gunless for ${DIE_SIM_S} sim-s and lived — swarm could not finish; trace -> rounds-trace.json`);
       }
+      // Starved-host detector: on a contended machine the fixed-step sim runs far below
+      // wall rate (observed 0.06× — 94 sim-s in 25 wall-min), so a wall-clock deadline can
+      // expire a few sim-seconds into die mode and masquerade as "no death/results".
+      // Classify that honestly instead of burning the whole cap.
+      if (simStart != null && snap.simTime != null && now - t0 > 60_000) {
+        const simRate = (snap.simTime - simStart) / ((now - t0) / 1000);
+        if (simRate < 0.15) {
+          fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
+          throw new Error(`host-starved: sim advancing at ${(simRate * 100).toFixed(1)}% of wall — this machine cannot play the demo in real time (env contention, not a game defect); trace -> rounds-trace.json`);
+        }
+      }
       snapTrace.push({ wall: Date.now() - t0, ...snap });
       if (snapTrace.length % 45 === 1) {
         console.log(`  [rounds] mode=${snap.mode} phase=${snap.phase} w${snap.wave} hull=${snap.hull} shield=${snap.shield} hostiles400=${snap.hostiles400} alive=${snap.hostilesAlive} nearestD=${snap.nearestD} speed=${snap.speed} firing=${snap.firing} sim=${snap.simTime}s`);
@@ -1079,7 +1090,12 @@ try {
 
   // Travel helper: autopilot to a station. RMB (mine beam, fireGroup 2) suppresses primary fire in
   // input.js, so the two buttons are mutually exclusive: hostiles near -> LMB fight; else RMB mine.
-  async function travelTo(stationId, { timeoutMs = 6 * 60_000, solveProblem = true } = {}) {
+  // The 6-minute cap is wall-clock: starved hosts run the sim far slower, so SPACEFACE_DEMO_TRAVEL_MS
+  // exists for the same reason as SPACEFACE_DEMO_ROUND_MS — the leg ends on arrival, not the clock.
+  const travelCapMs = Number.isFinite(Number(process.env.SPACEFACE_DEMO_TRAVEL_MS))
+    ? Number(process.env.SPACEFACE_DEMO_TRAVEL_MS)
+    : 6 * 60_000;
+  async function travelTo(stationId, { timeoutMs = travelCapMs, solveProblem = true } = {}) {
     const inRun = await page.evaluate(() => {
       const r = window.SF.state.run;
       return !!(r && r.kind === 'survival' && r.phase !== 'inactive');
@@ -1090,6 +1106,7 @@ try {
     await page.evaluate((id) => window.__SF_DEMO_HELPERS__.autopilot(id), stationId);
     const problem = { mined: 0, fought: 0, salvaged: 0 };
     const deadline = Date.now() + timeoutMs;
+    let lastD = Infinity;
     let left = false; let right = false;
     const setButtons = async (wantLeft, wantRight) => {
       if (wantLeft !== left) { left = wantLeft; await page.mouse[wantLeft ? 'down' : 'up'](); }
@@ -1110,6 +1127,7 @@ try {
           };
         }, stationId);
         if (!snap.alive) throw new Error('player died during transit');
+        lastD = snap.d;
         if (snap.d <= snap.range && !snap.docked) break;
         // Emergency shelter: critically low hull under fire inside a dock ring -> dock, wait out
         // the threat behind the patrol, then resume the leg. The A6 slice's honest survival.
@@ -1146,13 +1164,18 @@ try {
           if (acted === 'mine') problem.mined++;
           else if (acted === 'salvage') problem.salvaged++;
         }
+        // Autopilot can drop on manual input, a lost target, or a shelter undock — a leg that
+        // never re-engages coasts to a stop and burns the whole deadline.
+        const apLive = await page.evaluate(() =>
+          !!(window.SF.state.nav && window.SF.state.nav.autopilot && window.SF.state.nav.autopilot.active));
+        if (!apLive && !snap.docked) await page.evaluate((id) => window.__SF_DEMO_HELPERS__.autopilot(id), stationId);
         await sleep(500);
       }
     } finally {
       await setButtons(false, false);
     }
     const arrived = await page.evaluate((id) => window.__SF_DEMO_HELPERS__.distTo(id) <= window.__SF_DEMO_HELPERS__.dockRange(id) + 5, stationId);
-    if (!arrived) throw new Error(`never reached ${stationId}`);
+    if (!arrived) throw new Error(`never reached ${stationId} (lastD=${lastD} fought=${problem.fought} mined=${problem.mined} salvaged=${problem.salvaged} sheltered=${problem.sheltered || 0})`);
     return problem;
   }
 

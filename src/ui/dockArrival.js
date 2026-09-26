@@ -1,6 +1,7 @@
 // Pure presenter for a compact dock-arrival strip. It consumes receipts from existing owners and
 // deliberately emits no voice, toast, mission, economy, faction, heat, or traffic mutations.
 
+import { activeHullIdentity } from '../data/hullIdentity.js';
 import { leftoverMechanicCard } from '../story/mechanicVoice.js';
 import { leftoverLedgerCard } from '../story/storyLedger.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -252,6 +253,23 @@ function paintLeftoverLine(el, text) {
   return next;
 }
 
+/** The article that speaks the line also names the hull that line was read from. */
+function bindBerthHull(el, hull) {
+  if (!el || typeof el.setAttribute !== 'function') return;
+  const defId = hull && hull.defId ? String(hull.defId) : '';
+  const name = hull && hull.name ? String(hull.name) : '';
+  if (!defId) {
+    if (typeof el.removeAttribute === 'function') {
+      el.removeAttribute('data-hull');
+      el.removeAttribute('data-hull-name');
+    }
+    return;
+  }
+  el.setAttribute('data-hull', defId);
+  if (name) el.setAttribute('data-hull-name', name);
+  else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-hull-name');
+}
+
 /** The writer stationApp uses: ticker line stays; leftover card fields go on the berth article. */
 export function writeBerthArrival(targets, view, fallbackNews = '') {
   const newsEl = targets && targets.newsEl;
@@ -264,13 +282,15 @@ export function writeBerthArrival(targets, view, fallbackNews = '') {
     const duplicate = !!(eventCard && news && (news === eventCard.body || news === eventCard.title));
     newsEl.hidden = !news || duplicate;
   }
+  const mechanic = paintBerthEventCard(host.mechanicEl, view && view.mechanic);
+  bindBerthHull(host.mechanicEl, view && view.hull);
   return {
     news,
     eventCard,
     patch: paintLeftoverLine(host.patchEl, view && view.patch),
     route: paintLeftoverLine(host.routeEl, view && view.route),
     ledger: paintBerthEventCard(host.ledgerEl, view && view.ledger),
-    mechanic: paintBerthEventCard(host.mechanicEl, view && view.mechanic),
+    mechanic,
   };
 }
 
@@ -318,6 +338,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const patchText = patch && patch.text ? patch.text : null;
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
+  const hull = activeHullIdentity(state);
   const lines = [action.label, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
@@ -336,9 +357,35 @@ export function buildDockArrival(state = {}, station = {}) {
     ledgerLine,
     mechanic,
     mechanicLine,
+    hull,
     traffic,
     paperwork,
     serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',
     lines,
+  };
+}
+
+const BERTH_FALLBACK_HULL = 'ship_kestrel';
+
+/** Def the bay seats. The mechanic's hull wins; a bay with no owned hull keeps the starter mesh. */
+export function berthSeatDefId(state, hull) {
+  if (hull && hull.defId) return String(hull.defId);
+  const identity = activeHullIdentity(state);
+  if (identity && identity.defId) return String(identity.defId);
+  return BERTH_FALLBACK_HULL;
+}
+
+/**
+ * Home berth, one object: the mechanic's line about this hull, and the hull the bay seats.
+ * Reader only. Living-hull state stays with its owner.
+ */
+export function berthModel(state = {}, station = {}) {
+  const view = buildDockArrival(state, station);
+  const hull = view.hull || null;
+  return {
+    mechanicLine: view.mechanicLine || null,
+    mechanic: view.mechanic || null,
+    hull,
+    seatDefId: berthSeatDefId(state, hull),
   };
 }

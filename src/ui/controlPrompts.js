@@ -104,7 +104,7 @@ function padGlyph(action) {
 }
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: `Left stick fly  •  Right stick aim  •  ${padGlyph('fire')} fire  •  ${padGlyph('mine')} mine / selected Site beam  •  ${padGlyph('boost')} boost  •  ${padGlyph('brake')} brake  •  ${padGlyph('deployRepulsor')} shove  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('massline')} Massline  •  ${padGlyph('dock')} dock when prompted  •  ${padGlyph('cycleTarget')} target  •  ${padGlyph('map')} star map  •  ${padGlyph('pause')} pause`,
+  flight: `Left stick fly  •  Right stick aim  •  ${padGlyph('fire')} fire  •  ${padGlyph('mine')} mine / selected Site beam  •  ${padGlyph('boost')} boost  •  ${padGlyph('brake')} brake  •  ${padGlyph('deployRepulsor')} shove  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('massline')} Massline  •  ${padGlyph('dock')} dock when prompted  •  ${padGlyph('cycleTarget')} target  •  ${padGlyph('map')} star map  •  ${padGlyph('pause')} → Pause → Mission Log`,
   mining: `${padGlyph('mine')} hold to mine  •  Release to cool  •  Fly through cargo drift  •  ${padGlyph('cycleTarget')} next signal`,
   combat: `${padGlyph('fire')} fire  •  Right stick aim at target  •  ${padGlyph('cycleTarget')} cycle targets  •  ${padGlyph('countermeasure')} countermeasure  •  ${padGlyph('dropBomb')} bomb  •  ${padGlyph('cycleBomb')} cycle bombs  •  ${padGlyph('boost')} boost to dodge  •  ${padGlyph('pause')} pause`,
   station: `${padGlyph('dock')} dock when prompted  •  Hub: ${padGlyph('tabPrev')}/${padGlyph('tabNext')} tabs  •  D-pad/left stick focus  •  ${padGlyph('accept')} act  •  ${padGlyph('cancel')} leave once aboard`,

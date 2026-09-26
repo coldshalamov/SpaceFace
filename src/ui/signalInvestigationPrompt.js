@@ -32,17 +32,40 @@ function safeRecord(payload) {
   };
 }
 
-function signalMetaText(row) {
-  const bits = [];
-  if (row && row.rangeText) bits.push(String(row.rangeText));
-  if (row && row.bearingText) bits.push(String(row.bearingText));
-  return bits.length ? bits.join(' · ') : 'RETURN LOGGED';
+export function signalStrengthWord(value) {
+  const n = Math.max(0, Math.min(1, Number(value) || 0));
+  if (n >= 0.66) return 'STRONG';
+  if (n >= 0.33) return 'MEDIUM';
+  return 'FAINT';
 }
 
-function tethysCodexTargetForCompletion(state, payload) {
-  if (!payload || payload.sectorId !== TETHYS_BLACK_MARKET_DISCOVERY.sectorId
-    || payload.sourceId !== TETHYS_BLACK_MARKET_DISCOVERY.poiId) return null;
-  return TETHYS_BLACK_MARKET_DISCOVERY.codexTarget || TETHYS_BLACK_MARKET_DISCOVERY.id || null;
+// The scanner's public row carries strength/distance/scanCount, or a triangulation fix while the
+// source is still a bearing. The prompt-deck rewrite (641f153ba) read rangeText/bearingText, which
+// no producer sets, so every scan return said RETURN LOGGED and the bearing fix count was lost.
+export function signalMetaText(record) {
+  if (!record) return 'FAINT · RANGE —';
+  if (record.triangulation) {
+    const bearing = Math.round(Number(record.triangulation.bearingDeg) || 0)
+      .toString().padStart(3, '0');
+    const sampleCount = Math.max(0, Math.round(Number(record.triangulation.sampleCount) || 0));
+    const requiredPings = Math.max(1, Math.round(Number(record.triangulation.requiredPings) || 3));
+    return `BEARING ${bearing}° · FIX ${sampleCount}/${requiredPings}`;
+  }
+  const distance = Math.max(0, Math.round(Number(record.distance) || 0)).toLocaleString('en-US');
+  const pass = Math.max(1, Math.round(Number(record.scanCount) || 1));
+  return `${signalStrengthWord(record.strength)} · ${distance} WU · PASS ${pass}`;
+}
+
+// The Tethys completion hands its exact persisted Codex plate identity ({ sectorId, poiId }, the
+// shape requestCodexDiscovery/consumeCodexDiscoveryRequest match on) - and only once the quiet
+// contact is really made. The prompt-deck rewrite (641f153ba) returned the constant's absent
+// codexTarget/id fields instead, so the VIEW CODEX decision could never be offered.
+export function tethysCodexTargetForCompletion(state, payload) {
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  if (!payload || payload.sectorId !== discovery.sectorId || payload.sourceId !== discovery.poiId) return null;
+  const record = state?.world?.frontierRumors?.byId?.[discovery.rumorId];
+  if (!record || record.phase !== 'contacted' || record.contactId !== discovery.contactId) return null;
+  return { sectorId: discovery.sectorId, poiId: discovery.poiId };
 }
 
 export function createSignalInvestigationPrompt(ctx = {}) {

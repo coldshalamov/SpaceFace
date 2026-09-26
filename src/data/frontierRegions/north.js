@@ -288,7 +288,7 @@ export const NORTH_SECTORS = Object.freeze([
         factionId: 'faction_vael',
         size: 'S',
         services: Object.freeze(['scan_tech', 'missions', 'repair', 'refuel']),
-        chartNote: 'A Vael research module hangs at the center of the Shard Sphere. Repeated active scans recover its broken song one fragment at a time.',
+        chartNote: 'A Vael research module at the Shard Sphere\'s heart; active scans recover its broken song.',
         repGated: true,
       }),
     ]),

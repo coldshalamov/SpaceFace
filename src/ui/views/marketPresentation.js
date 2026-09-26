@@ -3,6 +3,7 @@
 import { qtyDialSvg } from '../orrery/marketLayouts.js';
 import { escapeMarkup as escapeHtml } from './identity.js';
 import { commodityGlyphHtml } from './commodityGlyphs.js';
+import { AGE_BAND_FRESH_S } from '../marketIntelligence.js';
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
 export const MARKET_FILTERS = Object.freeze([
   { id: 'all', label: 'All stock' }, { id: 'hold', label: 'In hold' },
@@ -41,7 +42,12 @@ function historySamples(history) {
     const mid = historyMid(value);
     if (!Number.isFinite(mid) || mid <= 0) continue;
     const t = value && typeof value === 'object' ? Number(value.t) : NaN;
-    out.push(Number.isFinite(t) ? { t, mid } : { mid });
+    const point = Number.isFinite(t) ? { t, mid } : { mid };
+    if (value && (value.origin === 'modelled' || value.origin === 'observed')) point.origin = value.origin;
+    if (value && Number.isFinite(Number(value.lo))) point.lo = Number(value.lo);
+    if (value && Number.isFinite(Number(value.hi))) point.hi = Number(value.hi);
+    if (value && Number.isFinite(Number(value.statedRate))) point.statedRate = Number(value.statedRate);
+    out.push(point);
   }
   return out;
 }
@@ -100,6 +106,57 @@ export function trendHtml(history = []) {
  * scale instead of text stretched with the drawing. Every sample is written into data-points so
  * the controller can run a hover crosshair without recomputing anything.
  */
+function historyOrigins(points) {
+  let modelled = false;
+  let observed = false;
+  for (const point of points) {
+    if (point && point.origin === 'modelled') modelled = true;
+    else if (point && point.origin === 'observed') observed = true;
+  }
+  return { modelled, observed };
+}
+
+function historyOriginAttr(points) {
+  const origins = historyOrigins(points);
+  if (origins.modelled && origins.observed) return ' data-history-origin="mixed"';
+  if (origins.modelled) return ' data-history-origin="modelled"';
+  if (origins.observed) return ' data-history-origin="observed"';
+  return '';
+}
+
+function historyDash(points) {
+  const origins = historyOrigins(points);
+  // A past the exchange backfilled is drawn dashed. A tick the exchange actually
+  // sampled stays solid. Mixed series keep the solid trace and add a dashed overlay.
+  if (origins.modelled && !origins.observed) return ' stroke-dasharray="2 5"';
+  return '';
+}
+
+function historyOriginPaths(coords, points) {
+  const origins = historyOrigins(points);
+  if (!origins.modelled || !origins.observed) return '';
+  const chunks = [];
+  let run = [];
+  let runOrigin = '';
+  const flush = () => {
+    if (run.length < 2 || runOrigin !== 'modelled') { run = []; return; }
+    chunks.push(`<path class="sx-mkt-line sx-mkt-line--modelled" data-modelled-line fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="2 5" d="M ${run.join(' L ')}"/>`);
+    run = [];
+  };
+  for (let i = 0; i < coords.length; i++) {
+    const origin = points[i] && points[i].origin;
+    const xy = `${coords[i].x.toFixed(1)},${coords[i].y.toFixed(1)}`;
+    if (origin !== runOrigin) {
+      if (run.length) run.push(xy);
+      flush();
+      runOrigin = origin;
+      run = [xy];
+    } else run.push(xy);
+  }
+  flush();
+  return chunks.join('');
+}
+
 export function buildChart(history, average, gradientId, label, extras = {}) {
   const histPts = historySamples(history);
   const hist = histPts.map((p) => p.mid);
@@ -111,8 +168,13 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   const buyQ = Number(extras && extras.buy);
   const sellQ = Number(extras && extras.sell);
   const refs = [avg, ...(Number.isFinite(buyQ) ? [buyQ] : []), ...(Number.isFinite(sellQ) ? [sellQ] : [])];
-  let min = Math.min(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]));
-  let max = Math.max(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]));
+  const bandPrices = [];
+  for (const point of forecastPts) {
+    if (Number.isFinite(point.lo)) bandPrices.push(point.lo);
+    if (Number.isFinite(point.hi)) bandPrices.push(point.hi);
+  }
+  let min = Math.min(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]), ...(bandPrices.length ? bandPrices : []));
+  let max = Math.max(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]), ...(bandPrices.length ? bandPrices : []));
   // A FLAT SERIES MUST NOT DRAW AT THE FLOOR. `max - min || 1` turned an unchanging price into a
   // span of 1 and every sample then mapped to the bottom of the box. A commodity at rest sits on
   // the mid-line, with a little headroom either side so the reference lines separate.
@@ -130,14 +192,23 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   let forecastCoords = [];
   if (forecastPts.length) {
     const join = histCoords.at(-1);
-    forecastCoords = forecastPts.map((p, i) => ({ x: mapper.at(p.t, histPts.length + i), y: y(p.mid), mid: p.mid, t: p.t }));
-    const coneCoords = [join, ...forecastCoords];
-    const conePoints = coneCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+    forecastCoords = forecastPts.map((p, i) => ({
+      x: mapper.at(p.t, histPts.length + i),
+      y: y(p.mid),
+      mid: p.mid,
+      lo: Number.isFinite(p.lo) ? p.lo : p.mid,
+      hi: Number.isFinite(p.hi) ? p.hi : p.mid,
+      t: p.t,
+    }));
     const forecastLine = forecastCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     const nowX = join.x.toFixed(1);
-    const lastX = coneCoords.at(-1).x.toFixed(1);
+    const top = [`${join.x.toFixed(1)},${join.y.toFixed(1)}`,
+      ...forecastCoords.map((p) => `${p.x.toFixed(1)},${y(p.hi).toFixed(1)}`)];
+    const bottom = forecastCoords.slice().reverse().map((p) => `${p.x.toFixed(1)},${y(p.lo).toFixed(1)}`);
+    const stated = forecastPts.find((p) => Number.isFinite(p.statedRate));
+    const rateAttr = stated ? ` data-stated-rate="${stated.statedRate}"` : '';
     coneMarkup = `<line class="sx-mkt-now" data-now x1="${nowX}" y1="0" x2="${nowX}" y2="${H}" vector-effect="non-scaling-stroke"/>
-    <path class="sx-mkt-cone" data-forecast-band data-forecast-mids="${escapeHtml(forecast.join(','))}" d="M ${conePoints.join(' L ')} L ${lastX},${H} L ${nowX},${H} Z"/>
+    <path class="sx-mkt-cone" data-forecast-band data-forecast-mids="${escapeHtml(forecast.join(','))}" data-forecast-lo="${escapeHtml(forecastCoords.map((p) => p.lo).join(','))}" data-forecast-hi="${escapeHtml(forecastCoords.map((p) => p.hi).join(','))}"${rateAttr} d="M ${top.join(' L ')} L ${bottom.join(' L ')} Z"/>
     <path class="sx-mkt-forecast" data-forecast-line fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="6 5" stroke-linejoin="round" d="M ${forecastLine.join(' L ')}"/>`;
   }
   const forecastNote = forecast.length
@@ -163,7 +234,8 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
     <svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" data-so-chart="instrument" data-history-mids="${escapeHtml(histMids)}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(label || 'Price history')}${forecastNote}">
       <line class="sx-mkt-avg" x1="0" y1="${y(avg).toFixed(1)}" x2="${W}" y2="${y(avg).toFixed(1)}" vector-effect="non-scaling-stroke" stroke-dasharray="3 6"/>
       <path class="of-chart-area" d="M ${histCoords[0].x.toFixed(1)},${H} L ${points.join(' L ')} L ${endX},${H} Z"/>
-      <path class="sx-mkt-line" data-history-line d="M ${points.join(' L ')}" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+      <path class="sx-mkt-line" data-history-line${historyOriginAttr(histPts)} d="M ${points.join(' L ')}" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"${historyDash(histPts)}/>
+      ${historyOriginPaths(histCoords, histPts)}
       ${coneMarkup}
     </svg>
     ${rangeLabels}
@@ -258,14 +330,53 @@ export function supplyChainHtml(view) {
   return `<p class="k-sentence sx-mkt-chain" data-supply-chain data-dock-role="${escapeHtml(role)}">${flow}${dock}</p>`;
 }
 
-function coneReadoutHtml({ regime, quoteAge }) {
+function coneReadoutHtml({ regime, quoteAge, quoteSource, survey }) {
   const bits = [];
   if (regime) bits.push(`<span data-regime>${escapeHtml(regime)}</span>`);
-  if (quoteAge === 'fresh' || quoteAge === 'stale') {
-    bits.push(`<span data-quote-age="${quoteAge}">${quoteAge} quote</span>`);
+  const liveLabel = quoteReadLabel(quoteAge, quoteSource);
+  if (liveLabel) {
+    bits.push(`<span data-quote-age="${escapeHtml(liveLabel.age)}" data-quote-source="${escapeHtml(liveLabel.source)}">${escapeHtml(liveLabel.text)}</span>`);
+  }
+  if (survey && survey.text) {
+    bits.push(`<span data-survey-age="${escapeHtml(survey.age)}" data-quote-source="survey">${escapeHtml(survey.text)}</span>`);
   }
   if (!bits.length) return '';
   return `<p class="k-sentence sx-mkt-cone-read">${bits.join(' · ')}</p>`;
+}
+
+function quoteReadLabel(quoteAge, quoteSource) {
+  const source = quoteSource === 'survey' ? 'survey' : (quoteSource === 'dock' ? 'dock' : (quoteSource === 'live' ? 'live' : ''));
+  if (quoteAge === 'fresh' && source === 'survey') return { age: 'fresh', source, text: 'fresh survey' };
+  if (quoteAge === 'stale' && source === 'survey') return { age: 'stale', source, text: 'stale survey' };
+  if (quoteAge === 'fresh' && (source === 'live' || source === 'dock')) return { age: 'fresh', source, text: 'fresh quote' };
+  if (quoteAge === 'stale' && source === 'dock') return { age: 'stale', source, text: 'stale quote' };
+  if (quoteAge === 'fresh') return { age: 'fresh', source: 'live', text: 'fresh quote' };
+  if (quoteAge === 'stale') return { age: 'stale', source: 'dock', text: 'stale quote' };
+  return null;
+}
+
+/** Fresh dock/live quote versus a survey packet. Age uses the same fresh band as market memory. */
+export function rememberedSurveyFreshness(state, commodityId) {
+  const memory = state && state.player && state.player.marketMemory;
+  if (!memory || typeof memory !== 'object' || !commodityId) return null;
+  const now = Math.max(0, Number(state.simTime) || 0);
+  let best = null;
+  for (const stationId of Object.keys(memory)) {
+    const station = memory[stationId];
+    const quote = station && station[commodityId];
+    if (!quote || quote.source !== 'survey') continue;
+    const ageS = Math.max(0, now - Math.max(0, Number(quote.seenAt) || 0));
+    const stale = ageS >= AGE_BAND_FRESH_S;
+    const row = {
+      age: stale ? 'stale' : 'fresh',
+      source: 'survey',
+      text: stale ? 'stale survey' : 'fresh survey',
+      ageS,
+      stationId,
+    };
+    if (!best || (row.age === 'stale' && best.age !== 'stale') || row.ageS > best.ageS) best = row;
+  }
+  return best;
 }
 
 export function saleLineHtml({ sell, saleQty, saleQuote }) {
@@ -280,9 +391,17 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
   if (saleQuote && saleQuote.ok && Number.isFinite(Number(saleQuote.total))) {
     const q = Math.max(1, Math.floor(Number(saleQuote.qty) || qty));
     const avg = Math.round(Number(saleQuote.unitAvg));
-    const credits = Math.round(Number(saleQuote.total));
+    const gross = Math.round(Number(saleQuote.total));
     const partial = saleQuote.partial ? ` · fills ${fmt(q)} u` : '';
-    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${credits}">Contemplated sale · ${fmt(q)} × ${fmt(avg)} cr = ${fmt(credits)} cr${partial}</p>`;
+    const hasTravel = saleQuote.travelCost != null && Number.isFinite(Number(saleQuote.travelCost));
+    const hasOperating = saleQuote.operatingCost != null && Number.isFinite(Number(saleQuote.operatingCost));
+    if (hasTravel || hasOperating) {
+      const travel = hasTravel ? Math.max(0, Math.round(Number(saleQuote.travelCost))) : 0;
+      const operating = hasOperating ? Math.max(0, Math.round(Number(saleQuote.operatingCost))) : 0;
+      const net = gross - travel - operating;
+      return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}">Contemplated sale · ${fmt(q)} u after slippage ${fmt(gross)} cr · travel ${fmt(travel)} cr · operating ${fmt(operating)} cr · net ${fmt(net)} cr${partial}</p>`;
+    }
+    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">Contemplated sale · ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
   }
   const unit = Number(sell);
   if (!Number.isFinite(unit)) return '';
@@ -290,8 +409,13 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
   return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">Contemplated sale · ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
 }
 
-function chartKeyHtml(hasForecast) {
-  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span><span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}</p>`;
+function chartKeyHtml(hasForecast, origins, statedRate) {
+  const modelled = origins && origins.modelled ? '<span data-modelled>Modelled past</span>' : '';
+  const observed = origins && origins.observed ? '<span data-observed>Observed</span>' : '';
+  const rate = Number.isFinite(statedRate)
+    ? `<span data-stated-rate="${statedRate}">${Math.round(statedRate * 100)}%</span>`
+    : '';
+  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span>${modelled}${observed}<span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}${rate}</p>`;
 }
 
 // What each price driver is ABOUT, so its short word can stand alone on the reading line.
@@ -322,10 +446,14 @@ function readoutsHtml({ buy, sell, avg, demandWord }) {
   return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Margin', 'margin', `${fmt(Math.max(0, (Number(buy) || 0) - (Number(sell) || 0)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
+  const statedRate = Number.isFinite(Number(forecast && forecast.statedRate))
+    ? Number(forecast.statedRate)
+    : (forecastPts.find((point) => Number.isFinite(point.statedRate)) || {}).statedRate;
+  const origins = historyOrigins(historySamples(hist));
   // titleHtml is a trusted entityResolver fragment generated by the production controller, never user input.
   return (trackedGuidance ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${escapeHtml(trackedGuidance.state)}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
     `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
@@ -334,9 +462,9 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     ${driverLineHtml(drivers)}
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
-    ${coneReadoutHtml({ regime, quoteAge })}
+    ${coneReadoutHtml({ regime, quoteAge, quoteSource, survey })}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
-    ${chartKeyHtml(forecastPts.length > 0)}
+    ${chartKeyHtml(forecastPts.length > 0, origins, statedRate)}
     ${readoutsHtml({ buy, sell, avg, demandWord })}
     ${saleLineHtml({ sell, saleQty, saleQuote })}`;
 }

@@ -134,6 +134,7 @@ try {
     career: options.career,
     stop: options.stop,
     timeoutScale: options.timeoutScale,
+    issueTracker: pageIssues,
     log,
   });
 } catch (error) {
@@ -181,6 +182,18 @@ if (!classification && !cleanupReceipt.pass) {
     blockedMilestone: 'clean-teardown',
     cause: 'cleanup',
     message: cleanupReceipt.failures.join('; ') || `leaked: ${cleanupReceipt.leakedResources.join(', ')}`,
+  });
+}
+// Never ship an unclassified verdict: a pass:false with blocker:null/failureStage:null
+// costs a manual triage every time (ledger D68). Residual page/console errors that
+// outlived every filter get a stage and a parseable blocker line naming the first text.
+if (!classification && (consoleErrors.length > 0 || pageErrors.length > 0)) {
+  const cause = pageErrors.length > 0 ? 'page-error' : 'console-error';
+  classification = classifyStall({
+    milestones: pilotResult?.milestones || [],
+    stop: options.stop,
+    cause,
+    message: (pageErrors[0] || consoleErrors[0] || '').slice(0, 400),
   });
 }
 

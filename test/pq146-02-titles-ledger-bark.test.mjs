@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createTitlesSystem } from "../src/systems/titles.js";
 import { STUNT_BARKS, stuntRecognitionBarkFor } from "../src/systems/barkDirector.js";
+import { BARK_FACTIONS } from "../src/data/barks.js";
 function fixture() {
   const handlers = /* @__PURE__ */ new Map();
   const bus = { on(k, f) {
@@ -33,7 +34,7 @@ test("Survival and NPC receipts cannot create Adventure recognition", () => {
   }
 });
 test("legacy bark catalog remains deterministic and covers every faction", () => {
-  assert.equal(Object.keys(STUNT_BARKS).length, 8);
+  assert.equal(Object.keys(STUNT_BARKS).length, BARK_FACTIONS.length);
   for (const [faction, lines] of Object.entries(STUNT_BARKS)) {
     assert.equal(new Set(lines).size, 4);
     for (let i = 0; i < 4; i++) {

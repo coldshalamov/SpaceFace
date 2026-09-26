@@ -105,6 +105,14 @@ export function createGlobalFind(ctx) {
     const hint = el('div', 'sf-find__hint k-t-fine', { text: '↑↓ pick · Enter opens the dossier · Esc closes' });
     panel.append(input, listEl, hint);
     (host || screensRoot).appendChild(panel);
+    if (bare) {
+      // screenManager parks #screens at display:none + inert whenever the stack is empty, so a
+      // bare palette mounted there would lay out but never paint — lift the lid while it's up
+      // and put it back on close (close() restores only when still no stack screen).
+      screensRoot.style.display = 'flex';
+      screensRoot.inert = false;
+      screensRoot.removeAttribute('aria-hidden');
+    }
 
     input.addEventListener('input', refresh);
     // Panel-level keys; Esc and Enter stop here so they never double-fire the screen behind.
@@ -156,7 +164,20 @@ export function createGlobalFind(ctx) {
     rows = [];
     selIdx = 0;
     p.removeEventListener('keydown', onKey);
+    const wasBareHost = p.classList.contains('sf-find--host');
     if (p.parentNode) p.parentNode.removeChild(p);
+    if (wasBareHost) {
+      const stackScreen = [...screensRoot.children].find((child) => (
+        child !== p && child.classList
+        && child.classList.contains('screen')
+        && !child.classList.contains('sf-find--host')
+      ));
+      if (!stackScreen) {
+        screensRoot.style.display = 'none';
+        screensRoot.inert = true;
+        screensRoot.setAttribute('aria-hidden', 'true');
+      }
+    }
   }
 
   const off = bus && bus.on ? bus.on('ui:globalFind', () => open()) : null;
