@@ -200,6 +200,16 @@ export function createToasts(ctx) {
         r.count = (r.count || 1) + 1;
         r.born = now;                       // refresh so the grouped toast gets a fresh TTL window
         r.ttl = normalizeTtlMs(ttl);
+        // A grouped toast gets a fresh TTL window: restart its decay bar with it.
+        if (r.el.style && typeof r.el.style.setProperty === 'function') {
+          r.el.style.setProperty('--sf-toast-ttl', `${(r.ttl / 1000).toFixed(2)}s`);
+        }
+        const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
+        if (decay && decay.style) {
+          decay.style.animation = 'none';
+          void decay.offsetWidth; // reflow so the re-armed animation restarts from full
+          decay.style.animation = '';
+        }
         r.el.style.opacity = '';
         if (!r.badge) {
           const badge = document.createElement('span');
@@ -223,7 +233,17 @@ export function createToasts(ctx) {
     const body = document.createElement('span');
     body.className = 'sf-toast__text';
     body.textContent = text;
-    el.append(icon, body);
+    // The decay hairline: the receipt's remaining life as light. CSS animates it from --sf-toast-ttl
+    // (compositor-only scaleX; the tick never touches it again). The text carries the meaning, so the
+    // bar hides under reduced motion rather than freezing mid-life.
+    const decay = document.createElement('span');
+    decay.className = 'sf-toast__decay';
+    decay.setAttribute('aria-hidden', 'true');
+    el.append(icon, body, decay);
+    // Guarded like lampKey: headless Mini-DOM harnesses stub style as a plain object.
+    if (el.style && typeof el.style.setProperty === 'function') {
+      el.style.setProperty('--sf-toast-ttl', `${(normalizeTtlMs(ttl) / 1000).toFixed(2)}s`);
+    }
     // Click-to-dismiss is advertised by the cursor:pointer styling; expose the same affordance to
     // keyboard users (Enter/Space) and to AT as a dismissible control.
     // Do NOT put aria-live on the card — announcement is via #toast-live (status once).

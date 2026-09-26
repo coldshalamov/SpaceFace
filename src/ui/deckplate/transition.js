@@ -17,11 +17,11 @@
 // stops being true the browser aborts the transition and falls back to an instant swap, which is
 // the pre-2026-09-22 behaviour: a degraded transition is never a broken screen.
 
-/** Reduced motion is a promise, not a preference: an instant swap is the correct output. */
+/** Reduced motion is a promise, not a preference: an instant swap is the correct output. The
+ * game setting (html.sf-reduce-motion) is the only source — the OS hint feeds it through the
+ * System preference (accessibility.js) and is never read here as well. */
 function reduced(doc) {
-  const view = doc?.defaultView || globalThis;
-  return doc?.documentElement?.classList?.contains('sf-reduce-motion') === true
-    || view?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+  return doc?.documentElement?.classList?.contains('sf-reduce-motion') === true;
 }
 
 /**
@@ -95,7 +95,7 @@ export const DECKPLATE_TRANSITION_CSS = `
    tweens their boxes, not because anything fades. Regions cut. */
 ::view-transition-old(dp-vt-body), ::view-transition-new(dp-vt-body) { animation: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-}
+/* No prefers-reduced-motion rule here on purpose: reduced() above is the single gate, and the
+   OS hint reaches it through the System preference (accessibility.js). A media query would kill a
+   transition for a player who explicitly chose Full on a reduce-OS machine. */
 `;

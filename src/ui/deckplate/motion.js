@@ -8,9 +8,12 @@
 // honoured at the call site: a replay under reduced motion is a no-op (the state class the
 // caller ALSO sets is what carries the information).
 
+// Motion follows the GAME's setting (html.sf-reduce-motion), never the OS media query: the OS
+// hint feeds the setting through the System preference (accessibility.js), and reading it here as
+// well would strip effects from a player who explicitly chose Full on a reduce-OS machine.
 const REDUCED = () =>
   globalThis.document?.documentElement?.classList.contains('sf-reduce-motion') === true
-  || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  || false; // nothing else: the OS hint feeds the setting, it is never read here
 
 export const DP_MOTION = Object.freeze({
   cut: 80,

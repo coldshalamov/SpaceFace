@@ -2905,6 +2905,16 @@ export function injectHudCss() {
     #aim-reticle .sf-reticle-shape { stroke:CanvasText; }
     #aim-reticle > svg > circle { fill:CanvasText; }
   }
+
+  /* ===== receipt decay: the line's remaining life as a hairline (Signal Toasts step) =====
+     Compositor-only (scaleX from --sf-toast-ttl, set once per receipt in toasts.js). The text
+     carries the meaning, so under reduced motion the bar hides instead of freezing mid-life. */
+  .sf-toast { position:relative; }
+  .sf-toast__decay { position:absolute; left:0; right:0; bottom:-1px; height:2px; pointer-events:none;
+    background:rgb(232 226 212 / .35); transform-origin:left center; transform:scaleX(1);
+    animation:sf-toast-decay var(--sf-toast-ttl, 4s) linear forwards; }
+  @keyframes sf-toast-decay { to { transform:scaleX(0); } }
+  html.sf-reduce-motion .sf-toast__decay { display:none; }
   `;
   document.head.appendChild(s);
 }
