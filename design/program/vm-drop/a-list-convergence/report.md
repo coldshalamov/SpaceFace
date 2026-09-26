@@ -22,7 +22,7 @@ VM: software GL (SwiftShader/llvmpipe) — fps/hitch numbers are tier-relative, 
 4. ~20% frames >100 ms — hitching (SwiftShader caveat; verify on real GPU before chasing).
 5. Beige-clay asteroid material reads flat/unlit at distance.
 
-## Repair 1 — station swallow (commit 12610579d; rebased onto master d4359bd2c — pre-rebase SHA dce047820)
+## Repair 1 — station swallow (commit 2c1498517 on master d225c6222; earlier SHAs 12610579d, dce047820)
 
 Two coupled causes, both fixed:
 
@@ -50,7 +50,7 @@ Proof (same seeds, authored state live):
 Instrument: `scripts/probe-station-occlusion.mjs` — `--headless` flies the real approach;
 `SF_OCCL_MAP=1` raycasts a polar roof map + lane ceiling profile + bearing screenshots.
 
-## Repair 2 — arena-scale field ribbons bury the crucible frame (commit 6a771596a; pre-rebase SHA 8729b472b)
+## Repair 2 — arena-scale field ribbons bury the crucible frame (commit 63f80c9d4; earlier SHAs 6a771596a, 8729b472b)
 
 Cause: the giant cyan arcs at crucible start were `SF_FieldForceLanguage` — the
 field-force presentation drawing live sim fields. Arena phases install
@@ -96,13 +96,14 @@ None.
 
 ## CLOSE-OUT 2026-09-26 — shipped
 
-- Branch `vm-work/a-list-convergence` rebased clean onto `origin/master` d4359bd2c
-  ("Release completed living adventure lanes") — no conflicts; pushed. PR #162.
+- Branch `vm-work/a-list-convergence` rebased twice (master d4359bd2c, then
+  d225c6222 — upstream resolved its own D49 and took the D51 ledger number, so
+  the baseline-reds row landed as **D55**); pushed. PR #162.
 - Post-rebase `check:baseline` on this tree: 12/16. Clean master at the same SHA:
   11/16 — every red on the branch is red on master too (sim/sim-v3/sim-v3-compare
   47-A hash drift + pq020 topology digest + master's own ui-control-labels break,
-  which this branch fixes). Upstream reds logged as demo-ledger row D51
-  (commit bc89361e9).
+  which this branch fixes). Upstream reds logged as demo-ledger row D55
+  (commit 15f06a731).
 - vfx-force-language 18/18 re-verified post-rebase.
 - Patch series regenerated against the rebased base (5 patches, 0001–0005).
 
@@ -117,7 +118,7 @@ BIGGEST FIXES: (1) station corridor registration + per-column camera clearance
 grid; (2) field-language presence scaled by field radius (recipes/counts
 untouched); (3) gamepad dock-label check pinned to the shipped binding;
 (4) committed census instruments (probe-station-occlusion, probe-crucible-arcs);
-(5) D51 ledger row for the upstream baseline reds.
+(5) D55 ledger row for the upstream baseline reds.
 
 REMAINING A-LIST BREAKS: >100 ms hitches are SwiftShader-amplified one-time
 shader compiles — needs a hardware-GPU witness pass (extend precompile.js warm

@@ -1,4 +1,4 @@
-From 6a771596ad209f8b2219c6695423805c5c6f50ce Mon Sep 17 00:00:00 2001
+From 63f80c9d4a31b9c85bd9aa766669e3a54665c9e9 Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sat, 26 Sep 2026 00:59:31 +0000
 Subject: [PATCH 3/5] Force language: scale membrane loudness with field radius
