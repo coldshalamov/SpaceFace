@@ -517,10 +517,21 @@ const ROUTES = {
       const sl = await snap(ctx);
       // Click the first save row/slot that carries a load affordance.
       const clicked = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/load|resume|restore|quick|auto|continue/i));
+      await sleep(1500);
+      // Slot click opens a "Load this save?" confirm — answer it if present.
+      const confirmed = await ctx.page.evaluate(() => {
+        const root = document.querySelector('#sf-confirm-root, [role="dialog"], .sx-pop:not([hidden])');
+        if (!root) return null;
+        const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /^\s*(load|yes|confirm|restore)\s*$/i.test(e.textContent || ''))[0];
+        if (!b) return null;
+        b.click();
+        return (b.textContent || '').trim();
+      });
       await sleep(3500);
       const s = await snap(ctx);
-      if (opened && clicked && s.mode !== 'flight') observe(ctx, 'rough-edge', 'lifecycle', `Load-slot click "${clicked}" landed mode=${s.mode} screen=${s.screen}`);
-      return { titleScreen: t.screen, opened, screen: sl.screen, clicked, afterMode: s.mode, afterScreen: s.screen, player: s.player };
+      if (opened && clicked && s.mode !== 'flight') observe(ctx, 'rough-edge', 'lifecycle', `Load-slot click "${clicked}" confirmed=${confirmed} landed mode=${s.mode} screen=${s.screen}`);
+      return { titleScreen: t.screen, opened, screen: sl.screen, clicked, confirmed, afterMode: s.mode, afterScreen: s.screen, player: s.player };
     });
   },
 
