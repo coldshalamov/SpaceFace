@@ -457,9 +457,19 @@ hull 68→0 under swarm fire) → results → belt → job accept → travel →
 survival took 666.7 s this run (longer fight than r15), pushing the total past the cap.
 Every game step that ran was clean. Re-run as r21 with the cap raised to 2400 s.
 
+## Run 21 — demo-path: `adv-upgrade` timed out → probe defect found + fixed
+
+r21 cleared title → crucible → results → belt → job → problem-leg → paid, then failed at
+`adv-upgrade`: `never reached station_helios` after 362 s. Reading `travelTo` showed the
+cause was harness-side: it engages autopilot once at leg start and never re-engages on a
+drop (manual input, lost target, shelter undock) — unlike `playtest.mjs travelToStation`,
+which re-engages each poll. A dropped autopilot mid-leg coasts to a stop and burns the
+whole deadline. Fixed `c525cd2c0` (re-engage guard + last-distance/encounter counters in
+the timeout error, `81fe334bc`). r22 verifies.
+
 ## Next runs
 
-- r21 in flight: demo-path @ 2400 s cap for a clean end-to-end pass on the fix HEAD.
+- r22 in flight: demo-path with the autopilot re-engage guard.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
 - crucibleDraft / crucibleRefit / motionAsk audited via ui-bench stills (r18/19 section) —
   all composed and clean; no live probe path exists (a probe cannot legitimately win a
