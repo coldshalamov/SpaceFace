@@ -38,10 +38,28 @@ export const dockingCorridor = {
     // Cache of static proxy geometry per station entity, keyed with pos/rot/proxy stamp. Geometry
     // only recomputes when the station record actually changes (sector entry), never per frame.
     this._proxyGeometryCache = new Map();
+    // resolveCollisionProxyManifest is deterministic on entity.data.collisionProxy + model truth —
+    // memoize per station entity so update() + _publishProxyDiagnostics() stop resolving it twice
+    // per tick (a station's collisionProxy id never changes after spawn).
+    this._manifestCache = new Map();
   },
 
   destroy() {
     if (this._proxyGeometryCache) this._proxyGeometryCache.clear();
+    if (this._manifestCache) this._manifestCache.clear();
+  },
+
+  _manifestFor(station) {
+    const cache = this._manifestCache;
+    if (cache) {
+      const key = (station.data && station.data.collisionProxy) || '';
+      const hit = cache.get(station.id);
+      if (hit && hit.key === key) return hit.manifest;
+      const manifest = resolveCollisionProxyManifest(station);
+      cache.set(station.id, { key, manifest });
+      return manifest;
+    }
+    return resolveCollisionProxyManifest(station);
   },
 
   update(dt, state) {
@@ -58,7 +76,7 @@ export const dockingCorridor = {
     let best = null;
     for (const station of stations) {
       if (!station || !station.alive || station.type !== 'station') continue;
-      const manifest = resolveCollisionProxyManifest(station);
+      const manifest = this._manifestFor(station);
       if (!manifest || !manifest.docking) continue;
       const corridor = corridorStateFor(manifest, station, player.pos, player.vel);
       if (!corridor) continue;
@@ -95,21 +113,34 @@ export const dockingCorridor = {
 
   _publish(state, best, assistApplied) {
     const corridor = best && best.corridor;
-    state.dockingCorridor = {
+    // Retained readout: consumers read fields synchronously; every field is rewritten each tick.
+    const berth = this._corridorBerth || (this._corridorBerth = { x: 0, z: 0 });
+    const out = this._corridorReadout || (this._corridorReadout = {
       schemaVersion: DOCKING_CORRIDOR_SCHEMA_VERSION,
-      stationId: best ? best.station.data && best.station.data.stationId || null : null,
-      proxyId: best ? best.manifest.id : null,
-      phase: corridor ? corridor.phase : 'none',
-      distToBerth: corridor ? corridor.distToBerth : null,
-      distCenter: corridor ? corridor.distCenter : null,
-      speed: corridor ? corridor.speed : null,
-      headingOk: corridor ? corridor.headingOk : null,
-      inCorridor: corridor ? corridor.inCorridor : false,
-      inCapture: corridor ? corridor.inCapture : false,
-      berthed: corridor ? corridor.berthed : false,
-      berth: corridor ? { x: corridor.berth.x, z: corridor.berth.z } : null,
-      assist: assistApplied,
-    };
+      stationId: null, proxyId: null, phase: 'none', distToBerth: null, distCenter: null,
+      speed: null, headingOk: null, inCorridor: false, inCapture: false, berthed: false,
+      berth: null, assist: null,
+    });
+    out.stationId = best ? best.station.data && best.station.data.stationId || null : null;
+    out.proxyId = best ? best.manifest.id : null;
+    out.phase = corridor ? corridor.phase : 'none';
+    out.distToBerth = corridor ? corridor.distToBerth : null;
+    out.distCenter = corridor ? corridor.distCenter : null;
+    out.speed = corridor ? corridor.speed : null;
+    out.headingOk = corridor ? corridor.headingOk : null;
+    out.inCorridor = corridor ? corridor.inCorridor : false;
+    out.inCapture = corridor ? corridor.inCapture : false;
+    out.berthed = corridor ? corridor.berthed : false;
+    // berth stays null outside a corridor — dockingCradle reads `!!readout.berth` as engagement.
+    if (corridor) {
+      berth.x = corridor.berth.x;
+      berth.z = corridor.berth.z;
+      out.berth = berth;
+    } else {
+      out.berth = null;
+    }
+    out.assist = assistApplied;
+    state.dockingCorridor = out;
     this._publishProxyDiagnostics(state);
   },
 
@@ -128,7 +159,7 @@ export const dockingCorridor = {
     seen.clear();
     for (const station of stations) {
       if (!station || !station.alive || station.type !== 'station') continue;
-      const manifest = resolveCollisionProxyManifest(station);
+      const manifest = this._manifestFor(station);
       if (!manifest) continue;
       const data = station.data || {};
       const px = finite(station.pos && station.pos.x);

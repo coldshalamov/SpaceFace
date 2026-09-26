@@ -280,9 +280,11 @@ export const bulletTime = {
       this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9, duck: true });
     }
     // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
-    // the bus record already carry the burst.
+    // the bus record already carry the burst. Go through the edge latch so _updateMomentPulse
+    // still clears the request on the next tick if the live condition isn't met.
     if (!motionReduced(state) && stuntAssistProfile(state)==='cinematic' && this.timeEffects) {
       this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
+      this._momentPulseLive = true;
     }
   },
 
@@ -317,12 +319,16 @@ export const bulletTime = {
   _updateMomentPulse(state) {
     const moment = ensureMoment(state);
     const now = Math.max(0, finiteNum(state && state.simTime));
-    if (state && state.mode === 'flight' && now < moment.pulseUntil && !motionReduced(state) && stuntAssistProfile(state)==='cinematic') {
-      if (this.timeEffects) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
-    } else if (this.timeEffects) {
-      this.timeEffects.clear(MOMENT_TIME_SOURCE);
-      if (!(now < moment.pulseUntil)) moment.pulseUntil = 0;
+    const live = !!(state && state.mode === 'flight' && now < moment.pulseUntil
+      && !motionReduced(state) && stuntAssistProfile(state)==='cinematic');
+    // Edge-triggered: set/clear once per transition — per-tick clear() was a Map delete +
+    // applyMinimum forEach every sim tick for a request that almost never exists.
+    if (this.timeEffects && live !== this._momentPulseLive) {
+      if (live) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
+      else this.timeEffects.clear(MOMENT_TIME_SOURCE);
+      this._momentPulseLive = live;
     }
+    if (!live && !(now < moment.pulseUntil)) moment.pulseUntil = 0;
   },
 
   _clearMoment(resetHistory) {
@@ -338,6 +344,7 @@ export const bulletTime = {
       }
     }
     if (this.timeEffects) this.timeEffects.clear(MOMENT_TIME_SOURCE);
+    this._momentPulseLive = false;
   },
 };
 
