@@ -992,7 +992,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.mass_required': 'sfx_mining_mass_required',
   'presentation.mining.mass_engaged': 'sfx_mining_mass_engaged',
   'presentation.mining.cargo_settle': 'sfx_mining_cargo_settle',
-  'presentation.mining.cargo_full': 'sfx_ui_error',
+  'presentation.mining.cargo_full': 'sfx_mining_cargo_full',
   'presentation.mining.field_settle': 'sfx_mining_field_settle',
   'presentation.mining.heat_warning': 'sfx_mining_heat_warning',
   'world.foghorn': 'sfx_hauler_foghorn',
@@ -1316,6 +1316,7 @@ export const MINE_CUES = Object.freeze({
   boreBite: mineCue('machine', 0.38, { minGapMs: 70, peak: 0.18 }),
   rockBreak: mineCue('machine', 0.46, { minGapMs: 60, peak: 0.20 }),
   lockRefusal: mineCue('machine', 0.55, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
+  rigStall: mineCue('machine', 0.56, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.22 }),
   hopperFull: mineCue('machine', 0.60, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
   rockDepleted: mineCue('machine', 0.52, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.20 }),
   ventRelief: mineCue('machine', 0.58, { minGapMs: 400, peak: 0.22 }),
@@ -1341,6 +1342,9 @@ export const MINE_EVENT_CUE_MAP = Object.freeze({
   'drill:warn/structure': 'lockRefusal',
   'drill:warn/cargoFull': 'hopperFull',
   'drill:warn/depleted': 'rockDepleted',
+  'drill:warn/overheat': 'rigStall',
+  'drill:warn/capacitor': 'rigStall',
+  'drill:warn/resume': 'assayPing',
   'heat:critical': 'heatCritical',
   'heat:vented': 'ventRelief',
   'site:machineInstalled': 'machinePlaced',
@@ -1363,6 +1367,7 @@ export const MINE_LAW_EVENT_ROWS = Object.freeze([
   Object.freeze({ row: 'Machine starved/unpowered', heard: 'single soft chime, once', cue: 'machineStarved', source: 'site:machineStatus' }),
   Object.freeze({ row: 'Courier launch', heard: 'soft launch thump', cue: 'courierLaunch', source: 'site:courierLaunched' }),
   Object.freeze({ row: 'Survey / assay ping', heard: 'quiet sonar blip', cue: 'assayPing', source: 'drill:scanPulse' }),
+  Object.freeze({ row: 'Bore refused (rig stalled)', heard: 'strained stall whine', cue: 'rigStall', source: 'drill:warn/overheat' }),
 ]);
 
 // Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
@@ -3995,6 +4000,16 @@ export const audio = {
         this._mineTone(t, { type: 'square', f0: 188, f1: 168, dur: 0.24, peak: gain, attack: 0.004, filter: 'lowpass', filterHz: 520, filterQ: 0.9 });
         this._mineNoise(t, { filter: 'bandpass', f0: 620, Q: 2.2, dur: 0.07, peak: gain * 0.55 });
         break;
+      case 'rigStall': { // strained stall whine — the bore refuses, not the law
+        const dry = p && p.reason === 'capacitor';
+        this._mineTone(t, {
+          type: 'sawtooth', f0: dry ? 240 : 380, f1: dry ? 190 : 500,
+          dur: 0.42, peak: gain, attack: 0.02,
+          filter: 'bandpass', filterHz: dry ? 700 : 1100, filterQ: 3.4,
+        });
+        this._mineNoise(t + 0.05, { filter: 'bandpass', f0: dry ? 900 : 1600, Q: 2.6, dur: 0.12, peak: gain * 0.4 });
+        break;
+      }
       case 'hopperFull': // wooden thock
         this._mineTone(t, { type: 'triangle', f0: 226, f1: 196, dur: 0.17, peak: gain, attack: 0.002, filter: 'bandpass', filterHz: 400, filterQ: 3 });
         this._mineNoise(t, { filter: 'bandpass', f0: 1150, Q: 3, dur: 0.035, peak: gain * 0.45 });

@@ -1095,6 +1095,7 @@ export const drill = {
         if (d.moveCooldown <= 0) {
           this.bus.emit('drill:warn', {
             text: wasOverheated ? 'Drill cooling down — release the bore.' : 'Rig capacitor recharging — release the bore.',
+            reason: wasOverheated ? 'overheat' : 'capacitor',
           });
           d.moveCooldown = 1.0;
         }

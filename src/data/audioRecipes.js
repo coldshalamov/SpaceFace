@@ -488,6 +488,16 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 190, filterQ: 0.8,
   },
   {
+    // Holds-full refusal: a dead low thock — the hopper says "no room", not "registered".
+    // Distinct from the cargo-settle thunk and from the UI deny fall it replaced.
+    id: 'sfx_mining_cargo_full',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 226, freqSweep: [226, 168], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.02, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.6,
+    transientClick: { gain: 0.35 },
+  },
+  {
     id: 'sfx_mining_field_settle',
     category: 'mining', type: 'noise_burst', noiseColor: 'pink',
     gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.38 },
@@ -1943,7 +1953,7 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.75,
   },
-  // Aft charge ejector: short mechanical clack + filtered breath, distinct from detonation.
+  // Aft rack ejector: short mechanical clack + filtered breath, distinct from detonation.
   // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
   {
     id: 'sfx_massline_bomb_drop',
@@ -2479,7 +2489,7 @@ export const SAMPLE_BINDINGS = {
   'sfx.armorHit': { id: 'impact_armor', share: 0.62 },
   'sfx.playerDamage': { id: 'impact_hull', share: 0.55, rate: 1.15 },
   sfx_dock_clunk: { id: 'ui_dock', share: 0.6 },
-  sfx_mining_mass_required: { id: 'impact_kiss', share: 0.5, rate: 0.7 },
+  sfx_mining_mass_required: { id: 'mine_impact', share: 0.55, rate: 0.8 },
   sfx_mining_mass_engaged: { id: 'impact_kiss', share: 0.55 },
   sfx_travel_settle: { id: 'impact_kiss', share: 0.45, rate: 0.6 },
 
@@ -2539,9 +2549,10 @@ export const SAMPLE_BINDINGS = {
   sfx_mining_core_fizzle: { id: 'mine_abort', share: 0.5, rate: 1.3 },
   sfx_mining_yield: { id: 'ui_loot', share: 0.45 },
   sfx_mining_cargo_settle: { id: 'hopper_thock', share: 0.55 },
+  sfx_mining_cargo_full: { id: 'hopper_thock', share: 0.62, rate: 0.78 },
   sfx_mining_field_settle: { id: 'mine_gravel', share: 0.45, rate: 0.7 },
-  sfx_mining_heat_warning: { id: 'cm_ecm', share: 0.4, rate: 1.4 },
-  sfx_mining_seismic_pulse: { id: 'escalation_sub', share: 0.5, rate: 0.7 },
+  sfx_mining_heat_warning: { id: 'mine_vent', share: 0.45, rate: 1.0 },
+  sfx_mining_seismic_pulse: { id: 'mine_fracture', share: 0.5, rate: 0.6 },
   sfx_mining_gas_hazard: { id: 'mine_gas', share: 0.6 },
   sfx_core_bell: { id: 'mine_core', share: 0.6 },
   sfx_vent_chime: { id: 'mine_vent', share: 0.5, rate: 2.4 },
