@@ -257,6 +257,9 @@ class StructuralPool {
   }
 
   update(dt, camera = null, viewportHeight = 1000) {
+    // Quiet open flight: four pools (272 slots) walked every frame while live===0.
+    // mesh.visible is already gated on live; skip the capacity scan entirely when idle.
+    if (!(this.live > 0)) return;
     const step = Math.max(0, Math.min(0.05, finite(dt)));
     const camPos = camera && camera.position;
     const fov = camera && Number.isFinite(camera.fov) ? camera.fov : 50;
@@ -614,6 +617,10 @@ export class ArcadeStructuralFx {
   }
 
   update(dt, camera = null, viewportHeight = 1000) {
+    // Composite quiet gate: if every pool is idle, skip four capacity scans.
+    if (!(this.blades.live > 0 || this.arcs.live > 0 || this.shards.live > 0 || this.plates.live > 0)) {
+      return;
+    }
     this.blades.update(dt, camera, viewportHeight);
     this.arcs.update(dt, camera, viewportHeight);
     this.shards.update(dt, camera, viewportHeight);
