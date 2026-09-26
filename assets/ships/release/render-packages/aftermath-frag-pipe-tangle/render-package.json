@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e7b70fcdb7b49a9f2bbc206831a837a626ae787c91d93d58c9e6993d8f7d2212",
+  "contentHash": "8cf4a1bb1d529f1645017f1474eadd54556867e92e55f1c31590f3a223052336",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialHash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialHash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
@@ -190,17 +190,17 @@
   "lods": [],
   "materials": [
     {
-      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
-      "id": "material:8c682904cd449a1872aaaa7a",
+      "hash": "cd6123b380f546013af23403436e43df77d6be276fc05cd966083228155b9f07",
+      "id": "material:cd6123b380f546013af23403",
       "name": "wrk_frame_steel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
-      "id": "material:bfaa9a8470a29a0d44afaeea",
+      "hash": "f3523d8806199d6eff1110c056aaa4a72da4924b8e5e5ca2daaf116464dcde6b",
+      "id": "material:f3523d8806199d6eff1110c0",
       "name": "wrk_pipe",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -602,19 +602,19 @@
       "sha256": "a4c69709d97b9ac4c02fd053516b1a9ba862db03f4bdf9aea2a1e33dfad5a3ff"
     },
     "sourceGlb": {
-      "bytes": 12864,
-      "sha256": "088c700e43ffeaffd2725f69d8228b3ffafa3c11d47b27b029e7c550c3d9d1ee",
+      "bytes": 12868,
+      "sha256": "67394e1ba64753a748e76620b69462327241b1f463a3db499e5d4a0c8fbf878b",
       "uri": "place_aftermath_frag_pipe_tangle.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 21136,
-    "sha256": "f3873bde344631e46d0b4770b768c9e34da880d976b46dcd941e089257ecde6a",
+    "bytes": 21100,
+    "sha256": "3a017d89c8504a3a02fca4cf32c3f751e6189119fdbe0fca2cbed0e55ab7d3e4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -880,7 +880,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
   },
-  "runtimeHash": "3656f8667ec6bbf6ad72ed1b31959e47b22ca3824a4f8b06965ff214ce665d36",
+  "runtimeHash": "33671dada4ee6d679c82023d50a780e470f950c8c2b8557a54a86e5a45bea057",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

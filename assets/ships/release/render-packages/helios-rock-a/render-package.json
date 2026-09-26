@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "705b9a10823981410432970c5a85fbd57c3af8d8847edab49665fd3ae4f1b686",
+  "contentHash": "5c0047fabf214d85e93e48548e900c82a17ba7cab595b0690d85ee41f2769110",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod0-merged-material-rock.primitive.0",
       "indexCount": 3678,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-a.mesh.lod0-merged-material-rock",
@@ -99,7 +99,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod0-merged-material-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
+      "materialHash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
       "nodeId": "sf.render.helios-rock-a.mesh.lod0-merged-material-warm",
@@ -124,7 +124,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod1-merged-material-rock.primitive.0",
       "indexCount": 1542,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-a.mesh.lod1-merged-material-rock",
@@ -149,7 +149,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod1-merged-material-warm.primitive.0",
       "indexCount": 12,
       "indexed": true,
-      "materialHash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
+      "materialHash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
       "nodeId": "sf.render.helios-rock-a.mesh.lod1-merged-material-warm",
@@ -174,7 +174,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod2-merged-material-rock.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
+      "materialHash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Rock",
       "nodeId": "sf.render.helios-rock-a.mesh.lod2-merged-material-rock",
@@ -199,7 +199,7 @@
       "id": "sf.render.helios-rock-a.mesh.lod2-merged-material-warm.primitive.0",
       "indexCount": 3,
       "indexed": true,
-      "materialHash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
+      "materialHash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
       "nodeId": "sf.render.helios-rock-a.mesh.lod2-merged-material-warm",
@@ -212,42 +212,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "8e9d935252b92690a2cef815018b15dfe1dfbfa4e6bf888f70c15678576906ba",
-      "id": "material:8e9d935252b92690a2cef815",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "warm_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "da8e64c0d439b9b32e593caf68860dc4f78ebe4bcac9a9a6ce25c6fbd4f62c45",
-      "id": "material:da8e64c0d439b9b32e593caf",
+      "hash": "a1e92f571c09a79f5aebd519d88cddc87c756fba41dfa8696b430c6174b8e92d",
+      "id": "material:a1e92f571c09a79f5aebd519",
       "name": "Material_Rock",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -270,6 +238,38 @@
         {
           "colorSpace": "linear",
           "name": "rock_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "fd8f9c4c82a7d63592a3c91e37b15664a6376e6c3542d16f82f715604d37dcfc",
+      "id": "material:fd8f9c4c82a7d63592a3c91e",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warm_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warm_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -625,19 +625,19 @@
       "sha256": "cf170f7d120927869625998c48ef4a7da3c8f296c9e400e6248bc5a7a6eb8bd5"
     },
     "sourceGlb": {
-      "bytes": 2842200,
-      "sha256": "05d8ed9c2770df65d48c331a843a92052efe5bc86990932364d403fe7e1983a6",
+      "bytes": 2842204,
+      "sha256": "6be134d2416890cb495a92cad9b6ffde4db6fc75d5508736935e1d1a1a7af2ff",
       "uri": "place_asteroid_rock_a.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2878572,
-    "sha256": "53633fd4b1d686c8014ad9b6c9d6be8bc45840f018ce55f143e9eb80f68d187f",
+    "bytes": 2878536,
+    "sha256": "b296be26851428b3a1361a190ab88c37799a73cc7db9080a35b6eb87d67669f1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -943,7 +943,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb"
   },
-  "runtimeHash": "04ed4ffc3f311df34cf7d08b73a517193b1396c7177a4662450cc8c4c75daa16",
+  "runtimeHash": "58f06256e8287103b7516a4da125a6388a6de662b45268e19fc2fb3e7bc93e25",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

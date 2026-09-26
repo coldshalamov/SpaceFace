@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "32d82c0c21b525b7da82946e2d504e1302f46a36a8a0da3d5955b4782ec69780",
+  "contentHash": "8089c712868c5e88e0b8ae609ee76c905a70d0dee40a5b4ab75b8160ab3aa3bc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.observation-blister.mesh.balcony.primitive.0",
       "indexCount": 960,
       "indexed": true,
-      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
       "nodeId": "sf.render.observation-blister.mesh.balcony",
@@ -99,7 +99,7 @@
       "id": "sf.render.observation-blister.mesh.base.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.observation-blister.mesh.base",
@@ -124,7 +124,7 @@
       "id": "sf.render.observation-blister.mesh.dome.primitive.0",
       "indexCount": 1320,
       "indexed": true,
-      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialHash": "6afd4c662783ee0c598ebf5cc1a783c2dd027a24be310d9cfb96d392d41cb586",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.002",
       "nodeId": "sf.render.observation-blister.mesh.dome",
@@ -224,7 +224,7 @@
       "id": "sf.render.observation-blister.mesh.ring.primitive.0",
       "indexCount": 228,
       "indexed": true,
-      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.observation-blister.mesh.ring",
@@ -249,7 +249,7 @@
       "id": "sf.render.observation-blister.mesh.stalk.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.observation-blister.mesh.stalk",
@@ -269,24 +269,24 @@
       "textures": []
     },
     {
-      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
-      "id": "material:66a89e4576e5df116e40f4c3",
-      "name": "esk_struct_alloy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
-      "id": "material:76dfa2829c62a55ef4a4f46b",
-      "name": "esk_glass",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
-      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
       "name": "esk_bare_steel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "id": "material:2df5fe4085e82053eaa20e31",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6afd4c662783ee0c598ebf5cc1a783c2dd027a24be310d9cfb96d392d41cb586",
+      "id": "material:6afd4c662783ee0c598ebf5c",
+      "name": "esk_glass",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -297,10 +297,10 @@
       "textures": []
     },
     {
-      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
-      "id": "material:fcaae752dff7f4d8d2acc92d",
-      "name": "esk_paint_civic_bone",
-      "pipelineKey": "opaque:double",
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -751,19 +751,19 @@
       "sha256": "57d938e947c7623f1a1e3a185a0ff1b7ac9cc7dce55f7e60d1cb2d418d595b57"
     },
     "sourceGlb": {
-      "bytes": 28888,
-      "sha256": "27b2c47da8862cf2b34f46657e4a573ca355b06052e4c0ea54fe051247b8ef4e",
+      "bytes": 28892,
+      "sha256": "556a020536596f6ec4cb9f7f13624ab47d2e085160c0def6073d4d9471b90000",
       "uri": "place_observation_blister.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 46988,
-    "sha256": "47d2864bcc36b7bc7b967bf4296e7a66205fa54345eab3062bf3606438b34ccc",
+    "bytes": 46912,
+    "sha256": "337f5318ef74c15cc0f45915245b464c019422d4f0a2feef5585ff54f8dc57ae",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1098,7 +1098,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "f7cbe9f66d6e613a689b48e471a943c6d37ed3efa42d46da17b98b87efe743d9",
+  "runtimeHash": "09dbcbbeaacc036dd7a122df98363a88ae5a72a65a6dc85247b7409d2b3708d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -26,7 +26,7 @@
         0,
         22
       ],
-      "parentNodeId": "sf.render.apron-shuttle.root",
+      "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "worldTransform": [
         1,
         0,
@@ -72,7 +72,7 @@
         0,
         23
       ],
-      "parentNodeId": "sf.render.apron-shuttle.root",
+      "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "worldTransform": [
         1,
         0,
@@ -118,7 +118,7 @@
         0,
         24
       ],
-      "parentNodeId": "sf.render.apron-shuttle.root",
+      "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "worldTransform": [
         1,
         0,
@@ -164,7 +164,7 @@
         0,
         25
       ],
-      "parentNodeId": "sf.render.apron-shuttle.root",
+      "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "worldTransform": [
         1,
         0,
@@ -181,6 +181,186 @@
         -8.4,
         0.15,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        2
+      ],
+      "parentNodeId": "sf.render.apron-shuttle.node.socket-mining-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        -2.159996,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        3
+      ],
+      "parentNodeId": "sf.render.apron-shuttle.node.socket-rcs-port",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        -2.159996,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        2.080234,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        4
+      ],
+      "parentNodeId": "sf.render.apron-shuttle.node.socket-rcs-starboard",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        2.080234,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.41875,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentNodeId": "sf.render.apron-shuttle.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.41875,
+        -0.239065,
+        -0.039881,
         1
       ]
     },
@@ -210,7 +390,7 @@
         0,
         26
       ],
-      "parentNodeId": "sf.render.apron-shuttle.root",
+      "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "worldTransform": [
         1,
         0,
@@ -229,13 +409,58 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        1
+      ],
+      "parentNodeId": "sf.render.apron-shuttle.node.socket-weapon-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ]
     }
   ],
   "assetId": "sf.render.apron-shuttle",
   "collisions": [
     {
       "id": "sf.render.apron-shuttle.collision",
-      "nodeId": "sf.render.apron-shuttle.mesh.collision-hull",
+      "nodeId": "sf.render.apron-shuttle.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -243,37 +468,37 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "00c51fe366966da0416abe38f53d92645c8c8e9160889f5c93533d29ccc152f1",
+  "contentHash": "c203e3af9bccf89a5b6f7320b3c14622f485208ab85fe2a3e619fbd04e2f1920",
   "dynamicGroups": [
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-core.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-hook-drive-core"
+      "nodeId": "sf.render.apron-shuttle.node.lod0-hook-drive-core"
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan"
+      "nodeId": "sf.render.apron-shuttle.node.lod0-hook-drive-fan"
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-core.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-hook-drive-core"
+      "nodeId": "sf.render.apron-shuttle.node.lod1-hook-drive-core"
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan"
+      "nodeId": "sf.render.apron-shuttle.node.lod1-hook-drive-fan"
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-core.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-hook-drive-core"
+      "nodeId": "sf.render.apron-shuttle.node.lod2-hook-drive-core"
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan.dynamic",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan"
+      "nodeId": "sf.render.apron-shuttle.node.lod2-hook-drive-fan"
     }
   ],
   "geometry": [
@@ -292,13 +517,13 @@
       },
       "drawMode": 4,
       "geometryHash": "71923b215aa206c7721204707f8abd7aedf4044341f641a8a81fbc1e20a52632",
-      "id": "sf.render.apron-shuttle.mesh.collision-hull.primitive.0",
+      "id": "sf.render.apron-shuttle.node.collision-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "non-render",
       "meshName": "Cube",
-      "nodeId": "sf.render.apron-shuttle.mesh.collision-hull",
+      "nodeId": "sf.render.apron-shuttle.node.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -317,13 +542,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dea59b644ecd20b5807062e94c26048d0f50b2fb208e2e01930144c2a1814802",
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-core.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-hook-drive-core",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 72
     },
@@ -342,13 +567,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d4fb02922713724a1fc45a9d7bc8c1ee9e4684bfc947502381d444abf6755baf",
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 148
     },
@@ -367,13 +592,13 @@
       },
       "drawMode": 4,
       "geometryHash": "0c3e54c17dfa6b47853ee46af013f4f6e2add0fd9c8027b406d95f44b8c39355",
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-cyan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-merged-material-cyan",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -392,13 +617,13 @@
       },
       "drawMode": 4,
       "geometryHash": "da62aa3f07001e5f2832e296f637f7cb5b079de12323e2873bfb0fe92b361548",
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-glass.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-glass.primitive.0",
       "indexCount": 1416,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Merged_Material_Glass.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-merged-material-glass",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 440
     },
@@ -417,13 +642,13 @@
       },
       "drawMode": 4,
       "geometryHash": "446ac341404cb4005a927486215500f2381dbfde9945843c0f740755a83432c3",
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-hull.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 10452,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-merged-material-hull",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 3062
     },
@@ -442,13 +667,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2c0ddebd388ade352d4d3625c38d3d4dd8e65c89cb3195862676e39db1355db3",
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-mechanical.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 5964,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-merged-material-mechanical",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 1976
     },
@@ -467,13 +692,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d8b809a7d197bbee76b2539154edc486f87fc0cbd358d79cfe283aa8dac70a9b",
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-warm.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod0-merged-material-warm",
+      "nodeId": "sf.render.apron-shuttle.node.lod0-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 152
     },
@@ -492,13 +717,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e157125c5749824843b5a05ceed7d452337d6671a0c3a6fc28a454c421f91498",
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-core.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-hook-drive-core",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -517,13 +742,13 @@
       },
       "drawMode": 4,
       "geometryHash": "941aec5ab408f35f46e8134c67ca0a4d87c67a10b0c7bea8c50f0718777a3038",
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 162,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 78
     },
@@ -542,13 +767,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e17a2200350a85a1e9499e401b0ad0fed19a6a003ea89717ac33ece914dac627",
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-cyan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 198,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-merged-material-cyan",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 67
     },
@@ -567,13 +792,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b9cd24ec5130e258f301f345f62acdc4f0879348bd2d1b96d841eac4a4b1469a",
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-glass.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-glass.primitive.0",
       "indexCount": 876,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_Merged_Material_Glass.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-merged-material-glass",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 313
     },
@@ -592,13 +817,13 @@
       },
       "drawMode": 4,
       "geometryHash": "039fab9d2781fbf954547e96d0c396e13dda7c8c43802155fe9f849d7788e6a1",
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-hull.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 6480,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-merged-material-hull",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 2129
     },
@@ -617,13 +842,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e7c9485e14dccc8e5c83baa5539d2344321a86d5eea63f5af3c25024d10856e0",
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-mechanical.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 3696,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-merged-material-mechanical",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 1414
     },
@@ -642,13 +867,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a62e32b9b4d47c37dc37227ca0e4204afee9984895e0d7af6391a2b31f390528",
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-warm.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 282,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod1-merged-material-warm",
+      "nodeId": "sf.render.apron-shuttle.node.lod1-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 108
     },
@@ -667,13 +892,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a0c35c62f216f4c5e71398c2bc8a5a1bf9ead9217ae5b410475871bfdfa5b467",
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-core.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-hook-drive-core",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -692,13 +917,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5c292853a5215f62c94b0d681e7fdaaec74b262efc2845e869dbf13b37cb8923",
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 46
     },
@@ -717,13 +942,13 @@
       },
       "drawMode": 4,
       "geometryHash": "40bd0d6b23cde43ff8a0f5633f7f752939e3932ebe9d474b6d785be07532165d",
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-cyan.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
+      "materialHash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-merged-material-cyan",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 44
     },
@@ -742,13 +967,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b2fdc900d7ba77322820290282136f9294a6956c1c54072b1765148b8fe39164",
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-glass.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-glass.primitive.0",
       "indexCount": 420,
       "indexed": true,
       "materialHash": "ac9c4edc38b0c17c39b75c63ab801fbbf3e9779b9c1ab2abf8c5d18a93d85044",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_Merged_Material_Glass.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-merged-material-glass",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 190
     },
@@ -767,13 +992,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c741efd54bed8958bc8ab930c78ad3a9b0d4a069b14c3a414a6cebe23f7aca38",
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-hull.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 3132,
       "indexed": true,
-      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialHash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-merged-material-hull",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-merged-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 1299
     },
@@ -792,13 +1017,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a891b27db187168384731d0a730a789e48ce9e97d14eb44d66d72cf05afe9457",
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-mechanical.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 1788,
       "indexed": true,
-      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialHash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical.001",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-merged-material-mechanical",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 856
     },
@@ -817,13 +1042,13 @@
       },
       "drawMode": 4,
       "geometryHash": "32726245ad01bb2e644253fd3a0a6a9e41982eaa372de29bfb4fb44e637f30f0",
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-warm.primitive.0",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
+      "materialHash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
-      "nodeId": "sf.render.apron-shuttle.mesh.lod2-merged-material-warm",
+      "nodeId": "sf.render.apron-shuttle.node.lod2-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 41
     }
@@ -833,10 +1058,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
-      "id": "material:2c37d87500caaa70babb7ae3",
+      "hash": "67471fe62bfae5dc53b55a4ffd5b746f50383bcdc38946a6659a015dac47cd68",
+      "id": "material:67471fe62bfae5dc53b55a4f",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -865,74 +1090,10 @@
       ]
     },
     {
-      "hash": "3f4c7f68a654fe0c5b30f2bfe39c732bba9d0c0bf2bdd558f5d1c33106429a07",
-      "id": "material:3f4c7f68a654fe0c5b30f2bf",
-      "name": "Material_Cyan",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Cyan_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Cyan_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9ff66786ab2abc538bd4e728dc6adb0c4f7adc6404bdd48cfb19bd2fd97d569c",
-      "id": "material:9ff66786ab2abc538bd4e728",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Warm_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
-      "id": "material:a9c0f1569d0d5917e18ea3f0",
+      "hash": "8957a41c3b54913d8396bc8ae0e301e5ee8326559ce3841dcebd06f3f5db9326",
+      "id": "material:8957a41c3b54913d8396bc8a",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -991,11 +1152,75 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "d2b32c6674246b497763a42965b18020859f84c74f93b7a83333019d91828a87",
+      "id": "material:d2b32c6674246b497763a429",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e4fdcdb4d237e70ede6949bb1b93de4f042a07ed5e265c6d910aab5f9227eadd",
+      "id": "material:e4fdcdb4d237e70ede6949bb",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.apron-shuttle.mesh.collision-hull",
+      "id": "sf.render.apron-shuttle.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1021,7 +1246,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1044,7 +1269,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-core",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-core",
       "localTransform": [
         0.4320000186562538,
         0,
@@ -1070,7 +1295,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1093,7 +1318,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan",
+      "id": "sf.render.apron-shuttle.node.lod0-hook-drive-fan",
       "localTransform": [
         0.7549998760223389,
         0,
@@ -1119,7 +1344,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1142,7 +1367,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-cyan",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1168,7 +1393,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1191,7 +1416,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-glass",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1217,7 +1442,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1240,7 +1465,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-hull",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1266,7 +1491,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1289,7 +1514,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-mechanical",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1315,7 +1540,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1338,7 +1563,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod0-merged-material-warm",
+      "id": "sf.render.apron-shuttle.node.lod0-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -1364,7 +1589,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1387,7 +1612,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-core",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-core",
       "localTransform": [
         0.4334449768066406,
         0,
@@ -1413,7 +1638,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1436,7 +1661,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan",
+      "id": "sf.render.apron-shuttle.node.lod1-hook-drive-fan",
       "localTransform": [
         0.7549998760223389,
         0,
@@ -1462,7 +1687,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1485,7 +1710,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-cyan",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1511,7 +1736,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1534,7 +1759,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-glass",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1560,7 +1785,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1583,7 +1808,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-hull",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1609,7 +1834,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1632,7 +1857,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-mechanical",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1658,7 +1883,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1681,7 +1906,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod1-merged-material-warm",
+      "id": "sf.render.apron-shuttle.node.lod1-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -1707,7 +1932,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1730,7 +1955,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-core",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-core",
       "localTransform": [
         0.3740067183971405,
         0,
@@ -1756,7 +1981,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1779,7 +2004,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan",
+      "id": "sf.render.apron-shuttle.node.lod2-hook-drive-fan",
       "localTransform": [
         0.7549998760223389,
         0,
@@ -1805,7 +2030,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1828,7 +2053,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-cyan",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1854,7 +2079,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1877,7 +2102,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-glass",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1903,7 +2128,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1926,7 +2151,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-hull",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1952,7 +2177,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -1975,7 +2200,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-mechanical",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -2001,7 +2226,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -2024,7 +2249,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.mesh.lod2-merged-material-warm",
+      "id": "sf.render.apron-shuttle.node.lod2-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -2050,7 +2275,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.apron-shuttle.root",
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.apron-shuttle.body",
       "worldTransform": [
@@ -2073,7 +2298,7 @@
       ]
     },
     {
-      "id": "sf.render.apron-shuttle.root",
+      "id": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
       "localTransform": [
         1,
         0,
@@ -2093,7 +2318,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_NPCWORK_APRON_SHUTTLE_ROOT",
       "nodeName": "SF_NPCWORK_APRON_SHUTTLE_ROOT",
       "nodePath": [
         0
@@ -2119,26 +2344,511 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-bay-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.6,
+        0.2,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Bay_Front",
+      "nodeName": "SOCKET_Bay_Front",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.6,
+        0.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2,
+        -1.6,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2,
+        -1.6,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.4,
+        0.15,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.4,
+        0.15,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        -2.159996,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        -2.159996,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        2.080234,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.425,
+        -0.239065,
+        2.080234,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.41875,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.41875,
+        -0.239065,
+        -0.039881,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.9,
+        0.15,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.9,
+        0.15,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.apron-shuttle.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.apron-shuttle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.45,
+        -0.239065,
+        -0.039881,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3d57cf33faad134cea00984f70ec1b6ecdccd7ea8ea31021638a676c704fe51c"
+      "sha256": "08989cdb35772d1f3849aa5f5a49cf3b3378cfaa004720004c7a2ef63571aa45"
     },
     "sourceGlb": {
-      "bytes": 2773772,
-      "sha256": "96ba4a96296a72bdba22fb3f53c6e0aef222fed0285c9d0d176e5860bf766fdf",
+      "bytes": 2774160,
+      "sha256": "9ec4a5ef177157b0fcb0f5dc482b6f5495fc1cbdca304518b1887e4c0c54b253",
       "uri": "apron_shuttle.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3034476,
-    "sha256": "e2d848f2e9122456e1b07942734773fa78dd52eb2a89311fe534c407a14cc300",
+    "bytes": 3036292,
+    "sha256": "a553a10bff7fc019737a53736b2584540e6b1a7f198761b7a6e20a8ba04ac5d0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2221,7 +2931,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Bay_Front",
             "recordIds": [
-              "sf.render.apron-shuttle.anchor.socket-bay-front"
+              "sf.render.apron-shuttle.anchor.socket-bay-front",
+              "sf.render.apron-shuttle.node.socket-bay-front"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2279,7 +2990,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
-              "sf.render.apron-shuttle.anchor.socket-camera-focus"
+              "sf.render.apron-shuttle.anchor.socket-camera-focus",
+              "sf.render.apron-shuttle.node.socket-camera-focus"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2337,7 +3049,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Ventral",
             "recordIds": [
-              "sf.render.apron-shuttle.anchor.socket-cargo-ventral"
+              "sf.render.apron-shuttle.anchor.socket-cargo-ventral",
+              "sf.render.apron-shuttle.node.socket-cargo-ventral"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2395,7 +3108,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
-              "sf.render.apron-shuttle.anchor.socket-engine-main"
+              "sf.render.apron-shuttle.anchor.socket-engine-main",
+              "sf.render.apron-shuttle.node.socket-engine-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2453,7 +3167,193 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
-              "sf.render.apron-shuttle.anchor.socket-trail-main"
+              "sf.render.apron-shuttle.anchor.socket-trail-main",
+              "sf.render.apron-shuttle.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.45,
+          -0.239065,
+          -0.039881,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.apron-shuttle.anchor.socket-weapon-front",
+              "sf.render.apron-shuttle.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.45,
+          -0.239065,
+          -0.039881,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.apron-shuttle.anchor.socket-mining-front",
+              "sf.render.apron-shuttle.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.425,
+          -0.239065,
+          -2.159996,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.apron-shuttle.anchor.socket-rcs-port",
+              "sf.render.apron-shuttle.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.425,
+          -0.239065,
+          2.080234,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.apron-shuttle.anchor.socket-rcs-starboard",
+              "sf.render.apron-shuttle.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.41875,
+          -0.239065,
+          -0.039881,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.apron-shuttle.anchor.socket-tether-massline",
+              "sf.render.apron-shuttle.node.socket-tether-massline"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2578,7 +3478,7 @@
         "role": "signal"
       }
     ],
-    "nodeCount": 29,
+    "nodeCount": 34,
     "primitives": [
       {
         "canopy": false,
@@ -3341,7 +4241,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "61a7e08c57ba9114495fef8c25f9a688841053d2c631647e29939c09ab47e499",
+  "runtimeHash": "a95d7d312a217bdd052e03d4007b21d3b2f425cfa0ec68e5ff6c0b78ece14cd8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3359,29 +4259,39 @@
       },
       "id": "sf.render.apron-shuttle.body",
       "nodeIds": [
-        "sf.render.apron-shuttle.mesh.collision-hull",
-        "sf.render.apron-shuttle.mesh.lod0-hook-drive-core",
-        "sf.render.apron-shuttle.mesh.lod0-hook-drive-fan",
-        "sf.render.apron-shuttle.mesh.lod0-merged-material-cyan",
-        "sf.render.apron-shuttle.mesh.lod0-merged-material-glass",
-        "sf.render.apron-shuttle.mesh.lod0-merged-material-hull",
-        "sf.render.apron-shuttle.mesh.lod0-merged-material-mechanical",
-        "sf.render.apron-shuttle.mesh.lod0-merged-material-warm",
-        "sf.render.apron-shuttle.mesh.lod1-hook-drive-core",
-        "sf.render.apron-shuttle.mesh.lod1-hook-drive-fan",
-        "sf.render.apron-shuttle.mesh.lod1-merged-material-cyan",
-        "sf.render.apron-shuttle.mesh.lod1-merged-material-glass",
-        "sf.render.apron-shuttle.mesh.lod1-merged-material-hull",
-        "sf.render.apron-shuttle.mesh.lod1-merged-material-mechanical",
-        "sf.render.apron-shuttle.mesh.lod1-merged-material-warm",
-        "sf.render.apron-shuttle.mesh.lod2-hook-drive-core",
-        "sf.render.apron-shuttle.mesh.lod2-hook-drive-fan",
-        "sf.render.apron-shuttle.mesh.lod2-merged-material-cyan",
-        "sf.render.apron-shuttle.mesh.lod2-merged-material-glass",
-        "sf.render.apron-shuttle.mesh.lod2-merged-material-hull",
-        "sf.render.apron-shuttle.mesh.lod2-merged-material-mechanical",
-        "sf.render.apron-shuttle.mesh.lod2-merged-material-warm",
-        "sf.render.apron-shuttle.root"
+        "sf.render.apron-shuttle.node.collision-hull",
+        "sf.render.apron-shuttle.node.lod0-hook-drive-core",
+        "sf.render.apron-shuttle.node.lod0-hook-drive-fan",
+        "sf.render.apron-shuttle.node.lod0-merged-material-cyan",
+        "sf.render.apron-shuttle.node.lod0-merged-material-glass",
+        "sf.render.apron-shuttle.node.lod0-merged-material-hull",
+        "sf.render.apron-shuttle.node.lod0-merged-material-mechanical",
+        "sf.render.apron-shuttle.node.lod0-merged-material-warm",
+        "sf.render.apron-shuttle.node.lod1-hook-drive-core",
+        "sf.render.apron-shuttle.node.lod1-hook-drive-fan",
+        "sf.render.apron-shuttle.node.lod1-merged-material-cyan",
+        "sf.render.apron-shuttle.node.lod1-merged-material-glass",
+        "sf.render.apron-shuttle.node.lod1-merged-material-hull",
+        "sf.render.apron-shuttle.node.lod1-merged-material-mechanical",
+        "sf.render.apron-shuttle.node.lod1-merged-material-warm",
+        "sf.render.apron-shuttle.node.lod2-hook-drive-core",
+        "sf.render.apron-shuttle.node.lod2-hook-drive-fan",
+        "sf.render.apron-shuttle.node.lod2-merged-material-cyan",
+        "sf.render.apron-shuttle.node.lod2-merged-material-glass",
+        "sf.render.apron-shuttle.node.lod2-merged-material-hull",
+        "sf.render.apron-shuttle.node.lod2-merged-material-mechanical",
+        "sf.render.apron-shuttle.node.lod2-merged-material-warm",
+        "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "sf.render.apron-shuttle.node.socket-bay-front",
+        "sf.render.apron-shuttle.node.socket-camera-focus",
+        "sf.render.apron-shuttle.node.socket-cargo-ventral",
+        "sf.render.apron-shuttle.node.socket-engine-main",
+        "sf.render.apron-shuttle.node.socket-mining-front",
+        "sf.render.apron-shuttle.node.socket-rcs-port",
+        "sf.render.apron-shuttle.node.socket-rcs-starboard",
+        "sf.render.apron-shuttle.node.socket-tether-massline",
+        "sf.render.apron-shuttle.node.socket-trail-main",
+        "sf.render.apron-shuttle.node.socket-weapon-front"
       ]
     }
   ]

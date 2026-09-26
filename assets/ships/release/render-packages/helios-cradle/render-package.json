@@ -277,6 +277,51 @@
       ]
     },
     {
+      "id": "sf.render.helios-cradle.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.25875435,
+        0.700191,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentNodeId": "sf.render.helios-cradle.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.25875435,
+        0.700191,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.helios-cradle.anchor.socket-trail-main",
       "kind": "socket",
       "localTransform": [
@@ -427,7 +472,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "787cb0b66b8ab9a54ab49edb2e8d57e66ec0ea9fad2718c16a2c6a36a925fda7",
+  "contentHash": "fac44b7be4bcc1abe22591e60c2939db8a8925c74018627adc9474e18f072459",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-cradle.node.lod0-hook-drive-core.dynamic",
@@ -504,7 +549,7 @@
       "id": "sf.render.helios-cradle.node.lod0-gun-assembly.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Gun_Assembly",
       "nodeId": "sf.render.helios-cradle.node.lod0-gun-assembly",
@@ -529,7 +574,7 @@
       "id": "sf.render.helios-cradle.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-core",
@@ -554,7 +599,7 @@
       "id": "sf.render.helios-cradle.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-fan",
@@ -579,7 +624,7 @@
       "id": "sf.render.helios-cradle.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 1572,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-cyan",
@@ -629,7 +674,7 @@
       "id": "sf.render.helios-cradle.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 16140,
       "indexed": true,
-      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
+      "materialHash": "cdb67cc4d4e4fde4211f8fb51799e4fc23fa9afc501f2f7d966cac03693e745f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-hull",
@@ -654,7 +699,7 @@
       "id": "sf.render.helios-cradle.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 39816,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-mechanical",
@@ -679,7 +724,7 @@
       "id": "sf.render.helios-cradle.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 4932,
       "indexed": true,
-      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
+      "materialHash": "d8f352008f443c1d162c66df58b2a98641b70316c97f74e25ef39ebf7b716d9b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
       "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-warm",
@@ -704,7 +749,7 @@
       "id": "sf.render.helios-cradle.node.lod0-mining-emitter.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mining_Emitter",
       "nodeId": "sf.render.helios-cradle.node.lod0-mining-emitter",
@@ -729,7 +774,7 @@
       "id": "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 4416,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PortCargoArmService_NickelSeam",
       "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -754,7 +799,7 @@
       "id": "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed.primitive.0",
       "indexCount": 3960,
       "indexed": true,
-      "materialHash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
+      "materialHash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PortCargoArmService_FoldedLeaf",
       "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed",
@@ -779,7 +824,7 @@
       "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
       "indexCount": 540,
       "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PortCargoArmService_CoolantReturn",
       "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper",
@@ -804,7 +849,7 @@
       "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PortCargoArmService_OxidizedLiner",
       "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized",
@@ -829,7 +874,7 @@
       "id": "sf.render.helios-cradle.node.lod1-gun-assembly.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Gun_Assembly",
       "nodeId": "sf.render.helios-cradle.node.lod1-gun-assembly",
@@ -854,7 +899,7 @@
       "id": "sf.render.helios-cradle.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-core",
@@ -879,7 +924,7 @@
       "id": "sf.render.helios-cradle.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-fan",
@@ -904,7 +949,7 @@
       "id": "sf.render.helios-cradle.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-cyan",
@@ -954,7 +999,7 @@
       "id": "sf.render.helios-cradle.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 7446,
       "indexed": true,
-      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
+      "materialHash": "cdb67cc4d4e4fde4211f8fb51799e4fc23fa9afc501f2f7d966cac03693e745f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-hull",
@@ -979,7 +1024,7 @@
       "id": "sf.render.helios-cradle.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 18138,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-mechanical",
@@ -1004,7 +1049,7 @@
       "id": "sf.render.helios-cradle.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 978,
       "indexed": true,
-      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
+      "materialHash": "d8f352008f443c1d162c66df58b2a98641b70316c97f74e25ef39ebf7b716d9b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
       "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-warm",
@@ -1029,7 +1074,7 @@
       "id": "sf.render.helios-cradle.node.lod1-mining-emitter.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mining_Emitter",
       "nodeId": "sf.render.helios-cradle.node.lod1-mining-emitter",
@@ -1054,7 +1099,7 @@
       "id": "sf.render.helios-cradle.node.lod2-gun-assembly.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Gun_Assembly",
       "nodeId": "sf.render.helios-cradle.node.lod2-gun-assembly",
@@ -1079,7 +1124,7 @@
       "id": "sf.render.helios-cradle.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-core",
@@ -1104,7 +1149,7 @@
       "id": "sf.render.helios-cradle.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN",
       "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-fan",
@@ -1129,7 +1174,7 @@
       "id": "sf.render.helios-cradle.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 282,
       "indexed": true,
-      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "materialHash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
       "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-cyan",
@@ -1179,7 +1224,7 @@
       "id": "sf.render.helios-cradle.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 3858,
       "indexed": true,
-      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
+      "materialHash": "cdb67cc4d4e4fde4211f8fb51799e4fc23fa9afc501f2f7d966cac03693e745f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull",
       "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-hull",
@@ -1204,7 +1249,7 @@
       "id": "sf.render.helios-cradle.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 7260,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical",
       "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-mechanical",
@@ -1229,7 +1274,7 @@
       "id": "sf.render.helios-cradle.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 420,
       "indexed": true,
-      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
+      "materialHash": "d8f352008f443c1d162c66df58b2a98641b70316c97f74e25ef39ebf7b716d9b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
       "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-warm",
@@ -1254,7 +1299,7 @@
       "id": "sf.render.helios-cradle.node.lod2-mining-emitter.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "materialHash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mining_Emitter",
       "nodeId": "sf.render.helios-cradle.node.lod2-mining-emitter",
@@ -1267,10 +1312,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
-      "id": "material:0d6c86ecadd0909da1839fdc",
+      "hash": "66995fb45b17026170c2cfb69d318b9611ac174c3725591c6395d3dc8a30f645",
+      "id": "material:66995fb45b17026170c2cfb6",
       "name": "Material_Cyan",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1299,10 +1344,31 @@
       ]
     },
     {
-      "hash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
-      "id": "material:182a947d7d5ef5da50e2561b",
+      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
+      "id": "material:696124402638cc23b4c11653",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "85cd1cc6ee3ad65354a3709fac5c848c14ae790418aab5d8cd12d12774f849e0",
+      "id": "material:85cd1cc6ee3ad65354a3709f",
+      "name": "Material_EngineCeramic_RemasterGlazed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
+      "name": "Material_BrushedMetal_RemasterNickel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cdb67cc4d4e4fde4211f8fb51799e4fc23fa9afc501f2f7d966cac03693e745f",
+      "id": "material:cdb67cc4d4e4fde4211f8fb5",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1331,49 +1397,10 @@
       ]
     },
     {
-      "hash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
-      "id": "material:3fe75c2036792a2886fdec1b",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "helios_cradle_Material_Warm_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "helios_cradle_Material_Warm_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "helios_cradle_Material_Warm_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "helios_cradle_Material_Warm_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
-      "id": "material:92124a9ab2ca3f29bc463fb4",
+      "hash": "d3b220651b0205e1eb8501f4d13d6fc98cc436347d7e9e83e76b9da9511add5e",
+      "id": "material:d3b220651b0205e1eb8501f4",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1402,11 +1429,36 @@
       ]
     },
     {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
-      "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "d8f352008f443c1d162c66df58b2a98641b70316c97f74e25ef39ebf7b716d9b",
+      "id": "material:d8f352008f443c1d162c66df",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "helios_cradle_Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "helios_cradle_Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "helios_cradle_Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "helios_cradle_Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "dd306e10f3d2708d7d48eca29e518853564ecf4259770a574e6a203379a33a0a",
@@ -1441,17 +1493,10 @@
       ]
     },
     {
-      "hash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
-      "id": "material:dd71cd991f0355687d548b9e",
-      "name": "Material_EngineCeramic_RemasterGlazed",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
+      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
+      "id": "material:e2c2872893bc086695356022",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -3363,6 +3408,54 @@
       ]
     },
     {
+      "id": "sf.render.helios-cradle.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.25875435,
+        0.700191,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.25875435,
+        0.700191,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.helios-cradle.node.socket-trail-main",
       "localTransform": [
         1,
@@ -3512,22 +3605,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "3a844d4da22b969dc0ead365f0ff29ad09598d1294a193fd47515339072739a4"
+      "sha256": "5f3bdef2d2d6308d00c9c3129ecbf027962a25f2c25a2e1df72d9bdd8cab0833"
     },
     "sourceGlb": {
-      "bytes": 14273944,
-      "sha256": "f45fd3f17f1338dd482ce959eea04c93852a1ebe68babff28423b8abf2569f00",
+      "bytes": 14274028,
+      "sha256": "9defbe885168f593067b6e5dea26587841823d5f605b41da94757ae259967c1f",
       "uri": "helios_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 15037056,
-    "sha256": "d21ef7d8b217730ef0e63ddffca9e31bd59ee1f3d1977e69b3d071bde5eb99ee",
+    "bytes": 15037236,
+    "sha256": "e813117f6ef8a171c2c92fea1caff6cee2caf6b3e97e4a42d634239f616e4a9e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4079,6 +4172,43 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.25875435,
+          0.700191,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 43,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.helios-cradle.anchor.socket-tether-massline",
+              "sf.render.helios-cradle.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -4250,7 +4380,7 @@
         "role": "mechanical"
       }
     ],
-    "nodeCount": 43,
+    "nodeCount": 44,
     "primitives": [
       {
         "canopy": false,
@@ -5295,7 +5425,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
-  "runtimeHash": "d52397dccb81f6a8d85436560ea9639fbfb559ed7759b66603ba3f39357f1181",
+  "runtimeHash": "d04a1afa7e97581638e312d7c4d5cc5bd53d908a95e1bae3ec0af387f1e0753c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -5352,6 +5482,7 @@
         "sf.render.helios-cradle.node.socket-mining-front",
         "sf.render.helios-cradle.node.socket-rcs-port",
         "sf.render.helios-cradle.node.socket-rcs-starboard",
+        "sf.render.helios-cradle.node.socket-tether-massline",
         "sf.render.helios-cradle.node.socket-trail-main",
         "sf.render.helios-cradle.node.socket-utility-dorsal",
         "sf.render.helios-cradle.node.socket-weapon-front"

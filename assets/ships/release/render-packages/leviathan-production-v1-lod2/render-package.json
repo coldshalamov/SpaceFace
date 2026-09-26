@@ -519,24 +519,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6907593f60479266aac5fdd615507a7239902b0f14bd9b210a7bc9a70c9ca406",
+  "contentHash": "085ca23327bd52bff8969f76f58ca8b2a050edc1cb252448edb1fb1dea37bed6",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           13.199999809265137,
-          1.7000000476837158,
-          3.4000000953674316
+          1.6999847888946533,
+          3.4003708362579346
         ],
         "min": [
           -13.100000381469727,
-          -1.7000000476837158,
-          -3.4000000953674316
+          -1.6999847888946533,
+          -3.4003708362579346
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f3574cdc063d68cf97a08e616f0dca6c4c503714b86b79dacc52e8e023f20c5",
+      "geometryHash": "776adebb4057ed811e9a6dcfe01401c5a960736dbfb9074fdae0fc0b85262871",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.collision-hull.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -545,232 +545,232 @@
       "meshName": "COLLISION_HULL_MESH",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 7
+      "vertexCount": 26
     },
     {
       "bounds": {
         "max": [
-          1.1224640607833862,
-          1.798732042312622,
-          3.1374640464782715
+          1.1231731176376343,
+          1.798766016960144,
+          3.137467384338379
         ],
         "min": [
-          -1.298732042312622,
-          0.23175740242004395,
-          -0.6307320594787598
+          -1.2990939617156982,
+          0.23169443011283875,
+          -0.6310791373252869
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6854b8716d7acc56a2bebc26e672ea531979df9f8fc8906ff86582299e87a7d9",
+      "geometryHash": "f59315d48dae7280dd8e38b4829d8fdd187d66944a56f24d888e948125eea446",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-accent.primitive.0",
-      "indexCount": 48,
+      "indexCount": 132,
       "indexed": true,
       "materialHash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.109",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-accent",
       "primitiveIndex": 0,
-      "vertexCount": 12
+      "vertexCount": 84
     },
     {
       "bounds": {
         "max": [
-          6.250004768371582,
-          2.7873196601867676,
-          3.305485248565674
+          6.247455596923828,
+          2.7915024757385254,
+          3.417454481124878
         ],
         "min": [
           -14.631999969482422,
-          -0.7915207147598267,
-          -3.305485248565674
+          -0.7913269996643066,
+          -3.417454481124878
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b6edc50e169125dcefb0a44566bccb3508c31939e128f905d7ffd10ed4f3516",
+      "geometryHash": "c2b2976b4d01e3ad9100d39fb200a893367a7095477413337bc660a17710bd46",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-armor.primitive.0",
-      "indexCount": 2109,
+      "indexCount": 13224,
       "indexed": true,
       "materialHash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 503
+      "vertexCount": 6597
     },
     {
       "bounds": {
         "max": [
-          6.476548671722412,
-          2.8249282836914062,
-          0.7175145745277405
+          6.475056171417236,
+          2.8248045444488525,
+          0.7199285626411438
         ],
         "min": [
-          1.0834985971450806,
-          1.7837227582931519,
-          -0.7175145745277405
+          1.0800000429153442,
+          1.7842575311660767,
+          -0.7199285626411438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92a50cbe5a6b56be1723f5be1965bc8a49ae254fd407e3bff9888e4eb0c2abd3",
+      "geometryHash": "9356ade39c1c41e3730219b773f53679a0904b57f0b5b40584feca04ff4beff4",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-canopy.primitive.0",
-      "indexCount": 150,
+      "indexCount": 222,
       "indexed": true,
       "materialHash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
       "materialPipelineKey": "blend",
       "meshName": "Canopy_Glass_Mesh",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 29
+      "vertexCount": 106
     },
     {
       "bounds": {
         "max": [
-          -14.005928993225098,
-          0.7230137586593628,
-          2.9430136680603027
+          -14.005839347839355,
+          0.7258957624435425,
+          2.946000099182129
         ],
         "min": [
-          -14.238070487976074,
-          -0.5630137324333191,
-          -2.9430134296417236
+          -14.238160133361816,
+          -0.5630186796188354,
+          -2.896730422973633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7dace1a57571e7d53ab1250d1035d9a3c1664354ed6ea1bff6dc211282249a79",
+      "geometryHash": "eb6d30d694d8b3d81c3cbd2c7537b314d37db10b1d81abe1b97a303154f8fc82",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-ceramic.primitive.0",
-      "indexCount": 636,
+      "indexCount": 450,
       "indexed": true,
       "materialHash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-ceramic",
       "primitiveIndex": 0,
-      "vertexCount": 114
+      "vertexCount": 160
     },
     {
       "bounds": {
         "max": [
-          13.487319946289062,
-          1.7897734642028809,
-          3.190653085708618
+          13.48723030090332,
+          1.7900580167770386,
+          3.20021653175354
         ],
         "min": [
-          -12.631851196289062,
-          -1.6200000047683716,
-          -3.190653085708618
+          -12.649999618530273,
+          -1.6112695932388306,
+          -3.20021653175354
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40e592b32249a911d4f38a6e560ee98d05d7bd036de7266bd97fa08ca30cc50a",
+      "geometryHash": "a48f8ce7224238d839c830350c0ae118f71534dd229f4e70840ae23e7d959647",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-hull.primitive.0",
-      "indexCount": 360,
+      "indexCount": 984,
       "indexed": true,
       "materialHash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
       "materialPipelineKey": "opaque",
       "meshName": "Pressure_Hull_Mesh",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 532
     },
     {
       "bounds": {
         "max": [
-          10.117677688598633,
-          2.4982426166534424,
-          3.5970711708068848
+          10.117520332336426,
+          2.53324031829834,
+          3.59537672996521
         ],
         "min": [
-          -14.383743286132812,
-          -1.8394336700439453,
-          -3.5970711708068848
+          -14.384003639221191,
+          -1.8397077322006226,
+          -3.59537672996521
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91092f84b2a6c5797730bbd912fa96adcbadbb8f9ad485f0682e474e4c3e5ad4",
+      "geometryHash": "950e144b007a785595e221e6f7dece6f2cd216ba6512551771cc5e5e9a08a4ff",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 5448,
+      "indexCount": 21804,
       "indexed": true,
       "materialHash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1292
+      "vertexCount": 11606
     },
     {
       "bounds": {
         "max": [
-          -1.277998924255371,
-          1.9742182493209839,
-          3.216207981109619
+          -1.2803149223327637,
+          1.9748879671096802,
+          3.218193531036377
         ],
         "min": [
-          -13.924742698669434,
-          -0.8362082839012146,
-          -3.2162082195281982
+          -13.924956321716309,
+          -0.8376045823097229,
+          -3.218193292617798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "535b910fee5529ed6ee83196a73c6791f49594bbdb5196b347a309b1340ae3c5",
+      "geometryHash": "b4475cc715bef7090265db8b1d5ac4aac16ca8cd5b0980561c2a663ab2f6d146",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-radiator.primitive.0",
-      "indexCount": 546,
+      "indexCount": 2196,
       "indexed": true,
       "materialHash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-radiator",
       "primitiveIndex": 0,
-      "vertexCount": 147
+      "vertexCount": 1287
     },
     {
       "bounds": {
         "max": [
-          -1.1790505647659302,
-          0.32743507623672485,
-          3.616999864578247
+          -1.1726704835891724,
+          0.32852670550346375,
+          3.620286226272583
         ],
         "min": [
-          -14.477828979492188,
-          -0.16743509471416473,
-          -2.5537984371185303
+          -14.478188514709473,
+          -0.16852669417858124,
+          -3.620286464691162
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a34437ffcd845ee130fc8d953d8b783c82ea1c4506b9e33b7346234f9ea44b0c",
+      "geometryHash": "140c1f64f1f84b6fd8ba964538f259aaef861074e509b39911956bda1ee37ff9",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-thruster.primitive.0",
-      "indexCount": 294,
+      "indexCount": 1182,
       "indexed": true,
       "materialHash": "408e9053fbe4498ae668c360f79aab40a8a95460b34b05314b7541750a837292",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-thruster",
       "primitiveIndex": 0,
-      "vertexCount": 59
+      "vertexCount": 403
     },
     {
       "bounds": {
         "max": [
-          1.088309407234192,
-          1.800309419631958,
-          0.7543094158172607
+          1.090000033378601,
+          1.8003225326538086,
+          0.754816472530365
         ],
         "min": [
-          0.5316905975341797,
-          1.7796905040740967,
-          0.3976905345916748
+          0.5311621427536011,
+          1.779677391052246,
+          0.3959871530532837
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4561e04326a2fabbcb1b327f4823d72f668d99d78fab4656ca80ed1099a9e670",
+      "geometryHash": "1f53865aed139224de7b989243976ad9d990c93377b262436323c89dbaa35230",
       "id": "sf.render.leviathan-production-v1-lod2.mesh.lod0-warning.primitive.0",
-      "indexCount": 36,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.108",
       "nodeId": "sf.render.leviathan-production-v1-lod2.mesh.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 8
+      "vertexCount": 44
     }
   ],
   "hlods": [],
@@ -1354,7 +1354,7 @@
       ],
       "materialPipelineKey": "root",
       "mergeBoundary": "asset-root",
-      "nodeName": "LEVIATHAN_LOD2_ROOT",
+      "nodeName": "LEVIATHAN_LOD0_ROOT",
       "nodePath": [
         0
       ],
@@ -1383,45 +1383,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "76702a8341cdba66ed3ede2e0e8657eb2083de918bdfaea1d143ba9ccfcac417"
+      "sha256": "53169d9e18acb40b9bd0d25e9cdc5220cf9db5ddc91e34a78934ae1cd20f2b30"
     },
     "sourceGlb": {
-      "bytes": 484292,
-      "sha256": "ede5717d174ac69d05e7208cbf96c6e303d04271431d920212815d6d5ff96a78",
+      "bytes": 310840,
+      "sha256": "5e061fd91e662872c3d1a5aecaf63a669725ac4684eb264e95b6ccfa41fdf000",
       "uri": "leviathan_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 145392,
-    "sha256": "0e6877ebe5649852f21b3215a9e3932043e1bb37695ceff0383f7d154b591b43",
+    "bytes": 702468,
+    "sha256": "b30f5e26975f465926331f46ec70a3eb85fa023f464a98e96e65c0d06f31647f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.5723400115966797,
-        0.49274730682373047,
-        0.009964346885681152
+        -0.5723848342895508,
+        0.492548406124115,
+        -1.1920928955078125e-7
       ],
       "max": [
-        13.487319946289062,
-        2.8249282836914062,
-        3.616999864578247
+        13.48723030090332,
+        2.8248045444488525,
+        3.620286226272583
       ],
       "min": [
         -14.631999969482422,
-        -1.8394336700439453,
-        -3.5970711708068848
+        -1.8397077322006226,
+        -3.620286464691162
       ],
       "size": [
-        28.119319915771484,
-        4.664361953735352,
-        7.214071035385132
+        28.119230270385742,
+        4.664512276649475,
+        7.240572690963745
       ]
     },
     "hidden": [
@@ -2144,20 +2144,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod2.glb"
   },
-  "runtimeHash": "dbbcf7fef73674532c79c34cd08af6750a2782937bb9e66113a5fd73164bd34f",
+  "runtimeHash": "dc312a6ddf8bba5f00f7182d12afba52def08fd0914f9dfbe5960c25c1c73d9a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          13.487319946289062,
-          2.8249282836914062,
-          3.616999864578247
+          13.48723030090332,
+          2.8248045444488525,
+          3.620286226272583
         ],
         "min": [
           -14.631999969482422,
-          -1.8394336700439453,
-          -3.5970711708068848
+          -1.8397077322006226,
+          -3.620286464691162
         ]
       },
       "id": "sf.render.leviathan-production-v1-lod2.body",

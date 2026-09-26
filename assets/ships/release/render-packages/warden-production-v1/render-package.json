@@ -277,6 +277,51 @@
       ]
     },
     {
+      "id": "sf.render.warden-production-v1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.3206999999999995,
+        0.490175,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        4
+      ],
+      "parentNodeId": "sf.render.warden-production-v1.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.3206999999999995,
+        0.490175,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.warden-production-v1.anchor.socket-trail-main",
       "kind": "socket",
       "localTransform": [
@@ -519,7 +564,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f93a79658c9468273e21506d5b1e2b3510cd15df5171656a308d69b0734ee6de",
+  "contentHash": "910c4400bee0c9d8d5569f88ff7843bdcf7040cbdd925ba979bc10c6a2c1a8ec",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -565,7 +610,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-accent.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
+      "materialHash": "0f6709c975c696d9afc8566e328599aaa8d39390c5584a9015759db08df05d79",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.087",
       "nodeId": "sf.render.warden-production-v1.node.lod0-accent",
@@ -590,7 +635,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 27828,
       "indexed": true,
-      "materialHash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
+      "materialHash": "f8c46474d4c935d5b317a236a85d19aa38744f079e60fac66b239c62d564fda2",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.warden-production-v1.node.lod0-armor",
@@ -640,7 +685,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-ceramic.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
+      "materialHash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.warden-production-v1.node.lod0-ceramic",
@@ -665,7 +710,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-hull.primitive.0",
       "indexCount": 5946,
       "indexed": true,
-      "materialHash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
+      "materialHash": "9b2843038b6689805c4997b829ba9fae7b3b4eb89225055832a4b233994e8043",
       "materialPipelineKey": "opaque",
       "meshName": "Pressure_Hull_Mesh",
       "nodeId": "sf.render.warden-production-v1.node.lod0-hull",
@@ -690,7 +735,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-mechanical.primitive.0",
       "indexCount": 89388,
       "indexed": true,
-      "materialHash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
+      "materialHash": "c52ed0462ef3e44dff49231d7cdeb18d508bb938693344e82d6209d0ee917c44",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.warden-production-v1.node.lod0-mechanical",
@@ -715,7 +760,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-radiator.primitive.0",
       "indexCount": 10440,
       "indexed": true,
-      "materialHash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
+      "materialHash": "806a0c1ef0859068c61ee4fcf64a0a6ff3ce09aa519160824914a47ba45e204d",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
       "nodeId": "sf.render.warden-production-v1.node.lod0-radiator",
@@ -740,7 +785,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 15456,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_WardenCasemateGallery-1_NickelSeam",
       "nodeId": "sf.render.warden-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -765,7 +810,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
       "indexCount": 756,
       "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_WardenCasemateGallery-1_CoolantReturn",
       "nodeId": "sf.render.warden-production-v1.node.lod0-remaster-material-mechanical-remasterheatcopper",
@@ -790,7 +835,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
       "indexCount": 420,
       "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_WardenCasemateGallery-1_OxidizedLiner",
       "nodeId": "sf.render.warden-production-v1.node.lod0-remaster-material-mechanical-remasteroxidized",
@@ -840,7 +885,7 @@
       "id": "sf.render.warden-production-v1.node.lod0-warning.primitive.0",
       "indexCount": 1644,
       "indexed": true,
-      "materialHash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
+      "materialHash": "d1d8159f599b9ad02e3dbf841591f9f4262753d207a4c05bfde4fbc6c8823f7f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.086",
       "nodeId": "sf.render.warden-production-v1.node.lod0-warning",
@@ -853,10 +898,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
-      "id": "material:1119c6ecb65cca176db69c7b",
-      "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
+      "hash": "0f6709c975c696d9afc8566e328599aaa8d39390c5584a9015759db08df05d79",
+      "id": "material:0f6709c975c696d9afc8566e",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -867,52 +912,59 @@
       "textures": []
     },
     {
-      "hash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
-      "id": "material:5d74f67d76bd5747492c9e09",
+      "hash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
+      "id": "material:48c4130fcb57091dfdbd4873",
       "name": "Material_Ceramic",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
-      "id": "material:61e8fbc2177a0e6c2bbd655f",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:double",
+      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
+      "id": "material:696124402638cc23b4c11653",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
-      "id": "material:87280e6da392c5338b594db6",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:double",
+      "hash": "806a0c1ef0859068c61ee4fcf64a0a6ff3ce09aa519160824914a47ba45e204d",
+      "id": "material:806a0c1ef0859068c61ee4fc",
+      "name": "Material_Radiator",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
-      "id": "material:9a5688d10df354dd60ece3a6",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
-      "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
-      "id": "material:d9df6bdbd93761527519ff7a",
+      "hash": "9b2843038b6689805c4997b829ba9fae7b3b4eb89225055832a4b233994e8043",
+      "id": "material:9b2843038b6689805c4997b8",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
+      "name": "Material_BrushedMetal_RemasterNickel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c52ed0462ef3e44dff49231d7cdeb18d508bb938693344e82d6209d0ee917c44",
+      "id": "material:c52ed0462ef3e44dff49231d",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "d1d8159f599b9ad02e3dbf841591f9f4262753d207a4c05bfde4fbc6c8823f7f",
+      "id": "material:d1d8159f599b9ad02e3dbf84",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
+      "id": "material:e2c2872893bc086695356022",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -923,17 +975,10 @@
       "textures": []
     },
     {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
-      "id": "material:fe199604c81459594049f23c",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "hash": "f8c46474d4c935d5b317a236a85d19aa38744f079e60fac66b239c62d564fda2",
+      "id": "material:f8c46474d4c935d5b317a236",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1867,6 +1912,54 @@
       ]
     },
     {
+      "id": "sf.render.warden-production-v1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.3206999999999995,
+        0.490175,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.warden-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.3206999999999995,
+        0.490175,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.warden-production-v1.node.socket-trail-main",
       "localTransform": [
         1,
@@ -2162,22 +2255,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "904d3b6b583586799ce3266b12b7834c0ecda19d081a4af9b7201232ac51da02"
+      "sha256": "5c4905192e73b676de57b23a008b369bebf5dae879593aa3227cf30af68efc66"
     },
     "sourceGlb": {
-      "bytes": 719892,
-      "sha256": "5b7839c57d9634ab3ac62b4cb77536a0a19ef9971fd1de8654944b1b3ad9218a",
+      "bytes": 719988,
+      "sha256": "1ba41fd39bcfb309761d6ab469d2460cb66317fcf4d894ab52abf91c5de42d9a",
       "uri": "warden_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1722968,
-    "sha256": "92cb9be9093346097eb1743efd7317158e0e382367fea363f8ee42ef056c9765",
+    "bytes": 1723128,
+    "sha256": "b1c222adf3729e31f6a44104a70c64b80d3c6795fdb87bfc7540fd090d9c638a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2625,6 +2718,43 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.3206999999999995,
+          0.490175,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.warden-production-v1.anchor.socket-tether-massline",
+              "sf.render.warden-production-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -2699,7 +2829,7 @@
         "role": "warning"
       }
     ],
-    "nodeCount": 26,
+    "nodeCount": 27,
     "primitives": [
       {
         "canopy": false,
@@ -3034,7 +3164,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/warden_production_v1.glb"
   },
-  "runtimeHash": "4412679c09765183e8ea96ffd98f7c674d58031fd8391e100c864592a3797c3f",
+  "runtimeHash": "85c3831473186138b0e149791959555456ef4da6b33d149475e8d60d1cb3daf5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3071,6 +3201,7 @@
         "sf.render.warden-production-v1.node.socket-mining-front",
         "sf.render.warden-production-v1.node.socket-rcs-port",
         "sf.render.warden-production-v1.node.socket-rcs-starboard",
+        "sf.render.warden-production-v1.node.socket-tether-massline",
         "sf.render.warden-production-v1.node.socket-trail-main",
         "sf.render.warden-production-v1.node.socket-trail-port",
         "sf.render.warden-production-v1.node.socket-trail-starboard",

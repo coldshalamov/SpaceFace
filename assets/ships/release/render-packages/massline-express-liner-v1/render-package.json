@@ -185,6 +185,51 @@
       ]
     },
     {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999,
+        0.098467,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        7
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.socket-mining-front",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999,
+        0.098467,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.massline-express-liner-v1.anchor.socket-rcs-port",
       "kind": "socket",
       "localTransform": [
@@ -364,6 +409,51 @@
         0,
         0.3499999940395355,
         -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.78,
+        0.098467,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        8
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.78,
+        0.098467,
         0,
         1
       ]
@@ -611,7 +701,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1868e22e340c0a4cd7eb1420ae46b03010f8574f81d5f8126df8709b2af3b902",
+  "contentHash": "3b7b0b61c1854589132a7eb56c01cf320a2130822e8835782cda18fc3cd529e6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -657,7 +747,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-hull-mat-sf-massline-ceramicpaint-warmivory.primitive.0",
       "indexCount": 43131,
       "indexed": true,
-      "materialHash": "3bdea5ad8d63a256192be781cd4ecfaddaf75331764dead664d9e4715c91d06d",
+      "materialHash": "9c714adcc1c3ffbb89510f3e4a2b68aab16a11d97155b01068c7978c8987b020",
       "materialPipelineKey": "opaque",
       "meshName": "Station_Ops_Mesh",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-hull-mat-sf-massline-ceramicpaint-warmivory",
@@ -682,7 +772,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-frame-darkanodized.primitive.0",
       "indexCount": 68916,
       "indexed": true,
-      "materialHash": "442a0b4097c53874f323658773eb1944533d9cc66b8862db504299cce9911900",
+      "materialHash": "c688c9ae02ec5e2929ebd758486ef5dc26daf42814b019af01644d1556057579",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-frame-darkanodized",
@@ -732,7 +822,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-keel-forgeddark.primitive.0",
       "indexCount": 23136,
       "indexed": true,
-      "materialHash": "63e4ce985e20a847cd0b716a07126f9fcd08dfffd27ae97f2a030213b6ae0d8c",
+      "materialHash": "5150d2e7e3d8cadf2940e610329f9fb55caaf3671bb88650f277634d48af550a",
       "materialPipelineKey": "opaque",
       "meshName": "PassLiner_Mesh",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-keel-forgeddark",
@@ -757,7 +847,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-refractoryheatalloy.primitive.0",
       "indexCount": 3108,
       "indexed": true,
-      "materialHash": "2e6a80caa4332d6ff9a347156247c083a35042cabb1da91f8c96ba182c82d2f9",
+      "materialHash": "2aafac3a7bbfa2915d7cebbae159f2d1bb0d65d7cead2dc31f43056b72616cc5",
       "materialPipelineKey": "opaque",
       "meshName": "Liner_Port_Mesh",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-refractoryheatalloy",
@@ -782,7 +872,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-serviceprimer-galvanized.primitive.0",
       "indexCount": 9456,
       "indexed": true,
-      "materialHash": "2ef7fec2afa63306dff21d294832f69e3b68826c4922128e46e64a6fda5f1776",
+      "materialHash": "61ceba0a01e26873b8e9897f20d9dc5590127d2fa9867ce7644a736c1bba31f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.051",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-serviceprimer-galvanized",
@@ -807,7 +897,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-throat-oxidizeddark.primitive.0",
       "indexCount": 10656,
       "indexed": true,
-      "materialHash": "34ec913f6596ddd7ff4162a141cbb2a8eb13e3a5124933cf6707e2338299ae52",
+      "materialHash": "b40941b880305ae1110c3fef075b412da8ee1b7f7964a3acb36366116b954cef",
       "materialPipelineKey": "opaque",
       "meshName": "Throat_Port_Mesh",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-throat-oxidizeddark",
@@ -832,7 +922,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-wayfindingamber.primitive.0",
       "indexCount": 348,
       "indexed": true,
-      "materialHash": "7b341f6cb87c0cd27ca5077d99522d955287b2acb820e434649c47b7cf36ee27",
+      "materialHash": "2e6a30654b2efebbac1278637aec873e86cfca2f85db0dce1aea8e63be665cb1",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-wayfindingamber",
@@ -857,7 +947,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-wayfindingcyan.primitive.0",
       "indexCount": 1668,
       "indexed": true,
-      "materialHash": "6ed89dee8640b8132b4e3d748901c2960354efc22319c0b5c638d8a1c64a0a36",
+      "materialHash": "095693056216ebcdd9111b1462d657eddd38ed94d201abfe960e9079f5758a02",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-mat-sf-massline-wayfindingcyan",
@@ -882,7 +972,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PassengerLantern_StructuralReveal",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -932,7 +1022,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-glass-remasteroptical.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
+      "materialHash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Remaster_PassengerLantern_SafetyGlazing",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-glass-remasteroptical",
@@ -957,7 +1047,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-hull-remasterseaenamel.primitive.0",
       "indexCount": 1980,
       "indexed": true,
-      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialHash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PassengerLantern_RidgeCover",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-hull-remasterseaenamel",
@@ -982,7 +1072,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
       "indexCount": 1656,
       "indexed": true,
-      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialHash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PassengerLantern_BronzeArch",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-mechanical-remasterheatcopper",
@@ -1007,7 +1097,7 @@
       "id": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialHash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_PassengerLantern_ShadowWell",
       "nodeId": "sf.render.massline-express-liner-v1.node.lod0-remaster-material-mechanical-remasteroxidized",
@@ -1020,173 +1110,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2e6a80caa4332d6ff9a347156247c083a35042cabb1da91f8c96ba182c82d2f9",
-      "id": "material:2e6a80caa4332d6ff9a34715",
-      "name": "MAT_SF_Massline_RefractoryHeatAlloy",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_ceramic_512_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_ceramic_512_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_ceramic_512_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2ef7fec2afa63306dff21d294832f69e3b68826c4922128e46e64a6fda5f1776",
-      "id": "material:2ef7fec2afa63306dff21d29",
-      "name": "MAT_SF_Massline_ServicePrimer_Galvanized",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_radiator_512_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_radiator_512_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_radiator_512_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
-      "id": "material:300f88db8479baa7f984d0fb",
-      "name": "Material_Hull_RemasterSeaEnamel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "34ec913f6596ddd7ff4162a141cbb2a8eb13e3a5124933cf6707e2338299ae52",
-      "id": "material:34ec913f6596ddd7ff4162a1",
-      "name": "MAT_SF_Massline_Throat_OxidizedDark",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_thruster_512_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_thruster_512_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_thruster_512_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3bdea5ad8d63a256192be781cd4ecfaddaf75331764dead664d9e4715c91d06d",
-      "id": "material:3bdea5ad8d63a256192be781",
-      "name": "MAT_SF_Massline_CeramicPaint_WarmIvory",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_hull_1024_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_hull_1024_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_hull_1024_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "442a0b4097c53874f323658773eb1944533d9cc66b8862db504299cce9911900",
-      "id": "material:442a0b4097c53874f3236587",
-      "name": "MAT_SF_Massline_Frame_DarkAnodized",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_armor_512_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_armor_512_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_armor_512_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "63e4ce985e20a847cd0b716a07126f9fcd08dfffd27ae97f2a030213b6ae0d8c",
-      "id": "material:63e4ce985e20a847cd0b716a",
-      "name": "MAT_SF_Massline_Keel_ForgedDark",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "liner_lod0_mechanical_512_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_mechanical_512_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "liner_lod0_mechanical_512_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6ed89dee8640b8132b4e3d748901c2960354efc22319c0b5c638d8a1c64a0a36",
-      "id": "material:6ed89dee8640b8132b4e3d74",
+      "hash": "095693056216ebcdd9111b1462d657eddd38ed94d201abfe960e9079f5758a02",
+      "id": "material:095693056216ebcdd9111b14",
       "name": "MAT_SF_Massline_WayfindingCyan",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1209,10 +1136,36 @@
       ]
     },
     {
-      "hash": "7b341f6cb87c0cd27ca5077d99522d955287b2acb820e434649c47b7cf36ee27",
-      "id": "material:7b341f6cb87c0cd27ca5077d",
+      "hash": "2aafac3a7bbfa2915d7cebbae159f2d1bb0d65d7cead2dc31f43056b72616cc5",
+      "id": "material:2aafac3a7bbfa2915d7cebba",
+      "name": "MAT_SF_Massline_RefractoryHeatAlloy",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_ceramic_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_ceramic_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_ceramic_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2e6a30654b2efebbac1278637aec873e86cfca2f85db0dce1aea8e63be665cb1",
+      "id": "material:2e6a30654b2efebbac127863",
       "name": "MAT_SF_Massline_WayfindingAmber",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1235,17 +1188,76 @@
       ]
     },
     {
-      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
-      "id": "material:8ab96250fdee6299bd749485",
-      "name": "Material_Mechanical_RemasterHeatCopper",
-      "pipelineKey": "opaque:double",
+      "hash": "5150d2e7e3d8cadf2940e610329f9fb55caaf3671bb88650f277634d48af550a",
+      "id": "material:5150d2e7e3d8cadf2940e610",
+      "name": "MAT_SF_Massline_Keel_ForgedDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_mechanical_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_mechanical_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_mechanical_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "61ceba0a01e26873b8e9897f20d9dc5590127d2fa9867ce7644a736c1bba31f9",
+      "id": "material:61ceba0a01e26873b8e9897f",
+      "name": "MAT_SF_Massline_ServicePrimer_Galvanized",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_radiator_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_radiator_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_radiator_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "696124402638cc23b4c1165321f8c0fe5461aab6e62c9713410ab671dfecd7d5",
+      "id": "material:696124402638cc23b4c11653",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
-      "id": "material:92d3bd83e3ee165cf2d4464f",
+      "hash": "74cd926c5ac36d0bf9998f9bff8f4ed46d44238cd4df279382199ac72a9fa6b7",
+      "id": "material:74cd926c5ac36d0bf9998f9b",
       "name": "Material_Glass_RemasterOptical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
+      "id": "material:9671a9f444f21b52473bccf0",
+      "name": "Material_Hull_RemasterSeaEnamel",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1275,6 +1287,32 @@
       ]
     },
     {
+      "hash": "9c714adcc1c3ffbb89510f3e4a2b68aab16a11d97155b01068c7978c8987b020",
+      "id": "material:9c714adcc1c3ffbb89510f3e",
+      "name": "MAT_SF_Massline_CeramicPaint_WarmIvory",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_hull_1024_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_hull_1024_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_hull_1024_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
       "id": "material:9e34bc73984fd7ba87a3c1b8",
       "name": "Material_Emissive_Warm_RemasterRecess",
@@ -1282,17 +1320,69 @@
       "textures": []
     },
     {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
       "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
-      "id": "material:eed6e8ec396ecaf2032f9016",
-      "name": "Material_Mechanical_RemasterOxidized",
-      "pipelineKey": "opaque:double",
+      "hash": "b40941b880305ae1110c3fef075b412da8ee1b7f7964a3acb36366116b954cef",
+      "id": "material:b40941b880305ae1110c3fef",
+      "name": "MAT_SF_Massline_Throat_OxidizedDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_thruster_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_thruster_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_thruster_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c688c9ae02ec5e2929ebd758486ef5dc26daf42814b019af01644d1556057579",
+      "id": "material:c688c9ae02ec5e2929ebd758",
+      "name": "MAT_SF_Massline_Frame_DarkAnodized",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_lod0_armor_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_armor_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_lod0_armor_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e2c2872893bc0866953560229c31637afcfe3e27a902cc96c1a08afec4e3142d",
+      "id": "material:e2c2872893bc086695356022",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -2320,6 +2410,54 @@
       ]
     },
     {
+      "id": "sf.render.massline-express-liner-v1.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999,
+        0.098467,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        7
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999,
+        0.098467,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.massline-express-liner-v1.node.socket-rcs-port",
       "localTransform": [
         1,
@@ -2511,6 +2649,54 @@
         0,
         0.3499999940395355,
         -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.78,
+        0.098467,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        8
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.78,
+        0.098467,
         0,
         1
       ]
@@ -2763,22 +2949,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "422eaed248babca72bee9706cbf544443d2a27dba98eeedcd44ef85c72a3f828"
+      "sha256": "cb92ead66999af88ce037625f0597879984cdb095a649bba55011c9b1423befe"
     },
     "sourceGlb": {
-      "bytes": 5354636,
-      "sha256": "bf6db21979f035c0ae8eed0b7d29cdb158f09be6712ed0efabbf26de4eaa2a5e",
+      "bytes": 5354792,
+      "sha256": "ae068eba07ac90165b25121342a00c376d396abd03dde0a89253b8f861bd7b97",
       "uri": "massline_express_liner_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 6701620,
-    "sha256": "d1e1b89e812c1cf8e12ab72241ef04d1d18cad069270548e9d5d4119e2fa6e62",
+    "bytes": 6702064,
+    "sha256": "b0d5a644522ad7dd906082755525227cba168af86a8fd63284491ab87ac89ae6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3289,6 +3475,80 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          19.799999,
+          0.098467,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-mining-front",
+              "sf.render.massline-express-liner-v1.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.78,
+          0.098467,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-tether-massline",
+              "sf.render.massline-express-liner-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -3381,7 +3641,7 @@
         "role": "signal"
       }
     ],
-    "nodeCount": 31,
+    "nodeCount": 33,
     "primitives": [
       {
         "canopy": false,
@@ -3793,7 +4053,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
   },
-  "runtimeHash": "eb971a5694e8acdf32073173a0ea41954e139cb5977e929a24d0e8d2add392b0",
+  "runtimeHash": "b0a2e4ce2304dad71e33702043c4dd3c13ab8832b76d8bdf684902411321607d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3832,10 +4092,12 @@
         "sf.render.massline-express-liner-v1.node.socket-cargo-ventral",
         "sf.render.massline-express-liner-v1.node.socket-dock-port",
         "sf.render.massline-express-liner-v1.node.socket-engine-main",
+        "sf.render.massline-express-liner-v1.node.socket-mining-front",
         "sf.render.massline-express-liner-v1.node.socket-rcs-port",
         "sf.render.massline-express-liner-v1.node.socket-rcs-starboard",
         "sf.render.massline-express-liner-v1.node.socket-service-starboard",
         "sf.render.massline-express-liner-v1.node.socket-tether-keel",
+        "sf.render.massline-express-liner-v1.node.socket-tether-massline",
         "sf.render.massline-express-liner-v1.node.socket-trail-main",
         "sf.render.massline-express-liner-v1.node.socket-trail-port",
         "sf.render.massline-express-liner-v1.node.socket-trail-starboard",

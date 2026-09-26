@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "269538b99494e0b4044ec8b69a2492e56139b503080e9e6005928498326d2bc4",
+  "contentHash": "8959d4d6a1d6d53e296c623d32a3f007d288b28a1ab63019299b045107acdfbe",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.lane-pin.node.pin-annex-plate-sheared.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
+      "materialHash": "b6758eb24cb9e5aa069edc3a23657f0ba11a489d35df850a5e741d2e01b94537",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.019",
       "nodeId": "sf.render.lane-pin.node.pin-annex-plate-sheared",
@@ -52,7 +52,7 @@
       "id": "sf.render.lane-pin.node.pin-ballast-drum.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.lane-pin.node.pin-ballast-drum",
@@ -77,7 +77,7 @@
       "id": "sf.render.lane-pin.node.pin-cap.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.lane-pin.node.pin-cap",
@@ -102,7 +102,7 @@
       "id": "sf.render.lane-pin.node.pin-chevron-housing.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "materialHash": "9da7f4ffd8ba5c7efe7805cd9a043821f2ddb49a51d830a5f67ef963dd48d051",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.017",
       "nodeId": "sf.render.lane-pin.node.pin-chevron-housing",
@@ -127,7 +127,7 @@
       "id": "sf.render.lane-pin.node.pin-chevron-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
+      "materialHash": "9f21025ad91fb84b29be8d41758d55b0d192cf0c0dde6c0364fe8bcba5328b4a",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.018",
       "nodeId": "sf.render.lane-pin.node.pin-chevron-lens",
@@ -152,7 +152,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.lane-pin.node.pin-foot-0",
@@ -177,7 +177,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.lane-pin.node.pin-foot-1",
@@ -202,7 +202,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.lane-pin.node.pin-foot-2",
@@ -227,7 +227,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.lane-pin.node.pin-foot-3",
@@ -252,7 +252,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-brace-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.lane-pin.node.pin-foot-brace-0",
@@ -277,7 +277,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-brace-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.lane-pin.node.pin-foot-brace-1",
@@ -302,7 +302,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-brace-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.lane-pin.node.pin-foot-brace-2",
@@ -327,7 +327,7 @@
       "id": "sf.render.lane-pin.node.pin-foot-brace-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.lane-pin.node.pin-foot-brace-3",
@@ -352,7 +352,7 @@
       "id": "sf.render.lane-pin.node.pin-mast.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "materialHash": "9da7f4ffd8ba5c7efe7805cd9a043821f2ddb49a51d830a5f67ef963dd48d051",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
       "nodeId": "sf.render.lane-pin.node.pin-mast",
@@ -377,7 +377,7 @@
       "id": "sf.render.lane-pin.node.pin-shim.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.lane-pin.node.pin-shim",
@@ -402,7 +402,7 @@
       "id": "sf.render.lane-pin.node.pin-speed-lamp-0.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
+      "materialHash": "9f21025ad91fb84b29be8d41758d55b0d192cf0c0dde6c0364fe8bcba5328b4a",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
       "nodeId": "sf.render.lane-pin.node.pin-speed-lamp-0",
@@ -427,7 +427,7 @@
       "id": "sf.render.lane-pin.node.pin-speed-lamp-2.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
+      "materialHash": "9f21025ad91fb84b29be8d41758d55b0d192cf0c0dde6c0364fe8bcba5328b4a",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.lane-pin.node.pin-speed-lamp-2",
@@ -452,7 +452,7 @@
       "id": "sf.render.lane-pin.node.pin-speed-socket-empty.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "d881f3ce04f54f9ee374966a9edb8291428d22c1c5b5d6a0601c64352b1616e3",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
       "nodeId": "sf.render.lane-pin.node.pin-speed-socket-empty",
@@ -477,7 +477,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-0-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.lane-pin.node.pin-vane-0-0",
@@ -502,7 +502,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-0-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.lane-pin.node.pin-vane-0-1",
@@ -527,7 +527,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-0-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.lane-pin.node.pin-vane-0-2",
@@ -552,7 +552,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-1-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.lane-pin.node.pin-vane-1-0",
@@ -577,7 +577,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-1-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.013",
       "nodeId": "sf.render.lane-pin.node.pin-vane-1-1",
@@ -602,7 +602,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-1-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.015",
       "nodeId": "sf.render.lane-pin.node.pin-vane-1-2",
@@ -627,7 +627,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-collar-0.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
       "nodeId": "sf.render.lane-pin.node.pin-vane-collar-0",
@@ -652,7 +652,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-collar-1.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.lane-pin.node.pin-vane-collar-1",
@@ -677,7 +677,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-0-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-0-0",
@@ -702,7 +702,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-0-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-0-1",
@@ -727,7 +727,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-0-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-0-2",
@@ -752,7 +752,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-1-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-1-0",
@@ -777,7 +777,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-1-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-1-1",
@@ -802,7 +802,7 @@
       "id": "sf.render.lane-pin.node.pin-vane-root-1-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.016",
       "nodeId": "sf.render.lane-pin.node.pin-vane-root-1-2",
@@ -827,7 +827,7 @@
       "id": "sf.render.lane-pin.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 372,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_InsetInstrumentFin0",
       "nodeId": "sf.render.lane-pin.node.remaster-material-mechanical-brushednickel",
@@ -852,7 +852,7 @@
       "id": "sf.render.lane-pin.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.lane-pin.node.remaster-material-mechanical-shadowenamel",
@@ -865,95 +865,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
-      "id": "material:393d0b9202c9bce81d29b499",
-      "name": "furniture_identity_plate",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
-      "id": "material:3c10c457611ae6cc9010a82e",
-      "name": "furniture_signal_lens",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "id": "material:6786891c29a6f0dad01d4956",
-      "name": "furniture_scorch",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
-      "id": "material:9b606ffef39761a1e7cc390d",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
-      "id": "material:b6096d8a315bf4d19f719ab7",
+      "hash": "9da7f4ffd8ba5c7efe7805cd9a043821f2ddb49a51d830a5f67ef963dd48d051",
+      "id": "material:9da7f4ffd8ba5c7efe7805cd",
       "name": "Material_Hull_DeepSeaEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -982,10 +897,17 @@
       ]
     },
     {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "9f21025ad91fb84b29be8d41758d55b0d192cf0c0dde6c0364fe8bcba5328b4a",
+      "id": "material:9f21025ad91fb84b29be8d41",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1008,6 +930,84 @@
         {
           "colorSpace": "linear",
           "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b6758eb24cb9e5aa069edc3a23657f0ba11a489d35df850a5e741d2e01b94537",
+      "id": "material:b6758eb24cb9e5aa069edc3a",
+      "name": "furniture_identity_plate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "d881f3ce04f54f9ee374966a9edb8291428d22c1c5b5d6a0601c64352b1616e3",
+      "id": "material:d881f3ce04f54f9ee374966a",
+      "name": "furniture_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
+      "id": "material:dc94a28d84c8ece3128cbf01",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -2733,19 +2733,19 @@
       "sha256": "da85cf9dc731a2939d9b6f7321994b6af83265fe9ee9e3bbe6e8bd300e2f141c"
     },
     "sourceGlb": {
-      "bytes": 46232,
-      "sha256": "da3d22b4a420412c4834c5153c90eb9b8e5a8a9d837beada8aff9048bd72fbd6",
+      "bytes": 46240,
+      "sha256": "e8e18f41c9a84cfe19ce25fdca94c7b3f2e82225b5beb1cb257f467decd8e267",
       "uri": "place_lane_pin.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 79432,
-    "sha256": "f0c6cca4aa0ed9d8231fc2d8fbadd1212c197b7092cf54afde710ed6852fd63b",
+    "bytes": 79300,
+    "sha256": "4ea07605d6434cf2f598e747cc21ad456851d7afb50e7d111d12844c422b91e6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3847,7 +3847,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_pin.glb"
   },
-  "runtimeHash": "a66e78f110495826bcc160ffee33d7a5e0640922d3a3c6ca56b2ce5b71651bf5",
+  "runtimeHash": "12d918026d3b28b62a001acf191b5fd81717a57096002dc853016b17059d66d3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

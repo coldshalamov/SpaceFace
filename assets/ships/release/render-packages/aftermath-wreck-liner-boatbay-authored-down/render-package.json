@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7000f2a28b49c516cec433b9992f0eb0aad0c2eab961dd9f27748e3428f0f679",
+  "contentHash": "602cdedab4b773d5007c0c8273cc7917f8d6881591e86925fa31c55927609c1d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialHash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_wreck_liner_boatbay_Material_Glass_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-glass",
@@ -145,7 +145,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat.primitive.0",
       "indexCount": 276,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_liner_boatbay_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-heat",
@@ -170,7 +170,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation.primitive.0",
       "indexCount": 600,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_liner_boatbay_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-insulation",
@@ -195,7 +195,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-service.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialHash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_liner_boatbay_Material_Service_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-service",
@@ -220,7 +220,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_liner_boatbay_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod0-wreck-liner-boatbay-material-structural",
@@ -245,7 +245,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass.primitive.0",
       "indexCount": 15,
       "indexed": true,
-      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialHash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_wreck_liner_boatbay_Material_Glass_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-glass",
@@ -270,7 +270,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_liner_boatbay_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-heat",
@@ -295,7 +295,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_liner_boatbay_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-insulation",
@@ -320,7 +320,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-service.primitive.0",
       "indexCount": 51,
       "indexed": true,
-      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialHash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_liner_boatbay_Material_Service_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-service",
@@ -345,7 +345,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_liner_boatbay_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod1-wreck-liner-boatbay-material-structural",
@@ -370,7 +370,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat.primitive.0",
       "indexCount": 54,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_liner_boatbay_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-heat",
@@ -395,7 +395,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation.primitive.0",
       "indexCount": 120,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_liner_boatbay_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-insulation",
@@ -420,7 +420,7 @@
       "id": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural.primitive.0",
       "indexCount": 57,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_liner_boatbay_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay-authored-down.node.lod2-wreck-liner-boatbay-material-structural",
@@ -433,106 +433,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
-      "id": "material:124d57494b8cd5aee7fba823",
-      "name": "Material_Structural",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_structural_alloy_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
-      "id": "material:1ec579f28cf3f8d13c7feca8",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_dead_glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_dead_glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_dead_glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_dead_glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
-      "id": "material:6c2040b742ac16a629ba2e54",
-      "name": "Material_Service",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_service_trunks_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
-      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "hash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "id": "material:13ad3b2a75af6f212673762d",
       "name": "Material_Heat",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -561,10 +465,42 @@
       ]
     },
     {
-      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
-      "id": "material:d405a7105bef6f7b733d5dbb",
+      "hash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "id": "material:24f30cbfe23e02dc19ae4afc",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_structural_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "id": "material:35b85f4e71e79d43154f62ec",
       "name": "Material_Insulation",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -587,6 +523,70 @@
         {
           "colorSpace": "linear",
           "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4603d76e50c3c9aa86ce4bd5575b3b65325b17cdcdc0d2513510752e9edc488f",
+      "id": "material:4603d76e50c3c9aa86ce4bd5",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
+      "id": "material:b31b3a121510678d6fbc4a63",
+      "name": "Material_Service",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_service_trunks_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1591,19 +1591,19 @@
       "sha256": "e53171b958f246b55ac13557fec4f920353d737e15ecb02ffd214bef281f2b08"
     },
     "sourceGlb": {
-      "bytes": 881832,
-      "sha256": "f61076be2210d9857c51ad21db54cc9ad335412a14df5bceff11738eb94e45cd",
+      "bytes": 881836,
+      "sha256": "b8e744a8b1283e136953565b6c1557f8142de21b3b6fad9ad67a3808f9c54273",
       "uri": "place_aftermath_wreck_liner_boatbay_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 896636,
-    "sha256": "3f2cec19f33d0f27f2d20906a1bbfff9b2da88fbed5a25761ca4b3bb395fb591",
+    "bytes": 896540,
+    "sha256": "69187bc03c374b3b81799049d0080e9054924b5cfc04e639106a27d9f8616c4b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2139,7 +2139,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay_authored_down.glb"
   },
-  "runtimeHash": "a4a8ad8a40850b94fa0826657d94486bc88035c0c5955467e6a317bcfb582efa",
+  "runtimeHash": "7149c80f034a19a508a03a1527e6ebfde2c150a4e3ad75a290ff58180eadc263",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

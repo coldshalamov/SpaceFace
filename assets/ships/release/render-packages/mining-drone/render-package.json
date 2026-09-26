@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "01bddd3a38a131b09dc075b5bd6960597f6258047c2b6022bb8b94f09423330a",
+  "contentHash": "32582bcc25316bc598ea870658e3d014c372e829d131d0595d09f868a8f34814",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-accent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "1a28e68dd91085a38c9237978015e09edc60e2390e145cde493deb33ac9076f3",
+      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.057",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-accent",
@@ -99,7 +99,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-cable.primitive.0",
       "indexCount": 3888,
       "indexed": true,
-      "materialHash": "c95979e3e041a2046f84725d893d08481925e30fa793059a8e9a590c533fbb9f",
+      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.031",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-cable",
@@ -124,7 +124,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-hull.primitive.0",
       "indexCount": 1056,
       "indexed": true,
-      "materialHash": "d1b130d9a8b0160cde51fa0552b1f00aaeb63825abeaecc149fa1c11ff0ac665",
+      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-hull",
@@ -149,7 +149,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-hull.primitive.1",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-hull",
@@ -174,7 +174,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-mechanical.primitive.0",
       "indexCount": 8436,
       "indexed": true,
-      "materialHash": "8ea94d1e56723e66feedd7e86a88c36d72ae24944d6bf1e4042052c731dc3809",
+      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.042",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-mechanical",
@@ -199,7 +199,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-radiator.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "a7f6b9d39a7e16e3a1a1b2b0cb93b3a7b3e7af86f52813436c37388dce5f8984",
+      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.025",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-radiator",
@@ -224,7 +224,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-safety.primitive.0",
       "indexCount": 6204,
       "indexed": true,
-      "materialHash": "e5422ac60aee66fec4206a15fe013b2d823a8b53e11d77b085a8bb21ea07288a",
+      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-safety",
@@ -249,7 +249,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-safety.primitive.1",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-safety",
@@ -274,7 +274,7 @@
       "id": "sf.render.mining-drone.node.lod0-drone-material-tool.primitive.0",
       "indexCount": 4788,
       "indexed": true,
-      "materialHash": "69217875a5312b55d98d674c55863af1562a9f462ba865ed7f8cdb5653d2fc52",
+      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
       "nodeId": "sf.render.mining-drone.node.lod0-drone-material-tool",
@@ -299,7 +299,7 @@
       "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolClevis-1",
       "nodeId": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-brushednickel",
@@ -324,7 +324,7 @@
       "id": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolBore",
       "nodeId": "sf.render.mining-drone.node.lod0-remaster-material-mechanical-shadowenamel",
@@ -349,7 +349,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-accent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "1a28e68dd91085a38c9237978015e09edc60e2390e145cde493deb33ac9076f3",
+      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.120",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-accent",
@@ -374,7 +374,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-cable.primitive.0",
       "indexCount": 2592,
       "indexed": true,
-      "materialHash": "c95979e3e041a2046f84725d893d08481925e30fa793059a8e9a590c533fbb9f",
+      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.104",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-cable",
@@ -399,7 +399,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-hull.primitive.0",
       "indexCount": 972,
       "indexed": true,
-      "materialHash": "d1b130d9a8b0160cde51fa0552b1f00aaeb63825abeaecc149fa1c11ff0ac665",
+      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.078",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-hull",
@@ -424,7 +424,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-mechanical.primitive.0",
       "indexCount": 7164,
       "indexed": true,
-      "materialHash": "8ea94d1e56723e66feedd7e86a88c36d72ae24944d6bf1e4042052c731dc3809",
+      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.086",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-mechanical",
@@ -449,7 +449,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-radiator.primitive.0",
       "indexCount": 972,
       "indexed": true,
-      "materialHash": "a7f6b9d39a7e16e3a1a1b2b0cb93b3a7b3e7af86f52813436c37388dce5f8984",
+      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.100",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-radiator",
@@ -474,7 +474,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-safety.primitive.0",
       "indexCount": 5232,
       "indexed": true,
-      "materialHash": "e5422ac60aee66fec4206a15fe013b2d823a8b53e11d77b085a8bb21ea07288a",
+      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.047",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-safety",
@@ -499,7 +499,7 @@
       "id": "sf.render.mining-drone.node.lod1-drone-material-tool.primitive.0",
       "indexCount": 2856,
       "indexed": true,
-      "materialHash": "69217875a5312b55d98d674c55863af1562a9f462ba865ed7f8cdb5653d2fc52",
+      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.057",
       "nodeId": "sf.render.mining-drone.node.lod1-drone-material-tool",
@@ -524,7 +524,7 @@
       "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolClevis-1.001",
       "nodeId": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-brushednickel",
@@ -549,7 +549,7 @@
       "id": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolBore.001",
       "nodeId": "sf.render.mining-drone.node.lod1-remaster-material-mechanical-shadowenamel",
@@ -574,7 +574,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-accent.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "1a28e68dd91085a38c9237978015e09edc60e2390e145cde493deb33ac9076f3",
+      "materialHash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.173",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-accent",
@@ -599,7 +599,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-cable.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "c95979e3e041a2046f84725d893d08481925e30fa793059a8e9a590c533fbb9f",
+      "materialHash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.159",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-cable",
@@ -624,7 +624,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-hull.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "d1b130d9a8b0160cde51fa0552b1f00aaeb63825abeaecc149fa1c11ff0ac665",
+      "materialHash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.134",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-hull",
@@ -649,7 +649,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-mechanical.primitive.0",
       "indexCount": 2976,
       "indexed": true,
-      "materialHash": "8ea94d1e56723e66feedd7e86a88c36d72ae24944d6bf1e4042052c731dc3809",
+      "materialHash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.142",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-mechanical",
@@ -674,7 +674,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-radiator.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "a7f6b9d39a7e16e3a1a1b2b0cb93b3a7b3e7af86f52813436c37388dce5f8984",
+      "materialHash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.156",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-radiator",
@@ -699,7 +699,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-safety.primitive.0",
       "indexCount": 1896,
       "indexed": true,
-      "materialHash": "e5422ac60aee66fec4206a15fe013b2d823a8b53e11d77b085a8bb21ea07288a",
+      "materialHash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.067",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-safety",
@@ -724,7 +724,7 @@
       "id": "sf.render.mining-drone.node.lod2-drone-material-tool.primitive.0",
       "indexCount": 1584,
       "indexed": true,
-      "materialHash": "69217875a5312b55d98d674c55863af1562a9f462ba865ed7f8cdb5653d2fc52",
+      "materialHash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.077",
       "nodeId": "sf.render.mining-drone.node.lod2-drone-material-tool",
@@ -749,7 +749,7 @@
       "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolClevis-1.002",
       "nodeId": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-brushednickel",
@@ -774,7 +774,7 @@
       "id": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_DroneToolBore.002",
       "nodeId": "sf.render.mining-drone.node.lod2-remaster-material-mechanical-shadowenamel",
@@ -787,42 +787,42 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
+      "hash": "16b54ae6cadeefaf909e67915b83dce756056a5ee15893cd381521eb8cb1cdf5",
+      "id": "material:16b54ae6cadeefaf909e6791",
+      "name": "Material_Safety",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
+          "name": "drone_safety_surface_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "name": "drone_safety_surface_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
+          "name": "drone_safety_surface_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "name": "drone_safety_surface_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "1a28e68dd91085a38c9237978015e09edc60e2390e145cde493deb33ac9076f3",
-      "id": "material:1a28e68dd91085a38c923797",
+      "hash": "7677b697e0b7e45551b7975f81086995ef6e5da50c0f5f2c88f6f235c652acf0",
+      "id": "material:7677b697e0b7e45551b7975f",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -857,170 +857,10 @@
       ]
     },
     {
-      "hash": "69217875a5312b55d98d674c55863af1562a9f462ba865ed7f8cdb5653d2fc52",
-      "id": "material:69217875a5312b55d98d674c",
-      "name": "Material_Tool",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_cutter_carbide_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cutter_carbide_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cutter_carbide_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cutter_carbide_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ea94d1e56723e66feedd7e86a88c36d72ae24944d6bf1e4042052c731dc3809",
-      "id": "material:8ea94d1e56723e66feedd7e8",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_structural_alloy_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "a7f6b9d39a7e16e3a1a1b2b0cb93b3a7b3e7af86f52813436c37388dce5f8984",
-      "id": "material:a7f6b9d39a7e16e3a1a1b2b0",
-      "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_radiator_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_radiator_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c95979e3e041a2046f84725d893d08481925e30fa793059a8e9a590c533fbb9f",
-      "id": "material:c95979e3e041a2046f84725d",
-      "name": "Material_Cable",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_cable_polymer_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cable_polymer_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cable_polymer_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_cable_polymer_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d1b130d9a8b0160cde51fa0552b1f00aaeb63825abeaecc149fa1c11ff0ac665",
-      "id": "material:d1b130d9a8b0160cde51fa05",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "drone_painted_armor_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_painted_armor_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_painted_armor_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "drone_painted_armor_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1049,32 +889,192 @@
       ]
     },
     {
-      "hash": "e5422ac60aee66fec4206a15fe013b2d823a8b53e11d77b085a8bb21ea07288a",
-      "id": "material:e5422ac60aee66fec4206a15",
-      "name": "Material_Safety",
-      "pipelineKey": "opaque:double",
+      "hash": "a8532eec610cd106a924e1b9e43a16eee641c856371967c5505f93345b20eacf",
+      "id": "material:a8532eec610cd106a924e1b9",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "drone_safety_surface_basecolor",
+          "name": "drone_structural_alloy_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_orm",
+          "name": "drone_structural_alloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_normal",
+          "name": "drone_structural_alloy_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "drone_safety_surface_orm",
+          "name": "drone_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d5d7a0f1d8c50f436c817d9d4728667e1bcf2e5098c69724a7d44a327681a4a7",
+      "id": "material:d5d7a0f1d8c50f436c817d9d",
+      "name": "Material_Cable",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drone_cable_polymer_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cable_polymer_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cable_polymer_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cable_polymer_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ddaf06d89b98ca9722f4983812a6dae5bf4780e11df66312f61085356c5ae09f",
+      "id": "material:ddaf06d89b98ca9722f49838",
+      "name": "Material_Tool",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drone_cutter_carbide_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cutter_carbide_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cutter_carbide_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_cutter_carbide_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e264ea04ee6e7f7cb035f47d70d7a00ed674d00a115b171d6c5c8bcf1e914dc6",
+      "id": "material:e264ea04ee6e7f7cb035f47d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drone_painted_armor_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_painted_armor_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_painted_armor_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_painted_armor_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f5d2ca1685db9bd40ea260c0e03c3fcba06a820c55545dde2a655db5b474b81b",
+      "id": "material:f5d2ca1685db9bd40ea260c0",
+      "name": "Material_Radiator",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drone_radiator_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_radiator_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_radiator_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drone_radiator_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -2753,19 +2753,19 @@
       "sha256": "e9fe1e1e50f638bb1d1e74dd76e5920abd7eff03a098fdef8918667d24654374"
     },
     "sourceGlb": {
-      "bytes": 2781468,
-      "sha256": "b364f0b2002d541359397bc2b50cd848036c45e1abf315e78c8ecb99eeb24cb2",
+      "bytes": 2781476,
+      "sha256": "940168ee3e32f2374ffec768daebc83c5119c02df2a0091212e7992a4efe6839",
       "uri": "place_mining_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3190568,
-    "sha256": "57747773a81e22831de9f3ea7f8a3b9a795185202eaf834665896ed9b793b46e",
+    "bytes": 3190396,
+    "sha256": "243a28d21bc83b9af321c06bedaecc9b87feb1202b7d6ecc890f32d14633c828",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3861,7 +3861,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "8a3f8544f775a2ddbea6abfc0b1c3f6d47ed7acc6ade91247db82f62018d72a8",
+  "runtimeHash": "e60a30eed55ca39e2910cad7d89aefcb32a3a1add1ba532450e9652db925b6a9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

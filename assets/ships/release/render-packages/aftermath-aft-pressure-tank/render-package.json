@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "afad11769ec7cc96b522c9a95c320fc79a16c68a1ed7173179e95aeeaa6dfda7",
+  "contentHash": "4daeb0a88e2be94d8d6a69b114957e1c801e75dacf516c3febf3b8905bbf3721",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-hull-deepseaenamel.primitive.0",
       "indexCount": 6708,
       "indexed": true,
-      "materialHash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
+      "materialHash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TankRolledPressureCase",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-hull-deepseaenamel",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-hull-serviceochre.primitive.0",
       "indexCount": 384,
       "indexed": true,
-      "materialHash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
+      "materialHash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TankValveRootFlange",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-hull-serviceochre",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 3144,
       "indexed": true,
-      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
+      "materialHash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TankCurledRuptureLip",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-mechanical-brushednickel",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
+      "materialHash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_TankSaddleFoot",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.remaster-material-mechanical-shadowenamel",
@@ -162,42 +162,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1c4ca9bee0dad8f9c966d5c7f0cc3ba7a4d9666e4ff6c042fbb836f0de797a89",
-      "id": "material:1c4ca9bee0dad8f9c966d5c7",
-      "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_ShadowEnamel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
-      "id": "material:3e69f95e781ec5e3462b9370",
+      "hash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
+      "id": "material:382cf55d4ddfa9b79cd68ce2",
       "name": "Material_Hull_DeepSeaEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -226,10 +194,42 @@
       ]
     },
     {
-      "hash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
-      "id": "material:969953f08cd95a1f1e0e7ae9",
+      "hash": "7469c0141f8ea1ee87e581488f1ad6975b2ecdd058f2021ae688c8d820171f56",
+      "id": "material:7469c0141f8ea1ee87e58148",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
+      "id": "material:b78190155515bc1343a114e3",
       "name": "Material_Hull_ServiceOchre",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -258,10 +258,10 @@
       ]
     },
     {
-      "hash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
-      "id": "material:cd4ef2431d6f6aa83e87af7f",
+      "hash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
+      "id": "material:d005e2bbffd505ba75ab33bb",
       "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -586,19 +586,19 @@
       "sha256": "455371537d9151e517fa3c24140609e81681a3e189304e0c45f1e9d4a4464d8c"
     },
     "sourceGlb": {
-      "bytes": 98304,
-      "sha256": "4e059d7750944c6e3b7ed18147e02f8439a1712bb73b19aa3e04c7a14045b367",
+      "bytes": 98308,
+      "sha256": "3e6cdfd9ecc336cc8812a1a96fe4c57484534c004107096b13a25d0023dc78ea",
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 142148,
-    "sha256": "4d20764a5b7419c6cf2e906ee5b9823e9e40552c4b3bf98db586269f10b4453c",
+    "bytes": 142072,
+    "sha256": "1f01369f98c3482e9fe6a958fb3cb93dd58b6c4a4c229fc4c82a9368ea81c9cd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -812,7 +812,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "9cf3b9b80a6e19a0abfe1fb7b87bf16fc0996339987677c4fc9f3d7188b5ba2a",
+  "runtimeHash": "cac02e7922d66ed0ab262396bb8b5788bf621a4cea7ad5ed4abac3e5987c4df8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

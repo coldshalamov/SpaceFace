@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8b5598c331136d36badd0e86665c1dd169e85deb19d9ba88195d031ddfee936e",
+  "contentHash": "e2743ac7985178fbc0b95300f5c8355a4185da7c8fb37fcf9128b429f3d2bc86",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_ore_freighter_hopper_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-heat",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-hull.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_ore_freighter_hopper_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-hull",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 1512,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_ore_freighter_hopper_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-insulation",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-service.primitive.0",
       "indexCount": 216,
       "indexed": true,
-      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialHash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_ore_freighter_hopper_Material_Service_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-service",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-structural.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_ore_freighter_hopper_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-structural",
@@ -199,7 +199,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 153,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_ore_freighter_hopper_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-heat",
@@ -224,7 +224,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-hull.primitive.0",
       "indexCount": 153,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_ore_freighter_hopper_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-hull",
@@ -249,7 +249,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 723,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_ore_freighter_hopper_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-insulation",
@@ -274,7 +274,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-service.primitive.0",
       "indexCount": 102,
       "indexed": true,
-      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialHash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_ore_freighter_hopper_Material_Service_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-service",
@@ -299,7 +299,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-structural.primitive.0",
       "indexCount": 315,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_wreck_ore_freighter_hopper_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-structural",
@@ -324,7 +324,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 63,
       "indexed": true,
-      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialHash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_ore_freighter_hopper_Material_Heat_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-heat",
@@ -349,7 +349,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-hull.primitive.0",
       "indexCount": 63,
       "indexed": true,
-      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialHash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_ore_freighter_hopper_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-hull",
@@ -374,7 +374,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialHash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_ore_freighter_hopper_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-insulation",
@@ -399,7 +399,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-structural.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialHash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_wreck_ore_freighter_hopper_Material_Structural_mesh",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-structural",
@@ -412,74 +412,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
-      "id": "material:124d57494b8cd5aee7fba823",
-      "name": "Material_Structural",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_structural_alloy_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
-      "id": "material:6c2040b742ac16a629ba2e54",
-      "name": "Material_Service",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "wreck_service_trunks_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "wreck_service_trunks_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
-      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "hash": "13ad3b2a75af6f212673762db718d8b5d468a1798952944c5821a5ef2715500e",
+      "id": "material:13ad3b2a75af6f212673762d",
       "name": "Material_Heat",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -508,42 +444,42 @@
       ]
     },
     {
-      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
-      "id": "material:ac4380c2740998f988624d23",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "hash": "24f30cbfe23e02dc19ae4afc4a12f0af7c902539c0d0880101af35f233c173e9",
+      "id": "material:24f30cbfe23e02dc19ae4afc",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "wreck_painted_hull_basecolor",
+          "name": "wreck_structural_alloy_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "wreck_structural_alloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_normal",
+          "name": "wreck_structural_alloy_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "wreck_painted_hull_orm",
+          "name": "wreck_structural_alloy_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
-      "id": "material:d405a7105bef6f7b733d5dbb",
+      "hash": "35b85f4e71e79d43154f62ec015f32f4525b71a7b1e63f77f8bf7da06a6e055b",
+      "id": "material:35b85f4e71e79d43154f62ec",
       "name": "Material_Insulation",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -566,6 +502,70 @@
         {
           "colorSpace": "linear",
           "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b31b3a121510678d6fbc4a63855fb3ddbebc77f62b25d1177f1720baf9e47dd2",
+      "id": "material:b31b3a121510678d6fbc4a63",
+      "name": "Material_Service",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_service_trunks_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d999803161e25ecce4ad46f8d0deb6a71d01e4538e0bb3695b817626d5794b10",
+      "id": "material:d999803161e25ecce4ad46f8",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1571,19 +1571,19 @@
       "sha256": "5255161c988dc03efe3d835b7054a975a97aebfdc78ab5dc5b3424102894219b"
     },
     "sourceGlb": {
-      "bytes": 1242412,
-      "sha256": "b49b1f01d5333cb1ef671bb522556ac3ef2ee16e55330df2c632b3f62939edbe",
+      "bytes": 1242420,
+      "sha256": "cf2db5a124b4235fadb48aaaa6f774143f5208ec02ed94b738809644f1050f69",
       "uri": "place_aftermath_wreck_ore_freighter_hopper_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1273084,
-    "sha256": "0f4f93a2ae632161cd155ea86b8bf51cc4af2e1dc5a82ea862c00210759f2d25",
+    "bytes": 1272992,
+    "sha256": "5c7240b45b0fb56b20453201cd348d684f2f52f7df691952c51bfa2289eef471",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2113,7 +2113,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper_authored_down.glb"
   },
-  "runtimeHash": "90c6d6fb4fc5b9febfe90de535c6cf0a7f5ea96f609a04abcba7cb6db4907f8a",
+  "runtimeHash": "013ac424d3981db936d7b3b9a2772557b78ecf2fe6c5019ff30494c0c2f18e98",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

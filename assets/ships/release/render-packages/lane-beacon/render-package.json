@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "51867591f60efd4903d327e4ae8e9438e2ca1fe6e750872a9d34c8ae6268ccd7",
+  "contentHash": "ed06e1262ab4d346900310b636431dab346b52513a2b704df0417a2075663453",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -80,7 +80,7 @@
       "id": "sf.render.lane-beacon.node.lod0-hook-emissive.primitive.0",
       "indexCount": 1260,
       "indexed": true,
-      "materialHash": "52b4fbdcf81546cef3a4fffaeb72cea99a2d5cba5242ebcbee489f601ba1831b",
+      "materialHash": "8e319b2afa75e26aa22027ef4fecfad3630900967582cebe48851dd301b71152",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_EMISSIVE_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod0-hook-emissive",
@@ -105,7 +105,7 @@
       "id": "sf.render.lane-beacon.node.lod0-merged-material-hull.primitive.0",
       "indexCount": 2592,
       "indexed": true,
-      "materialHash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
+      "materialHash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull_Mesh.001",
       "nodeId": "sf.render.lane-beacon.node.lod0-merged-material-hull",
@@ -130,7 +130,7 @@
       "id": "sf.render.lane-beacon.node.lod0-merged-material-hull.primitive.1",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull_Mesh.001",
       "nodeId": "sf.render.lane-beacon.node.lod0-merged-material-hull",
@@ -155,7 +155,7 @@
       "id": "sf.render.lane-beacon.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 17388,
       "indexed": true,
-      "materialHash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
+      "materialHash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod0-merged-material-mechanical",
@@ -180,7 +180,7 @@
       "id": "sf.render.lane-beacon.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "6e48ef335d12ecc1bb9d93b505d03ab4073eff75214af76c9fdf4f0577ba71f7",
+      "materialHash": "75fadeb801b9a5c8479d6c9823a6450dfe0fb70e3e2a3a9dbee8966516973d75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod0-merged-material-warm",
@@ -205,7 +205,7 @@
       "id": "sf.render.lane-beacon.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_GantryLoadGusset0",
       "nodeId": "sf.render.lane-beacon.node.lod0-remaster-material-mechanical-brushednickel",
@@ -230,7 +230,7 @@
       "id": "sf.render.lane-beacon.node.lod0-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.lane-beacon.node.lod0-remaster-material-mechanical-shadowenamel",
@@ -255,7 +255,7 @@
       "id": "sf.render.lane-beacon.node.lod1-hook-emissive.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "52b4fbdcf81546cef3a4fffaeb72cea99a2d5cba5242ebcbee489f601ba1831b",
+      "materialHash": "8e319b2afa75e26aa22027ef4fecfad3630900967582cebe48851dd301b71152",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_EMISSIVE_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod1-hook-emissive",
@@ -280,7 +280,7 @@
       "id": "sf.render.lane-beacon.node.lod1-merged-material-hull.primitive.0",
       "indexCount": 1140,
       "indexed": true,
-      "materialHash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
+      "materialHash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod1-merged-material-hull",
@@ -305,7 +305,7 @@
       "id": "sf.render.lane-beacon.node.lod1-merged-material-mechanical.primitive.0",
       "indexCount": 5028,
       "indexed": true,
-      "materialHash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
+      "materialHash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod1-merged-material-mechanical",
@@ -330,7 +330,7 @@
       "id": "sf.render.lane-beacon.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "6e48ef335d12ecc1bb9d93b505d03ab4073eff75214af76c9fdf4f0577ba71f7",
+      "materialHash": "75fadeb801b9a5c8479d6c9823a6450dfe0fb70e3e2a3a9dbee8966516973d75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod1-merged-material-warm",
@@ -355,7 +355,7 @@
       "id": "sf.render.lane-beacon.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_GantryLoadGusset0.001",
       "nodeId": "sf.render.lane-beacon.node.lod1-remaster-material-mechanical-brushednickel",
@@ -380,7 +380,7 @@
       "id": "sf.render.lane-beacon.node.lod1-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.003",
       "nodeId": "sf.render.lane-beacon.node.lod1-remaster-material-mechanical-shadowenamel",
@@ -405,7 +405,7 @@
       "id": "sf.render.lane-beacon.node.lod2-hook-emissive.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "52b4fbdcf81546cef3a4fffaeb72cea99a2d5cba5242ebcbee489f601ba1831b",
+      "materialHash": "8e319b2afa75e26aa22027ef4fecfad3630900967582cebe48851dd301b71152",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_EMISSIVE_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod2-hook-emissive",
@@ -430,7 +430,7 @@
       "id": "sf.render.lane-beacon.node.lod2-merged-material-hull.primitive.0",
       "indexCount": 468,
       "indexed": true,
-      "materialHash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
+      "materialHash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod2-merged-material-hull",
@@ -455,7 +455,7 @@
       "id": "sf.render.lane-beacon.node.lod2-merged-material-mechanical.primitive.0",
       "indexCount": 1140,
       "indexed": true,
-      "materialHash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
+      "materialHash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod2-merged-material-mechanical",
@@ -480,7 +480,7 @@
       "id": "sf.render.lane-beacon.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "6e48ef335d12ecc1bb9d93b505d03ab4073eff75214af76c9fdf4f0577ba71f7",
+      "materialHash": "75fadeb801b9a5c8479d6c9823a6450dfe0fb70e3e2a3a9dbee8966516973d75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm_Mesh",
       "nodeId": "sf.render.lane-beacon.node.lod2-merged-material-warm",
@@ -505,7 +505,7 @@
       "id": "sf.render.lane-beacon.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1620,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_GantryLoadGusset0.002",
       "nodeId": "sf.render.lane-beacon.node.lod2-remaster-material-mechanical-brushednickel",
@@ -530,7 +530,7 @@
       "id": "sf.render.lane-beacon.node.lod2-remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.004",
       "nodeId": "sf.render.lane-beacon.node.lod2-remaster-material-mechanical-shadowenamel",
@@ -543,74 +543,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "52b4fbdcf81546cef3a4fffaeb72cea99a2d5cba5242ebcbee489f601ba1831b",
-      "id": "material:52b4fbdcf81546cef3a4fffa",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Accent_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
-      "id": "material:5442258be2e4c48eda58b358",
+      "hash": "3adbf370a73d6fa9c9aad225a420cd983e0b32b48236f73563228c992f11b257",
+      "id": "material:3adbf370a73d6fa9c9aad225",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -639,10 +575,10 @@
       ]
     },
     {
-      "hash": "6e48ef335d12ecc1bb9d93b505d03ab4073eff75214af76c9fdf4f0577ba71f7",
-      "id": "material:6e48ef335d12ecc1bb9d93b5",
+      "hash": "75fadeb801b9a5c8479d6c9823a6450dfe0fb70e3e2a3a9dbee8966516973d75",
+      "id": "material:75fadeb801b9a5c8479d6c98",
       "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -671,10 +607,74 @@
       ]
     },
     {
-      "hash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
-      "id": "material:b9c38514bdb8e5408a984a4e",
+      "hash": "8e319b2afa75e26aa22027ef4fecfad3630900967582cebe48851dd301b71152",
+      "id": "material:8e319b2afa75e26aa22027ef",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac2a30987285dd6658fde64570418c8ecb7480e088d7eea6172bd9c8e764e489",
+      "id": "material:ac2a30987285dd6658fde645",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -703,32 +703,32 @@
       ]
     },
     {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
-      "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Mechanical_ShadowEnamel_base",
+          "name": "Material_Mechanical_BrushedNickel_base",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "name": "Material_Mechanical_BrushedNickel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -1764,19 +1764,19 @@
       "sha256": "72bb0ca4da476425206062d01e6d6a1010a1fc92f2676dde3a2c5f0382cb0881"
     },
     "sourceGlb": {
-      "bytes": 373656,
-      "sha256": "8ab75786db70853edddd0f1e9c41b6c65a4189e5ab2dea18d337ab1d09d801a8",
+      "bytes": 373664,
+      "sha256": "825be57019a90f08efe589c8226c9a3634d8dfe5ed0f82939168361f54f16c72",
       "uri": "place_lane_beacon.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 643384,
-    "sha256": "a9168361ef7a2cef735882df8fcf9ad8a7b0133d82aa99ead22f39013a1af87f",
+    "bytes": 643268,
+    "sha256": "b231a8cc4234989d6c955964431e9a74fd965e820e344763b66ed145ee4a8dca",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2521,7 +2521,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
-  "runtimeHash": "3112f676b7dea0f204ea534ae4a6f1d4b0464e32e17253c580e5d35378012057",
+  "runtimeHash": "3aae8d88f4ca9db9424cbad3c402874716730102a8a92a08eaa74b50e6f2a063",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

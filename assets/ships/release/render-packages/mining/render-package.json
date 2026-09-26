@@ -1,6 +1,51 @@
 {
   "anchors": [
     {
+      "id": "sf.render.mining.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.529385,
+        -2.975901,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        1
+      ],
+      "parentNodeId": "sf.render.mining.node.socket-camera-focus",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.529385,
+        -2.975901,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mining.anchor.socket-dock-approach",
       "kind": "socket",
       "localTransform": [
@@ -26,7 +71,7 @@
         0,
         16
       ],
-      "parentNodeId": "sf.render.mining.root",
+      "parentNodeId": "sf.render.mining.node.sf-place-station-mining-root",
       "worldTransform": [
         1,
         0,
@@ -72,7 +117,7 @@
         0,
         17
       ],
-      "parentNodeId": "sf.render.mining.root",
+      "parentNodeId": "sf.render.mining.node.sf-place-station-mining-root",
       "worldTransform": [
         1,
         0,
@@ -118,7 +163,7 @@
         0,
         18
       ],
-      "parentNodeId": "sf.render.mining.root",
+      "parentNodeId": "sf.render.mining.node.sf-place-station-mining-root",
       "worldTransform": [
         1,
         0,
@@ -143,7 +188,7 @@
   "collisions": [
     {
       "id": "sf.render.mining.collision",
-      "nodeId": "sf.render.mining.mesh.collision-hull",
+      "nodeId": "sf.render.mining.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -151,7 +196,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a7e2c6293b3c52ca598ae82ac3690c1befe2e86aae690abbaeaaa9ce2454d053",
+  "contentHash": "70020ffaffa8585d9526a12f784e49965403122d6f6afe245cd9fb809eb02b77",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -169,13 +214,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dc2fbf23d087dd368be15abf002a07d2e1ffa7a65678d9afc8cb78e00463e40d",
-      "id": "sf.render.mining.mesh.collision-hull.primitive.0",
+      "id": "sf.render.mining.node.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "non-render",
       "meshName": "Cube.051",
-      "nodeId": "sf.render.mining.mesh.collision-hull",
+      "nodeId": "sf.render.mining.node.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -194,13 +239,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6767ef38156dd4b319b46b3aa10de3a7af311084d444fed1a4f239a977db9689",
-      "id": "sf.render.mining.mesh.lod0-station-material-accent.primitive.0",
+      "id": "sf.render.mining.node.lod0-station-material-accent.primitive.0",
       "indexCount": 16104,
       "indexed": true,
-      "materialHash": "f7cc2703c63b7ed9afdd06de9cda942399e15c34e655e825b76196cf2aabb895",
+      "materialHash": "a8385b915f0e84df8748b3a301d1d23e8a3da019f05866b8a86a05d81d05c45b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.002",
-      "nodeId": "sf.render.mining.mesh.lod0-station-material-accent",
+      "nodeId": "sf.render.mining.node.lod0-station-material-accent",
       "primitiveIndex": 0,
       "vertexCount": 10656
     },
@@ -219,13 +264,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6cc4586ac44cb18016f239759f5fbdf2035edb7feca47da6c95447a3e28b05c4",
-      "id": "sf.render.mining.mesh.lod0-station-material-glass.primitive.0",
+      "id": "sf.render.mining.node.lod0-station-material-glass.primitive.0",
       "indexCount": 5076,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "8ca2a5f8a5ce3548bfe0d49266bc45e8c53049b7f00c04f73b85a0e3c7f705fe",
       "materialPipelineKey": "blend",
       "meshName": "Cube.011",
-      "nodeId": "sf.render.mining.mesh.lod0-station-material-glass",
+      "nodeId": "sf.render.mining.node.lod0-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 3456
     },
@@ -244,13 +289,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ade2c4d4c3c32ad514801551887fcc84ce5df11ac265545d095091cc62565678",
-      "id": "sf.render.mining.mesh.lod0-station-material-hull.primitive.0",
+      "id": "sf.render.mining.node.lod0-station-material-hull.primitive.0",
       "indexCount": 6660,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere",
-      "nodeId": "sf.render.mining.mesh.lod0-station-material-hull",
+      "nodeId": "sf.render.mining.node.lod0-station-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 5752
     },
@@ -269,13 +314,13 @@
       },
       "drawMode": 4,
       "geometryHash": "fe7f41a45c18b2d62bab6e47f0ff52b28c263c19725853d5b7f708d3dd421c5f",
-      "id": "sf.render.mining.mesh.lod0-station-material-mechanical.primitive.0",
+      "id": "sf.render.mining.node.lod0-station-material-mechanical.primitive.0",
       "indexCount": 28584,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
-      "nodeId": "sf.render.mining.mesh.lod0-station-material-mechanical",
+      "nodeId": "sf.render.mining.node.lod0-station-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 18720
     },
@@ -294,13 +339,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1b0e39c98093a74fdbd3e26c1049403f5135541945a84a30429aa5c62c3ccb3c",
-      "id": "sf.render.mining.mesh.lod0-station-material-warm.primitive.0",
+      "id": "sf.render.mining.node.lod0-station-material-warm.primitive.0",
       "indexCount": 23556,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
-      "nodeId": "sf.render.mining.mesh.lod0-station-material-warm",
+      "nodeId": "sf.render.mining.node.lod0-station-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 15360
     },
@@ -319,13 +364,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d883b946e5af35f81dffbaca3aae860c3a7bd333b826a6f394c876f9ce6d4da4",
-      "id": "sf.render.mining.mesh.lod1-station-material-accent.primitive.0",
+      "id": "sf.render.mining.node.lod1-station-material-accent.primitive.0",
       "indexCount": 5688,
       "indexed": true,
-      "materialHash": "f7cc2703c63b7ed9afdd06de9cda942399e15c34e655e825b76196cf2aabb895",
+      "materialHash": "a8385b915f0e84df8748b3a301d1d23e8a3da019f05866b8a86a05d81d05c45b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.005",
-      "nodeId": "sf.render.mining.mesh.lod1-station-material-accent",
+      "nodeId": "sf.render.mining.node.lod1-station-material-accent",
       "primitiveIndex": 0,
       "vertexCount": 3532
     },
@@ -344,13 +389,13 @@
       },
       "drawMode": 4,
       "geometryHash": "baeaa85502d7af1225d8275846b6438a0cc475613b20a445421863daf49db4d6",
-      "id": "sf.render.mining.mesh.lod1-station-material-glass.primitive.0",
+      "id": "sf.render.mining.node.lod1-station-material-glass.primitive.0",
       "indexCount": 2916,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "8ca2a5f8a5ce3548bfe0d49266bc45e8c53049b7f00c04f73b85a0e3c7f705fe",
       "materialPipelineKey": "blend",
       "meshName": "Cube.029",
-      "nodeId": "sf.render.mining.mesh.lod1-station-material-glass",
+      "nodeId": "sf.render.mining.node.lod1-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 1944
     },
@@ -369,13 +414,13 @@
       },
       "drawMode": 4,
       "geometryHash": "7716bea7fc5d528383eedea01064eab2f15ba1df0299dc91505094c07c511ab3",
-      "id": "sf.render.mining.mesh.lod1-station-material-hull.primitive.0",
+      "id": "sf.render.mining.node.lod1-station-material-hull.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.001",
-      "nodeId": "sf.render.mining.mesh.lod1-station-material-hull",
+      "nodeId": "sf.render.mining.node.lod1-station-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 1822
     },
@@ -394,13 +439,13 @@
       },
       "drawMode": 4,
       "geometryHash": "977c07a776699e1d9ff85d0dc6b08d1d2103cec7148e71a6e0fe22768f356394",
-      "id": "sf.render.mining.mesh.lod1-station-material-mechanical.primitive.0",
+      "id": "sf.render.mining.node.lod1-station-material-mechanical.primitive.0",
       "indexCount": 10956,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.003",
-      "nodeId": "sf.render.mining.mesh.lod1-station-material-mechanical",
+      "nodeId": "sf.render.mining.node.lod1-station-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 6860
     },
@@ -419,13 +464,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5e900d1718b2468c875bc3c3742c0b71e4bad122ba121214dc3fad2a29d8eafd",
-      "id": "sf.render.mining.mesh.lod1-station-material-warm.primitive.0",
+      "id": "sf.render.mining.node.lod1-station-material-warm.primitive.0",
       "indexCount": 8016,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.004",
-      "nodeId": "sf.render.mining.mesh.lod1-station-material-warm",
+      "nodeId": "sf.render.mining.node.lod1-station-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 4980
     },
@@ -444,13 +489,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ddb1531f621dd13c1354119405bed249068093e0ec36d042afa271d6bc43e3f9",
-      "id": "sf.render.mining.mesh.lod2-station-material-accent.primitive.0",
+      "id": "sf.render.mining.node.lod2-station-material-accent.primitive.0",
       "indexCount": 1992,
       "indexed": true,
-      "materialHash": "f7cc2703c63b7ed9afdd06de9cda942399e15c34e655e825b76196cf2aabb895",
+      "materialHash": "a8385b915f0e84df8748b3a301d1d23e8a3da019f05866b8a86a05d81d05c45b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.008",
-      "nodeId": "sf.render.mining.mesh.lod2-station-material-accent",
+      "nodeId": "sf.render.mining.node.lod2-station-material-accent",
       "primitiveIndex": 0,
       "vertexCount": 1288
     },
@@ -469,13 +514,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2cf66e967b6fbf59951098a8c087d15a72f53a64ba4eb8fff861d00377c7bade",
-      "id": "sf.render.mining.mesh.lod2-station-material-glass.primitive.0",
+      "id": "sf.render.mining.node.lod2-station-material-glass.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
+      "materialHash": "8ca2a5f8a5ce3548bfe0d49266bc45e8c53049b7f00c04f73b85a0e3c7f705fe",
       "materialPipelineKey": "blend",
       "meshName": "Cube.047",
-      "nodeId": "sf.render.mining.mesh.lod2-station-material-glass",
+      "nodeId": "sf.render.mining.node.lod2-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 288
     },
@@ -494,13 +539,13 @@
       },
       "drawMode": 4,
       "geometryHash": "622eb4310d49663cd45800ceac6eab4c7309d8e78eebcfa09b808c9a60232d94",
-      "id": "sf.render.mining.mesh.lod2-station-material-hull.primitive.0",
+      "id": "sf.render.mining.node.lod2-station-material-hull.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
+      "materialHash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.002",
-      "nodeId": "sf.render.mining.mesh.lod2-station-material-hull",
+      "nodeId": "sf.render.mining.node.lod2-station-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 624
     },
@@ -519,13 +564,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b3fac3c0bf6f1cebffd412798271585e15c61cbdb7535d564a051eba324f3273",
-      "id": "sf.render.mining.mesh.lod2-station-material-mechanical.primitive.0",
+      "id": "sf.render.mining.node.lod2-station-material-mechanical.primitive.0",
       "indexCount": 3744,
       "indexed": true,
-      "materialHash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
+      "materialHash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.006",
-      "nodeId": "sf.render.mining.mesh.lod2-station-material-mechanical",
+      "nodeId": "sf.render.mining.node.lod2-station-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 2400
     },
@@ -544,13 +589,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d342f302c154e8a7debc96df1a00394a473576f858e6d207639348b6b0b95432",
-      "id": "sf.render.mining.mesh.lod2-station-material-warm.primitive.0",
+      "id": "sf.render.mining.node.lod2-station-material-warm.primitive.0",
       "indexCount": 2448,
       "indexed": true,
-      "materialHash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
+      "materialHash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.007",
-      "nodeId": "sf.render.mining.mesh.lod2-station-material-warm",
+      "nodeId": "sf.render.mining.node.lod2-station-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 1580
     }
@@ -560,10 +605,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c11502fea9d740108140ae731f2bb711fb85064bcb12eff7fbeadc7be29e50e",
-      "id": "material:0c11502fea9d740108140ae7",
+      "hash": "1f757966d28ec956d41e8d603003adb9f6d88eaf73a72ee990fd3d329245c47b",
+      "id": "material:1f757966d28ec956d41e8d60",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -592,74 +637,10 @@
       ]
     },
     {
-      "hash": "14f398d34f8381a8c902dea8c546d64e887d0057bf9fb3adf17f711f66c3cf46",
-      "id": "material:14f398d34f8381a8c902dea8",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "50bfb0bc15f570bd617f4a1b12dbbf61828cfd126adce76847b78a8cd157466d",
-      "id": "material:50bfb0bc15f570bd617f4a1b",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ecd2c66c154b2ddeed6f95a938790f61480549291c90bd270f722e2078a410f9",
-      "id": "material:ecd2c66c154b2ddeed6f95a9",
+      "hash": "544dbd8f0b5f8d3f1459abfcd7e9a198342288013f5db1d897029901b176e205",
+      "id": "material:544dbd8f0b5f8d3f1459abfc",
       "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -688,10 +669,42 @@
       ]
     },
     {
-      "hash": "f7cc2703c63b7ed9afdd06de9cda942399e15c34e655e825b76196cf2aabb895",
-      "id": "material:f7cc2703c63b7ed9afdd06de",
+      "hash": "8ca2a5f8a5ce3548bfe0d49266bc45e8c53049b7f00c04f73b85a0e3c7f705fe",
+      "id": "material:8ca2a5f8a5ce3548bfe0d492",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a8385b915f0e84df8748b3a301d1d23e8a3da019f05866b8a86a05d81d05c45b",
+      "id": "material:a8385b915f0e84df8748b3a3",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -718,11 +731,43 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "cce76db423f4b9772db1c2dd607ef2ae163878dd8ccf4dc09cdc4fea330adec3",
+      "id": "material:cce76db423f4b9772db1c2dd",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.mining.mesh.collision-hull",
+      "id": "sf.render.mining.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -748,7 +793,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -771,7 +816,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod0-station-material-accent",
+      "id": "sf.render.mining.node.lod0-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -797,7 +842,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -820,7 +865,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod0-station-material-glass",
+      "id": "sf.render.mining.node.lod0-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -846,7 +891,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -869,7 +914,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod0-station-material-hull",
+      "id": "sf.render.mining.node.lod0-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -895,7 +940,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -918,7 +963,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod0-station-material-mechanical",
+      "id": "sf.render.mining.node.lod0-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -944,7 +989,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -967,7 +1012,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod0-station-material-warm",
+      "id": "sf.render.mining.node.lod0-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -993,7 +1038,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1016,7 +1061,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod1-station-material-accent",
+      "id": "sf.render.mining.node.lod1-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1042,7 +1087,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1065,7 +1110,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod1-station-material-glass",
+      "id": "sf.render.mining.node.lod1-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -1091,7 +1136,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1114,7 +1159,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod1-station-material-hull",
+      "id": "sf.render.mining.node.lod1-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -1140,7 +1185,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1163,7 +1208,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod1-station-material-mechanical",
+      "id": "sf.render.mining.node.lod1-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1189,7 +1234,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1212,7 +1257,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod1-station-material-warm",
+      "id": "sf.render.mining.node.lod1-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -1238,7 +1283,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1261,7 +1306,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod2-station-material-accent",
+      "id": "sf.render.mining.node.lod2-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1287,7 +1332,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1310,7 +1355,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod2-station-material-glass",
+      "id": "sf.render.mining.node.lod2-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -1336,7 +1381,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1359,7 +1404,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod2-station-material-hull",
+      "id": "sf.render.mining.node.lod2-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -1385,7 +1430,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1408,7 +1453,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod2-station-material-mechanical",
+      "id": "sf.render.mining.node.lod2-station-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1434,7 +1479,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1457,7 +1502,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.mesh.lod2-station-material-warm",
+      "id": "sf.render.mining.node.lod2-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -1483,7 +1528,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.mining.root",
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.mining.body",
       "worldTransform": [
@@ -1506,7 +1551,7 @@
       ]
     },
     {
-      "id": "sf.render.mining.root",
+      "id": "sf.render.mining.node.sf-place-station-mining-root",
       "localTransform": [
         1,
         0,
@@ -1526,7 +1571,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_PLACE_STATION_MINING_ROOT",
       "nodeName": "SF_PLACE_STATION_MINING_ROOT",
       "nodePath": [
         0
@@ -1552,26 +1597,221 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.mining.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.529385,
+        -2.975901,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1.529385,
+        -2.975901,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining.node.socket-dock-approach",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        39.75171661376953,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Dock_Approach",
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        39.75171661376953,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining.node.socket-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -14.850000381469727,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Emissive",
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -14.850000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mining.node.socket-structure-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Structure_Core",
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.mining.node.sf-place-station-mining-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mining.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9bec23f68b668e31ae59619ba84aaf27c5e1cc5c39f2b943e06ee30b477aba18"
+      "sha256": "864e32c92664ecc5314ca32a1018ea8c5a1f859b711ead4c61f01621683eccbc"
     },
     "sourceGlb": {
-      "bytes": 7482876,
-      "sha256": "b14c82ec6add74c525def05ca57e081805f3f4a09f8773ab662847ad41314b3a",
+      "bytes": 7482952,
+      "sha256": "2efd99866cf82c2d3bfd1656b93cd058b1facf670a23ca82888a6e737216de8a",
       "uri": "place_station_mining.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 8348528,
-    "sha256": "daa005765334ee5dd5b5f8b2179f56e7034c8d560ab8df098c706a16f50dcb0e",
+    "bytes": 8348896,
+    "sha256": "7da8c8c5fd9cc1d1f7bb0d1b26c3f08fc38fefed889e787322d030da7bc6a24b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1633,7 +1873,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Dock_Approach",
             "recordIds": [
-              "sf.render.mining.anchor.socket-dock-approach"
+              "sf.render.mining.anchor.socket-dock-approach",
+              "sf.render.mining.node.socket-dock-approach"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -1670,7 +1911,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Emissive",
             "recordIds": [
-              "sf.render.mining.anchor.socket-emissive"
+              "sf.render.mining.anchor.socket-emissive",
+              "sf.render.mining.node.socket-emissive"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -1707,7 +1949,45 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Structure_Core",
             "recordIds": [
-              "sf.render.mining.anchor.socket-structure-core"
+              "sf.render.mining.anchor.socket-structure-core",
+              "sf.render.mining.node.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -1.529385,
+          -2.975901,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.mining.anchor.socket-camera-focus",
+              "sf.render.mining.node.socket-camera-focus"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -1803,7 +2083,7 @@
         "role": "signal"
       }
     ],
-    "nodeCount": 21,
+    "nodeCount": 22,
     "primitives": [
       {
         "canopy": false,
@@ -2245,7 +2525,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_mining.glb"
   },
-  "runtimeHash": "b1369ad971086408a537c0e297b8f93272e140264239274c0a305a47ded6a1fa",
+  "runtimeHash": "2ebb54da60461fc368b027fabdf8e3ac38f8fba0d77445efa0ed6811fc8624a3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2263,23 +2543,27 @@
       },
       "id": "sf.render.mining.body",
       "nodeIds": [
-        "sf.render.mining.mesh.collision-hull",
-        "sf.render.mining.mesh.lod0-station-material-accent",
-        "sf.render.mining.mesh.lod0-station-material-glass",
-        "sf.render.mining.mesh.lod0-station-material-hull",
-        "sf.render.mining.mesh.lod0-station-material-mechanical",
-        "sf.render.mining.mesh.lod0-station-material-warm",
-        "sf.render.mining.mesh.lod1-station-material-accent",
-        "sf.render.mining.mesh.lod1-station-material-glass",
-        "sf.render.mining.mesh.lod1-station-material-hull",
-        "sf.render.mining.mesh.lod1-station-material-mechanical",
-        "sf.render.mining.mesh.lod1-station-material-warm",
-        "sf.render.mining.mesh.lod2-station-material-accent",
-        "sf.render.mining.mesh.lod2-station-material-glass",
-        "sf.render.mining.mesh.lod2-station-material-hull",
-        "sf.render.mining.mesh.lod2-station-material-mechanical",
-        "sf.render.mining.mesh.lod2-station-material-warm",
-        "sf.render.mining.root"
+        "sf.render.mining.node.collision-hull",
+        "sf.render.mining.node.lod0-station-material-accent",
+        "sf.render.mining.node.lod0-station-material-glass",
+        "sf.render.mining.node.lod0-station-material-hull",
+        "sf.render.mining.node.lod0-station-material-mechanical",
+        "sf.render.mining.node.lod0-station-material-warm",
+        "sf.render.mining.node.lod1-station-material-accent",
+        "sf.render.mining.node.lod1-station-material-glass",
+        "sf.render.mining.node.lod1-station-material-hull",
+        "sf.render.mining.node.lod1-station-material-mechanical",
+        "sf.render.mining.node.lod1-station-material-warm",
+        "sf.render.mining.node.lod2-station-material-accent",
+        "sf.render.mining.node.lod2-station-material-glass",
+        "sf.render.mining.node.lod2-station-material-hull",
+        "sf.render.mining.node.lod2-station-material-mechanical",
+        "sf.render.mining.node.lod2-station-material-warm",
+        "sf.render.mining.node.sf-place-station-mining-root",
+        "sf.render.mining.node.socket-camera-focus",
+        "sf.render.mining.node.socket-dock-approach",
+        "sf.render.mining.node.socket-emissive",
+        "sf.render.mining.node.socket-structure-core"
       ]
     }
   ]

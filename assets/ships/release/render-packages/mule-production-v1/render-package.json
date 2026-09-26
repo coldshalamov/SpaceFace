@@ -277,6 +277,51 @@
       ]
     },
     {
+      "id": "sf.render.mule-production-v1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.638125,
+        0.95,
+        -0.012732,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        3
+      ],
+      "parentNodeId": "sf.render.mule-production-v1.node.socket-tether-massline",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.638125,
+        0.95,
+        -0.012732,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mule-production-v1.anchor.socket-trail-main",
       "kind": "socket",
       "localTransform": [
@@ -519,7 +564,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5b88ea1d1a6da172c6b2c1ee45e9a5219098841e6a89b24b326fb4c831219653",
+  "contentHash": "4b268bf2d65eec20527e14176805ce9f034022bad3c0074326e4b30a65f93313",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -565,7 +610,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-accent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4af9579a47ebcd91f0b47900d86f410e7b901aafca86dd9ce4b08baede073d32",
+      "materialHash": "f3b1627a3a6c124c46c7e10a008f3dd0aab3bec96bec38e6d10aea8dd700ce33",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.144",
       "nodeId": "sf.render.mule-production-v1.node.lod0-accent",
@@ -590,7 +635,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 19458,
       "indexed": true,
-      "materialHash": "3fc77bfeb07733a7f78a379db134d348653a0e437b1174228def247fc090feeb",
+      "materialHash": "1ea6a4f7e6a8d706d863b4222e3f610b8f73e1f33306a03bcb458cb036d3145e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.020",
       "nodeId": "sf.render.mule-production-v1.node.lod0-armor",
@@ -640,7 +685,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-ceramic.primitive.0",
       "indexCount": 1392,
       "indexed": true,
-      "materialHash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
+      "materialHash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.mule-production-v1.node.lod0-ceramic",
@@ -665,7 +710,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-hull.primitive.0",
       "indexCount": 4428,
       "indexed": true,
-      "materialHash": "3317ec51f9baf3bc0a8c2bc729de32dafa854076e15c4b7beae87ecbfde3b4e8",
+      "materialHash": "ac1d2625e62feba50602d0f41d6b739830ac39aba68a3dbecfdb09fa702f9eca",
       "materialPipelineKey": "opaque",
       "meshName": "Pressure_Hull_Mesh",
       "nodeId": "sf.render.mule-production-v1.node.lod0-hull",
@@ -690,7 +735,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-mechanical.primitive.0",
       "indexCount": 59676,
       "indexed": true,
-      "materialHash": "e250611374612084ea59be6f35195ebc6dee6e1c7b5a6ad3e8b3baf7fc34b21e",
+      "materialHash": "9ca0ec01cd697c86cd7eba9081fd572fd22f8c9699c8085dd500776892273795",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.mule-production-v1.node.lod0-mechanical",
@@ -715,7 +760,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-radiator.primitive.0",
       "indexCount": 5832,
       "indexed": true,
-      "materialHash": "49c6ed29624b6a0cc8eca6f87802113323393fb91503e3dc763c757835326bf8",
+      "materialHash": "3454caf0113b20a515fd0d6472e75ec3168f638978f593ba515a24758cd4b28b",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.155",
       "nodeId": "sf.render.mule-production-v1.node.lod0-radiator",
@@ -740,7 +785,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
       "indexCount": 5112,
       "indexed": true,
-      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialHash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_MuleTractionBus_MachinedReveal",
       "nodeId": "sf.render.mule-production-v1.node.lod0-remaster-material-brushedmetal-remasternickel",
@@ -765,7 +810,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-remaster-material-hull-remasterseaenamel.primitive.0",
       "indexCount": 1608,
       "indexed": true,
-      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialHash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Remaster_MuleTractionBus_FoldedLoadSaddle",
       "nodeId": "sf.render.mule-production-v1.node.lod0-remaster-material-hull-remasterseaenamel",
@@ -815,7 +860,7 @@
       "id": "sf.render.mule-production-v1.node.lod0-warning.primitive.0",
       "indexCount": 3240,
       "indexed": true,
-      "materialHash": "f1f1eefd43a89f7e499518c9401571a51acefc432ee1483765d866ccc486df0e",
+      "materialHash": "7fd276bbf63deefea11e651c3408c73606912262f6d5a579d32588919f0f545d",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.043",
       "nodeId": "sf.render.mule-production-v1.node.lod0-warning",
@@ -828,6 +873,13 @@
   "lods": [],
   "materials": [
     {
+      "hash": "1ea6a4f7e6a8d706d863b4222e3f610b8f73e1f33306a03bcb458cb036d3145e",
+      "id": "material:1ea6a4f7e6a8d706d863b422",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "2dd57beb1685760c649ece5a5737cce6ede00fba4b7820c27bd96a7c1de08d55",
       "id": "material:2dd57beb1685760c649ece5a",
       "name": "Material_Thruster",
@@ -835,45 +887,24 @@
       "textures": []
     },
     {
-      "hash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
-      "id": "material:300f88db8479baa7f984d0fb",
-      "name": "Material_Hull_RemasterSeaEnamel",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "3317ec51f9baf3bc0a8c2bc729de32dafa854076e15c4b7beae87ecbfde3b4e8",
-      "id": "material:3317ec51f9baf3bc0a8c2bc7",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "3fc77bfeb07733a7f78a379db134d348653a0e437b1174228def247fc090feeb",
-      "id": "material:3fc77bfeb07733a7f78a379d",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "49c6ed29624b6a0cc8eca6f87802113323393fb91503e3dc763c757835326bf8",
-      "id": "material:49c6ed29624b6a0cc8eca6f8",
+      "hash": "3454caf0113b20a515fd0d6472e75ec3168f638978f593ba515a24758cd4b28b",
+      "id": "material:3454caf0113b20a515fd0d64",
       "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "4af9579a47ebcd91f0b47900d86f410e7b901aafca86dd9ce4b08baede073d32",
-      "id": "material:4af9579a47ebcd91f0b47900",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
-      "id": "material:5d74f67d76bd5747492c9e09",
+      "hash": "48c4130fcb57091dfdbd487374a6f0ceb3d240464957408d01cd68561bb28605",
+      "id": "material:48c4130fcb57091dfdbd4873",
       "name": "Material_Ceramic",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7fd276bbf63deefea11e651c3408c73606912262f6d5a579d32588919f0f545d",
+      "id": "material:7fd276bbf63deefea11e651c",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -884,24 +915,38 @@
       "textures": []
     },
     {
-      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
-      "id": "material:bc5362fa29283f47ae662c67",
-      "name": "Material_BrushedMetal_RemasterNickel",
-      "pipelineKey": "opaque:double",
+      "hash": "9671a9f444f21b52473bccf004175dc556633716e0d3c3fd1d8410d4f115e7cc",
+      "id": "material:9671a9f444f21b52473bccf0",
+      "name": "Material_Hull_RemasterSeaEnamel",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "e250611374612084ea59be6f35195ebc6dee6e1c7b5a6ad3e8b3baf7fc34b21e",
-      "id": "material:e250611374612084ea59be6f",
+      "hash": "9ca0ec01cd697c86cd7eba9081fd572fd22f8c9699c8085dd500776892273795",
+      "id": "material:9ca0ec01cd697c86cd7eba90",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "f1f1eefd43a89f7e499518c9401571a51acefc432ee1483765d866ccc486df0e",
-      "id": "material:f1f1eefd43a89f7e499518c9",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:double",
+      "hash": "ac1d2625e62feba50602d0f41d6b739830ac39aba68a3dbecfdb09fa702f9eca",
+      "id": "material:ac1d2625e62feba50602d0f4",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "afa0d31269441b13f937c930caef1e3734f58438e4ede7c027fe9048d2e5a10a",
+      "id": "material:afa0d31269441b13f937c930",
+      "name": "Material_BrushedMetal_RemasterNickel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f3b1627a3a6c124c46c7e10a008f3dd0aab3bec96bec38e6d10aea8dd700ce33",
+      "id": "material:f3b1627a3a6c124c46c7e10a",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1835,6 +1880,54 @@
       ]
     },
     {
+      "id": "sf.render.mule-production-v1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.638125,
+        0.95,
+        -0.012732,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mule-production-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.638125,
+        0.95,
+        -0.012732,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mule-production-v1.node.socket-trail-main",
       "localTransform": [
         1,
@@ -2082,22 +2175,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "53f91588d041127c262b44ef0f1b9b52f45fb8adeeb440f533add4e669dda232"
+      "sha256": "9acab9aa2387a8126c702d9801e8e8ab360fe2e4def12f8a125676d36987df64"
     },
     "sourceGlb": {
-      "bytes": 567680,
-      "sha256": "88a6dacbec6a5b7d28ebfddc36271f07e4fd554891083eaf0db17a468e4e2f74",
+      "bytes": 567768,
+      "sha256": "a1f50d508cdc48632404efac333480b96895b441f964fb931ae79d631d2ee1d5",
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1269332,
-    "sha256": "ba1c2896bf9105fb8e6af697ce7a82373b7639b8b697fc1a448a35ab84dd9d4e",
+    "bytes": 1269504,
+    "sha256": "a7f1c303f05a6e1319c5d4c0bd37b24454dc661c373c9a782f9257c25ff611e1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2545,6 +2638,43 @@
             "schema": "spaceface.renderPackageSemantic.v1"
           }
         }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.638125,
+          0.95,
+          -0.012732,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.mule-production-v1.anchor.socket-tether-massline",
+              "sf.render.mule-production-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
       }
     ],
     "materialProfileRoles": {
@@ -2614,7 +2744,7 @@
         "role": "warning"
       }
     ],
-    "nodeCount": 25,
+    "nodeCount": 26,
     "primitives": [
       {
         "canopy": false,
@@ -2918,7 +3048,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "25d081348e1bc3d2aa8e62a5369dceb9649a4555b8167214aaf27038ad63a3b6",
+  "runtimeHash": "04654cd7ce87fa14e081662bf480243a1e9302dfc831b7d753e7b7ab203c842a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2955,6 +3085,7 @@
         "sf.render.mule-production-v1.node.socket-mining-front",
         "sf.render.mule-production-v1.node.socket-rcs-port",
         "sf.render.mule-production-v1.node.socket-rcs-starboard",
+        "sf.render.mule-production-v1.node.socket-tether-massline",
         "sf.render.mule-production-v1.node.socket-trail-main",
         "sf.render.mule-production-v1.node.socket-trail-port",
         "sf.render.mule-production-v1.node.socket-trail-starboard",

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e9d894df4bdad6304b306e6d7c012d20c00cc78f08f802caa9f7c1e17ca78a77",
+  "contentHash": "bbcdba1071fed40557e0603d8d0c0a894438197cc09baf81e22a5a584f5dbc1a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.ak-emerg.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "eb23b099dc30647c4171dcea64a3d0d9b763f879470841734ab735d2629b89a1",
+      "materialHash": "19465d6b1dc3c2dd5649259e303384e8e5a18cfc61fbf9a7c9a6c6c0b38fb342",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.002",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.ak-emerg",
@@ -145,7 +145,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-glass-recessedsignal.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "044abcf617d3369d3e0893d9c0073b4f525c8554f60adbd0a026ea835c68558b",
+      "materialHash": "eedd54a058fb63492d8e67725e995da22ef8a6318fe4d1c9210d663fdeb49554",
       "materialPipelineKey": "blend",
       "meshName": "Craft_SurvivingCanopyShard",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-glass-recessedsignal",
@@ -170,7 +170,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-deepseaenamel.primitive.0",
       "indexCount": 552,
       "indexed": true,
-      "materialHash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
+      "materialHash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_CockpitPressureCheek",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-deepseaenamel",
@@ -195,7 +195,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-serviceochre.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
+      "materialHash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_BlackBoxProtectedSocket",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-serviceochre",
@@ -220,7 +220,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "8af735ff06bdf968ada0169645cad84f6742e6849a073888260801de814b7f33",
+      "materialHash": "e3359c369457775b92d576da079966560092c4265d267b4351f10bf5216e2011",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_CockpitNoseBonnet",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-hull-vitreousceramic",
@@ -245,7 +245,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 4824,
       "indexed": true,
-      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
+      "materialHash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
       "materialPipelineKey": "opaque",
       "meshName": "Craft_CanopyFrameBow",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.remaster-material-mechanical-brushednickel",
@@ -270,7 +270,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-0a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-0a",
@@ -295,7 +295,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-0b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-0b",
@@ -320,7 +320,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-1a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-1a",
@@ -345,7 +345,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-1b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-1b",
@@ -370,7 +370,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-2a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-2a",
@@ -395,7 +395,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-2b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-2b",
@@ -420,7 +420,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-3a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-3a",
@@ -445,7 +445,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-3b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-3b",
@@ -470,7 +470,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-4a.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-4a",
@@ -495,7 +495,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-4b.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialHash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.stub-cbl-4b",
@@ -508,49 +508,17 @@
   "lods": [],
   "materials": [
     {
-      "hash": "044abcf617d3369d3e0893d9c0073b4f525c8554f60adbd0a026ea835c68558b",
-      "id": "material:044abcf617d3369d3e0893d9",
-      "name": "Material_Glass_RecessedSignal",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Glass_RecessedSignal_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Glass_RecessedSignal_ao-Material_Glass_RecessedSignal_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Glass_RecessedSignal_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Glass_RecessedSignal_ao-Material_Glass_RecessedSignal_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
-      "id": "material:2ecdc2543581ee905a24eaa8",
-      "name": "wrk_cable",
-      "pipelineKey": "opaque:double",
+      "hash": "19465d6b1dc3c2dd5649259e303384e8e5a18cfc61fbf9a7c9a6c6c0b38fb342",
+      "id": "material:19465d6b1dc3c2dd5649259e",
+      "name": "wrk_emerg_red",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "3e69f95e781ec5e3462b93703e8c64a4503f037f3b8ed9879a0155b0c090470c",
-      "id": "material:3e69f95e781ec5e3462b9370",
+      "hash": "382cf55d4ddfa9b79cd68ce2923dde6867dee1eafb13c37e1f58966defc4b55b",
+      "id": "material:382cf55d4ddfa9b79cd68ce2",
       "name": "Material_Hull_DeepSeaEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -579,42 +547,17 @@
       ]
     },
     {
-      "hash": "8af735ff06bdf968ada0169645cad84f6742e6849a073888260801de814b7f33",
-      "id": "material:8af735ff06bdf968ada01696",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
+      "hash": "5aaf41e5bfb89546b316c4575da7073fe3296916e2e86f24fbcdab3c94ded484",
+      "id": "material:5aaf41e5bfb89546b316c457",
+      "name": "wrk_cable",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
-      "hash": "969953f08cd95a1f1e0e7ae9a37f0a732c050d1e421785a44fc3562d95face07",
-      "id": "material:969953f08cd95a1f1e0e7ae9",
+      "hash": "b78190155515bc1343a114e32b009c42e60e0b5e8afbd413e2b232c8ed1d1b19",
+      "id": "material:b78190155515bc1343a114e3",
       "name": "Material_Hull_ServiceOchre",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -643,10 +586,10 @@
       ]
     },
     {
-      "hash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
-      "id": "material:cd4ef2431d6f6aa83e87af7f",
+      "hash": "d005e2bbffd505ba75ab33bb0e3affe93b83716f49820e205894daea4354db44",
+      "id": "material:d005e2bbffd505ba75ab33bb",
       "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -675,11 +618,68 @@
       ]
     },
     {
-      "hash": "eb23b099dc30647c4171dcea64a3d0d9b763f879470841734ab735d2629b89a1",
-      "id": "material:eb23b099dc30647c4171dcea",
-      "name": "wrk_emerg_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "e3359c369457775b92d576da079966560092c4265d267b4351f10bf5216e2011",
+      "id": "material:e3359c369457775b92d576da",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "eedd54a058fb63492d8e67725e995da22ef8a6318fe4d1c9210d663fdeb49554",
+      "id": "material:eedd54a058fb63492d8e6772",
+      "name": "Material_Glass_RecessedSignal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Glass_RecessedSignal_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_RecessedSignal_ao-Material_Glass_RecessedSignal_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_RecessedSignal_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_RecessedSignal_ao-Material_Glass_RecessedSignal_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1614,19 +1614,19 @@
       "sha256": "6e8d630d1d98b859cf29f46b9a432da8bef9122df00c85a08e141b5926e6a640"
     },
     "sourceGlb": {
-      "bytes": 95760,
-      "sha256": "ec3950ab739a65c3f3f0eded4f52c5ad0664f6eff82adbf4e70293cf9138a70e",
+      "bytes": 95768,
+      "sha256": "dee3317197388b549740831d34c16239d4cfad0c2a76188c382487e0168bda22",
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 170840,
-    "sha256": "be69ee9e9c2573e15eb812e0c2c4fc171807145b6345d845383e49836bae68d4",
+    "bytes": 170708,
+    "sha256": "89c9dfa3e413d5d8ee6cbf726e6f49d4c759de4ae2442245ccb61a2bc831c113",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2265,7 +2265,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "4363ec53ff6c1604245e2c116c0b89afca1e61a0e759a21e3d886cd66f758d38",
+  "runtimeHash": "167f947429fb5924a92ccebbae52d1715a6240e716b77878f02ba19da9aaa7ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

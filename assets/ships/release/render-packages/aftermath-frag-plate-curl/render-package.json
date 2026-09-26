@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3c237594398faf5e9a58179a01b5e044e49204675e0f77fa3b0185eee4495b48",
+  "contentHash": "8b84adf03b5eeae855175583c251695384032399849408b7003b24712049e388",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "materialHash": "1f101978e8b1f4f7a56bb256a0e9fd8128d792779f67b36f3bc8909d28364a85",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialHash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-2",
@@ -90,17 +90,17 @@
   "lods": [],
   "materials": [
     {
-      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
-      "id": "material:3d43233b1e4b6f8b5f438e39",
-      "name": "wrk_torn_edge",
-      "pipelineKey": "opaque:double",
+      "hash": "1f101978e8b1f4f7a56bb256a0e9fd8128d792779f67b36f3bc8909d28364a85",
+      "id": "material:1f101978e8b1f4f7a56bb256",
+      "name": "wrk_paint_freight_ochre",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
-      "id": "material:543629edf101c89ef59f8a0b",
-      "name": "wrk_paint_freight_ochre",
-      "pipelineKey": "opaque:double",
+      "hash": "22fb5bdfdbdcd9d19625effae92ca6ffd61be701ab6812a3da70e5dd27bf021e",
+      "id": "material:22fb5bdfdbdcd9d19625effa",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -307,18 +307,18 @@
     },
     "sourceGlb": {
       "bytes": 8108,
-      "sha256": "f98d7213210d90e276f38ae0dd0bc6f7af22da637bb81c65a055a3917756b228",
+      "sha256": "66776e11b844e8ad428dca3e44f0b0845fd2751eea97a3be4285e6223dca7554",
       "uri": "place_aftermath_frag_plate_curl.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 11212,
-    "sha256": "3c4ef19f6c4e64f9e9246c5cfc935d20026e4fe07221e9840cc4ca6ba785742c",
+    "bytes": 11172,
+    "sha256": "9d28be420f4ba95172054b79c5153d8765e5026171c0c6d6ae9251c619406bf8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -455,7 +455,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
   },
-  "runtimeHash": "b7372f9eee48cdf5d06c0675ffbeb3aa8e1f18349005b0ab2dd01bbb01b5b1d5",
+  "runtimeHash": "f22cc0ab7082e00deb650aedcd8f68d4cba8a9d201440211a925873ebd65e459",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

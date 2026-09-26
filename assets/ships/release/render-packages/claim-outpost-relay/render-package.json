@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8e06dac697ceab83d894cce01e4b44c3b1b6e662ad04b39a07c1a2a6971ff310",
+  "contentHash": "41951864640194078428be5b053e8515f7cd1f0657ea42541fdd1a75f8d643ef",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -356,7 +356,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "58b245b442b499dd688e72cc6f7cd4d7cbaf14b592a0b953b0849e26e7b45489",
+      "materialHash": "6ea0fafa444b412192ad10ce120c8bc6a51816c6820abf3bd3dcc76c997064f9",
       "materialPipelineKey": "non-render",
       "meshName": "Cube.121",
       "nodeId": "sf.render.claim-outpost-relay.mesh.collision-hull",
@@ -381,7 +381,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod0-station-material-accent.primitive.0",
       "indexCount": 3948,
       "indexed": true,
-      "materialHash": "05846498189d5239c6e87d6df3a7c6499d10082e92f534160e2dd36929303284",
+      "materialHash": "4ef216054a17fc243af4396e5a7e2fd7b0b1c2b95a3079d9f7fe654046615aca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.155",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-station-material-accent",
@@ -406,7 +406,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod0-station-material-glass.primitive.0",
       "indexCount": 4512,
       "indexed": true,
-      "materialHash": "cac1b0139657735bcbe55ee26204d05d8c3178932662d1c80bdcde7b1d4a9873",
+      "materialHash": "0240699e35f82afb7ca48ad186c37e5c6514d5237088d1d91d309f57709d115a",
       "materialPipelineKey": "blend",
       "meshName": "Cube.025",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-station-material-glass",
@@ -431,7 +431,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod0-station-material-hull.primitive.0",
       "indexCount": 66060,
       "indexed": true,
-      "materialHash": "5d1a37d8dee493e3a20f9f0998a96f667f89a1c8b5c642c2634451c050bc826c",
+      "materialHash": "a047c3185b4857ff6ab2fa92d70852e73451d60dca43cc64178e011eea1ee4a8",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.003",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-station-material-hull",
@@ -456,7 +456,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod0-station-material-mechanical.primitive.0",
       "indexCount": 61584,
       "indexed": true,
-      "materialHash": "58b245b442b499dd688e72cc6f7cd4d7cbaf14b592a0b953b0849e26e7b45489",
+      "materialHash": "6ea0fafa444b412192ad10ce120c8bc6a51816c6820abf3bd3dcc76c997064f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-station-material-mechanical",
@@ -481,7 +481,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod0-station-material-warm.primitive.0",
       "indexCount": 52872,
       "indexed": true,
-      "materialHash": "549a861c745ed17af077ab817274a189cb2f9126d4ca48c5ffef22e0173409aa",
+      "materialHash": "0153f3b95d018b460a21724581d9ceb9f88760398318184d1bdc21f22effd647",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod0-station-material-warm",
@@ -506,7 +506,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod1-station-material-accent.primitive.0",
       "indexCount": 2268,
       "indexed": true,
-      "materialHash": "05846498189d5239c6e87d6df3a7c6499d10082e92f534160e2dd36929303284",
+      "materialHash": "4ef216054a17fc243af4396e5a7e2fd7b0b1c2b95a3079d9f7fe654046615aca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.323",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-station-material-accent",
@@ -531,7 +531,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod1-station-material-glass.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "cac1b0139657735bcbe55ee26204d05d8c3178932662d1c80bdcde7b1d4a9873",
+      "materialHash": "0240699e35f82afb7ca48ad186c37e5c6514d5237088d1d91d309f57709d115a",
       "materialPipelineKey": "blend",
       "meshName": "Cube.216",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-station-material-glass",
@@ -556,7 +556,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod1-station-material-hull.primitive.0",
       "indexCount": 24660,
       "indexed": true,
-      "materialHash": "5d1a37d8dee493e3a20f9f0998a96f667f89a1c8b5c642c2634451c050bc826c",
+      "materialHash": "a047c3185b4857ff6ab2fa92d70852e73451d60dca43cc64178e011eea1ee4a8",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.004",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-station-material-hull",
@@ -581,7 +581,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod1-station-material-mechanical.primitive.0",
       "indexCount": 25536,
       "indexed": true,
-      "materialHash": "58b245b442b499dd688e72cc6f7cd4d7cbaf14b592a0b953b0849e26e7b45489",
+      "materialHash": "6ea0fafa444b412192ad10ce120c8bc6a51816c6820abf3bd3dcc76c997064f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.197",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-station-material-mechanical",
@@ -606,7 +606,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod1-station-material-warm.primitive.0",
       "indexCount": 29016,
       "indexed": true,
-      "materialHash": "549a861c745ed17af077ab817274a189cb2f9126d4ca48c5ffef22e0173409aa",
+      "materialHash": "0153f3b95d018b460a21724581d9ceb9f88760398318184d1bdc21f22effd647",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.202",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod1-station-material-warm",
@@ -631,7 +631,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod2-station-material-accent.primitive.0",
       "indexCount": 924,
       "indexed": true,
-      "materialHash": "05846498189d5239c6e87d6df3a7c6499d10082e92f534160e2dd36929303284",
+      "materialHash": "4ef216054a17fc243af4396e5a7e2fd7b0b1c2b95a3079d9f7fe654046615aca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.442",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-station-material-accent",
@@ -656,7 +656,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod2-station-material-glass.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "cac1b0139657735bcbe55ee26204d05d8c3178932662d1c80bdcde7b1d4a9873",
+      "materialHash": "0240699e35f82afb7ca48ad186c37e5c6514d5237088d1d91d309f57709d115a",
       "materialPipelineKey": "blend",
       "meshName": "Cube.370",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-station-material-glass",
@@ -681,7 +681,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod2-station-material-hull.primitive.0",
       "indexCount": 8172,
       "indexed": true,
-      "materialHash": "5d1a37d8dee493e3a20f9f0998a96f667f89a1c8b5c642c2634451c050bc826c",
+      "materialHash": "a047c3185b4857ff6ab2fa92d70852e73451d60dca43cc64178e011eea1ee4a8",
       "materialPipelineKey": "opaque",
       "meshName": "Icosphere.005",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-station-material-hull",
@@ -706,7 +706,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod2-station-material-mechanical.primitive.0",
       "indexCount": 9492,
       "indexed": true,
-      "materialHash": "58b245b442b499dd688e72cc6f7cd4d7cbaf14b592a0b953b0849e26e7b45489",
+      "materialHash": "6ea0fafa444b412192ad10ce120c8bc6a51816c6820abf3bd3dcc76c997064f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.357",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-station-material-mechanical",
@@ -731,7 +731,7 @@
       "id": "sf.render.claim-outpost-relay.mesh.lod2-station-material-warm.primitive.0",
       "indexCount": 6168,
       "indexed": true,
-      "materialHash": "549a861c745ed17af077ab817274a189cb2f9126d4ca48c5ffef22e0173409aa",
+      "materialHash": "0153f3b95d018b460a21724581d9ceb9f88760398318184d1bdc21f22effd647",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.365",
       "nodeId": "sf.render.claim-outpost-relay.mesh.lod2-station-material-warm",
@@ -744,42 +744,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "05846498189d5239c6e87d6df3a7c6499d10082e92f534160e2dd36929303284",
-      "id": "material:05846498189d5239c6e87d6d",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "RelayV2_Accent_BaseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Accent_ORM",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Accent_Normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Accent_ORM",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "549a861c745ed17af077ab817274a189cb2f9126d4ca48c5ffef22e0173409aa",
-      "id": "material:549a861c745ed17af077ab81",
+      "hash": "0153f3b95d018b460a21724581d9ceb9f88760398318184d1bdc21f22effd647",
+      "id": "material:0153f3b95d018b460a217245",
       "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -808,10 +776,74 @@
       ]
     },
     {
-      "hash": "58b245b442b499dd688e72cc6f7cd4d7cbaf14b592a0b953b0849e26e7b45489",
-      "id": "material:58b245b442b499dd688e72cc",
+      "hash": "0240699e35f82afb7ca48ad186c37e5c6514d5237088d1d91d309f57709d115a",
+      "id": "material:0240699e35f82afb7ca48ad1",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "RelayV2_Glass_BaseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Glass_ORM",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Glass_Normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Glass_ORM",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4ef216054a17fc243af4396e5a7e2fd7b0b1c2b95a3079d9f7fe654046615aca",
+      "id": "material:4ef216054a17fc243af4396e",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "RelayV2_Accent_BaseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Accent_ORM",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Accent_Normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "RelayV2_Accent_ORM",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6ea0fafa444b412192ad10ce120c8bc6a51816c6820abf3bd3dcc76c997064f9",
+      "id": "material:6ea0fafa444b412192ad10ce",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -840,10 +872,10 @@
       ]
     },
     {
-      "hash": "5d1a37d8dee493e3a20f9f0998a96f667f89a1c8b5c642c2634451c050bc826c",
-      "id": "material:5d1a37d8dee493e3a20f9f09",
+      "hash": "a047c3185b4857ff6ab2fa92d70852e73451d60dca43cc64178e011eea1ee4a8",
+      "id": "material:a047c3185b4857ff6ab2fa92",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -866,38 +898,6 @@
         {
           "colorSpace": "linear",
           "name": "RelayV2_Hull_ORM",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "cac1b0139657735bcbe55ee26204d05d8c3178932662d1c80bdcde7b1d4a9873",
-      "id": "material:cac1b0139657735bcbe55ee2",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "RelayV2_Glass_BaseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Glass_ORM",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Glass_Normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "RelayV2_Glass_ORM",
           "slot": "occlusion",
           "uri": null
         }
@@ -1743,19 +1743,19 @@
       "sha256": "241d3289c7c8c395158ab05df38e337888a901b388261c8575f7ce34aacb81c7"
     },
     "sourceGlb": {
-      "bytes": 3338672,
-      "sha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8",
+      "bytes": 3338680,
+      "sha256": "657d2c829567f2ca5350b4fb23e725be7755b9a1a2b99a97d91dd50b0fd560e2",
       "uri": "place_claim_outpost_relay.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 6140728,
-    "sha256": "8234d3e0c8c7dd802e8ac60714e53165d1976079c9f74a57e1d0269901bd3006",
+    "bytes": 6140632,
+    "sha256": "4c143c75ea97b4293b64e879f2ac70e41fcdc26444ef844a09441ef74476efe8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2547,7 +2547,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
   },
-  "runtimeHash": "462c94912c0f31f38c705649d6f47500a651e648cffcda0e647742cd549242f2",
+  "runtimeHash": "f87c99874866ca3d28571ff316ea4a85407a8378c6cd329dbbc02e5761009a3b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

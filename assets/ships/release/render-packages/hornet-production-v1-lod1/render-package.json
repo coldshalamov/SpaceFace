@@ -519,24 +519,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4b32be7ffdd53d281444c3338b22e152143a109f14382c45d8619ecc854c4be1",
+  "contentHash": "125f0c28d7f323387949a17f1abf100a73d874e0cca0554fc01bef2f9c09e048",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           5.699999809265137,
-          1.100000023841858,
-          4.550000190734863
+          1.1001548767089844,
+          4.550291061401367
         ],
         "min": [
           -5.099999904632568,
-          -1.0499999523162842,
-          -4.550000190734863
+          -1.0501548051834106,
+          -4.550291061401367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cde309c626ff3be31700f99b8fdb5c814cf448ddc5509724f9b778b997ec9cd7",
+      "geometryHash": "c94d29232749ca889bc70456d72c472d2458d70a64b2f34e19fe29bebc6be371",
       "id": "sf.render.hornet-production-v1-lod1.mesh.collision-hull.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -550,18 +550,18 @@
     {
       "bounds": {
         "max": [
-          2.109999895095825,
-          0.9700000286102295,
+          2.109853506088257,
+          0.9701164364814758,
           2.5799999237060547
         ],
         "min": [
-          -0.7900000214576721,
-          0.2974315881729126,
+          -0.7898536920547485,
+          0.29731515049934387,
           -3.450000047683716
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dcced8238de5014a348e33d5f9700ca4873fa02e930ebe7f05e944fd3d53948",
+      "geometryHash": "b14b91a7194b94e3b98ebb1bd1f7a7fdaad40119b0450d5db8e7f75841f19cc8",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-accent-port.primitive.0",
       "indexCount": 330,
       "indexed": true,
@@ -576,17 +576,17 @@
       "bounds": {
         "max": [
           5.475000381469727,
-          1.5899999141693115,
-          1.7200000286102295
+          1.589849591255188,
+          1.719863772392273
         ],
         "min": [
           -4.994999885559082,
-          -0.133200004696846,
-          -1.7200000286102295
+          -0.13304969668388367,
+          -1.719863772392273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba460cbe2f3ba495dbec34f54ec2c5f85d7d31b690d17cf8a713fe632c9c5df5",
+      "geometryHash": "f321a7dedfaf73b91f11dfe3d180bfbb10119a0b3207954547ba9a249c739f0c",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-antennamast.primitive.0",
       "indexCount": 2502,
       "indexed": true,
@@ -600,18 +600,18 @@
     {
       "bounds": {
         "max": [
-          4.128702640533447,
-          1.6799999475479126,
+          4.128715991973877,
+          1.6800552606582642,
           3.4090001583099365
         ],
         "min": [
-          -1.5591330528259277,
-          0.1105857864022255,
+          -1.559146523475647,
+          0.11053048074245453,
           -3.4081547260284424
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fbc6aa504d83a7d323a17ff83501cb02752b7c2654c6424cb66b982c10c55d4",
+      "geometryHash": "765fdb9fc8d6b82cd952add7f9c100bae3f649eaa2865ec33bf55519bfb0c082",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-antennatip.primitive.0",
       "indexCount": 1506,
       "indexed": true,
@@ -625,18 +625,18 @@
     {
       "bounds": {
         "max": [
-          1.9299999475479126,
-          0.9399999976158142,
+          1.9301517009735107,
+          0.9398516416549683,
           3.450000047683716
         ],
         "min": [
-          -1.6099998950958252,
-          0.5299999713897705,
+          -1.6101516485214233,
+          0.5301483273506165,
           -1.160146713256836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dda4972a1ef76ce012d701c8cf3568a599f1ca50304bb6b13fb7f9bd91aacf6",
+      "geometryHash": "1a70238ba3d3d01b28f976fbf51318194377c4c609205ad1759b4c2b24f74b89",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-beacon-aft.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -650,18 +650,18 @@
     {
       "bounds": {
         "max": [
-          -3.9448561668395996,
+          -3.944880723953247,
           0.45979878306388855,
-          0.36000001430511475
+          0.3599710464477539
         ],
         "min": [
-          -4.737796306610107,
+          -4.737771987915039,
           -0.6655871868133545,
-          -0.36000001430511475
+          -0.3599710464477539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e758d01efbdb346220fe25744d8fccf287696fe6c231464af513673c327380e8",
+      "geometryHash": "7e0616652f8bb9d0f26563563ec048ede7f774907d211669bdb87ca1c4217654",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-bell.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -676,17 +676,17 @@
       "bounds": {
         "max": [
           4.617276191711426,
-          0.31938719749450684,
-          1.0800000429153442
+          0.3193710744380951,
+          1.0800060033798218
         ],
         "min": [
           3.540236473083496,
-          -0.02699248306453228,
-          0.3199999928474426
+          -0.02697637304663658,
+          0.3199940323829651
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f5a0ec88e36f51d75fe3117dc2c70accba6897c1eb53913f807f48dc1d9766c",
+      "geometryHash": "dd12b5115a99ca263312f857c7ba3d3eabb88d5e50a3d0b8d1621e4a27675653",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-canard-port.primitive.0",
       "indexCount": 426,
       "indexed": true,
@@ -701,17 +701,17 @@
       "bounds": {
         "max": [
           4.617276191711426,
-          0.31938719749450684,
-          -0.3199999928474426
+          0.3193710744380951,
+          -0.3199940323829651
         ],
         "min": [
           3.540236473083496,
-          -0.02699248306453228,
-          -1.0800000429153442
+          -0.02697637304663658,
+          -1.0800060033798218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f50fd0a277283a013f535ae0231cc915c4a84b8482bb633cae0d8a50b1353f2b",
+      "geometryHash": "4eeb8f52dffd8f5b32d7d8f06f42541c47649b7f0504d88ae61bb80af3f17941",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-canard-stbd.primitive.0",
       "indexCount": 426,
       "indexed": true,
@@ -726,17 +726,17 @@
       "bounds": {
         "max": [
           5.039999961853027,
-          0.7949999570846558,
-          1.0500000715255737
+          0.7949984669685364,
+          1.0501573085784912
         ],
         "min": [
           -1.975000023841858,
-          0.17499999701976776,
-          -1
+          0.17500150203704834,
+          -1.0001572370529175
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd376ff6f5c16eec0397e4a60b4018f0796b6fa616133712ee90fbfd52e853d5",
+      "geometryHash": "c22f9f691d153777f810f4395cacce9fdcbd675f01ac378e16ec3a1ffc70085a",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-dirtcanard.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -750,18 +750,18 @@
     {
       "bounds": {
         "max": [
-          -0.9900000095367432,
-          0.5647071003913879,
+          -0.9898655414581299,
+          0.56484454870224,
           2.9749999046325684
         ],
         "min": [
-          -5.399707317352295,
-          -0.2339925467967987,
+          -5.399841785430908,
+          -0.23412999510765076,
           -2.9749999046325684
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8b49dbd71ed614048fc7e84ce259349399676712c8aa7810698d57355b2255b",
+      "geometryHash": "84369ed52e4396ccdcac0b1898f0ee61e9a1453218113c5cfd5985e998b832df",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-dirtte-port.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -776,17 +776,17 @@
       "bounds": {
         "max": [
           -0.6219395995140076,
-          0.2598165273666382,
-          2.140000104904175
+          0.2598170340061188,
+          2.1400184631347656
         ],
         "min": [
           -1.3792493343353271,
-          0.0394912026822567,
-          1.7200000286102295
+          0.03949068486690521,
+          1.7199816703796387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c19c7309b4974319c645ee045f1b160f778f977e0d2cc5cf42319e7c7cd9a46",
+      "geometryHash": "118b4ef4a4bc54cfff0a21099a49188ea57173266173d3fd07ee169181ce5317",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-flap-port.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -801,17 +801,17 @@
       "bounds": {
         "max": [
           -0.6219395995140076,
-          0.2598165273666382,
-          -1.7200000286102295
+          0.2598170340061188,
+          -1.7199816703796387
         ],
         "min": [
           -1.3792493343353271,
-          0.0394912026822567,
-          -2.140000104904175
+          0.03949068486690521,
+          -2.1400184631347656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbae67a1f1dcb59b678816c78c1d8ee599e86b3b54584b18ddae7d6b0ee2dc96",
+      "geometryHash": "5533a4c2dba5dcb1118361ea7605a16afe34e42b30a3b1b289472b09d5058a30",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-flap-stbd.primitive.0",
       "indexCount": 414,
       "indexed": true,
@@ -826,17 +826,17 @@
       "bounds": {
         "max": [
           3.958383083343506,
-          1.1423250436782837,
-          0.3100000023841858
+          1.142301321029663,
+          0.3100050687789917
         ],
         "min": [
           2.481616973876953,
-          0.6976749897003174,
-          -0.3100000023841858
+          0.6976986527442932,
+          -0.3100050687789917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "474b817790775d7cd32cff8704ef768286f07b1d3854d72364f867cbb0534806",
+      "geometryHash": "c2ca7958284357212b977f38b8ab46f46d9ff9668e6fdcd4d31ab50149a79e0f",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-glass.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -850,18 +850,18 @@
     {
       "bounds": {
         "max": [
-          -4.0231194496154785,
+          -4.023105144500732,
           0.2612037658691406,
-          0.17299999296665192
+          0.1730017364025116
         ],
         "min": [
-          -4.497684955596924,
+          -4.49769926071167,
           -0.33519265055656433,
-          -0.1730000078678131
+          -0.1730017513036728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee307e4a2b31cb99262a465cf0e6e9db5cb78cc8374e22d5f737b251f29015fb",
+      "geometryHash": "cc36040832d6df20f6f6effba8a56639e7bcff67bf2318acc8679729967ae48f",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-hub.primitive.0",
       "indexCount": 570,
       "indexed": true,
@@ -876,17 +876,17 @@
       "bounds": {
         "max": [
           5.416529655456543,
-          1.2940492630004883,
-          1.0742785930633545
+          1.2942681312561035,
+          1.0739496946334839
         ],
         "min": [
           -5.176519393920898,
-          -0.49650678038597107,
-          -1.0742785930633545
+          -0.4967256188392639,
+          -1.0739495754241943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "247b9b31ec1c374a9e622a7104f56613ef13c94ba1a7e2305b531b89abb9c300",
+      "geometryHash": "561ea661140e02320d05173264290eae69214bf5f8b4d5b20d9c79cca4295419",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-hull.primitive.0",
       "indexCount": 1536,
       "indexed": true,
@@ -900,18 +900,18 @@
     {
       "bounds": {
         "max": [
-          2.3482956886291504,
-          0.4051060676574707,
-          1.3473314046859741
+          2.348240613937378,
+          0.4052369296550751,
+          1.3476097583770752
         ],
         "min": [
-          -1.2000000476837158,
-          0.03222066909074783,
-          -1.3473312854766846
+          -1.1996403932571411,
+          0.032167088240385056,
+          -1.3476096391677856
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cf89c16ab18a5389d53a66a3c05e90754a86a6c1b83b5491259e86ae739b2b9",
+      "geometryHash": "0ca9ea4bf77a09f3d87ffc5cd92f82f0c885bf43a52671ebd355f1a94c7ecede",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-hull.primitive.1",
       "indexCount": 282,
       "indexed": true,
@@ -926,17 +926,17 @@
       "bounds": {
         "max": [
           1.0697071552276611,
-          0.7545772790908813,
-          -0.3499999940395355
+          0.7545931339263916,
+          -0.3499813377857208
         ],
         "min": [
           0.37042272090911865,
-          0.6852930188179016,
-          -0.6095773577690125
+          0.6852771639823914,
+          -0.6095960140228271
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef0c7d2722b3d992503ed0ee1182fb087f4801416374d5d5e178813f19b21133",
+      "geometryHash": "a14fa7e519dee37282e205ab418e393ac49a80b5092784b88010049fa85b90d7",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-markingplate.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -951,17 +951,17 @@
       "bounds": {
         "max": [
           0.675000011920929,
-          0.19999998807907104,
-          1.649999976158142
+          0.19994115829467773,
+          1.6501102447509766
         ],
         "min": [
           -2.7695775032043457,
-          -0.029707105830311775,
-          -1.6497070789337158
+          -0.029648279771208763,
+          -1.6498173475265503
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df292517105fbc3f2ab678fd1c95830477fb17b58760415ae12f3ff213ce9247",
+      "geometryHash": "827833c42a7a78cbc252cc7c3444157647c690ca53e2f92fddbbabfcb02314e2",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-radiatorfin-dorsal-0.primitive.0",
       "indexCount": 1122,
       "indexed": true,
@@ -976,17 +976,17 @@
       "bounds": {
         "max": [
           1.9118577241897583,
-          1.294209599494934,
-          3.359999895095825
+          1.294297456741333,
+          3.3600828647613525
         ],
         "min": [
           -2.136026382446289,
-          -0.4955190122127533,
-          0.8827869892120361
+          -0.49560683965682983,
+          0.8827041387557983
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d01f712bcbc691c4089f1d31f658c142408b8afe27e9ceb83c99e2ca46682db",
+      "geometryHash": "6a9e2cb370ffb418460d5a92df5fd0a565125e581d189798dd4e2f60a28e3b7c",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-wing-port.primitive.0",
       "indexCount": 798,
       "indexed": true,
@@ -1001,17 +1001,17 @@
       "bounds": {
         "max": [
           1.9118577241897583,
-          1.294209599494934,
-          -0.8827869892120361
+          1.294297456741333,
+          -0.8827041387557983
         ],
         "min": [
           -2.136026382446289,
-          -0.4955190122127533,
-          -3.359999895095825
+          -0.49560683965682983,
+          -3.3600828647613525
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0318a5bb555ab62cca79d5056f839c99f2c8325c27d1c9b5d47a276f3ca4bb10",
+      "geometryHash": "c0a5dfbe4731dd226e73fda71fc92473f69cd17ddb6f0eb5dcb25fb32be8479b",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-wing-stbd.primitive.0",
       "indexCount": 882,
       "indexed": true,
@@ -2091,42 +2091,42 @@
       "sha256": "93dc16d65d609ea51f2d4be1c1f1fe7e0451f311a19ca224761d3ff4fe73da4b"
     },
     "sourceGlb": {
-      "bytes": 244164,
-      "sha256": "7ab13abe13326bca248c3b6436aba1a185aa9545b65da6079839f8edd6431da9",
+      "bytes": 79076,
+      "sha256": "f0f037f89cfb9f021cb1fbe9e81342c40021ce516b973875d5f64405d34bf9ce",
       "uri": "hornet_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 168564,
-    "sha256": "380ee2bc754e966348bc71b120e9277f239914816766388db6ad3aac15d998e5",
+    "bytes": 130432,
+    "sha256": "8effaf7b76631649ddf3b5099f8e3542bfe14815a71cc8164fe004c73eff986f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.1501462459564209,
-        0.3149999976158142,
+        0.15007901191711426,
+        0.31495022773742676,
         0
       ],
       "max": [
         5.699999809265137,
-        1.6799999475479126,
-        4.550000190734863
+        1.6800552606582642,
+        4.550291061401367
       ],
       "min": [
-        -5.399707317352295,
-        -1.0499999523162842,
-        -4.550000190734863
+        -5.399841785430908,
+        -1.0501548051834106,
+        -4.550291061401367
       ],
       "size": [
-        11.099707126617432,
-        2.7299998998641968,
-        9.100000381469727
+        11.099841594696045,
+        2.730210065841675,
+        9.100582122802734
       ]
     },
     "hidden": [
@@ -3159,20 +3159,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb"
   },
-  "runtimeHash": "a9ba9b3dd0174a654762d853dc62277086cd256a84c5161dfad4f63a5e9baec1",
+  "runtimeHash": "06725346c9b4e7f59f6e51bc0c7bbeb5b12baa17e9ce5effb676478e36300cad",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           5.699999809265137,
-          1.6799999475479126,
-          4.550000190734863
+          1.6800552606582642,
+          4.550291061401367
         ],
         "min": [
-          -5.399707317352295,
-          -1.0499999523162842,
-          -4.550000190734863
+          -5.399841785430908,
+          -1.0501548051834106,
+          -4.550291061401367
         ]
       },
       "id": "sf.render.hornet-production-v1-lod1.body",

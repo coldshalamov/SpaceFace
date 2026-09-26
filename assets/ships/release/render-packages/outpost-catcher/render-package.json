@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e6f1c6e7394461283c47d40b5efb8e8ae8a38b6372a096dd4b7334ff9cc03ecd",
+  "contentHash": "606727170b3fcee3966fb05e77cf18b85729be4f990335322ab1afaf51a4fc9c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -356,7 +356,7 @@
       "id": "sf.render.outpost-catcher.mesh.collision-hull.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "c56ed1ea5b836426b8e9cc9f99675e29198d223fad5af259486980fce7f2dc31",
+      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
       "materialPipelineKey": "non-render",
       "meshName": "Cube.065",
       "nodeId": "sf.render.outpost-catcher.mesh.collision-hull",
@@ -381,7 +381,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod0-station-material-accent.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "f75b8a75d334afe908bac66da1ec3c8c8da28b1c1d46f6419d1289990d413f29",
+      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.063",
       "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-accent",
@@ -406,7 +406,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod0-station-material-glass.primitive.0",
       "indexCount": 2820,
       "indexed": true,
-      "materialHash": "559e8e5a2a1eb5346c3c11a2bcad5b392581a663902759b9246f3ccc153b88b0",
+      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
       "materialPipelineKey": "blend",
       "meshName": "Cube.078",
       "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-glass",
@@ -431,7 +431,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod0-station-material-hull.primitive.0",
       "indexCount": 14664,
       "indexed": true,
-      "materialHash": "6651d1c91ca8f8b8fd42ac954415b93b6242a54a9d8a8e0740874142e730ac07",
+      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
       "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-hull",
@@ -456,7 +456,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical.primitive.0",
       "indexCount": 29352,
       "indexed": true,
-      "materialHash": "c56ed1ea5b836426b8e9cc9f99675e29198d223fad5af259486980fce7f2dc31",
+      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-mechanical",
@@ -481,7 +481,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod0-station-material-warm.primitive.0",
       "indexCount": 23880,
       "indexed": true,
-      "materialHash": "534b87a2e59070aade7c278984bcb120beeb9a99d8f221d7f2e288412483d41b",
+      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.outpost-catcher.mesh.lod0-station-material-warm",
@@ -506,7 +506,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod1-station-material-accent.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "f75b8a75d334afe908bac66da1ec3c8c8da28b1c1d46f6419d1289990d413f29",
+      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.156",
       "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-accent",
@@ -531,7 +531,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod1-station-material-glass.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "559e8e5a2a1eb5346c3c11a2bcad5b392581a663902759b9246f3ccc153b88b0",
+      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
       "materialPipelineKey": "blend",
       "meshName": "Cube.170",
       "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-glass",
@@ -556,7 +556,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod1-station-material-hull.primitive.0",
       "indexCount": 8100,
       "indexed": true,
-      "materialHash": "6651d1c91ca8f8b8fd42ac954415b93b6242a54a9d8a8e0740874142e730ac07",
+      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.115",
       "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-hull",
@@ -581,7 +581,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical.primitive.0",
       "indexCount": 15732,
       "indexed": true,
-      "materialHash": "c56ed1ea5b836426b8e9cc9f99675e29198d223fad5af259486980fce7f2dc31",
+      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.103",
       "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-mechanical",
@@ -606,7 +606,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod1-station-material-warm.primitive.0",
       "indexCount": 10200,
       "indexed": true,
-      "materialHash": "534b87a2e59070aade7c278984bcb120beeb9a99d8f221d7f2e288412483d41b",
+      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.108",
       "nodeId": "sf.render.outpost-catcher.mesh.lod1-station-material-warm",
@@ -631,7 +631,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod2-station-material-accent.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "f75b8a75d334afe908bac66da1ec3c8c8da28b1c1d46f6419d1289990d413f29",
+      "materialHash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.229",
       "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-accent",
@@ -656,7 +656,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod2-station-material-glass.primitive.0",
       "indexCount": 264,
       "indexed": true,
-      "materialHash": "559e8e5a2a1eb5346c3c11a2bcad5b392581a663902759b9246f3ccc153b88b0",
+      "materialHash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
       "materialPipelineKey": "blend",
       "meshName": "Cube.243",
       "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-glass",
@@ -681,7 +681,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod2-station-material-hull.primitive.0",
       "indexCount": 3168,
       "indexed": true,
-      "materialHash": "6651d1c91ca8f8b8fd42ac954415b93b6242a54a9d8a8e0740874142e730ac07",
+      "materialHash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.196",
       "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-hull",
@@ -706,7 +706,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical.primitive.0",
       "indexCount": 5580,
       "indexed": true,
-      "materialHash": "c56ed1ea5b836426b8e9cc9f99675e29198d223fad5af259486980fce7f2dc31",
+      "materialHash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.188",
       "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-mechanical",
@@ -731,7 +731,7 @@
       "id": "sf.render.outpost-catcher.mesh.lod2-station-material-warm.primitive.0",
       "indexCount": 2520,
       "indexed": true,
-      "materialHash": "534b87a2e59070aade7c278984bcb120beeb9a99d8f221d7f2e288412483d41b",
+      "materialHash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.221",
       "nodeId": "sf.render.outpost-catcher.mesh.lod2-station-material-warm",
@@ -744,42 +744,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "534b87a2e59070aade7c278984bcb120beeb9a99d8f221d7f2e288412483d41b",
-      "id": "material:534b87a2e59070aade7c2789",
-      "name": "Material_Warm",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "PQ019_Base_Warm_BaseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_ORM",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_Normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "PQ019_Base_Warm_ORM",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "559e8e5a2a1eb5346c3c11a2bcad5b392581a663902759b9246f3ccc153b88b0",
-      "id": "material:559e8e5a2a1eb5346c3c11a2",
+      "hash": "1bc9d9d86efba9710ed125c5cfabbdbb50278e631b243c14807c8b34c6748b5b",
+      "id": "material:1bc9d9d86efba9710ed125c5",
       "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -808,42 +776,42 @@
       ]
     },
     {
-      "hash": "6651d1c91ca8f8b8fd42ac954415b93b6242a54a9d8a8e0740874142e730ac07",
-      "id": "material:6651d1c91ca8f8b8fd42ac95",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "hash": "6767f6fd0d2e3f83db027d2824b3cfe7b8f2875039d857184df42985cf5e2106",
+      "id": "material:6767f6fd0d2e3f83db027d28",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "PQ019_Base_Hull_BaseColor",
+          "name": "PQ019_Base_Warm_BaseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_ORM",
+          "name": "PQ019_Base_Warm_ORM",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_Normal",
+          "name": "PQ019_Base_Warm_Normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "PQ019_Base_Hull_ORM",
+          "name": "PQ019_Base_Warm_ORM",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "c56ed1ea5b836426b8e9cc9f99675e29198d223fad5af259486980fce7f2dc31",
-      "id": "material:c56ed1ea5b836426b8e9cc9f",
+      "hash": "ac73081deca614576c1d96974348e9f7ce8ed020a2c4186a1796b9a172c878c0",
+      "id": "material:ac73081deca614576c1d9697",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -872,10 +840,10 @@
       ]
     },
     {
-      "hash": "f75b8a75d334afe908bac66da1ec3c8c8da28b1c1d46f6419d1289990d413f29",
-      "id": "material:f75b8a75d334afe908bac66d",
+      "hash": "b8ca75c0548f3790b31529d93a451e88f0fb76464652e0a751eee972e39c549e",
+      "id": "material:b8ca75c0548f3790b31529d9",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -898,6 +866,38 @@
         {
           "colorSpace": "linear",
           "name": "PQ019_Base_Accent_ORM",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cdedddb8442772574016435d30008702c97f113bea7afe2721ffd0a1548e2fc0",
+      "id": "material:cdedddb8442772574016435d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "PQ019_Base_Hull_BaseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "PQ019_Base_Hull_ORM",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "PQ019_Base_Hull_Normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "PQ019_Base_Hull_ORM",
           "slot": "occlusion",
           "uri": null
         }
@@ -1743,19 +1743,19 @@
       "sha256": "30261ea65a2c83b16590054c54acf85d0d55b2f7bbb5378ac8db61b1eeab9f46"
     },
     "sourceGlb": {
-      "bytes": 1575280,
-      "sha256": "e2943d275bdc9ed02b3340295b72c705e8176082342c22d36828840055f932eb",
+      "bytes": 1575284,
+      "sha256": "48e4f76d137f32ad0e707a4ca71176e352cac14e96afd7561408e59220501dea",
       "uri": "place_claim_outpost_catcher.glb"
     },
     "sourceManifest": {
-      "bytes": 190266,
-      "sha256": "262f0568c1e3beba0607fda7ea34a9c9e0112a1a9250a60d3aaf609d9f3e0cbf",
+      "bytes": 189651,
+      "sha256": "4c99dceeb6b24bdd8dc19c17129eb8462a607318f2ada0a1844610874ad89d9d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2777048,
-    "sha256": "6caea44b38066866f9dea1db3b627254d702b37f7bd5dce8307c8f32befaae96",
+    "bytes": 2776952,
+    "sha256": "99befaad56201585009aa57567dcbe356b8dfd31fcbdd6d849f35835fcc3da3c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2547,7 +2547,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb"
   },
-  "runtimeHash": "8079cf5b4fcf06ddbdf0920f1a46f5682c57d050eaed2fae4cee898e378d82ba",
+  "runtimeHash": "30a66e4536a0acaaac78733576823b4e28abf6f401038a480ef86c965e72c13d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
