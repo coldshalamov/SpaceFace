@@ -202,6 +202,10 @@ app.commandLine.appendSwitch('force_high_performance_gpu');
 // discovery/sync work out of the process.
 app.commandLine.appendSwitch('disable-features',
   'MediaRouter,DialMediaRouteProvider,OptimizationHints,Translate,AutofillServerCommunication');
+// The game is served entirely same-origin from the in-process loopback server, so Chromium's
+// background networking stack (component updater, variations/seed fetches, safe-browsing and
+// dictionary downloads) can never produce bytes the app consumes — only wakeups and disk IO.
+app.commandLine.appendSwitch('disable-background-networking');
 
 async function startServer() {
   let root;
@@ -625,6 +629,9 @@ async function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      // Every text input in the UI already carries spellcheck="false"; turning the webPreference
+      // off skips the hunspell/dictionary service entirely instead of per-element opt-outs.
+      spellcheck: false,
       preload: path.join(__dirname, 'preload.cjs'),
       backgroundThrottling,
       // Each module is fetched once per launch, so the 'code' heat check never arms on
