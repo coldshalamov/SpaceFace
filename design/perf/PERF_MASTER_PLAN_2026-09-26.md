@@ -137,12 +137,16 @@ Awaiting the UI explorer's structured output.
 Transport is already well-engineered (content-hash packages, zero-copy SHA-256 worker,
 embedded KTX2, ref-counted residency). Landed: meshopt decode on the vendored
 blob-worker pool; force-cache first read. Queued, not done this session:
-- **Stale whole-ship-LOD release artifacts ship uncompressed** — census (2026-09-26):
+- ~~Stale whole-ship-LOD release artifacts~~ DONE (commit `d2f7fa4e7`): all 23
+  manifest-managed lod GLBs rebuilt through the real pipeline (EXT_meshopt_compression
+  + KHR_mesh_quantization + ktx2 verified in outputs; e.g. atlas lod1 721 KB → 113 KB,
+  massline 4.7 MB → 2.8 MB; wasp grew 12.5 → 13.4 MB — its embedded textures barely
+  shrink under basisu). The 30 `*_production_v1` orphans (~26 MB, referenced nowhere)
+  are deleted; all 128 stale pilot bindings refreshed and all 267 render packages
+  rebuilt. `check-sg04-release-assets` green (was 23 `release.compressedAsset` errors);
+  `check-render-package-pilots` green (267/267 fresh). Original census for the record:
   53 raw GLBs under `release/parts/wholeships/` (~70 MB; wasp lod1+lod2 alone ~25 MB,
-  15 raw PNGs each). Of these, 23 are manifest-managed `wholeship_*_lod*` entries whose
-  manifest rows claim ktx2+meshopt but hold byte-identical copies of the raw source
-  (`sourceSha256 === releaseSha256`); the other 30 are orphaned `*_production_v1` family
-  exports referenced by neither manifest nor code (sources stay in `parts/wholeships/`).
+  15 raw PNGs each).
   A further 24 `render-packages/*-lod*/render.glb` were compiled from those raw sources
   (massline/wasp embed raw PNGs directly). Root cause: the build and the gate enumerate
   `parts_manifest` `part.file` + a hand-maintained `WHOLE_SHIP_FILES` list, never the
