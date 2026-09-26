@@ -8,8 +8,15 @@ const RECENT_IMPULSES = new WeakMap();
 const RECENT_IMPULSE_HISTORY = new WeakMap();
 const EMPTY_IMPULSE_HISTORY = Object.freeze([]);
 const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
+/** Bumped on every recordImpulseProvenance so quiet consumers can wake without WeakMap.size. */
+let IMPULSE_PROVENANCE_GENERATION = 0;
 
 export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
+
+/** Monotonic generation for quiet-latch wake (tumbleStates RCS discovery). */
+export function impulseProvenanceGeneration() {
+  return IMPULSE_PROVENANCE_GENERATION;
+}
 
 // Ordinary flight bumps (player/NPC vs rock, two ships clipping) must not steal the helm.
 // Craft contact takes the helm only with a fresh combat-attributed impulse record on the victim;
@@ -252,6 +259,7 @@ export function recordImpulseProvenance(entity, input = {}) {
     magnitude: nonNegative(input.magnitude),
   });
   RECENT_IMPULSES.set(entity, record);
+  IMPULSE_PROVENANCE_GENERATION = (IMPULSE_PROVENANCE_GENERATION + 1) >>> 0 || 1;
   const history = RECENT_IMPULSE_HISTORY.get(entity) || EMPTY_IMPULSE_HISTORY;
   const next = history.slice(Math.max(0, history.length - IMPULSE_PROVENANCE_HISTORY_LIMIT + 1));
   next.push(record);

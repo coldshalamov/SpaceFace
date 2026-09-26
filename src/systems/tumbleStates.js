@@ -26,12 +26,13 @@ import {
 } from '../combat/tumbleStatus.js';
 import {
   HITSTUN_IMPULSE_EVENT,
+  impulseProvenanceGeneration,
   isShoveClassHitstunSource,
   readRecentImpulseProvenance,
   resolveHitstunLaw,
   signedHitSide,
 } from '../combat/impulseKernel.js';
-import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
@@ -42,6 +43,22 @@ const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 // stamped on entity data so save/load cannot strand or skip it.
 const TUMBLE_RECOVERY_S = 0.9;
 const TUMBLE_RECOVERY_THRUST_SCALE = 0.35;
+/** Rescan while quiet-latched (0.5 s @ 60 Hz) — catches drive-disabled drift without impulse. */
+const TUMBLE_QUIET_RESCAN_TICKS = 30;
+
+/** Bench A/B: production default ON. Skip tumbleStates.update when no tumble/rcs/recovery/drift. */
+let TUMBLE_STATES_QUIET_LATCH = true;
+export function setTumbleStatesQuietLatchForBench(enabled) {
+  TUMBLE_STATES_QUIET_LATCH = enabled !== false;
+}
+export function getTumbleStatesQuietLatchForBench() {
+  return TUMBLE_STATES_QUIET_LATCH !== false;
+}
+
+function publishTumbleStatesQuiet(state, latched) {
+  const rt = state.tumbleStatesRuntime || (state.tumbleStatesRuntime = {});
+  rt.quietLatched = !!latched;
+}
 
 const DRIFT_CONTROL = Object.freeze({
   mode: 'drifting',
@@ -66,11 +83,20 @@ export const tumbleStates = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._rcsDisrupt = new WeakMap();
+    this._quietLatch = null;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onWhipImpact(p || {})));
       this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrow(p || {})));
       this._unsubs.push(this.bus.on(HITSTUN_IMPULSE_EVENT, (p) => this._onHitstunImpulse(p || {})));
+      // Boundary wakes: not in FRESH_RUN_SYSTEMS — save/run transitions reach this
+      // system only through the bus. subsystemDisabled can flip capabilities.drive
+      // with no membership change, producing drift the latch would otherwise miss
+      // until rescan.
+      this._unsubs.push(this.bus.on('save:loaded', () => this._clearQuietLatch()));
+      this._unsubs.push(this.bus.on('game:new', () => this._clearQuietLatch()));
+      this._unsubs.push(this.bus.on('game:newGame', () => this._clearQuietLatch()));
+      this._unsubs.push(this.bus.on('combat:subsystemDisabled', () => this._clearQuietLatch()));
     }
   },
 
@@ -78,10 +104,39 @@ export const tumbleStates = {
     for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
     this._unsubs = [];
     this._rcsDisrupt = new WeakMap();
+    this._quietLatch = null;
   },
 
   update(dt, state) {
-    if (state.mode !== 'flight') return;
+    if (state.mode !== 'flight') {
+      this._quietLatch = null;
+      publishTumbleStatesQuiet(state, false);
+      return;
+    }
+    const tick = state.tick | 0;
+    const membership = entityIndexVersion(state);
+    const impulseGen = impulseProvenanceGeneration();
+    // Quiet latch: no tumble / rcs / recovery / drift on the last full walk → skip shipLike
+    // walk + RCS provenance scan. Wake on membership, new impulse provenance (RCS discovery),
+    // tumble begin (event paths clear latch), or 0.5 s rescan (drive-disabled drift).
+    // Different angle from held preStep-all-sleeping / render tumble-body-language (#107).
+    if (TUMBLE_STATES_QUIET_LATCH !== false) {
+      const quiet = this._quietLatch;
+      if (quiet
+        && quiet.armed === true
+        && membership != null
+        && quiet.membership === membership
+        && quiet.impulseGen === impulseGen
+        && ((tick - (quiet.armedTick | 0)) >= 0)
+        && ((tick - (quiet.armedTick | 0)) < TUMBLE_QUIET_RESCAN_TICKS)) {
+        publishTumbleStatesQuiet(state, true);
+        return;
+      }
+    } else if (this._quietLatch) {
+      this._quietLatch = null;
+      publishTumbleStatesQuiet(state, false);
+    }
+
     const now = finite(state.simTime, state.tick / 60);
     this._tickRcsLatches(state);
 
@@ -89,6 +144,7 @@ export const tumbleStates = {
     // those types), so the compact shipLike bucket is the whole reachable set. Dead hulls remain
     // bucketed until the lifetime sweep, so the entity_dead cleanup below still runs for them.
     const actors = indexedShipLikeOrEntitiesScan(state);
+    let anyActive = false;
     for (const e of actors) {
       const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
@@ -96,6 +152,7 @@ export const tumbleStates = {
       const recovering = e ? isRecovering(state, e) : false;
       const recoveryMarker = !!(e && e.data && Number.isFinite(Number(e.data.recoveringUntil)));
       if (!tumble && !drifting && !rcs && !recovering && !recoveryMarker) continue;
+      anyActive = true;
 
       let tumbleActive = !!tumble;
       if (tumbleActive && (!e.alive || e.id === state.playerId)) {
@@ -168,6 +225,24 @@ export const tumbleStates = {
         e.data.intent.brake = false;
       }
     }
+
+    if (TUMBLE_STATES_QUIET_LATCH !== false && !anyActive && membership != null) {
+      this._quietLatch = {
+        armed: true,
+        armedTick: tick,
+        membership,
+        impulseGen,
+      };
+      publishTumbleStatesQuiet(state, true);
+    } else {
+      this._quietLatch = null;
+      publishTumbleStatesQuiet(state, false);
+    }
+  },
+
+  _clearQuietLatch() {
+    this._quietLatch = null;
+    if (this.state) publishTumbleStatesQuiet(this.state, false);
   },
 
   _onThrow(payload) {
@@ -249,6 +324,8 @@ export const tumbleStates = {
   _beginFromImpulse(victim, input) {
     const state = this.state;
     if (!victim || victim.alive === false || !victim.data) return;
+    // Event-path tumble begin must wake a quiet latch before the next update tick.
+    this._clearQuietLatch();
     if (victim.id === state.playerId) return;
     if (victim.type !== 'ship' && victim.type !== 'drone') return;
     if (input.requireMassline && !massline2Flag('tumble')) return;
@@ -358,6 +435,7 @@ export const tumbleStates = {
         const cur = this._rcsDisrupt.get(s);
         if (!cur || until > cur.until) {
           this._rcsDisrupt.set(s, { until });
+          this._clearQuietLatch();
           if (!cur && this.bus) {
             this.bus.emit('presentation:vfxCue', {
               id: 'ship.rcsDisrupt', lane: 'combat', position: { x: s.pos.x, z: s.pos.z },
