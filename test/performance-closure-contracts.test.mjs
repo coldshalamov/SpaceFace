@@ -401,6 +401,8 @@ test('perf runtime copies bounded per-frame scalars into caller-owned storage', 
     feelMs: 0.25,
     uiMs: 0.75,
     admissionMs: 1.25,
+    inputToPhotonMs: null,
+    inputStampMs: null,
   });
 });
 
