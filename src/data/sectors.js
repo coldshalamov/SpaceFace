@@ -387,7 +387,7 @@ const CORE_SECTORS = [
       // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
       // Anchors zone_sker_haven (Skerris Deep) ON the approach to the Bazaar: (300,-550) sits on
       // the charted Pallas gate (2274,-3411) -> Sker Bazaar (-540,680) chord, threading the gap
-      // between the sector's two dense_asteroid pockets (869 WU off the first, 813 off the second
+      // between the sector's two dense_asteroid pockets (873 WU off the first, 813 off the second
       // — both clear), so a pilot arriving from Pallas flies past the fortress on final approach.
       // The 2026-09-25 landmark still review parked at (-1500,1350) — 1170 WU BEYOND the Bazaar,
       // off every approach, framed against bare black. A fortress welded from captured hulls, so

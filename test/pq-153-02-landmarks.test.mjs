@@ -125,3 +125,58 @@ test('PQ-153.02 seed 15302 headless census: six landmark reachable=yes on the li
     PLANET_FLAGS.enabled = previousPlanet;
   }
 });
+
+// D53 regression leg: the census above enters each sector directly, so a landmark whose POI row
+// survives while its ENTITY is stripped passes the record check while nothing stands at the
+// place. A player arrives through gates: each sector here first materializes as a REDUCED
+// neighbour of the one before it (the _stripSectorFullExtras -> dropDressingSector path that
+// erased the Resonant Cathedral and the Skerris Throne), and the bar is an entity standing at
+// the landmark when the sector is entered FULL — not a record in a bag.
+test('PQ-153.02 gate-order travel leg: a live landmark entity stands in each sector on FULL arrival', LONG, async () => {
+  const previousPlanet = PLANET_FLAGS.enabled;
+  PLANET_FLAGS.enabled = true;
+  const host = await bootRealPath({
+    seed: SEED,
+    systems: [world, asteroidSites, fields, planetRuntime],
+  });
+  try {
+    const worldSys = host.runtime.getSystem('world');
+    assert.ok(worldSys, 'world system must be registered');
+    for (const row of LANDMARK_ROWS) {
+      worldSys.enterSector(row.sector, { placePlayer: false, noTeleport: true });
+      host.step(2, {
+        before({ state }) { state.world.currentSectorId = row.sector; },
+      });
+      if (row.kind === 'planet') {
+        assert.ok(
+          host.state.planet && host.state.planet.active === true && host.state.planet.zoneId === row.id,
+          `${row.sector}: the Anvil must be the active planet on gate arrival`,
+        );
+        continue;
+      }
+      let ent = null;
+      if (row.kind === 'worldSite') {
+        // runtimeOwner POIs delegate their body and never take a bag entry; the site entity is
+        // the landmark (the census's second test uses the same identity).
+        ent = (host.state.entityList || []).find((candidate) => candidate
+          && candidate.alive !== false && candidate.data && candidate.data.worldSiteId === row.id) || null;
+      } else {
+        const bag = host.state.world.sectorContents[row.sector];
+        const entry = ((bag && bag.pois) || []).find((candidate) => candidate && candidate.poiId === row.id);
+        assert.ok(entry, `${row.sector}: landmark row must be resident (${row.name})`);
+        ent = entry.id != null ? host.state.entities.get(entry.id) : null;
+      }
+      assert.ok(ent && ent.alive !== false, `${row.sector}: ${row.name} must be a live entity on gate arrival, `
+        + `not a stripped record (dressing row is not enough for a hero landmark)`);
+      if (row.kind === 'worldSite') {
+        assert.equal(ent.data && ent.data.worldSiteId, row.id, `${row.name} must carry its world-site identity`);
+      } else {
+        assert.equal(ent.data && ent.data.poiId, row.id, `${row.name} entity must carry its poi identity`);
+      }
+      console.log(`${row.sector} landmark entity live=yes on gate arrival (${row.name})`);
+    }
+  } finally {
+    host.dispose();
+    PLANET_FLAGS.enabled = previousPlanet;
+  }
+});

@@ -36,7 +36,9 @@ Adequate air quality at 18 degrees; graffiti survives a full maintenance cycle b
 
 ## Required renderable asset roles
 
-Not procedural-only — each ID must resolve to a manifest-valid GLB.
+Not procedural-only — each GLB-bearing ID must resolve to a manifest-valid GLB. The one exception is
+authored below: the Anvil is a planetary mass whose body is built by the `planetRuntime` adapter, not
+a place GLB.
 
 | placement_id | Role | `archetypeGlb` / `landmarkGlb` |
 |--------------|------|--------------------------------|
