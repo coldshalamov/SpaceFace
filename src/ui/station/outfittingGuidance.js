@@ -325,7 +325,7 @@ export function statSnippet(def) {
     if (m.droneBay) parts.push('drone bay');
     if (m.jumpDriveTier) parts.push('jump T' + m.jumpDriveTier);
     if (m.revealCargo) parts.push('scan cargo');
-    if (m.marketIntel) parts.push('market data');
+    if (m.marketIntel) parts.push('live market feed');
   }
   if (def.dps != null && def.slotType === 'mining') {
     parts.length = 0;

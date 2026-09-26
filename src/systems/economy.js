@@ -64,6 +64,7 @@ import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
+import { hasFittedModule } from '../core/fittedModules.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -999,9 +1000,13 @@ export const economy = {
       }
     }
 
-    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited.
+    // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited —
+    // unless a fitted Market Data Uplink streams the whole sector on the same cadence.
     if (this._lastDockedStation && markets[this._lastDockedStation]) {
       this.snapshotIntel(this._lastDockedStation);
+    }
+    if (hasFittedModule(state, 'mod_market_data_s')) {
+      this._syncUplinkIntel(state);
     }
 
     // 4) propagate event pressure to neighbour stations (along the sector graph)
@@ -1311,10 +1316,11 @@ export const economy = {
     }
     if (!stations) return;
     for (const st of stations) this.ensureMarket(st.id, st.type, st.size);
+    if (hasFittedModule(state, 'mod_market_data_s')) this._syncUplinkIntel(state);
   },
 
   /** Cache a price snapshot for the map / route-planner UI (marketIntel). */
-  snapshotIntel(stationId) {
+  snapshotIntel(stationId, options = null) {
     const state = this.state;
     const market = state.economy.markets[stationId];
     if (!market) return;
@@ -1327,8 +1333,35 @@ export const economy = {
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
     }
-    state.economy.marketIntel[stationId] = { snapshot, seenAtT: state.simTime };
-    this.recordMarketMemory(stationId, snapshot);
+    const source = options && options.source === 'uplink' ? 'uplink' : null;
+    const record = { snapshot, seenAtT: state.simTime };
+    if (source) record.source = source;
+    state.economy.marketIntel[stationId] = record;
+    this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
+  },
+
+  /**
+   * Fitted Market Data Uplink: streams one live exchange quote per station in the current sector
+   * on the docked-feed cadence. Records carry provenance 'uplink' so the intel surfaces can say
+   * "market uplink" instead of pretending the player berthed there. The docked station itself is
+   * left to the dock writer — a real visit outranks a feed row and must keep dock provenance.
+   */
+  _syncUplinkIntel(state) {
+    const sectorId = state && state.world && state.world.currentSectorId;
+    if (!sectorId) return 0;
+    const sec = (state.content && state.content.sectors && (Array.isArray(state.content.sectors)
+      ? state.content.sectors.find((s) => s.id === sectorId)
+      : state.content.sectors[sectorId]))
+      || SECTORS.find((s) => s.id === sectorId);
+    if (!sec || !Array.isArray(sec.stations)) return 0;
+    let count = 0;
+    for (const st of sec.stations) {
+      if (!st || !st.id || st.id === this._lastDockedStation) continue;
+      this.ensureMarket(st.id, st.type, st.size);
+      this.snapshotIntel(st.id, { source: 'uplink' });
+      count++;
+    }
+    return count;
   },
 
   /**
@@ -1362,7 +1395,7 @@ export const economy = {
     if (!stationId || !state || !state.player) return null;
     const market = snapshot || (state.economy && state.economy.markets && state.economy.markets[stationId]);
     if (!market) return null;
-    const source = options && options.source === 'survey' ? 'survey' : null;
+    const source = options && (options.source === 'survey' || options.source === 'uplink') ? options.source : null;
     const memory = ensurePlayerMarketMemory(state.player);
     const stationMemory = memory[stationId] || (memory[stationId] = {});
     for (const cid in market) {

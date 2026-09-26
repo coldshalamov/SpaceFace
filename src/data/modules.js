@@ -598,7 +598,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_repulsion_trap_s: 'Drop a charge behind you that shoves whoever flies into it.',
   mod_cargo_scanner_s: 'Reads what another hull is carrying.',
   unique_truesight_scanner: 'Reads a hold, and from farther out than a stock scanner.',
-  mod_market_data_s: 'You carry its mass. It does not change the prices you see.',
+  mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',
   mod_triangulation_suite_s: 'Closes an anomaly fix in two scans instead of three.',
   mod_shield_hardener_m: 'The same hit takes less out of the hull.',
   mod_afterburner_m: 'You carry its mass. It does not change the boost you fly.',
