@@ -195,6 +195,13 @@ installCrashReportWriters(electron, releaseIdentity);
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
+// Hybrid-GPU systems may hand a browser-style app the power-saving adapter; the game
+// always wants the high-performance GPU. No-op where only one adapter exists.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+// Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
+// discovery/sync work out of the process.
+app.commandLine.appendSwitch('disable-features',
+  'MediaRouter,DialMediaRouteProvider,OptimizationHints,Translate,AutofillServerCommunication');
 
 async function startServer() {
   let root;
@@ -620,6 +627,10 @@ async function createWindow() {
       experimentalFeatures: false,
       preload: path.join(__dirname, 'preload.cjs'),
       backgroundThrottling,
+      // Each module is fetched once per launch, so the 'code' heat check never arms on
+      // this graph; 'bypassHeatCheck' writes the V8 code cache on first load and lets
+      // later launches deserialize bytecode instead of recompiling every module.
+      v8CacheOptions: 'bypassHeatCheck',
     },
   });
   const gameUrl = `http://127.0.0.1:${port}/`;
