@@ -312,3 +312,46 @@ and will answer the done-when in one pass.
 
 `npm run check:baseline` **15/15 green**. `npm run check:atlas-integrity` **PASS**. No game code was
 edited for this unit.
+
+---
+
+# Acceptance review 2026-09-25 — the blind review, re-run after the arrival fix
+
+**Verdict: DONE.** A blind reviewer named both sectors from 30 s captures with labels hidden, and
+this time both names came from what the place *is and is doing*, not from palette or the sky.
+
+## What was run
+
+`scripts/capture-sector-identity.mjs`, seed **4242** (manifest `seedUsed: 4242`), real GPU, shipping
+chase camera at the capture's 340 WU wheel-out, HUD not photographed, thirty frames per sector paced
+on the sim clock, `pageErrors: []`, first attempt. Frames 00/06/12/18/24/29 per sector were copied
+into letter sets chosen by `crypto.randomInt(2)` by a different agent than the reviewer; the key was
+written to a file that was not opened until the verdicts below were written to
+`.devshots/blind-143/VERDICT.txt`. Frames deleted afterwards.
+
+This closes the one defect the 2026-09-12 review named: bodies materialized by an in-flight sector
+change no longer stay `presentationAdmission: 'pending'` (fixed and measured in
+`SECTOR-ARRIVAL-ADMISSION-2026-09-12.md`). Ceres's refinery and its hauler are in every frame.
+
+## The blind verdicts, verbatim, written before unmasking
+
+> **Set A** — frame 0 is still arriving: several working hulls in open flight (a long liner, a
+> hauler, a boxy cargo pod, a small craft), a tan rock, ringed gas giant + galaxy in the sky. Frames
+> 12–29: parked over a big port — a circular docking ring with orange-striped bollards, a berth apron
+> laid out as a grid of cargo containers, cyan tow/transfer lines running from the station arm to a
+> ship in the berth, a second craft working the upper deck. A trade port doing freight work.
+> **Helios Prime.**
+>
+> **Set B** — an ore refinery filling the upper left: silo towers, a copper processing drum wrapped
+> in rails, conveyor chutes, crusher housing with cyan work beams that change frame to frame, a brown
+> hauler docked under the gantry, dust drifting through. Industry that eats rock. **Ceres Belt.**
+
+**Unmasked: A = `sector_helios_prime`, B = `sector_ceres_belt`. Both correct.** Capture census at
+340 WU: Helios station + 3 ships (a patrol Bastion among them) + a wreck; Ceres station + 3 ships
+(a courier Kestrel and a hauler Mule on their jobs) + 2 rocks + 2 fx.
+
+## Still true, and owned elsewhere
+
+`rhythm` and `crime` remain the two columns that read the same (6 of 8 differ, bar ≥ 4); rhythm is
+`PQ-143.01`'s and crime is deliberately not faked (see the 2026-09-05 section). Neither is this
+unit's done-when.

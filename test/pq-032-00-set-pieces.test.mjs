@@ -68,6 +68,10 @@ const STORY_LATCH_DOCK_SLACK_WU = 24;
 // src/systems/missions.js PHYSICAL_BERTH_WU — the leftover berth radius that authored set pieces and
 // `sling_in` still use. Mirrored so the far-side proof below can show it is the rule being beaten.
 const PHYSICAL_BERTH_WU = 700;
+// src/systems/world.js MEMBERSHIP_DWELL_S — free-flight sector membership carries hysteresis: the
+// world only re-runs residency after the candidate sector has held its lead this many sim seconds.
+// Mirrored so a silent change there fails loudly here instead of quietly never spawning the sector.
+const MEMBERSHIP_DWELL_S = 8;
 
 function printSpine() {
   for (const row of listPq032SpineSetPieces()) {
@@ -142,6 +146,12 @@ function flyToDestSector(h, mission) {
   h.player.pos.z = origin.z;
   h.player.vel.x = 0;
   h.player.vel.z = 0;
+  // One update only registers the new sector as a residency candidate: 3e84b438e added membership
+  // hysteresis so a live residency switch needs the candidate to hold for MEMBERSHIP_DWELL_S of sim
+  // time before enterSector({continuous}) fires. Advance the same sim clock the dwell reads; the
+  // penetration lead already holds because the pose sits on the dest sector's own origin.
+  h.worldSys.update(DT, h.state);
+  h.state.simTime += MEMBERSHIP_DWELL_S + 1;
   h.worldSys.update(DT, h.state);
   const berth = liveStation(h, mission.destStationId);
   assert.ok(berth, `live world must spawn ${mission.destStationId} in ${mission.destSectorId}`);
