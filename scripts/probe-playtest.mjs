@@ -413,7 +413,29 @@ const ROUTES = {
       await clickWord(ctx, /continue/i, 10_000);
       await sleep(3000);
       const s = await snap(ctx);
-      return { continueAvailable: true, screen: s.screen, mode: s.mode, simTime: s.simTime, player: s.player };
+      if (s.mode !== 'flight') observe(ctx, 'defect', 'lifecycle', `Continue landed mode=${s.mode} screen=${s.screen}, expected flight`);
+      return { screen: s.screen, mode: s.mode, continueAvailable: true, simTime: s.simTime, player: s.player };
+    });
+
+    await B(ctx, 'x07-quicksave', 'F5 quick-save then F9 quick-load — same run state back', async () => {
+      const mode = await ctx.page.evaluate(() => window.SF.state.mode);
+      if (mode !== 'flight') return { skipped: `mode=${mode}` };
+      const before = await ctx.page.evaluate(() => {
+        const p = window.SF.state.player || {};
+        return { credits: p.credits, simTime: Math.round((window.SF.state.simTime || 0) * 10) / 10 };
+      });
+      await pressKey(ctx, 'F5', 1500);
+      const savedAt = await ctx.page.evaluate(() => window.SF.state.meta && window.SF.state.meta.lastSavedAt);
+      await pressKey(ctx, 'F9', 4000);
+      const s = await snap(ctx);
+      const after = await ctx.page.evaluate(() => {
+        const p = window.SF.state.player || {};
+        return { credits: p.credits, simTime: Math.round((window.SF.state.simTime || 0) * 10) / 10 };
+      });
+      const drift = after && before ? Math.abs(after.simTime - before.simTime) : null;
+      if (savedAt == null) observe(ctx, 'defect', 'save', 'F5 produced no lastSavedAt — quick-save may be dead');
+      else if (s.mode !== 'flight' || (after && after.credits !== before.credits)) observe(ctx, 'rough-edge', 'save', `F9 reload landed mode=${s.mode} credits ${before.credits}->${after && after.credits}`);
+      return { before, savedAt, after, mode: s.mode, simDrift: drift };
     });
   },
 
