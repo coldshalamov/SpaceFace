@@ -2603,7 +2603,7 @@ export const onboarding = {
   },
 
   _onMissingThreeFieldDeploy(payload) {
-    if (!payload || payload.npc === true) return;
+    if (!payload || payload.npc) return;
     const kind = payload.kind;
     if (kind !== 'well' && kind !== 'repulsor') return;
     const source = this.state?.entities?.get ? this.state.entities.get(payload.sourceId) : null;
@@ -2612,10 +2612,9 @@ export const onboarding = {
       || (source && source.ownerId === this.state?.playerId)
       || (!payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
     if (kind === 'well') {
+      if (!isPlayer) return;
       this._noteVerbUse('well');
-      if (isPlayer) {
-        this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
-      }
+      this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
       return;
     }
     if (!isPlayer) return;
@@ -2624,7 +2623,7 @@ export const onboarding = {
   },
 
   _onMissingThreeCone(payload) {
-    if (!payload || payload.active !== true || payload.npc === true) return;
+    if (!payload || payload.active !== true || payload.npc) return;
     if (payload.sourceId != null && payload.sourceId !== this.state?.playerId) return;
     this._noteVerbUse('cone');
     this._showHint('firstConeOn', firstUseLine('firstConeOn') || 'Cone on.', payload);

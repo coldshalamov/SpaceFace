@@ -450,7 +450,17 @@ export function createTelemetry(bus, state, options) {
   });
   sub('fields:deployed', (p) => {
     p = p || {};
-    if (state && state.playerId != null && p.sourceId != null && p.sourceId !== state.playerId) return;
+    // Production emits sourceId = the field emitter's entity id, stamped ownerId = the deployer —
+    // never the player id itself. Resolve ownership through the emitter the same way onboarding
+    // does, or every real player deploy reads as foreign and the funnel goes silent.
+    if (p.npc === true) return;
+    const source = p.sourceId != null && state && state.entities && state.entities.get
+      ? state.entities.get(p.sourceId) : null;
+    const isPlayer = p.isPlayer
+      || p.sourceId === (state && state.playerId)
+      || (source && source.ownerId === (state && state.playerId))
+      || (!p.planted && p.sourceId == null);
+    if (!isPlayer) return;
     if (p.kind === 'repulsor') {
       markFunnel('firstShoveAt');
       bump(session.verbs, 'shove');

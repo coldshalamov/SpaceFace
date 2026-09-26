@@ -123,3 +123,21 @@ test('demo off: the same events record nothing and the report has no demo block'
   assert.equal(report.data.demoFunnel, null);
   assert.doesNotMatch(report.markdown, /## Demo Funnel/);
 });
+
+test('fields:deployed counts the player-owned emitter, not just a bare player id', (t) => {
+  const { state, bus, telemetry } = rig(t, true);
+  // Production emits sourceId = the field emitter's entity id stamped ownerId = deployer — never
+  // the player id. The funnel must resolve through ownerId or every real deploy reads foreign.
+  const emitter = { id: 700, ownerId: state.playerId };
+  state.entities.set(emitter.id, emitter);
+
+  bus.emit('fields:deployed', { kind: 'well', sourceId: emitter.id });
+  bus.emit('fields:deployed', { kind: 'repulsor', sourceId: emitter.id });
+  bus.emit('fields:deployed', { kind: 'well', sourceId: 99 });
+  bus.emit('fields:deployed', { kind: 'well', npc: true });
+  bus.emit('fields:deployed', { kind: 'well', planted: true });
+
+  const counts = telemetry.getSessionReport().data.verbs.counts;
+  assert.equal(counts.well, 1, 'only the player-owned deploy counts toward the well verb');
+  assert.equal(counts.shove, 1, 'the player-owned repulsor counts as a shove');
+});

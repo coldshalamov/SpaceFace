@@ -550,7 +550,40 @@ test('npc field emissions never teach the rail', () => {
 
   assert.equal(three.beats.repulsor.state, 'current', 'npc repulsor fields cannot complete the beat');
   assert.equal(three.beats.cone.state, 'pending', 'npc cone toggles cannot complete the beat');
+
+  // Wells obey the same ownership gate: a foreign deploy, a planted trap field, or an npc-flagged
+  // emit must neither complete the beat nor pollute the use funnel.
+  three.current = 'well';
+  three.beats.well.state = 'current';
+  h.bus.emit('fields:deployed', { kind: 'well', sourceId: 99 });
+  h.bus.emit('fields:deployed', { kind: 'well', planted: true });
+  h.bus.emit('fields:deployed', { kind: 'well', sourceId: 99, npc: true });
+  tick(h);
+
+  assert.equal(three.beats.well.state, 'current', 'foreign wells cannot complete the beat');
+  assert.equal(three.used.well.count, 0, 'foreign wells do not pollute the use funnel');
   assert.equal(verbEvents().length, before, 'no firsthour:verb fires for somebody else\'s field');
+});
+
+test('the rail accepts the live emit shape — sourceId is the player-owned field emitter', () => {
+  const h = boot();
+  launchDefaultRoute(h);
+  driveRescueToGrab(h);
+  completeRaid(h);
+  completeClaimed(h);
+  const st = h.state;
+  const three = st.onboarding.missingThree;
+  three.current = 'repulsor';
+  three.beats.repulsor.state = 'current';
+  // Production emits fields:deployed with sourceId = the emitter entity's id, not the player id;
+  // the emitter is stamped ownerId = player (fields.js). The rail must resolve through ownerId.
+  const emitter = makeEntity({ type: 'field', team: 1, pos: { x: 5, z: 0 }, vel: { x: 0, z: 0 }, radius: 4, data: {} });
+  emitter.id = 4242;
+  emitter.ownerId = st.playerId;
+  st.entities.set(emitter.id, emitter);
+  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: emitter.id });
+  tick(h);
+  assert.equal(three.beats.repulsor.state, 'done', 'a player-owned emitter\'s field completes the beat');
 });
 
 test('an older mid-tutorial save gets the new verbs backfilled without wedging', () => {
@@ -573,7 +606,7 @@ test('an older mid-tutorial save gets the new verbs backfilled without wedging',
   three.beats.repulsor = undefined; // proof the record accessor rebuilds the beat row
   tick(h);
   assert.ok(three.beats.repulsor, 'the backfill restores the repulsor beat row');
-  assert.equal(three.beats.repulsor.state === 'current' || three.beats.repulsor.state === 'pending', true);
+  assert.equal(three.beats.repulsor.state, 'pending', 'backfill never fabricates a done or current beat');
   assert.ok(Array.isArray(three.ids.clump));
   assert.ok(three.used.repulsor && three.used.cone, 'use tallies backfill too');
 
