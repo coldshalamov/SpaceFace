@@ -254,7 +254,19 @@ shader-compile suspects.
 
 | 8 | loop+edge+screens | 10+8+28 | 3 probe-defects fixed, prewarm 2/3 ceres arrivals | `9e119fd55` diagnostics; probe fixes `4e88c4f1e` `b773c1c57` `a39b9a915` |
 
-**Run 9 queue**: verify x08 confirm + l03 aim + i08 overlay fixes (same routes, stop-after).
+## Run 9 — verify pass @ b773c1c57
+
+loop→l04 / edge→x08 / screens→i08, all three fixed beats green:
+
+- **l03-mine**: `aim={x:1239,y:332,onScreen:true,rockId:349,d:69}` — RMB bit the rock; cargo gained
+  silicate×12 + ore_iron×4. No cascade.
+- **l04-sell**: live `data-go` "Sell 4" found → credits 5400→5453 (+53). Money loop green end-to-end.
+- **x08-load-slot**: `confirmed:"Load"` → `afterMode:"flight"` — title→Load→slot→confirm→flight
+  round-trip verified. 0 observations on the whole edge route.
+- **i08-find**: `key / -> overlay=true` — the palette was never broken; position:fixed blindness.
+- Bonus read: e05-resize beats + all instruments now go through `isVis` (28 raw checks swept).
+
+| 9 | loop+edge+screens (stop-after) | 4+8+21 | 0 defects — all 3 probe fixes verified | — |
 
 ## Run ledger
 
@@ -273,3 +285,38 @@ shader-compile suspects.
   COMPLETION (deliver 47-A), save-slot LOAD round-trip, crucible lab doors (draft/calibration/
   share), gameOver screen (flight death, not crucible), settings toggles doing something visible.
 - B1 title AFK: residual heavy-frame cost is the live title scene under SwiftShader — perf lane.
+
+## Run 10 — expanded beats + first real game defect @ 163d0321a
+
+Full sweep on the new probe set: screens 35 beats (incl. new t09b hull-swap, t09c sandbox-launch,
+i09 find-query, i10 codex-read, e05 pause-verbs), edge 8, combat 7, loop 10 — **60 beats, 0 defects,
+0 console errors, 0 shader errors**.
+
+**D60 — FIXED: `/` global find was dead in flight.** `.sf-find` mounts inside `#screens`, which
+screenManager parks at `display:none`+inert whenever the stack is empty — i.e. always in flight, the
+primary place the palette is for. Laid out but painted nothing (isVis said true via the
+position:fixed clause — pixel evidence caught what the census could not). Fix `163d0321a`:
+`globalFind` lifts the lid (display/inert/aria-hidden) for the bare mount and restores it on close
+only while the stack stays empty; `screenManager` honors an open `.sf-find--host` so a mid-open
+stack sync can't re-park it. Verified by rendered frame: `22-i08-find-open.png` now shows the
+dimmed flight scene + focused input + hint line; `23-i09-find-dossier.png` shows query "ceres" →
+STATION Ceres Refinery / SECTOR Ceres Belt rows → Enter → full station dossier drawer
+(standing/services/powers/Open-on-chart). Whole find→dossier chain green.
+
+New-beat coverage this run: hull-swap flips `aria-pressed`+card; sandbox tile launches a session and
+quits clean; codex row click renders the article; pause verb census pushed 6 screens and backed out
+— no dead verbs seen.
+
+PR #162 CI remains the upstream set only (program-queue 33 ancestor errors + same 4 feel-contract
+tests — verified byte-identical on detached master).
+
+## Run ledger
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 10 | screens+edge+combat+loop | 35+8+7+10 | D60 fixed | find palette in-flight `163d0321a` |
+
+## Next runs
+
+- Adventure real-death → recovery-berth path (c04b covers crucible death only).
+- Achievements content depth, crucible share codes, gameOver-vs-berth distinction.
