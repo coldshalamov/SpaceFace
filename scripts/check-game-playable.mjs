@@ -705,6 +705,8 @@ try {
   }
 } catch (err) {
   console.error('\ncheck-game-playable could not run:', err && err.stack || err);
+  const bootFailures = [...new Set([...pageErrors, ...missingAssets, ...diagnostics])];
+  if (bootFailures.length) console.error('  boot diagnostics:\n  ' + bootFailures.slice(0, 16).join('\n  '));
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close().catch(() => {});
