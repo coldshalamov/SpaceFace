@@ -6492,6 +6492,29 @@ export const vfx = {
         0,
         0,
       )) emitted++;
+    } else if (slot.kind === 'quiet_dock') {
+      // Lights-out runner: two thin cold rails at low opacity — running lights dialed down, not
+      // the hauler's warm cargo lamps. A rare dim flash is the only giveaway.
+      emitted += this._spawnStationSideEventStreak(x + nx * 0.42, 0.4, z + nz * 0.42,
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.2, '#5f7d8c', 0, 0, dx, dz);
+      emitted += this._spawnStationSideEventStreak(x - nx * 0.42, 0.4, z - nz * 0.42,
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.2, '#5f7d8c', 0, 0, dx, dz);
+      if (frame.accentSlot % 5 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        x - dx * 0.8,
+        0.4,
+        z - dz * 0.8,
+        0.08,
+        0.2,
+        0.3,
+        0.3,
+        0,
+        '#3d5561',
+        0,
+        0,
+        1.2,
+        Math.atan2(dz, dx),
+      )) emitted++;
     }
     return emitted;
   },
