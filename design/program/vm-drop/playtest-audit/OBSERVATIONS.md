@@ -86,9 +86,46 @@ exclude `#toasts/#alerts/#toast-live`.
 - Station walk now targets `[data-nav]` tabs instead of whatever `.k-word` matched first
   (run 1 walked the hotbar: COMMS/HAIL/YCharge/…).
 
+## Run 4 — routes=loop+edge @ 136401111..80094775f (post-reorder)
+
+**loop** (new route): l01 boot→flight clean; l02 autopilot reached nearest asteroid (id 344,
+d0=90→d=78) in 2.2s — spawn field has rocks close by; l03 14s RMB mine → **cargo gained a new
+commodity** (`cmdty_unclassified_composite` already aboard +1 new id, usedMass ticked up) — mining
+end-to-end works: aim→beam→yield→hold.
+
+**edge**: x06 docked Helios (99s autopilot), MISSIONS tab opened; accept search found no `ACCEPT`
+verb — the board's real commit verb is "DISPATCH THIS JOB" and it can be readiness-gated
+(READINESS: "Blocked — Need 4 u cargo capacity"). HOLD dial read 250/250 with SELL — a freight:loss
+event during the 99s trip ("TRAGEDY AT HELIOS: RELIEF FREIGHTER LOST" on the BAND) had filled the
+hold with recovery goods; verified a second clean trip keeps hold 0/250 so this was a live event,
+not a baseline grant. **The board correctly says blocked in words — good design.** x03 quit now
+undocks first (Esc at a station exits the hub, not pause); x04 continue pending re-verify — the
+x06 dock autosave + forced undock-save should produce a Continue row this run.
+
+Harness: census now records `player.cargo` {usedVolume, capVolume, itemCount}; x06 selects an offer
+row then clicks `dispatch this job|accept|take on|sign`; blocked readiness is logged as a datum, not
+a failure.
+
+**Screen-quality notes from the stills (all A-list already):** contracts board (route map + risk/
+standing/payload/readiness columns), market (spread/trend chart/forecast/quantity dial), bar
+(patron portraits + numbered dialogue tree + leads board), pause (grouped verbs + flight brief +
+explicit autosave contract text), crucible results (RUN OVER + kill-cam sector diagram + killer
+card + LAST 8 HITS + gold primary). Nothing to fix on these surfaces today.
+
+## Run ledger
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 1 | screens | 25 | A1..A10 | — |
+| 2 | screens | 25 | B1..B3 | A1 ghost fix (harness-verified) |
+| 3 | screens+edge+combat | 25+6+6 | 0 new | B2 tofu glyph `7780d8827` |
+| 4 | loop+edge | 3+6 | 0 defects (1 designed full-hold) | x06/x03 harness fixes |
+| 5 | loop+edge | pending | — | sell/outfit/undock beats + census cargo |
+
 ## Next runs
 
-- route=screens re-run: confirm A1's mounted-screen list, capture `-open` frames for every
-  verb/instrument, real AFK title verdict, station tabs via `[data-nav]`.
-- route=edge (new beats): quit-to-title mid-flight and re-enter; save+continue; death mid-run;
-  crucible door walk.
+- loop route now covers: rock→mine→dock→SELL held ore→shipworks→undock (full money loop).
+- Remaining unplayed seams: sector JUMP (starmap→charge→arrive), comms HAIL dialogue, mission
+  COMPLETION (deliver 47-A), save-slot LOAD round-trip, crucible lab doors (draft/calibration/
+  share), gameOver screen (flight death, not crucible), settings toggles doing something visible.
+- B1 title AFK: residual heavy-frame cost is the live title scene under SwiftShader — perf lane.
