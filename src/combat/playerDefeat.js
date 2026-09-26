@@ -194,21 +194,44 @@ function chooseLawfulStation(state) {
   return [...STATION_BY_ID.values()].find(stationIsLawful) || null;
 }
 
+// Recovery pricing as a pure quote so the docked service row can price the player's actual
+// hull before they ever need it — buildRecoveryPlan consumes the same math at loss time.
+export function recoveryCostQuote(shipId, insurance = {}) {
+  const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
+  const rate = Math.max(0, Math.min(1, Number(insurance.rate) || 0));
+  const deductibleCr = Math.max(0, Math.round(Number(insurance.deductibleCr) || 0));
+  const insured = insurance.insuredModules === true;
+  const shipPrice = Math.max(0, Math.round(Number(ship && ship.price) || 0));
+  const starter = !!(ship && ship.tier === 0);
+  const uninsuredCostCr = starter
+    ? deductibleCr
+    : Math.max(deductibleCr, Math.round(shipPrice * (1 - rate)));
+  const insuredCostCr = deductibleCr;
+  return {
+    shipId: ship && ship.id || shipId,
+    shipName: ship && ship.name || shipId,
+    tier: ship && Number(ship.tier) || 0,
+    starter,
+    insured,
+    rate,
+    deductibleCr,
+    uninsuredCostCr,
+    insuredCostCr,
+    coveredCostCr: Math.max(0, uninsuredCostCr - insuredCostCr),
+  };
+}
+
 export function buildRecoveryPlan(state, playerEntity) {
   const station = chooseLawfulStation(state);
   const insurance = state.player && state.player.insurance || {};
   const owned = (state.player && state.player.ownedShips || [])[state.player && state.player.activeShipIndex || 0] || {};
   const shipId = owned.defId || playerEntity && playerEntity.data && playerEntity.data.defId || 'ship_kestrel';
   const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
-  const rate = Math.max(0, Math.min(1, Number(insurance.rate) || 0));
-  const deductible = Math.max(0, Math.round(Number(insurance.deductibleCr) || 0));
-  const insured = insurance.insuredModules === true;
-  const shipPrice = Math.max(0, Math.round(Number(ship && ship.price) || 0));
-  const quotedCostCr = ship && ship.tier === 0
-    ? deductible
-    : insured
-      ? deductible
-      : Math.max(deductible, Math.round(shipPrice * (1 - rate)));
+  const quote = recoveryCostQuote(shipId, insurance);
+  const rate = quote.rate;
+  const deductible = quote.deductibleCr;
+  const insured = quote.insured;
+  const quotedCostCr = quote.insured ? quote.insuredCostCr : quote.uninsuredCostCr;
   const availableCredits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
   const costCr = Math.min(quotedCostCr, availableCredits);
   const hardshipCoveredCr = quotedCostCr - costCr;
@@ -242,7 +265,7 @@ export function buildRecoveryPlan(state, playerEntity) {
     insuranceStatus: (ship && ship.tier === 0
       ? `STARTER RECOVERY · ${deductible.toLocaleString('en-US')} CR DEDUCTIBLE`
       : insured
-        ? `INSURED · ${Math.round(rate * 100)}% COVERAGE`
+        ? `INSURED · COVERED ${quote.coveredCostCr.toLocaleString('en-US')} CR`
         : `UNINSURED · ${Math.round((1 - rate) * 100)}% HULL SHARE`)
       + (hardshipCoveredCr > 0 ? ` · ${hardshipCoveredCr.toLocaleString('en-US')} CR RECOVERY FUND` : ''),
     cargoLosses,

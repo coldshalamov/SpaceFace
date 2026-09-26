@@ -253,6 +253,11 @@ function respawnStationName(id) {
 
 export function respawnToastText(payload = {}) {
   const parts = ['Recovered at ' + respawnStationName(payload.stationId)];
+  const cost = Math.max(0, Math.round(Number(payload.costCr) || 0));
+  if (cost > 0) parts.push('recovery ' + cost.toLocaleString('en-US') + ' cr');
+  if (typeof payload.insuranceStatus === 'string' && payload.insuranceStatus) {
+    parts.push(payload.insuranceStatus.toLowerCase());
+  }
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
   if (refund > 0) parts.push('insurance +' + refund.toLocaleString('en-US') + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));

@@ -893,13 +893,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const cancelling = Number(quote.amount) === 0;
       const ok = await confirm(cancelling ? {
         title: 'Cancel hull insurance?',
-        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
+        body: 'Recovery on death goes back to the full uninsured hull-share fee instead of the flat deductible. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
         confirmLabel: 'Cancel Insurance',
         cancelLabel: 'Keep Insurance',
         danger: true,
       } : {
-        title: 'Insure installed modules?',
-        body: `${quote.detail} · ${fmtCr(quote.cost)} cr`,
+        title: 'Insure hull recovery?',
+        body: `${quote.detail} · ${fmtCr(quote.cost)} cr. If this hull is lost, station recovery charges the flat deductible instead of the uninsured share. Fitted modules are never at risk.`,
         confirmLabel: `Purchase · ${fmtCr(quote.cost)} cr`,
         cancelLabel: 'Not Now',
       });
