@@ -13,8 +13,9 @@ import {tumbleStates} from '../src/systems/tumbleStates.js';
 import {journalFor} from '../src/combat/stuntEvidence.js';
 import {COMBAT_FLAGS} from '../src/data/featureFlags.js';
 
-function body(id,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0}={}){
+function body(id,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0,combatSpeed}={}){
   return {id,type:'ship',alive:true,team,name:`ship ${id}`,pos:{x,z},vel:{x:vx,z:vz},rot:0,angVel:0,radius,mass,hull,hullMax:hull,shield:0,armor:0,
+    ...(combatSpeed!=null?{combatSpeed}:{}),
     data:{defId:'ship_kestrel',encounter:{id:'roundtrip'},ai:id?{huntPlayer:true}:{}},
     physicsBody:{schemaVersion:1,dynamic:true,radius,mass,inertiaY:48,ccd:true,revision:0}};
 }
@@ -42,7 +43,11 @@ async function restored(saved){
   w.bus.emit('save:restoring',{});w.grammar.deserialize(structuredClone(saved.stunts));w.bus.emit('save:loaded',{});
   return w;
 }
-const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28}),body(2,-90,33,{hull:60,mass:10}),body(3,-135,51,{hull:3,mass:10})];
+// The payload, pursuer and wingman are slow hull classes (governed combat speed 95): receipt
+// gates key to 0.5 x a struck hull's cruise, doubled by the ceiling restore, and this episode's
+// strikes close at 105.8 (bolas) and 57.6 (wingman amendment) — over the 47.5 slow-class gate,
+// under the 105 kestrel-pace one.
+const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-135,51,{hull:3,mass:10,combatSpeed:95})];
 const release=tick=>tick===31;
 
 test('a save between release and impact restores the pending root; the impact settles once with the saved identity',async()=>{
