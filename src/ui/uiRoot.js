@@ -847,7 +847,7 @@ export const ui = {
       // online" instead of snapping. IDs are behavior hooks — other scripts and
       // the a11y wiring key off #cinematic-title / #cinematic-summary / #cinematic-signal.
       cinematic.innerHTML = `
-        <div class="cine-bg"></div>
+        <div class="cine-bg"><video class="cine-video" muted loop playsinline preload="auto" poster="assets/cinematics/intro-visualizer.jpg" aria-hidden="true"><source src="assets/cinematics/intro-visualizer.mp4" type="video/mp4" /></video></div>
         <div class="cine-scrim"></div>
         <div class="cine-grain"></div>
         <div class="cine-tag">VHL-4471-T · Tessera — salvage registry</div>
@@ -864,6 +864,26 @@ export const ui = {
           <div class="cine-signal__s">Reach corridor — channel open</div>
         </div>
       `;
+      // The baked clip is a bonus layer over the .cine-bg still: drop the
+      // element on any failure and the Ken-Burns still simply remains.
+      const cineVideo = cinematic.querySelector('.cine-video');
+      if (cineVideo) {
+        const dropVideo = () => { try { cineVideo.remove(); } catch (_) {} };
+        cineVideo.addEventListener('error', dropVideo);
+        const cineSource = cineVideo.querySelector('source');
+        if (cineSource) cineSource.addEventListener('error', dropVideo);
+        const motionReduced = (document.documentElement
+            && document.documentElement.classList.contains('sf-reduce-motion'))
+          || (typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        if (motionReduced) dropVideo();
+        else {
+          try {
+            const p = cineVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(dropVideo);
+          } catch (_) { dropVideo(); }
+        }
+      }
 
       let dismissed = false;
       let autoDismissTimer = null;

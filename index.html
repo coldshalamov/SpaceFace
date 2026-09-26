@@ -55,6 +55,10 @@
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
+      <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
+             preload="auto" poster="assets/cinematics/intro-visualizer.jpg" aria-hidden="true">
+        <source src="assets/cinematics/intro-visualizer.mp4" type="video/mp4" />
+      </video>
       <div class="boot-scrim" aria-hidden="true"></div>
       <header class="boot-meta" aria-hidden="true">
         <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>

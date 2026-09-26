@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SpaceFace — Intro Cinematic Harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hud { position: fixed; left: 8px; bottom: 8px; color: #6f7; font: 11px/1.4 monospace;
+         white-space: pre; pointer-events: none; opacity: .8; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "../../vendor/three.module.js",
+    "three/addons/": "../../vendor/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<script type="module">
+import { createIntroCinematic, INTRO_SPEC } from './intro-scene.js';
+
+const params = new URLSearchParams(location.search);
+const hud = document.getElementById('hud');
+const canvas = document.getElementById('c');
+const W = parseInt(params.get('w') || INTRO_SPEC.width, 10);
+const H = parseInt(params.get('h') || INTRO_SPEC.height, 10);
+
+const cine = await createIntroCinematic({ canvas, width: W, height: H });
+window.__scene = cine;
+window.__cine = {
+  ready: true,
+  duration: INTRO_SPEC.duration,
+  fps: INTRO_SPEC.fps,
+  frames: Math.round(INTRO_SPEC.duration * INTRO_SPEC.fps),
+  // Render one deterministic frame at time t (seconds).
+  render(t) { cine.render(t); return true; },
+  renderFrame(i) { cine.render(i / INTRO_SPEC.fps); return i; },
+  // Raw pixels as a data URL for the baker.
+  snapshot(type = 'image/png', quality) {
+    return canvas.toDataURL(type, quality);
+  },
+};
+
+if (params.get('play') === '1') {
+  let start = performance.now();
+  const loop = () => {
+    const t = ((performance.now() - start) / 1000) % INTRO_SPEC.duration;
+    cine.render(t);
+    hud.textContent = `t=${t.toFixed(2)}s  shot=${cine.shotName(t)}  tris=${cine.stats().tris}`;
+    requestAnimationFrame(loop);
+  };
+  loop();
+} else {
+  const t = parseFloat(params.get('t') || '0');
+  cine.render(t);
+  hud.textContent = `t=${t.toFixed(2)}s  shot=${cine.shotName(t)}`;
+}
+</script>
+</body>
+</html>
