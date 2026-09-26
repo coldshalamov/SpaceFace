@@ -16,6 +16,8 @@ import {
   waitForAuthoredUpgradeQueueIdle,
 } from './partsLibrary.js';
 import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
+import { applyAuthoredMaterialProfile } from './authoredMaterialProfiles.js';
+import { canonicalizeAuthoredProgramState } from './programCanon.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
@@ -927,45 +929,88 @@ function addBombPresentationWarmup(root) {
 }
 
 function addAuthoredOpaquePipelineWarmup(root) {
-  // Common authored traffic uses one full base/normal/ORM layout, but its calibrated response
-  // policy produces three physical program keys: ordinary metal, clear-coated metal, and coated
-  // transmissive glass. The first Helios Span can spawn after flight begins, so retain one tiny
-  // owner for each exact layout rather than linking those programs during exposed flight.
+  // Authored admissions run applyAuthoredMaterialProfile (roughness-breakup / illustrated-surface
+  // family program keys) and canonicalizeAuthoredProgramState (six filled texture slots + dithering)
+  // before first compile, so the program a real hull links is keyed by that combined state. Each
+  // retained owner below mounts sibling probes covering its material class — same family key, same
+  // slot set — so a first-flight admission hits a warm program instead of linking during exposed
+  // flight. Sub-probes ride under their family owner so diagnostics keep the three-owner contract.
   const baseColor = warmupTexture([190, 205, 220, 255], THREE.SRGBColorSpace);
   const normal = warmupTexture([128, 128, 255, 255]);
   const surface = warmupTexture([255, 164, 96, 255]);
-  const variants = [
-    { id: 'standard', clearcoat: 0, transmission: 0 },
-    { id: 'clearcoat', clearcoat: 0.7, transmission: 0 },
-    { id: 'clearcoat-transmission', clearcoat: 0.7, transmission: 0.45 },
+  const families = [
+    {
+      // MeshStandardMaterial is the GLB default — the dominant authored traffic program space.
+      id: 'standard', physical: false,
+      probes: [
+        { role: 'hull' }, // breakup|illustrated family key
+        { role: 'geology' }, // illustrated-only family key
+        { role: 'signal' }, // default cache key (signal/drive and rejected-illustration surfaces)
+        { role: 'warning', transparent: true }, // transparent decals/markings mint a separate program
+      ],
+    },
+    {
+      // glTF feature extensions load as MeshPhysicalMaterial — a different shaderID carrying the
+      // same family keys where the roles apply.
+      id: 'clearcoat', physical: true,
+      probes: [
+        { role: 'mechanical', clearcoat: 0.7 },
+        { role: 'hull' },
+        { role: 'geology' },
+        { role: 'signal' },
+      ],
+    },
+    {
+      // Coated transmissive glass carries no family hook; clearcoat presence still splits the key.
+      id: 'clearcoat-transmission', physical: true,
+      probes: [
+        { role: 'glass', clearcoat: 0.7, transmission: 0.45 },
+        { role: 'glass', transmission: 0.45 },
+      ],
+    },
   ];
 
-  for (let index = 0; index < variants.length; index++) {
-    const variant = variants[index];
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    geometry.computeTangents();
-    const material = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      metalness: 0.35,
-      roughness: 0.55,
-      map: baseColor,
-      normalMap: normal,
-      aoMap: surface,
-      roughnessMap: surface,
-      metalnessMap: surface,
-      clearcoat: variant.clearcoat,
-      transmission: variant.transmission,
-      transparent: false,
-      side: THREE.FrontSide,
-      dithering: true,
-    });
-    material.name = `SF_Precompile_AuthoredOpaque_${variant.id}`;
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = material.name;
-    mesh.frustumCulled = false;
-    mesh.userData.precompileRetainedPipeline = `authored-opaque-${variant.id}`;
-    mesh.position.set(index * 3, 32, 0);
-    root.add(mesh);
+  for (let index = 0; index < families.length; index++) {
+    const family = families[index];
+    let owner = null;
+    for (let sub = 0; sub < family.probes.length; sub++) {
+      const spec = family.probes[sub];
+      const geometry = new THREE.PlaneGeometry(2, 2);
+      geometry.computeTangents();
+      const MaterialCtor = family.physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+      const material = new MaterialCtor({
+        color: 0xffffff,
+        metalness: 0.35,
+        roughness: 0.55,
+        map: baseColor,
+        normalMap: normal,
+        aoMap: surface,
+        roughnessMap: surface,
+        metalnessMap: surface,
+        transparent: spec.transparent === true,
+        side: THREE.FrontSide,
+        dithering: true,
+      });
+      if (spec.clearcoat) material.clearcoat = spec.clearcoat;
+      if (spec.transmission) material.transmission = spec.transmission;
+      material.name = sub === 0
+        ? `SF_Precompile_AuthoredOpaque_${family.id}`
+        : `SF_Precompile_AuthoredOpaque_${family.id}_${spec.role}${spec.transparent ? '_t' : ''}${spec.clearcoat ? '_c' : ''}${spec.transmission ? '_tr' : ''}`;
+      applyAuthoredMaterialProfile(material, spec.role, { assetId: 'sf-precompile-probe' });
+      canonicalizeAuthoredProgramState(material);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = material.name;
+      mesh.frustumCulled = false;
+      if (sub === 0) {
+        owner = mesh;
+        mesh.userData.precompileRetainedPipeline = `authored-opaque-${family.id}`;
+        mesh.position.set(index * 3, 32, 0);
+        root.add(mesh);
+      } else {
+        mesh.position.set(0.5 * sub, 0, 0.5 * sub);
+        owner.add(mesh);
+      }
+    }
   }
 }
 
