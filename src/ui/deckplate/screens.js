@@ -1028,7 +1028,7 @@ ${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill { background:var(--dp-danger
 ${CRRES} .sf-crres__share-item + .sf-crres__share-item { margin-top:8px; }
 ${CRRES} .sf-crres__share-note { margin:0 0 8px; }
 ${CRRES} .sf-crres__share-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:14px; }
-${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${CRRES} .sf-crres__share-cap { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); }
 ${CRRES} .sf-crres__share-code { display:block; width:100%; min-width:0; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
   font-family:var(--dp-face-code); font-size:13px; color:var(--dp-ink); }
 ${CRRES} .sf-crres__share-link { white-space:nowrap; }

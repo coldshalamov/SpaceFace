@@ -376,7 +376,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .o
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__n { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 560, "wdth" 112; font-size:clamp(34px, 4.4vh, 48px); line-height:1;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.01em; color:rgb(246 241 230); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { grid-column:1 / -1; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.24em;
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(236 230 216 / .62); margin-top:6px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { flex-basis:100%; margin:8px 0 0; font-size:12px; color:rgb(236 230 216 / .6); }
 /* the round reached lives in the figures and on the dial; no celebration on a death */
@@ -395,12 +395,12 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step { flex:1 1 0; display:block !important; position:relative; border:0 !important; padding:0 12px 0 0 !important; min-height:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-16px; width:9px; height:9px; border-radius:50%; background:#0b0a09;
   box-shadow:inset 0 0 0 1.5px rgb(236 230 216 / .85); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__sub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.2em;
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__sub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px; letter-spacing:.2em;
   text-transform:uppercase; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .sf-crres__step-verb { display:block; margin:2px 0 0 !important; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 720, "wdth" 118;
   font-size:17px; color:rgb(240 235 224); white-space:normal; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__num { display:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__seed { margin:6px 0 0; font-size:11.5px; letter-spacing:.06em; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__seed { margin:6px 0 0; font-size:12px; letter-spacing:.06em; color:rgb(236 230 216 / .6); }
 /* the surround darkens out from the dial, so the arena reads as distance */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::before { background:radial-gradient(circle at 67% 44%, rgb(4 6 9 / .5), rgb(4 6 9 / .78) 55%, rgb(4 6 9 / .9) 100%) !important; }
 /* the left column spreads over the instrument's height — "safe" so an overflowing story stays
