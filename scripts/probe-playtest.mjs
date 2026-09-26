@@ -549,6 +549,37 @@ const ROUTES = {
       if (s.screen && s.screen !== 'station') { await backOut(ctx, s.screen); await sleep(400); }
       return { clicked, screen: s.screen };
     });
+
+    await B(ctx, 's05-drill-screen', 'undock -> drill approach completes -> asteroid screen mounts', async () => {
+      // Drive the uiRoot handoff directly: the screen itself is the audit target; the physical
+      // tether-approach is covered by systems tests and too slow to re-derive every probe run.
+      await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        const sid = st.ui && st.ui.dockedStationId;
+        if (window.__SF_PT_HELPERS__.docked()) window.__SF_PT_HELPERS__.undock(sid || undefined);
+        if (st.ui) st.ui.docked = false;
+      });
+      await sleep(1800);
+      const opened = await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        let rock = null;
+        for (const e of st.entities.values()) {
+          if (e && e.type === 'asteroid' && e.alive !== false) { rock = e; break; }
+        }
+        if (!rock) return null;
+        const attachmentId = `probe:drill:${rock.id}`;
+        st.ui.pendingDrillAsteroidId = null;
+        window.SF.bus.emit('drill:approachStarted', { asteroidId: rock.id, attachmentId });
+        window.SF.bus.emit('drill:approachCompleted', { asteroidId: rock.id, attachmentId });
+        return rock.id;
+      });
+      await sleep(1800);
+      const s = await snap(ctx);
+      await shotNow(ctx, 's05-drill');
+      if (opened && s.screen !== 'drill') observe(ctx, 'defect', 'drill', `approachCompleted emitted for asteroid ${opened} but screen=${s.screen}`);
+      if (!opened) observe(ctx, 'note', 'drill', 'no asteroid entity to attach the drill approach to');
+      return { asteroid: opened, screen: s.screen };
+    });
   },
 
   // Edge states: hostile input + lifecycle seams on the real path.
