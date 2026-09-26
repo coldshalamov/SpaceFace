@@ -510,6 +510,59 @@ export const VESTA_WEATHER_SECTOR_ID = 'sector_vesta_forge';
 const WEATHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 6, calmS: 4 });
 export const WEATHER_SCAN_SCALE_INSIDE = 0.4;
 
+// The Feedstock Belt's winnow collects freshly cut ore, then throws a batch away from
+// the foundry approach. The throat is open: a pilot can tow a pod out during loading,
+// ride the discharge, or feed it a pursuing hull. No hidden conveyor or damage law.
+const WINNOW_SECTOR = 'sector_vesta_forge';
+const WINNOW_POS = Object.freeze(sectorLocalToGlobalForSector({ x: 120, z: 980 }, WINNOW_SECTOR));
+export const VESTA_ORE_WINNOW = Object.freeze({
+  id: 'vesta_ore_winnow',
+  sectorId: WINNOW_SECTOR,
+  zoneId: 'zone_vesta_belt',
+  fieldId: 'f_vesta_3',
+  localPos: freezeVec(120, 980),
+  globalPos: WINNOW_POS,
+  // East is clear of the foundry and of the storm sheet to the south-east.
+  dir: freezeVec(1, 0),
+  cycle: Object.freeze({ gatherS: 5, warningS: 2, dischargeS: 3, calmS: 6 }),
+  fields: Object.freeze([
+    Object.freeze({
+      id: 'environment_vesta_winnow_gather', kind: 'well', center: WINNOW_POS,
+      radius: 190, strength: 120, falloff: 1.1, innerRadius: 24, innerSoft: 16,
+      sourceId: 'vesta_ore_winnow', team: null,
+    }),
+    Object.freeze({
+      id: 'environment_vesta_winnow_discharge', kind: 'cone',
+      center: freezeVec(WINNOW_POS.x - 100, WINNOW_POS.z), dir: freezeVec(1, 0),
+      radius: 420, strength: 340, falloff: 1.05, halfAngleRad: 0.5, edgeSoftRad: 0.1,
+      sourceId: 'vesta_ore_winnow', team: null,
+    }),
+  ]),
+  // Existing kit mouths flank the working lane; nothing plugs the projectile exit.
+  furniture: Object.freeze([-1, 1].map((side) => Object.freeze({
+    id: `vesta_winnow_bank_${side < 0 ? 'south' : 'north'}`,
+    placeId: 'place_conveyor_truss',
+    pos: freezeVec(WINNOW_POS.x - 30, WINNOW_POS.z + side * 76),
+    rot: 0, radius: 18,
+  }))),
+});
+
+/** Saved sim time keeps the shift running across visits; no visit-local timer. */
+export function vestaWinnowPhase(simTime, out = null) {
+  const result = out || {};
+  const cycle = VESTA_ORE_WINNOW.cycle;
+  const cycleS = cycle.gatherS + cycle.warningS + cycle.dischargeS + cycle.calmS;
+  const elapsedS = positiveModulo(finite(simTime), cycleS);
+  const warningEnd = cycle.gatherS + cycle.warningS;
+  const dischargeEnd = warningEnd + cycle.dischargeS;
+  result.phase = elapsedS < cycle.gatherS ? 'gather'
+    : elapsedS < warningEnd ? 'warning' : elapsedS < dischargeEnd ? 'discharge' : 'calm';
+  result.remainingS = (result.phase === 'gather' ? cycle.gatherS
+    : result.phase === 'warning' ? warningEnd : result.phase === 'discharge' ? dischargeEnd : cycleS) - elapsedS;
+  result.cycleS = cycleS;
+  return result;
+}
+
 function buildWeatherVolume({
   id, role, sectorId, hazardType, localPos, rot, scanScale, field,
 }) {

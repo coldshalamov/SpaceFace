@@ -24,6 +24,8 @@ import {
   aperturePoint,
   WEATHER_SECTOR_IDS,
   WEATHER_VOLUMES,
+  VESTA_ORE_WINNOW,
+  vestaWinnowPhase,
   aperturePhase,
   cinderSluicePhase,
   isApertureOccupant,
@@ -117,6 +119,9 @@ export const environmentalMachinery = {
     this._weatherPlayerInside = new Set();
     this._weatherPhaseOut = {};
     this._weatherLastPhase = new Map();
+    this._winnowPhaseOut = {};
+    this._winnowLastPhase = null;
+    this._winnowBanksEnsured = new Set();
     this._aperturePhaseOut = {};
     this._apertureFieldStrength = new Map();
     this._aperturePlayerInside = false;
@@ -173,6 +178,64 @@ export const environmentalMachinery = {
 
     if (inWeather) this._updateWeather(state);
     else this._clearWeather('wrong_sector');
+    if (inFlight && sectorId === VESTA_ORE_WINNOW.sectorId) this._updateWinnow(state);
+    else this._clearWinnow();
+  },
+
+  _updateWinnow(state) {
+    const machine = VESTA_ORE_WINNOW;
+    const phase = vestaWinnowPhase(simTimeOf(state), this._winnowPhaseOut);
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    for (let i = 0; i < machine.fields.length; i++) {
+      const field = machine.fields[i];
+      const active = i === 0 ? phase.phase === 'gather'
+        : phase.phase === 'warning' || phase.phase === 'discharge';
+      const strength = phase.phase === 'warning' ? 0 : field.strength;
+      if (!active) {
+        if (system.hasExternal(field.id)) system.unregisterExternal(field.id);
+      } else if (!system.hasExternal(field.id)) {
+        system.registerEnvironmental({ ...field, strength, createdAt: simTimeOf(state) });
+      } else if (this._winnowLastPhase !== phase.phase) {
+        system.updateExternal(field.id, { strength });
+      }
+    }
+    if (this._winnowLastPhase !== phase.phase) {
+      this._emitPhaseChanged({ siteId: machine.id, kind: 'winnow',
+        previous: this._winnowLastPhase, phase: phase.phase, remainingS: phase.remainingS });
+      this._winnowLastPhase = phase.phase;
+    }
+    const active = state.world.activeSector;
+    for (const bank of machine.furniture) {
+      if (this._winnowBanksEnsured.has(bank.id) || !this.bus?.emit) continue;
+      this.bus.emit('environmentalMachinery:ensureAnvil', {
+        id: bank.id, machineId: machine.id, pos: bank.pos, radius: bank.radius, mass: 12000,
+      });
+      this._winnowBanksEnsured.add(bank.id);
+    }
+    const sector = state.world.sectors && state.world.sectors[machine.sectorId];
+    const world = this.registry && this.registry.get('world');
+    if (!active || state.world.currentSectorId !== machine.sectorId || !sector || !world?._spawnPlaceProp) return;
+    for (const bank of machine.furniture) {
+      // The active sector owns furniture lifetime. Docking clears forces, not its rows.
+      if ((active.dressing || []).some((row) => row.environmentalMachineryId === bank.id)) continue;
+      const entity = world._spawnPlaceProp(active, sector, bank.placeId, bank.pos, {
+        rot: bank.rot, radius: bank.radius, name: 'Ore Winnow', worldOneOff: true,
+      });
+      if (entity) {
+        const row = active.dressing.find((item) => item.id === entity.id);
+        if (row) row.environmentalMachineryId = bank.id;
+      }
+    }
+  },
+
+  _clearWinnow() {
+    const system = this._fieldsSystem();
+    for (const field of VESTA_ORE_WINNOW.fields) {
+      if (system && system.hasExternal(field.id)) system.unregisterExternal(field.id);
+    }
+    this._winnowLastPhase = null;
+    this._winnowBanksEnsured.clear();
   },
 
   diagnostics(state = this.state) {
@@ -322,7 +385,12 @@ export const environmentalMachinery = {
       ? this.state.world.sectors[machine.sectorId]
       : null;
     if (!world || typeof world._spawnPlaceProp !== 'function' || !active || !sector) return;
-    if (active.id !== machine.sectorId) return;
+    if (this.state.world.currentSectorId !== machine.sectorId) return;
+    const existing = (active.dressing || []).find((row) => row.environmentalMachineryId === machine.id);
+    if (existing) {
+      this._starterMouthId = existing.id;
+      return;
+    }
     const ent = world._spawnPlaceProp(active, sector, machine.placeId, {
       x: machine.globalPos.x,
       z: machine.globalPos.z,
@@ -332,7 +400,11 @@ export const environmentalMachinery = {
       radius: 18,
       worldOneOff: true,
     });
-    if (ent && ent.id != null) this._starterMouthId = ent.id;
+    if (ent && ent.id != null) {
+      this._starterMouthId = ent.id;
+      const row = (active.dressing || []).find((item) => item.id === ent.id);
+      if (row) row.environmentalMachineryId = machine.id;
+    }
   },
 
   _updateAperture(state) {
@@ -857,6 +929,7 @@ export const environmentalMachinery = {
   },
 
   _clear(why) {
+    this._clearWinnow();
     this._clearCinder(why);
     this._clearKillMachines(why);
     this._clearAperture(why);
