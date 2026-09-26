@@ -16,6 +16,8 @@ import {
   publishSectorBoundaryRecordSnapshot,
   publishPreparedSectorBoundary,
   reconcileSettledSectorBoundaryRecords,
+  bodyIsInsideSectorArrivalBand,
+  entityHasOwnSectorPrewarmPlan,
   sectorPrewarmPopulationNeedsSynchronousRefresh,
   sectorPrewarmCertificationIsCurrent,
   settleLiveSectorBoundaryAdmissions,
@@ -1582,4 +1584,44 @@ test('the arrival band and its range are read from live poses, not staged ones',
   // The width of a gate jump: the range a destination body has while it is being prewarmed.
   assert.equal(isInsideSectorArrivalBand(11267), false);
   assert.equal(isInsideSectorArrivalBand(null), false);
+});
+
+test('arrival staging admits only bodies with their own authored plan', () => {
+  // The request builder appends the sector-wide spawnable-archetype set by default. Eligibility
+  // must not inherit it: a procedural rock, a hidden world-site proxy, or an art-less fx can never
+  // reach prepared admission, and one such member failed the whole certified arrival set in Ceres
+  // (every body, the Wreck Cathedral included, stayed undrawn until the set was discarded).
+  const sectorId = 'sector_ceres_belt';
+  const at = { x: 0, z: 0 };
+  const rock = { id: 11, type: 'asteroid', alive: true, radius: 12, homeSectorId: sectorId, pos: at, data: { typeId: 'ast_metallic' } };
+  const proxy = { id: 12, type: 'wreck', alive: true, _noMesh: true, radius: 20, homeSectorId: sectorId, pos: at, data: { worldSiteId: 'world_site_wreck_cathedral' } };
+  const bareFx = { id: 13, type: 'fx', alive: true, radius: 14, homeSectorId: sectorId, pos: at, data: { poi: true, poiId: 'poi_quiessence_hull_1' } };
+  const cathedral = { id: 14, type: 'fx', alive: true, radius: 360, homeSectorId: sectorId, pos: at, data: { placeId: 'place_landmark_wreck_cathedral', worldSiteId: 'world_site_wreck_cathedral' } };
+  const hiddenPlace = { ...cathedral, id: 15, _noMesh: true };
+  const elsewhere = { ...cathedral, id: 16, homeSectorId: 'sector_helios_prime' };
+
+  assert.equal(entityHasOwnSectorPrewarmPlan(rock, sectorId, 1), false);
+  assert.equal(entityHasOwnSectorPrewarmPlan(proxy, sectorId, 1), false);
+  assert.equal(entityHasOwnSectorPrewarmPlan(bareFx, sectorId, 1), false);
+  assert.equal(entityHasOwnSectorPrewarmPlan(hiddenPlace, sectorId, 1), false, 'a mesh-less proxy never gets a boundary');
+  assert.equal(entityHasOwnSectorPrewarmPlan(elsewhere, sectorId, 1), false);
+  assert.equal(entityHasOwnSectorPrewarmPlan({ ...cathedral, alive: false }, sectorId, 1), false);
+  assert.equal(entityHasOwnSectorPrewarmPlan(cathedral, sectorId, 1), true, 'an authored place is staged');
+});
+
+test('the arrival band is judged at a body\'s nearest edge, not its centre', () => {
+  const sectorId = 'sector_ceres_belt';
+  const player = { id: 1, type: 'ship', alive: true, radius: 8, pos: { x: 0, z: 0 } };
+  const state = { playerId: 1, entities: new Map([[1, player]]), world: { currentSectorId: sectorId } };
+  // The Wreck Cathedral as the landmark capture parks beside it: centre 400 WU off, drawn radius
+  // 360 — its hull is 40 WU from the player and must reveal the moment it is prepared.
+  const cathedral = { id: 2, type: 'fx', alive: true, radius: 360, homeSectorId: sectorId, pos: { x: 0, z: 400 }, data: { visualRadius: 360 } };
+  const smallFar = { id: 3, type: 'fx', alive: true, radius: 12, homeSectorId: sectorId, pos: { x: 0, z: 400 }, data: {} };
+  const smallNear = { ...smallFar, id: 4, pos: { x: 0, z: 200 } };
+  const otherSector = { ...cathedral, id: 5, homeSectorId: 'sector_helios_prime' };
+  assert.equal(bodyIsInsideSectorArrivalBand(state, cathedral), true);
+  assert.equal(bodyIsInsideSectorArrivalBand(state, smallNear), true);
+  assert.equal(bodyIsInsideSectorArrivalBand(state, smallFar), false, 'a small body past the band keeps the certified set');
+  assert.equal(bodyIsInsideSectorArrivalBand(state, otherSector), false);
+  assert.equal(bodyIsInsideSectorArrivalBand({ ...state, entities: new Map() }, cathedral), false, 'no player pose, no reveal');
 });

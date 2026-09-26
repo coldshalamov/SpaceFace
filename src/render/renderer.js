@@ -1080,6 +1080,23 @@ export function openingCompileIssueKey(subject) {
     + `|${parts.join('|')}`;
 }
 
+/**
+ * Sector-arrival staging eligibility: does THIS body carry its own authored plan to prepare?
+ * The request builder appends the sector-wide spawnable-archetype set by default, which made every
+ * procedural rock, hidden site proxy and art-less fx "eligible". None of them can reach prepared
+ * admission, so the certified arrival set failed on every entry, and every body in it (the Wreck
+ * Cathedral included) stayed undrawn until the set was thrown away and rebuilt (~45 s measured).
+ * A mesh-less proxy never gets a boundary at all — the same law as isEntityRenderRelevant.
+ */
+export function entityHasOwnSectorPrewarmPlan(entity, sectorId, playerId = null) {
+  if (!entity || entity.alive === false || entity._noMesh) return false;
+  return authoredPrewarmRequestsForEntities([entity], {
+    sectorId,
+    playerId,
+    includeSpawnableArchetypes: false,
+  }).length > 0;
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -3044,11 +3061,16 @@ export const SECTOR_BOUNDARY_CLEANUP_MAX_RETRIES = 3;
  * that could brick a weak GPU. The band is read against the live player pose, because a sector is
  * prewarmed while the player is still in the sector they are leaving.
  */
-function bodyIsInsideSectorArrivalBand(state, entity) {
+export function bodyIsInsideSectorArrivalBand(state, entity) {
   if (!entity || entity.alive === false) return false;
   if (String(entitySectorId(entity) || '') !== String(state?.world?.currentSectorId || '')) return false;
   const player = state && state.playerId != null ? state.entities.get(state.playerId) : null;
-  return isInsideSectorArrivalBand(planarRangeWU(entity, player));
+  const range = planarRangeWU(entity, player);
+  if (range == null) return false;
+  // What the player sees is the body's nearest edge, not its centre: the Wreck Cathedral (drawn
+  // radius 360) parked 400 WU off stood 40 WU from the hull, yet waited behind the whole sector's
+  // certified set. Presence radius is the same envelope view culling uses.
+  return isInsideSectorArrivalBand(Math.max(0, range - entityVisualCullRadius(entity)));
 }
 
 export const SECTOR_BOUNDARY_PREPARATION_STATE = Object.freeze({
@@ -9552,10 +9574,7 @@ export const render = {
       && entity.alive !== false
       && entity.id !== state.playerId
       && String(entitySectorId(entity) || '') === record.sectorId
-      && authoredPrewarmRequestsForEntities([entity], {
-        sectorId: record.sectorId,
-        playerId: state.playerId,
-      }).length > 0;
+      && entityHasOwnSectorPrewarmPlan(entity, record.sectorId, state.playerId);
     const sectorPrewarmCoverageOptions = (record) => ({
       entities: state.entities,
       entityList: state.entityList,
@@ -10288,6 +10307,10 @@ export const render = {
         this._publishAssetResidencyDiagnostics();
       });
       state.render.pipelinePrecompileReady = preparation;
+      // A fail-closed arrival (an invariant broke; console.error above carries the cause) still
+      // rejects for whoever awaits the gate, but in flight nothing awaits it, and the rejection
+      // escaped as an uncaught page error while ordinary residency went on drawing the sector.
+      preparation.catch(() => {});
     });
     onBus('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {

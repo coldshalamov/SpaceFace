@@ -9,6 +9,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { segmentHitsProxy } from '../combat/lineOfSight.js';
+import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
@@ -3201,7 +3202,10 @@ export function pointInScanCone(origin, heading, range, halfAngle, point) {
 
 export function scanLineOccluded(origin, target, occluder) {
   if (!origin || !target || !occluder || !occluder.pos) return false;
-  if (occluder.data || occluder.type || occluder.physicsBody) {
+  // A body with a real compound collider (a measured skin on a fixed solid, or a declared legacy
+  // manifest) occludes with that collider. Everything else — every dynamic hull, which never takes
+  // a skin — keeps the gameplay-radius disc below.
+  if ((occluder.data || occluder.type || occluder.physicsBody) && resolveCollisionProxyManifest(occluder)) {
     return segmentHitsProxy(occluder, origin, target);
   }
   const r = Math.max(0, Number(occluder.radius) || 0);

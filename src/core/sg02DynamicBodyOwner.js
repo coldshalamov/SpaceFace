@@ -398,7 +398,7 @@ export class Sg02DynamicBodyOwner {
   _reuseUnchangedStaticRecord(entity, spec) {
     const rec = this.records.get(entity.id);
     if (!rec || rec.spec.dynamic || !recordMatchesSpec(rec, spec)) return false;
-    if (rec.proxyId !== proxyIdForEntity(entity)) return false;
+    if (rec.proxyId !== proxyIdForEntity(entity, spec)) return false;
     const kinematics = rec.kinematics;
     if (!kinematics || (entity.flags && entity.flags.noInterp)) return false;
     const localX = finite(entity.pos && entity.pos.x) - this._frameOrigin.x;
@@ -1242,7 +1242,7 @@ export class Sg02DynamicBodyOwner {
       body.setEnabled(true);
     } else {
       body = this.world.createRigidBody(desc);
-      proxyManifest = resolveCollisionProxyManifest(entity);
+      proxyManifest = proxyManifestForBody(entity, spec);
       let colliderDescs;
       if (proxyManifest) {
         colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts);
@@ -1360,7 +1360,7 @@ export class Sg02DynamicBodyOwner {
       && rec.entity === entity && this._reboundEntityIds.has(entity.id));
     // Compound-proxy membership is part of the collider identity: a station gaining/losing its
     // manifest (or switching manifests) rebuilds the static body, same as any other spec change.
-    const proxyId = proxyIdForEntity(entity);
+    const proxyId = proxyIdForEntity(entity, spec);
     if (!recordMatchesSpec(rec, spec) || (rec && rec.proxyId !== proxyId)) {
       if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
@@ -2661,8 +2661,18 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
 }
 
-function proxyIdForEntity(entity) {
+// Measured skins (`skin:<census row>`) are fixed-body geometry only. The resolver already refuses
+// them on dynamic bodies; the builder refuses too, keyed on the very spec it is building, so a
+// dynamic hull can never get the compound collider (which ignores centerOfMass and whose
+// multi-contact solve order did not survive a save/reload rebuild). It keeps its capsule/ball.
+function proxyManifestForBody(entity, spec) {
   const manifest = resolveCollisionProxyManifest(entity);
+  if (manifest && spec && spec.dynamic && typeof manifest.id === 'string' && manifest.id.startsWith('skin:')) return null;
+  return manifest;
+}
+
+function proxyIdForEntity(entity, spec) {
+  const manifest = proxyManifestForBody(entity, spec);
   return manifest ? manifest.id : null;
 }
 

@@ -53,7 +53,12 @@ export const core = {
       const index = ensureEntityIndex(state);
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
-      const measuredSkin = e && e.collides !== false ? modelTruthProxyManifest(e) : null;
+      // Measured skins are fixed-body geometry only: a body the physics authority builds as
+      // dynamic (every ship incl. the player, drones, payloads, wrecks, chunks) is never stamped
+      // and keeps its capsule/ball. Same predicate SG-02 uses to choose dynamic vs fixed.
+      const measuredSkin = e && e.collides !== false && !isDynamicPhysicsBodyEntity(e)
+        ? modelTruthProxyManifest(e)
+        : null;
       if (measuredSkin) {
         const declared = e.data && e.data.collisionProxy;
         if (!declared || declared === 'station_ring_hub' || declared === 'helios_trade_hub' || declared === 'gate_jump_ring') {
@@ -181,6 +186,11 @@ export const core = {
         this.syncDayBoundaryFromSimTime(state);
         requestPresentationRebuild('save-loaded');
       }),
+      // A same-sector teleport (world.relocatePlayerInSector) writes pos and prevPos together, so
+      // the per-tick recordTransformIfChanged never sees it, and the render pose blend has no
+      // continuous source across it. A parked hull stayed at the old spot with the camera on it
+      // (measured: Helios capture 1915 WU from the sim pose for 55 s). Re-seed like a sector entry.
+      bus.on('world:playerRelocated', () => requestPresentationRebuild('player-relocated')),
       bus.on('game:new', () => requestPresentationRebuild('game-new')),
       bus.on('game:newGame', () => requestPresentationRebuild('game-new')),
       bus.on('game:started', () => requestPresentationRebuild('game-started')),

@@ -102,6 +102,41 @@ test('docked flight stops transform publication and rebuilds on undock', () => {
   }
 });
 
+test('a same-sector player relocation re-seeds presentation instead of vanishing', () => {
+  // world.relocatePlayerInSector writes pos and prevPos together; the per-tick transform gate
+  // therefore never publishes the teleport. The relocation event must rebuild the mirror, the same
+  // re-seed a sector entry gets, or the hull and camera stay at the old spot until the pilot moves.
+  const state = createGameState(33333);
+  const bus = createBus();
+  const presentationJournal = createPresentationJournal(16);
+  const helpers = {};
+  core.init({ state, bus, helpers, presentationJournal });
+
+  try {
+    const player = helpers.spawnEntity({
+      type: 'ship', isPlayer: true, pos: { x: 0, z: 0 }, ttl: Infinity, data: {},
+    });
+    state.playerId = player.id;
+    core.preStep(LOOP_FIXED_DT, state);
+    core.lifetimeSweep(LOOP_FIXED_DT, state);
+    const afterSettle = presentationJournal.getWriteSequence();
+
+    // The relocation seam's exact write: pos and prevPos both land on the new spot.
+    player.pos.x = 1680; player.pos.z = -920;
+    player.prevPos.x = 1680; player.prevPos.z = -920;
+    core.preStep(LOOP_FIXED_DT, state);
+    core.lifetimeSweep(LOOP_FIXED_DT, state);
+    assert.equal(presentationJournal.getWriteSequence(), afterSettle,
+      'precondition: the transform gate cannot see a pos+prevPos teleport');
+
+    bus.emit('world:playerRelocated', { sectorId: 'sector_helios_prime', pos: { x: 1680, z: -920 } });
+    assert.equal(presentationJournal.needsRebuild(), true);
+    assert.equal(presentationJournal.getDiagnostics().rebuildReason, 'player-relocated');
+  } finally {
+    core.destroy();
+  }
+});
+
 test('core detaches every journal producer before terminal close', () => {
   const state = createGameState(54321);
   const bus = createBus();
