@@ -3,11 +3,15 @@
 // This is the only manifest permitted to back an acceptance claim for the held-out Gold Corridor
 // qualification. It binds one fixed matrix to candidate + harness + profile manifest.
 //
-// Phase-1 status: CREATED, NEVER EXECUTED. `registryEnabled: false` keeps the dynamic broker
+// Status 2026-09-25: CREATED, NEVER EXECUTED. `registryEnabled: false` keeps the dynamic broker
 // registry fail-closed. Enabling it is an integrator step and is legal only when EVERY entry
-// condition in design/program/roadmap/active/PQ-025.md is true — including the Phase-0
-// stop conditions recorded in the semantic map (perf p50/p99/missed-vsync/residency/draw counts
-// currently have no owner surface).
+// condition in design/program/roadmap/active/PQ-025.md is true.
+//
+// Phase-0 freeze has landed: the frozen matrix, profile manifest, rubric, retention, capture
+// identity, and held-out salt commit/reveal live in pq025-gold-corridor-freeze.mjs (this
+// directory), which also carries the fail-closed auditFreezeReadiness() gate a qualification
+// launch must pass. The five performance owner facts exist (PQ-025.perf-owner-facts receipt).
+// The entry conditions below name what is STILL missing before this manifest may be registered.
 
 import path from 'node:path';
 
@@ -78,11 +82,14 @@ export function createPq025GoldCorridorQualificationManifest(overrides = {}) {
     requireBrokerClaim: true,
     cleanupPolicy: 'kill-tree',
     // Entry conditions the integrator must satisfy before this manifest may be registered/run.
+    // Refreshed 2026-09-25 after the Phase-0 freeze: matrix/rubric/profile/salt are frozen
+    // (pq025-gold-corridor-freeze.mjs) and the perf owner facts have landed, so those former
+    // blockers are gone. What remains is fail-closed in auditFreezeReadiness().
     entryConditionsUnmet: Object.freeze([
-      'PQ-019/020/021/022/023/024 integrated receipts at the exact candidate revision',
-      'owner read seam for perf p50/p99/missed-vsync/residency/draw-counts',
-      'frozen matrix + rubric + profile manifest',
-      'held-out salt committed and unrevealed',
+      'probe adapters do not exist (scripts/probe-pq025-gold-corridor-smoke.mjs, scripts/probe-pq025-gold-corridor-qualification.mjs)',
+      'clean candidate source fingerprint at qualification launch (auditFreezeReadiness rejects a dirty worktree)',
+      'exclusive git-index / browser-GPU / save-profile-port / acceptance-artifact leases at the launch window',
+      'independent-reviewer verdicts recorded against the frozen rubric (R1-R8) from printed evidence',
     ]),
     ...overrides,
   };
