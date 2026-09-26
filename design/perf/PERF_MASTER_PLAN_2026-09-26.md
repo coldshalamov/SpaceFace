@@ -409,3 +409,14 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   inside noise. Lane notes: deeper prefetch lookahead is now safer to try
   with ordering fixed; whole-ship LOD demotion could also take the deadline
   flag.
+
+- `textures` `0f16bf3ad` — **kept (work-removal only)**. Per-renderer WeakMap
+  texture-upload version stamps in `prepareStartupGpuResidency` — the texture
+  analog of the landed `spacefaceGpuResident` geometry stamp: repeat residency
+  passes (admissions sharing decoded packages, pool seals, live-sector cooks)
+  skip the yield slot + `initTexture` call per already-resident texture.
+  Provably identical (three's own `version` gate already no-ops; stamps clear
+  on context restore via `ignoreResidentStamps`; Video/External excluded).
+  Probe read worse (452/295, P99 361) but inside this box's ±2x noise and the
+  change only removes work — kept with a note that headless-box variance
+  exceeds small CPU wins; the win shows up in residency-pass wall time.
