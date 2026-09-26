@@ -75,6 +75,7 @@ const SHELL_STEAM_STATUS_CHANNEL = 'spaceface:steam-status';
 const SHELL_WORKSHOP_STATUS_CHANNEL = 'spaceface:workshop-status';
 const SHELL_WORKSHOP_PUBLISH_CHANNEL = 'spaceface:workshop-publish';
 const SHELL_WORKSHOP_SYNC_CHANNEL = 'spaceface:workshop-sync';
+const SHELL_PERF_METRICS_CHANNEL = 'spaceface:perf-metrics';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
@@ -106,6 +107,11 @@ try {
     },
     workshopSync() {
       return ipcRenderer.invoke(SHELL_WORKSHOP_SYNC_CHANNEL);
+    },
+    // Probe-only: per-process {pid, type, cpuPercent, workingSetKiB} from app.getAppMetrics().
+    // Absent in the browser build (no spacefaceShell) — callers must feature-detect.
+    perfMetrics() {
+      return ipcRenderer.invoke(SHELL_PERF_METRICS_CHANNEL);
     },
   }));
 } catch (e) {}

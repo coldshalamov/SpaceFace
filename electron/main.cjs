@@ -146,6 +146,18 @@ const releaseIdentity = resolveReleaseIdentity({ appApi: app, projectRoot: PROJE
 const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
 ipcMain.handle(SHELL_BUILD_INFO_CHANNEL, () => publicBuildInfo(releaseIdentity));
 
+// Probe-only witness: app.getAppMetrics() attributes CPU and working-set to each Chromium
+// process (renderer vs GPU vs utility), so a headless perf probe can tell a GPU-process link
+// stall from a renderer busy frame. Renderer main-frame CPU numbers already have in-page
+// counters; this is the blind spot they don't cover. Read-only public shape — pid/type only.
+const SHELL_PERF_METRICS_CHANNEL = 'spaceface:perf-metrics';
+ipcMain.handle(SHELL_PERF_METRICS_CHANNEL, () => app.getAppMetrics().map((m) => ({
+  pid: m.pid,
+  type: m.type,
+  cpuPercent: m.cpu && Number.isFinite(m.cpu.percentCPUUsage) ? m.cpu.percentCPUUsage : 0,
+  workingSetKiB: m.memory && Number.isFinite(m.memory.workingSetSize) ? m.memory.workingSetSize : 0,
+})));
+
 // PQ-033.03 Steam: the optional steamworks.js binding (absent unless a Steam build adds it) behind two
 // allowlisted channels. Unlock requests carry only a known achievement id; status is the public view.
 // A direct (non-Steam) build reports available:false, and isolated evidence launches never touch
