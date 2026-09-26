@@ -28,7 +28,12 @@ export async function runBrowserPublicRoute({
   outputDir,
   expectedRootUrl,
   log = () => {},
-  flightTimeoutMs = 150_000,
+  // The launch gate waits for readiness; it does not measure load speed. The packaged
+  // Electron shell measured 123s new-game -> flight-ready on a quiet host (run
+  // 2026-09-25T20-28-40Z) and was still compositing its loading progress at 96% when a
+  // 150s budget expired (run 2026-09-25T22-12-38Z), so 150s bound the budget, not the
+  // product. 240s is ~2x the best observed load and still bounds a wedged page.
+  flightTimeoutMs = 240_000,
   dockTimeoutMs = 90_000,
   skipStationHubAcceptance = false,
   seed = null,

@@ -182,7 +182,9 @@ export async function runReleaseSoakProbe({
   viewport = DEFAULT_VIEWPORT,
   outputRoot = path.join(root, '.devshots', 'spec2'),
   taskId = `release-soak-${runtime}`,
-  flightTimeoutMs = 150_000,
+  // 240s: packaged-Electron new-game loads measured 123s quiet / >150s contended; see
+  // alphaLiveBaselineRoute.mjs for the budget rationale.
+  flightTimeoutMs = 240_000,
   dockTimeoutMs = 90_000,
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
@@ -5956,7 +5958,9 @@ async function runPerformanceAttributionProbe({
   seed = 47,
   warmupMs = 2_000,
   sampleMs = 5_000,
-  flightTimeoutMs = 150_000,
+  // 240s: packaged-Electron new-game loads measured 123s quiet / >150s contended; see
+  // alphaLiveBaselineRoute.mjs for the budget rationale.
+  flightTimeoutMs = 240_000,
   dockTimeoutMs = 90_000,
   enableTier1Counters = false,
   activityInspector = inspectPerformanceActivity,
