@@ -122,6 +122,38 @@ const ROUTES = {
 
     // Walk every title surface that doesn't start a run or quit.
     await walkVerb(ctx, 't02-verb-settings', /settings/i);
+
+    await B(ctx, 't02b-settings-toggle', 'settings: flip first toggle, verify state, flip back', async () => {
+      await clickWord(ctx, /settings/i, 10_000).catch(() => {});
+      await sleep(1200);
+      const flipped = await ctx.page.evaluate(() => {
+        const cand = [...document.querySelectorAll('button, .k-word, [role="button"], input[type=checkbox], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))[0];
+        if (!cand) return { toggled: null };
+        const before = (cand.textContent || '').trim();
+        cand.click();
+        return { toggled: cand.dataset && cand.dataset.action ? cand.dataset.action : before, before };
+      });
+      await sleep(600);
+      const after = await ctx.page.evaluate(() =>
+        [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))
+          .map((e) => (e.textContent || '').trim()).slice(0, 8));
+      await shotNow(ctx, 't02b-toggled');
+      // restore: click the same position again (first Off/On control toggles back)
+      await ctx.page.evaluate(() => {
+        const cand = [...document.querySelectorAll('button, .k-word, [role="button"], input[type=checkbox], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))[0];
+        if (cand) cand.click();
+      });
+      await pressKey(ctx, 'Escape', 700);
+      await sleep(600);
+      const s = await snap(ctx);
+      if (flipped.toggled == null) observe(ctx, 'defect', 'settings', 'settings screen: no On/Off toggle found to flip');
+      else if (after[0] === flipped.before) observe(ctx, 'defect', 'settings', `settings toggle ${flipped.toggled} did not change label`);
+      return { flipped, after, screen: s.screen };
+    });
+
     await walkVerb(ctx, 't03-verb-newgame', /new game|adventure/i);
     await walkVerb(ctx, 't04-verb-load', /^load\b/i);
     await walkVerb(ctx, 't05-verb-crucible', /crucible/i);
