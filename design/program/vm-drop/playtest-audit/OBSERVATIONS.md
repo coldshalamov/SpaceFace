@@ -376,8 +376,9 @@ render all cases; the "No recovery route" copy seen at l08 is the genuine no-ins
 | 11 | screens | 35 | D61, D62 found | shipworks dead verbs `cf5cc3cc3`, replay hint `a562abfc5` |
 | 12 | screens | 35 | clean | verifies D61/D62 in a fresh boot |
 | 13 | screens | 36 | clean | drill screen reached via real approachCompleted handoff |
+| 14 | edge+combat+loop | 8+7+10 | clean | regression pass on the D60–D62 fixes HEAD — full sweep green |
 
 ## Next runs
 
-- r14: consolidated edge+combat+loop regression pass on the fixes HEAD.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
+- demoEnd card seam: verify the full-route probe end card reads as a designed closer.
