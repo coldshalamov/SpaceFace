@@ -275,6 +275,7 @@ export const aiEncounter = {
         owner: 'sg06',
         commandSeq: pending.commandSeq,
         packageId: pending.packageId,
+        callerId: pending.callerId == null ? null : pending.callerId,
       };
       let entity;
       try {
@@ -289,6 +290,15 @@ export const aiEncounter = {
       }
       if (budgeted && typeof budget.bindEntity === 'function') {
         budget.bindEntity(entity.id, pending.squadId);
+      }
+      // Persisted proof the call produced arrivals: the caller's latch survives saves while the
+      // pending queue is transient, so load reconciliation needs this to tell "squad arrived"
+      // from "squad lost to the rebuild" (caller re-calls then).
+      const caller = pending.callerId == null || !state.entities || typeof state.entities.get !== 'function'
+        ? null : state.entities.get(pending.callerId);
+      if (caller && caller.data) {
+        caller.data.ai = caller.data.ai || {};
+        caller.data.ai._reinforcementsDelivered = true;
       }
       const record = {
         commandSeq: pending.commandSeq,
