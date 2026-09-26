@@ -420,7 +420,23 @@ through the "Open load screen?" confirm onto the real saveLoad screen, Clips ope
 inside pause, Sandbox (dev build) mounts. The run surfaced D65 (clips readout double-hint +
 overlay stacking), fixed same-run at `577612803`. 36 beats, 0 residual defects.
 
+## Run 17 — post-D65 verification @ 46dbf8a41
+
+Screens route re-run on the fix HEAD: 36 beats, 18 observations, 0 console errors, 0 shader errors.
+e05 walked all 12 pause verbs again (Load→confirm→saveLoad, Clips→clean overlay frame post-dedupe,
+Sandbox→dev screen). D65 confirmed fixed in the captured frame: single hint line, readout "Ready"
+only when clips exist.
+
+## Probe defect found + fixed — combat route never reached the real crucible
+
+Reviewing c02's frame showed pause-over-practice-lab, not crucible flight: c01b's "Practice room"
+verb launches into live sandbox flight, whose only exit is Esc→pause→Main Menu (a real-player path,
+not a probe defect). The probe's single-Esc "back out" left the run paused in the lab; every combat
+beat after c01b (fight, deathwatch, death) ran against the Training Derelict instead of a real
+crucible wave. Fixed in `46dbf8a41` — c01b now settles back to the door through the real exit chain
+and rough-edges if it can't. r18 re-run verifies the real crucible is reached again.
+
 ## Next runs
 
-- r17: final screens pass to capture the clean Clips frame post-D65.
+- r18: combat re-run post `46dbf8a41` — verify real crucible + capture the lab-rack fix (D64) live.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
