@@ -309,6 +309,26 @@ window was stale; refreshed to 300-325 with the derivation in a comment.
   Residual is still Pole A serial-admission throughput (upgradePending ~21,
   inFlight=1).
 
+### Seventh round (head 7d8a5ace7 — master merge)
+
+Merged master tip `391981fe1` (288 new commits incl. the parallel quiet-latch
+perf series). Conflicts resolved: draw-flight check took master's version
+(master `c448b94fa` rewrote the test for dynamic-stick semantics — the old
+speed-window fix is obsolete), renderPackageManifest took master's canonical
+regen.
+
+- `sim` shard is now red on BOTH sides: the 47a golden moved to `f3583c50…`
+  (byte-identical reproduction on master tip). `git bisect` across the merge
+  range fingers master commit `182faf57b` ("INFERENCE-17 tail: authored
+  command pushes honor the 128-ring; _spawnDue commits survivors on throw",
+  touching src/systems/aiEncounter.js + aiPorts.js) — it changed sim behavior
+  without reminting `test/47a.telemetry.expected.json`. Owner fix: mint the
+  new golden on master (or revert); not our call to overwrite the expectation
+  on a PR branch.
+- static shards / feel / program-docs: same adjudicated master-side sets.
+- `draw-flight` now runs master's rewritten contract — no branch-side
+  involvement needed.
+
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
 authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
