@@ -402,7 +402,7 @@ export const fields = {
       if(d&&this.state.entities.get(mapped(d.emitterId)))rt.deployed[f.id]={...d,emitterId:mapped(d.emitterId),expireAt:d.expireAt??Infinity};
       const a=raw.anchored?.[f.id];if(a)rt.anchored[f.id]={...a,sourceId:mapped(a.sourceId)};
     }
-    for(const [id,h] of Object.entries(raw.hitches??{}))if(this.state.entities.get(mapped(id))&&this._kernel.has(h.fieldId))rt.hitches[mapped(id)]={...h,sourceId:mapped(h.sourceId)};
+    for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
     rt.cooldowns=raw.cooldowns??rt.cooldowns;
     this.state.fields=rt;this._restoredOnLoad=true;
   },
@@ -585,6 +585,12 @@ export const fields = {
       : null;
     const fieldId = seedEnt && seedEnt.alive !== false ? `field_seed_lock_${ms.seedId}` : null;
     if (fieldId) {
+      // Defensive: a different seed's mirror must never linger — seedId changes pass through a
+      // null-fieldId tick today, but a skipped tick would leak the stale field and its hitches.
+      if (this._seedLockFieldId && this._seedLockFieldId !== fieldId
+        && this._kernel.has(this._seedLockFieldId)) {
+        this._kernel.unregister(this._seedLockFieldId);
+      }
       let rec = this._kernel.get(fieldId);
       const sx = finite(seedEnt.pos && seedEnt.pos.x);
       const sz = finite(seedEnt.pos && seedEnt.pos.z);
@@ -642,12 +648,21 @@ export const fields = {
       }
     }
     const field = this._seedLockFieldId ? this._kernel.get(this._seedLockFieldId) : null;
-    const ring = this._insideRing || (this._insideRing = new Map());
-    const prev = new Map(ring);
+    // Two-map swap keeps the edge memory zero-alloc: prev holds last tick's membership,
+    // ring is the cleared spare written fresh this tick.
+    const prev = this._insideRing || (this._insideRing = new Map());
+    const ring = this._insideRingPrev || (this._insideRingPrev = new Map());
     ring.clear();
-    if (!field) { prev.clear(); return; }
+    this._insideRing = ring;
+    this._insideRingPrev = prev;
+    if (!field) return;
     const latch = (ent) => {
-      if (!ent || ent.id == null || !ent.pos) return;
+      if (!ent || ent.id == null || !ent.pos || ent.alive === false) return;
+      // The anchor itself is never its own catch — roping the seed is the primary verb and a
+      // self-hitch is pure toast/cue noise — and only bodies the kernel can move take a hitch
+      // (a tethered station or chunk of static rock would be a junk record).
+      if (ent.id === field.sourceId || ent.type === 'massSeed') return;
+      if (!isDynamicPhysicsBodyEntity(ent)) return;
       const inside = fieldContainsPoint(field, ent.pos.x, ent.pos.z);
       ring.set(ent.id, inside);
       if (!inside || prev.get(ent.id) === true) return;
@@ -1240,6 +1255,7 @@ export const fields = {
     if (this._kernel) this._kernel.clear();
     this._seedLockFieldId = null;
     if (this._insideRing) this._insideRing.clear();
+    if (this._insideRingPrev) this._insideRingPrev.clear();
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
     if (this._grindPairs) this._grindPairs.clear();
@@ -1763,6 +1779,10 @@ export const fields = {
     for (let i = 0; i < fieldsList.length; i++) {
       const field = fieldsList[i];
       if (!field || field.kind !== FIELD_KINDS.WELL) continue;
+      // External strength-0 lock rings are parking tools, not wells — without the tag/strength
+      // gate a seed mirror (id-sorted before field_well_*) steals cluster attribution and can
+      // emit a well:fling it never produced.
+      if (field.tag != null || !(field.strength > 0)) continue;
       if (!fieldAffectsBody(field, profile)) continue;
       well = field;
       break;
