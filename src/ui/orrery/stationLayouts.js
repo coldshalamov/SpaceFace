@@ -271,7 +271,7 @@ ${S} .sxb-launch[data-state='risk'] { background-image:linear-gradient(90deg, va
 ${S} .sxb-launch[data-state='risk'] .sxb-launch__state { color:var(--dp-danger, #ff5038) !important; }
 html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:none; }
 @media (max-height:800px) {
-  ${S} .sxb-tape :is(.sxb-berth__mechanic, .sxb-berth__ledger) { display:none !important; }
+  ${S} .sxb-tape .sxb-berth__ledger { display:none !important; }
   ${S} .sxb-purse__value { font-size:30px !important; }
   ${S} .sxb-vitals { margin-top:2px !important; gap:4px 12px !important; }
   ${S} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:72px !important; height:47px !important; }

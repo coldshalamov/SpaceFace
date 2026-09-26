@@ -32,7 +32,7 @@ import {
   sectorBedToBandIntent,
 } from './themeMatrix.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, MECHANIC_LINES } from './barkVoice.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
@@ -4415,7 +4415,8 @@ export const audio = {
     // Start ambient station hum loop (faction-tinted when possible)
     this._startStationHum(p);
     const hullLines = leftoverMechanicLines(this.state);
-    const mechanicLine = (hullLines && hullLines[0]) || MECHANIC_LINES[0];
+    // A stock graze is a lie when this hull has nothing filed. Silence beats an invented scar.
+    const mechanicLine = hullLines && hullLines[0];
     if (mechanicLine) this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
   },
 

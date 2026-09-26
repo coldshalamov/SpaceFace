@@ -6,7 +6,7 @@
 // Leftover bark corpus in src/data/barks.js is leftover radio, not this voice.
 
 import { COMMODITIES } from '../data/commodities.js';
-import { activeOwnedShip } from '../data/hullIdentity.js';
+import { activeHullIdentity, activeOwnedShip } from '../data/hullIdentity.js';
 import {
   LIVING_HULL_SCAR_BANDS,
   livingHullPatchedScars,
@@ -26,11 +26,15 @@ export const MECHANIC_SPEAKER = LEDGER_SPEAKER;
 const HULL_HISTORY_TYPES = new Set(['scar', 'patch']);
 
 const SCAR_CLASS_LINE = Object.freeze({
-  graze: (facing) => `Graze on the ${facing}. Soft enough the paint still argues.`,
-  hard: (facing) => `Hard scar on the ${facing}. That is a real hit.`,
-  heavy: (facing) => `Heavy scar on the ${facing}. Do not call it weather.`,
-  crushing: (facing) => `Crushing scar on the ${facing}. The frame kept it.`,
+  graze: (facing, name) => `${name}: Graze on the ${facing}. Soft enough the paint still argues.`,
+  hard: (facing, name) => `${name}: Hard scar on the ${facing}. That is a real hit.`,
+  heavy: (facing, name) => `${name}: Heavy scar on the ${facing}. Do not call it weather.`,
+  crushing: (facing, name) => `${name}: Crushing scar on the ${facing}. The frame kept it.`,
 });
+
+// Worst open scar leads. The berth tape and the dock voice both speak the first line,
+// so a graze must not bury a crushing hit.
+const SPOKEN_SCAR_BANDS = Object.freeze(['crushing', 'heavy', 'hard', 'graze']);
 
 function leftoverLine(value) {
   const next = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -51,11 +55,16 @@ export function leftoverMechanicScarClasses(hull) {
   return carried;
 }
 
-function leftoverScarLine(hull, band) {
+function hullSpokenName(state, owned) {
+  const identity = activeHullIdentity(state);
+  return leftoverLine((identity && identity.name) || (owned && owned.defId)) || 'This hull';
+}
+
+function leftoverScarLine(hull, band, name) {
   const phrase = SCAR_CLASS_LINE[band];
   if (!phrase) return null;
   const scar = livingHullScars(hull).find((row) => row.band === band);
-  return leftoverLine(phrase(leftoverFacing(scar)));
+  return leftoverLine(phrase(leftoverFacing(scar), name || 'This hull'));
 }
 
 function leftoverRepairLine(hull) {
@@ -77,9 +86,9 @@ function leftoverRapLine(state, hull) {
   return leftoverLine('The ship ledger already has a fact on this hull.');
 }
 
-function leftoverCleanPlateLine(hull) {
+function leftoverCleanPlateLine(hull, name) {
   if (livingHullScars(hull).length) return null;
-  return leftoverLine('Clean plate. Nothing on this hull to file.');
+  return leftoverLine(`${name || 'This hull'}. Clean plate. Nothing on this hull to file.`);
 }
 
 function leftoverCapitalised(text) {
@@ -134,15 +143,17 @@ export function leftoverMechanicLines(state) {
   const owned = activeOwnedShip(state);
   if (owned) {
     const hull = owned.livingHull;
+    const name = hullSpokenName(state, owned);
     const classes = leftoverMechanicScarClasses(hull);
-    for (const band of classes) {
-      const line = leftoverScarLine(hull, band);
+    for (const band of SPOKEN_SCAR_BANDS) {
+      if (!classes.includes(band)) continue;
+      const line = leftoverScarLine(hull, band, name);
       if (line) lines.push(line);
     }
     const repair = leftoverRepairLine(hull);
     if (repair) lines.push(repair);
     if (!classes.length) {
-      const clean = leftoverCleanPlateLine(hull);
+      const clean = leftoverCleanPlateLine(hull, name);
       if (clean) lines.push(clean);
     }
     const rap = leftoverRapLine(state, hull);

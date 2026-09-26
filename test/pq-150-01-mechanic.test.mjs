@@ -20,7 +20,7 @@ import {
   leftoverMechanicScarClasses,
 } from '../src/story/mechanicVoice.js';
 import { leftoverLedgerCard } from '../src/story/storyLedger.js';
-import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
+import { berthModel, buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
 import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -305,6 +305,71 @@ test('one Mechanic header carries hull and ledger instead of naming the speaker 
   assert.equal(ledgerOnly.ledgerEl.hidden, false, 'ledger article paints when it is the only voice');
   assert.equal(ledgerOnly.ledgerEl.querySelector('.sxb-event__title').textContent, 'Mechanic');
   assert.match(ledgerOnly.ledgerEl.querySelector('.sxb-event__body').textContent, /I was /);
+});
+
+test('four scar bands each produce a distinct line, and the berth seats that hull', () => {
+  const station = { id: STATION, name: STATION_NAME, services: [] };
+  const seen = new Set();
+  for (const band of SCAR_CLASSES) {
+    const state = leftoverOwnedHull(livingHullWithScar(
+      defaultLivingHull(0),
+      leftoverScar(band, 'bow', 7),
+      7,
+    ));
+    const model = berthModel(state, station);
+    assert.ok(model.hull, `${band} berth names the hull`);
+    assert.equal(model.hull.defId, 'ship_kestrel');
+    assert.equal(model.hull.name, 'Tessera');
+    assert.equal(model.seatDefId, model.hull.defId, 'the ship on the berth is the hull the line is about');
+    assert.ok(model.mechanicLine, `${band} berth has a mechanic line`);
+    assert.match(model.mechanicLine, /Tessera/, 'the line names this hull');
+    assert.match(model.mechanicLine, new RegExp(`\\b${band}\\b`, 'i'));
+    assert.match(model.mechanicLine, /bow/, 'the line reads the scar on this hull');
+    for (const other of SCAR_CLASSES) {
+      if (other === band) continue;
+      assert.doesNotMatch(
+        model.mechanicLine,
+        new RegExp(`\\b${other}\\b`, 'i'),
+        `${band} hull invents no ${other}`,
+      );
+    }
+    seen.add(model.mechanicLine);
+  }
+  assert.equal(seen.size, SCAR_CLASSES.length, 'each scar class has its own line');
+
+  const wasp = leftoverOwnedHull(livingHullWithScar(
+    defaultLivingHull(0),
+    leftoverScar('hard', 'stern', 8),
+    8,
+  ));
+  wasp.player.ownedShips[0].defId = 'ship_wasp';
+  wasp.player.ownedShips[0].starterHull = false;
+  const waspModel = berthModel(wasp, station);
+  assert.equal(waspModel.hull.defId, 'ship_wasp');
+  assert.equal(waspModel.seatDefId, 'ship_wasp');
+  assert.notEqual(waspModel.hull.name, 'Tessera');
+  assert.match(waspModel.mechanicLine, /Hard/);
+  assert.match(waspModel.mechanicLine, /stern/);
+  assert.doesNotMatch(waspModel.mechanicLine, /\b(?:graze|heavy|crushing)\b/i);
+
+  const cleanState = leftoverEmptyHull();
+  const clean = berthModel(cleanState, station);
+  assert.deepEqual(leftoverMechanicScarClasses(cleanState.player.ownedShips[0].livingHull), []);
+  assert.ok(clean.hull && clean.hull.defId, 'a clean hull is still the ship on the berth');
+  assert.equal(clean.seatDefId, clean.hull.defId);
+  assert.ok(clean.mechanicLine);
+  for (const band of SCAR_CLASSES) {
+    assert.doesNotMatch(clean.mechanicLine, new RegExp(`\\b${band}\\b`, 'i'), `clean hull invents no ${band}`);
+  }
+
+  const { mechanicEl, painted } = paintMechanic(cleanState);
+  assert.equal(painted.mechanic.title, 'Mechanic');
+  assert.equal(mechanicEl.getAttribute('data-hull'), clean.hull.defId);
+  assert.equal(mechanicEl.getAttribute('data-hull-name'), clean.hull.name);
+
+  const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
+  assert.match(appSrc, /berthSeatDefId\(state, hull\)/, 'the bay seats the berth model hull');
+  assert.match(appSrc, /berth\.show\(s, arrival && arrival\.hull\)/, 'renderStatus seats the hull the mechanic just read');
 });
 
 test('leftover mechanic names only leftover scar classes the hull carries', () => {

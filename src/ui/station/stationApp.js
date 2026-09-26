@@ -19,7 +19,7 @@ import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
 import { createStationCommands } from './stationCommands.js';
-import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
+import { berthSeatDefId, buildDockArrival, writeBerthArrival } from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -109,13 +109,11 @@ function createBerth(canvas, ctx) {
      * Seat the player's live hull. The stage resolves a ship def to its authored whole-ship asset,
      * so the berth shows the ship you actually fly rather than a stand-in.
      */
-    show(state) {
+    show(state, hull) {
       const request = stageRequest();
       if (!request || request.scene !== 'berth') return;
-      const player = state && state.player;
-      const ships = (player && player.ownedShips) || [];
-      const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
-      const defId = (ship && ship.defId) || 'ship_kestrel';
+      // Same identity the mechanic line was read from. Not a second living-hull writer.
+      const defId = berthSeatDefId(state, hull);
       if (request.hullDefId === defId) return;
       // Re-request rather than mutate. A new request object is the signal: the stage compares the
       // hull it was built for against the hull the live request names and rebuilds on a mismatch,
@@ -1147,6 +1145,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       arrival,
       '',
     );
+    // Shipworks borrows the bay to preview another hull. Everywhere else the ship in the bay
+    // is the hull the mechanic just read.
+    if (activeId !== 'shipworks') berth.show(s, arrival && arrival.hull);
     renderHandoff();
   }
 
