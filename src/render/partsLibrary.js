@@ -4510,6 +4510,64 @@ function authoredUpgradeAssetUrls(job) {
   return Object.values(authoredUpgradePlan(job)).flat().map((file) => `${partRoot}${file}`);
 }
 
+/** URL+slot pairs a queued job will decode at admission — keyed exactly like the real load calls
+ * (`${url}::${slot}`) so a warm prefetch settles into the runtime task cache, not a parallel copy. */
+function authoredUpgradeAssetRequests(job) {
+  const entity = job && job.entity;
+  const requests = [];
+  const seen = new Set();
+  const push = (slot, url) => {
+    if (typeof url !== 'string' || !url) return;
+    const key = `${url}::${slot || '*'}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    requests.push({ url, slot });
+  };
+  if (job && Array.isArray(job.assetUrls) && job.assetUrls.length) {
+    // Explicit lists are how payload jobs declare their file; the decode slot is the entity's
+    // authored payload slot so the prefetch lands on the same task key the capsule load uses.
+    const slot = entity && hasExplicitAuthoredPayloadPresentation(entity)
+      ? authoredPayloadSlotForEntity(entity)
+      : null;
+    for (const url of job.assetUrls) push(slot, String(url));
+    return requests;
+  }
+  const partRoot = isReleaseAssetMode(job && job.options || {}) ? PART_RELEASE_ROOT : PART_ROOT;
+  for (const [slot, files] of Object.entries(authoredUpgradePlan(job))) {
+    for (const file of files || []) push(slot, `${partRoot}${file}`);
+  }
+  const overlay = entity ? tradeHubOverlayFileForEntity(entity) : null;
+  if (overlay) push('place', `${partRoot}${overlay}`);
+  return requests;
+}
+
+/** Warm the runtime decode cache for one queued job. Ships keep the full library path; every other
+ * authored body (place/station/fx/payload, wreck/kit plans) only needs its own files resident. */
+function startAuthoredJobAssetPrefetch(job) {
+  const entity = job && job.entity;
+  if (!entity || !job.renderer) return null;
+  if (entity.type === 'ship') {
+    return preloadAuthoredAssetsForEntity(job.renderer, entity, job.options || {});
+  }
+  const requests = authoredUpgradeAssetRequests(job);
+  if (!requests.length) return null;
+  const options = job.options || {};
+  const loadPart = typeof options.loadAuthoredPart === 'function' ? options.loadAuthoredPart : loadAuthoredPart;
+  let chain = Promise.resolve();
+  for (const request of requests) {
+    chain = chain.then(() => loadPart(request.url, {
+      renderer: job.renderer,
+      slot: request.slot,
+      optional: true,
+      residencyOwner: options.residencyOwner,
+      residencyRole: options.residencyRole,
+      sectorId: options.sectorId,
+      isResidencyOwnerActive: options.isResidencyOwnerActive,
+    }));
+  }
+  return chain;
+}
+
 function authoredUpgradeEstimatedBytes(job) {
   const explicit = Number(job && job.estimatedBytes);
   if (Number.isFinite(explicit) && explicit >= 0) return explicit;
@@ -4820,19 +4878,29 @@ function primeNextAuthoredAssetPlan(state) {
   // every queued ship, which effectively asked the serial decode lane to process the whole live
   // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
   // exact composition, but bounds decode/GPU residency demand to the next relevant boundary.
+  // The lookahead is not ship-only anymore: place/station/fx/payload jobs pay the same fetch+decode
+  // inside the serial slot when they arrive cold. Keep the bound at one chain per lane — the next
+  // ship and the next non-ship each warm, so a non-ship head cannot starve the ship behind it.
+  let shipLaneDone = false;
+  let otherLaneDone = false;
   for (const job of state.jobs) {
+    if (shipLaneDone && otherLaneDone) break;
     if (!jobStillNeeded(state, job)) {
       const index = state.jobs.indexOf(job);
       if (index >= 0) state.jobs.splice(index, 1);
       cancelQueuedJob(state, job);
       continue;
     }
-    if (job.prefetchPromise || !job.entity || job.entity.type !== 'ship' || !job.renderer) continue;
-    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    if (job.prefetchPromise || !job.entity || !job.renderer) continue;
+    const isShip = job.entity.type === 'ship';
+    if (isShip ? shipLaneDone : otherLaneDone) continue;
+    const prefetch = startAuthoredJobAssetPrefetch(job);
+    if (!prefetch) continue;
+    job.prefetchPromise = prefetch;
     job.prefetchPromise.catch((error) => {
       job.prefetchError = error && error.message ? error.message : String(error);
     });
-    break;
+    if (isShip) shipLaneDone = true; else otherLaneDone = true;
   }
 }
 
