@@ -693,6 +693,7 @@ export function contactOverflowSummary(contacts, visibleCount) {
   for (const [key, count] of Object.entries(counts)) {
     if (count) parts.push(`${count} ${key.toUpperCase()}${count === 1 ? '' : 'S'}`);
   }
+  if (parts.length === 1) return `+${parts[0]}`;
   return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
