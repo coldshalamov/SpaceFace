@@ -1458,10 +1458,16 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   }
   if (owner._meshReconcileDirty) {
     owner.reconcileMeshes();
+    // A reconcile frame used to return before draining, so every poll cadence spent
+    // a whole build budget on bookkeeping and queued work waited a frame per poll.
+    // The drain is budgeted and the late-present gate already throttles it on heavy
+    // frames, so fold the drain into the same frame instead of stranding it.
+    if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'full';
   }
   if (pollDue) {
     owner.reconcileMeshResidency();
+    if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'poll';
   }
   if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) {
