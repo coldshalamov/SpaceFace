@@ -916,8 +916,10 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   );
   // First read: zero-copy worker hash. The bytes come back on the same buffer, so the only main-thread
   // copy of each streamed package (the worker's private copy) is gone. A worker lost mid-hash takes
-  // the buffer with it; that read is then treated like a stale read and re-fetched below.
-  let bytes = await read('no-cache');
+  // the buffer with it; that read is then treated like a stale read and re-fetched below. Package URLs
+  // are content-hash immutable, so force-cache skips the ETag revalidation round-trip 'no-cache' paid
+  // per fetch; a stale or corrupted body still fails the SHA-256 check and re-reads via 'reload' below.
+  let bytes = await read('force-cache');
   let digest = null;
   if (bytes.byteLength === metadata.render.bytes) {
     const kept = await sha256HexKeepingBytes(bytes);
@@ -937,6 +939,30 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
   return bytes;
 }
 
+// Meshopt decode runs on the decoder's own blob-URL WASM worker pool rather than the present
+// thread: decode is the dominant synchronous stage inside an authored admission job, so every
+// meshopt buffer decoded on the glass thread is a frame hitch while a model arrives. The vendored
+// pool is CSP-legal (worker-src allows blob:), uses transferable buffers both directions, and
+// GLTFLoader already prefers decodeGltfBufferAsync, which falls back to the main thread whenever
+// the pool is empty — so a failed spawn (or a Worker-less host such as node --test) keeps the
+// old behaviour with no caller changes.
+let meshoptWorkerPoolStarted = false;
+export function startMeshoptWorkerPool(MeshoptDecoder) {
+  if (meshoptWorkerPoolStarted) return;
+  try {
+    if (typeof Worker !== 'function' || typeof Blob !== 'function'
+        || !MeshoptDecoder || typeof MeshoptDecoder.useWorkers !== 'function') return;
+    const cores = (typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency))
+      ? navigator.hardwareConcurrency : 4;
+    // The KTX2 transcoder already owns a 4-worker pool; keep this lane capped so decode bursts
+    // cannot evict the present thread's neighbours on small hosts.
+    MeshoptDecoder.useWorkers(Math.max(1, Math.min(4, cores - 1)));
+    meshoptWorkerPoolStarted = true;
+  } catch (error) {
+    console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
+  }
+}
+
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   return async (url, metadata) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
@@ -947,6 +973,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       import('three/addons/libs/meshopt_decoder.module.js'),
     ]);
     const [{ GLTFLoader }, { MeshoptDecoder }] = await defaultDecoderModules;
+    startMeshoptWorkerPool(MeshoptDecoder);
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
     return loader.parseAsync(bytes.buffer, resourceBaseUrl(url));

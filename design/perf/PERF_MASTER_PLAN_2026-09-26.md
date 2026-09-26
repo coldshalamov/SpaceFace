@@ -33,6 +33,13 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | Residency diagnostics memoized | assetResidency.js (`canonicalDiagnostics`) | Snapshot cached on a mutation epoch (`emit()` bumps it; every mutation ends in emit). | ~0.8 s/flight rebuilding an O(assets) frozen-row table on every seam + 0.25 s poll |
 | HLOD level memoized | hlod.js (`updateStationStableLod`) | `lastDetailLevel` skips the whole-subtree traverse + regex when the level didn't change. | Full station traverse + regex per frame per visible station |
 | Instance-pool culling collapsed | asteroidInstancePool.js (`syncAsteroidInstancePool`) | `leaf.updateWorldMatrix(true,false)` had no dirty gate: ~200 records × full ancestor walk per camera-dirty frame. Now one `root.updateWorldMatrix(true,true)` per unique owner root + leaf-local refresh. | Explorer: camera-dirty amplification ≈ the whole remaining updateMatrixWorld cost |
+| Numeric far-cell keys | farActorTable.js | `${cx}:${cz}` string keys → `(cx+O)*S+(cz+O)` ints (same scheme asteroidField already used). | `queryFarActors` 440 ms self per run — decode-runway disc ran the string-grid every tick |
+| Sim follow-up measurement | perfRuntime.js | Hitch-classified `owner==='sim'` frames without `simFullyMeasured` arm a full-coverage next frame. | Gap §4: catch-up steps were unsampled → attribution read `simSystem=null` |
+| Unready-material memo | bloom.js (`unreadyCheckedMaterials`/`unreadyHiddenMaterials`) | Per-material verdict memo inside the pending-window traverse; sets cleared per pass. | `unreadyDrawGuard` 1.88 s inclusive on the CPU profile |
+| Meshopt decode → worker pool | renderPackageLoader.js (`startMeshoptWorkerPool`), assetLoader.js | `MeshoptDecoder.useWorkers(min(4, cores-1))` once at decoder wiring; GLTFLoader already prefers `decodeGltfBufferAsync`; falls back to main-thread when Worker is unavailable (node --test). CSP grants `worker-src 'self' blob:` + `wasm-unsafe-eval`; meshopt worker is pure `WebAssembly.instantiate`. | Assets explorer: 243/267 packages are meshopt; all decode was synchronous WASM on the present thread — the decode slice of every serial admission job |
+| Package fetch force-cache | renderPackageLoader.js (`fetchVerifiedRenderBytes`) | `read('no-cache')` → `read('force-cache')` first pass; SHA-256 + `reload` re-read still gate correctness. URLs are content-hash immutable. | Per-package ETag revalidation round-trip per fetch |
+| Geology fallback stays visible through admission | partsLibrary.js (`wrapPlacePropWithAuthoredPart`) | Same-envelope skins (`placeTargetRadius === radius`) keep `fallbackRoot.visible = true` wrap→commit instead of blanking at wrap. Commit still swaps; fail path already re-showed. | Loading explorer: the D38 residual (~0.9 s, six stuck frames, asteroid id 4) was structural — nothing drew for the whole admission window |
+| Geometry-admission retry cooldown | liveGeometryAdmission.js | After `MAX_ADMISSION_RETRIES=4` the dedup latch was permanent — one transient GL failure left a mesh invisible forever. Now a 4 s cooldown reopens dedup so the ambient lane retries on a slow cadence (the no-per-frame-loop intent is kept). | Permanent-latch pop-in vector |
 
 ## 2. The poles, ranked (evidence in §4)
 
@@ -96,9 +103,26 @@ Zero behavior change. S effort.
 Known: hud.js frame ~2.0 s/run, domInstrumentation layout reads, audio param churn.
 Awaiting the UI explorer's structured output.
 
-### Pole G — assets/transport (explorer running)
-Inventory GLB compression (KTX2/meshopt), worker decode, CPU-package accounting,
-22 GB repo → what's resident vs pageable. Awaiting structured output.
+### Pole G — assets/transport (explorer verdict in)
+Transport is already well-engineered (content-hash packages, zero-copy SHA-256 worker,
+embedded KTX2, ref-counted residency). Landed: meshopt decode on the vendored
+blob-worker pool; force-cache first read. Queued, not done this session:
+- **24 stale whole-ship-LOD release artifacts ship uncompressed** (raw PNG + unquantized
+  geometry, ~84 MB across lod1/lod2 pairs; e.g. wasp ~23.5 MB embedded PNG). These load
+  exactly when a hull family streams in — worst-case pop-in decode. Fix = re-run them
+  through the sg04 ktx2+meshopt transform, rebuild render packages, regenerate both
+  manifests atomically, extend `check-sg04-release-assets.mjs` WHOLE_SHIP_FILES so the
+  release-compression gate covers lod files. One manifest row (`leviathan_production_v1_lod2`)
+  is already drifted — a partial rebuild happened; verify `check:art` actually gates.
+  Effort M; PNG→ETC1S on distance LOD needs a frame-diff before commit.
+- **Decoded-CPU-payload detach** — the only NEW write-to-disk lever found (ledger paging
+  stays rejected): after the `spacefaceGpuResident` stamp, release decoded arrays and
+  rebuild on context restore via re-fetch+re-parse of the resident package. Frees
+  tens-to-hundreds of MB of JS heap; changes the context-restore contract to a serial
+  restore runway. Effort L — needs a detach-aware updateBuffer contract.
+- Loading-pipeline leftovers (loading explorer): deadline-aware insert into the strict-FIFO
+  plan lane, deeper ship-agnostic prefetch lookahead, in-job stage overlap. The serial-slot
+  release variant stays parked (its patch is filed under `.devshots/parked/`).
 
 ## 3. Not doing (adjudicated)
 

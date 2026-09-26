@@ -2913,14 +2913,21 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
   const boundary = new THREE.Group();
   boundary.name = `${fallbackRoot.name || 'PlaceProp'}_AuthoredAssetBoundary`;
-  fallbackRoot.visible = false;
+  // A same-envelope geology skin must keep its procedural body drawn for the whole
+  // admission window (wrap → commit): the authored rock occupies exactly the same
+  // envelope, so hiding the fallback here produced a guaranteed pop-in — nothing
+  // drew while the job queued, decoded, composed, and compiled. The commit swaps
+  // the fallback out and the fail path already re-shows it, so the visible body is
+  // the same silhouette at every stage.
+  fallbackRoot.visible = !geologySkin ? false : true;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
-  // The matching procedural geology body stays as a hidden, local emergency fallback. Never expose
-  // its common-rock leaf through the stable boundary: the renderer's asteroid InstancedMesh pool
-  // would otherwise submit that hidden leaf during admission and retain a detached ghost after the
-  // authored commit. One representative authored rock per field deliberately keeps this fallback
-  // local so the boundary has exactly one presentation authority at every lifecycle stage.
+  // The matching procedural geology body stays local to the boundary as the visible stand-in
+  // during admission and the emergency fallback afterwards. Never expose its common-rock leaf
+  // through the stable boundary: the renderer's asteroid InstancedMesh pool would otherwise
+  // submit that leaf during admission and retain a detached ghost after the authored commit.
+  // One representative authored rock per field deliberately keeps this fallback local so the
+  // boundary has exactly one presentation authority at every lifecycle stage.
   if (geologySkin) delete boundary.userData.asteroidInstanceBody;
   boundary.userData.kind = 'place';
   boundary.userData.placeId = entity.data && entity.data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
