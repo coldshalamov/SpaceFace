@@ -343,6 +343,11 @@ export function ensurePerfRuntime(state) {
   let frameSystemTotalMs = 0;
   let frameSimStepCount = 0;
   let frameMeasuredStepCount = 0;
+  // A hitch owned by sim with unmeasured steps names no system. Hitch streaks cluster, so
+  // arm one frame of full system measurement after such a verdict — the echo step then
+  // reports its real owner instead of '(none)'. Self-limiting: disarms the first clean frame.
+  let simFollowupMeasurePending = false;
+  let simFollowupMeasureThisFrame = false;
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -501,7 +506,8 @@ export function ensurePerfRuntime(state) {
     isSystemTimingEnabled() { return systemTimingEnabled === true; },
     shouldMeasureSystemsThisStep(simTick) {
       const measured = systemTimingEnabled === true
-        && (systemTimingFullCoverage === true || shouldSampleSystemTimingTick(simTick));
+        && (systemTimingFullCoverage === true || simFollowupMeasureThisFrame
+          || shouldSampleSystemTimingTick(simTick));
       if (hitchAttributionEnabled && measured) frameMeasuredStepCount += 1;
       return measured;
     },
@@ -712,6 +718,13 @@ export function ensurePerfRuntime(state) {
             dispatchLagMs: nextCallbackDispatchLagMs,
           });
           accumulateHitch(hitchHistogram, classification);
+          if (classification && classification.owner === 'sim'
+              && classification.simFullyMeasured !== true) {
+            simFollowupMeasurePending = true;
+            if (hitchHistogram) {
+              hitchHistogram.simFollowupArmed = (hitchHistogram.simFollowupArmed || 0) + 1;
+            }
+          }
           hitchVerdicts.push({
             atMs: Number.isFinite(callbackTimestampMs) ? callbackTimestampMs : null,
             owner: classification && classification.owner ? classification.owner : 'unknown',
@@ -728,6 +741,12 @@ export function ensurePerfRuntime(state) {
         frameSystemTotalMs = 0;
         frameSimStepCount = 0;
         frameMeasuredStepCount = 0;
+        if (simFollowupMeasureThisFrame && hitchHistogram) {
+          hitchHistogram.simFollowupMeasuredFrames
+            = (hitchHistogram.simFollowupMeasuredFrames || 0) + 1;
+        }
+        simFollowupMeasureThisFrame = simFollowupMeasurePending;
+        simFollowupMeasurePending = false;
       }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
