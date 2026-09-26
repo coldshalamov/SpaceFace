@@ -18,6 +18,14 @@ const COLORS=new Map();
 // Allocate colors once; recipes never parse CSS or allocate Color objects in the frame loop.
 for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0])COLORS.set(value,new THREE.Color(value));
 
+// Field recipes are authored for hand-deployed tools (r <= ~150 WU). Arena/environmental
+// machinery registers fields at 300-600+ WU, where full-strength working membranes blanket
+// the whole combat frame in ribbon. Body surfaces fade toward the floor past
+// FIELD_LANGUAGE_FULL_RADIUS; the physics boundary keeps full strength either way since
+// the zone edge is the one thing the presentation must stay truthful about.
+const FIELD_LANGUAGE_FULL_RADIUS = 170;
+const FIELD_LANGUAGE_MIN_PRESENCE = 0.30;
+
 /** A read-only adapter over fields.active and massSeed. No event listeners, forces or RNG. */
 export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){
@@ -32,6 +40,7 @@ export class FieldForcePresentation {
       seed:{phase:'active',lockAt:0,activeAt:0,warnAt:0,expireAt:0},
     }));
     this.material=SURFACE_MATERIALS.plain;
+    this.presence=1;
     this.time=0;this.frame=0;this.disposed=false;
     this.frustum=new THREE.Frustum();this.clip=new THREE.Matrix4();this.sphere=new THREE.Sphere();
     this.stats={active:0,releasing:0,surfaces:0,dropped:0,unknown:0,culled:0};
@@ -126,6 +135,8 @@ export class FieldForcePresentation {
       // Empty-space tools remain alive. The shader's motion uniform handles accessibility.
       this.moving=true;this.flow=1;this.style=0;this.role=FIELD_ROLE.BODY;this.phaseOffset=0;
       this.material=SURFACE_MATERIALS.plain;this.radius=s.radius;
+      this.presence=Math.min(1,Math.max(FIELD_LANGUAGE_MIN_PRESENCE,
+        FIELD_LANGUAGE_FULL_RADIUS/Math.max(1,s.radius)));
       switch(s.kind){
         case 'seed':this._seed(s,s.seed,motion);break;
         case 'well':this._well(s);break;
@@ -148,7 +159,8 @@ export class FieldForcePresentation {
     d[0]=this.local.x+x;d[1]=0.45;d[2]=this.local.z+z;d[3]=this.orientation;
     d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;
     d[8]=r1;d[9]=width;d[10]=lift;d[11]=bow;
-    d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=alpha*this.alpha;
+    d[12]=c.r;d[13]=c.g;d[14]=c.b;
+    d[15]=alpha*this.alpha*(this.role===FIELD_ROLE.BOUNDARY?1:this.presence);
     const working=this.role!==FIELD_ROLE.BOUNDARY;
     const variation=working?this.slot.character:0;
     d[16]=flow*(working?0.88+variation*0.24:1);d[17]=phase+variation;d[18]=travel;d[19]=style;
