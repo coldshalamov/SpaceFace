@@ -98,6 +98,51 @@ test('membership + fitted CM wakes quiet latch', () => {
   assert.equal(host._cmQuiet, null);
 });
 
+test('mid-life interest change without a membership bump unlatches on rescan', () => {
+  setCountermeasuresQuietLatchForBench(true);
+  const state = makeState();
+  const host = makeHost(state);
+  step(host, state);
+  assert.equal(state.countermeasureRuntime.quietLatched, true);
+  // bountyHunt-style silent stamp: cm timer appears with no spawn and no index version bump.
+  const npc = state.entityIndex.ships[5];
+  npc.data.cm = { cooldownT: 0, effectT: 1.4, effect: { cfg: { kind: 'ecm' } } };
+  for (let i = 0; i < 29; i++) step(host, state);
+  assert.equal(state.countermeasureRuntime.quietLatched, true,
+    'still inside the 30-tick rescan window');
+  const rt = step(host, state);
+  assert.equal(rt.quietLatched, false, 'the 0.5 s rescan services the silent stamp');
+  assert.equal(host._cmQuiet, null);
+});
+
+test('game:new drops an armed latch and republishes the flag', () => {
+  setCountermeasuresQuietLatchForBench(true);
+  const state = makeState();
+  const handlers = new Map();
+  const host = Object.create(countermeasures);
+  host.init({
+    state,
+    bus: { emit() {}, on(n, fn) { handlers.set(n, [...(handlers.get(n) || []), fn]); return () => {}; } },
+    helpers: {},
+  });
+  host.state = state;
+  step(host, state);
+  assert.equal(state.countermeasureRuntime.quietLatched, true);
+  for (const fn of handlers.get('game:new') || []) fn();
+  assert.equal(host._cmQuiet, null);
+  assert.equal(state.countermeasureRuntime.quietLatched, false);
+});
+
+test('unversioned index never arms the latch', () => {
+  setCountermeasuresQuietLatchForBench(true);
+  const state = makeState();
+  delete state.entityIndex.version;
+  const host = makeHost(state);
+  const rt = step(host, state);
+  assert.equal(rt.quietLatched, false);
+  assert.equal(host._cmQuiet, null);
+});
+
 test('bench toggle restores always-walk', () => {
   setCountermeasuresQuietLatchForBench(false);
   assert.equal(getCountermeasuresQuietLatchForBench(), false);

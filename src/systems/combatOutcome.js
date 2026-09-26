@@ -160,7 +160,20 @@ export const combatOutcome = {
         this.bus.on('entity:spawned', () => this._wakeCombatOutcomeQuiet()),
         this.bus.on('entity:destroyed', () => this._wakeCombatOutcomeQuiet()),
         this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
-        this.bus.on('game:new', () => this._wakeCombatOutcomeQuiet()),
+        // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
+        // (nextEntityId resets to 1), so stale dedup rows would silently drop new records.
+        this.bus.on('game:new', () => {
+          if (this.state) {
+            this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
+          }
+          this._wakeCombatOutcomeQuiet();
+        }),
+        this.bus.on('game:newGame', () => {
+          if (this.state) {
+            this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
+          }
+          this._wakeCombatOutcomeQuiet();
+        }),
         this.bus.on('sector:enter', () => this._wakeCombatOutcomeQuiet()),
         // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
         // escape, pacing pin release, pirate parley/disengage) — wake so the next 4-tick

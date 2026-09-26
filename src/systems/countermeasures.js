@@ -27,6 +27,7 @@
 
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { entityIndexVersion } from '../world/livingWorldViews.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -77,11 +78,10 @@ export function getCountermeasuresQuietLatchForBench() {
 /** Membership / fittings rescan while latched (0.5 s @ 60 Hz). */
 const CM_QUIET_RESCAN_TICKS = 30;
 
-function entityIndexVersion(state) {
-  const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
-    ? index.version
-    : null;
+function publishCmQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.countermeasureRuntime || (state.countermeasureRuntime = {});
+  rt.quietLatched = !!latched;
 }
 
 function shipHasCountermeasureInterest(e) {
@@ -114,18 +114,42 @@ export const countermeasures = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._cmQuiet = null;
+    this._subs = [];
     this._projectileScratch = [];
     this._diag = {
       threatSpatialQueries: 0,
       effectSpatialQueries: 0,
       projectileCandidates: 0,
     };
+    // Same wake contract as the sibling latches: entity-index version is monotonic, but a run
+    // boundary still gets an explicit drop so a stale armed record can never straddle a game.
+    if (this.bus && typeof this.bus.on === 'function') {
+      const wake = () => {
+        this._cmQuiet = null;
+        publishCmQuiet(this.state, false);
+      };
+      this._subs.push(this.bus.on('game:new', wake));
+      this._subs.push(this.bus.on('game:newGame', wake));
+      this._subs.push(this.bus.on('save:loaded', wake));
+    }
   },
 
-  newGame() { /* no global state — per-ship runtime state is transient */ },
+  newGame() {
+    this._cmQuiet = null;
+    publishCmQuiet(this.state, false);
+  },
+
+  destroy() {
+    for (const off of this._subs || []) { if (typeof off === 'function') off(); }
+    this._subs = [];
+  },
 
   update(dt, state) {
-    if (state.mode !== 'flight') return;
+    if (state.mode !== 'flight') {
+      publishCmQuiet(state, false);
+      return;
+    }
     ensureCountermeasureRuntime(this);
     resetCountermeasureDiagnostics(this._diag);
 
@@ -138,16 +162,18 @@ export const countermeasures = {
       const membership = entityIndexVersion(state);
       const tick = state.tick | 0;
       let quiet = this._cmQuiet;
+      const sinceArm = tick - (quiet ? (quiet.armedTick | 0) : tick);
       if (quiet
+        && membership != null
         && !deployEdge
         && quiet.membership === membership
-        && ((tick - (quiet.armedTick | 0)) < CM_QUIET_RESCAN_TICKS)) {
+        && sinceArm >= 0 && sinceArm < CM_QUIET_RESCAN_TICKS) {
         state.countermeasureRuntime = state.countermeasureRuntime || {};
         state.countermeasureRuntime.diagnostics = this._diag;
         state.countermeasureRuntime.quietLatched = true;
         return;
       }
-      if (!deployEdge && !anyCountermeasureInterest(state)) {
+      if (!deployEdge && membership != null && !anyCountermeasureInterest(state)) {
         this._cmQuiet = { membership, armedTick: tick };
         state.countermeasureRuntime = state.countermeasureRuntime || {};
         state.countermeasureRuntime.diagnostics = this._diag;
@@ -155,6 +181,9 @@ export const countermeasures = {
         return;
       }
       this._cmQuiet = null;
+    } else if (this._cmQuiet) {
+      this._cmQuiet = null;
+      publishCmQuiet(state, false);
     }
 
     // 1. Tick cooldowns + active-effect timers on every ship, and expire finished effects. When an

@@ -364,7 +364,10 @@ function applyHunterTrick(entity, state, trick, payload) {
       intent.weaponId = 'mine_dropper';
       break;
     case 'phase-jammer':
-      data.cm = { ...(data.cm || {}), effectT: 1.4, effect: { cfg: { kind: 'ecm' } } };
+      // ECM effect loop reads cfg.radius for the jam ring and cfg.turnRateMult for the
+      // steering write — a cfg without them jams with NaN radius/turnRate. Module tune:
+      // mod_ecm_jammer_l (520/0.0); the trick only shortens the window via effectT.
+      data.cm = { ...(data.cm || {}), effectT: 1.4, effect: { cfg: { kind: 'ecm', radius: 520, turnRateMult: 0 } } };
       break;
     case 'shield-turtle':
       entity.shield = Math.min(finite(entity.shieldMax, 0), finite(entity.shield, 0) + Math.max(10, finite(entity.shieldMax, 0) * 0.35));
