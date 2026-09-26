@@ -631,17 +631,24 @@ const ROUTES = {
         [...document.querySelectorAll('button, .k-word, [data-action]')]
           .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'))
           .map((e) => (e.textContent || '').trim()).filter(Boolean).slice(0, 40));
-      // Undock back to flight.
-      const undock = await ctx.page.evaluate(() => {
-        const b = [...document.querySelectorAll('[data-nav], .k-word, button')].find((e) => /undock/i.test((e.textContent || '') + ' ' + (e.dataset.nav || '')));
-        if (!b) return null; b.click(); return (b.textContent || '').trim();
-      });
+      // Undock back to flight (position:fixed footer verb — use the fixed-aware helper).
+      const undock = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/undock/i));
       await sleep(2200);
       const s = await snap(ctx);
+      if (!undock && s.docked) observe(ctx, 'rough-edge', 'station', 'no reachable Undock control on the station surface');
       return { shipworksVerbs: verbs.slice(0, 20), undockVerb: undock, screen: s.screen, mode: s.mode, docked: s.docked };
     });
 
     await B(ctx, 'l06-jump', 'request a gate jump (mission destination sector if reachable) -> arrive + autosave', async () => {
+      // requestJump while docked wedges jump.state=CHARGING forever (chargeT never ticks under the
+      // station screen) — real players hit a confirm gate; the probe must undock first.
+      const wasDocked = await ctx.page.evaluate(() => {
+        const H = window.__SF_PT_HELPERS__;
+        if (!H.docked()) return false;
+        H.clickText(/undock/i);
+        return true;
+      });
+      if (wasDocked) await sleep(2500);
       const from = await ctx.page.evaluate(() => window.SF.state.world.currentSectorId);
       const neighbors = await ctx.page.evaluate((id) =>
         (window.SF.state.world.sectors[id] && window.SF.state.world.sectors[id].neighbors) || [], from);

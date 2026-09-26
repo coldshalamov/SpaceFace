@@ -207,6 +207,19 @@ export async function bootPlaytest({ outDir, query = '', headless = true, viewpo
         window.SF.bus.emit('dock:undocked', { stationId: id });
       },
       docked: () => !!(window.SF.state.ui && window.SF.state.ui.docked),
+      // Position:fixed controls (station footer verbs, overlays) report offsetParent=null, so
+      // every offsetParent!==null filter is blind to them. isVis covers both.
+      isVis: (e) => !!e && (e.offsetParent !== null || getComputedStyle(e).position === 'fixed' || e.getClientRects().length > 0),
+      clickText: (srcRe, extraSel) => {
+        const re = typeof srcRe === 'string' ? new RegExp(srcRe, 'i') : srcRe;
+        const sel = extraSel || 'button, .k-word, [role="button"], [data-action], [data-nav], a';
+        const list = [...document.querySelectorAll(sel)]
+          .filter((e) => H.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && re.test(e.textContent || ''));
+        const el = list[0];
+        if (!el) return null;
+        el.click();
+        return (el.textContent || '').trim();
+      },
       hostilesNear: (range) => {
         const p = H.player(); if (!p) return [];
         const out = [];
