@@ -13,8 +13,8 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
-import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
-import { WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
+import { EVERYDAY_SPACE_KIT_MODEL_BY_ID, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
+import { WRECK_AFTERMATH_MODEL_BY_ID, WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -1748,6 +1748,243 @@ export function openingFlybyNpcCatalog() {
       assetId: visual && visual.assetId || null,
     });
   });
+}
+
+// Live solids the loader actually resolves. The model-truth census measures these files;
+// it does not invent a second asset list. Behavior of drawing and collision is unchanged.
+const STATION_SIZE_REFERENCES = Object.freeze([
+  Object.freeze({ name: 'S', dockRadius: 60, entityRadius: 26 }),
+  Object.freeze({ name: 'M', dockRadius: 72, entityRadius: 34 }),
+  Object.freeze({ name: 'L', dockRadius: 90, entityRadius: 42 }),
+]);
+const GATE_SIZE_REFERENCES = Object.freeze([
+  Object.freeze({ name: 'gate', dockRadius: 70, entityRadius: 32 }),
+  Object.freeze({ name: 'wormhole', dockRadius: 80, entityRadius: 38 }),
+]);
+const DRESSING_RADIUS_BY_PLACE = Object.freeze({
+  place_lane_beacon: 18,
+  place_nav_buoy: 12,
+  place_mining_drone: 8,
+  place_station_billboard: 28,
+  place_conveyor_barge: 48,
+  place_dead_hulk: 42,
+  place_debris_chunk: 26,
+  place_ceres_bait_wreck: 48,
+  place_ceres_grave_shard: 28,
+  place_asteroid_seamed: 18,
+  place_asteroid_rock_a: 15,
+  place_asteroid_rock_b: 18,
+  place_asteroid_rock_c: 10,
+  place_asteroid_graffiti: 16,
+});
+
+function placeFamily(placeId) {
+  const id = String(placeId || '');
+  if (id.includes('buoy') || id === 'place_lane_beacon' || id === 'place_lane_pin' || id === 'place_whistle') return 'buoy';
+  if (id.includes('wreck') || id.includes('hulk') || id.includes('debris') || id.includes('grave') || id.includes('aftermath')) return 'wreck';
+  if (id.includes('drone')) return 'drone';
+  if (id.includes('pod') || id.includes('cargo') || id.includes('container')) return 'pod';
+  if (id.includes('asteroid') || id.includes('rock')) return 'rock-authored';
+  if (id.includes('billboard')) return 'sign';
+  return 'place';
+}
+
+function catalogRow(row) {
+  return Object.freeze(row);
+}
+
+export function liveSolidGlbCatalog() {
+  const rows = [];
+  const seen = new Set();
+  const add = (row) => {
+    if (!row || !row.id) return;
+    const key = `${row.family}|${row.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(catalogRow(row));
+  };
+
+  for (const file of STATION_ARCHETYPE_FILES) {
+    const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
+    const gate = placeId === 'place_gate_jump_ring';
+    add({
+      id: placeId,
+      family: gate ? 'gate' : 'station',
+      file,
+      fit: 'station',
+      dockRadius: gate ? 70 : 72,
+      entityRadius: gate ? 32 : 34,
+      colliderKind: 'proxy',
+      colliderId: gate ? 'gate_jump_ring' : 'station_ring_hub',
+      sizes: gate ? GATE_SIZE_REFERENCES : STATION_SIZE_REFERENCES,
+      solid: true,
+      opening: gate ? 'gate-throat' : 'dock-mouth',
+    });
+  }
+
+  for (const ship of SHIPS) {
+    const selection = wholeShipVisualForEntity(
+      { type: 'ship', alive: true, id: ship.id, radius: ship.collisionRadius, data: { defId: ship.id } },
+      { requiredWholeShip: true },
+    );
+    const file = selection && selection.file || WHOLE_SHIP_FILE_BY_DEF_ID[ship.id] || null;
+    add({
+      id: ship.id,
+      family: 'player-hull',
+      file,
+      lodFamily: (selection && selection.lodFamily) || WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID[ship.id] || null,
+      fit: 'ship',
+      entityRadius: ship.collisionRadius,
+      colliderKind: 'capsule',
+      proportionsKey: ship.id,
+      solid: true,
+      frozenMesh: ship.id === 'ship_kestrel',
+      packagedLive: !!(selection && selection.file),
+    });
+  }
+
+  for (const enemy of ENEMY_TYPES) {
+    const selection = wholeShipVisualForEntity({
+      type: 'ship',
+      alive: true,
+      id: enemy.id,
+      radius: enemy.collisionRadius,
+      data: { defId: enemy.shipId, silhouette: enemy.silhouette, lootTableId: enemy.id },
+    }, { requiredWholeShip: true });
+    add({
+      id: enemy.id,
+      family: 'enemy-hull',
+      file: selection && selection.file || null,
+      lodFamily: (selection && selection.lodFamily) || null,
+      fit: 'ship',
+      entityRadius: enemy.collisionRadius,
+      colliderKind: 'capsule',
+      proportionsKey: enemy.silhouette || enemy.shipId || enemy.id,
+      silhouette: enemy.silhouette || null,
+      solid: true,
+      packagedLive: !!(selection && selection.file),
+    });
+  }
+
+  for (const [role, file] of Object.entries(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE)) {
+    const selection = wholeShipVisualForEntity({
+      type: 'ship', alive: true, id: `traffic:${role}`, radius: 14,
+      data: { trafficRole: role, defId: 'ship_kestrel' },
+    }, { requiredWholeShip: true });
+    add({
+      id: `traffic:${role}`,
+      family: 'traffic-hull',
+      file: (selection && selection.file) || file,
+      lodFamily: WHOLE_SHIP_LOD_FAMILY_BY_FILE[file] || (selection && selection.lodFamily) || null,
+      fit: 'ship',
+      entityRadius: 14,
+      colliderKind: 'capsule',
+      proportionsKey: role,
+      solid: true,
+      packagedLive: !!(selection && selection.file) || isPackagedLiveWholeShipFile(file),
+    });
+  }
+
+  for (const [faction, kit] of Object.entries(SPAN_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `span:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 18,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_mule',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+  for (const [faction, kit] of Object.entries(WASP_FACTION_KIT_BY_FACTION)) {
+    add({
+      id: `wasp:${faction}`,
+      family: 'faction-hull',
+      file: kit.file,
+      fit: 'ship',
+      entityRadius: 14,
+      colliderKind: 'capsule',
+      proportionsKey: 'ship_wasp',
+      solid: true,
+      packagedLive: isPackagedLiveWholeShipFile(kit.file),
+    });
+  }
+
+  for (const file of PLACE_FILES) {
+    if (STATION_ARCHETYPE_FILES.includes(file)) continue;
+    const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
+    const family = placeFamily(placeId);
+    const dressingRadius = DRESSING_RADIUS_BY_PLACE[placeId] || 12;
+    add({
+      id: placeId,
+      family,
+      file,
+      fit: family === 'drone' ? 'packaged-radius' : 'place-scale',
+      placeScale: 1,
+      entityRadius: family === 'drone' ? 2.4 : dressingRadius,
+      colliderKind: 'none',
+      solid: family !== 'sign' && family !== 'drone',
+      nonSolidReason: family === 'drone'
+        ? 'Mining drones stay collides:false so they are not pickup collectors.'
+        : (family === 'sign' ? 'Billboards are signage, not a flight obstacle.' : null),
+    });
+  }
+
+  for (const [id, model] of Object.entries(WRECK_AFTERMATH_MODEL_BY_ID)) {
+    if (!model || model.live === false) continue;
+    add({
+      id,
+      family: 'wreck',
+      file: model.file,
+      fit: 'place-scale',
+      placeScale: 1,
+      entityRadius: model.radius,
+      colliderKind: 'none',
+      solid: model.spawn !== false,
+      nonSolidReason: model.spawn === false ? 'Heavy wreck mesh is routed but not spawned as a solid.' : null,
+    });
+  }
+
+  for (const [id, model] of Object.entries(EVERYDAY_SPACE_KIT_MODEL_BY_ID)) {
+    add({
+      id,
+      family: placeFamily(id),
+      file: model.file,
+      fit: 'place-scale',
+      placeScale: 1,
+      entityRadius: model.radius || 12,
+      colliderKind: 'none',
+      solid: !String(id).includes('worklight') && !String(id).includes('billboard'),
+      nonSolidReason: String(id).includes('worklight') ? 'Worklights are lamps, not hull.' : null,
+    });
+  }
+
+  add({
+    id: 'pod_cargo_container',
+    family: 'pod',
+    file: authoredPayloadFileForEntity({ type: 'payload', alive: true, data: { authoredPayloadAssetId: 'pod_cargo_container' } }),
+    fit: 'payload',
+    entityRadius: 5,
+    colliderKind: 'ball',
+    solid: true,
+  });
+
+  for (const typeId of ['ast_common_rock', 'ast_metallic', 'ast_icy', 'ast_crystalline', 'ast_gas_cloud', 'ast_rare_exotic']) {
+    add({
+      id: typeId,
+      family: 'rock',
+      file: null,
+      fit: 'asteroid',
+      entityRadius: 12,
+      colliderKind: 'ball',
+      solid: typeId !== 'ast_gas_cloud',
+      opening: typeId === 'ast_gas_cloud' ? 'gas-soft' : null,
+    });
+  }
+
+  return Object.freeze(rows);
 }
 
 /** LOD0 stays the cold-start admit file. Unpackaged remaster siblings never leave the live path. */
