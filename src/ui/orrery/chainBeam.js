@@ -307,7 +307,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     }
     // the process name rides the top of the ring's inner scale
     const arcId = `orr-chain-arc-${++pathSeq}`;
-    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rA - procFs * 0.36, -75, 75), fill: 'none', stroke: 'none' }));
+    proc.appendChild(svg('path', { id: arcId, d: arcD(xProc, cy, rA - procFs * 0.5, -75, 75), fill: 'none', stroke: 'none' }));
     const arcText = svg('text', { class: `orr-chain__procarc${blocked ? ' is-blocked' : ''}` });
     const arcPath = svg('textPath', { href: `#${arcId}`, startOffset: '50%', 'text-anchor': 'middle' });
     arcPath.textContent = String(data.process || 'process').toUpperCase();
