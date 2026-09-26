@@ -1,14 +1,15 @@
 // Credits — ORRERY reel (design/frontend/ORRERY.md §6 Meta: "Credits: Scroll Reveal over the Drift Field").
-// Every section on one continuous reel that scrolls over a field of drifting light, the emblem turning
-// slowly behind it; each line rises out of the dark as the reel brings it up. The section words are a
-// Ladder with the Hand: picking one rolls the reel to it, and the Hand follows the reel as it is read.
-// A progress arc reads how far through the reel you are. Third-party notices PQ-033.00.
+// Every section on one continuous reel that scrolls over a field of drifting light; each line rises out of
+// the dark as the reel brings it up. The signature: scrolling turns the orrery. The emblem stands beside
+// the reel with the five sections as bodies on its orbit; the reel's scroll turns it, and the amber Hand
+// catches the section being read. Picking a section on the ladder rolls the reel, which swings the
+// orrery to it. A progress arc reads how far through the reel you are. Third-party notices PQ-033.00.
 // Unique chrome: styles/credits.css, composed over by src/ui/orrery/settingsLayouts.js.
 // Data from scripts/write-credits.mjs.
 import { CREDITS } from '../../data/credits.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
-import { injectOrrerySettings, createDriftField, createCreditsEmblem, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
+import { injectOrrerySettings, createDriftField, createCreditsOrrery, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { reducedMotion } from '../orrery/motion.js';
 
 const CREDITS_SHEET_ID = 'of-credits-css';
@@ -42,6 +43,15 @@ function getManager(ctx) {
   return null;
 }
 
+/** A homepage as a place, not a link: no protocol, no "www.", no trailing slash or #readme. */
+export function creditsHost(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const bare = raw.replace(/^git\+/i, '').replace(/\.git$/i, '').replace(/^[a-z]+:\/\//i, '').replace(/^www\./i, '').replace(/#.*$/, '').replace(/\/+$/, '');
+  const [host, ...path] = bare.split('/');
+  return /^(github|gitlab)\.com$/i.test(host) && path.length >= 2 ? `${host}/${path[0]}/${path[1]}` : host;
+}
+
 /** Credit lines on the reel's rail: name, optional sub, quiet value. Each line reveals on its own. */
 function staticRows(items, ariaLabel) {
   const list = el('ul', 'k-rows of-credits-rows');
@@ -58,16 +68,38 @@ function staticRows(items, ariaLabel) {
   return list;
 }
 
-/** A licence text as readable paragraphs. */
+/**
+ * A licence: its name, its terms and its copyright line; the full text (still shipped whole) unfolds on a
+ * word, so the reel reads as credits and not as a wall of legal capitals.
+ */
 function noticeBlock(notice) {
   const block = el('section', 'of-credits-notice fh-plate fh-plate--paper orr-cr-line');
   const head = el('h2', 'k-t-emph', notice.name);
   block.appendChild(head);
   block.appendChild(el('p', 'k-caps fh-legend', notice.license));
-  const paragraphs = String(notice.text || '').split(/\n\s*\n/);
-  for (const paragraph of paragraphs) {
-    const text = paragraph.replace(/\s*\n\s*/g, ' ').trim();
-    if (text) block.appendChild(el('p', 'k-sentence k-measure fh-body', text));
+  const paragraphs = String(notice.text || '').split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+  const copyright = paragraphs.find((p) => /^copyright\b|\(c\)|©/i.test(p) && p.length < 240)
+    || paragraphs.find((p) => p.length < 240 && !/^-+$/.test(p) && !/^[A-Z0-9 ,.'"()\-]+$/.test(p)
+      && !String(notice.name || '').startsWith(p) && !/license$/i.test(p)) || '';
+  if (copyright) block.appendChild(el('p', 'orr-cr-copy', copyright));
+  const full = el('div', 'orr-cr-full');
+  for (const text of paragraphs) full.appendChild(el('p', 'k-sentence k-measure fh-body', text));
+  full.hidden = true;
+  if (paragraphs.length) {
+    const unfold = el('button', 'orr-cr-unfold', 'Read the licence');
+    unfold.type = 'button';
+    unfold.setAttribute('aria-expanded', 'false');
+    const fullId = `orr-cr-full-${String(notice.name || '').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+    full.id = fullId;
+    unfold.setAttribute('aria-controls', fullId);
+    unfold.addEventListener('click', () => {
+      const open = full.hidden;
+      full.hidden = !open;
+      unfold.setAttribute('aria-expanded', String(open));
+      unfold.textContent = open ? 'Fold the licence' : 'Read the licence';
+      cue(open ? 'open' : 'close');
+    });
+    block.append(unfold, full);
   }
   return block;
 }
@@ -145,12 +177,12 @@ export const creditsScreen = {
     // behind everything: the drift field and the emblem (both aria-hidden, both stand down on a shim)
     let drift = null;
     try { drift = createDriftField(rootEl); } catch (e) { drift = null; }
-    let emblem = null;
-    try { emblem = createCreditsEmblem(); } catch (e) { emblem = null; }
-    if (emblem && typeof rootEl.insertBefore === 'function') rootEl.insertBefore(emblem, rootEl.firstChild);
+    let orrery = null;
+    try { orrery = createCreditsOrrery(document, SECTIONS); } catch (e) { orrery = null; }
+    if (orrery && typeof rootEl.insertBefore === 'function') rootEl.insertBefore(orrery.el, rootEl.firstChild);
     if (drift && typeof rootEl.insertBefore === 'function') rootEl.insertBefore(drift.el, rootEl.firstChild);
 
-    refs = { root: rootEl, title, hang, stage, foot, sectionWords, progress, drift, reveal: null, sections: {}, lock: null, lockTimer: 0, spot: null };
+    refs = { root: rootEl, title, hang, stage, foot, sectionWords, progress, drift, orrery, reveal: null, sections: {}, lock: null, lockTimer: 0, spot: null };
     try { refs.spot = attachSpotlight(rootEl); } catch (e) { refs.spot = null; }
     if (typeof stage.addEventListener === 'function') stage.addEventListener('scroll', () => this._spy(), { passive: true });
     this._render();
@@ -192,15 +224,24 @@ export const creditsScreen = {
     const span = Math.max(1, (stage.scrollHeight || 0) - (stage.clientHeight || 0));
     if (refs.progress) refs.progress.set(top / span);
     if (refs.drift) refs.drift.setScroll(top);
-    if (refs.lock) return;
-    let current = SECTIONS[0].id;
-    const line = top + (stage.clientHeight || 0) * 0.34;
-    for (const s of SECTIONS) {
+    // the section whose head has reached the reel's reading line (where a pick scrolls it to) is the one read
+    const line = top + (stage.clientHeight || 0) * 0.09 + 2;
+    const tops = SECTIONS.map((s) => {
       const sec = refs.sections[s.id];
-      if (!sec) continue;
-      const reel = sec.parentElement;
-      if ((sec.offsetTop || 0) + ((reel && reel.offsetTop) || 0) <= line) current = s.id;
+      const reel = sec && sec.parentElement;
+      return sec ? (sec.offsetTop || 0) + ((reel && reel.offsetTop) || 0) : 0;
+    });
+    // the reel's position in sections: whole at each section's head, fractional between them
+    let pos = 0;
+    for (let i = 0; i < tops.length; i += 1) {
+      if (line < tops[i]) break;
+      const next = i + 1 < tops.length ? tops[i + 1] : tops[i] + 1;
+      pos = i + Math.min(1, (line - tops[i]) / Math.max(1, next - tops[i])) * (i + 1 < tops.length ? 1 : 0);
     }
+    if (top >= span - 2) pos = SECTIONS.length - 1;
+    if (refs.orrery) refs.orrery.setPosition(pos);
+    if (refs.lock) return;
+    let current = SECTIONS[Math.max(0, Math.min(SECTIONS.length - 1, Math.round(pos)))].id;
     if (top >= span - 2) current = SECTIONS[SECTIONS.length - 1].id;
     if (current !== this._section) { this._section = current; this._mark(current); }
   },
@@ -236,7 +277,7 @@ export const creditsScreen = {
           break;
         case 'libraries':
           sec.appendChild(staticRows(c.libraries.map((l) => ({
-            name: l.name, sub: [l.version, l.author, l.homepage].filter(Boolean).join(' · '), value: l.license,
+            name: l.name, sub: [l.version, l.author, creditsHost(l.homepage)].filter(Boolean).join(' · '), value: l.license,
           })), 'Libraries'));
           break;
         case 'fonts':
@@ -287,6 +328,7 @@ export const creditsScreen = {
       try { if (refs.drift) refs.drift.dispose(); } catch (e) { /* cosmetic */ }
       try { if (refs.reveal) refs.reveal.dispose(); } catch (e) { /* cosmetic */ }
       try { if (refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
+      try { if (refs.orrery) refs.orrery.dispose(); } catch (e) { /* cosmetic */ }
     }
     refs = null;
   },
