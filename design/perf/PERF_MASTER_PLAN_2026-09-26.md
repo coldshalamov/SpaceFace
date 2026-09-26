@@ -337,3 +337,38 @@ asset-loader ×2): all green except `asset-residency-refcounts`' "headless real
 release-GLB traversal" — a Playwright-launched real-browser GLB traversal that
 stalls identically on origin/master on this box (>8 min against a 120 s test
 timeout; box-slowness in real asset decode, unrelated to the diff).
+
+## Round 8 — merge-inherited stale render packages (regression found + fixed)
+
+Post-merge probe on `86efa5239` read `missingFrames=2403 stuckMissing=2267`
+vs master's `455/270` at the same box — a real merge interaction, not noise.
+Root cause: the manifest conflict was resolved to master's
+`renderPackageManifest.js` while the package binaries came from our side —
+`check-render-package-pilots` flagged `apron-shuttle: render-package.json is
+stale`, and at runtime every stale-pinned package is rejected, dropping 267
+ships onto the slow per-part path → mass stuck-missing. Fix: full
+`build-render-package-pilots` rebuild on the merged tree + manifest regen
+(`cec0c22fe`). Post-fix probe: `missingFrames=199 stuckMissing=106
+flightShaderLinks=20 (8 in-frame) appearOnTime=0.70` — envelope restored.
+
+Merge-rule learned: any merge touching `assets/ships/release/render-packages`
+or `renderPackageManifest.js` must be followed by a pilots rebuild — the
+pins are content-hash pairs and either side's half-set is silently rejected.
+
+## Round 9 — parallel lane fan-out (hill-climb swarm)
+
+Nine subsystem lanes spawned as parallel child sessions off
+`devin/1790392438-perf-pipeline` (+ electron lane landed earlier as
+`devin/lane-electron`). Each explores its lane, implements one zero-visual-diff
+leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
+
+- `shaderwarm` (`cfd21b7b8`): keep-alive pipeline probes were minting the WRONG
+  program keys — bare MeshPhysicalMaterials instead of the real
+  `applyAuthoredMaterialProfile` + `canonicalizeAuthoredProgramState` chain, so
+  first-flight authored admissions still compiled cold (the 19-20
+  flightShaderLinks the probe sees). Probes now cover the real family-key
+  space (Standard ×4 roles + transparent, Physical clearcoat/mechanical,
+  transmission glass ±clearcoat) — 23/23 real authored combos hit a warm
+  program in offline key-parity sim. A/B pending on this box.
+- `admission`, `decode`, `batching`, `allocs` in flight; `simwalk`,
+  `textures`, `postfx`, `hud` queued behind the org's session cap.
