@@ -1,9 +1,11 @@
 // Achievements — ORRERY (design/frontend/ORRERY.md §6 Meta: "medal Arc Gauges on a ring grid"). Every
-// deed is a medal on the Medal Ring Grid (src/ui/orrery/constellationMedals.js): its progress as the
-// arc, its glyph inside, earned ones full rings of warm light, the rest ghost rings. The one amber Hand
-// stands on the chosen medal's rim and swings from medal to medal; the chosen medal's line is read
-// beside the grid (its dial large, its name, what it asks, how far along it is). The categories are
-// words on a scale. The composition is src/ui/orrery/constellationLayouts.js.
+// deed is a medal on the Medal Orrery (src/ui/orrery/constellationMedals.js): the four categories are
+// orbits round a hero gauge of the medals you hold, each medal its produced art inside an Arc Gauge of
+// its progress. The one amber Hand is an arm from the gauge to the chosen medal, and choosing TURNS the
+// orbit until the medal stands under it; choosing a category turns that orbit to its first medal and
+// brings it to the front. The chosen medal's line is read beside the orrery (its gauge large, its name,
+// what it asks, how far along it is). The categories are words on a scale. The composition is
+// src/ui/orrery/constellationLayouts.js.
 // Rows come from the achievement ledger (src/systems/achievements.js): the live ledger the game
 // booted, or the stored bag when it has not booted one, so the title and Pause read the same truth.
 // Hidden achievements stay masked until earned; counted goals show their progress.
@@ -11,7 +13,7 @@ import { ACHIEVEMENT_CATEGORIES } from '../../data/achievements.js';
 import { ACHIEVEMENT_UNLOCKED_EVENT, readAchievementRows } from '../../systems/achievements.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
-import { createMedalGrid, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
+import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
 import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 
@@ -68,6 +70,15 @@ function glyphFor(row, size = 30) {
   return dpIcon(ACHIEVEMENT_EMBLEM[row && row.id] || 'check', size);
 }
 
+/** A word set round the reading medal's rim, reading upright along its foot. */
+function rimHtml(text) {
+  if (!text) return '';
+  const esc = String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return '<svg class="con-medal-read__rim" viewBox="-66 -66 132 132" aria-hidden="true" focusable="false">'
+    + '<path id="con-read-rim" d="M -60 0 A 60 60 0 0 0 60 0" fill="none" stroke="none"></path>'
+    + `<text text-anchor="middle"><textPath href="#con-read-rim" startOffset="50%">${esc}</textPath></text></svg>`;
+}
+
 function categoryLabel(id) {
   const s = ACHIEVEMENT_SECTIONS.find((x) => x.id === id);
   return s ? s.label : String(id || '');
@@ -118,13 +129,12 @@ export const achievementsScreen = {
     const scaleWrap = el('div', 'con-filters__scale');
     scaleWrap.appendChild(sectionWords);
     hang.appendChild(scaleWrap);
-    // down from a category into the medals
+    // up from a category into the medals
     sectionWords.addEventListener('keydown', (event) => {
-      if (event.key !== 'ArrowDown' || !refs || !refs.grid) return;
+      if (event.key !== 'ArrowUp' || !refs || !refs.grid) return;
       event.preventDefault();
       refs.grid.focusChosen();
     });
-    rootEl.appendChild(hang);
 
     const stage = el('section', 'k-stage con-medal-stage');
     stage.setAttribute('aria-live', 'polite');
@@ -148,14 +158,18 @@ export const achievementsScreen = {
     });
     back.querySelector('.k-word')?.classList.add('sf-back', 'con-back');
     foot.appendChild(back);
+    foot.appendChild(hang);
     rootEl.appendChild(foot);
 
-    const grid = createMedalGrid(stage, {
+    const grid = createMedalOrrery(stage, {
       glyph: (row) => glyphFor(row),
       art: medalArt,
-      onPick: (id) => this._choose(id),
-      onEdge: (dir) => {
-        if (dir !== 'up' || !refs) return;
+      label: (id) => categoryLabel(id),
+      // the orrery stands clear of the title and the categories tucked into its corner
+      avoid: () => [title.querySelector('h1'), summary].map((n) => (n && typeof n.getBoundingClientRect === 'function' ? n.getBoundingClientRect() : null)),
+      onPick: (id, how) => this._choose(id, { how }),
+      onEdge: () => {
+        if (!refs) return;
         const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
         if (current) try { current.focus(); } catch (e) {}
       },
@@ -185,7 +199,7 @@ export const achievementsScreen = {
     this._off = null;
   },
 
-  _select(id, { quiet = false } = {}) {
+  _select(id, { quiet = false, chosen = null } = {}) {
     if (!ACHIEVEMENT_SECTIONS.some((s) => s.id === id)) return;
     this._section = id;
     if (refs) {
@@ -195,13 +209,23 @@ export const achievementsScreen = {
       }
     }
     if (!quiet) cue('move');
-    this._render();
+    if (!refs) return;
+    const inSection = rowsForSection(refs.rows, id);
+    if (chosen) this._chosen = chosen;
+    else if (id !== 'all' && inSection.length) this._chosen = inSection[0].id;
+    refs.grid.list.setAttribute('aria-label', id === 'all' ? 'All achievements' : `${categoryLabel(id)} achievements`);
+    refs.grid.choose(this._chosen, { section: id });
+    refs.scale.update();
+    const row = refs.rows.find((r) => r.id === this._chosen);
+    if (row) this._paintReading(row, { fresh: !quiet });
   },
 
   _choose(id, { quiet = false } = {}) {
     if (!refs) return;
     const row = refs.rows.find((r) => r.id === id);
     if (!row) return;
+    // stepping to another orbit while a category is in front brings that orbit's category to the front
+    if (this._section !== 'all' && row.category !== this._section) { this._select(row.category, { quiet, chosen: id }); return; }
     const changed = this._chosen !== id;
     this._chosen = id;
     refs.grid.choose(id, { instant: quiet });
@@ -221,13 +245,23 @@ export const achievementsScreen = {
     const day = row.unlocked ? String(row.status || '').replace(/^Unlocked\s*/, '') : '';
     read.dataset.state = state;
     read.innerHTML = `
-      <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}">${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span></div>
+      <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}"><span class="con-medal__body"></span>${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span>${rimHtml(day ? 'earned · ' + day : '')}</div>
       <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))} <span aria-hidden="true">·</span> ${esc(state === 'earned' ? 'earned' : state === 'going' ? 'under way' : 'not yet earned')}</p>
       <h2 class="con-medal-read__name">${esc(row.name)}</h2>
       <p class="con-medal-read__line">${esc(row.description)}</p>
       ${counted && !row.unlocked ? `<div class="con-medal-read__figure"><span class="con-medal-read__n" data-n>0</span><span class="con-medal-read__of">of ${esc(Number(row.target).toLocaleString('en-US'))}</span></div>` : ''}
       ${row.unlocked ? `<p class="con-medal-read__status">${esc(day ? 'earned ' + day : 'earned')}</p>` : ''}
     `;
+    const dial = read.querySelector('.con-medal-read__dial');
+    const rim = dial && dial.querySelector('.con-medal-read__rim');
+    if (rim) {
+      const w = dial.offsetWidth || 230;
+      const R = w * 0.46 + 18;
+      const m = 30;
+      rim.setAttribute('viewBox', `${-w / 2 - m} ${-w / 2 - m} ${w + 2 * m} ${w + 2 * m}`);
+      const path = rim.querySelector('path');
+      if (path) path.setAttribute('d', `M ${-R} 0 A ${R} ${R} 0 0 0 ${R} 0`);
+    }
     const n = read.querySelector('[data-n]');
     if (n && counted && !row.unlocked) rollTo(n, Math.min(Number(row.current) || 0, Number(row.target)));
     const name = read.querySelector('.con-medal-read__name');
@@ -238,24 +272,28 @@ export const achievementsScreen = {
     if (!refs) return;
     let rows = [];
     try { rows = readAchievementRows(); } catch (e) { rows = []; }
+    const before = new Set((refs.rows || []).filter((r) => r.unlocked).map((r) => r.id));
     refs.rows = rows;
     refs.summary.textContent = achievementSummaryText(rows);
     const section = ACHIEVEMENT_SECTIONS.find((s) => s.id === this._section) || ACHIEVEMENT_SECTIONS[0];
-    const visible = rowsForSection(rows, section.id);
-    // nothing the grid shows changed (a store sync, the push's own refresh): leave it, and the
+    // nothing the orrery shows changed (a store sync, the push's own refresh): leave it, and the
     // player's focus in it, alone
-    const sig = section.id + '|' + visible.map((r) => `${r.id}:${r.unlocked ? 1 : 0}:${r.current}:${r.status}:${r.name}`).join(',');
+    const sig = section.id + '|' + rows.map((r) => `${r.id}:${r.unlocked ? 1 : 0}:${r.current}:${r.status}:${r.name}`).join(',');
     if (quiet && sig === refs.sig) { refs.scale.update({ instant: true }); return; }
     refs.sig = sig;
-    const hadFocus = !!(refs.grid.list && typeof refs.grid.list.contains === 'function' && refs.grid.list.contains(globalThis.document && globalThis.document.activeElement));
+    const struck = quiet ? rows.filter((r) => r.unlocked && !before.has(r.id)).map((r) => r.id) : [];
+    if (struck.length) this._chosen = struck[struck.length - 1];
+    const inSection = rowsForSection(rows, section.id);
+    if (!rows.some((r) => r.id === this._chosen)) this._chosen = defaultMedal(section.id === 'all' ? rows : inSection);
+    const chosenRow = rows.find((r) => r.id === this._chosen);
+    if (section.id !== 'all' && chosenRow && chosenRow.category !== section.id) this._chosen = (inSection[0] || chosenRow).id;
     refs.grid.list.setAttribute('aria-label', section.id === 'all' ? 'All achievements' : `${section.label} achievements`);
-    if (!visible.some((r) => r.id === this._chosen)) this._chosen = defaultMedal(visible);
-    refs.stage.dataset.count = String(visible.length);
-    refs.grid.set(visible, this._chosen);
-    if (hadFocus) refs.grid.focusChosen();
-    const row = visible.find((r) => r.id === this._chosen);
-    if (row) this._paintReading(row, { fresh: !quiet });
-    else refs.read.innerHTML = '<p class="con-medal-read__line">No achievements in this category yet.</p>';
+    refs.stage.dataset.count = String(rows.length);
+    refs.grid.set(rows, { chosen: this._chosen, section: section.id });
+    for (const id of struck) refs.grid.strike(id);
+    const row = rows.find((r) => r.id === this._chosen);
+    if (row) this._paintReading(row, { fresh: !quiet || struck.length > 0 });
+    else refs.read.innerHTML = '<p class="con-medal-read__line">No achievements yet.</p>';
     refs.scale.update({ instant: quiet });
     if (!quiet) refs.grid.arrive();
   },

@@ -34,6 +34,8 @@ const SECTOR_GAP = 7;
 const R_MIN = 0.3;
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 const f = (n) => Math.round(n * 100) / 100;
+/** A stable phase in [0, 1) from a key (FNV-1a): cosmetic staggering without Math.random. */
+const phaseOf = (key) => { let h = 2166136261; for (let i = 0; i < key.length; i += 1) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; };
 
 const CSS = `
 .con-sky { position:absolute; inset:0; isolation:isolate; overflow:hidden; cursor:grab; touch-action:none; }
@@ -1317,7 +1319,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     if (has) return;
     const g = svg('g');
     const dur = Math.max(1.6, Math.min(3.6, bm.len / 70));
-    const begin = `${(Math.random() * dur).toFixed(2)}s`;
+    // each link's pulse starts at its own phase, taken from its ends (no ambient randomness)
+    const begin = `${(phaseOf(`${bm.from}>${bm.to}`) * dur).toFixed(2)}s`;
     for (const [cls, r] of [['con-pulse-bloom', 5.5], ['con-pulse', 2.1]]) {
       const c = svg('circle', { r, class: cls });
       const m = svg('animateMotion', { dur: `${dur.toFixed(2)}s`, repeatCount: 'indefinite', path: bm.d, begin, calcMode: 'spline', keyTimes: '0;1', keySplines: '.45 0 .55 1' });
