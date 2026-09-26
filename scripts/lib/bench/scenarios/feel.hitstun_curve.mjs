@@ -15,7 +15,7 @@ import {
   queuePhysicsImpulse,
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
-import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
+import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance, resolveHitstunLaw } from '../../../../src/combat/impulseKernel.js';
 import { readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
@@ -522,6 +522,31 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
     helmModesSeen.length = 0;
     recordHelmModeNames(windowEvents, helmModesSeen);
 
+    // 4b4950ae7 ("Shove beat"): a shove-class hit floors the stun at the screen-crossing coast
+    // (total = max(base, beat), never base + beat). The beat is read from the causal
+    // combat:tumbled receipt — its shoveBeatS reports the beat only when it actually set the
+    // duration. A floored cell's underlying base is the shared law re-resolved at the same
+    // measured inputs; an unfloored cell keeps the measured total so a source-specific extra
+    // stun path still shows in baseHelmLossDurationS.
+    const causalTumbled = windowEvents.find((ev) =>
+      ev.type === 'combat:tumbled' && ev.source === hitstunSourceTag(source));
+    const shoveBeatS = causalTumbled && Number.isFinite(causalTumbled.shoveBeatS)
+      ? Math.max(0, causalTumbled.shoveBeatS)
+      : 0;
+    const helmLossS = helmLossTicks / 60;
+    const baseLaw = resolveHitstunLaw({
+      deltaV,
+      victimCruise: cruise.cruiseSpeed,
+      attackerMass: attackerMassForU,
+      victimMass: hullMass,
+      worldBody,
+      shove: false,
+    });
+    const lawHelmLossDurationS = Math.max(0, finite(baseLaw.durationS, helmLossS));
+    const baseHelmLossDurationS = shoveBeatS > 0
+      ? Math.min(helmLossS, lawHelmLossDurationS)
+      : Math.max(0, helmLossS);
+
     if (eventTrace.length < 400) {
       eventTrace.push({
         tick: eventTick,
@@ -545,7 +570,10 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
       k,
       u,
       deltaV,
-      helmLossDurationS: helmLossTicks / 60,
+      helmLossDurationS: helmLossS,
+      shoveBeatS,
+      baseHelmLossDurationS,
+      lawHelmLossDurationS,
       entrySpinRadPerS: peakSpin,
       helmModes: helmModesSeen.slice(),
       helmOwner,
@@ -574,6 +602,9 @@ function unmeasuredCell(base, proof, reason) {
     k: NaN,
     deltaV: NaN,
     helmLossDurationS: NaN,
+    shoveBeatS: 0,
+    baseHelmLossDurationS: NaN,
+    lawHelmLossDurationS: NaN,
     entrySpinRadPerS: NaN,
     helmModes: [],
     helmOwner: 'none',
@@ -714,7 +745,10 @@ export function subscribeHelmEvents(bus, victimId, out, getTick) {
       type: 'combat:tumbled',
       tick: Number.isFinite(payload.tick) ? payload.tick : now(),
       control: payload.cause || payload.source,
+      source: payload.source,
       spin: payload.spin,
+      shoveBeatS: payload.shoveBeatS,
+      durationS: payload.durationS,
     });
   });
   bus.on('massline:tumbled', (payload) => {
@@ -848,7 +882,19 @@ export function buildB11Bars(cells, notes) {
     });
   }
 
-  const oneLawLabel = `one law: relative spread of helm-loss across ${HITSTUN_SOURCES.join(', ')} (light hull, measured u in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`;
+  // 4b4950ae7 ("Shove beat") deliberately floors shove-class helm loss at the screen-crossing
+  // coast, which shrinks as k grows — the gun monotonicity clause compares baseHelmLossDurationS
+  // (the beat removed) and the one-law spread compares each source's base against the shared law
+  // re-resolved at that cell's own measured u, while the ≥1 s and = 0 clauses above keep the
+  // measured total. Cells that never recorded a beat fall back to their total.
+  const baseHelmS = (c) => (Number.isFinite(c && c.baseHelmLossDurationS) ? c.baseHelmLossDurationS : c.helmLossDurationS);
+  const lawRatio = (c) => (
+    Number.isFinite(c && c.lawHelmLossDurationS) && c.lawHelmLossDurationS > 0
+      ? baseHelmS(c) / c.lawHelmLossDurationS
+      : NaN
+  );
+
+  const oneLawLabel = `one law: each source's measured base helm-loss matches the shared law at its own measured u across ${HITSTUN_SOURCES.join(', ')} (light hull, measured u in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`;
   const matched = [];
   const missingMatched = [];
   for (const source of HITSTUN_SOURCES) {
@@ -863,22 +909,34 @@ export function buildB11Bars(cells, notes) {
       `missing matched-u light cells for ${missingMatched.join(', ')} (measured u must lie in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`,
     ));
   } else {
-    let minS = Infinity;
-    let maxS = -Infinity;
+    let minR = Infinity;
+    let maxR = -Infinity;
+    let unratable = 0;
     for (const c of matched) {
-      if (c.helmLossDurationS < minS) minS = c.helmLossDurationS;
-      if (c.helmLossDurationS > maxS) maxS = c.helmLossDurationS;
+      const ratio = lawRatio(c);
+      if (!Number.isFinite(ratio)) { unratable += 1; continue; }
+      if (ratio < minR) minR = ratio;
+      if (ratio > maxR) maxR = ratio;
     }
-    const spread = maxS > 0 ? (maxS - minS) / maxS : 0;
-    const reality = matched.map((c) => `${c.source} u=${round4(cellU(c))} ${round4(c.helmLossDurationS)}s`).join(', ');
-    bars.push({
-      bar: 'B11',
-      label: oneLawLabel,
-      value: spread,
-      unit: 'fraction',
-      met: spread <= 0.10,
-      note: reality,
-    });
+    if (unratable) {
+      bars.push(unmeasuredBar(
+        oneLawLabel,
+        'fraction',
+        `${unratable} matched-u light cells have no shared-law prediction to compare against`,
+      ));
+    } else {
+      const spread = maxR > 0 ? (maxR - minR) / maxR : 0;
+      const reality = matched.map((c) =>
+        `${c.source} u=${round4(cellU(c))} ${round4(baseHelmS(c))}s/${round4(c.lawHelmLossDurationS)}s=${round4(lawRatio(c))}`).join(', ');
+      bars.push({
+        bar: 'B11',
+        label: oneLawLabel,
+        value: spread,
+        unit: 'fraction',
+        met: spread <= 0.10,
+        note: reality,
+      });
+    }
   }
 
   const monotoneLabel = 'helm-loss is monotone non-decreasing in k (light hull, gun source)';
@@ -891,7 +949,7 @@ export function buildB11Bars(cells, notes) {
   } else {
     let monotone = 1;
     for (let i = 1; i < gunLight.length; i++) {
-      if (gunLight[i].helmLossDurationS + 1e-9 < gunLight[i - 1].helmLossDurationS) {
+      if (baseHelmS(gunLight[i]) + 1e-9 < baseHelmS(gunLight[i - 1])) {
         monotone = 0;
         break;
       }
