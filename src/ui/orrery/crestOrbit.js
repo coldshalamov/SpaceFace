@@ -58,7 +58,7 @@ const CSS = `
 .orr-crestorbit__centre > img { display:block; width:100%; height:100%; opacity:1; filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); transition:opacity .22s linear; }
 .orr-crestorbit__centre.is-pivot > img { opacity:.3; }
 .orr-crestorbit.is-pivoted .orr-crestorbit__sunrings { opacity:.28; }
-.orr-svg .orr-crestorbit__sunring { --orr-edge-a:.4; --orr-band-a:.065; --orr-w-band:6px; }
+.orr-svg .orr-crestorbit__sunring { --orr-edge-a:.56; --orr-band-a:.26; --orr-w-band:6px; }
 .orr-crestorbit__armlayer { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 .orr-crestorbit__centre { z-index:1; }
 .orr-crestorbit.is-armunder .orr-crestorbit__armlayer { z-index:2; }
@@ -67,12 +67,12 @@ const CSS = `
 .orr-crestorbit__centre > img { mix-blend-mode:screen; }
 .orr-crestorbit__centre.is-swapping > img { opacity:0; }
 /* weight, not wire: the orbit is a luminous band under a crisp edge, broken at every emblem */
-.orr-svg .orr-crestorbit__ring { --orr-edge-a:.44; --orr-band-a:.08; --orr-w-band:7px; stroke-linecap:butt; }
+.orr-svg .orr-crestorbit__ring { --orr-edge-a:.62; --orr-band-a:.28; --orr-w-band:7px; stroke-linecap:butt; }
 .orr-svg .orr-crestorbit__standing { stroke:rgb(248 244 234); }
 .orr-svg .orr-crestorbit__standing--against { stroke:var(--dp-danger, #ff5038); }
 .orr-svg .orr-crestorbit__standing--none { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-crestorbit__standing-bloom { opacity:.22; }
-.orr-svg .orr-crestorbit__ghost { --orr-edge-a:.3; --orr-band-a:.07; --orr-w-band:5px; stroke-linecap:butt; }
+.orr-svg .orr-crestorbit__ghost { --orr-edge-a:.5; --orr-band-a:.27; --orr-w-band:5px; stroke-linecap:butt; }
 .orr-svg .orr-crestorbit__zero { stroke:rgb(${BONE} / .62); }
 .orr-svg .orr-crestorbit__rel { stroke:rgb(${BONE} / .6); }
 .orr-crestorbit.is-small .orr-svg .orr-crestorbit__rel { stroke-width:1.8px; }
@@ -100,7 +100,7 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 /* the standing scale: a ruler from Sworn Enemy to Hero, the light cursor at the rep */
 .orr-standing { position:relative; width:100%; height:74px; }
 .orr-standing > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
-.orr-svg .orr-standing__rule { --orr-w-band:7px; --orr-band-a:.085; --orr-w-edge:2px; --orr-edge-a:.5; }
+.orr-svg .orr-standing__rule { --orr-w-band:7px; --orr-band-a:.28; --orr-w-edge:2px; --orr-edge-a:.66; }
 .orr-svg .orr-standing__hostile { stroke:var(--dp-danger, #ff5038); opacity:.32; }
 .orr-svg .orr-standing__tick { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-standing__tick--aggro { stroke:var(--dp-danger, #ff5038); }
@@ -112,8 +112,8 @@ html.sf-reduce-motion .orr-crest, html.sf-reduce-motion .orr-crest > img { trans
 .orr-svg.is-compact text.orr-standing__name { font-size:9px; letter-spacing:.1em; }
 .orr-svg text.orr-standing__name.is-hostile { fill:rgb(${BONE} / .52); }
 .orr-svg text.orr-standing__name.is-hostile.is-current { fill:var(--dp-danger, #ff5038); }
-.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:9px; font-weight:500; letter-spacing:.02em; fill:rgb(${BONE} / .42); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
-.orr-svg text.orr-standing__val.is-hostile { fill:rgb(215 68 48); }
+.orr-svg text.orr-standing__val { font-family:var(--dp-face-numeral, "Archivo"); font-size:10px; font-weight:600; letter-spacing:.02em; fill:rgb(${BONE} / .7); paint-order:stroke; stroke:rgb(6 8 11 / .9); stroke-width:3px; }
+.orr-svg text.orr-standing__val.is-hostile { fill:rgb(255 104 82); }
 .orr-svg .orr-standing__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-standing__cursor-bloom { stroke:rgb(248 244 234); opacity:.25; }
 .orr-svg .orr-standing__rung-leader { stroke:rgb(${BONE} / .32); }
