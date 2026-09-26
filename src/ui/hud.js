@@ -1289,6 +1289,13 @@ function injectTravelTapeStyle() {
      takes the cleared bottom-centre band above the receipt lane. */
   #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:86px; margin:0;
     transform:translateX(-50%); }
+  /* Below the 1280 floor the band between the Cluster's ordnance crescent and the right dock is
+     narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
+     (--sf-vtape-fit steps are set with --sf-hud-edge-fit in hudStyles). */
+  @media (max-width: 1279px), (max-height: 719px) {
+    #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 276px) + 36px);
+      transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
+  }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
   @media (prefers-reduced-motion: reduce) {
@@ -1407,16 +1414,28 @@ export function createHud(ctx, alerts) {
   clusterChassis.appendChild(bars);
   // The comms strip shares the left edge with the cluster. Publish the cluster's height so the
   // strip always stops short of it; a ResizeObserver fires only when the size changes, so this
-  // costs no per-frame layout read.
+  // costs no per-frame layout read. While ORRERY owns the bottom-left the chassis stays mounted
+  // but hidden — its (often much taller, compact-wrapped) layout height must not eat the strip,
+  // so the reserve is measured off the ORRERY Cluster's rendered box instead. Neither a chassis
+  // resize nor a viewport-driven --orr-cluster-scale step is observable by the other signal, so
+  // both feed the same publisher.
+  const publishClusterReserve = () => {
+    const orrery = root.dataset && root.dataset.hud === 'orrery';
+    const occupant = orrery ? root.querySelector('.orr-hud-cluster .orr-cluster') : clusterChassis;
+    if (!occupant) return;
+    const rect = occupant.getBoundingClientRect();
+    const h = orrery
+      ? Math.max(0, (typeof window !== 'undefined' ? window.innerHeight : 0) - rect.top)
+      : rect.height;
+    root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
+  };
   let clusterSizeObserver = null;
   if (typeof ResizeObserver === 'function') {
-    clusterSizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[entries.length - 1];
-      const box = entry && entry.borderBoxSize && entry.borderBoxSize[0];
-      const h = box ? box.blockSize : (entry && entry.contentRect ? entry.contentRect.height : 0);
-      root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
-    });
+    clusterSizeObserver = new ResizeObserver(publishClusterReserve);
     clusterSizeObserver.observe(clusterChassis);
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('resize', publishClusterReserve);
   }
   leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
@@ -1919,6 +1938,8 @@ export function createHud(ctx, alerts) {
   // parent and it lands on the cluster's ordnance crescent. Re-seat it on #hud so it takes the
   // cleared bottom-centre band (the data-hud="orrery" rule in injectTravelTapeStyle).
   if (orreryCluster) root.appendChild(vtape);
+  // The bottom-left occupant the comms strip reserves space for just changed hands.
+  if (orreryCluster) publishClusterReserve();
   // Prompts borrow the number row rather than racing the rail for it.
   const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
   const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
@@ -5626,6 +5647,9 @@ export function createHud(ctx, alerts) {
       forkInstrument.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', publishClusterReserve);
+      }
     },
   };
 }

@@ -645,6 +645,33 @@ export function injectHudCss() {
     .sf-lockdiamond { width:24px; height:24px; }
   }
 
+  /* Small-window edge fit: scale ONLY the edge-anchored instrument stacks. World-projected
+     marks (brackets, lock cues, off-screen threat) read window.innerWidth/innerHeight and land
+     on world points, so a transform on #hud itself would misplace them — the fit stays off the
+     root. Each stack scales toward the corner it is anchored to; at 1280x720 and up no
+     transform is applied at all, so the stacking order and pixels are untouched there. */
+  @media (max-width: 1279px), (max-height: 719px) {
+    #hud { --sf-hud-edge-fit:.85; --sf-vtape-fit:.85; }
+  }
+  @media (max-width: 1099px), (max-height: 659px) {
+    #hud { --sf-hud-edge-fit:.75; --sf-vtape-fit:.78; }
+  }
+  @media (max-width: 959px), (max-height: 599px) {
+    #hud { --sf-hud-edge-fit:.62; --sf-vtape-fit:.68; }
+  }
+  @media (max-width: 1279px), (max-height: 719px) {
+    #hud .orr-hud-cluster,
+    #hud .sf-leftstack,
+    #hud .sf-prail,
+    #hud > .sf-leftcontext,
+    #hud .sf-rightdock,
+    #hud .sf-band-hud { transform:scale(var(--sf-hud-edge-fit)); }
+    #hud .orr-hud-cluster, #hud .sf-leftstack, #hud .sf-prail { transform-origin:0 100%; }
+    #hud > .sf-leftcontext { transform-origin:0 0; }
+    #hud .sf-rightdock { transform-origin:100% 100%; }
+    #hud .sf-band-hud { transform-origin:100% 0; }
+  }
+
   /* ===== cargo panel overlay ===== */
   .sf-cargo-panel { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
     width:380px; max-height:60vh; display:none; flex-direction:column; border:1px solid var(--hud-cyan);
