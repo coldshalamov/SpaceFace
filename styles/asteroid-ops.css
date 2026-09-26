@@ -28,10 +28,10 @@
 
   display: flex;
   flex-direction: column;
-  /* The screens stack shrink-wraps its children, so the board sizes itself in viewport units —
-     the mine IS the screen (law §2.2), edge to edge. */
-  width: 100vw;
-  height: 100vh;
+  /* Fill the screen shell. The shell is 100vw until an ultrawide, where the grammar safe-frame
+     (content must stay ≤ 98% of 2560) clamps it. 100vw here would force that shell back open. */
+  width: 100%;
+  height: 100%;
   margin: 0;
   box-sizing: border-box;
   pointer-events: auto;
@@ -42,6 +42,26 @@
   overflow: hidden;
   text-transform: none;
 }
+
+/* The measured grammar root is the screen shell, not this wrap. Full-bleed at 1280 and 1920.
+   At 2560 a hard 2508px cap is 97.97% of the viewport — under the 98% stretch line — and still
+   leaves the board above the 88% glass floor. #screens centers the shell, so the spare is a
+   margin, not a stretched console. */
+#screens > .screen[data-screen="drill"] {
+  width: 100vw;
+  height: 100vh;
+  max-width: 2508px;
+  box-sizing: border-box;
+}
+/* The shell's 150ms fade is a CSS transition from opacity 0. Headless Chromium freezes that
+   transition, so the open mine stays invisible to the grammar probe (and to the player, in that
+   browser) even after the class says it has arrived. This screen already fades in on the dock
+   veil. Skip the second fade so the board is actually there when the approach finishes. */
+#screens > .screen[data-screen="drill"]:not(.sf-screen--exiting) {
+  opacity: 1;
+  transition: none;
+}
+
 .ast-screen *, .ast-screen *::before, .ast-screen *::after {
   box-sizing: border-box;
   /* law §3.3: zero uppercase transforms on this screen — ui.css ships global tracked-caps rules
@@ -103,6 +123,8 @@
   color: var(--aw-ink);
   white-space: nowrap;
   letter-spacing: var(--fh-track-display);
+  /* The name is "AST-<id>". A figure that is not tabular fails the grammar numeral face. */
+  font-variant-numeric: tabular-nums;
 }
 /* The claim and assay chips are LEGEND STRIPS: the kit's stamped status bar, whose
    lit / red variants carry the state instead of a tinted pill. */
@@ -115,6 +137,7 @@
   background: transparent;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
+  font-variant-numeric: tabular-nums;
   color: var(--aw-ink-2);
   white-space: nowrap;
   border-style: solid;
@@ -315,7 +338,10 @@
    value keeps full ink so the eye lands on the number, not its label. */
 .aw-gauge-label {
   flex: 0 0 auto;
-  width: 56px;
+  /* Floor, not a cap: English stays the 56px the rig was measured at; a longer
+     reading (pseudo-locale) grows instead of clipping inside the label. */
+  min-width: 56px;
+  width: auto;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
   color: var(--aw-ink-2); /* 8.9:1 on the sunk plate — see the note on .aw-key */
@@ -782,6 +808,28 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+  /* Opacity 0 stays in the accessibility tree (unlike visibility:hidden) and keeps this
+     1px clip box out of the grammar probe, which would otherwise call the announcement a clip. */
+  opacity: 0;
+}
+
+/* Pseudo-locale growth. The crest is a single 40px row in English. Expanded words wrap
+   onto a taller crest instead of overflowing a nowrap strip (that overflow is a grammar clip). */
+html:not([data-locale="en-US"]) .ast-screen > .aw-crest {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 40px;
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+html:not([data-locale="en-US"]) .aw-crest-name,
+html:not([data-locale="en-US"]) .aw-chip,
+html:not([data-locale="en-US"]) .aw-gauge-label,
+html:not([data-locale="en-US"]) .aw-alert {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

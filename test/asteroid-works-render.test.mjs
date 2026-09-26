@@ -457,3 +457,27 @@ test('law §11: the glass-side invariants stay asserted by their live checks', (
     assert.ok(pkg.scripts[script], `${script} is missing — a §11 invariant lost its check`);
   }
 });
+
+// Grammar floor the matrix measures on the live shell (PQ-185.01). These are the
+// cells the screen itself can fail: a figure face, an ultrawide stretch, and a
+// 1px announcement box the probe would call a clip. Seam cells (type role, motion,
+// keyboard, frame time) stay unproven until PQ-180 grows a seam — this file does
+// not pretend a proxy passes them.
+test('grammar floor: numeral face, ultrawide clamp, announcement is not a measured clip', () => {
+  const shell = LAW_CSS_CLEAN.match(/#screens\s*>\s*\.screen\[data-screen="drill"\]\s*\{([^}]*)\}/);
+  assert.ok(shell, 'the drill screen shell is not clamped — the grammar root would stay 100vw at 2560');
+  assert.match(shell[1], /max-width:\s*2508px/, '2560px × 0.98 is 2508.8; 2509px already fails the stretch line');
+  assert.match(shell[1], /width:\s*100vw/, 'below ultrawide the mine stays edge to edge');
+  const name = LAW_CSS_CLEAN.match(/\.aw-crest-name\s*\{([^}]*)\}/);
+  const chip = LAW_CSS_CLEAN.match(/\.aw-chip\s*\{([^}]*)\}/);
+  assert.ok(name && chip, 'crest name or claim chip rule missing');
+  assert.match(name[1], /font-variant-numeric:\s*tabular-nums/, 'AST-<id> is a figure and must be tabular');
+  assert.match(chip[1], /font-variant-numeric:\s*tabular-nums/, 'an assay count on the chip is a figure');
+  const label = LAW_CSS_CLEAN.match(/\.aw-gauge-label\s*\{([^}]*)\}/);
+  assert.ok(label, 'gauge label rule missing');
+  assert.match(label[1], /min-width:\s*56px/, 'the rig was measured against a 56px label floor');
+  assert.doesNotMatch(label[1], /(?:^|;)\s*width:\s*56px/, 'a fixed 56px label clips the pseudo-locale word');
+  const sr = LAW_CSS_CLEAN.match(/\.ast-sr-status\s*\{([^}]*)\}/);
+  assert.ok(sr, 'screen-reader status rule missing');
+  assert.match(sr[1], /opacity:\s*0/, 'the 1px announcement box is a grammar clip unless the probe treats it as hidden');
+});
