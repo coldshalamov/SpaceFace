@@ -98,6 +98,18 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     sectorIds: Object.freeze(['sector_io_reach']),
   }),
   Object.freeze({
+    // Sker Haven tithe-runner: the Reach market keeps a standing levy on the lane it sells, so the
+    // one identity the bazaar apron always shows is the hauler running the tithe crate back.
+    // sector_sker_haven has trafficPerMin 9 and station_sker — the pick lands on the ordinary route.
+    id: 'lane_vey_tithe',
+    name: 'Vey Senna',
+    callsign: 'TITHE-RUN',
+    role: 'hauler',
+    gimmick: 'tithe-run',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_sker_haven']),
+  }),
+  Object.freeze({
     // Charon Expanse claim face: one miner the seed-hash pick can always return, because this
     // sector had no authored lane identity. Not a claimable body and not a new encounter.
     id: 'lane_pell_claim_nine',
@@ -242,6 +254,9 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   // WORLD-11 Io Reach frontier courier.
   'frontier-mail': 'FRONTIER MAIL',
   frontier_mail: 'FRONTIER MAIL',
+  // Sker Haven market levy hauler.
+  'tithe-run': 'TITHE RUN',
+  tithe_run: 'TITHE RUN',
   // WORLD-12 Charon Expanse miner.
   'expanse-claim': 'CLAIM TALLY',
   expanse_claim: 'CLAIM TALLY',
