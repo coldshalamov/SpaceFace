@@ -128,8 +128,16 @@ export function farActorHoldsWorldRecord(state, recordId) {
   return false;
 }
 
+// Numeric grid keys (same encoding asteroidField uses). queryFarActors walks every
+// overlapped cell per call — the per-tick decode-runway disc is thousands of WU wide,
+// so a `${cx}:${cz}` string per cell per tick was pure GC churn. Bijective for
+// |cell| < 1,048,576 — far past the authored map edge (~±45k WU).
+const CELL_KEY_OFFSET = 1048576;
+const CELL_KEY_STRIDE = 2097152; // 2 * CELL_KEY_OFFSET
+
 function cellKey(x, z) {
-  return `${Math.floor(x / FAR_ACTOR_CELL)}:${Math.floor(z / FAR_ACTOR_CELL)}`;
+  return (Math.floor(x / FAR_ACTOR_CELL) + CELL_KEY_OFFSET) * CELL_KEY_STRIDE
+    + (Math.floor(z / FAR_ACTOR_CELL) + CELL_KEY_OFFSET);
 }
 
 function gridAdd(table, rec) {
@@ -145,7 +153,9 @@ function gridAdd(table, rec) {
 
 function gridRemove(table, rec) {
   const key = rec && rec._cell;
-  if (!key || !table.grid) return;
+  // Numeric keys: cell (-CELL_KEY_OFFSET, -CELL_KEY_OFFSET) encodes to 0 — test
+  // for absence, not truthiness.
+  if (key == null || !table.grid) return;
   const bucket = table.grid.get(key);
   if (!bucket) return;
   const idx = bucket.indexOf(rec);
@@ -459,8 +469,9 @@ export function queryFarActors(state, pos, radius, out = []) {
   const minR = Math.floor((z - r) / FAR_ACTOR_CELL);
   const maxR = Math.floor((z + r) / FAR_ACTOR_CELL);
   for (let cx = minC; cx <= maxC; cx++) {
+    const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
-      const bucket = table.grid && table.grid.get(`${cx}:${cz}`);
+      const bucket = table.grid && table.grid.get(rowBase + cz);
       if (!bucket) continue;
       for (let i = 0; i < bucket.length; i++) {
         const rec = bucket[i];
