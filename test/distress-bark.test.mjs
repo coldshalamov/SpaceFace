@@ -135,6 +135,28 @@ test('far-side attrition stays silent; a hostile kill or a player-authored kill 
   assert.equal(h.says.length, 2, 'the player hears the mayday they caused');
 });
 
+test('a docked cockpit does not hear the mayday channel', () => {
+  const h = makeHarness();
+  h.state.mode = 'docked';
+  const victim = h.add({ id: 80, type: 'ship', team: 2, factionId: 'faction_dmc', x: 10, z: 0 });
+  kill(h, victim);
+  assert.equal(h.says.length, 0, 'maydays belong to the flight deck, not the berth UI');
+});
+
+test('a lean kill payload still speaks when the victim itself hunted the player', () => {
+  const h = makeHarness();
+  // kernel/damage emit sites carry no factionId or targetHostileToPlayer — relevance must be
+  // re-derived from the entity or a hunting hull dies silently off-screen.
+  const hunter = h.add({ id: 81, type: 'ship', team: 3, factionId: 'faction_mts', x: 60000, z: 60000, data: { ai: { huntPlayer: true } } });
+  hunter.alive = false;
+  h.bus.emit('entity:killed', { id: 81, killerId: 88, type: 'ship', pos: { x: 60000, z: 60000 } });
+  assert.equal(h.says.length, 1, 'lean emit — hostility re-derived from the entity, not the flag');
+  const bystander = h.add({ id: 82, type: 'ship', team: 2, factionId: 'faction_mts', x: 60000, z: 60000 });
+  bystander.alive = false;
+  h.bus.emit('entity:killed', { id: 82, killerId: 88, type: 'ship', pos: { x: 60000, z: 60000 } });
+  assert.equal(h.says.length, 1, 'a lean emit for a far neutral still stays silent');
+});
+
 test('post-combat silence does not swallow the last transmission', () => {
   const h = makeHarness();
   const first = h.add({ id: 70, type: 'ship', team: 2, factionId: 'faction_quiet', x: 10, z: 0 });

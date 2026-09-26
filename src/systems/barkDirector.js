@@ -921,6 +921,7 @@ export const barkDirector = {
   _speakVictimDistress(payload) {
     const state = this.state;
     if (!state || !payload || payload.id == null && payload.entityId == null) return false;
+    if (state.mode && state.mode !== 'flight') return false;
     if (payload.type !== 'ship' && payload.type !== 'drone') return false;
     const id = payload.id != null ? payload.id : payload.entityId;
     if (id === state.playerId) return false;
@@ -935,7 +936,8 @@ export const barkDirector = {
     const near = !!(player && player.pos && pos
       && ((pos.x - player.pos.x) ** 2 + (pos.z - player.pos.z) ** 2)
         <= tableSimAuthorityWuFromState(state) ** 2);
-    if (payload.targetHostileToPlayer !== true && payload.killerId !== state.playerId && !near) {
+    if (payload.targetHostileToPlayer !== true && payload.killerId !== state.playerId
+      && !(entity && isHostileToPlayer(entity, playerTeam(state), state)) && !near) {
       return false;
     }
     if (!entity) {
