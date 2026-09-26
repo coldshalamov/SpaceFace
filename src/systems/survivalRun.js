@@ -5,7 +5,12 @@
 // Never infers a phase from entity counts. Never writes campaign credits, entities, or fittings.
 
 import { validateRunState } from '../core/runState.js';
-import { SURVIVAL_ARC_LENGTH, actIndexForWave, difficultyForWave } from '../data/survivalActs.js';
+import {
+  SURVIVAL_ARC_LENGTH,
+  SURVIVAL_TEMPLATE_BLOCK,
+  actIndexForWave,
+  difficultyForWave,
+} from '../data/survivalActs.js';
 import { SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
 import { isBossCircuitRuleset, SURVIVAL_BOSS_CIRCUIT_LENGTH } from './survivalCircuit.js';
 import { isEndlessRuleset } from './survivalEndless.js';
@@ -38,6 +43,17 @@ export const SURVIVAL_REFIT_EVERY = 10;
 export const SURVIVAL_ARENA_INTRO_TICKS = 1;
 export const SURVIVAL_WAVE_INTRO_TICKS = 1;
 export const SURVIVAL_CLEANUP_TICKS = 180;
+
+// PQ-133.04 R4 — the bounded public block (CRU-030/027). One authored ten-wave block — the
+// template the thirty-wave arc reuses — ending in wave-ten victory. Same planner owner, same
+// recipes, same drafts: `resolvePlanMode` reads ruleset 'block' as the arc path, so waves 1-10
+// are BYTE-IDENTICAL to the scored template. The only differences are the ceiling (one block,
+// not three) and the shape of the ending (victory at 10, never a refit bench at the top).
+export const BLOCK_RULESET = 'block';
+
+export function isBlockRuleset(ruleset) {
+  return ruleset === BLOCK_RULESET;
+}
 
 // Wave-resolution receipt. CRU-012/013 will emit this; until they exist, tests and later
 // owners drive it explicitly. Never derive this from state.entityList.
@@ -330,11 +346,14 @@ export const survivalRun = {
     const endless = isEndlessRuleset(run.ruleset);
     const circuit = isBossCircuitRuleset(run.ruleset);
     const swarm = isSwarmRuleset(run.ruleset);
+    const block = isBlockRuleset(run.ruleset);
     const waveCap = swarm
       ? SWARM_WAVE_MAX
       : (circuit
         ? SURVIVAL_BOSS_CIRCUIT_LENGTH
-        : (endless ? SURVIVAL_ENDLESS_WAVE_MAX : SURVIVAL_RUN_WAVE_COUNT));
+        : (endless
+          ? SURVIVAL_ENDLESS_WAVE_MAX
+          : (block ? SURVIVAL_TEMPLATE_BLOCK : SURVIVAL_RUN_WAVE_COUNT)));
     if (nextWave > waveCap) {
       this._waveIntroHandled = true;
       return;
@@ -432,6 +451,8 @@ export const survivalRun = {
     if (isSwarmRuleset(run && run.ruleset)) return wave >= SWARM_WAVE_MAX;
     if (isEndlessRuleset(run && run.ruleset)) return wave >= SURVIVAL_ENDLESS_WAVE_MAX;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave >= SURVIVAL_BOSS_CIRCUIT_LENGTH;
+    // PQ-133.04 R4: a block run's whole point is the ten-wave ending — wave ten is victory.
+    if (isBlockRuleset(run && run.ruleset)) return wave >= SURVIVAL_TEMPLATE_BLOCK;
     return wave >= SURVIVAL_RUN_WAVE_COUNT;
   },
 
@@ -439,6 +460,9 @@ export const survivalRun = {
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
     if (isSwarmRuleset(run && run.ruleset)) return wave > 0 && wave % SWARM_REFIT_EVERY === 0;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave > 0;
+    // PQ-133.04 R4: a block run never benches. Without this, the scored refit-at-ten rule
+    // would put a refit between the wave-ten clear and the victory the block exists to reach.
+    if (isBlockRuleset(run && run.ruleset)) return false;
     return wave > 0 && wave % SURVIVAL_REFIT_EVERY === 0;
   },
 

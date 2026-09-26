@@ -17,6 +17,7 @@ import {
   COMBAT_ACTION_LIFECYCLE_EVENTS,
   requestCombatActionAudio,
 } from '../audio/minimalActionAudio.js';
+import { bindAttackCausalBus } from '../combat/attackHit.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -64,6 +65,10 @@ export const presentationOrchestrator = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    // PQ-133.04 R4: mount the causal tap the compiled-continuation receipt publishes through.
+    // attackHit.js is pure machinery and reaches no bus of its own; the arbiter — the event's
+    // only consumer — binds its own bus as the publish target and unbinds on dispose.
+    bindAttackCausalBus(this.bus);
     this._lastByDedupeKey = new Map();
     this._nextDedupeSweepTick = 0;
     this._lastDedupeTick = -Infinity;
@@ -237,6 +242,23 @@ export const presentationOrchestrator = {
         subsystemId: payload && payload.subsystemId,
         material: 'subsystem',
       })),
+      // PQ-133.04 R4 — the compiled continuation (attackHit's bounce seam) reaches the arbiter as
+      // a semantic receipt. The receipt identity (projectile + tick + contact point) rides
+      // `sequence`, so the existing dedupe machinery merges any re-publish of the SAME
+      // continuation within the window while distinct banks in the same tick stay distinct cues.
+      // The stricken surface is the cue's target; the shooter is its source, so a player-aimed
+      // bank infers participant relevance without a special floor.
+      this.bus.on('combat:bounceContinued', (payload) => {
+        const p = payload || {};
+        return this._emitCue('combat.bounce', p, {
+          sourceEvent: 'combat:bounceContinued',
+          sourceId: p.ownerId != null ? p.ownerId : null,
+          targetId: p.targetId != null ? p.targetId : null,
+          material: 'projectile',
+          sequence: bounceContinuationSequence(p),
+          tags: ['bounce', p.material].filter(Boolean),
+        });
+      }),
       // Vector-mine lifetime expiry carried position and owner but reached no presentation lane —
       // an armed mine popped out of the world. Small puff; ownerId is the source so a player's own
       // mine expiring still infers participant relevance.
@@ -261,6 +283,9 @@ export const presentationOrchestrator = {
       const unsub = this._subscriptions.pop();
       try { unsub(); } catch (_err) {}
     }
+    // Release the causal tap with the arbiter that bound it: an unmounted orchestrator must
+    // not leave combat publishing into a bus nobody consumes.
+    bindAttackCausalBus(null);
   },
 
   inspect() {
@@ -1651,6 +1676,21 @@ function mergeTags(...groups) {
 
 function currentTick(state) {
   return state && Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
+}
+
+// PQ-133.04 R4 — receipt identity for the bounce cue's dedupe key: projectile, contact tick and
+// the quantized contact point. The same continuation published twice lands on one key; a second,
+// different bank in the same tick lands on another. Stable string, no floats beyond the receipt's
+// own quantized values.
+function bounceContinuationSequence(payload) {
+  const receipt = payload && payload.receipt;
+  const point = receipt && receipt.point;
+  return [
+    payload && payload.projectileId,
+    receipt && receipt.tick,
+    point && point.x,
+    point && point.z,
+  ].map((part) => (part == null ? '-' : String(part))).join(':');
 }
 
 function emitDeferred(bus, type, payload) {

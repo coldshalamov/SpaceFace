@@ -14,12 +14,27 @@ import { canAct } from './attackLineage.js';
 import { tryPierce, tryChain, trySplit } from './attackPropagation.js';
 import { resolvePayload } from './attackPayload.js';
 import { resolveRicochet } from './surfaceReflection.js';
+import { bossSurfaceAuthoringOf, resolveBossSurfaceContact } from './bossSurface.js';
 import { refreshFlightAfterBounce } from './projectileFlight.js';
 
 const CONTINUE_ARMED = new WeakSet();
 const CONTINUE_NEXT = new WeakSet();
 const SURFACE_TYPES = new Set(['asteroid', 'station', 'wreck']);
 const ENTITY_TYPES = new Set(['ship', 'drone']);
+
+// PQ-133.04 R4 — the compiled-continuation causal tap. resolveLiveAttackHit stays pure combat
+// machinery: the bus is BOUND by the presentation orchestrator (the receipt event's only
+// consumer) and publishing is a no-op before that. The event leaves this module synchronously,
+// at the same seam that produced the receipt — no queue, no reorder, no second source of truth.
+let CAUSAL_BUS = null;
+
+export function bindAttackCausalBus(bus) {
+  CAUSAL_BUS = bus && typeof bus.emit === 'function' ? bus : null;
+}
+
+function publishBounceContinuation(event) {
+  if (CAUSAL_BUS) CAUSAL_BUS.emit('combat:bounceContinued', event);
+}
 
 export function armAttackContinue(body) {
   if (!body || CONTINUE_ARMED.has(body)) return body;
@@ -118,7 +133,11 @@ export function resolveLiveAttackHit(input = {}) {
     return { ok: false, reason: 'no_live_attack', consume: true, hops };
   }
 
-  if (target && isSurfaceTarget(target)) {
+  // PQ-133.04 R4: a target carrying boss-surface authoring is itself a surface. The gate opens
+  // for it exactly as for a reflective room solid; every receipt check below stays fail-closed,
+  // and a boss contact that cannot be proven a prow contact is consumed as ordinary armor.
+  const bossAuthoring = target ? bossSurfaceAuthoringOf(target) : null;
+  if (target && (isSurfaceTarget(target) || bossAuthoring)) {
     const receipt = receiptForContact(payload);
     if (!receipt) {
       return { ok: false, reason: 'no_physics_receipt', consume: true, hops };
@@ -129,6 +148,22 @@ export function resolveLiveAttackHit(input = {}) {
     }
     if (receipt.surfaceId != null && receipt.surfaceId !== target.id) {
       return { ok: false, reason: 'receipt_surface_mismatch', consume: true, hops };
+    }
+    // The boss-surface consult runs BEFORE the ricochet, and only for AUTHORED surfaces: outside
+    // the prow arc (or when the contact cannot be proven at all) the surface is ordinary armor —
+    // the shot is consumed without spending a bounce, and the ordinary hit pipeline owns the
+    // damage. No budget moves. Unauthored surfaces take the unchanged ricochet path below.
+    if (bossAuthoring) {
+      const bossSurface = resolveBossSurfaceContact({ surface: target, receipt });
+      if (!(bossSurface.ok === true && bossSurface.response === 'reflect')) {
+        return {
+          ok: false,
+          reason: 'boss_surface_armor',
+          consume: true,
+          hops,
+          bossSurface,
+        };
+      }
     }
     const bounced = resolveRicochet(runtime, spec, receipt, projectile, {
       hostiles: input.hostiles,
@@ -141,6 +176,19 @@ export function resolveLiveAttackHit(input = {}) {
         ? input.state.entities.get(projectile.ownerId)
         : null;
       refreshFlightAfterBounce(projectile, owner && owner.pos);
+      // The compiled continuation is published with its receipt identity so the semantic
+      // arbiter can present — and dedupe — the causal fact. Pure receipt echo, no fabrication.
+      publishBounceContinuation({
+        projectileId: projectile.id,
+        ownerId: projectile.ownerId != null ? projectile.ownerId : null,
+        targetId: target.id != null ? target.id : null,
+        surfaceId: receipt.surfaceId,
+        material: receipt.material,
+        tick: receipt.tick,
+        receipt,
+        incoming: { x: receipt.velocity.x, z: receipt.velocity.z },
+        outgoing: { x: bounced.velocity.x, z: bounced.velocity.z },
+      });
       return {
         ok: true,
         consume: false,

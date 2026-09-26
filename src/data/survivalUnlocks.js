@@ -110,6 +110,7 @@ export const DOOR_PUBLIC_STARTERS = Object.freeze([
   'ricochet_runner',
   'energy_baseline',
   'kinetic_baseline',
+  'mirror_demonstrator',
 ]);
 
 export const SURVIVAL_UNLOCK_CATALOG = freezeDeep([
@@ -136,6 +137,17 @@ export const SURVIVAL_UNLOCK_CATALOG = freezeDeep([
     blurb: 'A plain autocannon. Always available, so a first run can just shoot.',
     defaultUnlocked: true,
     grants: { starters: ['kinetic_baseline'] },
+  }),
+  // PQ-133.04 R4 — the Foundry Block's teaching kit. Public like the other baseline rows: a
+  // demonstration of the bank verb is possibility, not power, and the row carries the zero
+  // vector like every other catalog entry.
+  entry({
+    id: 'unlock_kit_mirror',
+    kind: 'starter',
+    label: 'Mirror Demonstrator',
+    blurb: 'One pulse gun with Bank Shot and Smart Bank. Always available, so a first run can learn the bank.',
+    defaultUnlocked: true,
+    grants: { starters: ['mirror_demonstrator'] },
   }),
   entry({
     id: 'unlock_kit_web',

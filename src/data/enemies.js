@@ -415,6 +415,19 @@ export const ENEMY_TYPES = [
     // shooting the stern changes the outcome; face-tanking does not. Routed by the shared damage
     // router off hit geometry; rear hits additionally strike the aft drive subsystem volume.
     directionalArmor: { frontArcDeg: 150, frontMult: 0.25, rearArcDeg: 150, rearMult: 1.6 },
+    // PQ-133.04 R4: the prow is authored SURFACE machinery, not just a damage multiplier. Within
+    // the same 150° forward arc the directional armor already sheds, an eligible ricochet shot
+    // BANKS off the mirror plate (surfaceResponseFor('plate') = reflect, the Foundry room's own
+    // material); outside the arc the contact is ordinary armor and the shot is consumed. The
+    // verdict is resolved per contact by src/combat/bossSurface.js off this authoring — the same
+    // normalized-arc convention as resolveDirectionalArmor (+X local is the nose). Zero bounty and
+    // no loot stay exactly as authored below.
+    prowSurface: { arcDeg: 150, material: 'plate' },
+    // Surface identity of the hull itself, so a physics-issued receipt at this body carries the
+    // authored material instead of the shapeless default. Fail-closed elsewhere: an entity without
+    // this stamp still resolves the verdict, but the kernel refuses the bank on a non-reflective
+    // receipt — damage, never a fabricated bounce.
+    surfaceMaterial: 'plate',
     telegraph: {
       bark: 'warn', cue: 'engine_flare',
       line: 'Foreman committing. Mirror prow sheds head-on fire — cross its charge and work the stern.',

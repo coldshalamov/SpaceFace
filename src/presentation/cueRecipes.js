@@ -157,6 +157,24 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { voices: 0, uiPulses: 1 },
     tags: ['combat', 'player', 'kill'],
   }),
+  // PQ-133.04 R4 — the compiled ricochet continuation (combat:bounceContinued). Modeled on
+  // combat.damage.applied: one tick, so the receipt-identity dedupe key merges replays of the
+  // SAME continuation while distinct banks each answer; the physical impact lane is already
+  // composed by the direct damage family, and the authored armor-hit voice (see
+  // PRESENTATION_AUDIO_CUE_BY_ID) carries the audio. Not critical: a bank is feedback, never a
+  // warning that may steal a reserved slot from real state changes. Reduced forms are declared,
+  // not implied: under reduced motion/flash the bank spark holds still and carries on brightness
+  // (static_dim), the same declared shape world_site damage uses.
+  'combat.bounce': recipe({
+    importance: 0.66,
+    dedupeWindowTicks: 1,
+    material: 'projectile',
+    lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
+    budgets: { voices: 0 },
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    tags: ['combat', 'bounce'],
+  }),
   'tether.attach': recipe({
     importance: 0.78,
     dedupeWindowTicks: 6,

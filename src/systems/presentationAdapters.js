@@ -72,6 +72,10 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'combat.doctrine.break': 'presentation.combat.doctrine_break',
   'combat.doctrine.withdraw': 'presentation.combat.doctrine_withdraw',
   'combat.damage.applied': 'presentation.combat.damage_applied',
+  // PQ-133.04 R4 — the ricochet continuation resolves to the authored armor-hit signature
+  // (recipe sfx.armorHit, whose designed sample binding is `impact_armor`). No new asset: a bank
+  // off a plate IS an armor impact, and the hull-hit voice below already owns plain damage.
+  'combat.bounce': 'presentation.combat.bounce',
   'combat.near_miss': 'presentation.combat.near_miss',
   'combat.player.hit': 'presentation.combat.player_hit',
   'combat.player.kill': 'presentation.combat.player_kill',
@@ -157,6 +161,9 @@ const CAPTIONS = Object.freeze({
   'shield.collapse': 'Shield collapse.',
   'subsystem.disabled': 'Subsystem disabled.',
   'subsystem.restored': 'Subsystem restored.',
+  // PQ-133.04 R4 — the shot kept going: the causal fact a caption owes the player when their
+  // ricochet banks off an authored surface.
+  'combat.bounce': 'Shot banked off the surface — ricochet continues.',
   'scenario.signal.pulse': 'Unregistered signal pulse.',
   'scenario.comms.kessler': 'Priority communication from Kessler.',
   'scenario.comms.denial': 'Official channel denies the shipment.',

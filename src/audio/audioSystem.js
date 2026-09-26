@@ -1051,6 +1051,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
   'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
   'presentation.subsystem.weapon_disabled': 'sfx_subsystem_weapon_disabled',
+  // PQ-133.04 R4 — the ricochet continuation's voice. `sfx.armorHit` is the authored recipe whose
+  // PQ-158 sample binding IS `impact_armor` (src/data/audioRecipes.js SAMPLE_BINDINGS) — the
+  // designed armor impact, no new asset. The hull-hit voice stays plain damage's own.
+  'presentation.combat.bounce': 'sfx.armorHit',
   'presentation.scenario.signal': 'sfx_scenario_signal',
   'presentation.comms.kessler': 'sfx_comms_kessler',
   'presentation.comms.denial': 'sfx_comms_denial',

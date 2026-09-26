@@ -15,6 +15,7 @@ import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxS
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { loadCrucibleMeta, normalizeBestLine } from '../systems/survivalRecords.js';
 import { isModeAvailable } from '../systems/survivalUnlocks.js';
+import { BLOCK_RULESET } from '../systems/survivalRun.js';
 
 /** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
@@ -24,6 +25,8 @@ export const CRUCIBLE_ARENA_ID = 'helios_core';
  *
  * Swarm is the default: clear a finite pack, spend or save, then launch the next
  * round. It has no last round. The authored thirty-wave Gauntlet remains under `scored`.
+ * `block` (PQ-133.04 R4) is the bounded public ten-wave Foundry block ending in victory —
+ * the same authored template recipes the Gauntlet's first act plays, with an ending.
  */
 export const CRUCIBLE_DEFAULT_RULESET = SWARM_RULESET;
 // The fresh Crucible route teaches shove physics immediately; benchmark package IDs stay stable.
@@ -35,7 +38,7 @@ export function crucibleStarterIdForSetup(setup) {
     && entry.loadout.every(slot => loadout.some(actual => actual?.slotIndex === slot.slotIndex && actual?.defId === slot.defId)));
   return match?.id || CRUCIBLE_DEFAULT_STARTER_ID;
 }
-export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit']);
+export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored', 'boss_circuit', BLOCK_RULESET]);
 
 export function normalizeCrucibleRuleset(ruleset) {
   return CRUCIBLE_RULESETS.includes(ruleset) ? ruleset : CRUCIBLE_DEFAULT_RULESET;
@@ -154,7 +157,12 @@ export function practiceLaunchFor(line) {
   if (!normalized || !Number.isInteger(normalized.seed)) return null;
   const rules = normalized.recordRules && typeof normalized.recordRules === 'object'
     ? normalized.recordRules : {};
-  const ruleset = rules.mode === 'scored' ? 'scored' : SWARM_RULESET;
+  // PQ-133.04 R4: a best line earned on the bounded block relaunches as the same block, so
+  // practicing a line never changes the run shape it was earned on. Every other mode keeps
+  // its parent mapping — 'scored' stays the Gauntlet, anything else is the swarm floor.
+  const ruleset = rules.mode === 'scored'
+    ? 'scored'
+    : (rules.mode === BLOCK_RULESET ? BLOCK_RULESET : SWARM_RULESET);
   return {
     seed: normalized.seed,
     ruleset,

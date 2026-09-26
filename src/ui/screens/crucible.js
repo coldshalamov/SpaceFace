@@ -24,7 +24,6 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   requestCrucibleRun,
-  BLOCK_RULESET,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
@@ -43,7 +42,7 @@ import {
   SWARM_RULESET,
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
-import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
+import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
 import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
 import { dpIcon } from '../deckplate/icons.js';
 import {
@@ -741,6 +740,9 @@ export const crucibleScreen = {
     pin(modes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const modeButtons = [];
     let dailyButton = null;
+    // PQ-133.04 R4: the bounded block rides beside the pair like Daily does — its own control,
+    // declared before the loop so every card's click can unpress it.
+    let blockButton = null;
     const addWord = (list, button) => {
       const li = el('li');
       li.appendChild(button);
@@ -760,6 +762,7 @@ export const crucibleScreen = {
         ruleset = entry.ruleset;
         for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
         if (dailyButton) syncChoice(dailyButton, false);
+        if (blockButton) syncChoice(blockButton, false);
         cue('confirm');
         syncMode();
       });
@@ -779,12 +782,34 @@ export const crucibleScreen = {
         ruleset = 'boss_circuit';
         for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
         if (dailyButton) syncChoice(dailyButton, false);
+        if (blockButton) syncChoice(blockButton, false);
         cue('confirm');
         syncMode();
       });
       modeButtons.push(card);
       addWord(modes, card);
     }
+    // PQ-133.04 R4 — THE FOUNDRY BLOCK. The bounded public route: the same ten authored Foundry
+    // waves the Gauntlet opens with, ending in victory at wave ten instead of a refit bench. It
+    // is deliberately NOT a third .sf-crd-mode — the door check counts exactly the Swarm/Gauntlet
+    // pair, and a bounded block is a sibling control in the Daily/Weekly family, not a new
+    // permanent door. Same seed field, same starter row, public from a fresh profile.
+    blockButton = choiceTile('Foundry Block', 'sf-crd-block', kitUrl(MODE_TILE[BLOCK_RULESET] || MODE_TILE.scored));
+    syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
+    blockButton.addEventListener('click', () => {
+      if (daily) {
+        daily = false;
+        if (freeSeed) seedInput.value = freeSeed;
+      }
+      practiceQueued = false;
+      ruleset = BLOCK_RULESET;
+      for (const other of modeButtons) syncChoice(other, false);
+      if (dailyButton) syncChoice(dailyButton, false);
+      syncChoice(blockButton, true);
+      cue('confirm');
+      syncMode();
+    });
+    addWord(modes, blockButton);
     dailyButton = choiceTile(DAILY_CARD.label, 'sf-crd-daily', kitUrl('assets/tiles/tile.mode.daily.png'));
     syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
@@ -793,6 +818,7 @@ export const crucibleScreen = {
       daily = true;
       ruleset = SWARM_RULESET;
       for (const other of modeButtons) syncChoice(other, false);
+      if (blockButton) syncChoice(blockButton, false);
       syncChoice(dailyButton, true);
       cue('confirm');
       syncMode();
@@ -927,7 +953,15 @@ export const crucibleScreen = {
           sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
           verb: 'Enter the circuit',
         }
-        : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]);
+        : (ruleset === BLOCK_RULESET
+          ? {
+            // PQ-133.04 R4 — the bounded block's own voice. Ten authored waves with an ending.
+            blurb: 'One authored block. Ten waves. An ending.',
+            sub: 'The Foundry teaches in one bounded block: the same ten authored waves the '
+              + 'Gauntlet opens with, ending in victory at wave ten. Nothing you earn here follows you home.',
+            verb: 'Fly the Block',
+          }
+          : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]));
       sub.textContent = entry.blurb;
       modeSentence.textContent = weekly ? week.sub : entry.sub;
       if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
@@ -938,6 +972,7 @@ export const crucibleScreen = {
       if (typeof reroll._fhSync === 'function') reroll._fhSync();
       for (const other of modeButtons) syncChoice(other, !daily && other.dataset.ruleset === ruleset);
       if (dailyButton) syncChoice(dailyButton, false);
+      if (blockButton) syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
       syncGhost();
     }
 

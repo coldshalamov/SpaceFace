@@ -108,13 +108,31 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
   },
   {
     id: 'hornet_nimble_slow',
-    label: 'Hinge (nimble, slow)',
-    blurb: 'Stock drive, every credit in the manoeuvring bay. Cannot run; does not need to.',
+    label: 'Hinge',
+    blurb: 'The nimble, slow Hornet. Same gun, different bells.',
     hullId: 'ship_hornet',
     loadout: [
       { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
       { slotIndex: 4, defId: 'mod_engine_ion_m' },
       { slotIndex: 7, defId: 'mod_thruster_vernier_m' },
+    ],
+  },
+  // PQ-133.04 R4 — THE MIRROR DEMONSTRATOR (CRU-027). The public route's honest teaching kit:
+  // ONE Pulse Laser S, and the two modifiers that turn its shots into the bank demonstration —
+  // Bank Shot gives the shot a ricochet lineage, Smart Bank aims the rebound. No autocannon, no
+  // concussion, no trap: on the Foundry Block every bank you see is THIS gun's, off the room's
+  // plates and off the Foreman's authored mirror prow. Slot plan follows the massline_rig
+  // precedent: the Drifter's utility bays (7, 8) carry the modifiers beside a single front gun.
+  // Schema-validated against spaceface.combatLabSetup.v1 on ship_drifter.
+  {
+    id: 'mirror_demonstrator',
+    label: 'Mirror Demonstrator',
+    blurb: 'One pulse gun, every shot able to bank. The kit the Foundry teaches with.',
+    hullId: 'ship_drifter',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 7, defId: 'mod_bank_shot' },
+      { slotIndex: 8, defId: 'mod_smart_bank' },
     ],
   },
 ]);
