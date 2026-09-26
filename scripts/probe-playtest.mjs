@@ -1122,9 +1122,11 @@ const ROUTES = {
       // The practice room launches into live sandbox flight: its exit is Esc→pause→Main Menu→
       // crucible, not a single pop. Settle back at the door before continuing.
       const backToDoor = async () => {
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 12; i++) {
           const s = await snap(ctx);
-          if (s.screen === 'crucible') return s;
+          // The door is only "back" once it's mounted AND the shell settled — a snap taken
+          // mid-launch still shows screen=crucible while mode=loading/flight races on.
+          if (s.screen === 'crucible' && s.mode === 'menu') return s;
           if (s.screen === 'pause') {
             await ctx.page.evaluate(() => {
               const b = [...document.querySelectorAll('.k-word, button')]
@@ -1158,7 +1160,14 @@ const ROUTES = {
             .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
           if (!b) return null; b.click(); return (b.textContent || '').trim();
         }, re.source);
-        await sleep(1400);
+        // Practice room goes through a loading transition into flight; wait for the launch to
+        // resolve (or the sub-screen to settle) before snapping, so backToDoor starts stable.
+        try {
+          await ctx.page.waitForFunction(
+            () => window.SF && window.SF.state && (window.SF.state.mode === 'flight' || window.SF.state.mode === 'menu'),
+            { timeout: 15_000 });
+        } catch { /* menu-leg sub-screens settle on their own */ }
+        await sleep(1000);
         const s = await snap(ctx);
         await shotNow(ctx, 'c01b-' + re.source.replace(/[^a-z]/gi, ''));
         out[re.source] = { verb: opened, screen: s.screen, mode: s.mode, controls: s.controls.length };
