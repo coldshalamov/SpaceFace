@@ -170,3 +170,29 @@ A/B on the same seed path. Keep if missing/stuck/links improve or hold; revert i
 picture/behavior regresses. Final gates before PR: `npm run check:baseline`,
 `check:playable`, `probe:runtime-witness`, `probe:smooth-flight` (the last two
 headed-only on this box — record as deferred to owner GPU).
+
+## 6. check:baseline adjudication (this box, 2026-09-26)
+
+`npm run check:baseline` exits 1 with five failures; **all five reproduce
+identically on origin/master (25c1356a3) on this box** — zero introduced by this
+branch:
+
+- `sim` (47-A hash): actual `9a22c3d4…` on both master and branch — environment
+  drift, not code. Note: the check harness spawns system node v20.19.0 while
+  direct runs use node24; `Math.*` implementations can differ across runtimes,
+  and expected envelopes were minted on the maintainer's environment.
+- `sim-v3` / `sim-v3-compare`: `--reload-at 60` reload-hash `1ca1b448…` diverges
+  from baseline `9d6074be…` identically on master — a preexisting v3 reload-path
+  divergence, not this branch.
+- `pq020-ceres-topology`: `worldOneOff` live fx count 10 vs expected 11 +
+  `structuralCostDigest` mismatch — identical failure set on master
+  (world-content drift vs recorded expectations; the known stale-asset family).
+- `ui-control-labels`: expects `/A dock/` for `controlPrompt('station','gamepad')`,
+  actual `'B dock when prompted'` — identical on master; my diff touches zero
+  binding/label code (verified `git diff` clean of `dock`).
+
+Preexisting-on-box failures already verified earlier (not in this run's FAIL list
+but confirmed against master this session): `render-package-pilots` GLB SHA
+mismatch (~24 stale LOD artifacts, ~84 MB), world-place/station fallback empty
+Group, `authored-preload-scope` owner-inactive throw, `crucible-live-geometry`
+retry-budget semantics.
