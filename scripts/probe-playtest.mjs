@@ -127,35 +127,52 @@ const ROUTES = {
     // Walk every title surface that doesn't start a run or quit.
     await walkVerb(ctx, 't02-verb-settings', /settings/i);
 
-    await B(ctx, 't02b-settings-toggle', 'settings: flip first toggle, verify state, flip back', async () => {
+    await B(ctx, 't02b-settings-toggle', 'settings: flip first switch, verify is-on, restore', async () => {
       await clickWord(ctx, /settings/i, 10_000).catch(() => {});
       await sleep(1200);
+      // A settings toggle = .k-words--row with exactly off|on words; state = .is-on on the group
+      // (the word text never changes). Flip to the opposite state, verify, restore to original.
       const flipped = await ctx.page.evaluate(() => {
-        const cand = [...document.querySelectorAll('button, .k-word, [role="button"], input[type=checkbox], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))[0];
-        if (!cand) return { toggled: null };
-        const before = (cand.textContent || '').trim();
-        cand.click();
-        return { toggled: cand.dataset && cand.dataset.action ? cand.dataset.action : before, before };
+        const group = [...document.querySelectorAll('.k-words--row')]
+          .filter((g) => {
+            const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
+            return g.offsetParent !== null && !g.closest('#toasts,#alerts,#toast-live') && acts.length === 2 && acts.includes('off') && acts.includes('on');
+          })[0];
+        if (!group) return { found: false };
+        const rowLabel = (group.closest('.k-row') || group.parentElement || group).textContent.trim().slice(0, 60);
+        const wasOn = group.classList.contains('is-on');
+        const word = group.querySelector(`.k-word[data-action="${wasOn ? 'off' : 'on'}"]`);
+        if (!word) return { found: false };
+        word.click();
+        return { found: true, rowLabel, wasOn, clicked: wasOn ? 'off' : 'on' };
       });
       await sleep(600);
-      const after = await ctx.page.evaluate(() =>
-        [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))
-          .map((e) => (e.textContent || '').trim()).slice(0, 8));
-      await shotNow(ctx, 't02b-toggled');
-      // restore: click the same position again (first Off/On control toggles back)
-      await ctx.page.evaluate(() => {
-        const cand = [...document.querySelectorAll('button, .k-word, [role="button"], input[type=checkbox], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*(off|on|disabled|enabled)\s*$/i.test(e.textContent || ''))[0];
-        if (cand) cand.click();
+      const stateAfter = await ctx.page.evaluate(() => {
+        const group = [...document.querySelectorAll('.k-words--row')]
+          .filter((g) => {
+            const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
+            return g.offsetParent !== null && acts.length === 2 && acts.includes('off') && acts.includes('on');
+          })[0];
+        return group ? { isOn: group.classList.contains('is-on'), rowLabel: (group.closest('.k-row') || group).textContent.trim().slice(0, 60) } : null;
       });
+      await shotNow(ctx, 't02b-toggled');
+      const restored = await ctx.page.evaluate((wantOn) => {
+        const group = [...document.querySelectorAll('.k-words--row')]
+          .filter((g) => {
+            const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
+            return g.offsetParent !== null && acts.length === 2 && acts.includes('off') && acts.includes('on');
+          })[0];
+        if (!group) return null;
+        const isOn = group.classList.contains('is-on');
+        if (isOn !== wantOn) { const w = group.querySelector(`.k-word[data-action="${wantOn ? 'on' : 'off'}"]`); if (w) w.click(); }
+        return true;
+      }, flipped.wasOn);
       await pressKey(ctx, 'Escape', 700);
       await sleep(600);
       const s = await snap(ctx);
-      if (flipped.toggled == null) observe(ctx, 'defect', 'settings', 'settings screen: no On/Off toggle found to flip');
-      else if (after[0] === flipped.before) observe(ctx, 'defect', 'settings', `settings toggle ${flipped.toggled} did not change label`);
-      return { flipped, after, screen: s.screen };
+      if (!flipped.found) observe(ctx, 'defect', 'settings', 'settings screen: no Off/On switch group found');
+      else if (!stateAfter || stateAfter.isOn === flipped.wasOn) observe(ctx, 'defect', 'settings', `settings switch "${flipped.rowLabel}" click did not flip is-on`);
+      return { flipped, stateAfter, restored, screen: s.screen };
     });
 
     await walkVerb(ctx, 't03-verb-newgame', /new game|adventure/i);
@@ -199,19 +216,27 @@ const ROUTES = {
       return { screen: s.screen, mode: s.mode, controls: s.controls.length, player: s.player };
     });
 
-    // Flight instruments: each binding opens a screen; census, then close.
+    // Flight instruments: each binding opens a screen; census, then close. i/l are HUD overlays
+    // (sf-cargo-panel / #sf-comm-backlog) that never set ui.screen — detect the overlay instead.
     const INSTRUMENTS = [
-      ['i01-localmap', 'm'], ['i02-starmap', 'n'], ['i03-missionlog', 'j'],
-      ['i04-cargo', 'i'], ['i05-codex', 'k'], ['i06-comms', 'l'], ['i07-techtree', 't'],
+      ['i01-localmap', 'm', 'screen'], ['i02-starmap', 'n', 'screen'], ['i03-missionlog', 'j', 'screen'],
+      ['i04-cargo', 'i', 'overlay', '.sf-cargo-panel.open, .sf-cargo-panel[class*="open"], [class*="cargo-panel"]'],
+      ['i05-codex', 'k', 'screen'], ['i06-comms', 'l', 'overlay', '#sf-comm-backlog, .sf-comm-backlog'],
+      ['i07-techtree', 't', 'screen'],
     ];
-    for (const [id, key] of INSTRUMENTS) {
+    for (const [id, key, kind, sel] of INSTRUMENTS) {
       await B(ctx, id, `flight instrument '${key}'`, async () => {
         await pressKey(ctx, key);
         const opened = await snap(ctx);
+        const overlayVisible = kind === 'overlay'
+          ? await ctx.page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => e.offsetParent !== null && (e.offsetWidth > 0 || e.offsetHeight > 0)), sel)
+          : null;
         await shotNow(ctx, `${id}-open`);
         const back = await backOut(ctx, opened.screen);
-        observe(ctx, 'note', 'flight-screens', `key ${key} -> screen=${opened.screen} controls=${opened.controls.length}`);
-        return { key, screen: opened.screen, backVia: back };
+        const visible = kind === 'overlay' ? overlayVisible : opened.screen;
+        if (!visible) observe(ctx, 'defect', 'flight-screens', `key ${key} produced no ${kind === 'overlay' ? 'overlay' : 'screen'} (screen=${opened.screen})`);
+        observe(ctx, 'note', 'flight-screens', `key ${key} -> screen=${opened.screen} overlay=${overlayVisible} controls=${opened.controls.length}`);
+        return { key, screen: opened.screen, overlayVisible, backVia: back };
       });
     }
 
