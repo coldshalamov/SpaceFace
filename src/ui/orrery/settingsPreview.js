@@ -261,11 +261,11 @@ html.sf-reduce-motion .orr-set-preview *, html.sf-reduce-motion .orr-set-preview
 .orr-set-beam.is-on { opacity:1; }
 .orr-set-beam path, .orr-set-beam circle { vector-effect:none !important; }
 .orr-set-beam .orr-set-beam__core { stroke:rgb(${BONE} / .85); transition:stroke .2s linear; }
-.orr-set-beam .orr-set-beam__glow { stroke:rgb(${BONE} / .24); transition:stroke .2s linear; }
+.orr-set-beam .orr-set-beam__glow { stroke:rgb(${BONE} / .36); transition:stroke .2s linear; }
 .orr-set-beam .orr-set-beam__pulse { stroke:rgb(255 253 248); stroke-dasharray:.06 1; stroke-dashoffset:.06; opacity:0; }
 .orr-set-beam.is-on .orr-set-beam__pulse { opacity:.9; animation:orr-set-beam-run 3.2s linear infinite; }
 .orr-set-beam.is-live .orr-set-beam__core { stroke:rgb(214 236 255 / .98); }
-.orr-set-beam.is-live .orr-set-beam__glow { stroke:rgb(143 203 255 / .36); }
+.orr-set-beam.is-live .orr-set-beam__glow { stroke:rgb(143 203 255 / .48); }
 .orr-set-beam.is-live .orr-set-beam__pulse { stroke:rgb(255 255 255); stroke-dasharray:.14 1; opacity:1; animation:orr-set-beam-run 700ms linear infinite; }
 .orr-set-beam .orr-set-beam__end { fill:rgb(248 244 234); }
 .orr-set-beam .orr-set-beam__halo { fill:rgb(${BONE} / .18); }

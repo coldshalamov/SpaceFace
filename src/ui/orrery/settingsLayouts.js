@@ -103,7 +103,7 @@ ${S} #sf-settings-pane .k-row:focus-within::before { left:6.5px !important; widt
 ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !important; width:3px !important; height:24px !important; margin-top:-12px !important;
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
-${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; }
+@media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } }
 ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size:11.5px !important; letter-spacing:.13em !important; line-height:1.3 !important;
   color:rgb(${BONE} / .8) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
 ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(${HOT}) !important; }
@@ -517,7 +517,7 @@ export function createCreditsOrrery(doc = globalThis.document, sections = []) {
   const s = svg('svg', { class: 'orr-svg orr-cr-orrery__svg', viewBox: '0 0 1000 1000' });
   const rotor = svg('g', { class: 'orr-cr-orrery__rotor' });
   // the orbit the sections ride: an annulus of light with its ticks cut through, a rim core over its bloom
-  rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT, fill: 'none', stroke: 'rgb(236 230 216 / .2)', 'stroke-width': 16 }));
+  rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT, fill: 'none', stroke: 'rgb(236 230 216 / .3)', 'stroke-width': 16 }));
   rotor.appendChild(svg('path', { d: ticksD(C0, C0, ORBIT + 8, 90, { len: 16, major: 0 }), stroke: 'rgb(5 7 10)', 'stroke-width': 2.5, fill: 'none' }));
   rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT + 8, fill: 'none', stroke: 'rgb(236 230 216 / .14)', 'stroke-width': 10 }));
   rotor.appendChild(svg('circle', { cx: C0, cy: C0, r: ORBIT + 8, fill: 'none', stroke: 'rgb(236 230 216 / .62)', 'stroke-width': 2.5 }));
