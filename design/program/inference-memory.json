@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-25",
+  "updated": "2026-09-26",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,45 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "thermal-sink-module",
-      "date": "2026-08-17",
-      "wf": "WF-07",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Thermal sink booster modules now accelerate weapon heat dissipation in combat and outfitting",
-      "fingerprint": "verb=accelerate-heat-dissip,subject=thermal-sink-module,sector=any,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "a5bf1495",
-      "verification": "focused_green"
-    },
-    {
-      "id": "smuggler-hardware-progression",
-      "date": "2026-08-17",
-      "wf": "WF-07",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Smuggler hold and sensor scrambler modules now provide progression for cargo concealment and customs scan evasion",
-      "fingerprint": "verb=evade-customs-scan,subject=smuggler-hardware,sector=any,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "f3566969",
-      "verification": "focused_green"
-    },
-    {
-      "id": "galaxy-exploration-journal-tracker",
-      "date": "2026-08-17",
-      "wf": "WF-10",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Codex and exploration journal now aggregate whole-galaxy survey completion, fully charted sectors, and recovered artifact counts",
-      "fingerprint": "verb=track-galaxy-survey,subject=exploration-journal,sector=any,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "ae024b0f",
-      "verification": "focused_green"
-    },
     {
       "id": "rock-calving-coda-link",
       "date": "2026-09-03",
@@ -1635,6 +1596,45 @@
       "references": [],
       "integration": "live",
       "commit": "a6cf28696",
+      "verification": "focused_green"
+    },
+    {
+      "id": "sker-haven-standing-picket",
+      "date": "2026-09-26",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Skerris Deep picket spawns off the Throne outside the station bubble and reads Reach standing; rep-gated door vets docking",
+      "fingerprint": "verb=tolerate,subject=outlaw-picket,sector=sker,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "86bfeb82e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ordnance-drop-physical-voice",
+      "date": "2026-09-26",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "massline.bombDrop binds the massline release sample, not a UI detent",
+      "fingerprint": "verb=hear,subject=ordnance-eject,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "296036d63",
+      "verification": "focused_green"
+    },
+    {
+      "id": "U3-moral-traps-live-boards",
+      "date": "2026-09-26",
+      "wf": "WF-08",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Procedural moral traps were dead: update() never ran in production and offer.trap never reached the active instance. Attach now rides offer generation; end-fork choices settle through missions' own abandon path; continue-forks mark rep now and pay at delivery.",
+      "fingerprint": "verb=choose,subject=moral-trap,sector=route-boards,domain=missions",
+      "references": [],
+      "integration": "live",
+      "commit": "64575dfed",
       "verification": "focused_green"
     }
   ],
