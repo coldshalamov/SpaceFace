@@ -552,6 +552,16 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
     else if (row.querySelector(':scope > div > .k-row__name')) kind = 'shortcut';
     row.dataset.orrKind = kind;
   }
+  // a long label breaks after its slashes, never inside a word: <wbr> keeps the text (and the label's
+  // accessible name) exactly as it was
+  for (const label of pane.querySelectorAll('.k-row > label, .k-row > span.k-t-body')) {
+    const text = label.textContent || '';
+    if (!text.includes('/') || label.children.length || typeof label.append !== 'function') continue;
+    const doc = label.ownerDocument;
+    const parts = text.split('/');
+    label.textContent = '';
+    parts.forEach((part, i) => { label.append(part); if (i < parts.length - 1) { label.append('/'); label.append(doc.createElement('wbr')); } });
+  }
   for (const input of pane.querySelectorAll('input.k-range')) {
     if (input.dataset.orrScale === '1') continue;
     input.dataset.orrScale = '1';
