@@ -68,9 +68,31 @@ import {
   forEachLivingWorldActor,
   indexedShipLikeScan,
   indexedTypeScan,
+  entityIndexVersion,
 } from '../world/livingWorldViews.js';
 
 export const LAW_SECURITY_VERSION = 2;
+
+/** Bench A/B: production default ON. Quiet latch skips sanctuary aiShips walk when no
+ * armed unlawful NPC holds a chase/fire signal. Soft-GPU fps not claimed. Fresh law
+ * residual after #145 cones / #146 catch-nets (wanted/ambient stay on their own cadence). */
+let SANCTUARY_EMPTY_QUIET_LATCH = true;
+export function setSanctuaryEmptyQuietLatchForBench(enabled) {
+  SANCTUARY_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getSanctuaryEmptyQuietLatchForBench() {
+  return SANCTUARY_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const SANCTUARY_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishSanctuaryQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.sanctuaryQuietLatched = !!latched;
+}
+
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 
 /** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
@@ -158,11 +180,21 @@ export const lawSecurity = {
     this._coneScratchPods = [];
     this._coneScratchOccluders = [];
     this._coneScratchScanners = [];
+    this._sanctuaryQuiet = null;
+    this._sanctuaryWakeSeq = 0;
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
-    this._onDamage = (payload) => this._handleDamage(payload);
-    this._onFire = (payload) => this._handleFire(payload);
+    this._onDamage = (payload) => {
+      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
+      this._sanctuaryQuiet = null;
+      this._handleDamage(payload);
+    };
+    this._onFire = (payload) => {
+      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
+      this._sanctuaryQuiet = null;
+      this._handleFire(payload);
+    };
     this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
     this._onResponderGone = (payload) => {
       this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
@@ -171,14 +203,19 @@ export const lawSecurity = {
     this._onSectorExit = (payload) => {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
+      this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
       this._releaseAllJobResponses('save_restoring');
       this._resetInspectionTransient();
+      this._sanctuaryQuiet = null;
+      this._sanctuaryWakeSeq = 0;
     };
     this._onSaveLoaded = () => {
       this._resetInspectionTransient();
       normalizePersistedLawfulInspection(this.state);
+      this._sanctuaryQuiet = null;
+      this._sanctuaryWakeSeq = 0;
     };
     this._onInspectionChoice = (payload) => this._chooseInspection(payload);
     this._onInspectionScanned = (payload) => this._observeInspectionScan(payload);
@@ -223,6 +260,9 @@ export const lawSecurity = {
     if (this.state) this.state.lawSecurity = freshState();
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
+    this._sanctuaryQuiet = null;
+    this._sanctuaryWakeSeq = 0;
+    publishSanctuaryQuiet(this.state, false);
   },
 
   update(_dt, state) {
@@ -526,7 +566,34 @@ export const lawSecurity = {
    * from encounters and sector promotion before the weapon system can consume it.
   */
   _enforceSanctuaryWithdrawals(state) {
+    // Quiet open flight: armed unlawful NPCs with no chase/fire signal still paid a full
+    // aiShips walk (isArmedNpc / isLawful / target bag) every tick. Latch when no
+    // aggressive candidate remains; wake on membership, combat fire/damage seq, tactical
+    // AI wake, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh law residual after #145
+    // cones / #146 catch-nets.
+    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._sanctuaryWakeSeq | 0;
+      const quiet = this._sanctuaryQuiet;
+      const tacticalQuiet = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && tacticalQuiet
+        && ((tick - (quiet.armedTick | 0)) < SANCTUARY_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishSanctuaryQuiet(state, true);
+        return;
+      }
+    } else if (this._sanctuaryQuiet) {
+      this._sanctuaryQuiet = null;
+      publishSanctuaryQuiet(state, false);
+    }
+
     const armed = indexedTypeScan(state, 'aiShips');
+    let aggressive = 0;
     for (let i = 0; i < armed.length; i++) {
       const entity = armed[i];
       if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
@@ -541,12 +608,31 @@ export const lawSecurity = {
       if (targetId == null && (ai.forcePlayerTarget || ai.huntPlayer || intent.fire)) {
         targetId = state.playerId;
       }
+      if (targetId == null) continue;
+      aggressive++;
       const target = entityById(state, targetId);
       if (!target) continue;
       if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
       if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);
+    }
+
+    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tacticalQuietArm = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (membership != null && aggressive === 0 && tacticalQuietArm) {
+        this._sanctuaryQuiet = {
+          membership,
+          armedTick: state.tick | 0,
+          wakeSeq: this._sanctuaryWakeSeq | 0,
+        };
+        publishSanctuaryQuiet(state, true);
+      } else {
+        this._sanctuaryQuiet = null;
+        publishSanctuaryQuiet(state, false);
+      }
     }
   },
 
