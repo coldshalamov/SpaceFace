@@ -300,6 +300,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   /** One auto-open per dock session so refreshes do not yank the player mid-flow. */
   let attentionAutoOpenedThisDock = false;
   const receiptHistory = [];
+  const pendingReceipts = [];
   const subscriptions = [];
 
   // ---------- popover ----------
@@ -709,9 +710,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   commsToggle.addEventListener('click', () => setCommsOpen(!commsOpen));
 
   function showReceipt(kind, title, delta = '') {
-    // INF-095: receipts are a shown-tree concern. Skipping while hidden also stops stale
-    // flight-time receipts greeting the next dock.
-    if (!shown) return;
+    // INF-095: receipts are a shown-tree concern. Hidden ones QUEUE (a berth-service debit like
+    // the customs toll posts before the screen mounts and must still be witnessed); flight-time
+    // noise stays out because producers gate on dock:docked themselves.
+    if (!shown) {
+      pendingReceipts.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
+      if (pendingReceipts.length > 6) pendingReceipts.shift();
+      return;
+    }
     if (receiptTimer) clearTimeout(receiptTimer);
     receiptHistory.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
     if (receiptHistory.length > 12) receiptHistory.shift();
@@ -1298,6 +1304,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       berth.setActive(activeId !== 'shipworks');
       // Arrival (moment 4) on the station's first show after dock:docked.
       if (pendingArrival) { pendingArrival = false; arrive(); }
+      // Berth-service receipts that posted before this show (dock toll, scan-adjacent charges)
+      // were queued by showReceipt's hidden gate — drain them now that the surface is live.
+      while (pendingReceipts.length) {
+        const row = pendingReceipts.shift();
+        showReceipt(row.kind, row.title, row.delta);
+      }
       // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
       // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile

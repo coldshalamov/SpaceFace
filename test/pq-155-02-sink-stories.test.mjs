@@ -30,12 +30,15 @@ const NARCOTICS_FINE_CR = Math.round(
   (COMMODITIES.find((c) => c.id === 'cmdty_narcotics')?.basePrice || 0) * 1 * 1.5,
 );
 
+const DOCK_TOLL_CR = 186;
+
 const LIVE_CAUSES = Object.freeze({
   repair: SESSION_SINK_CAUSES.repair,
   fine: SESSION_SINK_CAUSES.fine,
   insurance: SESSION_SINK_CAUSES.insurance,
   restitution: SESSION_SINK_CAUSES.restitution,
   impound: SESSION_SINK_CAUSES.impound,
+  toll: SESSION_SINK_CAUSES.toll,
 });
 
 function boot() {
@@ -73,7 +76,7 @@ function citedSinks(state) {
   ));
 }
 
-function fireFiveSinks(ctx) {
+function fireSinks(ctx) {
   const { bus, state, sys } = ctx;
   state.ui.docked = true;
   state.ui.dockedStationId = 'station_helios';
@@ -95,6 +98,8 @@ function fireFiveSinks(ctx) {
   });
   state.simTime = 50;
   bus.emit('economy:chargeCredits', { amount: IMPOUND_CR, reason: 'impound:pay' });
+  state.simTime = 60;
+  bus.emit('economy:chargeCredits', { amount: DOCK_TOLL_CR, reason: 'service:dock_toll' });
 }
 
 test('PQ-155.02 seed 15520: five sinks stay silent before the wire', () => {
@@ -114,9 +119,9 @@ test('PQ-155.02 seed 15520: each sink appears in the session ledger with its cau
   const { state, telemetry } = ctx;
   try {
     const creditsBefore = state.player.credits;
-    fireFiveSinks(ctx);
+    fireSinks(ctx);
     const receipts = state.player.sessionSinks || [];
-    assert.equal(receipts.length, 5, 'economy wrote five sink receipts');
+    assert.equal(receipts.length, 6, 'economy wrote six sink receipts');
     assert.deepEqual(receipts.map((row) => row.kind), SESSION_SINK_KINDS.slice());
     for (const kind of SESSION_SINK_KINDS) {
       const receipt = receipts.find((row) => row.kind === kind);
@@ -125,7 +130,7 @@ test('PQ-155.02 seed 15520: each sink appears in the session ledger with its cau
     }
 
     const rows = citedSinks(state);
-    assert.equal(rows.length, 5, 'ledger printed five cause-cited sinks');
+    assert.equal(rows.length, 6, 'ledger printed six cause-cited sinks');
     const byBeat = new Map(rows.map((row) => [row.beat, row]));
     for (const kind of SESSION_SINK_KINDS) {
       const row = byBeat.get(kind);
@@ -135,7 +140,7 @@ test('PQ-155.02 seed 15520: each sink appears in the session ledger with its cau
     }
 
     const ring = telemetry.getRecentEvents().filter((e) => e.type === 'economy:sinkCharged');
-    assert.equal(ring.length, 5);
+    assert.equal(ring.length, 6);
     assert.deepEqual(ring.map((e) => e.data.kind), SESSION_SINK_KINDS.slice());
     for (const event of ring) {
       assert.equal(event.data.cause, LIVE_CAUSES[event.data.kind]);
@@ -150,6 +155,7 @@ test('PQ-155.02 seed 15520: each sink appears in the session ledger with its cau
       + INSURANCE_DEFAULTS.deductibleCr
       + RESTITUTION_CR
       + IMPOUND_CR
+      + DOCK_TOLL_CR
     ));
   } finally {
     telemetry.dispose();
@@ -160,18 +166,19 @@ test('PQ-155.02: ledger is a read-only projection and curve rates stay put', () 
   const ctx = boot();
   const { state, telemetry } = ctx;
   try {
-    fireFiveSinks(ctx);
+    fireSinks(ctx);
     const before = JSON.stringify(state.player.sessionSinks);
     const first = citedSinks(state);
     const again = citedSinks(state);
     assert.equal(JSON.stringify(state.player.sessionSinks), before);
-    assert.equal(again.length, 5);
+    assert.equal(again.length, 6);
     assert.deepEqual(again.map((row) => row.id), first.map((row) => row.id));
     assert.equal(classifySessionSink('service:repair'), 'repair');
     assert.equal(classifySessionSink('fine:contraband'), 'fine');
     assert.equal(classifySessionSink('service:insurance'), 'insurance');
     assert.equal(classifySessionSink('restitution:spill'), 'restitution');
     assert.equal(classifySessionSink('impound:pay'), 'impound');
+    assert.equal(classifySessionSink('service:dock_toll'), 'toll');
     assert.equal(ECONOMY_CURVE_SINK_RECIPE.repairHpPerHour.hunter, 80);
     assert.equal(ECONOMY_CURVE_SINK_RECIPE.repairHpPerHour.trader, 16);
     assert.equal(ECONOMY_CURVE_SINK_RECIPE.repairHpPerHour.miner, 24);

@@ -2551,7 +2551,8 @@ export const missions = {
     // Mining quota: deliver to origin (it buys ore). Recon/bounty/patrol: pick a nearby sector.
     if (typeId === 'mining_quota') return info;
     // Prefer a discovered/known station; fall back to any in the catalog within a few hops.
-    const candidates = ALL_STATIONS.filter((s) => s.id !== info.id);
+    const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
+      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan')));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);

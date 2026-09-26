@@ -168,7 +168,7 @@ const DOCK_TOLL_SECURITY_CR = 200;
 
 /** PQ-155.02 — named debit stories. Economy writes the receipt; the ledger only prints it. */
 export const SESSION_SINK_KINDS = Object.freeze([
-  'repair', 'fine', 'insurance', 'restitution', 'impound',
+  'repair', 'fine', 'insurance', 'restitution', 'impound', 'toll',
 ]);
 export const SESSION_SINK_LEDGER_MAX = 48;
 export const SESSION_SINK_CAUSES = Object.freeze({
@@ -177,6 +177,7 @@ export const SESSION_SINK_CAUSES = Object.freeze({
   insurance: 'hull deductible',
   restitution: 'spilled cargo',
   impound: 'wanted hull',
+  toll: 'berth plate',
 });
 const SESSION_SINK_KIND_SET = new Set(SESSION_SINK_KINDS);
 
@@ -188,6 +189,7 @@ export function classifySessionSink(reason) {
   if (r === 'recovery:hull_share') return 'repair';
   if (r === 'restitution' || r.startsWith('restitution:')) return 'restitution';
   if (r === 'impound:pay' || r.startsWith('impound:')) return 'impound';
+  if (r === 'service:dock_toll' || r.startsWith('toll:')) return 'toll';
   return null;
 }
 
@@ -2386,6 +2388,24 @@ export const economy = {
     return this.smugglingCapabilities(state).scannerCloak;
   },
 
+  /** Bonded contract freight: a mission that preloaded cargo destined for this berth commissioned
+   *  the manifest the post is reading — its stacks are sealed, so the sweep exempts up to the
+   *  contracted qty. Smuggling types never qualify: running contraband into a scan post is the
+   *  one arrival the fiction says gets read. Returns Map(commodityId -> exempt qty). */
+  _bondedDockCargo(stationId) {
+    const exempt = new Map();
+    const list = this.state.missions && Array.isArray(this.state.missions.active)
+      ? this.state.missions.active : [];
+    for (const m of list) {
+      if (!m || m.status !== 'active' || m.type === 'smuggling_run') continue;
+      if (m.destStationId !== stationId || m.preloadedCargo !== true) continue;
+      const id = m.params && m.params.cmdtyId;
+      if (typeof id !== 'string' || !id) continue;
+      exempt.set(id, (exempt.get(id) || 0) + Math.max(1, Number(m.params.qty) || 1));
+    }
+    return exempt;
+  },
+
   // A station posting 'toll'/'scan' is a working checkpoint: it reads every berthing hold and
   // collects its plate. Clean sweeps leave a line; exposed contraband resolves through the same
   // runScan path the gate-jump and patrol scans already use — so bust clauses, hot-faction
@@ -2394,7 +2414,9 @@ export const economy = {
   // script) don't answer a scan the station already handled.
   _runDockedCustomsPost(stationId) {
     const state = this.state;
-    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    // Runs that are not the campaign (survival, combat lab) keep their own fiction and wallet —
+    // a lab arena parked in a shared sector must not collect customs plates or read a lab hold.
+    if (state.run && state.run.kind !== 'adventure' && state.run.phase !== 'inactive') return;
     const info = stationInfo(state, stationId);
     const services = info && Array.isArray(info.services) ? info.services : [];
     if (services.includes('scan')) {
@@ -2403,6 +2425,7 @@ export const economy = {
         factionId: (info && info.factionId) || this.scanningFaction(state),
         stationId,
         source: 'dock',
+        bondedCargo: this._bondedDockCargo(stationId),
       });
       if (!res || res.found !== true) {
         this.bus.emit('toast', { text: 'CUSTOMS SWEEP — manifest reads clean.', kind: 'info', ttl: 3 });
@@ -2426,7 +2449,13 @@ export const economy = {
    *  is the incident/strike ledger; it must not apply a second reputation hit. */
   runScan(p) {
     const state = this.state;
-    const illicit = this.illicitCargo(state);
+    let illicit = this.illicitCargo(state);
+    const bonded = p && p.bondedCargo;
+    if (bonded && bonded.size > 0 && illicit.length) {
+      illicit = illicit
+        .map((s) => ({ ...s, qty: s.qty - Math.max(0, Number(bonded.get(s.commodityId)) || 0) }))
+        .filter((s) => s.qty > 0);
+    }
     const hasContraband = illicit.length > 0;
     // A lawfulInspectionCaseId is a caller-owned correlation token, not a new scan result. Keep
     // ordinary scan packets byte-for-byte shaped as before so existing customs/UI consumers retain

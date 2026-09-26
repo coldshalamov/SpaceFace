@@ -128,3 +128,69 @@ test('a live survival run docks without checkpoint machinery', () => {
   assert.equal(state.player.credits, before);
   assert.ok(((state.player.cargo.items || {}).cmdty_narcotics || 0) > 0, 'cargo untouched');
 });
+
+function bondedMission(over = {}) {
+  return {
+    status: 'active',
+    type: 'cargo_delivery',
+    destStationId: 'station_customs',
+    preloadedCargo: true,
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    ...over,
+  };
+}
+
+test('bonded contract freight rides sealed — the post reads it as its own manifest', () => {
+  const { state, sys, bus, events } = harness();
+  state.missions.active.push(bondedMission());
+  addCargo(state, 'cmdty_classified_salvage', 1);
+  sys._rng = () => 0; // even a forced-under roll must not see the sealed stack
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const scan = events.find((e) => e.name === 'player:scannedByPatrol');
+  assert.equal(scan.payload.hasContraband, false, 'file_the_log must not bust on arrival');
+  assert.equal(events.filter((e) => e.name === 'contraband:scanned').length, 0);
+  assert.equal((state.player.cargo.items || {}).cmdty_classified_salvage || 0, 1, 'freight retained for delivery');
+});
+
+test('hold mass over the bonded qty still reads exposed', () => {
+  const { state, sys, bus, events } = harness();
+  state.missions.active.push(bondedMission());
+  addCargo(state, 'cmdty_classified_salvage', 3); // 1u sealed + 2u unbonded
+  sys._rng = () => 0;
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const scan = events.find((e) => e.name === 'player:scannedByPatrol');
+  assert.equal(scan.payload.hasContraband, true, 'the bond covers the manifest, not the overage');
+});
+
+test('a smuggling run gets no bond — running contraband into a scan post stays hot', () => {
+  const { state, sys, bus, events } = harness();
+  state.missions.active.push(bondedMission({ type: 'smuggling_run' }));
+  addCargo(state, 'cmdty_classified_salvage', 1);
+  sys._rng = () => 0;
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const scan = events.find((e) => e.name === 'player:scannedByPatrol');
+  assert.equal(scan.payload.hasContraband, true);
+  assert.ok(events.some((e) => e.name === 'contraband:scanned'), 'bust resolves for the unbonded smuggle');
+});
+
+test('a combat-lab run docks without checkpoint machinery', () => {
+  const { state, sys, bus, events } = harness();
+  state.run = { kind: 'lab', phase: 'wave' };
+  addCargo(state, 'cmdty_narcotics', 2);
+  sys._rng = () => 0;
+  const before = state.player.credits;
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  assert.equal(events.filter((e) => e.name === 'player:scannedByPatrol').length, 0);
+  assert.equal(events.filter((e) => e.name === 'credits:changed' && e.payload.reason === 'service:dock_toll').length, 0);
+  assert.equal(state.player.credits, before);
+});
+
+test('the berth toll files a named session sink', () => {
+  const { bus, state } = harness();
+  bus.emit('dock:docked', { stationId: 'station_dione_customs' });
+  const sink = (state.player.sessionSinks || []).find((row) => row.reason === 'service:dock_toll');
+  assert.ok(sink, 'the toll must leave a ledger + telemetry witness');
+  assert.equal(sink.kind, 'toll');
+  assert.equal(sink.cause, 'berth plate');
+  assert.equal(sink.amount, 186);
+});
