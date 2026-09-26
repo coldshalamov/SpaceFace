@@ -7,8 +7,10 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { finalizeShip } from '../src/render/ships/shipKit.js';
+import { factoryPresentationNow, setFactoryPresentationNow } from '../src/render/visualFactory.js';
 
 const RENDERER = new URL('../src/render/renderer.js', import.meta.url);
+const FACTORY = new URL('../src/render/visualFactory.js', import.meta.url);
 
 function kitFanShip() {
   const root = new THREE.Group();
@@ -53,4 +55,23 @@ test('the per-entity motion block and flash decay ride the scaled presentation d
   // No wall-clock dt feeds the micro-motion block: the old fallback would force a
   // motion step during the restore latch that is supposed to publish a held picture.
   assert.doesNotMatch(src, /const frameDt = this\._lastFrameDt \|\| 0\.016667/);
+});
+
+test('the factory self-animation lane follows the pushed presentation clock', () => {
+  setFactoryPresentationNow(42);
+  assert.equal(factoryPresentationNow(), 42, 'the pushed sim clock drives self-animation time');
+  setFactoryPresentationNow(42); // a held world re-pushes the same instant
+  assert.equal(factoryPresentationNow(), 42, 'a held sim clock holds the lane');
+  setFactoryPresentationNow(null);
+  assert.equal(factoryPresentationNow(), null, 'an un-driven lane keeps the wall-clock fallback');
+});
+
+test('prepareFrame publishes sim time to the factory lane the onBeforeRender drivers read', () => {
+  const src = readFileSync(RENDERER, 'utf8');
+  assert.match(src, /setFactoryPresentationNow\(Number\(this\.state && this\.state\.simTime\)/);
+  const factory = readFileSync(FACTORY, 'utf8');
+  // The wall-clock consumers (nav blinkers, spinning gems, engine flicker) go through nowSec(),
+  // which the presentation lane overrides when the renderer drives it.
+  assert.match(factory, /if \(_presentationNow != null\) return _presentationNow/);
+  assert.match(factory, /const t = nowSec\(\)/);
 });

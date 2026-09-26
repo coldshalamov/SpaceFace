@@ -25,7 +25,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -14051,6 +14051,9 @@ export const render = {
     const presentationTs = Number.isFinite(this.state && this.state.timeScale)
       ? this.state.timeScale : 1;
     this._presentationFrameDt = Math.max(0, this._lastFrameDt * presentationTs);
+    // Shared presentation clock for visualFactory self-animation (nav blinkers, spinning gems):
+    // sim time holds on pause/freeze and slows with hit-stop, so set pieces freeze with the world.
+    setFactoryPresentationNow(Number(this.state && this.state.simTime) || 0);
     if (this.renderer) {
       const data = this.renderer.userData || (this.renderer.userData = {});
       const firstFlight = this.state && this.state.mode === 'flight'

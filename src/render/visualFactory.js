@@ -235,7 +235,19 @@ function getExternalTexture(path) {
 // blinking nav lights and engine flicker move without touching the render loop / vfx (which this
 // track may not edit). Time-based + non-deterministic is fine: these are pure presentation.
 const _t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+// The live renderer pushes the sim clock each prepareFrame so self-animating details hold still
+// with the world (pause, hit-stop, restore latch) instead of animating over a frozen scene.
+// Null keeps the wall-clock fallback for benches/tests that never drive the render loop.
+let _presentationNow = null;
+export function setFactoryPresentationNow(seconds) {
+  _presentationNow = Number.isFinite(seconds) ? seconds : null;
+}
+/** Read-only probe for tests: the presentation lane the renderer last pushed (null = wall clock). */
+export function factoryPresentationNow() {
+  return _presentationNow;
+}
 function nowSec() {
+  if (_presentationNow != null) return _presentationNow;
   const n = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   return (n - _t0) / 1000;
 }
