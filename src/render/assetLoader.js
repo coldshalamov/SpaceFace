@@ -305,7 +305,14 @@ async function createDefaultKtx2Loader() {
   const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
   const ktx2 = new KTX2Loader();
   ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
-  return configureCspSafeKtx2Loader(ktx2);
+  const configured = configureCspSafeKtx2Loader(ktx2);
+  // Warm the transcoder while the runtime is still being assembled: the WASM fetch and
+  // worker creator install otherwise sit inside the first texture decode's critical path.
+  // A failed warm clears the latch so the first real decode retries instead of inheriting
+  // a rejected pending promise.
+  const warm = configured.init();
+  warm.catch(() => { if (configured.transcoderPending === warm) configured.transcoderPending = null; });
+  return configured;
 }
 
 /**
@@ -317,6 +324,17 @@ async function createDefaultKtx2Loader() {
 export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   if (!ktx2 || !ktx2.workerPool || typeof ktx2.workerPool.setWorkerCreator !== 'function') {
     throw new TypeError('CSP-safe KTX2 setup requires a KTX2Loader worker pool.');
+  }
+  // KTX2 transcode is the widest stage of a texture-dense package decode — one task per
+  // image over the pool, so a 15-texture ship package serializes into ~4 waves on the
+  // stock 4-worker pool. Scale the pool with real core headroom; small hosts keep the
+  // stock 4 (decode workers share cores with the present thread, and the meshopt lane
+  // holds its own <=4 co-cap).
+  if (typeof ktx2.workerPool.setWorkerLimit === 'function') {
+    const cores = (typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency))
+      ? navigator.hardwareConcurrency
+      : 4;
+    ktx2.workerPool.setWorkerLimit(Math.max(4, Math.min(8, cores - 2)));
   }
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const WorkerImpl = options.WorkerImpl || globalThis.Worker;
