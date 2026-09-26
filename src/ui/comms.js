@@ -675,6 +675,25 @@ function sampleCommsTraceState({
     ? clamp01((finite(envelope.endMs, now) - now) / durationMs)
     : 0;
 
+  // Fully silent fast-path: no comms envelope, no event hold, no voices, and the
+  // carried amplitude is already under the visible floor — same idle result
+  // without the per-frame voice scan and faction resolve.
+  const eventLive = now < holdUntilMs;
+  if (!envelopeIsComms && !eventLive) {
+    const idleVoices = rt && Array.isArray(rt.voices) ? rt.voices : [];
+    const decayed = clamp01(ampCarry) * 0.7;
+    if (idleVoices.length === 0 && decayed < 0.01) {
+      return {
+        live: false,
+        amplitude: 0,
+        density: 0,
+        ampCarry: decayed,
+        phaseStep: 0.42,
+        factionId: resolveCommsFactionId(null, state, fallbackFactionId),
+      };
+    }
+  }
+
   let voiceUnits = 0;
   const voices = rt && Array.isArray(rt.voices) ? rt.voices : [];
   const audioNow = rt && rt.ctx && Number.isFinite(rt.ctx.currentTime) ? rt.ctx.currentTime : 0;
@@ -690,7 +709,6 @@ function sampleCommsTraceState({
   else if (voiceUnits > 0) nextAmpCarry = Math.max(nextAmpCarry * 0.82, Math.min(0.34, density * 0.56));
   else nextAmpCarry *= 0.7;
 
-  const eventLive = now < holdUntilMs;
   const live = voiceUnits > 0 || envelopeIsComms || eventLive;
   if (!live || nextAmpCarry < 0.01) {
     return {

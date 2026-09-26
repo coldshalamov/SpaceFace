@@ -545,6 +545,39 @@ function writeMasslineHudFields(fields, state, player) {
   const video = settings.video || EMPTY_HUD_OBJECT;
   const access = settings.accessibility || EMPTY_HUD_OBJECT;
   let index = 0;
+  // Quiescent fast-path: with no throw armed, no preview/snare/bridle/denial and
+  // no tether, every world-anchored element is absent, so player pos and camera
+  // churn cannot move a pixel — don't pay ~60 field writes to rediscover that.
+  // Only settings-level scalars and always-on meters can still change the DOM.
+  const denial0 = state.masslineDenial;
+  const quiescent = !throwState.armed && !solution.valid && !solution.onSolution
+    && !selfSolution.onSolution && selfSolution.targetId == null
+    && throwState.payloadId == null && throwState.aimTargetId == null
+    && !(throwState.releaseTarget && throwState.releaseTarget.targetId != null)
+    && selected.targetId == null && selected.status == null && receipt.id == null
+    && bridle.phase == null && bridle.sourceId == null && bridle.lastDenial == null
+    && snare.receiptId == null && !snare.valid
+    && !(playerState.remoteMassline && playerState.remoteMassline.active)
+    && !(playerState.tether && playerState.tether.active)
+    && !cloak.active && !bulletTime.active
+    && denial0 == null;
+  if (quiescent) {
+    fields[index++] = 'idle';
+    fields[index++] = video.fov;
+    fields[index++] = !!video.motionReduce;
+    fields[index++] = access.motionPreference;
+    fields[index++] = !!access.flashReduce;
+    fields[index++] = !!massline2Flag('bulletTime');
+    fields[index++] = !!massline2Flag('cloak');
+    fields[index++] = typeof window !== 'undefined' ? window.innerWidth : '';
+    fields[index++] = typeof window !== 'undefined' ? window.innerHeight : '';
+    fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
+      || finite(player && player.mass));
+    fields[index++] = !!cloak.available;
+    fields[index++] = cloak.energy;
+    fields[index++] = bulletTime.energy;
+    return index;
+  }
   fields[index++] = player && player.pos && player.pos.x;
   fields[index++] = player && player.pos && player.pos.z;
   fields[index++] = camera.zoom;

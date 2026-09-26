@@ -4107,6 +4107,7 @@ export function createHud(ctx, alerts) {
   let lastNavDist = '';
   let lastNavEta = '';
   let lastObjectiveMarkerText = '';
+  let lastObjectiveSig = null;
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
@@ -4691,21 +4692,33 @@ export function createHud(ctx, alerts) {
     setHudScreenTransform(targetArcs, center.x, center.y);
 
     if (!targetArcsSvg || !targetArcShield || !targetArcArmor || !targetArcHull) return;
-    setSvgAttr(targetArcsSvg, 'width', size);
-    setSvgAttr(targetArcsSvg, 'height', size);
-    setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
-    
-    const cx = size / 2;
-    const cy = size / 2;
-    
-    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
-    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
-    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
-    
+    setLagTranslate(targetArcsSvg, opticalGLag.x * 0.85, opticalGLag.y * 0.85);
+
     const shieldFrac = tgt.shieldMax ? Math.max(0, Math.min(1, tgt.shield / tgt.shieldMax)) : 0;
     const armorFrac = tgt.armorMax ? Math.max(0, Math.min(1, tgt.armorHp / tgt.armorMax)) : 0;
     const hullFrac = tgt.hullMax ? Math.max(0, Math.min(1, tgt.hull / tgt.hullMax)) : 0;
-    
+
+    // ~17 template strings are built per frame while a target is held, only for
+    // setAttr to compare them away. Quantize to sub-visible steps (1px size,
+    // ~0.15% arc fill) and skip the whole format pass when nothing moved.
+    const arcSig = Math.round(shieldFrac * 640)
+      + Math.round(armorFrac * 640) * 1024
+      + Math.round(hullFrac * 640) * 1048576
+      + Math.round(size) * 1073741824;
+    if (arcSig === updateTargetArcs._sig) return;
+    updateTargetArcs._sig = arcSig;
+
+    setSvgAttr(targetArcsSvg, 'width', size);
+    setSvgAttr(targetArcsSvg, 'height', size);
+    setSvgAttr(targetArcsSvg, 'viewBox', `0 0 ${size} ${size}`);
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    setSvgAttr(targetArcShield, 'cx', cx); setSvgAttr(targetArcShield, 'cy', cy); setSvgAttr(targetArcShield, 'r', rShield);
+    setSvgAttr(targetArcArmor, 'cx', cx);  setSvgAttr(targetArcArmor, 'cy', cy);  setSvgAttr(targetArcArmor, 'r', rArmor);
+    setSvgAttr(targetArcHull, 'cx', cx);   setSvgAttr(targetArcHull, 'cy', cy);   setSvgAttr(targetArcHull, 'r', rHull);
+
     function setArc(el, radius, fraction) {
       const c = 2 * Math.PI * radius;
       const maxArc = c * (300 / 360);
@@ -4717,10 +4730,6 @@ export function createHud(ctx, alerts) {
     setArc(targetArcShield, rShield, shieldFrac);
     setArc(targetArcArmor, rArmor, armorFrac);
     setArc(targetArcHull, rHull, hullFrac);
-
-    if (targetArcsSvg) {
-      setLagTranslate(targetArcsSvg, opticalGLag.x * 0.85, opticalGLag.y * 0.85);
-    }
   }
 
   // Travel Burn instrument update (D5 / W1-6 / W1-9).
@@ -5297,6 +5306,7 @@ export function createHud(ctx, alerts) {
       setDisplay(elNavReadout, false);
       lastNavLabel = '';
       lastObjectiveMarkerText = '';
+      lastObjectiveSig = null;
       return;
     }
     objectiveProjectionWorld.x = wp.x;
@@ -5315,13 +5325,26 @@ export function createHud(ctx, alerts) {
     setTitle(arrow, label);
     if (label !== lastNavLabel) { setText(elNavLabel, label); lastNavLabel = label; }
     objectiveWaypointRecord.pos = wp;
-    const travel = objectiveTravelReadout(state, objectiveWaypointRecord, objectiveTravelRecord);
-    const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
-    const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
-    if (markerText !== lastObjectiveMarkerText) {
-      setText(arrowLabel, markerText);
-      setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
-      lastObjectiveMarkerText = markerText;
+    // The marker text + aria string are pure functions of (label, displayed distance,
+    // displayed eta) — reproduce that quantization so the readout/format pass only
+    // runs when the rendered text would actually change.
+    const closing = dist > 0
+      ? ((Number(p.vel.x) || 0) * (wp.x - p.pos.x) + (Number(p.vel.z) || 0) * (wp.z - p.pos.z)) / dist
+      : 0;
+    const etaDisp = closing > 5 ? dist / closing : null;
+    const objectiveSig = label
+      + '|' + (dist >= 1000 ? Math.round(dist / 100) : Math.round(dist))
+      + '|' + (etaDisp == null ? -1 : etaDisp < 60 ? Math.max(1, Math.round(etaDisp)) : Math.round(etaDisp / 60));
+    if (objectiveSig !== lastObjectiveSig) {
+      lastObjectiveSig = objectiveSig;
+      const travel = objectiveTravelReadout(state, objectiveWaypointRecord, objectiveTravelRecord);
+      const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+      const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
+      if (markerText !== lastObjectiveMarkerText) {
+        setText(arrowLabel, markerText);
+        setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
+        lastObjectiveMarkerText = markerText;
+      }
     }
     if (slow || !lastNavDist) {
       const distText = Math.round(dist) + ' u';
