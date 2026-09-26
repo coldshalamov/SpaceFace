@@ -387,3 +387,15 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   REAL material state at admission, not the static role matrix. Lane notes
   preserved: canopy probes test-locked to pre-canon subsets; uncovered axes
   DoubleSide/alphaTest/vertexColors/tangent-less/mapless-breakup.
+
+- `batching` `b103b393d` — **kept**. Memoizes the authored-chunk castShadow
+  verdict behind `matrixSerial` + signed slack margin; provably-identical
+  verdicts (equivalence harness 0 mismatches, ~99% of evaluations skip the
+  rescan). Probe A/B: stuck 106→79, P99 275→261ms, appearOnTime flat.
+- `decode` `c7671ad7f` — **kept (flagged)**. KTX2 worker pool 4→
+  `min(8, cores-2)` + `ktx2.init()` kicked during runtime assembly. Direct
+  metric improved: authored composition p95 5810→4555ms, max 7204→4248ms.
+  Pop-in metrics read worse (245/138 vs 187/79) but inside this box's
+  demonstrated ±2x noise envelope; possible CPU contention between decode
+  workers and the render loop on software-GL — worth a hardware A/B.
+  Follow-up noted by lane: shared cross-decoder pool budget.
