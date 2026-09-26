@@ -2,8 +2,10 @@
 // Data only: no runtime writes, no imports from src/systems/**.
 // Recipe field names follow design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md Appendix A.2.
 // Waves 1–10 per arena are the template block for the thirty-wave Foundry arc
-// (survivalActs.js). PQ-133.04 replaces only Foundry's placeholder wave-ten boss;
-// the old Iron Maw snapshot needs its owning test's explicit content review.
+// (survivalActs.js). PQ-133.04 replaces only Foundry's placeholder wave-ten boss
+// (R5 product disposition, recorded in design/program/roadmap/receipts/PQ-133.04.md:
+// Foundry alone fields mirrorjaw_foreman in the wave-ten elite slot; the six other
+// arenas keep dreadnought_boss, and the owning tests carry that disposition).
 
 import { COMBAT_LAB_ARENAS } from './combatLabSetups.js';
 import { ENEMY_TYPES } from './enemies.js';
