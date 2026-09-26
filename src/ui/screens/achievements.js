@@ -1,5 +1,9 @@
-// Achievements — Field Hardware POSTER (PQ-033.03). The Credits register: hangar world, one reading
-// plate, legend keys, quiet type. Unique chrome: styles/achievements.css.
+// Achievements — ORRERY (design/frontend/ORRERY.md §6 Meta: "medal Arc Gauges on a ring grid"). Every
+// deed is a medal on the Medal Ring Grid (src/ui/orrery/constellationMedals.js): its progress as the
+// arc, its glyph inside, earned ones full rings of warm light, the rest ghost rings. The one amber Hand
+// stands on the chosen medal's rim and swings from medal to medal; the chosen medal's line is read
+// beside the grid (its dial large, its name, what it asks, how far along it is). The categories are
+// words on a scale. The composition is src/ui/orrery/constellationLayouts.js.
 // Rows come from the achievement ledger (src/systems/achievements.js): the live ledger the game
 // booted, or the stored bag when it has not booted one, so the title and Pause read the same truth.
 // Hidden achievements stay masked until earned; counted goals show their progress.
@@ -7,21 +11,9 @@ import { ACHIEVEMENT_CATEGORIES } from '../../data/achievements.js';
 import { ACHIEVEMENT_UNLOCKED_EVENT, readAchievementRows } from '../../systems/achievements.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
-
-const ACHIEVEMENTS_SHEET_ID = 'of-achievements-css';
-
-function ensureAchievementsStyles() {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(ACHIEVEMENTS_SHEET_ID)) return;
-  const head = document.head || document.documentElement;
-  if (!head || typeof head.appendChild !== 'function') return;
-  const link = document.createElement('link');
-  link.id = ACHIEVEMENTS_SHEET_ID;
-  link.rel = 'stylesheet';
-  try { link.href = new URL('../../../styles/achievements.css', import.meta.url).href; }
-  catch { link.href = '/styles/achievements.css'; }
-  head.appendChild(link);
-}
+import { createMedalGrid, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
+import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
+import { decrypt, rollTo } from '../orrery/text.js';
 
 export const ACHIEVEMENT_SECTIONS = Object.freeze([
   Object.freeze({ id: 'all', label: 'All' }),
@@ -57,26 +49,23 @@ const ACHIEVEMENT_EMBLEM = Object.freeze({
   same_seed_same_day: 'seed', walked_out: 'undock', paperwork_filed: 'ledger', six_figures: 'credits',
 });
 
-/** One trophy tile: its emblem in a medallion (lit when earned), the name and what it asks, then status. */
-function achievementRow(row) {
-  const item = el('li', 'k-row k-row--static fh-row of-achievements-row');
-  item.dataset.id = row.id;
-  item.dataset.state = row.unlocked ? 'unlocked' : 'locked';
-  if (row.masked) item.dataset.masked = '1';
-  const light = el('span', row.unlocked ? 'fh-light of-achievements-light' : 'of-achievements-light');
-  if (row.unlocked) light.dataset.colour = 'good';
-  light.setAttribute('aria-hidden', 'true');
-  item.appendChild(light);
-  const emblem = el('span', 'of-achievements-emblem');
-  emblem.setAttribute('aria-hidden', 'true');
-  emblem.innerHTML = dpIcon(ACHIEVEMENT_EMBLEM[row.id] || 'check', 28);
-  item.appendChild(emblem);
-  const text = el('div', 'of-achievements-text');
-  text.appendChild(el('span', 'k-row__name fh-emphasis', row.name));
-  text.appendChild(el('div', 'k-row__sub fh-fine', row.description));
-  item.appendChild(text);
-  item.appendChild(el('span', 'k-row__num k-t-body k-62 fh-data', row.status));
-  return item;
+function glyphFor(row, size = 30) {
+  if (row && row.masked) return '<span class="con-medal__q">?</span>';
+  return dpIcon(ACHIEVEMENT_EMBLEM[row && row.id] || 'check', size);
+}
+
+function categoryLabel(id) {
+  const s = ACHIEVEMENT_SECTIONS.find((x) => x.id === id);
+  return s ? s.label : String(id || '');
+}
+
+/** The medal to open on: the newest earned, else the one nearest done, else the first. */
+function defaultMedal(rows) {
+  const earned = rows.filter((r) => r.unlocked).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  if (earned.length) return earned[0].id;
+  let best = null;
+  for (const r of rows) if (medalProgress(r) > 0 && (!best || medalProgress(r) > medalProgress(best))) best = r;
+  return (best || rows[0] || {}).id || null;
 }
 
 let refs = null;
@@ -84,39 +73,56 @@ let refs = null;
 export const achievementsScreen = {
   id: 'achievements',
   _section: 'all',
+  _chosen: null,
 
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    ensureAchievementsStyles();
+    injectConstellationScreens();
     this._unsubscribe();
     rootEl.innerHTML = '';
-    rootEl.classList.remove('panel', 'sf-menu');
-    rootEl.classList.add('k-screen', 'of-achievements');
-    rootEl.setAttribute('data-fh-register', 'poster');
+    rootEl.classList.remove('panel', 'sf-menu', 'of-achievements');
+    rootEl.classList.add('k-screen', 'con-achievements');
+    rootEl.removeAttribute('data-fh-register');
     rootEl.setAttribute('aria-label', 'Achievements');
 
-    const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title fh-title', 'Achievements'));
-    const summary = el('p', 'k-t-emph k-62 fh-body', '');
+    const title = el('header', 'k-title con-head');
+    title.appendChild(el('h1', 'k-display k-t-title con-title', 'Achievements'));
+    const summary = el('p', 'k-t-emph k-62 con-sub', '');
     title.appendChild(summary);
     rootEl.appendChild(title);
 
-    const hang = el('nav', 'k-hang');
+    // the categories: words on a scale
+    const hang = el('nav', 'k-hang con-filters');
+    hang.setAttribute('aria-label', 'Achievement categories');
     const sectionWords = words(ACHIEVEMENT_SECTIONS.map((s) => ({ label: s.label, action: s.id, current: s.id === this._section })), {
+      row: true,
       size: 'emph',
       ariaLabel: 'Achievement categories',
       onPick: (action) => this._select(action),
     });
-    for (const b of sectionWords.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--legend');
-    hang.appendChild(sectionWords);
+    const scaleWrap = el('div', 'con-filters__scale');
+    scaleWrap.appendChild(sectionWords);
+    hang.appendChild(scaleWrap);
+    // down from a category into the medals
+    sectionWords.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' || !refs || !refs.grid) return;
+      event.preventDefault();
+      refs.grid.focusChosen();
+    });
     rootEl.appendChild(hang);
 
-    const stage = el('section', 'k-stage k-stage--scroll fh-plate fh-plate--sunk');
+    const stage = el('section', 'k-stage con-medal-stage');
     stage.setAttribute('aria-live', 'polite');
+    stage.setAttribute('aria-label', 'Medals');
     rootEl.appendChild(stage);
 
-    const foot = el('footer', 'k-foot');
+    // the chosen medal, read beside the grid
+    const read = el('aside', 'con-medal-read');
+    read.setAttribute('aria-label', 'Chosen achievement');
+    rootEl.appendChild(read);
+
+    const foot = el('footer', 'k-foot con-foot');
     const back = words([{ label: 'Back', action: 'back' }], {
       size: 'emph',
       ariaLabel: 'Achievements actions',
@@ -126,14 +132,30 @@ export const achievementsScreen = {
         else if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:popScreen', {});
       },
     });
-    back.querySelector('.k-word')?.classList.add('sf-back');
-    for (const b of back.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--primary');
+    back.querySelector('.k-word')?.classList.add('sf-back', 'con-back');
     foot.appendChild(back);
     rootEl.appendChild(foot);
 
-    refs = { root: rootEl, title, summary, hang, stage, foot, sectionWords };
+    const grid = createMedalGrid(stage, {
+      glyph: (row) => glyphFor(row),
+      onPick: (id) => this._choose(id),
+      onEdge: (dir) => {
+        if (dir !== 'up' || !refs) return;
+        const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
+        if (current) try { current.focus(); } catch (e) {}
+      },
+    });
+    const scale = createWordScale(scaleWrap, sectionWords, {
+      counts: (id) => {
+        const rows = (refs && refs.rows) || [];
+        const inSection = rowsForSection(rows, id);
+        return inSection.length ? `${inSection.filter((r) => r.unlocked).length}/${inSection.length}` : '';
+      },
+    });
+
+    refs = { root: rootEl, title, summary, hang, stage, read, foot, sectionWords, grid, scale, rows: [] };
     // A live unlock while the screen is open (Pause holds the sim, but a Crucible settlement or a
-    // shared-store merge can still land) repaints the plate instead of waiting for the next open.
+    // shared-store merge can still land) repaints the grid instead of waiting for the next open.
     if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
       const off = ctx.bus.on(ACHIEVEMENT_UNLOCKED_EVENT, () => { if (refs) this._render({ quiet: true }); });
       this._off = typeof off === 'function' ? off : null;
@@ -161,21 +183,58 @@ export const achievementsScreen = {
     this._render();
   },
 
+  _choose(id, { quiet = false } = {}) {
+    if (!refs) return;
+    const row = refs.rows.find((r) => r.id === id);
+    if (!row) return;
+    const changed = this._chosen !== id;
+    this._chosen = id;
+    refs.grid.choose(id, { instant: quiet });
+    this._paintReading(row, { fresh: changed && !quiet });
+    if (changed && !quiet) cue('move');
+  },
+
+  /** The chosen medal's line: its dial large, its name, what it asks, how far along it is. */
+  _paintReading(row, { fresh = false } = {}) {
+    const read = refs && refs.read;
+    if (!read) return;
+    const k = medalProgress(row);
+    const state = medalState(row);
+    const counted = !row.masked && Number(row.target) > 1;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const day = row.unlocked ? String(row.status || '').replace(/^Unlocked\s*/, '') : '';
+    read.dataset.state = state;
+    read.innerHTML = `
+      <div class="con-medal-read__dial" data-state="${state}">${medalDialSvg(k, { focusRing: false })}<span class="con-medal__glyph">${glyphFor(row, 44)}</span></div>
+      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))} <span aria-hidden="true">·</span> ${esc(state === 'earned' ? 'earned' : state === 'going' ? 'under way' : 'not yet earned')}</p>
+      <h2 class="con-medal-read__name">${esc(row.name)}</h2>
+      <p class="con-medal-read__line">${esc(row.description)}</p>
+      ${counted && !row.unlocked ? `<div class="con-medal-read__figure"><span class="con-medal-read__n" data-n>0</span><span class="con-medal-read__of">of ${esc(Number(row.target).toLocaleString('en-US'))}</span></div>` : ''}
+      ${row.unlocked ? `<p class="con-medal-read__status">${esc(day ? 'earned ' + day : 'earned')}</p>` : ''}
+    `;
+    const n = read.querySelector('[data-n]');
+    if (n && counted && !row.unlocked) rollTo(n, Math.min(Number(row.current) || 0, Number(row.target)));
+    const name = read.querySelector('.con-medal-read__name');
+    if (fresh && name) decrypt(name, name.textContent, { duration: 240 });
+  },
+
   _render({ quiet = false } = {}) {
     if (!refs) return;
     let rows = [];
     try { rows = readAchievementRows(); } catch (e) { rows = []; }
+    refs.rows = rows;
     refs.summary.textContent = achievementSummaryText(rows);
-    const stage = refs.stage;
-    stage.innerHTML = '';
-    if (!quiet) stage.scrollTop = 0;
     const section = ACHIEVEMENT_SECTIONS.find((s) => s.id === this._section) || ACHIEVEMENT_SECTIONS[0];
     const visible = rowsForSection(rows, section.id);
-    const list = el('ul', 'k-rows of-achievements-rows');
-    list.setAttribute('aria-label', section.id === 'all' ? 'All achievements' : `${section.label} achievements`);
-    for (const row of visible) list.appendChild(achievementRow(row));
-    stage.appendChild(list);
-    if (!quiet) settle(stage, { from: 'left', state: 'achievements-' + section.id });
+    refs.grid.list.setAttribute('aria-label', section.id === 'all' ? 'All achievements' : `${section.label} achievements`);
+    if (!visible.some((r) => r.id === this._chosen)) this._chosen = defaultMedal(visible);
+    refs.stage.dataset.count = String(visible.length);
+    refs.grid.set(visible, this._chosen);
+    const row = visible.find((r) => r.id === this._chosen);
+    if (row) this._paintReading(row, { fresh: !quiet });
+    else refs.read.innerHTML = '<p class="con-medal-read__line">No achievements in this category yet.</p>';
+    refs.scale.update({ instant: quiet });
+    if (!quiet) refs.grid.arrive();
   },
 
   onShow() {
@@ -183,6 +242,7 @@ export const achievementsScreen = {
     this._render();
     settle(refs.title, { from: 'left', state: 'achievements-title' });
     settle(refs.hang, { from: 'left', delay: 60, state: 'achievements-hang' });
+    settle(refs.read, { from: 'right', delay: 90, state: 'achievements-read' });
     settle(refs.foot, { from: 'bottom', delay: 120, state: 'achievements-foot' });
     refs.root.dataset.kReady = '1';
     const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
@@ -193,13 +253,17 @@ export const achievementsScreen = {
   onHide() { cue('close'); },
   refresh(ctx, options) {
     // Live unlocks land through the ACHIEVEMENT_UNLOCKED_EVENT subscription; the shell's ~3 Hz
-    // periodic pass only rebuilt the plate and reset the player's scroll position mid-read.
+    // periodic pass only rebuilt the grid and reset the player's place mid-read.
     if (options && options.periodic) return;
     this._render({ quiet: true });
   },
 
   dispose() {
     this._unsubscribe();
+    if (refs) {
+      try { refs.grid.dispose(); } catch (e) {}
+      try { refs.scale.dispose(); } catch (e) {}
+    }
     refs = null;
   },
 };
