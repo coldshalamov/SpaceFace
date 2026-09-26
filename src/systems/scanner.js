@@ -25,6 +25,12 @@ import {
   pallasHiddenCacheSignalCopy,
 } from '../data/pallasHiddenCache.js';
 import {
+  PLANET_STATE_DEFS,
+  PLANET_SIGNAL_RANGE,
+  planetSignalAnchor,
+  planetStatesForSector,
+} from '../data/planetStates.js';
+import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
@@ -628,6 +634,26 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     });
   }
 
+  // A planet is a signal environment, not scenery: W1 planet-state assignments carry an authored
+  // scannerSignal the sky should answer for. The anchor hangs outside the playable rim, so the
+  // return is far, never trackable, and resolves to the world's own name on full classification.
+  for (const assignment of planetStatesForSector(sectorId)) {
+    const signal = assignment && assignment.scannerSignal;
+    if (!signal) continue;
+    add({
+      id: signal.id,
+      kind: signal.kind,
+      sourceId: signal.sourceId,
+      entityId: null,
+      pos: planetSignalAnchor(assignment),
+      range: PLANET_SIGNAL_RANGE,
+      trackable: false,
+      scanLabel: signal.label,
+      planetName: PLANET_STATE_DEFS[assignment.stateId]
+        && PLANET_STATE_DEFS[assignment.stateId].label.toUpperCase(),
+    });
+  }
+
   return [...byId.values()].sort(compareSignalRows);
 }
 
@@ -1077,6 +1103,10 @@ export const scanner = {
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
       };
+      if (candidate.trackable === false) record.trackable = false;
+      if (candidate.scanLabel) record.detail = candidate.scanLabel;
+      // A world names itself once the signature resolves — until then it reads as its kind class.
+      if (stage >= 3 && candidate.planetName) record.classification = candidate.planetName;
       const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
         || pallasHiddenCacheSignalCopy(candidate.sourceId);
       if (discoveryCopy) {

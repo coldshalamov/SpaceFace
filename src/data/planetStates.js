@@ -113,6 +113,21 @@ export function planetStatesForSector(sectorId) {
   return ASSIGNMENTS_BY_SECTOR.get(String(sectorId || '')) || EMPTY_ASSIGNMENTS;
 }
 
+// A planet fills the sky: its scanner anchor hangs just outside the playable rim in sector-LOCAL
+// space (local (0,0) is the sector's galactic seat — SECTOR_GLOBAL_ORIGINS is a map transform,
+// not a sim position), and the range covers rim-to-rim so the return is live anywhere in sector.
+export const PLANET_SIGNAL_ANCHOR_DIST = 9000;
+export const PLANET_SIGNAL_RANGE = 16000;
+
+/** Deterministic far-rim anchor for one assignment — pure hash of its frozen seedKey, no sim rng. */
+export function planetSignalAnchor(assignment) {
+  const angle = (hash32(assignment.seedKey, 'orbit-anchor') / 4294967296) * Math.PI * 2;
+  return {
+    x: Math.cos(angle) * PLANET_SIGNAL_ANCHOR_DIST,
+    z: Math.sin(angle) * PLANET_SIGNAL_ANCHOR_DIST,
+  };
+}
+
 /** Project immutable authored planet-state assignments without mutating canonical sector data. */
 export function applyPlanetStateAssignments(sector) {
   if (!sector) return sector;
