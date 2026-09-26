@@ -159,6 +159,13 @@ export const INSURANCE_DEFAULTS = Object.freeze({
   deductibleCr: 500,
 });
 
+// A station that posts 'toll'/'scan' is a working checkpoint (Customs Gate, Dione Customs):
+// docking there reads the hold and collects the plate instead of sitting as a refuel stop in
+// costume. The toll curve mirrors the gate-jump plates (50 + 200·security).
+const DOCK_SCAN_SECURITY = 0.98;   // berth-grade sweep — same certainty lawful inspections use
+const DOCK_TOLL_BASE_CR = 50;
+const DOCK_TOLL_SECURITY_CR = 200;
+
 /** PQ-155.02 — named debit stories. Economy writes the receipt; the ledger only prints it. */
 export const SESSION_SINK_KINDS = Object.freeze([
   'repair', 'fine', 'insurance', 'restitution', 'impound',
@@ -892,6 +899,7 @@ export const economy = {
         this._stationServiceBerth = p.stationId;
         this.ensureStationMarkets(p.stationId);
         this.snapshotIntel(p.stationId);
+        this._runDockedCustomsPost(p.stationId);
       }
     });
     bus.on('dock:undocked', () => {
@@ -2381,6 +2389,34 @@ export const economy = {
    *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
    *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
    *  is the incident/strike ledger; it must not apply a second reputation hit. */
+  // A station posting 'toll'/'scan' is a working checkpoint: it reads every berthing hold and
+  // collects its plate. Clean sweeps leave a line; exposed contraband resolves through the same
+  // runScan path the gate-jump and patrol scans already use — so bust clauses, hot-faction
+  // memory, and the customs surface all consume one authority.
+  _runDockedCustomsPost(stationId) {
+    const state = this.state;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const info = stationInfo(state, stationId);
+    const services = info && Array.isArray(info.services) ? info.services : [];
+    if (services.includes('scan')) {
+      const res = this.runScan({
+        security: DOCK_SCAN_SECURITY,
+        factionId: (info && info.factionId) || this.scanningFaction(state),
+        stationId,
+      });
+      if (!res || res.found !== true) {
+        this.bus.emit('toast', { text: 'CUSTOMS SWEEP — manifest reads clean.', kind: 'info', ttl: 3 });
+      }
+    }
+    if (services.includes('toll')) {
+      const sec = Number(info && info.security) || 0;
+      const toll = Math.round(DOCK_TOLL_BASE_CR + DOCK_TOLL_SECURITY_CR * sec);
+      if (toll > 0 && normalizeCredits(state.player && state.player.credits) > 0) {
+        this.chargeCredits(toll, 'service:dock_toll');
+      }
+    }
+  },
+
   runScan(p) {
     const state = this.state;
     const illicit = this.illicitCargo(state);
