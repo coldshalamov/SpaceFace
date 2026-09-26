@@ -422,6 +422,54 @@ const ROUTES = {
       }
       return { screen: s.screen, mode: s.mode, cargoBefore: before, cargoAfter: after, textHead: t.slice(0, 260) };
     });
+
+    await B(ctx, 'l04-sell', 'dock -> market IN HOLD -> SELL the mined ore -> credits up', async () => {
+      const stations = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.stationIds());
+      if (!stations.length) return { stations: 0 };
+      const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
+      dists.sort((a, b) => a.d - b.d);
+      const r = await travelToStation(ctx, dists[0].id, 4 * 60_000);
+      if (!r.arrived && !r.docked) return { travel: r };
+      if (!r.docked) { await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), dists[0].id); await sleep(1800); }
+      const crBefore = await ctx.page.evaluate(() => window.SF.state.player && window.SF.state.player.credits);
+      await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /market/i.test(n.dataset.nav || '')); if (el) el.click(); });
+      await sleep(1300);
+      await shotNow(ctx, 'l04-market');
+      // Switch to the IN HOLD filter, then sell the first row's commodity once.
+      const inHold = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /in hold/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(900);
+      const sold = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('button, [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^sell/i.test((e.textContent || '').trim()) && !/sell what|selling/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(1200);
+      const crAfter = await ctx.page.evaluate(() => window.SF.state.player && window.SF.state.player.credits);
+      if (sold && crAfter <= crBefore) observe(ctx, 'rough-edge', 'market', `SELL clicked but credits did not rise (${crBefore} -> ${crAfter})`);
+      return { inHold, sellVerb: sold, credits: [crBefore, crAfter] };
+    });
+
+    await B(ctx, 'l05-outfit', 'shipworks -> buy something affordable -> undock', async () => {
+      await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /shipworks|ship/i.test(n.dataset.nav || '')); if (el) el.click(); });
+      await sleep(1400);
+      await shotNow(ctx, 'l05-shipworks');
+      const verbs = await ctx.page.evaluate(() =>
+        [...document.querySelectorAll('button, .k-word, [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'))
+          .map((e) => (e.textContent || '').trim()).filter(Boolean).slice(0, 40));
+      // Undock back to flight.
+      const undock = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('[data-nav], .k-word, button')].find((e) => /undock/i.test((e.textContent || '') + ' ' + (e.dataset.nav || '')));
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(2200);
+      const s = await snap(ctx);
+      return { shipworksVerbs: verbs.slice(0, 20), undockVerb: undock, screen: s.screen, mode: s.mode, docked: s.docked };
+    });
   },
 
   // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
