@@ -585,7 +585,24 @@ const ROUTES = {
         const c = window.SF.state.player && window.SF.state.player.cargo;
         return c ? JSON.stringify(c).slice(0, 120) : null;
       });
-      await ctx.page.mouse.move(800, 450);
+      // RMB is cursor-aimed: project the nearest rock through the real camera and hold the
+      // beam on it, rather than firing blind at a fixed canvas point.
+      const aim = await ctx.page.evaluate(() => {
+        const p = window.__SF_PT_HELPERS__.player();
+        const H2S = window.SF.helpers && window.SF.helpers.worldToScreen;
+        if (!p || !H2S) return null;
+        let best = null, bd = Infinity;
+        for (const e of window.SF.state.entities.values()) {
+          if (!e || e.type !== 'asteroid' || e.alive === false || !e.pos) continue;
+          const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (!best) return null;
+        const s = window.SF.helpers.worldToScreen({ x: best.pos.x, y: 0, z: best.pos.z });
+        return s ? { x: s.x, y: s.y, onScreen: s.onScreen, rockId: best.id, d: Math.round(bd) } : null;
+      });
+      if (aim && aim.onScreen) await ctx.page.mouse.move(aim.x, aim.y);
+      else await ctx.page.mouse.move(800, 450);
       await ctx.page.mouse.down({ button: 'right' });
       await sleep(6000);
       await shotNow(ctx, 'l03-beaming');
@@ -598,9 +615,9 @@ const ROUTES = {
       });
       const t = s.text || '';
       if (before === after && !/ore|platinum|nickel|yield|extract|cargo|mass/i.test(t)) {
-        observe(ctx, 'rough-edge', 'mining', '14s RMB near a rock produced no cargo change or yield signal');
+        observe(ctx, 'rough-edge', 'mining', `14s RMB near a rock produced no cargo change or yield signal (aim=${JSON.stringify(aim)})`);
       }
-      return { screen: s.screen, mode: s.mode, cargoBefore: before, cargoAfter: after, textHead: t.slice(0, 260) };
+      return { screen: s.screen, mode: s.mode, aim, cargoBefore: before, cargoAfter: after, textHead: t.slice(0, 260) };
     });
 
     await B(ctx, 'l04-sell', 'dock -> market IN HOLD -> SELL the mined ore -> credits up', async () => {
