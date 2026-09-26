@@ -1,7 +1,7 @@
-From 8729b472bca30ad5f7b88027c61355eea6ef4b18 Mon Sep 17 00:00:00 2001
+From 6a771596ad209f8b2219c6695423805c5c6f50ce Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sat, 26 Sep 2026 00:59:31 +0000
-Subject: [PATCH 1/2] Force language: scale membrane loudness with field radius
+Subject: [PATCH 3/5] Force language: scale membrane loudness with field radius
 
 Arena and environmental fields (survivalArena phases, planet machinery)
 register radii of 300-620 WU but run the same recipes authored for

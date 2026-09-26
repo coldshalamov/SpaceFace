@@ -1,7 +1,7 @@
-From 63484c4ba8e8aa8adf3faf203d1750d9cd717160 Mon Sep 17 00:00:00 2001
+From 8aa1909f9473d2b268acf9e02beef7e3a0ab5daf Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sat, 26 Sep 2026 00:59:31 +0000
-Subject: [PATCH 2/2] Add crucible arc diagnostic probe
+Subject: [PATCH 4/5] Add crucible arc diagnostic probe
 
 Timed series + field snapshots + scene census at crucible start to
 identify arena-filling arc sources.

@@ -1,7 +1,7 @@
-From dce047820bc41c58cc5a1f1322ad17d7436c1b43 Mon Sep 17 00:00:00 2001
+From 12610579dccb179b2a6bc9a861c4275b38b83ccc Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sat, 26 Sep 2026 00:09:50 +0000
-Subject: [PATCH 2/2] Stations: register the authored approach channel on the
+Subject: [PATCH 2/5] Stations: register the authored approach channel on the
  corridor bearing; wide structures get a local-roof clearance grid
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -482,10 +482,10 @@ index 000000000..9e38a4d9e
 +  server.kill();
 +}
 diff --git a/src/render/partsLibrary.js b/src/render/partsLibrary.js
-index 3acedc8da..b9fec6ad4 100644
+index 1675674f5..df7745ff0 100644
 --- a/src/render/partsLibrary.js
 +++ b/src/render/partsLibrary.js
-@@ -109,6 +109,7 @@ import {
+@@ -110,6 +110,7 @@ import {
  import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
  import { canonicalizeAuthoredProgramState } from './programCanon.js';
  import { installWorldSitePresentation } from './worldSitePresentation.js';
@@ -493,7 +493,7 @@ index 3acedc8da..b9fec6ad4 100644
  import {
    entityRequiresAuthoredPresentation,
    hasExplicitAuthoredGeologyPresentation,
-@@ -3099,6 +3100,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {})
+@@ -3337,6 +3338,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {})
    canonicalizeMaplessHullMaterials(root, palette);
    normalizePlacePropBindings(bindings);
    centerAuthoredPlaceRoot(root, record, scale);
@@ -503,7 +503,7 @@ index 3acedc8da..b9fec6ad4 100644
    installWorldSitePresentation(root, entity);
    installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
    specializeClaimRelayOpaqueMaterials(root, placeId);
-@@ -3173,6 +3177,34 @@ function specializeClaimRelayOpaqueMaterials(root, placeId) {
+@@ -3411,6 +3415,34 @@ function specializeClaimRelayOpaqueMaterials(root, placeId) {
    };
  }
  
@@ -539,10 +539,10 @@ index 3acedc8da..b9fec6ad4 100644
    if (!root || !record || !record.bounds) return;
    const center = record.bounds.center || [0, 0, 0];
 diff --git a/src/render/renderer.js b/src/render/renderer.js
-index 1ab3558b7..c4496bba3 100644
+index b3896bd06..53b7fe085 100644
 --- a/src/render/renderer.js
 +++ b/src/render/renderer.js
-@@ -1713,7 +1713,19 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
+@@ -1787,7 +1787,19 @@ const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
  // bounds return null so a corrupt subtree can never push the camera off the world.
  const CAMERA_CLEARANCE_MAX_SPAN_WU = 14000;
  const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
@@ -560,9 +560,9 @@ index 1ab3558b7..c4496bba3 100644
 +const _clearanceVecB = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
 +const _clearanceVecC = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
  
- function cameraClearanceBoxForMesh(mesh) {
-   const data = mesh && mesh.userData;
-@@ -1727,10 +1739,11 @@ function cameraClearanceBoxForMesh(mesh) {
+ function clearanceBoundUnsettled(data) {
+   if (!data) return true;
+@@ -1817,10 +1829,11 @@ function cameraClearanceBoxForMesh(mesh) {
    const cached = data.cameraClearanceBox;
    if (cached && cached.assetState === assetState && cached.compositionId === compositionId
        && cached.posX === posX && cached.posZ === posZ) {
@@ -575,7 +575,7 @@ index 1ab3558b7..c4496bba3 100644
    if (!_clearanceBoxScratch.isEmpty()) {
      const b = _clearanceBoxScratch;
      const finite = Number.isFinite(b.min.x) && Number.isFinite(b.min.y) && Number.isFinite(b.min.z)
-@@ -1744,6 +1757,9 @@ function cameraClearanceBoxForMesh(mesh) {
+@@ -1834,6 +1847,9 @@ function cameraClearanceBoxForMesh(mesh) {
        };
        box.minX = b.min.x; box.minY = b.min.y; box.minZ = b.min.z;
        box.maxX = b.max.x; box.maxY = b.max.y; box.maxZ = b.max.z;
@@ -585,7 +585,7 @@ index 1ab3558b7..c4496bba3 100644
      }
    }
    const rec = cached || (data.cameraClearanceBox = {});
-@@ -1752,7 +1768,83 @@ function cameraClearanceBoxForMesh(mesh) {
+@@ -1842,7 +1858,83 @@ function cameraClearanceBoxForMesh(mesh) {
    rec.posX = posX;
    rec.posZ = posZ;
    rec.box = box;
@@ -670,7 +670,7 @@ index 1ab3558b7..c4496bba3 100644
  }
  
  const _liveViewFrustum = typeof THREE !== 'undefined' ? new THREE.Frustum() : null;
-@@ -1793,7 +1885,15 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+@@ -1883,7 +1975,15 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
    }
    let floor = -Infinity;
    for (let i = 0; i < structural.length; i++) {
