@@ -141,3 +141,39 @@ declaration is later in the file and wins the kit's requests — the capture pro
 - The ten-second clip is 44.8 s long because the boot took that long here; a quiet machine's clip will be shorter.
 - `check:baseline` exceeded its wall budget by 1.5 s under load (all 15 links green); re-run on a quiet machine to confirm headroom.
 - Sound: the eight recipes are re-tuned to spec and the kit emits `audio:cue`; I have not listened to them on speakers.
+
+## 10. Acceptance review, 2026-09-25 (independent agent review; closes PQ-187.03)
+
+VERDICT: DONE. The title and main menu live on the kit on the default route, and every other surface
+packet that waited on this gate may now proceed.
+
+- **What the done-when is judged against.** `DIRECTION_SHEET.md` no longer carries owner authority
+  (owner ruling 2026-09-18: nothing under `design/frontend/direction/approved/` does), and the owner
+  replaced the aesthetic with ORRERY on 2026-09-22 (`design/frontend/ORRERY.md` §Title / main menu).
+  Per `AGENTS.md` §4, the old "owner sees it" wording means an independent agent review against the
+  named evidence. The title has since been rebuilt to ORRERY and is judged against that.
+- **Frames looked at, 1280x720, 1920x1080, 2560x1440** (`node scripts/ui-bench.mjs --shot=title
+  [--viewport=...]`, read and deleted). All three: the orrery emblem stands behind the SPACEFACE
+  logotype with its rings breaking round the name; the menu is an arc rail of words to the right of
+  the emblem; the amber Hand swings from the emblem's hub to the focused word (NEW GAME) with a gold
+  bead, focused word at full strength and the rest dimmed; the starter hull in its rock-and-sky hangar
+  fills the right two-thirds; Archive / Sandbox as a secondary pair under the rail; version, Credits
+  and Achievements in one fine line bottom-left; the 47-A campaign line above the name. No tangled,
+  buried, cut-off or offscreen type at any width (the bench's own measurement agrees).
+- **Every control walked** (`--walk`): Load, Crucible, Settings, Archive, Sandbox, Credits and
+  Achievements each open their screen; Quit asks for confirmation. NEW GAME reads `aria-disabled` in
+  the bench only because the bench's stand-in screen manager reports no registered screens at mount.
+  On the live route `uiRoot` does not open the menu until `newGame` is registered (`uiRoot.js`
+  `_registeredScreens.has('newGame')` gate), so the word is live when it is seen.
+- **Checks:** `check:title-continue-runtime` green (seeded save index -> latest-save line -> concrete
+  slot load intent); `check:ui-a11y` green. `check:responsive` is red on one stale contract outside
+  this surface: it still expects the flight HUD's `.sf-command-deck` to be a viewport-anchored
+  element, but since 2026-09-19 (`895fb5a67`) the deck is a static flex child inside
+  `.sf-cluster-chassis` in the safe-inset left stack. Repaired in the same sitting.
+- At 1280x720 the emblem's circular caption reads "ORRERY OF THE HELIOS REACH" without the leading
+  "SPACEFACE ·"; that is deliberate (`mainMenu.js` drops the prefix at `H <= 800`), not a defect.
+- **Still open against ORRERY's full title sentence, and not claimed here:** Continue showing its
+  save's hull render with a credit Counter (today it is one fine text line), and the words
+  decrypting on arrival. Those are the title's remaining states, owned by `PQ-181.00` / `PQ-181.01`,
+  which this closure un-gates. PQ-187.03's own job — the gate that the title lives on the kit, on
+  the default route — is met.

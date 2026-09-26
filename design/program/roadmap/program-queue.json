@@ -17927,7 +17927,7 @@
       "priority": 463,
       "title": "The title and main menu live on the kit",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.02"
       ],

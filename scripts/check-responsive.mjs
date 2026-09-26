@@ -115,7 +115,11 @@ if (!hudCss) {
     { selector: '.sf-rightdock', prop: 'right', label: 'contact dock anchor' },
     { selector: '#toasts', prop: 'left', label: 'receipt lane anchor' },
     { selector: '#alerts', prop: 'left', label: 'one-voice floor anchor' },
-    { selector: '.sf-command-deck', prop: 'left', label: 'drive + massline lane anchor' },
+    // Since 895fb5a67 (2026-09-19) the deck is seated inside `.sf-cluster-chassis`, which lives in
+    // `.sf-leftstack`; there it is a `position:static` flow child and its `left` positions nothing.
+    // A static block is therefore not an anchor assignment — the left stack's inset (checked above)
+    // is the one that keeps it off the bezel.
+    { selector: '.sf-command-deck', prop: 'left', label: 'drive + massline lane anchor', staticInside: '.sf-leftstack' },
     { selector: '.sf-prail', prop: 'left', label: 'power rail anchor' },
   ];
 
@@ -125,6 +129,10 @@ if (!hudCss) {
     for (const layer of layers) {
       const blocks = selectorBlocks(layer.css, anchor.selector);
       for (const block of blocks) {
+        if (anchor.staticInside && propertyValues(block, 'position').some((v) => v.trim() === 'static')) {
+          notes.push(`${anchor.selector}: static flow block skipped (inset owned by ${anchor.staticInside})`);
+          continue;
+        }
         const values = propertyValues(block, anchor.prop);
         for (const value of values) {
           assignmentCount++;
