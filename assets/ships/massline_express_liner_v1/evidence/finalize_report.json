@@ -9,21 +9,21 @@
       "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod0.glb",
       "live": "wholeships/massline_express_liner_v1.glb",
       "bytes": 12667384,
-      "sha256": "08557561963b11b874eb987b165c6c5dbaadfa7b249a79316a3a8a6761afc96e"
+      "sha256": "aaa58f10265d08e2eb856c75b9c1f94b991fd1945aa3aa2588ea260c83289690"
     },
     {
       "lod": 1,
       "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod1.glb",
       "live": "wholeships/massline_express_liner_v1_lod1.glb",
       "bytes": 11984252,
-      "sha256": "58d85ca3856ca7380923335bca8c1d84fccf204edcfc8e630db842d6ccb72f60"
+      "sha256": "9daeca0eab93429746e2f1f5b5937bfda0527c0379eafa545cf9fc081b479f91"
     },
     {
       "lod": 2,
       "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod2.glb",
       "live": "wholeships/massline_express_liner_v1_lod2.glb",
       "bytes": 5122612,
-      "sha256": "edfc635439df07ea76bc595c5a29ab716a86e3eecc95e5e22d1476e314822970"
+      "sha256": "2622d382fd4b838aefb4d3abb9e47e3a856a5c1a80bc2e12add04dad505ca5d6"
     }
   ]
 }

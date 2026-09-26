@@ -13608,7 +13608,7 @@
       "priority": 313,
       "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-049.01"
       ],
@@ -13630,7 +13630,9 @@
         "npm run check:assets:live",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049.02-REPORT.md"
+      ],
       "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
     },
     {
@@ -13639,7 +13641,7 @@
       "priority": 314,
       "title": "Build the Massline express-liner render package",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.02"
       ],
@@ -13660,7 +13662,9 @@
         "npm run check:render-package-plan",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049.03-REPORT.md"
+      ],
       "brief": "Add the exact new release source to the pilot input and generate its shipping `massline-express-liner-v1` render package and generated runtime manifest through the sanctioned builder. Prove pilot, package, instance-plan, and no-fallback binding before any `express` selection changes."
     },
     {
@@ -15850,7 +15854,7 @@
       "priority": 392,
       "title": "Pull feat/arcade-vfx-foundation to master",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "arcade-structural-fx"
@@ -15861,7 +15865,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-134-00-REPORT.md"
+      ],
       "brief": "One commit, one new file src/render/combat/arcadeStructuralFx.js. Cherry-picked as ce340812."
     },
     {
