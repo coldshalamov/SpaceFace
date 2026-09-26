@@ -392,6 +392,24 @@ const ROUTES = {
       return { screen: s.screen, mode: s.mode };
     });
 
+    await B(ctx, 'k01-flight-keys', 'flight keybind screens: t=techTree F3=footprint open and close', async () => {
+      const out = {};
+      for (const [key, expect] of [['t', 'techTree'], ['F3', 'footprint']]) {
+        await pressKey(ctx, key, 1100);
+        const s = await snap(ctx);
+        out[key] = s.screen;
+        await shotNow(ctx, `k01-${expect}`);
+        if (!s.screen || s.screen !== expect) observe(ctx, 'defect', 'keybinds', `${key} in flight landed on screen=${s.screen} (expected ${expect})`);
+        else {
+          const lines = (s.text || '').split('\n').filter((l) => l.trim()).length;
+          if (lines < 3) observe(ctx, 'rough-edge', 'keybinds', `${expect} opened with only ${lines} text lines`);
+        }
+        await backOut(ctx, s.screen || expect);
+        await sleep(500);
+      }
+      return out;
+    });
+
     // Pause menu verbs each push a real screen; walk the safe ones and come back.
     await B(ctx, 'e05-pause-verbs', 'pause: every nav verb pushes its screen and Esc returns', async () => {
       await pressKey(ctx, 'Escape', 1200);
