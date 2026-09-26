@@ -55,6 +55,7 @@ const COLLISION_MATERIALS = Object.freeze({
 const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
+const EMPTY_SWEEP_LIST = Object.freeze([]);
 // Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
 // 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
 const DEGENERATE_SEP2 = 1e-24;
@@ -722,6 +723,48 @@ export const physics = {
     const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
     const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
+    // Dormant-body admit pre-pass: every live projectile used to run a field query plus a
+    // far-actor query per sim step (the quadratic term inside catch-up frames). Compute the
+    // union disc of all sweep segments once and share it; both ledgers scan cells in the same
+    // row-major order for a union bbox as they would for each projectile's own bbox, so
+    // filtering the shared rows per segment reproduces the same rec set in the same order.
+    // A rec promoted by an earlier projectile already self-skips: promote marks rec.alive
+    // false, and the per-projectile filters below test exactly that.
+    let unionMinX = Infinity, unionMinZ = Infinity, unionMaxX = -Infinity, unionMaxZ = -Infinity;
+    for (const proj of projectiles) {
+      if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
+      const start = previousPosInto(this._prevPosScratch, proj, dt);
+      const limit = this._projectileSweepLimitScratch;
+      if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) continue;
+      const reach = Math.hypot(proj.pos.x - start.x, proj.pos.z - start.z) * 0.5 + (proj.radius || 0) + 120;
+      if (!(reach > 0)) continue;
+      const cx = (start.x + proj.pos.x) * 0.5;
+      const cz = (start.z + proj.pos.z) * 0.5;
+      unionMinX = Math.min(unionMinX, cx - reach);
+      unionMinZ = Math.min(unionMinZ, cz - reach);
+      unionMaxX = Math.max(unionMaxX, cx + reach);
+      unionMaxZ = Math.max(unionMaxZ, cz + reach);
+    }
+    const unionCenter = this._sweepUnionCenter || (this._sweepUnionCenter = { x: 0, z: 0 });
+    const unionRocks = this._sweepUnionRocks || (this._sweepUnionRocks = []);
+    const unionActors = this._sweepUnionActors || (this._sweepUnionActors = []);
+    unionRocks.length = 0;
+    unionActors.length = 0;
+    if (unionMinX <= unionMaxX) {
+      unionCenter.x = (unionMinX + unionMaxX) * 0.5;
+      unionCenter.z = (unionMinZ + unionMaxZ) * 0.5;
+      const unionReach = Math.hypot(unionMaxX - unionMinX, unionMaxZ - unionMinZ) * 0.5;
+      queryAsteroidField(state, unionCenter, unionReach, unionRocks);
+      queryFarActors(state, unionCenter, unionReach, unionActors);
+    }
+    // Any projectile that appears mid-sweep (a promote spawning one) was not covered by the
+    // union disc; _admitProjectileSweepBodies falls back to its own queries in that case.
+    this._sweepUnionBoundsX0 = unionMinX;
+    this._sweepUnionBoundsZ0 = unionMinZ;
+    this._sweepUnionBoundsX1 = unionMaxX;
+    this._sweepUnionBoundsZ1 = unionMaxZ;
+    this._sweepUnionRocksLive = unionRocks;
+    this._sweepUnionActorsLive = unionActors;
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
@@ -832,17 +875,29 @@ export const physics = {
     const dz = end.z - start.z;
     const reach = Math.hypot(dx, dz) * 0.5 + radius + 120;
     if (!(reach > 0)) return;
-    const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
-    center.x = (start.x + end.x) * 0.5;
-    center.z = (start.z + end.z) * 0.5;
     const ids = this._sweepAdmitIds || (this._sweepAdmitIds = []);
     const hit = this._segmentHitScratch;
-    const rocks = queryAsteroidField(
-      state,
-      center,
-      reach,
-      this._fieldQueryScratch || (this._fieldQueryScratch = []),
-    );
+    // The step-level union rows from sweepProjectiles replace the per-projectile grid query
+    // when this segment sits inside the union bbox (a projectile spawned mid-sweep does not);
+    // rows outside this segment still get filtered by segmentCircleHitInto exactly as before.
+    const cx = (start.x + end.x) * 0.5;
+    const cz = (start.z + end.z) * 0.5;
+    const covered = this._sweepUnionBoundsX0 <= cx - reach && cx + reach <= this._sweepUnionBoundsX1
+      && this._sweepUnionBoundsZ0 <= cz - reach && cz + reach <= this._sweepUnionBoundsZ1;
+    let rocks;
+    if (covered) {
+      rocks = this._sweepUnionRocksLive || EMPTY_SWEEP_LIST;
+    } else {
+      const center = this._sweepQueryCenter || (this._sweepQueryCenter = { x: 0, z: 0 });
+      center.x = cx;
+      center.z = cz;
+      rocks = queryAsteroidField(
+        state,
+        center,
+        reach,
+        this._fieldQueryScratch || (this._fieldQueryScratch = []),
+      );
+    }
     ids.length = 0;
     for (let i = 0; i < rocks.length; i++) {
       const rec = rocks[i];
@@ -857,12 +912,14 @@ export const physics = {
       wake.push(entity);
       into.push(entity);
     }
-    const actors = queryFarActors(
-      state,
-      center,
-      reach,
-      this._farQueryScratch || (this._farQueryScratch = []),
-    );
+    const actors = covered
+      ? (this._sweepUnionActorsLive || EMPTY_SWEEP_LIST)
+      : queryFarActors(
+        state,
+        this._sweepQueryCenter,
+        reach,
+        this._farQueryScratch || (this._farQueryScratch = []),
+      );
     ids.length = 0;
     for (let i = 0; i < actors.length; i++) {
       const rec = actors[i];
