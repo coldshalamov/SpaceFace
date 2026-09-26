@@ -26,6 +26,7 @@ import {
   canvasLabelClips,
   collectCanvasLabelClips,
   isHudCatalogKey,
+  isPaintedCopy,
   isScreenCatalogKey,
   layoutBoxForKey,
   measureStringWidth,
@@ -42,15 +43,21 @@ const SEED = 16601;
 test('pseudo-locale expands about +40 % (never measured in English)', () => {
   assert.equal(PSEUDO_LOCALE, 'qps-ploc');
   assert.equal(PSEUDO_GROWTH_RATIO, 1.4);
+  // The mean is measured over painted copy — the same population the clip sweep scans.
+  // Token-dominated templates ("{total} CR", "{qty}x {name}") are not painted labels and
+  // cannot expand at +40 %; counting them turns the check into a measure of catalog
+  // composition rather than transform quality.
   const screenHud = Object.fromEntries(
-    Object.entries(messages).filter(([key]) => isScreenCatalogKey(key) || isHudCatalogKey(key)),
+    Object.entries(messages).filter(([key, msg]) => (
+      (isScreenCatalogKey(key) || isHudCatalogKey(key)) && isPaintedCopy(msg)
+    )),
   );
   const catalogMean = meanPseudoGrowth(messages);
   const surfaceMean = meanPseudoGrowth(screenHud);
   const coreMean = meanPseudoGrowth(
     Object.fromEntries(Object.values(LOCALIZED_CORE_COPY).map((entry) => [entry.label, entry.label])),
   );
-  // Documented actuals at seed 16601: catalog ~1.50, screen+HUD ~1.42, core ~1.62.
+  // Documented actuals at seed 16601: catalog ~1.50, screen+HUD painted ~1.50, core ~1.62.
   assert.ok(surfaceMean >= 1.40, `screen+HUD growth ${surfaceMean} must be at least +40 %`);
   assert.ok(catalogMean >= 1.40, `catalog growth ${catalogMean} must be at least +40 %`);
   assert.ok(coreMean >= 1.40, `core copy growth ${coreMean} must be at least +40 %`);
