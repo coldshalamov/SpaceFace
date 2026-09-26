@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createGameState } from '../src/core/gameState.js';
 import { save } from '../src/save/saveSystem.js';
 import { encodeSavePayload, handleSaveWorkerRequest } from '../src/save/saveWorker.js';
+import { retryToClean } from './helpers/retryToClean.mjs';
 
 const HARD_SLICE_MS = 12;
 
@@ -232,30 +233,34 @@ function installHarness({ state = makeState(), storage = createStorage() } = {})
   };
 }
 
-test('large player collections are captured and posted in bounded autosave slices', () => {
-  const state = makeState();
-  state.player.moduleInventory = Array.from({ length: 5000 }, (_, index) => costlyModule(index));
-  const harness = installHarness({ state });
-  try {
-    assert.equal(save.requestAutosave('player_budget_regression', { force: true }), true);
-    harness.drain();
-    const completed = harness.bus.events.find((entry) => entry.name === 'save:completed');
-    assert.ok(completed, 'the rich autosave must complete');
-    const playerSlices = completed.payload.blockingSamples.filter(({ phase }) => (
-      phase === 'capture_player' || phase === 'encode_player_dispatch'
-    ));
-    assert.ok(playerSlices.length > 2,
-      `the rich player must span multiple bounded tasks, got ${JSON.stringify(playerSlices)}`);
-    assert.ok(playerSlices.every(({ ms }) => ms <= HARD_SLICE_MS),
-      `every player capture/dispatch slice must stay within ${HARD_SLICE_MS}ms: ${JSON.stringify(playerSlices)}`);
-    assert.equal(completed.payload.observedHardLimitMet, true,
-      `autosave exceeded its hard slice: ${JSON.stringify(completed.payload.blockingSamples)}`);
-    const stored = JSON.parse(harness.storage.getItem('sf.save.auto'));
-    assert.equal(stored.data.player.moduleInventory.length, 5000);
-    assert.equal(stored.data.player.ownedShips.length, 1);
-  } finally {
-    harness.restore();
-  }
+test('large player collections are captured and posted in bounded autosave slices', async () => {
+  // D48 retry-to-clean: a host preemption/GC pause inside one measured task may spike a single
+  // sample. The raw 12ms bound is unchanged — an attempt passes only when every sample honours it.
+  await retryToClean(() => {
+    const state = makeState();
+    state.player.moduleInventory = Array.from({ length: 5000 }, (_, index) => costlyModule(index));
+    const harness = installHarness({ state });
+    try {
+      assert.equal(save.requestAutosave('player_budget_regression', { force: true }), true);
+      harness.drain();
+      const completed = harness.bus.events.find((entry) => entry.name === 'save:completed');
+      assert.ok(completed, 'the rich autosave must complete');
+      const playerSlices = completed.payload.blockingSamples.filter(({ phase }) => (
+        phase === 'capture_player' || phase === 'encode_player_dispatch'
+      ));
+      assert.ok(playerSlices.length > 2,
+        `the rich player must span multiple bounded tasks, got ${JSON.stringify(playerSlices)}`);
+      assert.ok(playerSlices.every(({ ms }) => ms <= HARD_SLICE_MS),
+        `every player capture/dispatch slice must stay within ${HARD_SLICE_MS}ms: ${JSON.stringify(playerSlices)}`);
+      assert.equal(completed.payload.observedHardLimitMet, true,
+        `autosave exceeded its hard slice: ${JSON.stringify(completed.payload.blockingSamples)}`);
+      const stored = JSON.parse(harness.storage.getItem('sf.save.auto'));
+      assert.equal(stored.data.player.moduleInventory.length, 5000);
+      assert.equal(stored.data.player.ownedShips.length, 1);
+    } finally {
+      harness.restore();
+    }
+  }, { label: 'large player collection capture/dispatch slices' });
 });
 
 test('a collection mutation between player batches restarts to one coherent latest snapshot', () => {

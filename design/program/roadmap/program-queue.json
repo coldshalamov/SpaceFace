@@ -12404,7 +12404,7 @@
       "priority": 273,
       "title": "Hazard geometry per sector",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12426,8 +12426,10 @@
         "npm run check:atlas-integrity",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). DONE WHEN: Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-153.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-25: blind six-sector hazard capture (seed 4242, key opened after verdicts) named 6/6, 5 from what was on screen; Tethys only by elimination (its Anvil well is invisible at its edge - logged). Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). DONE WHEN: Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6."
     },
     {
       "id": "PQ-153.02",
@@ -19588,7 +19590,7 @@
       "priority": 9861,
       "title": "Close the combat->salvage->economy chain",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-209.00"
       ],
@@ -19599,7 +19601,7 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "The signature chain occurred zero times in ~60 hours; make mined/looted goods and the combat aftermath meet the economy at least once on the scripted battery, and make progression spend reachable."
+      "brief": "DONE 2026-09-25: the leaf's focused fixture exists and is green - test/cargo-kill-salvage-sale-opportunity.test.mjs drives kill -> salvage -> sale -> new opportunity on real owners at seed 20901. The signature chain occurred zero times in ~60 hours; make mined/looted goods and the combat aftermath meet the economy at least once on the scripted battery, and make progression spend reachable."
     },
     {
       "id": "PQ-209.02",
@@ -19607,7 +19609,7 @@
       "priority": 9862,
       "title": "Income curve past hour 0",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-209.00"
       ],
@@ -19618,7 +19620,7 @@
       ],
       "checks": [],
       "receiptRefs": [],
-      "brief": "The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
+      "brief": "DONE 2026-09-25: the leaf's focused fixture exists and is green - test/b1-hours-income-encounter-supply.test.mjs asserts post-hour-1 income > 0 on the derived ten-hour model (seeds 4242/8008); the click-farm clause is answered by aim-weighted seam yield in src/systems/mining.js (PQ-155.04). The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
     },
     {
       "id": "PQ-210.00",

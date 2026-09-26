@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import test from 'node:test';
 
 import { bootRealPath } from '../scripts/lib/bench/realPath.mjs';
+import { LANDMARK_ROWS } from '../scripts/lib/sectorAnchors.mjs';
 import landmarkLorePack from '../src/data/flavor/080-landmark-lore.js';
 import { PLANET_FLAGS, PLANET_SITE } from '../src/data/planets.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -27,36 +28,8 @@ const LONG = { timeout: 240_000 };
 const RELEASE_PLACES = 'assets/ships/release/parts/places';
 
 // Canon mapping: the .00 way-of-life table names each sector's landmark; the depth program
-// (design/depth-program/BUILD_PLAN.md) owns which hero landmark anchors each sector.
-const LANDMARK_ROWS = Object.freeze([
-  Object.freeze({
-    sector: 'sector_helios_prime', kind: 'poi', id: 'poi_memorial',
-    name: 'The Candle Fleet', targetRef: 'landmark_c3_candle_fleet',
-  }),
-  Object.freeze({
-    sector: 'sector_ceres_belt', kind: 'worldSite', id: 'world_site_wreck_cathedral',
-    name: 'Wreck Cathedral', targetRef: 'landmark_c1_wreck_cathedral_concord_vigilant',
-    glb: 'place_landmark_wreck_cathedral',
-  }),
-  Object.freeze({
-    sector: 'sector_tethys_junction', kind: 'planet', id: 'zone_tethys_anvil',
-    name: 'The Anvil', targetRef: null,
-  }),
-  Object.freeze({
-    sector: 'sector_vesta_forge', kind: 'poi', id: 'poi_vesta_resonant_cathedral',
-    name: 'The Resonant Cathedral', targetRef: 'landmark_c13e_resonant_cathedral',
-    glb: 'place_maintenance_gantry',
-  }),
-  Object.freeze({
-    sector: 'sector_pallas_drift', kind: 'poi', id: 'poi_quiessence',
-    name: 'The Quiessence', targetRef: 'landmark_c14_quiessence',
-  }),
-  Object.freeze({
-    sector: 'sector_sker_haven', kind: 'poi', id: 'poi_sker_throne',
-    name: 'The Skerris Throne', targetRef: 'landmark_c13d_skerris_throne',
-    glb: 'place_dead_hulk',
-  }),
-]);
+// (design/depth-program/BUILD_PLAN.md) owns which hero landmark anchors each sector. The table
+// itself lives in scripts/lib/sectorAnchors.mjs — the capture script parks at the same rows.
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 

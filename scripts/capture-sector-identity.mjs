@@ -36,17 +36,96 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  anvilGlobalCenter,
+  HAZARD_BY_SECTOR,
+  LANDMARK_BY_SECTOR,
+  planetAnchorStandoffWU,
+  WAY_OF_LIFE_SIX,
+} from './lib/sectorAnchors.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
+const USAGE = `Usage: node scripts/capture-sector-identity.mjs [--sectors=<comma list|six>] [--anchor=station|hazard|landmark]
+
+  --sectors   default sector_helios_prime,sector_ceres_belt; 'six' expands to the six
+              PQ-153 way-of-life sectors.
+  --anchor    station (default): park at each sector's first non-gate station — unchanged
+              two-sector capture into .devshots/sector-identity/.
+              hazard:  park at the authored physical situation that names the sector
+              (Helios authors none and falls back to its station).
+              landmark: park at each sector's canon depth hero landmark (scripts/lib/
+              sectorAnchors.mjs) and also write frame_ship144.jpg at the shipping 144 WU
+              zoom, the composition the PQ-153.02 done-when reviews.
+              hazard/landmark write .devshots/sector-identity-<anchor>/.
+  --help      this text.
+`;
+
+const ARGV = process.argv.slice(2);
+if (ARGV.includes('--help') || ARGV.includes('-h')) {
+  console.log(USAGE);
+  process.exit(0);
+}
+let sectorsArg = 'sector_helios_prime,sector_ceres_belt';
+let ANCHOR = 'station';
+for (const arg of ARGV) {
+  if (arg.startsWith('--sectors=')) sectorsArg = arg.slice('--sectors='.length);
+  else if (arg.startsWith('--anchor=')) ANCHOR = arg.slice('--anchor='.length);
+  else {
+    console.error(`unknown argument: ${arg}\n${USAGE}`);
+    process.exit(2);
+  }
+}
+assert.ok(['station', 'hazard', 'landmark'].includes(ANCHOR),
+  `--anchor must be station|hazard|landmark, got ${ANCHOR}`);
+const SECTORS = sectorsArg === 'six'
+  ? [...WAY_OF_LIFE_SIX]
+  : sectorsArg.split(',').map((id) => id.trim()).filter(Boolean);
+assert.ok(SECTORS.length > 0, '--sectors produced an empty list');
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const OUT = path.join(ROOT, '.devshots', 'sector-identity');
-const SECTORS = ['sector_helios_prime', 'sector_ceres_belt'];
+const OUT = path.join(ROOT, '.devshots',
+  ANCHOR === 'station' ? 'sector-identity' : `sector-identity-${ANCHOR}`);
 const FRAMES = 30;
 const SECONDS_PER_FRAME = 1;
 const SEED = 4242;
 // One wheel-out from the 144 WU default. Wide enough that the station, its dock traffic and the
 // pocket's working cluster are all in the same frame — which is the thing being judged.
 const ZOOM_WU = 340;
+const SHIPPING_ZOOM_WU = 144;
+
+/**
+ * Per-sector anchor spec, resolved in node from the shared canon tables
+ * (scripts/lib/sectorAnchors.mjs) and handed to the page, which resolves the LIVE position the
+ * way the PQ-153 census tests do (sectorContents POIs, worldSite entities, state.planet).
+ */
+function anchorSpecFor(sectorId) {
+  if (ANCHOR === 'station') return { kind: 'station' };
+  if (ANCHOR === 'landmark') {
+    const row = LANDMARK_BY_SECTOR.get(sectorId);
+    assert.ok(row, `no canon landmark row for ${sectorId} (scripts/lib/sectorAnchors.mjs)`);
+    if (row.kind === 'planet') {
+      return {
+        kind: 'planet', refId: row.id, name: row.name,
+        standoffWU: planetAnchorStandoffWU(), fallbackCenter: anvilGlobalCenter(),
+      };
+    }
+    return { kind: row.kind, refId: row.id, name: row.name };
+  }
+  const row = HAZARD_BY_SECTOR.get(sectorId);
+  assert.ok(row, `no hazard anchor row for ${sectorId} (scripts/lib/sectorAnchors.mjs)`);
+  if (row.kind === 'station') return { kind: 'station', name: row.name, fallback: true };
+  if (row.kind === 'planet') {
+    return {
+      kind: 'planet', refId: row.id, name: row.name,
+      standoffWU: planetAnchorStandoffWU(), fallbackCenter: anvilGlobalCenter(),
+    };
+  }
+  if (row.kind === 'worldSite') return { kind: 'worldSite', refId: row.id, name: row.name };
+  return {
+    kind: row.kind, refId: row.id, name: row.name,
+    center: row.center, dir: row.dir, extentWU: row.extentWU,
+  };
+}
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex').toUpperCase();
 const browserPath = [
@@ -70,6 +149,9 @@ const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(String(error?.stack || error)));
 
 const report = { schema: 'spaceface.sectorIdentityCapture.v1', seedRequested: SEED, sectors: {} };
+// Station mode keeps the manifest byte-shape it has always had; other modes say which anchor
+// drove the run so the receipt cannot be misread as a station capture.
+if (ANCHOR !== 'station') report.anchorMode = ANCHOR;
 
 try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -115,34 +197,108 @@ try {
     const dir = path.join(OUT, sectorId);
     await mkdir(dir, { recursive: true });
 
-    const anchor = await page.evaluate(({ id, CAPTURE_ZOOM }) => {
+    const spec = anchorSpecFor(sectorId);
+    const anchor = await page.evaluate(({ id, CAPTURE_ZOOM, spec, zoomNow, shipZoom }) => {
       const SF = window.SF;
       const state = SF.state;
       const world = SF.registry.get('world');
       if (!world) throw new Error('world system not registered on the live route');
       if (state.world.currentSectorId !== id) world.enterSector(id);
 
-      const stations = (state.entityList || []).filter((e) => e && e.alive !== false
-        && e.type === 'station' && !(e.data && e.data.isGate)
-        && (e.data && e.data.sectorId) === id);
-      const preferred = id === 'sector_helios_prime' ? 'station_helios' : null;
-      const chosen = (preferred && stations.find((s) => (s.data && s.data.stationId) === preferred))
-        || stations[0];
-      if (!chosen) throw new Error(`no non-gate station resident for ${id}`);
-      const d = chosen.data || {};
-      const hull = Math.max(d.dockRadius || 0, d.collisionRadius || 0, chosen.radius || 0, 60);
-      // WHERE THE SHIP PARKS, AND WHY IT IS NOT WHERE THE BENCH COUNTS.
-      // The chase rig is a TILTED TOP-DOWN camera that follows the player's POSITION ONLY and never
-      // its yaw (`src/render/camera.js`), so pointing the ship at the station cannot bring the
-      // station into frame — only standing near it can. The first capture parked at the bench's
-      // 750 WU-pocket standoff (hull + 90), which put the station and its whole work cluster outside
-      // the ~100 WU bubble the camera can actually show: both strips came back as fields of rock that
-      // differed only by COLOUR, which is the one thing design/VISION.md Part II forbids identity from
-      // resting on. The margin is therefore the smallest that still clears the station's own declared
-      // radii, and the offset is along -z so the station sits up-screen rather than off the side.
-      const standoff = hull + 40;
-      world.relocatePlayerInSector({ x: chosen.pos.x, z: chosen.pos.z - standoff },
-        { reason: 'capture:sector_identity' });
+      const alive = () => (state.entityList || []).filter((e) => e && e.alive !== false);
+      const hullOf = (ent) => {
+        const d = (ent && ent.data) || {};
+        return Math.max(d.dockRadius || 0, d.collisionRadius || 0, (ent && ent.radius) || 0, 60);
+      };
+
+      let feature = null;
+      let extent = 60;
+      let standoff = 0;
+      let park = null;
+      let kindOut = spec.kind;
+      let anchorName = spec.name || null;
+      let stationId = null;
+
+      if (spec.kind === 'station') {
+        const stations = alive().filter((e) => e.type === 'station' && !(e.data && e.data.isGate)
+          && (e.data && e.data.sectorId) === id);
+        const preferred = id === 'sector_helios_prime' ? 'station_helios' : null;
+        const chosen = (preferred && stations.find((s) => (s.data && s.data.stationId) === preferred))
+          || stations[0];
+        if (!chosen) throw new Error(`no non-gate station resident for ${id}`);
+        stationId = (chosen.data && chosen.data.stationId) || String(chosen.id);
+        anchorName = anchorName || stationId;
+        feature = { x: chosen.pos.x, z: chosen.pos.z };
+        extent = hullOf(chosen);
+        // WHERE THE SHIP PARKS, AND WHY IT IS NOT WHERE THE BENCH COUNTS.
+        // The chase rig is a TILTED TOP-DOWN camera that follows the player's POSITION ONLY and
+        // never its yaw (`src/render/camera.js`), so pointing the ship at the station cannot bring
+        // the station into frame — only standing near it can. The first capture parked at the
+        // bench's 750 WU-pocket standoff (hull + 90), which put the station and its whole work
+        // cluster outside the ~100 WU bubble the camera can actually show: both strips came back
+        // as fields of rock that differed only by COLOUR, which is the one thing design/VISION.md
+        // Part II forbids identity from resting on. The margin is therefore the smallest that
+        // still clears the station's own declared radii, and the offset is along -z so the
+        // station sits up-screen rather than off the side.
+        standoff = extent + 40;
+        park = { x: feature.x, z: feature.z - standoff };
+      } else if (spec.kind === 'poi') {
+        const bag = (state.world.sectorContents || {})[id];
+        const entry = ((bag && bag.pois) || []).find((row) => row && row.poiId === spec.refId);
+        if (!entry || !entry.pos) throw new Error(`landmark poi ${spec.refId} not resident in ${id}`);
+        const ent = entry.id != null ? state.entities.get(entry.id) : null;
+        feature = { x: entry.pos.x, z: entry.pos.z };
+        extent = ent ? hullOf(ent) : 60;
+        standoff = extent + 40;
+        park = { x: feature.x, z: feature.z - standoff };
+      } else if (spec.kind === 'worldSite') {
+        const ent = alive().find((e) => e.data && e.data.worldSiteId === spec.refId);
+        if (!ent) throw new Error(`world site ${spec.refId} not resident in ${id}`);
+        feature = { x: ent.pos.x, z: ent.pos.z };
+        extent = hullOf(ent);
+        standoff = extent + 40;
+        park = { x: feature.x, z: feature.z - standoff };
+      } else if (spec.kind === 'planet') {
+        const p = state.planet;
+        const live = !!(p && p.active === true && p.zoneId === spec.refId && p.center);
+        feature = live ? { x: p.center.x, z: p.center.z } : { ...spec.fallbackCenter };
+        if (!live) kindOut = 'planet_zoneFallback';
+        // Outside the pull's influence edge: every radius inside it either drags the hull
+        // mid-capture (the well is live on the real route) or sits in a heat band.
+        standoff = spec.standoffWU;
+        park = { x: feature.x, z: feature.z - standoff };
+      } else if (spec.kind === 'featureEdge') {
+        // Extended hazard volumes/zones: park on the feature's own staging edge,
+        // center + dir*(extent + 96) — the Cinder Sluice's authored traffic idiom, never
+        // inside the volume and clear of the collider caveat in this file's header.
+        feature = { x: spec.center.x, z: spec.center.z };
+        const d = spec.dir || { x: 0, z: -1 };
+        standoff = spec.extentWU + 96;
+        park = { x: feature.x + d.x * standoff, z: feature.z + d.z * standoff };
+      } else {
+        throw new Error(`unknown anchor kind ${spec.kind}`);
+      }
+
+      // Clearance: the parking spot must not sit on a live hull (this file's header explains
+      // the 2.5M-WU depenetration throw). Rotate the same standoff around the feature until clear.
+      const player0 = state.entities.get(state.playerId);
+      const pr = (player0 && player0.radius) || 8;
+      const blockedBy = (p) => alive().find((e) => e !== player0 && e.pos
+        && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) <= (e.radius || 8) + pr + 24);
+      if (blockedBy(park)) {
+        const radius = Math.hypot(park.x - feature.x, park.z - feature.z);
+        const base = Math.atan2(park.z - feature.z, park.x - feature.x);
+        for (const dAng of [Math.PI / 9, -Math.PI / 9, Math.PI / 4, -Math.PI / 4,
+          Math.PI / 2, -Math.PI / 2, Math.PI]) {
+          const candidate = {
+            x: feature.x + Math.cos(base + dAng) * radius,
+            z: feature.z + Math.sin(base + dAng) * radius,
+          };
+          if (!blockedBy(candidate)) { park = candidate; break; }
+        }
+      }
+
+      world.relocatePlayerInSector(park, { reason: `capture:sector_identity_${spec.kind}` });
       const player = state.entities.get(state.playerId);
       player.vel.x = 0;
       player.vel.z = 0;
@@ -151,18 +307,50 @@ try {
       // and the frame's whole content was a planet and a galaxy — a reviewer could only have named
       // the place from the sky, which is exactly the identity `design/VISION.md` Part II forbids.
       // `camera:zoom` is the mouse wheel's own event (src/ui/input.js:657), so this is a player
-      // action and the rig is still the shipping chase camera.
-      SF.bus.emit('camera:zoom', { level: CAPTURE_ZOOM });
+      // action and the rig is still the shipping chase camera. Landmark mode instead holds the
+      // shipping zoom through the settle so frame_ship144.jpg is the composition a player sees.
+      if (zoomNow) SF.bus.emit('camera:zoom', { level: CAPTURE_ZOOM });
+      else SF.bus.emit('camera:zoom', { level: shipZoom });
+
+      if (spec.kind === 'station' && spec.fallback !== true) {
+        return {
+          station: stationId,
+          x: feature.x, z: feature.z, standoffWU: standoff, hullRadiusWU: extent,
+        };
+      }
       return {
-        station: (chosen.data && chosen.data.stationId) || String(chosen.id),
-        x: chosen.pos.x, z: chosen.pos.z, standoffWU: standoff, hullRadiusWU: hull,
+        kind: kindOut,
+        station: stationId,
+        id: spec.refId || stationId,
+        name: anchorName,
+        fallback: spec.fallback === true,
+        x: feature.x, z: feature.z,
+        standoffWU: standoff, hullRadiusWU: extent,
+        park: { x: park.x, z: park.z },
       };
-    }, { id: sectorId, CAPTURE_ZOOM: ZOOM_WU });
+    }, {
+      id: sectorId, CAPTURE_ZOOM: ZOOM_WU, spec,
+      zoomNow: ANCHOR !== 'landmark', shipZoom: SHIPPING_ZOOM_WU,
+    });
 
     // Let the place become itself before the first frame: sector spawning, the first traffic
     // dispatch, the first job cycle — the same 24 s the measurement bench waits.
     const settleFrom = await page.evaluate(() => window.SF.state.simTime);
     await page.waitForFunction((t) => window.SF.state.simTime >= t + 24, settleFrom, { timeout: 300_000 });
+
+    // PQ-153.02's done-when is "screenshot composition checked at the shipping camera": landmark
+    // mode banks one frame at the untouched 144 WU zoom BEFORE the wheel-out, then zooms like the
+    // other modes.
+    let ship144 = null;
+    if (ANCHOR === 'landmark') {
+      const shot = await page.screenshot({ type: 'jpeg', quality: 90 });
+      const name = 'frame_ship144.jpg';
+      await writeFile(path.join(dir, name), shot);
+      ship144 = { name, simTime: await page.evaluate(() => window.SF.state.simTime), sha256: sha256(shot), bytes: shot.length };
+      await page.evaluate((zoom) => window.SF.bus.emit('camera:zoom', { level: zoom }), ZOOM_WU);
+      const zoomAt = await page.evaluate(() => window.SF.state.simTime);
+      await page.waitForFunction((t) => window.SF.state.simTime >= t + 1, zoomAt, { timeout: 60_000 });
+    }
 
     const wallStart = Date.now();
     const frames = [];
@@ -195,10 +383,13 @@ try {
         for (const e of near) byType[e.type || '(null)'] = (byType[e.type || '(null)'] || 0) + 1;
         return { count: near.length, byType };
       };
+      // Did the ship actually stay where it was parked? A depenetration blow-out is silent in the
+      // frames and would make the whole strip a picture of empty space. Non-station anchors carry
+      // the real parking spot in `park`; station anchors keep the legacy z-standoff derivation.
+      const intended = anchorIn.park
+        || { x: anchorIn.x, z: anchorIn.z - anchorIn.standoffWU };
       return {
-        // Did the ship actually stay where it was parked? A depenetration blow-out is silent in the
-        // frames and would make the whole strip a picture of empty space.
-        parkedAtIntended: Math.hypot(player.pos.x - anchorIn.x, player.pos.z - (anchorIn.z - anchorIn.standoffWU)) < 25,
+        parkedAtIntended: Math.hypot(player.pos.x - intended.x, player.pos.z - intended.z) < 25,
         playerPos: { x: Math.round(player.pos.x), z: Math.round(player.pos.z) },
         withinPocket750: at(750),
         onCamera110: at(110),
@@ -226,9 +417,11 @@ try {
       wallSecondsPerSimSecond: Number((wallMs / 1000 / (frames.length * SECONDS_PER_FRAME)).toFixed(2)),
       census,
     };
+    if (ship144) report.sectors[sectorId].ship144 = ship144;
+    const anchorLabel = anchor.station || anchor.name || anchor.id || anchor.kind;
     console.log(`[sector-identity] ${sectorId}: ${frames.length} frames over `
       + `${frames.length * SECONDS_PER_FRAME}s sim (${(wallMs / 1000).toFixed(1)}s wall) `
-      + `at ${anchor.station} +${anchor.standoffWU}WU; parked=${census.parkedAtIntended}; ${census.onCamera110.count} on camera, ${census.withinPocket750.count} in the pocket`);
+      + `at ${anchorLabel} +${anchor.standoffWU}WU; parked=${census.parkedAtIntended}; ${census.onCamera110.count} on camera, ${census.withinPocket750.count} in the pocket`);
   }
 
   report.pageErrors = pageErrors;
@@ -236,6 +429,13 @@ try {
   console.log(`[sector-identity] manifest -> ${path.relative(ROOT, path.join(OUT, 'manifest.json'))}`);
   if (pageErrors.length) console.warn(`[sector-identity] ${pageErrors.length} page error(s) recorded in the manifest`);
 } finally {
-  await browser.close();
-  await server.release?.();
+  // Bounded shutdown: the manifest is already the durable product, and on a contended host the
+  // headed browser's close can hang. Kill the child rather than hold the process open — and call
+  // the handle the probe server actually exposes (close, not release).
+  const force = setTimeout(() => { try { browser.process()?.kill('SIGKILL'); } catch { /* gone */ } }, 20_000);
+  force.unref();
+  await browser.close().catch(() => {});
+  clearTimeout(force);
+  try { server.server?.closeAllConnections?.(); } catch { /* best effort */ }
+  await (server.close ? server.close() : server.release?.()).catch(() => {});
 }

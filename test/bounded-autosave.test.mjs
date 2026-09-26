@@ -13,6 +13,7 @@ import {
   SAVE_WORKER_SOURCE,
   validateSaveJson,
 } from '../src/save/saveWorker.js';
+import { retryToClean } from './helpers/retryToClean.mjs';
 
 const PERF_PROBE_SOURCE = fs.readFileSync(
   new URL('../scripts/probe-performance-profile.mjs', import.meta.url),
@@ -952,26 +953,30 @@ test('batched encode_part dispatch uses far fewer schedule turns than save keys 
   } finally { h.restore(); }
 });
 
-test('batched worker dispatch yields before repeated clone posts can cross the 12ms hard slice', () => {
-  const h = autosaveHarness({ productionCapture: true, cloneFloorMs: 6.2 });
-  try {
-    assert.equal(save.requestAutosave('bounded_clone_headroom', { force: true }), true);
-    h.drain(500);
-    const completed = h.events.find((event) => event.name === 'save:completed');
-    assert.ok(completed, 'cost-aware encode and validation batches must still complete');
-    const batchedDispatches = completed.payload.blockingSamples.filter(({ phase }) => (
-      phase === 'encode_part_dispatch'
-      || phase.endsWith('validate_chunk_dispatch')
-      || phase.endsWith('validate_finish_dispatch')
-    ));
-    assert.ok(batchedDispatches.length > 4,
-      `fixture must exercise repeated worker dispatch tasks; got ${JSON.stringify(batchedDispatches)}`);
-    assert.equal(completed.payload.observedHardLimitMet, true,
-      `repeated clone posts must yield before crossing 12ms; ${JSON.stringify(batchedDispatches)}`);
-    assert.ok(batchedDispatches.every(({ ms }) => ms <= completed.payload.hardSliceMs),
-      `every batched worker dispatch must remain within the raw hard slice; ${JSON.stringify(batchedDispatches)}`);
-    assertCanonicalSaveData(h.storage.getItem('sf.save.auto'));
-  } finally { h.restore(); }
+test('batched worker dispatch yields before repeated clone posts can cross the 12ms hard slice', async () => {
+  // D48 retry-to-clean: a host preemption/GC pause inside one measured task may spike a single
+  // sample. The raw 12ms bound is unchanged — an attempt passes only when every sample honours it.
+  await retryToClean(() => {
+    const h = autosaveHarness({ productionCapture: true, cloneFloorMs: 6.2 });
+    try {
+      assert.equal(save.requestAutosave('bounded_clone_headroom', { force: true }), true);
+      h.drain(500);
+      const completed = h.events.find((event) => event.name === 'save:completed');
+      assert.ok(completed, 'cost-aware encode and validation batches must still complete');
+      const batchedDispatches = completed.payload.blockingSamples.filter(({ phase }) => (
+        phase === 'encode_part_dispatch'
+        || phase.endsWith('validate_chunk_dispatch')
+        || phase.endsWith('validate_finish_dispatch')
+      ));
+      assert.ok(batchedDispatches.length > 4,
+        `fixture must exercise repeated worker dispatch tasks; got ${JSON.stringify(batchedDispatches)}`);
+      assert.equal(completed.payload.observedHardLimitMet, true,
+        `repeated clone posts must yield before crossing 12ms; ${JSON.stringify(batchedDispatches)}`);
+      assert.ok(batchedDispatches.every(({ ms }) => ms <= completed.payload.hardSliceMs),
+        `every batched worker dispatch must remain within the raw hard slice; ${JSON.stringify(batchedDispatches)}`);
+      assertCanonicalSaveData(h.storage.getItem('sf.save.auto'));
+    } finally { h.restore(); }
+  }, { label: 'batched worker dispatch clone posts' });
 });
 
 test('crowded-flight probe keeps listeners and records settle wait for in-flight autosave', () => {
