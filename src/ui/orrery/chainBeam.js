@@ -32,12 +32,13 @@ const CSS = `
 .orr-svg .orr-chain__timearc { stroke:rgb(248 244 234 / .7); }
 .orr-svg .orr-chain__timearc-bloom { stroke:rgb(${BONE}); }
 .orr-svg .orr-chain__timearc--off { stroke:rgb(${BONE} / .28); }
-.orr-svg .orr-chain__track { stroke:rgb(${BONE} / .3); }
-.orr-svg .orr-chain__track-cap { fill:rgb(${BONE} / .6); }
-.orr-svg .orr-chain__stock-track { stroke:rgb(${BONE} / .33); }
+/* weight, not wire: the run track and every stock gauge are bands under an edge; their fills are lit values with beads */
+.orr-svg .orr-chain__track { --orr-band-a:.08; --orr-edge-a:.42; --orr-w-edge:1.5px; }
+.orr-svg .orr-chain__track-cap { fill:rgb(${BONE} / .66); }
+.orr-svg .orr-chain__stock-track { --orr-band-a:.09; --orr-edge-a:.44; --orr-w-edge:1.5px; }
 .orr-svg .orr-chain__stock-div { stroke:rgb(${BONE} / .6); }
 .orr-svg .orr-chain__stock-fill { stroke:rgb(248 244 234); }
-.orr-svg .orr-chain__stock-bloom { stroke:rgb(${BONE}); }
+.orr-svg .orr-chain__stock-bloom { stroke:rgb(${BONE} / .22); }
 .orr-svg .orr-chain__beam--short { stroke:rgb(${BONE} / .33); stroke-dasharray:none; }
 .orr-chain.is-blocked .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .45); }
 .orr-chain.is-blocked .orr-svg .orr-chain__node.orr-chain__node--short { stroke:rgb(${BONE} / .4); }
@@ -69,7 +70,7 @@ const CSS = `
 .orr-chain__time { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:calc(9.5px * var(--orr-chain-s)); font-weight:650; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .6); }
 .orr-chain__qty { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250; font-size:calc(40px * var(--orr-chain-g, 1)); line-height:1; letter-spacing:-.01em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-chain__unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:calc(9.5px * var(--orr-chain-s)); white-space:nowrap; line-height:1.3; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .6); }
-.orr-svg .orr-chain__node { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.3; }
+.orr-svg .orr-chain__node { fill:none; stroke:rgb(${BONE} / .85); stroke-width:2; }
 .orr-svg .orr-chain__reason-leader { stroke:rgb(${BONE} / .6); }
 .orr-chain__label.is-below .orr-chain__qty { display:block; text-align:center; }
 .orr-chain__label.is-ghost .orr-chain__qty { font-size:calc(40px * var(--orr-chain-g, 1) * .55); }
@@ -79,12 +80,12 @@ const CSS = `
 .orr-svg .orr-chain__node--process.orr-chain__node--blocked { stroke:rgb(${BONE} / .55); stroke-dasharray:4 3; }
 .orr-svg .orr-chain__node-bloom { stroke:rgb(${BONE} / .9); }
 .orr-svg .orr-chain__progress { stroke:rgb(248 244 234); }
-.orr-svg .orr-chain__progress-bloom { stroke:rgb(${BONE}); }
+.orr-svg .orr-chain__progress-bloom { stroke:rgb(${BONE} / .22); }
 .orr-svg .orr-chain__glyph { fill:none; stroke:rgb(${BONE} / .85); stroke-width:1.35; stroke-linecap:square; stroke-linejoin:miter; filter:drop-shadow(0 0 2px rgb(236 230 216 / .45)); }
 .orr-svg .orr-chain__glyph.is-short { stroke:rgb(${BONE} / .5); }
 .orr-svg .orr-chain__glyph :is(path, rect, circle, ellipse) { vector-effect:non-scaling-stroke; }
 .orr-chain__reason { font-family:var(--dp-face-display, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250; font-size:calc(30px * var(--orr-chain-s)); font-weight:250; line-height:1.05; color:rgb(248 244 234); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
-.orr-svg .orr-chain__node--out { stroke:rgb(248 244 234); stroke-width:1.6; }
+.orr-svg .orr-chain__node--out { stroke:rgb(248 244 234); stroke-width:2.4; }
 .orr-svg .orr-chain__core { fill:rgb(246 241 230); }
 .orr-svg .orr-chain__beam { stroke:rgb(${BONE} / .55); }
 .orr-svg .orr-chain__beam--short { stroke:rgb(${BONE} / .3); }
@@ -213,14 +214,14 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const x0 = xIn + rIn;
       const run = Math.max(24, Math.min(60 * scL, (endX - x0) * 0.35));
       const d = `M ${f(x0)} ${f(y)} C ${f(x0 + (endX - x0) * 0.45)} ${f(y)}, ${f(endX - run)} ${f(endY)}, ${f(endX)} ${f(endY)}`;
-      layer.appendChild(riseG(svg('path', { d, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: short ? '.08' : '.22' }), 80 + i * 40));
-      const beam = svg('path', { d, class: `orr-core orr-chain__beam${short ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.2 });
+      layer.appendChild(riseG(svg('path', { d, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 9, opacity: short ? '.08' : '.2' }), 80 + i * 40));
+      const beam = svg('path', { d, class: `orr-core orr-chain__beam${short ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 2 });
       layer.appendChild(rise(beam, 80 + i * 40));
       if (live && arriveNow && !short) {
         const id = `orr-chain-${++pathSeq}`;
         beam.setAttribute('id', id);
         const pulse = svg('g', {});
-        pulse.append(svg('circle', { r: 5, class: 'orr-chain__pulse-bloom' }), svg('circle', { r: 2, class: 'orr-chain__pulse' }));
+        pulse.append(svg('circle', { r: 7, class: 'orr-chain__pulse-bloom' }), svg('circle', { r: 2.6, class: 'orr-chain__pulse' }));
         const m = svg('animateMotion', { dur: '2.2s', begin: `${(i * 0.5).toFixed(1)}s`, repeatCount: 'indefinite' });
         m.appendChild(svg('mpath', { href: `#${id}` }));
         pulse.appendChild(m);
@@ -232,12 +233,18 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       const have = Math.max(0, Math.min(need, Number(inp.have) || 0));
       const frac = have / need;
       const gauge = svg('g', { class: `orr-chain__stock${frac >= 1 ? ' is-full' : frac > 0 ? ' is-part' : ' is-empty'}` });
-      gauge.appendChild(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-core orr-chain__stock-track', 'stroke-width': 1 }));
-      if (need <= 12) gauge.appendChild(svg('path', { d: ticksD(xIn, y, rIn, need, { len: 6, major: need + 1, majorLen: 6, inward: true }), class: 'orr-core orr-chain__stock-div', 'stroke-width': 1.2 }));
+      const bandW = Math.max(4, Math.min(7, rIn * 0.42));
+      gauge.appendChild(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-band orr-chain__stock-track', style: `--orr-w-band:${f(bandW)}px` }));
+      gauge.appendChild(svg('circle', { cx: f(xIn), cy: f(y), r: rIn, class: 'orr-edge orr-chain__stock-track' }));
+      if (need <= 12) gauge.appendChild(svg('path', { d: ticksD(xIn, y, rIn, need, { len: 6, major: need + 1, majorLen: 6, inward: true }), class: 'orr-core orr-chain__stock-div', 'stroke-width': 1.5 }));
       if (frac > 0.001) {
-        const dA = arcD(xIn, y, rIn, 0, 360 * Math.min(0.9999, frac));
-        gauge.appendChild(svg('path', { d: dA, class: 'orr-bloom orr-chain__stock-bloom', 'stroke-width': 5, opacity: '.2' }));
-        gauge.appendChild(svg('path', { d: dA, class: 'orr-core orr-chain__stock-fill', 'stroke-width': 1.8, 'stroke-linecap': 'butt' }));
+        const endDeg = 360 * Math.min(0.9999, frac);
+        const dA = arcD(xIn, y, rIn, 0, endDeg);
+        gauge.appendChild(svg('path', { d: dA, class: 'orr-lit-bloom orr-chain__stock-bloom', style: `--orr-w-lit-bloom:${f(Math.min(11, bandW * 1.7))}px; stroke-linecap:butt` }));
+        gauge.appendChild(svg('path', { d: dA, class: 'orr-lit orr-chain__stock-fill', style: '--orr-w-lit:3px; stroke-linecap:butt' }));
+        const [ex, ey] = polar(xIn, y, rIn, endDeg);
+        gauge.appendChild(svg('circle', { cx: f(ex), cy: f(ey), r: 5.5, class: 'orr-bead-bloom' }));
+        gauge.appendChild(svg('circle', { cx: f(ex), cy: f(ey), r: 2.8, class: 'orr-bead' }));
       }
       layer.appendChild(rise(gauge, 60 + i * 40));
       if (inp.glyph) layer.appendChild(rise(glyphAt(inp.glyph, xIn, y, rIn, short ? 'is-short' : ''), 60 + i * 40));
@@ -249,29 +256,34 @@ export function createChainBeam(host, { onLayout = null } = {}) {
     // the process: a ring with the word in it
     const proc = svg('g', {});
     proc.append(
-      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 5, opacity: blocked ? '.06' : '.14' }),
-      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: `orr-core orr-chain__node--process${blocked ? ' orr-chain__node--blocked' : ''}`, 'stroke-width': 1.2, fill: 'none' }),
+      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 8, opacity: blocked ? '.06' : '.14' }),
+      svg('path', { d: arcD(xProc, cy, rProc, 0, 360), class: `orr-core orr-chain__node--process${blocked ? ' orr-chain__node--blocked' : ''}`, 'stroke-width': 2, fill: 'none' }),
       // the ring's own scale: sixty minor ticks inside the stroke, so the time arc has something to read against
-      svg('path', { d: ticksD(xProc, cy, rProc - 3, rProc < 90 ? 30 : 60, { len: 3, major: rProc < 90 ? 5 : 15, majorLen: 6, inward: true }), class: 'orr-core orr-chain__scale', 'stroke-width': 1 }),
+      svg('path', { d: ticksD(xProc, cy, rProc - 3, rProc < 90 ? 30 : 60, { len: 3, major: rProc < 90 ? 5 : 15, majorLen: 6, inward: true }), class: 'orr-core orr-chain__scale', 'stroke-width': 1.5 }),
     );
     // the run time as an arc on that scale: full when instant, filling on a timed job, empty and dashed when blocked
     const timeFrac = blocked ? 0 : (Number.isFinite(data.timeFrac) ? Math.max(0, Math.min(1, data.timeFrac)) : 1);
     if (timeFrac > 0.005) {
       const dT = arcD(xProc, cy, rProc - 9, 0, 360 * timeFrac);
-      proc.appendChild(svg('path', { d: dT, class: 'orr-bloom orr-chain__timearc-bloom', 'stroke-width': 5, opacity: '.16' }));
-      proc.appendChild(svg('path', { d: dT, class: 'orr-core orr-chain__timearc', 'stroke-width': 1.5 }));
+      proc.appendChild(svg('path', { d: dT, class: 'orr-bloom orr-chain__timearc-bloom', 'stroke-width': 8, opacity: '.16' }));
+      proc.appendChild(svg('path', { d: dT, class: 'orr-core orr-chain__timearc', 'stroke-width': 2.4 }));
     }
     // the run track: the ring's outer gauge, open at twelve o'clock (the reason's leader lands in the gap) and capped
     // at both ends so an empty track reads as a track that will fill; a job's progress fills it clockwise from the gap
     const rT = rProc + 8 * scL;
     const gapDeg = (7 / (2 * Math.PI * rT)) * 360;
-    proc.appendChild(svg('path', { d: arcD(xProc, cy, rT, gapDeg, 360 - gapDeg), class: 'orr-core orr-chain__track', 'stroke-width': 1 }));
-    for (const a of [gapDeg, 360 - gapDeg]) { const [tx, ty] = polar(xProc, cy, rT, a); proc.appendChild(svg('circle', { cx: f(tx), cy: f(ty), r: 1.6, class: 'orr-chain__track-cap' })); }
+    const trackW = Math.max(4, Math.min(6, 6 * scL - 1));
+    proc.appendChild(svg('path', { d: arcD(xProc, cy, rT, gapDeg, 360 - gapDeg), class: 'orr-band orr-chain__track', style: `--orr-w-band:${f(trackW)}px; stroke-linecap:butt` }));
+    proc.appendChild(svg('path', { d: arcD(xProc, cy, rT, gapDeg, 360 - gapDeg), class: 'orr-edge orr-chain__track' }));
+    for (const a of [gapDeg, 360 - gapDeg]) { const [tx, ty] = polar(xProc, cy, rT, a); proc.appendChild(svg('circle', { cx: f(tx), cy: f(ty), r: 2.4, class: 'orr-chain__track-cap' })); }
     const progress = Number.isFinite(data.progress) ? Math.max(0, Math.min(1, data.progress)) : null;
     if (progress != null && progress > 0.005) {
       const dP = arcD(xProc, cy, rT, gapDeg, gapDeg + (360 - 2 * gapDeg) * progress);
-      proc.appendChild(svg('path', { d: dP, class: 'orr-bloom orr-chain__progress-bloom', 'stroke-width': 5, opacity: '.2' }));
-      proc.appendChild(svg('path', { d: dP, class: 'orr-core orr-chain__progress', 'stroke-width': 1.6 }));
+      proc.appendChild(svg('path', { d: dP, class: 'orr-lit-bloom orr-chain__progress-bloom', style: '--orr-w-lit-bloom:10px' }));
+      proc.appendChild(svg('path', { d: dP, class: 'orr-lit orr-chain__progress', style: '--orr-w-lit:3px' }));
+      const [px2, py2] = polar(xProc, cy, rT, gapDeg + (360 - 2 * gapDeg) * progress);
+      proc.appendChild(svg('circle', { cx: f(px2), cy: f(py2), r: 7, class: 'orr-bead-bloom' }));
+      proc.appendChild(svg('circle', { cx: f(px2), cy: f(py2), r: 3.4, class: 'orr-bead' }));
     }
     // the process name rides the top of the ring's inner scale
     const arcId = `orr-chain-arc-${++pathSeq}`;
@@ -298,27 +310,27 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       rl.style.width = compactW ? '320px' : '300px';
       // the block's last line (the way out) clears the leader: seat the block's foot 26px above the ring
       if (rl.offsetHeight) rl.style.top = `${f(cy - rProc - 26 * scL - rl.offsetHeight)}px`;
-      proc.appendChild(svg('path', { d: `M ${f(xProc)} ${f(cy - rProc - 2)} L ${f(xProc)} ${f(cy - rProc - 20 * scL)}`, class: 'orr-core orr-chain__reason-leader', 'stroke-width': 1.5 }));
+      proc.appendChild(svg('path', { d: `M ${f(xProc)} ${f(cy - rProc - 2)} L ${f(xProc)} ${f(cy - rProc - 20 * scL)}`, class: 'orr-core orr-chain__reason-leader', 'stroke-width': 2 }));
       if (arriveNow) { rl.classList.add('orr-chain__rise'); rl.style.setProperty('--orr-delay', '260ms'); }
     }
     if (arriveNow && tl) { tl.classList.add('orr-chain__rise'); tl.style.setProperty('--orr-delay', '240ms'); }
     if (arriveNow) { pl.classList.add('orr-chain__rise'); pl.style.setProperty('--orr-delay', '220ms'); }
     // out: one beam to the product
     const dOut = `M ${f(xProc + rProc - 1)} ${f(cy)} L ${f(xOut - rOut - 2)} ${f(cy)}`;
-    layer.appendChild(riseG(svg('path', { d: dOut, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 6, opacity: blocked ? '.05' : live ? '.22' : '.14' }), 260));
-    const outBeam = svg('path', { d: dOut, class: `orr-core orr-chain__beam${blocked ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 1.4 });
+    layer.appendChild(riseG(svg('path', { d: dOut, class: 'orr-bloom orr-chain__beam-bloom', 'stroke-width': 10, opacity: blocked ? '.05' : live ? '.2' : '.14' }), 260));
+    const outBeam = svg('path', { d: dOut, class: `orr-core orr-chain__beam${blocked ? ' orr-chain__beam--short' : live ? ' orr-chain__beam--live' : ''}`, 'stroke-width': 2.4 });
     layer.appendChild(rise(outBeam, 260));
     if (live && arriveNow) {
       const id = `orr-chain-${++pathSeq}`;
       outBeam.setAttribute('id', id);
       const pulse = svg('g', {});
-      pulse.append(svg('circle', { r: 5, class: 'orr-chain__pulse-bloom' }), svg('circle', { r: 2, class: 'orr-chain__pulse' }));
+      pulse.append(svg('circle', { r: 7, class: 'orr-chain__pulse-bloom' }), svg('circle', { r: 2.6, class: 'orr-chain__pulse' }));
       const m = svg('animateMotion', { dur: '1.6s', begin: '1.1s', repeatCount: 'indefinite' });
       m.appendChild(svg('mpath', { href: `#${id}` }));
       pulse.appendChild(m);
       layer.appendChild(pulse);
     }
-    layer.appendChild(riseG(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: 'orr-bloom orr-chain__node-bloom', 'stroke-width': 4, opacity: blocked ? '.05' : '.18', fill: 'none' }), 300));
+    layer.appendChild(riseG(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: 'orr-bloom orr-chain__node-bloom', 'stroke-width': 7, opacity: blocked ? '.05' : '.18', fill: 'none' }), 300));
     layer.appendChild(rise(svg('circle', { cx: f(xOut), cy: f(cy), r: rOut, class: `orr-chain__node orr-chain__node--out${blocked ? ' orr-chain__node--short' : ''}` }), 300));
     if (data.output && data.output.glyph) layer.appendChild(rise(glyphAt(data.output.glyph, xOut, cy, rOut, blocked ? 'is-short' : ''), 300));
     const ol = label(`is-centre is-below${blocked ? ' is-ghost' : ''}`, xOut - 110, cy + rOut + 10 * scL, `<span class="orr-chain__qty">${data.output && data.output.qty != null ? data.output.qty : ''}</span><span class="orr-chain__unit">${String(data.output && data.output.unit ? data.output.unit : 'per run').split(' · ').join('<br>')}</span>`);
