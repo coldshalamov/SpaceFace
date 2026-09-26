@@ -325,7 +325,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     node.appendChild(name);
     node.appendChild(pts);
     lines.appendChild(node);
-    lineNodes.set(key ?? `anon-${++lineOrder}`, { key: key ?? `anon-${lineOrder}`, node, pts, until: now + ttl, order: ++lineOrder });
+    const storedKey = key ?? `anon-${lineOrder + 1}`;
+    lineNodes.set(storedKey, { key: storedKey, node, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
   }
 
@@ -407,7 +408,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
 
   function wake() {
     if (destroyed || frameOff || typeof requestAnimationFrame !== 'function') return;
-    frameOff = onFrame((now) => update(typeof now === 'number' ? now : wallNow()));
+    // The ORRERY scheduler drops a listener whose step returns false, so clear the stale handle
+    // here — otherwise the layer could never re-arm after its first dark frame.
+    frameOff = onFrame((now) => {
+      const keep = update(typeof now === 'number' ? now : wallNow());
+      if (!keep && frameOff) { frameOff(); frameOff = null; }
+      return keep;
+    });
   }
 
   const unsubs = [];

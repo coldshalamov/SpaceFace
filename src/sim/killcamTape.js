@@ -53,6 +53,7 @@ function createShipTrack() {
     id: null,
     team: 0,
     player: false,
+    kind: 'ship',
     visual: null,
     silhouette: null,
     radius: 0,
@@ -70,6 +71,7 @@ function createRoundTrack() {
   return {
     used: false,
     id: null,
+    kind: 'round',
     team: 0,
     firstSample: 0,
     lastSample: -1,
@@ -206,10 +208,11 @@ export function createKillcamRecorder(options = {}) {
 
       // Close what died since the last accepted sample — alive flag dropped or entity
       // swept. A closed ship leaves its samples in place (the wreck) and a death flash.
-      for (const [id, track] of byId) {
-        if (track.dead || track.lastSample < 0 || track.lastSample >= seq) continue;
+      // forEach, not for-of over entries: no per-entry pair allocation on the tick path.
+      byId.forEach((track, id) => {
+        if (track.dead || track.lastSample < 0 || track.lastSample >= seq) return;
         const stillThere = findAlive(list, id);
-        if (stillThere) continue;
+        if (stillThere) return;
         track.dead = true;
         if (isShipTrack(track)) {
           track.deathSample = track.lastSample;
@@ -219,7 +222,7 @@ export function createKillcamRecorder(options = {}) {
         }
         // Dead tracks keep their ring until recycled — the wreck and its flash replay
         // for as long as they stay inside the window.
-      }
+      });
     },
 
     /** Ship death flashes, ascending by sample, inside the window [fromSample, toSample]. */
@@ -259,7 +262,7 @@ function findAlive(list, id) {
 }
 
 function isShipTrack(track) {
-  return track && track.ring.length === KILLCAM_SAMPLE_COUNT * SHIP_STRIDE;
+  return !!track && track.kind === 'ship';
 }
 
 /** Last pose + finite-difference velocity of a dying ship, from its ring. */

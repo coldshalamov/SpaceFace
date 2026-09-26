@@ -306,6 +306,48 @@ test('the overlay gates on the run, the stack and the clock; lines expire, reduc
   assert.equal(owner.root.parentNode, null, 'destroy unmounts the layer');
 });
 
+test('the layer re-arms after going dark — a trick after expiry still names itself', () => {
+  // Regression: the ORRERY frame scheduler deletes a listener whose step returned false, so the
+  // layer's own frame handle had to be cleared when it went dark — otherwise the first settled
+  // chain put the callout stream to sleep for the rest of the round. This test drives the REAL
+  // scheduler shape: a queued rAF, a tick that drops listeners which return false.
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const combo = createComboState();
+  const state = calloutState(combo);
+  const pending = [];
+  const realRAF = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { pending.push(fn); return pending.length; };
+  let owner;
+  try {
+    owner = createStuntCallout({ state, bus, doc });
+    const runFrame = (now) => { for (const fn of pending.splice(0)) fn(now); };
+
+    bus.emit('stunt:trickDetected', trickFor());
+    assert.ok(pending.length > 0, 'the first act wakes the frame step');
+    const t0 = calloutNow();
+    runFrame(t0 + 1);
+    assert.ok(!owner.root.hidden, 'the line is up');
+
+    // The line expires and the chain is banked: the step returns false, the scheduler drops it.
+    bankActive(combo, { tick: 2000 });
+    runFrame(t0 + CALLOUT_TTL_MS + 100);
+    assert.ok(owner.root.hidden, 'the layer is dark');
+    const queuedAfterDark = pending.length;
+
+    bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep9' }));
+    assert.ok(pending.length > queuedAfterDark, 'a later act re-arms the frame step');
+    // Drive on the layer's real clock from here: the fresh line lives at wallNow + TTL, so a
+    // synthetic now past t0 + TTL would prune it the frame it appears.
+    runFrame(calloutNow() + 1);
+    assert.ok(!owner.root.hidden, 'the layer is awake again');
+    assert.match(calloutTextFor(owner.root), /Wrecking Ball/, 'the new act is named on the glass');
+  } finally {
+    globalThis.requestAnimationFrame = realRAF;
+    if (owner) owner.destroy();
+  }
+});
+
 test('the mount is node-inert and the singleton release is safe without a document', () => {
   const inert = createStuntCallout({ doc: {} });
   assert.equal(inert.root, null, 'no document, no layer');
