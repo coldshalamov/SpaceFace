@@ -58,6 +58,7 @@ import * as encounter054 from './341-vael-lane-tithe.js';
 import * as encounter055 from './342-vael-station-screen.js';
 import * as encounter056 from './343-unique-wreck-choir-tender-investigator.js';
 import * as encounter057 from './344-opening-hauler-raid.js';
+import * as encounter058 from './345-belt-claim-jumpers.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -117,5 +118,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter055,
   encounter056,
   encounter057,
+  encounter058,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
