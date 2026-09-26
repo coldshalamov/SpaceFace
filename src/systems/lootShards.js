@@ -536,7 +536,10 @@ export const lootShards = {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
       this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
-      this._unsubs.push(this.bus.on('game:started', () => { if (this._magnetTracked) this._magnetTracked.clear(); }));
+      this._unsubs.push(this.bus.on('game:started', () => {
+        if (this._magnetTracked) this._magnetTracked.clear();
+        this._catchNetsQuiet = null;
+      }));
     }
   },
 
@@ -608,7 +611,10 @@ export const lootShards = {
   },
 
   _catchPodsInNets(state) {
-    if (!state || state.mode !== 'flight') return;
+    if (!state || state.mode !== 'flight') {
+      publishCatchNetsQuiet(state, false);
+      return;
+    }
     // Quiet open flight: any non-jettisoned payloads still force a payloads+shipLike
     // census of isOutlawCatchNet / isJettisonedCargoPod every tick while no nets and
     // no flying pods exist. Latch when both bags stay empty; wake on membership, a
@@ -627,6 +633,7 @@ export const lootShards = {
       }
     } else if (this._catchNetsQuiet) {
       this._catchNetsQuiet = null;
+      publishCatchNetsQuiet(state, false);
     }
     const index = state.entityIndex;
     // Prior empty-payloads early-out: no payload bucket means no pods to catch.

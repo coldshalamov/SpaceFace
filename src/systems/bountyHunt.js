@@ -81,6 +81,9 @@ export const bountyHunt = {
 
   newGame() {
     if (this.state) this.state.bountyHunt = freshState();
+    this._huntersQuiet = null;
+    this._hunterWakeSeq = 0;
+    publishBountyHuntQuiet(this.state, false);
   },
 
   update(_dt, state) {
@@ -106,6 +109,7 @@ export const bountyHunt = {
       }
     } else if (this._huntersQuiet) {
       this._huntersQuiet = null;
+      publishBountyHuntQuiet(state, false);
     }
 
     let anyHunter = false;
