@@ -263,7 +263,147 @@ const ROUTES = {
       return { dockedAt: s0.dockedStationId, visited };
     });
   },
+
+  // Edge states: hostile input + lifecycle seams on the real path.
+  async edge(ctx) {
+    await B(ctx, 'x01-title', 'title census (post-A1-fix run)', async () => {
+      await ctx.page.waitForFunction(() =>
+        document.body.dataset.kScreen === 'mainMenu'
+        || !!document.querySelector('.screen[data-screen="mainMenu"]'), null, { timeout: 60_000 });
+      await sleep(2500);
+      const s = await snap(ctx);
+      return { screen: s.screen, controls: s.controls.length };
+    });
+
+    await newGameToFlight(ctx);
+
+    await B(ctx, 'x02-undock-none', 'E pressed while not docked — should be a no-op or benign', async () => {
+      await pressKey(ctx, 'e', 800);
+      return { screen: await screenOf(ctx), mode: await modeOf(ctx) };
+    });
+
+    await B(ctx, 'x03-pause-quit', 'Esc -> pause -> quit/abandon to title mid-flight', async () => {
+      await pressKey(ctx, 'Escape', 1000);
+      const p = await snap(ctx);
+      await shotNow(ctx, 'x03-pause');
+      const quit = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /quit|abandon|main menu|title|exit/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(1600);
+      // Quit may open a confirm dialog — accept it.
+      const confirm = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /confirm|yes|quit|leave|abandon/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(1600);
+      const s = await snap(ctx);
+      if (s.screen !== 'mainMenu' && quit) observe(ctx, 'rough-edge', 'lifecycle', `quit verb "${quit}" landed on screen=${s.screen}, mode=${s.mode}`);
+      return { pauseScreen: p.screen, quitVerb: quit, confirmVerb: confirm, screen: s.screen, mode: s.mode };
+    });
+
+    await B(ctx, 'x04-resume-continue', 'Continue from title after quit — run state should restore', async () => {
+      const s0 = await snap(ctx);
+      const hasContinue = (s0.controls || []).some((c) => /continue/i.test(c.text || ''));
+      if (!hasContinue) return { screen: s0.screen, continueAvailable: false };
+      await clickWord(ctx, /continue/i, 10_000);
+      await sleep(3000);
+      const s = await snap(ctx);
+      return { continueAvailable: true, screen: s.screen, mode: s.mode, simTime: s.simTime, player: s.player };
+    });
+
+    await B(ctx, 'x05-rapid-toggles', 'open/close spam: m Esc n Esc j Esc t Esc', async () => {
+      for (const k of ['m', 'Escape', 'n', 'Escape', 'j', 'Escape', 't', 'Escape']) await pressKey(ctx, k, 260);
+      await sleep(900);
+      const s = await snap(ctx);
+      const leftovers = (s.screens || []).filter((x) => x.visible && x.id !== s.screen);
+      if (leftovers.length) observe(ctx, 'defect', 'screens', `toggle-spam leftovers visible: ${JSON.stringify(leftovers.map((x) => x.id))}`);
+      return { screen: s.screen, mode: s.mode, leftovers };
+    });
+  },
+
+  // Crucible: open from title, launch quick play, fight briefly, observe combat UI, then leave.
+  async combat(ctx) {
+    await B(ctx, 'c01-door', 'title -> Crucible door', async () => {
+      await clickWord(ctx, /crucible/i, 12_000);
+      await sleep(1400);
+      const s = await snap(ctx);
+      return { screen: s.screen, controls: s.controls.length };
+    });
+
+    await B(ctx, 'c02-launch', 'Quick play -> crucible flight', async () => {
+      const clicked = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /quick play|launch|begin|fight|enter/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(2500);
+      const s = await snap(ctx);
+      return { verb: clicked, screen: s.screen, mode: s.mode };
+    });
+
+    await B(ctx, 'c03-fight', 'thrust + fire for 20s — combat HUD, target reads, damage', async () => {
+      const before = await snap(ctx);
+      await ctx.page.keyboard.down('w');
+      await sleep(3000);
+      await ctx.page.keyboard.up('w');
+      // Fire whatever is bound (Space = fire in most sims; also click-to-fire fallback).
+      for (let i = 0; i < 8; i++) { await ctx.page.keyboard.press(' '); await sleep(400); }
+      await shotNow(ctx, 'c03-firing');
+      await sleep(9000);
+      const s = await snap(ctx);
+      return {
+        screen: s.screen, mode: s.mode, hostiles: s.hostilesNear,
+        textHead: (s.text || '').slice(0, 300), player: s.player,
+      };
+    });
+
+    await B(ctx, 'c04-deathwatch', 'idle 30s in arena — death/results screen if hull fails', async () => {
+      await sleep(30_000);
+      const s = await snap(ctx);
+      await shotNow(ctx, 'c04-late');
+      return { screen: s.screen, mode: s.mode, player: s.player, textHead: (s.text || '').slice(0, 200) };
+    });
+
+    await B(ctx, 'c05-exit', 'leave crucible (pause -> quit or results -> menu)', async () => {
+      await pressKey(ctx, 'Escape', 900);
+      const p = await snap(ctx);
+      const verb = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /quit|leave|abandon|main menu|exit|concede|forfeit/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(1500);
+      await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && /confirm|yes|quit|leave|forfeit/i.test(e.textContent || ''))[0];
+        if (b) b.click();
+      });
+      await sleep(1500);
+      const s = await snap(ctx);
+      return { pauseScreen: p.screen, verb, screen: s.screen, mode: s.mode };
+    });
+  },
 };
+
+// ---------------------------------------------------------------- flight helpers
+
+// New Game -> config -> start -> flight. Shared by routes that need a live run.
+async function newGameToFlight(ctx) {
+  await clickWord(ctx, /new game|adventure/i, 12_000);
+  await sleep(1500);
+  await ctx.page.evaluate(() => {
+    const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+      .filter((e) => e.offsetParent !== null
+        && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
+        && !/back|cancel|return/i.test(e.textContent || ''))[0];
+    if (w) w.click();
+  });
+  await waitMode(ctx, 'flight', 90_000);
+  await sleep(800);
+}
 
 // ---------------------------------------------------------------- run
 
