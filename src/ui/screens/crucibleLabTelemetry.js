@@ -4,10 +4,6 @@
 // current(), which is reserved slots (including never-hostile team-2 patrols and unbound reservations).
 //
 // Deferred (verified: no honest live owner, or a disabled counter whose 0 would be a vacuous zero):
-// - Orbit nodes: an honest owner EXISTS as of PQ-133.06b — `countLiveOrbitNodes(state)` in
-//   src/systems/orbitNodeRuntime.js, published as state.fields.orbit = { count, nodes }. This
-//   overlay still does not draw it; that is a screen change, not a missing counter. The reason
-//   this line sat here was true when written and is not any more.
 // - queryCandidates / collisionPairs / vfxEmissions: src/core/perfCounters.js totals gated by
 //   perfCountersRequested(); this overlay does not enable them.
 // Spatial-hash queries ship as the always-on cumulative SpatialHash.diagnostics.queries total.
@@ -30,6 +26,7 @@ export const CRUCIBLE_LAB_TELEMETRY_KEYS = Object.freeze([
   'activeFields',
   'contacts',
   'spatialQueries',
+  'orbitNodes',
   'spawnBudgetCurrent',
   'spawnBudgetMax',
 ]);
@@ -54,6 +51,7 @@ const ROWS = Object.freeze([
   { key: 'activeFields', label: 'Fields', sampled: false, format: 'int' },
   { key: 'contacts', label: 'Contacts', sampled: false, format: 'int' },
   { key: 'spatialQueries', label: 'Spatial-hash queries (cumulative)', sampled: false, format: 'int' },
+  { key: 'orbitNodes', label: 'Orbit nodes', sampled: false, format: 'int' },
   { key: 'spawnBudget', label: 'Spawn budget', sampled: false, format: 'budget' },
 ]);
 
@@ -173,6 +171,12 @@ export function readCrucibleLabTelemetry(ctx) {
       && state.spatialHash.diagnostics
       && state.spatialHash.diagnostics.queries;
     snapshot.spatialQueries = numericOrNull(spatialQueries);
+
+    // orbitNodes: src/systems/orbitNodeRuntime.js publishOrbitRuntime → state.fields.telemetry.orbitNodes
+    const orbitNodes = state.fields
+      && state.fields.telemetry
+      && state.fields.telemetry.orbitNodes;
+    snapshot.orbitNodes = numericOrNull(orbitNodes);
   } catch {
     return nullSnapshot();
   }

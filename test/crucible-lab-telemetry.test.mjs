@@ -19,6 +19,7 @@ const EXPECTED_KEYS = [
   'activeFields',
   'contacts',
   'spatialQueries',
+  'orbitNodes',
   'spawnBudgetCurrent',
   'spawnBudgetMax',
 ];
@@ -117,7 +118,10 @@ function makeCtx(overrides = {}) {
       : { projectiles },
     fields: overrides.fields === null
       ? null
-      : { snapshot },
+      : {
+        snapshot,
+        telemetry: { orbitNodes: overrides.orbitNodes === undefined ? 3 : overrides.orbitNodes },
+      },
     physicsRuntime: overrides.physicsRuntime === null
       ? null
       : {
@@ -250,6 +254,7 @@ test('overlay reports exact values from spawn budget, entity list, field snapsho
   assert.equal(first.activeFields, 2);
   assert.equal(first.contacts, 9);
   assert.equal(first.spatialQueries, 18);
+  assert.equal(first.orbitNodes, 3);
   assert.equal(first.spawnBudgetCurrent, 7);
   assert.equal(first.spawnBudgetMax, 24);
 
@@ -338,6 +343,7 @@ test('every telemetry row moves when its source is mutated', () => {
     activeFields() { ctx.state.fields.snapshot.push({ id: 'b' }); },
     contacts() { ctx.state.physicsRuntime.diagnostics.rapierContacts = 9; },
     spatialQueries() { ctx.state.spatialHash.diagnostics.queries = 15; },
+    orbitNodes() { ctx.state.fields.telemetry.orbitNodes = 7; },
     spawnBudgetCurrent() { budget.setCurrent(9); },
     spawnBudgetMax() { budget.setMax(30); },
   };
@@ -579,4 +585,23 @@ test('mount without a document or host does not throw and still returns a dispos
   } finally {
     globalThis.document = previousDocument;
   }
+});
+
+test('orbitNodes reads the published telemetry owner and nulls when the channel is absent', () => {
+  const player = makePlayer(1);
+  const { ctx } = makeCtx({
+    playerId: 1,
+    entities: new Map([[1, player]]),
+    orbitNodes: 5,
+  });
+  const live = readCrucibleLabTelemetry(ctx);
+  assert.equal(live.orbitNodes, 5);
+
+  ctx.state.fields.telemetry.orbitNodes = 0;
+  const idle = readCrucibleLabTelemetry(ctx);
+  assert.equal(idle.orbitNodes, 0);
+
+  ctx.state.fields.telemetry = {};
+  const absent = readCrucibleLabTelemetry(ctx);
+  assert.equal(absent.orbitNodes, null);
 });
