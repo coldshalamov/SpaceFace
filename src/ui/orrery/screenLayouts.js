@@ -618,6 +618,9 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .fh-tile-art { display:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; padding:6px 0 !important; width:auto !important; min-width:0 !important; max-width:96px; flex:none !important; }
 @media (min-width:1400px) { html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { width:84px !important; } }
+/* a legend word wider than one cell is clipped by the tile's cut, not wrapped: the wide mark spans
+   two cells (crucible.css) and the tile fills both. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile.sf-crd-hull--wide { width:100% !important; max-width:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-arenas) .orr-tile { flex:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) { max-width:max(40vw, 640px); flex-wrap:nowrap !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .fh-tile-legend { font-size:clamp(11.5px, .66vw, 12.5px) !important; letter-spacing:clamp(.08em, .12vw, .16em) !important; line-height:1.3 !important; }

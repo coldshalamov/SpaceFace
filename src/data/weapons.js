@@ -333,7 +333,7 @@ const SHIPPED_WEAPONS = [
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
-    purchasable: false, salvageOnly: true,
+    purchasable: false, unique: true, salvageOnly: true,
     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
   },
   ...EMERGENT_WEAPON_DEFS,

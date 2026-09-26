@@ -488,15 +488,50 @@ export function todayBoardFigures(profile, dateKey) {
 
 const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
 
-/** The most recent runs, newest first. Reads history as stored; never re-sorts by score. */
+/** The most recent runs, newest first. History is stored oldest→newest (settleCrucibleRun
+ *  appends); the door reads the tail. Never re-sorted by score — the order is the record. */
 export function recentRunRows(profile, limit = 5) {
   const hist = (profile && Array.isArray(profile.history)) ? profile.history : [];
-  return hist.slice(0, Math.max(0, limit)).map((run) => ({
+  return hist.slice(-Math.max(0, limit)).reverse().map((run) => ({
     outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
     wave: Number(run && run.wave) || 0,
     score: Number(run && run.score) || 0,
     arena: (run && run.arenaId) || '',
   }));
+}
+
+/** The full run log behind the five-row teaser — every recorded run, newest first, with the
+ *  context the results-history surface exists to show: where, how far, and what it was. */
+export function historyRunRows(profile) {
+  const hist = (profile && Array.isArray(profile.history)) ? profile.history : [];
+  return hist.slice().reverse().map((run) => {
+    const mutators = Array.isArray(run && run.mutators) ? run.mutators.length : 0;
+    const ruleset = String((run && run.ruleset) || '').trim();
+    const context = [
+      run && run.arenaId ? String(run.arenaId).replace(/^arena_/, '').replace(/_/g, ' ') : '',
+      ruleset && ruleset !== 'scored' ? ruleset.replace(/_/g, ' ') : '',
+      run && run.trialId ? 'trial' : '',
+      mutators > 0 ? `${mutators} mutator${mutators === 1 ? '' : 's'}` : '',
+      run && run.dailyDateKey ? 'daily' : '',
+      run && run.ghostHash ? 'ghost on file' : '',
+      run && run.bestLineId ? 'best line' : '',
+    ].filter(Boolean).join(' · ');
+    const distance = Number(run && run.deepestWave) > Number(run && run.wave)
+      ? `${run.wave}/${run.deepestWave}` : `${run.wave}`;
+    const tally = [
+      Number.isInteger(run && run.kills) && run.kills > 0 ? `${run.kills} kills` : '',
+      Number.isInteger(run && run.wavesCleared) && run.wavesCleared > 0 ? `${run.wavesCleared} cleared` : '',
+      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} cr` : '',
+    ].filter(Boolean).join(' · ');
+    return {
+      outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
+      wave: Number(run && run.wave) || 0,
+      distance,
+      score: Number(run && run.score) || 0,
+      context,
+      tally,
+    };
+  });
 }
 
 /**
@@ -570,6 +605,33 @@ function renderRecordRows(profile, hooks = {}) {
     band.appendChild(list);
   } else {
     band.appendChild(el('p', 'k-sentence sf-crd-none', 'No runs recorded yet. The first one starts the record.'));
+  }
+
+  // The run log: the dedicated results-history surface behind the five-row teaser. Every recorded
+  // run, newest first — outcome, arena, ruleset terms, distance, tally. Closed until asked; the
+  // door's job stays starting a run.
+  const log = historyRunRows(profile);
+  if (log.length) {
+    const drawer = el('details', 'sf-crd-log');
+    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${log.length} run${log.length === 1 ? '' : 's'} recorded`);
+    paintLegend(summary, false);
+    drawer.appendChild(summary);
+    const list = el('ul', 'k-rows sf-crd-log__list');
+    list.setAttribute('role', 'list');
+    for (const r of log) {
+      const row = staticRow(
+        `${r.outcome.toLowerCase()} · wave ${r.distance}`,
+        String(r.score),
+        { sub: [r.context, r.tally].filter(Boolean).join(' · '), className: 'sf-crd-log__row' },
+      );
+      row.setAttribute('role', 'listitem');
+      row.setAttribute('aria-label',
+        `${r.outcome === 'WON' ? 'Won' : r.outcome === 'LOST' ? 'Lost' : 'Left'} at wave ${r.distance}, `
+        + `${r.score} points${r.context ? ` — ${r.context}` : ''}${r.tally ? ` — ${r.tally}` : ''}.`);
+      list.appendChild(row);
+    }
+    drawer.appendChild(list);
+    band.appendChild(drawer);
   }
   return band;
 }
@@ -1010,6 +1072,9 @@ export const crucibleScreen = {
       const card = choiceTile(face, 'sf-crd-hull', '', HULL_ICON[starter.id] || 'hull');
       card.dataset.tileFit = 'fill';
       card.dataset.starterId = starter.id;
+      // The tile clips its legend to the cut shape — a word wider than one column is clipped on
+      // both ends ("DEMONSTRATOR" read "EMONSTRATO"), not wrapped. Give those kits two columns.
+      if (face.split(' ').some((w) => w.length > 10)) card.classList.add('sf-crd-hull--wide');
       if (!open) {
         const row = starterUnlockEntry(starter.id);
         const earn = row ? unlockConditionText(row) : 'Closed.';

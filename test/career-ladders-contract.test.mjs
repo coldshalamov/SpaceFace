@@ -374,7 +374,7 @@ test('reload mid-step preserves active step and receipts', () => {
 });
 
 test('DEF-03: version=11 missing careerLadders defaults via deserialize (no v12 claim)', () => {
-  assert.equal(CURRENT_VERSION, 11, 'live CURRENT_VERSION must remain 11; this packet does not bump v12');
+  assert.ok(CURRENT_VERSION >= 11, 'careerLadders defaults must arrive through deserialize, not a migration seed');
 
   const mig910 = MIGRATIONS.find((m) => m.from === 9 && m.to === 10);
   assert.ok(mig910, 'v9→v10 origins migration still present');
@@ -414,7 +414,17 @@ test('DEF-03: version=11 missing careerLadders defaults via deserialize (no v12 
   seedCareerLaddersOnData(data);
   assert.equal(data.careerLadders.schemaId, CAREER_LADDERS_SCHEMA_ID);
 
-  assert.equal(MIGRATIONS.some((m) => m.from === 11 && m.to === 12), false);
+  // Later lanes legitimately bumped the schema (npcJobs, uiScreenMemory, provenance). The ladder
+  // contract is narrower: no migration may seed careerLadders — proven above by walking the chain.
+  for (const m of MIGRATIONS) {
+    const probe = {};
+    m.fn(probe);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(probe, 'careerLadders'),
+      false,
+      `migration ${m.from}->${m.to} must not seed careerLadders`,
+    );
+  }
 });
 
 test('deterministic replay: same seed + signals → identical history hash', () => {
