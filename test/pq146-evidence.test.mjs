@@ -11,7 +11,10 @@ function body(id,type,x,z,vx=0,vz=0){const dynamic=type==='ship';return {id,type
   pos:{x,z},vel:{x:vx,z:vz},radius:dynamic?6:10,mass:dynamic?16:1000000,hull:100,hullMax:100,shield:0,armor:0,
   data:{defId:dynamic?'ship_kestrel':null,encounter:id===1?{id:'pq146'}:undefined},physicsBody:{schemaVersion:1,dynamic,radius:dynamic?6:10,mass:dynamic?16:1000000,inertiaY:48,ccd:true,revision:0}};}
 async function run({shove=true,alreadyDoomed=false,submaterial=false}={}){
-  const player=body(0,'ship',-100,-100),victim=body(1,'ship',submaterial?-60:-100,alreadyDoomed||submaterial?0:30,submaterial?20:80),rock=body(2,'asteroid',0,0);
+  // Velocities ride the restored fast ceilings: rock_discovery keys to closing >= 0.5 governed
+  // cruise (0.5 x 210 = 105), so the corridor speeds below re-derive the pre-restore 80/100 tune
+  // past the new gate while keeping the same miss/collide geometry.
+  const player=body(0,'ship',-100,-100),victim=body(1,'ship',submaterial?-60:-100,alreadyDoomed||submaterial?0:30,submaterial?20:86),rock=body(2,'asteroid',0,0);
   const entities=[player,victim,rock],state={playerId:0,entities:new Map(entities.map(e=>[e.id,e])),entityList:entities,mode:'flight',tick:0,simTime:0,combat:{},factions:{},settings:{},player:{}};
   const bus=createBus(),owner=await createSg02DynamicBodyOwner({publishTelemetry:false});owner.syncFromEntities(entities);owner.step(1/60);
   const previousConsequences=COMBAT_FLAGS.weaponImpulseConsequences;COMBAT_FLAGS.weaponImpulseConsequences=true;
@@ -20,7 +23,7 @@ async function run({shove=true,alreadyDoomed=false,submaterial=false}={}){
   const grammar=Object.create(stuntGrammar);grammar.init({state,bus});
   const consequence=Object.create(collisionConsequences);consequence.init({state,bus,registry:{get:id=>id==='combat'?{kernel}:null}});
   const tricks=[],contacts=[];bus.on('stunt:trickDetected',t=>tricks.push(t));bus.on('combat:collisionConsequence',c=>contacts.push(c));
-  if(shove)owner.applyImpulse({entityId:1,impulse:{x:16*(submaterial?80:20),y:0,z:alreadyDoomed||submaterial?0:-16*30},tick:0,reason:'weapon_hit',provenance:{actorId:0,weaponId:'wpn_concussion_cannon_m'}});
+  if(shove)owner.applyImpulse({entityId:1,impulse:{x:16*(submaterial?95:20),y:0,z:alreadyDoomed||submaterial?0:-16*30},tick:0,reason:'weapon_hit',provenance:{actorId:0,weaponId:'wpn_concussion_cannon_m'}});
   for(let tick=1;tick<=90;tick++){
     state.tick=tick;state.simTime=tick/60;owner.step(1/60);
     for(const p of owner.drainContactImpacts())bus.emit('physics:impact',{...p,tick:state.tick,consequenceKernelVersion:1});
