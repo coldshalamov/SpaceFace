@@ -3556,8 +3556,16 @@ export async function publishSectorBoundaryRecordSnapshot(records, options = {})
   if (!Array.isArray(published)
       || published.length !== candidates.length
       || published.some((value) => value !== true)) {
+    // Per-candidate status at throw time distinguishes a genuine publish loss (still
+    // claimed by this generation) from a mid-await supersede/abort rotation.
+    const detail = candidates.map((prepared, i) => {
+      const live = typeof options.currentRecordForId === 'function'
+        ? options.currentRecordForId(prepared?.id)
+        : undefined;
+      return `${prepared?.id ?? 'unknown'}=${published?.[i] === true ? 'ok' : `fail(active=${prepared?.active},state=${prepared?.state},inMap=${live === prepared ? 'yes' : 'no'})`}`;
+    }).join(',');
     throw failClosedSectorPrewarm(
-      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish`),
+      new Error(`Incoming sector ${options.sectorId ?? 'unknown'} lost a prepared authored boundary before publish [${detail}]`),
     );
   }
   return true;
@@ -9935,6 +9943,7 @@ export const render = {
         publishBoundaryRecords: options.publish === true
           ? (boundarySnapshot) => publishSectorBoundaryRecordSnapshot(boundarySnapshot, {
             publishRecords: (records) => this._sectorBoundaryPreparations.publishRecords(records),
+            currentRecordForId: (id) => this._sectorBoundaryPreparations.get(id),
             sectorId: record.sectorId,
           })
           : null,
