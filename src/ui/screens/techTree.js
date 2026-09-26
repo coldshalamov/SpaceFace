@@ -27,7 +27,7 @@ import { escapeMarkup as escapeHtml } from '../views/identity.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { el, settle, cue } from '../kit/index.js';
 import { wrapCanvasLines } from '../../localization/layout.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 
 // Branch -> sector, clockwise from the tier spoke at the top of the dial. Colour is by MEANING
 // (researched / open / locked), never by branch. Combat, the largest, takes the left of the dial so its
@@ -47,6 +47,53 @@ const STAR_ART = Object.freeze(Object.fromEntries(BRANCHES.map((b) => {
   try { return [b.id, new URL(`../../../assets/ui/generated/research/star-${b.id}.webp`, import.meta.url).href]; }
   catch (_) { return [b.id, `/assets/ui/generated/research/star-${b.id}.webp`]; }
 })));
+
+// Each star's body carries the glyph of what the node gives you (the kit's one icon family).
+const NODE_GLYPH = Object.freeze({
+  tech_combat_basics: 'fighter', tech_beam_focusing: 'spark', tech_kinetic_drivers: 'munitions', tech_guided_ordnance: 'target',
+  tech_plasma_dynamics: 'energy-core', tech_deflector_theory: 'shield', tech_hardened_deflectors: 'repel', tech_strike_craft: 'patrol',
+  tech_fire_control: 'scan', tech_warship_license: 'hull', tech_capital_weapons: 'weapon', tech_capital_hulls: 'shipworks',
+  tech_flagship_command: 'beacon', tech_attack_topology: 'cone', tech_ricochet_ballistics: 'route', tech_payload_conduction: 'heat',
+  tech_orbit_cryo: 'cooling', tech_industrial_mining: 'miner', tech_focused_extraction: 'mining', tech_deep_core_mining: 'ore',
+  tech_bulk_logistics: 'freighter', tech_matter_compression: 'cargo', tech_drive_tuning: 'engine', tech_impulse_ballistics: 'boost',
+  tech_graviton_drives: 'well', tech_long_range_survey: 'range', tech_tractor_systems: 'tow', tech_drone_control: 'pod',
+  tech_drone_swarm: 'utility', tech_autonomous_fleets: 'track', tech_nanofabrication: 'repair', tech_outpost_charter: 'industry',
+});
+/** The icon's paths without its own svg wrapper (the star draws them in its own frame). */
+function iconBody(name) {
+  const markup = dpIcon(name, 24) || dpIcon('module', 24) || '';
+  return markup.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+}
+function nodeGlyphName(node) {
+  if (NODE_GLYPH[node.id]) return NODE_GLYPH[node.id];
+  const u = node.unlocks || {};
+  if (u.ships && u.ships.length) return 'hull';
+  if ((u.modules || []).some((m) => /^wpn_/.test(m))) return 'weapon';
+  return 'module';
+}
+/** An unlock's picture on its ledger line: the hull's jig drawing when one was rendered, else its kind's glyph. */
+const HULL_JIG = new Set(['ship_wasp', 'ship_hornet', 'ship_kestrel', 'ship_pelican']);
+function unlockArtHtml(ref) {
+  const [kind, id] = String(ref).split(':');
+  if (kind === 'hull' && HULL_JIG.has(id)) {
+    let url = `/assets/ui/renders/hulls/${id}.jig.webp`;
+    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.jig.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
+    return `<img class="con-row__img" src="${url}" alt="" draggable="false" decoding="async">`;
+  }
+  let icon = 'module';
+  if (kind === 'hull') icon = 'hull';
+  else if (/^wpn_/.test(id)) icon = 'weapon';
+  else if (/shield|aegis|deflect|chaff|decoy/.test(id)) icon = 'shield';
+  else if (/mining|pulverizer/.test(id)) icon = 'mining';
+  else if (/engine|afterburner|jump|swing_drive|warp/.test(id)) icon = 'engine';
+  else if (/cargo|hold|compactor/.test(id)) icon = 'cargo';
+  else if (/sensor|scrambler|triangulation|targeting|ecm/.test(id)) icon = 'scan';
+  else if (/drone/.test(id)) icon = 'pod';
+  else if (/repair|nanobot/.test(id)) icon = 'repair';
+  else if (/tractor|tether|whip|coupler|massline|bridle|snare|flail|magnet/.test(id)) icon = 'tow';
+  else if (/thermal|cryo|sink/.test(id)) icon = 'cooling';
+  return dpIcon(icon, 24) || '';
+}
 
 // The canvas measures each star's name in the face the label is drawn in. ctx.font cannot resolve
 // var(), so the faces are spelled: the kit's text face (styles/kit.css --k-text / --dp-face-read) for
@@ -307,7 +354,7 @@ export const techTreeScreen = {
     if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
       document.fonts.addEventListener('loadingdone', () => {
         if (!this._root || !this._root.isConnected || !this._sky) return;
-        this._sky.relayout();
+        this._sky.relayout({ fonts: true });
       });
     }
   },
@@ -432,6 +479,7 @@ export const techTreeScreen = {
       ready,
       costs,
       art: STAR_ART,
+      glyphs: Object.fromEntries(nodes.map((n) => [n.id, iconBody(nodeGlyphName(n))])),
       chosen: this._selectedId,
     });
   },
@@ -536,10 +584,12 @@ export const techTreeScreen = {
       <p class="con-dossier__kicker">${escapeHtml(branchLabel)} <span aria-hidden="true">·</span> tier ${ROMAN[tier - 1] || tier}</p>
       <h2 class="con-dossier__name">${escapeHtml(n.name)}</h2>
       <p class="con-dossier__state" data-state="${escapeHtml(readiness.state)}">${escapeHtml(stateSentence(readiness))}</p>
-      <dl class="con-dossier__cost${owned ? ' is-owned' : ''}" aria-label="Cost">
+      ${owned
+        ? `<p class="con-dossier__cost con-dossier__paid" aria-label="Cost">Paid ${escapeHtml(fmtCr(cost.credits || 0))} cr${cost.rp ? ' · ' + escapeHtml(Math.round(cost.rp).toLocaleString()) + ' RP' : ''}</p>`
+        : `<dl class="con-dossier__cost" aria-label="Cost">
         ${costCellHtml('Credits', Math.round(cost.credits || 0), Math.round(player.credits || 0), fmtCr)}
         ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
-      </dl>
+      </dl>`}
       ${readiness.state === 'locked' ? requiresHtml : ''}
       ${effects || !unlockRows ? `<p class="con-sentence">${effects || 'No listed effects.'}</p>` : ''}
       ${unlockRows ? `<div class="con-caps">Unlocks</div><ul class="con-rows con-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}
@@ -614,15 +664,20 @@ function stateSentence(readiness) {
  */
 function costCellHtml(word, cost, have, fmt) {
   const free = !(cost > 0);
-  const k = free ? 0 : Math.max(0, Math.min(1, have / cost));
   const short = free ? 0 : Math.max(0, cost - have);
+  // affordable: the share of what you hold it spends; short: how much of the price you hold, a tick at the price
+  const k = free ? 0 : short > 0 ? Math.max(0, Math.min(1, have / cost)) : Math.max(0.02, Math.min(1, cost / Math.max(1, have)));
   // a 300-degree gauge open at the foot, so a full one still reads as a gauge and not a ring
   const arc = 'M 13.5 36.72 A 17 17 0 1 1 30.5 36.72';
-  const sub = free ? 'none needed' : short > 0 ? `short ${fmt(short)}` : `${fmt(have)} held`;
+  const pct = have > 0 ? Math.max(1, Math.round((cost / have) * 100)) : 0;
+  const sub = free ? 'none needed' : short > 0 ? `short ${fmt(short)}` : `${pct}% of ${fmt(have)} held`;
+  // the price's tick sits at the gauge's end (bearing 150), just outside the arc
+  const tick = short > 0 ? '<path class="con-cost__tick" d="M 30.5 36.72 L 33.5 41.9"></path>' : '';
   return `<div class="con-cost" data-short="${short > 0 ? '1' : '0'}" data-free="${free ? '1' : '0'}">`
     + `<svg class="con-cost__gauge" viewBox="0 0 44 44" aria-hidden="true" focusable="false">`
     + `<path class="con-cost__track" d="${arc}"></path>`
     + `<path class="con-cost__fill" d="${arc}" pathLength="1" stroke-dasharray="${k.toFixed(3)} 1"${k > 0 ? '' : ' opacity="0"'}></path>`
+    + tick
     + `</svg>`
     + `<dt>${escapeHtml(word)}</dt><dd>${escapeHtml(free ? '0' : fmt(cost))}</dd>`
     + `<span class="con-cost__sub">${escapeHtml(sub)}</span></div>`;
@@ -640,7 +695,7 @@ function disabledActionHtml(readiness) {
 /** The ships and modules a node unlocks, as ledger lines (name · kind). */
 function unlockRowsHtml(u) {
   if (!u) return '';
-  const row = (name, kind, ref) => `<li class="con-row"><span class="con-row__name">${ref ? entitySpanHtml(ref, name) : name}</span><span class="con-row__sub">${kind}</span></li>`;
+  const row = (name, kind, ref) => `<li class="con-row has-art"><span class="con-row__art" aria-hidden="true">${ref ? unlockArtHtml(ref) : ''}</span><span class="con-row__name">${ref ? entitySpanHtml(ref, name) : name}</span><span class="con-row__sub">${kind}</span></li>`;
   const rows = [];
   if (u.ships && u.ships.length) {
     const names = u.ships.map(unlockDisplayName);

@@ -70,10 +70,11 @@ ${T} .con-cost__fill { fill:none; stroke:rgb(${WARM}); stroke-width:2.6; stroke-
 ${T} .con-cost[data-short="1"] .con-cost__fill { stroke:rgb(${BONE} / .72); }
 ${T} .con-cost[data-free="1"] .con-cost__fill { stroke:rgb(${BONE} / .42); }
 ${T} .con-cost dt { ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .64); white-space:nowrap; }
-${T} .con-cost dd { margin:2px 0 0; ${NUMERAL} font-size:clamp(24px, min(1.8vw, 3.4vh), 46px); line-height:1; color:rgb(${WARM}); }
+${T} .con-cost dd { margin:2px 0 0; text-transform:uppercase; ${NUMERAL} font-size:clamp(24px, min(1.8vw, 3.4vh), 46px); line-height:1; color:rgb(${WARM}); }
 ${T} .con-cost__sub { margin-top:3px; ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.14em; color:rgb(${BONE} / .64); white-space:nowrap; }
 ${T} .con-cost[data-short="1"] .con-cost__sub { color:rgb(${WARM} / .9); }
-${T} .con-dossier__cost.is-owned .con-cost dd { color:rgb(${BONE} / .7); }
+${T} .con-cost__tick { fill:none; stroke:rgb(${WARM}); stroke-width:1.5; stroke-linecap:butt; }
+${T} .con-dossier__paid { margin:clamp(2px, .5vh, 6px) 0 !important; ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .72); }
 ${T} .con-actions { margin:clamp(2px, .6vh, 8px) 0 clamp(4px, 1vh, 12px); }
 ${T} .con-actions .orr-lampkey { min-width:clamp(150px, 11vw, 220px); justify-content:center; }
 /* a node you cannot research yet: its reason in words where the key would be, never a box */
@@ -83,8 +84,16 @@ ${T} .con-why::before { content:"›"; position:absolute; left:0; top:5px; color
 ${T} .con-actions[data-state="researched"] .con-why::before { content:"✓"; }
 ${T} .con-why:focus-visible { outline:none !important; color:rgb(${WARM}); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-caps { margin:clamp(4px, .9vh, 12px) 0 0; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.24em; color:rgb(${BONE} / .62); }
-${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0; display:flex; flex-direction:column; }
-${T} .con-row { display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
+${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0 0 0 14px; display:flex; flex-direction:column; position:relative; }
+${T} .con-rows::before { content:""; position:absolute; left:3px; top:4px; bottom:4px; width:1.5px; background:rgb(${BONE} / .34); }
+${T} .con-row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
+${T} .con-row::before { content:""; position:absolute; left:-11px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .5); }
+${T} .con-row.has-art { grid-template-columns:clamp(34px, 2.3vw, 44px) minmax(0, 1fr) auto; align-items:center; }
+${T} .con-row__art { display:grid; place-items:center; width:clamp(34px, 2.3vw, 44px); height:clamp(28px, 1.9vw, 36px); color:rgb(${WARM} / .9); }
+${T} .con-row__art svg { width:70%; height:70%; }
+${T} .con-row__art svg .accent { fill:currentColor; }
+${T} .con-row__art .con-row__img { width:100%; height:100%; object-fit:contain; transform:rotate(90deg) scale(1.2); opacity:.95; }
+${T} .con-reqs .con-row[data-met="1"]::before { background:rgb(${WARM}); }
 ${T} .con-row__name { ${READ} font-size:clamp(14px, .82vw, 17px); line-height:1.3; color:rgb(${WARM}); min-width:0; }
 ${T} .con-row__sub { ${LABEL} font-size:clamp(9.5px, .54vw, 11px); letter-spacing:.16em; color:rgb(${BONE} / .62); white-space:nowrap; }
 ${T} .con-reqs .con-row[data-met="0"] .con-row__name { color:rgb(${BONE} / .76); }
@@ -109,6 +118,7 @@ ${T} .con-view__reset::before { content:"› "; color:rgb(${BONE} / .55); }
 ${T} .con-view__reset[hidden] { display:none; }
 ${T} .con-view__reset:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-picker { display:flex; align-items:center; gap:14px; margin-left:auto; }
+${T} .con-picker:not(:focus-within) { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 ${T} .con-picker__label { ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.2em; color:rgb(${BONE} / .66); }
 ${T} select.k-select.con-select { min-width:clamp(180px, 13vw, 280px); min-height:36px; ${READ} font-size:clamp(14px, .8vw, 16px) !important; color:rgb(${WARM}) !important;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ece6d8' stroke-width='1.4'/%3E%3C/svg%3E") right 4px center / 10px 6px no-repeat,
