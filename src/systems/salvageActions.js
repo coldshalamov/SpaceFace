@@ -284,10 +284,17 @@ export const salvageActions = {
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
       if (this._onScan) this._bus.off('scan:completed', this._onScan);
       if (this._onVent) this._bus.off('salvage:ventReactor', this._onVent);
+      if (this._onBoundaryWake) {
+        this._bus.off('save:loaded', this._onBoundaryWake);
+        this._bus.off('game:new', this._onBoundaryWake);
+        this._bus.off('game:newGame', this._onBoundaryWake);
+        this._bus.off('sector:enter', this._onBoundaryWake);
+      }
     }
     this._onEntitySpawned = null;
     this._onScan = null;
     this._onVent = null;
+    this._onBoundaryWake = null;
   },
 };
 
