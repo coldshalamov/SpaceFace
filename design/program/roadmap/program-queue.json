@@ -8754,7 +8754,7 @@
       "priority": 160,
       "title": "The mechanic",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8776,8 +8776,8 @@
         "npm run check:baseline",
         "npm run check:bar:narrative"
       ],
-      "receiptRefs": [],
-      "brief": "A named voice at the home berth who reads scars, repairs, and rap sheet back as one line each; the ship becomes 'my fucking ship' through them. DONE WHEN: Every scar class has a line; the berth screen shows the mechanic with the hull."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-150.01-REPORT.md"],
+      "brief": "DONE 2026-09-26: the home berth mechanic names the ship and leads with the worst real scar, the line wraps, and the bay seats that hull. A clean hull invents no scar. Receipt: design/program/roadmap/receipts/PQ-150.01-REPORT.md."
     },
     {
       "id": "PQ-150.02",
@@ -9808,7 +9808,7 @@
       "priority": 192,
       "title": "Charts with a forecast cone",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9833,8 +9833,8 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Per-commodity sparkline of the last ten minutes plus the forecast band and regime label; profit readout on sale from cost basis. DONE WHEN: A player who reads the cone beats one who does not by ≥ 30 % profit over a seeded hour (telemetry archetypes)."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-177.01-REPORT.md"],
+      "brief": "DONE 2026-09-26: the chart band is the sim's stock-drift band, stated at 99 percent. Held-out seeds 17701011 and 17701012 contained 180/180 chart arrivals and 180/180 haul arrivals. Stale survey, fresh quote, and modelled past read apart. The sale line is the whole batch after slippage, travel, and operating cost. Receipt: design/program/roadmap/receipts/PQ-177.01-REPORT.md."
     },
     {
       "id": "PQ-177.02",
