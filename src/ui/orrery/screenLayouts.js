@@ -42,14 +42,14 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-pause.orr-pause .sf-pause-foot .sf-pause-key-verb { margin-right:22px !important; }
 /* the brief is an instrument reading: no rules, no link underline */
 .of-pause > .sf-pause-brief.orr-brief > * { border:0 !important; box-shadow:none !important; background:none !important; }
-.of-pause > .sf-pause-brief.orr-brief .dp-etch { font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .55); }
+.of-pause > .sf-pause-brief.orr-brief .dp-etch { font-size: 12px; letter-spacing:.26em; color:rgb(232 226 212 / .55); }
 .of-pause > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
-  font-variation-settings:"wght" 650, "wdth" 112 !important; font-weight:650 !important; font-size:10px !important; letter-spacing:.26em !important;
+  font-variation-settings:"wght" 650, "wdth" 112 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.26em !important;
   text-transform:uppercase !important; color:rgb(232 226 212 / .6) !important; }
 .of-pause > .sf-pause-brief.orr-brief :is(a, [data-entity], .sf-entity) { text-decoration:none !important; border:0 !important;
   box-shadow:none !important; color:rgb(246 241 230) !important; background:none !important; }
 .of-pause > .sf-pause-brief.orr-brief .sf-slot-name { font-size:18px; line-height:1.35; color:rgb(236 230 216); }
-.of-pause > .sf-pause-brief.orr-brief .dp-copy--fine { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .5); }
+.of-pause > .sf-pause-brief.orr-brief .dp-copy--fine { font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .5); }
 .of-pause > .sf-pause-brief.orr-brief .sf-slot-name { display:flex; flex-direction:column; gap:6px; text-wrap:balance; }
 /* the heading, the brief and the key strip stand above the dial and its shadow pool */
 .of-pause.orr-pause .dp-title { position:relative; z-index:2; }
@@ -63,7 +63,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   #screens .of-pause.orr-pause .dp-title__name, html body #screens .of-pause.orr-pause .dp-title__name { font-size:clamp(36px, 5.2vh, 60px) !important; margin-bottom:16px !important; }
   .orr-svg .orr-arcrail__sector text { letter-spacing:.16em; }
 }
-.orr-brief__kind { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .6); }
+.orr-brief__kind { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.26em; color:rgb(232 226 212 / .6); }
 .orr-brief__name { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
   font-size:22px; line-height:1.1; letter-spacing:.005em; text-transform:uppercase; color:rgb(246 241 230); }
 .orr-brief__read { display:flex; align-items:center; gap:10px; margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
@@ -89,7 +89,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 12px rgb(0 0 0 / .6); white-space:nowrap; }
 #screens .orr-newgame .orr-turntable .k-word[aria-pressed="true"] { color:rgb(246 241 230) !important; text-shadow:0 0 1px rgb(255 226 178 / .5), 0 0 10px rgb(255 217 140 / .25), 0 1px 0 rgb(0 0 0 / .6); }
 #screens .orr-newgame .orr-turntable .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
-#screens .orr-newgame .orr-turntable .k-word-sub { text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgb(232 226 212 / .62); margin-top:3px; }
+#screens .orr-newgame .orr-turntable .k-word-sub { text-align:center; font-size: 12px; letter-spacing:.18em; text-transform:uppercase; color:rgb(232 226 212 / .62); margin-top:3px; }
 #screens .orr-newgame .orr-ng-pick > div > .orr-ng-label, #screens .orr-newgame .orr-ng-pick #sf-ng-starter-label { display:none; }
 #screens .orr-newgame .orr-ng-pick .k-sentence { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 #screens .orr-newgame .orr-stoparc .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
@@ -98,7 +98,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
   text-shadow:0 1px 0 rgb(0 0 0 / .6); white-space:nowrap; }
 #screens .orr-newgame .orr-stoparc .k-word[aria-pressed="true"] { color:rgb(246 241 230) !important; text-shadow:0 0 1px rgb(255 226 178 / .5), 0 0 9px rgb(255 217 140 / .22); }
 #screens .orr-newgame .orr-stoparc .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
-#screens .orr-newgame .orr-stoparc .k-word-sub { text-align:center; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:rgb(232 226 212 / .42); margin-top:2px; }
+#screens .orr-newgame .orr-stoparc .k-word-sub { text-align:center; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(232 226 212 / .42); margin-top:2px; }
 /* the numbers as arcs of ice */
 #screens .orr-newgame .orr-ng-stats { display:flex; gap:22px; margin:4px 0 2px; }
 #screens .orr-newgame .orr-ng-stat { position:relative; width:64px; display:flex; flex-direction:column; align-items:center; }
@@ -110,20 +110,20 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-newgame .orr-ng-stat__ghost { stroke:rgb(232 226 212 / .38); stroke-width:1.2; }
 #screens .orr-newgame .orr-ng-stat b { position:static; margin-top:-6px; text-align:center; font-family:var(--dp-face-display, "Archivo");
   font-variation-settings:"wght" 760, "wdth" 125; font-size:17px; color:rgb(246 241 230); letter-spacing:.02em; }
-#screens .orr-newgame .orr-ng-stat b i { font-style:normal; font-size:9px; margin-left:3px; color:rgb(232 226 212 / .55); letter-spacing:.1em; }
-#screens .orr-newgame .orr-ng-stat span { margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; letter-spacing:.24em;
+#screens .orr-newgame .orr-ng-stat b i { font-style:normal; font-size: 12px; margin-left:3px; color:rgb(232 226 212 / .55); letter-spacing:.1em; }
+#screens .orr-newgame .orr-ng-stat span { margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(232 226 212 / .55); }
 /* the loadout: one module a line, the size a small ringed tag */
 #screens .orr-newgame .orr-ng-caption .k-words--row { flex-direction:column; gap:5px; }
 #screens .orr-newgame .orr-ng-caption .k-words--row .fh-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%;
   font-weight:600; font-size:12px !important; letter-spacing:.16em; text-transform:uppercase; color:rgb(236 230 216 / .82) !important; }
-#screens .orr-newgame .orr-ng-size { margin-left:8px; font-size:10px; letter-spacing:.1em; color:rgb(232 226 212 / .62); }
+#screens .orr-newgame .orr-ng-size { margin-left:8px; font-size: 12px; letter-spacing:.1em; color:rgb(232 226 212 / .62); }
 #screens .orr-newgame .orr-ng-size::before { content:"·"; margin-right:8px; color:rgb(232 226 212 / .3); }
 /* the first minutes: numbered stations on a traced line, no stepper dots */
 #screens .orr-newgame .sf-ng-route__steps { counter-reset:orrbeat; }
 #screens .orr-newgame .sf-ng-route__step { counter-increment:orrbeat; }
 #screens .orr-newgame .sf-ng-route__step::before { content:counter(orrbeat, decimal-leading-zero); left:-26px; top:4px; width:auto; height:auto;
-  border-radius:0; background:none !important; box-shadow:none !important; font-family:var(--dp-face-numeral, "Archivo"); font-size:10px;
+  border-radius:0; background:none !important; box-shadow:none !important; font-family:var(--dp-face-numeral, "Archivo"); font-size: 12px;
   font-weight:700; letter-spacing:.06em; color:rgb(232 226 212 / .55); }
 #screens .orr-newgame .sf-ng-route__step:first-child::before { color:var(--dp-hand, #f2b950); }
 #screens .orr-newgame .sf-ng-route__steps { padding-left:34px !important; }
@@ -139,7 +139,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-crucible .orr-window::before { content:""; position:absolute; inset:-30px -70px -30px -40px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .74), rgb(4 6 9 / .46) 62%, transparent); }
 #screens .orr-crucible .k-row { background:none !important; border:0 !important; box-shadow:none !important; }
-#screens .orr-crucible .orr-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:10px !important;
+#screens .orr-crucible .orr-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size: 12px !important;
   letter-spacing:.26em !important; text-transform:uppercase; color:rgb(232 226 212 / .58) !important; margin:0 0 8px !important; }
 #screens .orr-crucible .orr-legend[data-fh-lit="on"] { color:rgb(232 226 212 / .72) !important; }
 #screens .orr-crucible .orr-stationrow { gap:clamp(8px, 1.4vw, 26px) !important; }
@@ -149,7 +149,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-crucible .orr-tile .fh-tile-art img { width:calc(58px * var(--k-s, 1)) !important; height:calc(58px * var(--k-s, 1)) !important;
   opacity:.62; filter:saturate(.7); transition:opacity .18s linear, filter .18s linear, transform .24s var(--dp-ease-out, ease-out); }
 #screens .orr-crucible .orr-tile .fh-tile-art svg { width:34px; height:34px; opacity:.6; color:rgb(232 226 212); }
-#screens .orr-crucible .orr-tile .fh-tile-legend { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px;
+#screens .orr-crucible .orr-tile .fh-tile-legend { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px;
   letter-spacing:.18em; text-transform:uppercase; text-align:center; line-height:1.25; }
 #screens .orr-crucible .orr-tile:is([aria-pressed="true"], :hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
 #screens .orr-crucible .orr-tile[aria-pressed="true"] .fh-tile-art img { opacity:1; filter:saturate(1) drop-shadow(0 0 10px rgb(255 190 110 / .35)); transform:scale(1.08); }
@@ -181,7 +181,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 html body #screens .k-screen.orr-crucible .sf-back.k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:13px !important; letter-spacing:.24em; color:rgb(232 226 212 / .7) !important; }
 html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
-  padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size:10px !important; letter-spacing:.2em; }
+  padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size: 12px !important; letter-spacing:.2em; }
 
 /* crucible armory, refit, results: the printed cards and plates become readings. Each offer keeps
    its words and loses its card: a hairline leader down its left that lights amber when it is the
@@ -199,9 +199,9 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-name { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 780, "wdth" 125 !important;
   letter-spacing:.02em !important; font-size:clamp(16px, 1.9vh, 22px) !important; color:rgb(236 230 216) !important; }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-verb { font-family:var(--dp-face-label, "Archivo") !important; font-variation-settings:normal !important; font-stretch:112%; font-weight:650;
-  font-size:10px !important; letter-spacing:.26em !important; color:rgb(232 226 212 / .55) !important; }
+  font-size: 12px !important; letter-spacing:.26em !important; color:rgb(232 226 212 / .55) !important; }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-key { background:none !important; border:0 !important; border-image:none !important; box-shadow:inset 0 0 0 1px rgb(232 226 212 / .45) !important;
-  border-radius:50%; width:20px; height:20px; min-width:20px; display:inline-grid; place-items:center; font-size:10px !important; color:rgb(236 230 216) !important; }
+  border-radius:50%; width:20px; height:20px; min-width:20px; display:inline-grid; place-items:center; font-size: 12px !important; color:rgb(236 230 216) !important; }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) :is(.sf-cru-price, .sf-cru-wallet) { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 760, "wdth" 125;
   color:rgb(246 241 230) !important; letter-spacing:.02em; }
 html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-blurb { color:rgb(232 226 212 / .74) !important; }
@@ -270,7 +270,7 @@ html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot 
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
   background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; }
 html body #screens > .k-screen.orr-refit .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
-  font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
   color:rgb(236 230 216 / .78); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42); border-radius:3px; background:none; text-shadow:none; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note:empty { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on { position:absolute !important; inset:0 !important; margin:0 !important; padding:0 !important; max-height:none !important;
@@ -294,13 +294,13 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .k-row__na
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .k-row__name { flex-direction:row-reverse; }
 /* the hardpoint's name is for the ear: its numeral already says which one */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.22em;
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.22em;
   text-transform:uppercase; color:rgb(232 226 212 / .62); margin:0; background:none; border:0; padding:0; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__value { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 720, "wdth" 118; font-size:17px; line-height:1.15;
   letter-spacing:.01em; color:rgb(240 235 224); text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 14px rgb(0 0 0 / .8); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-bare .orr-hp__value { font-family:var(--dp-face-label, "Archivo"); font-variation-settings:normal; font-weight:500; font-size:13px;
   color:rgb(236 230 216 / .7); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size:11.5px; line-height:1.35; color:rgb(232 226 212 / .58); max-width:100%; white-space:normal; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size: 12px; line-height:1.35; color:rgb(232 226 212 / .58); max-width:100%; white-space:normal; }
 /* the spares: words; the chosen one stands bright on a fine rule of its own */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spares { display:flex; flex-wrap:wrap; gap:2px 16px; margin:0; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .orr-hp__spares { justify-content:flex-end; }
@@ -320,7 +320,7 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ac
   color:rgb(236 230 216 / .82) !important; align-self:baseline; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act[hidden] { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__line { gap:6px 12px !important; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.22em;
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.22em;
   text-transform:uppercase; color:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name { font-variation-settings:"wght" 560, "wdth" 112; }
 /* an offered spare is not fitted: a plus, a quieter weight, a dashed rule under the chosen one */
@@ -339,10 +339,10 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.i
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__spares { flex-direction:column; gap:1px; align-items:flex-start; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__spares { align-items:flex-end; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .sf-cru-act { margin-top:4px !important; align-self:auto; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { font-size:11px; font-weight:650; letter-spacing:.2em; fill:rgb(236 230 216 / .72); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { font-size: 12px; font-weight:650; letter-spacing:.2em; fill:rgb(236 230 216 / .72); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-val { font-family:var(--dp-face-numeral, "Archivo"); font-size:14px; font-weight:600; letter-spacing:0; fill:rgb(246 241 230); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-delta { font-size:12px; font-weight:600; fill:var(--dp-ice, #8fcbff); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { font-size:10px; font-weight:600; letter-spacing:.06em; fill:rgb(236 230 216 / .5); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { font-size: 12px; font-weight:600; letter-spacing:.06em; fill:rgb(236 230 216 / .5); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track { stroke:rgb(236 230 216 / .25); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track-end { stroke:rgb(236 230 216 / .45); stroke-width:1; fill:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick { stroke:rgb(236 230 216 / .62); stroke-width:1.6; fill:none; }
@@ -350,7 +350,7 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__s
 /* the lit verb carries the key that presses it */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after { content:"Enter"; position:static; display:inline-grid; place-items:center; transform:none;
   width:auto; height:17px; margin-left:9px; padding:0 5px; background:none !important; box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px;
-  font-size:9.5px; letter-spacing:.08em; color:rgb(236 230 216 / .78); vertical-align:1px; }
+  font-size: 12px; letter-spacing:.08em; color:rgb(236 230 216 / .78); vertical-align:1px; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act::before { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act:disabled { color:rgb(232 226 212 / .26) !important; }
 /* lit: the Hand is on this hardpoint -- its numeral takes the lamp, its words brighten, its verb is the one to press */
@@ -413,7 +413,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
   box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
-  font-family:var(--dp-face-label, "Archivo"); font-size:9.5px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:is([data-band="kill_chain"], [data-band="last_seconds"]) { position:absolute !important; width:1px; height:1px; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }
@@ -437,7 +437,7 @@ html body #screens > .k-screen.orr-demo-end .sf-demo-end__stage.k-panel { grid-t
 html body #screens > .k-screen.orr-demo-end .orr-end-facts { position:relative; display:flex; flex-direction:column; gap:22px; margin:0; padding:0; }
 html body #screens > .k-screen.orr-demo-end .orr-end-facts::before { ${POOL} }
 html body #screens > .k-screen.orr-demo-end .orr-end-fact { display:grid; grid-template-columns:minmax(140px, 180px) minmax(0, 1fr); column-gap:20px; align-items:baseline; margin:0; }
-html body #screens > .k-screen.orr-demo-end .orr-end-fact > dt { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.22em; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-demo-end .orr-end-fact > dt { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.22em; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-demo-end .orr-end-fact__n { margin:0; font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-size:22px; line-height:1.15; letter-spacing:.01em; color:rgb(246 241 230); }
 html body #screens > .k-screen.orr-demo-end .sf-demo-end__foot { align-items:center; }
 html body #screens > .k-screen.orr-demo-end .sf-demo-end__dial { flex:0 0 auto; width:104px; height:104px; margin-right:10px; }
@@ -445,7 +445,7 @@ html body #screens > .k-screen.orr-demo-end .sf-demo-end__dial { flex:0 0 auto; 
 html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
   box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
-  font-family:var(--dp-face-label, "Archivo"); font-size:9.5px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
 
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it
@@ -465,7 +465,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ra
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__track { position:absolute; left:4px; top:0; bottom:0; width:2px; background:rgb(236 230 216 / .25); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__thumb { position:absolute; left:-1px; width:3px; background:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__words { position:absolute; left:18px; bottom:-22px; margin:0; white-space:nowrap; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
+  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.18em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
 /* the rail's Hand is full amber whatever lit its row; a purchase says so clearly */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit { opacity:1 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-note { font-size:13px !important; color:rgb(236 230 216 / .82) !important; }
@@ -496,7 +496,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__jig { width:100%; aspect-ratio:1; height:auto; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__words { padding-top:clamp(12px, 5vh, 70px); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading :is(.orr-armory-compare, .orr-armory-budget) { width:100%; max-width:360px; height:auto; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__verb { margin:0 0 6px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px;
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__verb { margin:0 0 6px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px;
   letter-spacing:.26em; text-transform:uppercase; color:rgb(236 230 216 / .66); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__name { margin:0; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125;
   font-size:clamp(26px, 3.2vh, 38px); line-height:1; letter-spacing:.01em; color:rgb(246 241 230); text-wrap:balance; }
@@ -507,7 +507,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__compare:empty, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__budget:empty { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__budget { margin-top:18px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading.is-unavailable .orr-armory-reading__name { color:rgb(236 230 216 / .6); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__word { font-size:11px; font-weight:650; letter-spacing:.2em; fill:rgb(236 230 216 / .66); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__word { font-size: 12px; font-weight:650; letter-spacing:.2em; fill:rgb(236 230 216 / .66); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__track { stroke:rgb(236 230 216 / .25); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__fill { stroke:rgb(236 230 216 / .55); stroke-width:2; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-compare__fitted { stroke:rgb(236 230 216 / .85); stroke-width:1.5; fill:none; }
@@ -519,7 +519,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__spend { stroke:var(--dp-hand, #f2b950); stroke-width:4; fill:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__short { stroke:var(--dp-danger, #ff5038); stroke-width:4; fill:none; stroke-dasharray:3 3; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__end { stroke:rgb(236 230 216 / .6); stroke-width:1; fill:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__word { font-size:10.5px; font-weight:650; letter-spacing:.16em; fill:rgb(236 230 216 / .7); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__word { font-size: 12px; font-weight:650; letter-spacing:.16em; fill:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__read { font-size:13px; font-weight:600; fill:rgb(236 230 216 / .82); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-budget__read.is-short { fill:rgb(255 140 118); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__buy { margin:18px 0 0; display:flex; align-items:center; gap:12px; font-family:var(--dp-face-display, "Archivo");
@@ -528,9 +528,9 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-ar
   text-transform:none; color:rgb(255 150 128 / .9); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__buy:empty { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-keycap { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; box-sizing:border-box; margin-right:4px;
-  font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:650; letter-spacing:.06em; text-transform:none; font-variation-settings:normal;
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.06em; text-transform:none; font-variation-settings:normal;
   color:rgb(236 230 216 / .8); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .45); border-radius:3px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-hintword { margin:0 16px 0 4px; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-hintword { margin:0 16px 0 4px; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
 /* the rail: its Hand on the row being read; that row at full bone, the rest quieter; the price only
    on the lit row (the dividers carry it for the rest), and there it says BUY and names its key */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card { opacity:.8; transition:opacity .16s linear; }
@@ -541,24 +541,24 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
   transform:translateY(-50%); clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%); background:var(--dp-hand, #f2b950) !important; box-shadow:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:not(.is-lit) .sf-cru-price { visibility:hidden; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price { color:var(--dp-hand-hot, #ffd98c) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price::before { content:"Buy "; font-size:11px; letter-spacing:.2em; text-transform:uppercase; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:not(:disabled) .sf-cru-price::before { content:"Buy "; font-size: 12px; letter-spacing:.2em; text-transform:uppercase; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit:disabled .sf-cru-price { visibility:visible; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card .sf-cru-name { color:rgb(236 230 216 / .78) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit .sf-cru-name { color:rgb(246 241 230) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-divider { margin:14px 0 2px 16px; display:flex; align-items:center; gap:10px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-weight:650; font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
+  font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-divider::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, rgb(236 230 216 / .3), rgb(236 230 216 / 0)); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet { margin:16px 0 4px 16px; display:flex; align-items:center; gap:10px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-weight:650; font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--dp-hand, #f2b950); }
+  font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:var(--dp-hand, #f2b950); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::before, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::after { content:""; height:1px; background:rgb(242 185 80 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::before { width:14px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-wallet::after { flex:1; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-filters .k-word { font-size:11.5px !important; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-filters .k-word { font-size: 12px !important; color:rgb(236 230 216 / .7) !important; }
 /* the keys, as on the refit: bone at rest, amber only when reached for, real caps */
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .k-word.k-word--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important; background-image:none !important; padding-bottom:8px !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 22px rgb(242 185 80 / .5) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
-  font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
   color:rgb(236 230 216 / .78); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42); border-radius:3px; background:none; text-shadow:none; opacity:1; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot .k-word:not(.k-word--primary) { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 760, "wdth" 125 !important;
   font-size:clamp(14px, 1.6vh, 17px) !important; letter-spacing:.08em !important; color:rgb(236 230 216 / .72) !important; }
@@ -586,10 +586,10 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arenas .orr-tile { min-height:0 !important; padding:6px 0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arena { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:22px !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row > .k-row__name { font-size:11.5px !important; letter-spacing:.24em !important; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row > .k-row__name { font-size: 12px !important; letter-spacing:.24em !important; color:rgb(236 230 216 / .7) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-seed input { font-size:clamp(18px, 2.2vh, 22px) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .fh-tile[data-locked='1'] .fh-tile-legend { opacity:.45; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { font-size:11.5px !important; letter-spacing:.22em; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { font-size: 12px !important; letter-spacing:.22em; color:rgb(236 230 216 / .7) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice { display:flex !important; align-items:baseline; gap:14px; flex-wrap:wrap; border:0 !important; padding:0 !important; min-height:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word { font-size:12px !important; letter-spacing:.22em !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word::after { content:" ›"; background:none !important; position:static !important; transform:none !important; width:auto !important; height:auto !important; }
@@ -630,7 +630,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-t-fine { max-width:520px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-seed { align-items:baseline; column-gap:28px !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:10px; padding:4px 0; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .72); }
+  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .72); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer::after { content:""; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
   transform:rotate(-45deg); transition:transform .2s var(--dp-ease-out, ease-out); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer[aria-expanded="true"]::after { transform:rotate(45deg); }
@@ -642,7 +642,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
   font-variation-settings:"wght" 800, "wdth" 125 !important;
   font-size:clamp(44px, 6.4vh, 76px); line-height:.92; letter-spacing:-.005em; text-transform:uppercase; color:rgb(236 230 216);
   background:none !important; -webkit-text-fill-color:currentColor; text-shadow:0 2px 16px rgb(0 0 0 / .5); }
-#screens .orr-newgame .orr-ng-label { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size:10px;
+#screens .orr-newgame .orr-ng-label { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size: 12px;
   letter-spacing:.26em; text-transform:uppercase; color:rgb(232 226 212 / .55); margin:0 0 8px; }
 #screens .orr-newgame .orr-ng-gap { height:14px; }
 /* the retired kit drew a hairline under every word row */
@@ -651,7 +651,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 #screens .orr-newgame .orr-ng-caption { max-width:320px; display:flex; flex-direction:column; gap:10px; }
 #screens .orr-newgame .orr-ng-caption .k-words--row { gap:6px 16px; flex-wrap:wrap; }
 #screens .orr-newgame .orr-ng-caption .sf-ng-route { margin-top:6px; }
-#screens .orr-newgame .orr-ng-caption .k-caps { font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .55); margin-bottom:8px; }
+#screens .orr-newgame .orr-ng-caption .k-caps { font-size: 12px; letter-spacing:.26em; color:rgb(232 226 212 / .55); margin-bottom:8px; }
 #screens .orr-newgame .sf-ng-route__step .k-row__name { font-size:14px; color:rgb(236 230 216); }
 #screens .orr-newgame .sf-ng-route__step .k-row__sub { font-size:12px; color:rgb(232 226 212 / .6); }
 /* an input is a reading on a ruled scale, not a box */
@@ -675,15 +675,15 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 #screens .orr-newgame .orr-stopscale .k-word[aria-pressed="true"] { color:var(--dp-ink, #e8e2d4) !important;
   text-shadow:0 0 18px rgb(255 217 140 / .38), 0 1px 0 rgb(0 0 0 / .6); }
 #screens .orr-newgame .orr-stopscale .k-word:is(:hover, :focus-visible) { color:var(--dp-ink, #e8e2d4) !important; outline:none; }
-#screens .orr-newgame .orr-stopscale .k-word-sub { text-align:center; font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+#screens .orr-newgame .orr-stopscale .k-word-sub { text-align:center; font-size: 12px; letter-spacing:.14em; text-transform:uppercase;
   color:rgb(232 226 212 / .42); margin-top:2px; }
 #screens .orr-newgame .k-sentence { font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.45; color:rgb(232 226 212 / .78); }
 /* small keys (New seed) and the loadout: engraved words */
 #screens .orr-newgame .orr-ng-key--small, #screens .orr-newgame .orr-ng-key--legend { background:none !important; border:0 !important; border-image:none !important;
   box-shadow:none !important; min-width:0 !important; padding:4px 0 4px 16px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
-  font-weight:650; font-size:11px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(232 226 212 / .62) !important; }
+  font-weight:650; font-size: 12px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(232 226 212 / .62) !important; }
 #screens .orr-newgame .orr-ng-key--small:is(:hover, :focus-visible) { color:var(--dp-ink, #e8e2d4) !important; outline:none; }
-#screens .orr-newgame .k-words--row .fh-legend, #screens .orr-newgame .k-words--row .orr-ng-label { font-size:11px; letter-spacing:.18em; color:rgb(232 226 212 / .7); }
+#screens .orr-newgame .k-words--row .fh-legend, #screens .orr-newgame .k-words--row .orr-ng-label { font-size: 12px; letter-spacing:.18em; color:rgb(232 226 212 / .7); }
 /* the first fifteen minutes: a traced timeline, a beam with a node per beat */
 #screens .orr-newgame .sf-ng-route__steps { position:relative; padding-left:22px !important; background:none !important; }
 #screens .orr-newgame .sf-ng-route__steps::before { content:""; position:absolute; left:6px; top:10px; bottom:10px; width:1px;
@@ -705,9 +705,9 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
   color:rgb(232 226 212 / .7) !important; padding:10px 4px !important; }
 html body #screens .k-screen.orr-newgame .sf-back.k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; }
 html body #screens .k-screen.orr-newgame .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important;
-  box-shadow:none !important; padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size:10px !important; letter-spacing:.2em; }
+  box-shadow:none !important; padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size: 12px !important; letter-spacing:.2em; }
 #screens .orr-newgame .sf-ng-footer .sf-back :is(.k-kbd, .dp-kbd, kbd) { background:none !important; border:0 !important; box-shadow:none !important;
-  border-image:none !important; margin-left:12px; padding:0 !important; font-size:10px !important; letter-spacing:.2em; color:rgb(232 226 212 / .4) !important; }
+  border-image:none !important; margin-left:12px; padding:0 !important; font-size: 12px !important; letter-spacing:.2em; color:rgb(232 226 212 / .4) !important; }
 #screens .orr-newgame .sf-ng-footer .sf-back:is(:hover, :focus-visible) { color:var(--dp-ink, #e8e2d4) !important; outline:none; }
 #screens .orr-newgame .sf-ng-launch { position:relative; overflow:visible; border:0 !important; border-image:none !important; border-radius:0 !important;
   background:none !important; color:var(--dp-hand, #f2b950) !important; box-shadow:none !important; clip-path:none;
@@ -751,7 +751,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 /* ================================ FRONT DOOR r1 craft ======================================== */
 /* the gauges read thin (a reading, not a label) */
 #screens .orr-newgame .orr-ng-stat b { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:26px !important; letter-spacing:-.01em; }
-#screens .orr-newgame .orr-ng-stat b i { font-size:11px !important; color:rgb(232 226 212 / .6) !important; }
+#screens .orr-newgame .orr-ng-stat b i { font-size: 12px !important; color:rgb(232 226 212 / .6) !important; }
 /* the back key's hint passes contrast */
 #screens .orr-newgame .sf-ng-footer .sf-back :is(.k-kbd, .dp-kbd, kbd) { color:rgb(232 226 212 / .6) !important; }
 /* the four difficulty stops fit a 1280 column */
@@ -810,7 +810,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
   border-radius:50% !important; background:rgb(236 230 216 / .82) !important; box-shadow:none !important; border:0 !important; transform:none !important; }
 #screens .orr-newgame .sf-ng-route .sf-ng-route__step::after { display:none !important; }
 #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__name { display:block; font-size:13px; line-height:1.3; }
-#screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__sub { display:block !important; font-size:11.5px; line-height:1.35; margin-top:3px; color:rgb(232 226 212 / .62) !important;
+#screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__sub { display:block !important; font-size: 12px; line-height:1.35; margin-top:3px; color:rgb(232 226 212 / .62) !important;
   opacity:0; transition:opacity .2s ease; }
 #screens .orr-newgame .sf-ng-route .sf-ng-route__step:hover .k-row__sub { opacity:1; }
 html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__sub { transition:none; }
@@ -838,7 +838,7 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 #screens .orr-newgame .orr-ng-input::selection { background:transparent !important; color:var(--dp-phos, rgb(223 238 255)) !important; }
 /* the fittings speak in the quiet label voice (not the condensed bold legend) */
 #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] .fh-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
-  font-variation-settings:"wght" 600, "wdth" 112 !important; font-weight:600 !important; font-size:10.5px !important; letter-spacing:.14em !important;
+  font-variation-settings:"wght" 600, "wdth" 112 !important; font-weight:600 !important; font-size: 12px !important; letter-spacing:.14em !important;
   text-transform:uppercase !important; color:rgb(232 226 212 / .72) !important; background:none !important; border:0 !important; box-shadow:none !important; padding:0 !important; }
 /* the ring sits lower, so its top reading never shares the fittings' line */
 #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { top:31% !important; height:46% !important; }

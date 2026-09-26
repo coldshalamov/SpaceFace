@@ -106,13 +106,13 @@ ${W} .sx-sw__stage:has(> .orr-sw-jig.orr-hull--on) .sx-sw__slotfield { pointer-e
 ${W} .sx-sw__stage:has(> .orr-sw-jig.orr-hull--on) > .sx-sw__nameplate { z-index:4; }
 ${W} .orr-sw-node { display:flex; align-items:baseline; gap:10px; padding:3px 0 5px; cursor:pointer; min-width:0; }
 ${W} .orr-sw-node.is-left { flex-direction:row-reverse; text-align:right; }
-${W} .orr-sw-node__num { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.12em; color:rgb(${BONE} / .6);
+${W} .orr-sw-node__num { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.12em; color:rgb(${BONE} / .6);
   font-variant-numeric:tabular-nums; flex:none; }
 ${W} .orr-sw-node__body { display:flex; flex-direction:column; gap:3px; min-width:0; }
 ${W} .orr-sw-node.is-left .orr-sw-node__body { align-items:flex-end; }
 ${W} .orr-sw-node__name { font-size:14px; font-weight:600; color:rgb(248 244 234); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 ${W} .orr-sw-node.is-empty .orr-sw-node__name { color:rgb(${BONE} / .82); font-weight:560; }
-${W} .orr-sw-node__state { ${LABEL} font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66); white-space:nowrap; }
+${W} .orr-sw-node__state { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66); white-space:nowrap; }
 ${W} .orr-sw-node.is-empty .orr-sw-node__state { color:rgb(${BONE} / .55); }
 ${W} .orr-sw-node.is-lit .orr-sw-node__name { color:var(--dp-hand-hot, #ffd98c); }
 ${W} .orr-sw-node.is-stock .orr-sw-node__name { color:rgb(${BONE} / .9); font-weight:560; }
@@ -126,7 +126,7 @@ ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { visibility:visible 
   display:flex !important; flex-wrap:nowrap !important; justify-content:center !important; align-items:baseline !important; gap:0 18px !important; ${PLAIN}
   font-size:12px !important; white-space:nowrap; color:var(--dp-ice, #8fcbff) !important; }
 ${W}.orr-sw--jig .sx-sw__delta > * { position:static !important; transform:none !important; margin:0 !important; }
-${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
 ${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
 /* while choosing, the screen's own verbs and the instruction step back */
 ${W}.orr-sw--jig.is-choosing .sx-sw-verbs { visibility:hidden !important; }
@@ -153,7 +153,7 @@ ${W}.orr-sw--jig .sx-sw__stage { flex:1 1 auto !important; min-height:0; }
 ${W} .sx-sw__rail { ${PLAIN} }
 ${W} .sx-sw__rail .sx-seg { gap:0 22px !important; margin:0 0 14px !important; }
 ${W} .sx-sw__rail .sx-seg__btn { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 8px !important;
-  font-size:11px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .58) !important; }
+  font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .58) !important; }
 ${W} .sx-sw__rail .sx-seg__btn::before, ${W} .sx-sw__rail .sx-seg__btn::after { display:none !important; }
 ${W} .sx-sw__rail .sx-seg__btn.is-on { color:rgb(248 244 234) !important; background-image:linear-gradient(rgb(${BONE} / .9), rgb(${BONE} / .9)) !important;
   background-size:16px 2px !important; background-position:0 100% !important; background-repeat:no-repeat !important; }
@@ -168,22 +168,22 @@ ${W} .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], 
 ${W} .sx-sw__list:is(:focus-within, :hover) .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true'])::before { background:var(--dp-hand-hot, #ffd98c) !important;
   filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
 ${W} .sx-sw-row .k-row__name { font-size:14px !important; color:rgb(248 244 234) !important; }
-${W} .sx-sw-row .k-row__sub { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .6) !important; }
-${W} .sx-sw-row .sx-sw-row__flag { ${LABEL} font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; background:none !important; border:0 !important; }
+${W} .sx-sw-row .k-row__sub { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-sw-row .sx-sw-row__flag { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; background:none !important; border:0 !important; }
 ${W} .sx-sw-row:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240) !important; }
 
 /* ---- the stage: the name, the systems called out as words on leaders -------------------------- */
 ${W} .sx-sw__name { color:rgb(248 244 234) !important; }
-${W} .sx-sw__condition, ${W} .sx-sw__conditionVerb { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-sw__condition, ${W} .sx-sw__conditionVerb { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-sw__blurb { color:rgb(${BONE} / .78) !important; }
-${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size:10px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
+${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { ${PLAIN} padding:0 !important; border-radius:0 !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy::before, ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy::after { display:none !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy b { color:rgb(248 244 234) !important; font-size:12.5px !important; font-weight:600 !important; }
-${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy em { ${LABEL} font-style:normal !important; font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy em { ${LABEL} font-style:normal !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy b { color:rgb(${BONE} / .78) !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__reticle { ${PLAIN} width:9px !important; height:9px !important; border-radius:50% !important;
   border:1.5px solid rgb(248 244 234) !important; background:rgb(7 8 10 / .85) !important; box-shadow:0 0 0 2px rgb(7 8 10 / .6) !important; }
@@ -198,14 +198,14 @@ ${W} .sx-sw__slotfield .sx-hardpoint:focus-visible { outline:none !important; }
 ${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important; white-space:nowrap; }
 @media (max-width:1500px) {
   ${W} .sx-sw__gauges { gap:0 14px !important; }
-  ${W} .sx-sw-gauge .k-row__name { font-size:8.5px !important; letter-spacing:.14em !important; }
+  ${W} .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.14em !important; }
   ${W} .sx-sw-gauge .k-row__num { font-size:12px !important; }
-  ${W}.orr-sw--jig .sx-sw__delta:not([hidden]) { font-size:11px !important; gap:0 12px !important; }
+  ${W}.orr-sw--jig .sx-sw__delta:not([hidden]) { font-size: 12px !important; gap:0 12px !important; }
 }
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
-${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 
 /* ---- the handling: no plate; the figures quieter; the bars as scales of light ---------------- */
@@ -218,14 +218,14 @@ ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
 ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 560 !important;
   font-weight:560 !important; font-size:clamp(24px, 2.6vh, 32px) !important; line-height:1 !important; letter-spacing:.01em !important; color:rgb(248 244 234) !important;
   text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
 ${W} .sx-sw-bar.sx-sw-bar--topSpeed { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-band__meta { color:rgb(${BONE} / .6) !important; }
-${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-bar { ${PLAIN} padding:6px 0 !important; min-height:0 !important; }
 ${W} .sx-sw-bar .k-row__name { font-size:12.5px !important; color:rgb(${BONE} / .8) !important; min-width:84px; }
 ${W} .sx-sw-bar .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -233,14 +233,14 @@ ${W} .sx-sw-bar__track { ${PLAIN} height:7px !important; width:200px !important;
   background:linear-gradient(rgb(${BONE} / .22), rgb(${BONE} / .22)) 0 50% / 100% 1px no-repeat,
     repeating-linear-gradient(90deg, rgb(${BONE} / .32) 0 1px, transparent 1px 20px) 0 50% / 100% 7px no-repeat !important; }
 ${W} .sx-sw-bar__track > .k-bar__fill { height:2px !important; top:50% !important; margin-top:-1px; background:rgb(248 244 234) !important; box-shadow:none !important; }
-${W} :is(.sx-sw-preset, .sx-sw-chip) { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important; font-size:10.5px !important;
+${W} :is(.sx-sw-preset, .sx-sw-chip) { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important; font-size: 12px !important;
   letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; }
 ${W} :is(.sx-sw-preset, .sx-sw-chip)::after { display:none !important; }
 ${W} :is(.sx-sw-preset, .sx-sw-chip)::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} :is(.sx-sw-preset, .sx-sw-chip):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 /* the screen's verbs: words with their notch; the one that commits rests in bone and lights amber */
 ${W} ~ .sx-sw-verbs, ${W} .sx-sw-verbs { ${PLAIN} gap:0 26px !important; }
-${W} .sx-sw-verb { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important; font-size:11px !important; letter-spacing:.18em !important;
+${W} .sx-sw-verb { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important; font-size: 12px !important; letter-spacing:.18em !important;
   color:rgb(${BONE} / .8) !important; }
 ${W} .sx-sw-verb::after { display:none !important; }
 ${W} .sx-sw-verb::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
@@ -250,15 +250,15 @@ ${W} .sx-sw-verb:disabled { color:rgb(${BONE} / .45) !important; }
 /* ---- the chooser: the compatible modules on the fleet's rail, the Hand at the one previewed ------ */
 ${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 12px !important; padding:0 !important; }
-${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size:11px !important;
+${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
   letter-spacing:.2em !important; color:rgb(${BONE} / .75) !important; }
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
-${W} .sx-chooser__kicker { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; line-height:1.5 !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
-${W} .sx-chooser__head h3 { ${LABEL} font-size:10px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
+${W} .sx-chooser__kicker { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; line-height:1.5 !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
+${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
-${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
+${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; padding:0 !important; }
 ${W} .sx-modrow { ${PLAIN} display:block !important; position:relative; padding:9px 0 11px 26px !important; min-height:0 !important; height:auto !important; cursor:pointer; }
 ${W} .sx-modrow::after { display:none !important; }
@@ -273,24 +273,24 @@ ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600;
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
 ${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(143 203 255 / .7) !important; }
-${W} .sx-modrow .sx-modrow__role { font-size:11px !important; color:rgb(${BONE} / .62) !important; }
-${W} .sx-modrow .sx-modrow__metrics { font-size:11px !important; color:rgb(${BONE} / .78) !important; }
+${W} .sx-modrow .sx-modrow__role { font-size: 12px !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-modrow .sx-modrow__metrics { font-size: 12px !important; color:rgb(${BONE} / .78) !important; }
 ${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:11.5px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:"\\A"; white-space:pre; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
 ${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important; min-width:0 !important; height:auto !important;
-  padding:2px 0 !important; font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
+  padding:2px 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__buy::after { display:none !important; }
 ${W} .sx-modrow .sx-modrow__buy::before { all:unset !important; content:"›" !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-modrow .sx-modrow__buy small { color:rgb(${BONE} / .7) !important; letter-spacing:.1em; }
 ${W} .sx-modrow .sx-modrow__buy:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${W} .sx-modrow .sx-modrow__buy:disabled { color:rgb(${BONE} / .45) !important; }
-${W} .sx-modrow .sx-modrow__lock { font-size:10.5px !important; color:rgb(${BONE} / .55) !important; }
+${W} .sx-modrow .sx-modrow__lock { font-size: 12px !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-modrow.is-locked .sx-modrow__name { color:rgb(${BONE} / .6) !important; }
-${W} .sx-modrow.is-eq .sx-modrow__name::after { content:"  fitted"; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:9px;
+${W} .sx-modrow.is-eq .sx-modrow__name::after { content:"  fitted"; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px;
   letter-spacing:.2em; text-transform:uppercase; color:rgb(${BONE} / .7); }
 
 /* ---- the circuit: no plate; the core figure, the systems as readings ------------------------- */
@@ -299,7 +299,7 @@ ${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; 
   -webkit-mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
   mask-composite:intersect; }
-${W} .sx-sw-circuit__identity { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
+${W} .sx-sw-circuit__identity { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:none; letter-spacing:.04em; }
 /* the core borrows the side's padding: the dial's words ride past the drawing, so the box must be
    wider than the content column or the rail's clip eats the first and last letters */
@@ -319,7 +319,7 @@ ${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; to
 ${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
-${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) { ${PLAIN} padding:5px 0 !important; min-height:0 !important; }
 ${W} .sx-sw-flow { display:grid !important; grid-template-columns:minmax(0, 1fr) 84px 56px; align-items:baseline; column-gap:6px; }
 ${W} .sx-sw-flow .sx-sw-flow__copy { grid-column:1 / 3; display:flex !important; flex-direction:row !important; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
@@ -329,10 +329,10 @@ ${W} .sx-sw-rack { margin-top:16px !important; padding-top:12px !important; bord
 ${W} .sx-sw-circuit__acts:has(.sx-sw-circuit__active) { display:none !important; }
 ${W} .sx-sw-circuit__instruction { font-size:12.5px !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__name { font-size:13px !important; color:rgb(${BONE} / .85) !important; }
-${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__sub { font-size:11px !important; color:rgb(${BONE} / .55) !important; }
+${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .55) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__num { color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]) { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important;
-  font-size:10.5px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
+  font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::after { display:none !important; }
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -391,14 +391,14 @@ ${W} .sx-sw-side__hero { ${PLAIN} padding:0 !important; margin:8px 0 14px !impor
 ${W} .sx-sw-side__hero::before, ${W} .sx-sw-side__hero::after { display:none !important; }
 ${W} .sx-sw-side__hero .k-hero__n { display:block; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important;
   font-weight:300 !important; font-size:48px !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size:10px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-spec { ${PLAIN} }
 ${W} .sx-spec > li { ${PLAIN} display:grid !important; grid-template-columns:96px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:6px 0 !important; min-height:0 !important; }
-${W} .sx-spec > li > .k-row__name { ${LABEL} font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-spec > li > .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-spec > li > .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; white-space:normal !important; text-align:left !important; justify-self:start; overflow:visible !important;
   text-overflow:clip !important; max-width:none !important; line-height:1.4; }
 ${W} .sx-buybar { ${PLAIN} margin-top:16px !important; }
-${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size:10.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
+${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
 /* the rack: two sockets on a short scale, a dashed ring where nothing is loaded */
 ${W} .sx-sw-rack { border-top:0 !important; margin-top:18px !important; padding-top:0 !important; }
 ${W} .sx-sw-rack__cells { display:flex !important; gap:0 22px !important; margin:6px 0 0 !important; }
@@ -407,9 +407,9 @@ ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important
   border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important; transform:none !important; clip-path:none !important; margin:0 !important; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
-${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size:9px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
-${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size:11.5px !important; }
-${W} .sx-sw-rack__cell .k-row__sub { font-size:10.5px !important; }
+${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
+${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size: 12px !important; }
+${W} .sx-sw-rack__cell .k-row__sub { font-size: 12px !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible)::before { border-color:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand-hot, #ffd98c) !important; }
@@ -424,7 +424,7 @@ ${W} .orr-power__seg.is-fitted { stroke:rgb(248 244 234); }
 ${W} .orr-power__seg.is-stock { stroke:rgb(${BONE} / .7); }
 ${W} .orr-power__seg-bloom { fill:none; stroke:rgb(${BONE}); stroke-width:7; opacity:.18; }
 ${W} .orr-power__sys.is-fitted, ${W} .orr-power__sys.is-stock { stroke:rgb(248 244 234); stroke-width:1.4; }
-${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:7.8px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
+${W} text.orr-power__syslabel { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.06em; fill:rgb(${BONE} / .55); }
 ${W} text.orr-power__syslabel.is-fitted { fill:rgb(248 244 234); }
 ${W} text.orr-power__syslabel.is-stock { fill:rgb(${BONE} / .82); }
 ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
@@ -453,14 +453,14 @@ ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
 ${W} .orr-sw-readouts.sx-sw__gauges { position:static !important; display:grid !important; grid-template-columns:1fr 1fr; gap:2px 22px !important; margin:18px 0 0 !important;
   padding:12px 0 0 !important; justify-content:start !important; white-space:normal; background:linear-gradient(90deg, rgb(${BONE} / .24), rgb(${BONE} / 0)) 0 0 / 100% 1px no-repeat !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge { display:grid !important; grid-template-columns:1fr auto; column-gap:10px; padding:4px 0 !important; }
-${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:9.5px !important; letter-spacing:.14em !important; }
+${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.14em !important; }
 ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:13px !important; text-align:right; }
 ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 /* the proposed fit reads on the readouts' ghosts and the dial; the separate line retires */
 ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta, ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { display:none !important; }
 ${W} .orr-sw-jig { inset:0 !important; }
 /* the core's word stands inside the dial's foot */
-${W} .sx-sw-circuit__core .k-hero__w { top:98px; font-size:8.5px !important; letter-spacing:.12em !important; }
+${W} .sx-sw-circuit__core .k-hero__w { top:98px; font-size: 12px !important; letter-spacing:.12em !important; }
 /* the chooser: a scale with minor ticks; a bone tick (not a second Hand) on the row in hand */
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
     repeating-linear-gradient(180deg, rgb(${BONE} / .2) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
@@ -494,7 +494,7 @@ ${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
 @media (max-height:800px) {
   ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr 1fr 1fr; gap:0 14px !important; margin-top:10px !important; padding-top:8px !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge { padding:2px 0 !important; }
-  ${W} .sx-sw-verb.orr-lampkey { min-height:34px !important; font-size:11.5px !important; }
+  ${W} .sx-sw-verb.orr-lampkey { min-height:34px !important; font-size: 12px !important; }
 }
 
 /* ================================ ROUND 8 ==================================================== */
@@ -512,7 +512,7 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
   /* a 720-tall stage: six stacked cells in three columns; the dial and the rack close up to give them a floor */
   ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr 1fr 1fr !important; gap:1px 10px !important; margin-top:8px !important; padding-top:5px !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:1fr !important; padding:1px 0 !important; row-gap:0; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.1; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.12em !important; line-height:1.1; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:12px !important; justify-self:start; text-align:left; line-height:1.15; }
   ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:119px; }
   ${W} .sx-sw-circuit__core { margin:4px -28px !important; }
@@ -534,13 +534,13 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
 @media (max-height:800px) {
   ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; gap:0 12px !important; padding-top:5px !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:auto minmax(0, 1fr) !important; column-gap:8px; padding:2px 0 !important; align-items:baseline !important; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.2; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:11.5px !important; justify-self:end !important; text-align:right !important; line-height:1.2; white-space:nowrap; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-size:10px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.12em !important; line-height:1.2; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size: 12px !important; justify-self:end !important; text-align:right !important; line-height:1.2; white-space:nowrap; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-size: 12px !important; }
   /* a ghosted reading (18t → 20t) must still fit beside its name in a 114px cell */
   ${W} .orr-sw-readouts .sx-sw-gauge { column-gap:6px !important; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:7.5px !important; letter-spacing:.1em !important; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:11px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.1em !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size: 12px !important; }
   /* the column's foot fade must not dim the last reading */
   ${W} .sx-sw__side { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
   /* For Sale at 720 tall: the price a little smaller, the spec tighter, the handling closes up under the render */
@@ -610,7 +610,7 @@ ${W} .sx-modrow:focus-within .sx-modrow__metrics { display:flex !important; flex
 ${W} .sx-modrow:focus-within .sx-modrow__metric:first-child { display:flex; flex-direction:column-reverse; flex-basis:100%; gap:0; margin-bottom:2px; }
 ${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
   font-size:46px !important; line-height:1 !important; letter-spacing:-.01em; color:rgb(248 244 234) !important; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-style:normal; font-size:9.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-style:normal; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
 /* the chooser's list runs to the rail on a short screen; the fold sits on its last visible row */
 @media (max-height:800px) {
@@ -631,11 +631,11 @@ ${W} .sx-sw-bands { display:grid !important; grid-template-columns:repeat(2, min
 ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 1fr) auto !important; align-items:center; column-gap:10px; }
 /* the label floor at 720 is 11px: no tracked 8px caps */
 @media (max-height:800px) {
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:10px !important; letter-spacing:.08em !important; }
-  ${W} .sx-sw-gauge .k-row__name { font-size:10px !important; letter-spacing:.1em !important; }
-  ${W} .sx-chooser__kicker { font-size:10.5px !important; letter-spacing:.12em !important; }
-  ${W} .sx-spec > li > .k-row__name { font-size:10.5px !important; letter-spacing:.12em !important; }
-  ${W} .sx-sw-side__hero .k-hero__w { font-size:10.5px !important; letter-spacing:.14em !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.08em !important; }
+  ${W} .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.1em !important; }
+  ${W} .sx-chooser__kicker { font-size: 12px !important; letter-spacing:.12em !important; }
+  ${W} .sx-spec > li > .k-row__name { font-size: 12px !important; letter-spacing:.12em !important; }
+  ${W} .sx-sw-side__hero .k-hero__w { font-size: 12px !important; letter-spacing:.14em !important; }
 }
 
 /* the dial's words stay inside the column: the dial sits a little left of its axis on a tall screen */
@@ -691,7 +691,7 @@ ${W} .sx-sw__rail .sx-seg__btn { text-decoration:none !important; border-bottom:
 ${W} .sx-sw__stage > .sx-sw__salering { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
 ${W} .sx-sw__salering-ring { stroke:rgb(${BONE} / .32); }
 ${W} .sx-sw__salering-ticks { stroke:rgb(${BONE} / .22); }
-${W} text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9.5px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
+${W} text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
 /* the glass under the hull for sale: the ship separates from the hangar; the old bone wash goes */
 ${W} .sx-sw__stage.has-salering.has-poster:not(.is-live)::before { left:0 !important; right:0 !important; top:0 !important; bottom:0 !important; z-index:1 !important;
   background:radial-gradient(circle at var(--sw-ring-x, 50%) var(--sw-ring-y, 50%), rgb(6 8 11 / .62) 0, rgb(6 8 11 / .58) calc(var(--sw-ring-r, 280px) - 30px), rgb(6 8 11 / 0) calc(var(--sw-ring-r, 280px) + 40px)) !important; }
@@ -699,7 +699,7 @@ ${W} .sx-sw__stage.has-salering > .sx-sw__poster { z-index:1; -webkit-mask-image
 /* the view words are marks on the ring's upper arc; the current one lit */
 ${W} .sx-sw__stage.has-salering .sx-sw__camera { position:absolute !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; width:0; height:0; margin:0 !important; padding:0 !important; overflow:visible; display:block !important; z-index:3; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera > li { position:absolute; left:0; top:0; }
-${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size:9px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(248 244 234) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:""; display:block; width:1.5px; height:8px; margin:0 auto 3px; background:rgb(${BONE} / .4); }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before { background:rgb(248 244 234); height:12px; }
@@ -750,9 +750,9 @@ ${W} .sx-sw__salering-mark { stroke:rgb(${BONE} / .5); }
 ${W} .sx-sw__salering-mark.is-current { stroke:rgb(248 244 234); }
 /* the Fleet dial's caption where the jig could not engrave one */
 ${W} .sx-sw__stage > .sx-sw__fleetcap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
-${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9.5px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
+${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.22em; fill:rgb(${BONE} / .66); }
 @media (max-height:800px) {
-  ${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-size:9px; letter-spacing:.18em; }
+  ${W} .sx-sw__fleetcap text.sx-sw__salering-cap, ${W} .sx-sw__salering text.sx-sw__salering-cap { font-size: 12px; letter-spacing:.18em; }
 }
 /* a short stage: the dial's foot, its caption and the verbs share 50px, so the jig's outer drifting ticks
    (which would cross the verb words) stand down there; the For Sale ring has none either */
@@ -780,7 +780,7 @@ ${W} .sx-buybar .orr-lampkey small, ${W} .sx-buybar .sx-btn-primary small { disp
 /* ================================ ROUND 14: a buying decision =================================== */
 /* For Sale: the hull as readings against the one you fly. Each value carries yours as its ghost: ice where
    this hull gains, dim bone where it costs (the Weapon readouts' rule) */
-${W} .sx-sw-side__class { ${LABEL} margin:5px 0 0 !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-side__class { ${LABEL} margin:5px 0 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-sw-read { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 16px; margin:14px 0 0 !important; padding:0 !important; list-style:none !important; }
 ${W} .sx-sw-read__cell { display:flex; flex-direction:column; gap:4px; min-width:0; margin:0; padding:0; }
 ${W} .sx-sw-read__v { display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
@@ -790,8 +790,8 @@ ${W} .sx-sw-read__v b small { font-size:13px; margin-left:3px; color:rgb(${BONE}
 ${W} .sx-sw-read__ghost { font-style:normal; font-family:var(--dp-face-body, "Instrument Sans"); font-size:12.5px; letter-spacing:.02em; font-variant-numeric:tabular-nums; }
 ${W} .sx-sw-read__ghost.is-gain { color:var(--dp-ice, #8fcbff); }
 ${W} .sx-sw-read__ghost.is-loss { color:rgb(146 143 135); }
-${W} .sx-sw-read__k { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
-${W} .sx-sw-read__vs { ${LABEL} margin:12px 0 0 !important; font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .56) !important; }
+${W} .sx-sw-read__k { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-read__vs { ${LABEL} margin:12px 0 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .56) !important; }
 /* the hardpoints stand on the disc as sockets; their words stay here for a reader, and show where no disc is drawn */
 ${W} .sx-sw-read__hp { margin:12px 0 0 !important; font-size:12.5px; line-height:1.4; color:rgb(${BONE} / .8); }
 ${W} .sx-sw-read__hp .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\00b7\\0020" !important; color:rgb(${BONE} / .45); }
@@ -805,7 +805,7 @@ ${W}.sx-sw--buying:has(.sx-sw__stage.has-sockets) .sx-sw-read__hp { position:abs
 ${W} .sx-sw__socket { stroke:rgb(${BONE} / .8); }
 ${W} .sx-sw__socket.is-gain { stroke:var(--dp-ice, #8fcbff); }
 ${W} .sx-sw__socket.is-ghost { stroke:rgb(${BONE} / .5); }
-${W} text.sx-sw__socket-word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; font-weight:650; letter-spacing:.2em; fill:rgb(${BONE} / .6); }
+${W} text.sx-sw__socket-word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size: 12px; font-weight:650; letter-spacing:.2em; fill:rgb(${BONE} / .6); }
 /* a Buy key that cannot be pressed: its own cut outline in bone, the verb dim inside, the reason under it */
 ${W} .sx-buybar [data-buyship]:disabled { position:relative !important; background:none !important; background-image:none !important; box-shadow:none !important; text-decoration:none !important;
   color:rgb(${BONE} / .55) !important; border-color:transparent !important; opacity:1 !important; filter:none !important; cursor:default; }
@@ -813,7 +813,7 @@ ${W} .sx-buybar [data-buyship]:disabled::before, ${W} .sx-buybar [data-buyship]:
 ${W} .sx-buybar [data-buyship] > .sx-buykey__rim { position:absolute; overflow:visible; pointer-events:none; }
 ${W} .sx-buybar [data-buyship] > .sx-buykey__rim path { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1; vector-effect:non-scaling-stroke; }
 ${W} .sx-buybar.is-blocked { flex-direction:column !important; flex-wrap:nowrap !important; align-items:flex-start !important; gap:9px !important; }
-${W} .sx-buybar__why { ${LABEL} list-style:none; margin:0 !important; padding:0 !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66) !important; }
+${W} .sx-buybar__why { ${LABEL} list-style:none; margin:0 !important; padding:0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66) !important; }
 ${W} .sx-buybar__why::before, ${W} .sx-buybar__why::after { content:none !important; display:none !important; }
 /* a scrolled ladder folds its head as its foot folds; the spine and its thumb stay lit */
 ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-foot="0"][data-fold-head="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
@@ -837,7 +837,7 @@ ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold
   ${W} .orr-sw-readouts .sx-sw-gauge { display:flex !important; flex-direction:column-reverse !important; align-items:flex-start !important; justify-content:flex-end !important; gap:4px !important; padding:0 !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
     font-size:22px !important; line-height:1 !important; text-align:left !important; justify-self:start !important; color:rgb(248 244 234) !important; white-space:nowrap; }
-  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:9.5px !important; letter-spacing:.16em !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size: 12px !important; letter-spacing:.16em !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-family:var(--dp-face-body, "Instrument Sans") !important; font-variation-settings:normal !important; font-weight:400 !important; font-size:12.5px !important; margin-left:7px; }
 }
 
@@ -925,12 +925,12 @@ ${W} .sx-sw__salering .sx-sw__bezel-index { fill:none; stroke:rgb(${BONE} / .62)
 ${W} .sx-sw__salering .sx-sw__bezel-index.is-detent { stroke:rgb(255 252 244); }
 /* the view words ride inside the band, turned along it; the current one is dark ink on its lit stretch */
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transform:var(--vw-rot, none) !important; translate:none !important; scale:none !important; transform-origin:50% 50% !important;
-  font-size:10px !important; font-weight:600 !important; font-variation-settings:"wdth" 112, "wght" 600 !important; letter-spacing:.16em !important; line-height:1 !important;
+  font-size: 12px !important; font-weight:600 !important; font-variation-settings:"wdth" 112, "wght" 600 !important; letter-spacing:.16em !important; line-height:1 !important;
   padding:2px 3px !important; color:rgb(250 247 238 / .96) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(12 14 18) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]:is(:hover, :focus-visible):not(.is-current) { color:rgb(255 253 246) !important; }
 @media (max-height:800px) {
-  ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { font-size:9px !important; letter-spacing:.12em !important; padding:1px 2px !important; }
+  ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { font-size: 12px !important; letter-spacing:.12em !important; padding:1px 2px !important; }
 }
 /* the jig's bearing numerals would sit under the bezel's inner edge: the band's own scale carries the bearing */
 ${W} .orr-sw-jig text.orr-hull__bearing { display:none !important; }

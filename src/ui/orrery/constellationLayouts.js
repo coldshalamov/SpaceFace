@@ -186,7 +186,7 @@ ${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal
 ${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__bloom { stroke-width:10; }
 ${A} .con-medal-read__rim { position:absolute; left:-30px; top:-30px; width:calc(100% + 60px); height:calc(100% + 60px); overflow:visible; }
-${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
+${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
 ${A} .con-medal-read__dial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 ${A} .con-medal-read__dial > .con-medal__art { opacity:.34; }
 ${A} .con-medal-read__dial[data-state="going"] > .con-medal__art { opacity:.66; }

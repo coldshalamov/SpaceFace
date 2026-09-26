@@ -43,7 +43,7 @@ ${scope} ${list} { ${PLAIN} position:relative !important; display:flex !importan
   margin:0 !important; padding:4px 0 !important; counter-reset:orrlad; background:${RAIL_BG} !important; }
 ${scope} ${list} > li { position:relative !important; counter-increment:orrlad; width:100% !important; list-style:none !important; margin:0 !important; }
 ${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); position:absolute; left:44px; top:50%; transform:translateY(-50%); pointer-events:none;
-  ${LABEL} font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+  ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:46px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13px !important;
@@ -73,7 +73,7 @@ ${S} { grid-template-columns:minmax(168px, 212px) minmax(600px, 660px) minmax(0,
   column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
 ${S}::before { background:radial-gradient(120% 95% at 18% 36%, rgb(5 7 10 / .9), rgb(5 7 10 / .72) 55%, rgb(5 7 10 / .5)) !important; }
 ${S} > .k-title { align-self:end; }
-${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size:10.5px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
+${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size: 12px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
   display:flex; align-items:center; gap:14px; }
 ${S} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 ${S} > .orr-set-preview { grid-area:preview; align-self:stretch; justify-self:stretch; min-height:0; }
@@ -104,7 +104,7 @@ ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !imp
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
 @media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } }
-${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size:11.5px !important; letter-spacing:.13em !important; line-height:1.3 !important;
+${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important;
   color:rgb(${BONE} / .8) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
 ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(${HOT}) !important; }
 
@@ -145,7 +145,7 @@ ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !i
   gap:4px 20px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:0 !important; justify-self:start !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-block !important;
-  cursor:pointer !important; padding:8px 0 8px 14px !important; ${LABEL} font-size:11.5px !important; letter-spacing:.2em !important; line-height:1 !important;
+  cursor:pointer !important; padding:8px 0 8px 14px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .62) !important; transition:color .16s linear; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:"" !important; display:block !important; position:absolute !important; left:1px !important; top:50% !important;
@@ -210,27 +210,27 @@ ${S} #sf-settings-pane .sf-bind-btn:is(.sf-bind-btn--capture, [aria-pressed="tru
 @keyframes orr-set-listen-seg { 50% { opacity:.35; } }
 /* a fixed shortcut shares the row grammar: its name in label caps over its note, the key in the bind column */
 ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] { grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important; align-items:start !important; padding-top:9px !important; }
-${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__name { ${LABEL} font-size:11.5px !important; letter-spacing:.13em !important; line-height:1.3 !important; color:rgb(${BONE} / .84) !important; }
-${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:block; margin-top:4px; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:11.5px !important;
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important; color:rgb(${BONE} / .84) !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:block; margin-top:4px; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important;
   line-height:1.4 !important; color:rgb(${BONE} / .64) !important; white-space:normal !important; text-transform:none !important; letter-spacing:0 !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] > .k-t-emph { ${LABEL} justify-self:start !important; padding-left:14px !important; font-size:12.5px !important; letter-spacing:.16em !important;
   color:rgb(${HOT}) !important; text-align:left !important; margin-top:1px; }
 /* a section head in the rows, and a quiet sentence between lists */
 ${S} #sf-settings-pane .k-row[data-orr-kind="head"] { min-height:0 !important; padding:22px 0 6px 30px !important; grid-template-columns:minmax(0, 1fr) !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="head"]::before { top:auto !important; bottom:12px !important; width:12px !important; background:rgb(${BONE} / .7) !important; }
-${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size:10.5px !important;
+${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size: 12px !important;
   letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important; }
 ${S} #sf-settings-pane .k-row .k-caps::after { content:""; flex:1 1 auto; max-width:120px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)); }
 ${S} #sf-settings-pane > p.k-sentence { ${PLAIN} font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.5 !important;
   color:rgb(${BONE} / .66) !important; max-width:58ch !important; margin:8px 0 12px 30px !important; padding:0 !important; text-transform:none !important; letter-spacing:0 !important; }
 ${S} #sf-settings-pane > .k-words { ${PLAIN} display:flex !important; flex-wrap:wrap; align-items:baseline; gap:6px 16px !important; margin:10px 0 12px 30px !important; padding:0 !important; }
-${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size:11px !important;
+${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size: 12px !important;
   letter-spacing:.18em !important; color:rgb(${HOT}) !important; }
 ${S} #sf-settings-pane > .k-words > .k-word::before { content:"›  " !important; color:rgb(${BONE} / .6); }
 ${S} #sf-settings-pane > .k-words > .k-word::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane > .k-words > .k-word:hover { color:rgb(255 253 248) !important; }
 ${S} #sf-settings-pane > .k-words > .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
-${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:11.5px !important; color:rgb(${BONE} / .6) !important; }
+${S} #sf-settings-pane > .k-words > .k-t-fine { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${S} #sf-settings-pane > .orr-extent::before { left:7px; }
 /* a category arrives row by row */
 ${S} #sf-settings-pane .orr-set-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -244,7 +244,7 @@ ${S} > .k-foot { align-items:center !important; }
 ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
-${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size:10px !important; letter-spacing:.2em !important;
+${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .58) !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
@@ -252,9 +252,9 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 @media (max-width:1500px) {
   ${S} { --orr-scale-w:174px; --orr-label-w:150px; grid-template-columns:minmax(150px, 176px) minmax(456px, 480px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
-  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
   ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
@@ -287,7 +287,7 @@ ${C} { grid-template-columns:minmax(200px, 268px) minmax(0, 1fr) !important; gri
 ${C}::before { background:linear-gradient(90deg, rgb(5 7 10 / .92) 0%, rgb(5 7 10 / .84) 42%, rgb(5 7 10 / .6) 72%, rgb(5 7 10 / .5)) !important; z-index:0 !important; }
 ${C} > :is(.k-title, .k-hang, .k-stage, .k-foot) { position:relative; z-index:2; }
 ${C} > .k-title { max-width:none !important; align-self:end; }
-${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size:10.5px !important; letter-spacing:.26em !important; line-height:1.4 !important;
+${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size: 12px !important; letter-spacing:.26em !important; line-height:1.4 !important;
   color:rgb(${BONE} / .6) !important; display:flex; align-items:center; gap:14px; }
 ${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the drift field and the emblem stand behind everything */
@@ -327,7 +327,7 @@ ${C} .orr-cr-progress { display:grid; grid-template-columns:84px auto; align-ite
 ${C} .orr-cr-progress svg { width:84px; height:84px; overflow:visible; }${C} .orr-cr-progress__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 280 !important; font-weight:280 !important; font-size:32px;
   line-height:.9; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .7); }
-${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size:10px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
+${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
 
 /* ------------------------------------------------ credits: the reel ---------------------------- */
 ${C} > .k-stage { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; max-width:none !important; width:100% !important; min-height:0 !important;
@@ -341,14 +341,14 @@ ${C} .orr-cr-reel { position:relative; max-width:min(660px, 100%); padding:9vh 0
 ${C} .orr-cr-sec { position:relative; scroll-margin-top:9vh; }
 ${C} .orr-cr-sec + .orr-cr-sec { margin-top:86px; }
 ${C} .orr-cr-head { ${LABEL} display:flex; align-items:center; gap:16px; margin:0 0 24px !important; font-size:12px !important; letter-spacing:.28em !important; color:rgb(${HOT}) !important; }
-${C} .orr-cr-head > i { font-style:normal; font-size:10px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
+${C} .orr-cr-head > i { font-style:normal; font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the maker: the name at display size, the build and the trade in labels, one sentence */
 ${C} .of-credits-made { margin:0 0 20px !important; }
 ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230 !important;
   font-weight:230 !important; font-size:clamp(58px, 8.8vh, 100px) !important; line-height:.9 !important; white-space:nowrap; letter-spacing:.02em !important; text-transform:uppercase !important;
-  color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size:11px !important; letter-spacing:.24em !important;
+  color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size: 12px !important; letter-spacing:.24em !important;
   color:rgb(${BONE} / .72) !important; }
 ${C} .of-credits-ver { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .orr-cr-sec > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; line-height:1.55 !important; max-width:44ch !important;
@@ -366,20 +366,20 @@ ${C} .of-credits-rows .k-row__name { font-family:var(--dp-face-read, "Instrument
 /* the line under a name reads as text (versions, makers, addresses keep their case) */
 ${C} .of-credits-rows .k-row__sub { display:block; margin-top:5px !important; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important;
   font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .66) !important; white-space:normal !important; overflow-wrap:anywhere; }
-${C} .of-credits-rows .k-row__num { ${LABEL} font-size:11px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
+${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
 /* a licence: its name, its terms in labels, its text as quiet reading */
 ${C} .of-credits-notice { ${PLAIN} padding:0 0 0 30px !important; margin:0 0 40px !important; position:relative; max-width:none !important; }
 ${C} .of-credits-notice::before { content:"" !important; position:absolute; left:4px; top:10px; width:8px; height:1.5px; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice::after { content:none !important; display:none !important; }
 ${C} .of-credits-notice > h2 { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; font-weight:600 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${HOT}) !important; margin:0 !important; }
-${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size:10px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .64) !important;
+${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .64) !important;
   background:none !important; padding:0 !important; }
 ${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
   color:rgb(${BONE} / .68) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
 ${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.5 !important; color:rgb(${BONE} / .8) !important;
   margin:0 0 8px !important; max-width:66ch; }
-${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size:10.5px; letter-spacing:.2em; color:rgb(${HOT}); }
+${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${HOT}); }
 ${C} .of-credits-notice .orr-cr-unfold::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice .orr-cr-unfold:hover { color:rgb(255 253 248); }
 ${C} .of-credits-notice .orr-cr-unfold:focus-visible { color:rgb(255 253 248); outline:none !important; box-shadow:none !important; }
@@ -388,7 +388,7 @@ ${C} .of-credits-notice .orr-cr-unfold:focus { outline:none !important; }
 ${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:rgb(255 253 248); box-shadow:0 0 8px rgb(255 250 236 / .6); }
 ${C} .of-credits-notice .orr-cr-full { margin-top:10px; }
 ${C} .of-credits-notice .orr-cr-full[hidden] { display:none !important; }
-${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size:10.5px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
+${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size: 12px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
 ${C} .orr-cr-end::before { content:""; width:28px; height:1px; background:rgb(${BONE} / .4); }
 /* Scroll Reveal: each line rises out of the dark as the reel brings it up */
 ${C} .orr-cr-line { opacity:0; transform:translateY(16px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out); }
@@ -403,7 +403,7 @@ ${C} > .k-foot { align-items:center !important; }
 ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size:10px !important; letter-spacing:.2em !important;
+${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .58) !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
 

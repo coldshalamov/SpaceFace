@@ -445,7 +445,7 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 #boot-overlay.boot-overlay--orrery .boot-progress { display:none; }
 #boot-overlay.boot-overlay--orrery .boot-progress-pct { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); min-width:0;
   text-align:center; color:#dfeeff; font-size:17px; font-weight:600; letter-spacing:.02em; text-shadow:0 0 12px rgb(0 0 0 / .8); }
-#boot-overlay.boot-overlay--orrery .boot-label { margin-top:16px; font-size:11px; font-weight:650; letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .85); }
+#boot-overlay.boot-overlay--orrery .boot-label { margin-top:16px; font-size: 12px; font-weight:650; letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .85); }
 #boot-overlay.boot-overlay--orrery .boot-detail { font-size:13px; color:rgb(232 226 212 / .6); }
 .boot-ring { width:144px; height:144px; overflow:visible; }
 .boot-ring__emblem { opacity:.5; transform-box:fill-box; transform-origin:center; animation:boot-ring-turn 60s linear infinite; }

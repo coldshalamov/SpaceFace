@@ -81,11 +81,11 @@ ${M} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto; sc
   -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); padding-right:40px !important; }
 ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
 ${M} .sx-mkt-browser__filters li { flex:none; }
-${M} .sx-mkt-browser__mode { ${LABEL} font-size:10.5px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
+${M} .sx-mkt-browser__mode { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${M} .sx-mkt-browser__count { color:rgb(${BONE} / .5) !important; font-weight:600 !important; }
 ${M} .sx-mkt-browser__filters { gap:4px 20px !important; margin:10px 0 12px !important; }
 ${M} .sx-mkt-filter { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 7px !important;
-  font-size:11px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .58) !important; }
+  font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .58) !important; }
 ${M} .sx-mkt-filter::before, ${M} .sx-mkt-filter::after { display:none !important; }
 ${M} .sx-mkt-filter.is-on { color:rgb(248 244 234) !important;
   background-image:linear-gradient(rgb(${BONE} / .9), rgb(${BONE} / .9)) !important; background-size:16px 2px !important;
@@ -106,9 +106,9 @@ ${M} .sx-mkt-table thead, ${M} .sx-mkt-table thead tr { background:none !importa
 ${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .6) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__none { color:rgb(${BONE} / .35); }
 ${M} .sx-mkt-row .of-commodity-icon, ${M} .sx-mkt-row .sx-mkt-row__commodity { display:none !important; }
-${M} .sx-mkt-row .sx-mkt-row__heldtag { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
+${M} .sx-mkt-row .sx-mkt-row__heldtag { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-${M} .sx-mkt-table thead th { ${PLAIN} ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important;
+${M} .sx-mkt-table thead th { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important;
   padding:0 8px 8px !important; }
 ${M} .sx-mkt-table thead th:first-child { padding-left:28px !important; }
 /* the rail: one ruled line down the goods (a 1px column of light at the Hand's side) */
@@ -129,21 +129,21 @@ ${M} .sx-mkt-row.is-active td { color:rgb(${BONE} / .9) !important; }
 ${M} .sx-mkt-row.is-active .sx-mkt-row__name { color:rgb(250 247 238) !important; }
 ${M} .sx-mkt-row:hover td { color:rgb(${BONE} / .88) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__price { color:rgb(248 244 234) !important; font-weight:620; white-space:nowrap; }
-${M} .sx-mkt-row .sx-mkt-row__tr { font-size:10.5px !important; margin-left:6px; color:var(--dp-ice, #8fcbff) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr { font-size: 12px !important; margin-left:6px; color:var(--dp-ice, #8fcbff) !important; }
 /* an unmoved price says nothing: the flat 0% keeps its words for readers, off the glass */
 ${M} .sx-mkt-row .sx-mkt-row__tr:is(.is-flat, [aria-label='History unavailable']) { visibility:hidden; }
 ${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .48) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__held { color:rgb(${BONE} / .7) !important; }
 ${M} .sx-mkt-row :is(.sx-mkt-row__flag, .sx-mkt-row__profit) { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
-${M} .sx-mkt-row .sx-mkt-row__profit { ${LABEL} font-size:9px !important; letter-spacing:.14em !important; margin-left:8px; color:rgb(${BONE} / .8) !important; }
+${M} .sx-mkt-row .sx-mkt-row__profit { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; margin-left:8px; color:rgb(${BONE} / .8) !important; }
 
 
 /* ---- the reading: the good's name as a door (no link underline), the price in warm white ------- */
-${M} .sx-mkt-cat-inline { ${LABEL} font-size:10.5px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; }
+${M} .sx-mkt-cat-inline { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; }
 ${M} .sx-mkt-title, ${M} .sx-mkt-title .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; }
 ${M} .sx-mkt-title .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
 ${M} .sx-mkt__hero .k-hero__n { color:rgb(248 244 234) !important; text-shadow:0 0 24px rgb(0 0 0 / .5) !important; }
-${M} .sx-mkt__hero .k-hero__w { ${LABEL} font-size:10.5px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
+${M} .sx-mkt__hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${M} .sx-mkt-tracked { color:rgb(${BONE} / .85) !important; }
 ${M} .sx-mkt-tracked b { color:rgb(248 244 234) !important; }
 /* the trace is the instrument: no fill under it (a flat price made that a box), bone marks */
@@ -166,7 +166,7 @@ ${M} .so-route-disclosure { border-top:1px solid rgb(${BONE} / .12) !important; 
 ${M} .sx-trade, ${M} .sx-mkt__console { border-top:0 !important; }
 ${M} .sx-mkt-sale { color:rgb(${BONE} / .75) !important; }
 ${M} .sx-mkt-chart-key, ${M} .sx-mkt-chart-key [data-history-key] { color:rgb(${BONE} / .7) !important; }
-${M} .so-route-disclosure > summary { ${LABEL} font-size:10px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; list-style:none; cursor:pointer; }
+${M} .so-route-disclosure > summary { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; list-style:none; cursor:pointer; }
 ${M} .so-route-disclosure > summary::-webkit-details-marker { display:none; }
 ${M} .so-route-disclosure > summary::before { content:"›  "; }
 ${M} .so-route-disclosure[open] > summary::before { content:"‹  "; }
@@ -193,9 +193,9 @@ ${M} .sx-qty:is(:focus-within, :hover, .is-turning) :is(.orr-qdial__needle) { st
 ${M} .sx-qty:is(:focus-within, :hover, .is-turning) circle.orr-qdial__bead { fill:var(--dp-hand-hot, #ffd98c); }
 ${M} .sx-qty:is(:focus-within, :hover, .is-turning) .orr-qdial__fill { stroke:var(--dp-hand, #f2b950); }
 ${M} .sx-qty.is-turning :is(.orr-qdial__fill, .orr-qdial__hand) { transition:none; }
-${M} .orr-qdial__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:8px; letter-spacing:.08em; fill:rgb(${BONE} / .55); }
+${M} .orr-qdial__end { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.08em; fill:rgb(${BONE} / .55); }
 ${M} .sx-qty .sx-qty__k { position:absolute; left:6px; width:200px; top:60px; text-align:center; margin:0 !important; padding:0 !important;
-  ${LABEL} font-size:9px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .55) !important; background:none !important; pointer-events:none; }
+  ${LABEL} font-size: 12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .55) !important; background:none !important; pointer-events:none; }
 ${M} .sx-qty .sx-qty__in { position:absolute !important; left:46px; width:120px !important; top:76px; height:54px !important; margin:0 !important; padding:0 !important;
   ${PLAIN} border-radius:0 !important; text-align:center; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%;
   font-variation-settings:"wdth" 100, "wght" 560 !important; font-size:44px !important; line-height:54px !important; color:rgb(248 244 234) !important;
@@ -205,7 +205,7 @@ ${M} .sx-qty .sx-qty__words { position:absolute !important; left:0; right:0; top
   gap:0 !important; margin:0 !important; padding:0 !important; }
 ${M} .sx-qty .sx-qty__words li { margin:0 !important; }
 ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 2px !important;
-  font-size:11.5px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .75) !important; }
+  font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .75) !important; }
 ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max)::before, ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max)::after { display:none !important; }
 ${M} .sx-qty .sx-qty__b[data-q="-1"]::before { content:"‹  " !important; display:inline !important; position:static !important; width:auto !important;
   height:auto !important; background:none !important; transform:none !important; }
@@ -213,12 +213,12 @@ ${M} .sx-qty .sx-qty__b[data-q="1"]::after { content:"  ›" !important; display
   height:auto !important; background:none !important; transform:none !important; }
 ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${M} .so-trade-total { grid-area:total; display:flex !important; flex-direction:column; gap:6px; ${PLAIN} padding:0 !important; }
-${M} .so-trade-total > span { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .65) !important; }
+${M} .so-trade-total > span { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .65) !important; }
 ${M} .so-trade-total > strong { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 560 !important;
   font-size:clamp(28px, 3.2vh, 40px) !important; line-height:1 !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 ${M} .sx-trade__note { grid-area:note; margin:0 !important; font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
 ${M} .so-trade-breakdown { grid-area:breakdown; ${PLAIN} padding:0 !important; }
-${M} .so-trade-breakdown > summary { ${LABEL} font-size:10px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; cursor:pointer; list-style:none; }
+${M} .so-trade-breakdown > summary { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; cursor:pointer; list-style:none; }
 ${M} .so-trade-breakdown > summary::-webkit-details-marker { display:none; }
 ${M} .so-trade-breakdown > summary::before { content:"›  "; }
 ${M} .so-trade-breakdown > summary span { display:none; }
@@ -237,7 +237,7 @@ ${M} .sx-trade__go[data-go]:not(:disabled):is(:hover, :focus-visible) { color:va
   background-position:0 100% !important; background-repeat:no-repeat !important; text-shadow:0 0 22px rgb(255 217 140 / .4); }
 ${M} .sx-trade__go[data-go]:disabled { color:rgb(${BONE} / .45) !important; cursor:default; }
 /* the other side only switches mode: a word */
-${M} .sx-trade__go:not([data-go]) { ${LABEL} font-size:11px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; padding:4px 2px !important; }
+${M} .sx-trade__go:not([data-go]) { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66) !important; padding:4px 2px !important; }
 ${M} .sx-trade__go:not([data-go]):is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${M} .sx-trade__go:not([data-go])::after { all:unset !important; content:"  \u203A" !important; display:inline !important; color:inherit !important; }
 ${M} .sx-trade__go:not([data-go])::before { all:unset !important; display:none !important; }
@@ -258,8 +258,8 @@ ${M} .sx-decision__opt { ${PLAIN} display:inline-flex !important; flex-direction
   padding:2px 0 !important; margin:0 !important; min-height:0 !important; height:auto !important; width:auto !important; }
 ${M} .sx-decision__opt::before { content:"›" !important; display:inline !important; position:static !important; background:none !important; width:auto !important;
   height:auto !important; color:rgb(${BONE} / .55); }
-${M} .sx-decision__opt .k-row__name { ${LABEL} font-size:11px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; white-space:nowrap; flex:none; }
-${M} .sx-decision__opt .k-row__sub { font-size:11.5px !important; color:rgb(${BONE} / .7) !important; }
+${M} .sx-decision__opt .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; white-space:nowrap; flex:none; }
+${M} .sx-decision__opt .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
 ${M} .sx-decision__opt:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
 ${M} .sx-decision__opt:is(:hover, :focus-visible) { outline:none !important; }
 html.sf-reduce-motion ${M} :is(.orr-qdial__fill, .orr-qdial__hand) { transition:none; }
@@ -275,7 +275,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
   ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
   ${M} .sx-mkt-instrument__plot { height:80px !important; }
-  ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size:10.5px !important; }
+  ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size: 12px !important; }
   ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
   ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }
   ${M} .sx-mkt__quote > :is(.sx-mkt-readouts, .sx-mkt-sale) { display:none !important; }

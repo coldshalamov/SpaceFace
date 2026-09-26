@@ -74,7 +74,7 @@ html.sf-reduce-motion .con-lens__read { transition:none; }
 .orr-svg .con-lens__ring { fill:none; stroke:rgb(${WARM}); stroke-width:1.8; }
 .orr-svg .con-lens__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:8; opacity:.14; }
 .orr-svg .con-lens__ticks { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.2; }
-.orr-svg text.con-lens__mag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.16em; fill:rgb(${WARM}); text-anchor:middle; }
+.orr-svg text.con-lens__mag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; fill:rgb(${WARM}); text-anchor:middle; }
 html.sf-reduce-motion .con-lens { transition:none; }
 
 /* the dial: orbits, the rim scale, the branch sectors, the tier spoke */

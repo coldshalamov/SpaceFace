@@ -22,8 +22,8 @@ const CSS = `
 .orr-hullring__ghost { fill:none; stroke:rgb(${BONE} / .6); stroke-width:2; stroke-linecap:round; }
 .orr-svg text.orr-hullring__num { font-family:var(--dp-face-numeral, var(--dp-face-display, "Archivo")), sans-serif; font-size:26px; font-weight:250;
   font-variation-settings:"wght" 250, "wdth" 100; letter-spacing:-.01em; fill:rgb(246 241 230); paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:4px; stroke-linejoin:round; }
-.orr-svg text.orr-hullring__num tspan { font-size:11px; font-weight:500; font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.08em; fill:rgb(${BONE} / .66); }
-.orr-svg text.orr-hullring__label { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size:10px;
+.orr-svg text.orr-hullring__num tspan { font-size: 12px; font-weight:500; font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.08em; fill:rgb(${BONE} / .66); }
+.orr-svg text.orr-hullring__label { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
   font-variation-settings:"wght" 600, "wdth" 112; letter-spacing:.24em; text-transform:uppercase; fill:rgb(${BONE} / .66);
   paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
 @media (forced-colors: active) { .orr-hullring { display:none; } }

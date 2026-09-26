@@ -31,7 +31,7 @@ html.sf-reduce-motion .orr-radar__sweep { animation:none; }
 .orr-tape svg { width:640px; height:58px; display:block; }
 .orr-tape__marker { position:absolute; top:0; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; }
 .orr-tape__dist { font-family:var(--dp-face-numeral); font-weight:520; font-size:15px; color:var(--dp-hand-hot, #ffd98c); font-variant-numeric:tabular-nums; white-space:nowrap; }
-.orr-tape__dist small { font-family:var(--dp-face-label); font-weight:600; font-size:11px; letter-spacing:.12em; color:var(--dp-ink, #e8e2d4); margin-left:6px; text-shadow:0 0 8px rgb(0 0 0 / .9), 0 1px 2px rgb(0 0 0 / .9); }
+.orr-tape__dist small { font-family:var(--dp-face-label); font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink, #e8e2d4); margin-left:6px; text-shadow:0 0 8px rgb(0 0 0 / .9), 0 1px 2px rgb(0 0 0 / .9); }
 .orr-lock { position:absolute; width:0; height:0; pointer-events:none; }
 .orr-lock svg { position:absolute; left:-120px; top:-120px; width:240px; height:240px; overflow:visible; }
 .orr-lock__ring { transform-box:view-box; transform-origin:120px 120px; animation:orr-drift 22s linear infinite; }
@@ -45,7 +45,7 @@ html.sf-reduce-motion .orr-radar__sweep { animation:none; }
 @keyframes orr-threat-pulse { 50% { opacity:.55; } }
 .orr-edge { position:absolute; width:0; height:0; pointer-events:none; }
 .orr-edge svg { position:absolute; left:-18px; top:-18px; width:36px; height:36px; overflow:visible; }
-.orr-edge__label { position:absolute; top:22px; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:10px; color:var(--dp-danger, #ff5038); }
+.orr-edge__label { position:absolute; top:22px; left:50%; transform:translateX(-50%); white-space:nowrap; font-size: 12px; color:var(--dp-danger, #ff5038); }
 .orr-toasts { display:flex; flex-direction:column; gap:10px; width:340px; pointer-events:none; }
 .orr-toast { position:relative; display:grid; grid-template-columns:18px 1fr; column-gap:12px; row-gap:4px; align-items:start;
   padding:8px 4px 8px 0; background:none; text-shadow:0 0 14px rgb(0 0 0 / .95), 0 0 4px rgb(0 0 0 / .9), 0 1px 2px rgb(0 0 0 / .9); }
