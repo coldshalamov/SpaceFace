@@ -420,3 +420,13 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   Probe read worse (452/295, P99 361) but inside this box's ±2x noise and the
   change only removes work — kept with a note that headless-box variance
   exceeds small CPU wins; the win shows up in residency-pass wall time.
+
+- `allocs` `4fc52a614` — **kept**. Retained-scratch conversion of the per-tick
+  propulsion packet path (~10-20 small allocs/craft-tick removed): kernel
+  normalize* + governor functions write into module scratch with `out=`
+  defaults preserved; flightV3 fills retained input/body/env/args packets with
+  separate player/NPC scratches so player-only keys can't leak; the one true
+  retention path (result.runtime) still copies. v3 sim hash bit-identical to
+  base (c3fa7d52); legacy golden unchanged. Probe: stuck 295→150, links
+  24→16 (in-frame 8→2); P99 tail 1534ms inside box tail-noise; flagged for a
+  tail-latency re-check on hardware.
