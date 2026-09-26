@@ -441,7 +441,7 @@ function stumbleProfile(profile) {
  *
  * This is the reference PRESENTATION must key to. `entity.maxSpeed` is the LEGACY derived stat
  * (`src/systems/ships.js`: engine topSpeed x SPEED_SCALE x handling x speedMass); it does not move
- * with this catalog. It reads ~172 for the starter, whose governed cruise is 95, so a camera keyed
+ * with this catalog. It reads ~172 for the starter, whose governed cruise is 195, so a camera keyed
  * to it saturates its frame far above the speed the ship actually fights at, and the frame closes
  * exactly where the fight happens (FEEL_CONTRACT B3).
  */
