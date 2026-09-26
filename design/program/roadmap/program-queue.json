@@ -12473,7 +12473,9 @@
         "npm run check:atlas-integrity",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-153.02-REPORT.md"
+      ],
       "brief": "The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. DONE WHEN: Six landmarks reachable; still review passes."
     },
     {
