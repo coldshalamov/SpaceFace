@@ -313,6 +313,8 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
 
     let eventTick = null;
     let deliveryError = null;
+    let wellFieldId = null;
+    let wellExpireAt = Infinity;
     let angularProduction = false;
     let authoredDeltaV = 0;
     let vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
@@ -333,6 +335,13 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
     const totalTicks = SETTLE_TICKS + POST_TICKS + 8;
     host.step(totalTicks, {
       before: ({ state }) => {
+        if (wellFieldId && Number(state.simTime) >= wellExpireAt) {
+          const fieldsSys = host.runtime.getSystem('fields');
+          if (fieldsSys && fieldsSys._kernel && typeof fieldsSys._kernel.unregister === 'function') {
+            fieldsSys._kernel.unregister(wellFieldId);
+          }
+          wellFieldId = null;
+        }
         const awaitingEvent = eventTick == null || eventTick === 'pending';
         const keepEmpty = (source === 'collision' && awaitingEvent)
           || (source === 'well_fling' && awaitingEvent);
@@ -374,17 +383,23 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
           const durationS = Math.max(2 / 60, (kIntended * cruise.cruiseSpeed) / 105);
           const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
           const def = FIELD_DEFS.well;
+          const fieldId = `hitstun_well_${victim.id}`;
           fieldsSys._kernel.register({
-            id: `hitstun_well_${victim.id}`,
+            id: fieldId,
             kind: FIELD_KINDS.WELL,
             center: { x: VICTIM_POS.x + 50, z: VICTIM_POS.z },
             radius: def.radius,
             strength: def.strength,
             falloff: def.falloff,
-            durationS,
+            // Unclocked: applyFieldLifecycle only ramps Well/Repulsor fields with a finite
+            // expireAt, so Infinity holds authored strength for the whole pulse — the
+            // before-hook removes it at wellExpireAt = createdAt + durationS.
+            durationS: Infinity,
             createdAt: now,
             ownerId: player ? player.id : null,
           });
+          wellFieldId = fieldId;
+          wellExpireAt = now + durationS;
         } else {
           deliveryError = `${source} has no production delivery in this instrument`;
           return false;
