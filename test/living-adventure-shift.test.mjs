@@ -92,11 +92,22 @@ test('the same miner takes a fresh face after exhaustion without a new job or re
   entry.heliosShiftStopped = true;
   job.phase = 'unload';
   job.routeIndex = 0;
-  h.jobs._ensureHeliosStarterMiner();
+  h.sim.step(1 / 60);
   assert.equal(entry.job, job, 'the ongoing job survives');
   assert.notEqual(h.miner.data.minerShiftRockId, h.rock.id);
   assert.equal(entry.heliosShiftStopped, false);
-  assert.ok(h.sim.state.entities.get(h.miner.data.minerShiftRockId)?.alive);
+  const nextRock = h.sim.state.entities.get(h.miner.data.minerShiftRockId);
+  assert.ok(nextRock?.alive);
+  // Flight is covered by the production route; exercise the actual next WORK boundary here.
+  job.phase = 'work';
+  job.progress = 0;
+  job.routeIndex = 1;
+  h.miner.pos = { x: nextRock.pos.x + nextRock.radius + 50, z: nextRock.pos.z };
+  h.miner.vel = { x: 0, z: 0 };
+  const before = nextRock.data.oreHP;
+  h.sim.step(1 / 60);
+  assert.ok(nextRock.data.oreHP < before, 'the normal owner cuts the new face');
+  assert.equal(h.miner.data.minerShiftActive, true);
 });
 
 test('a cutter cannot mine remotely or manufacture a second load on its work/unload timers', () => {
