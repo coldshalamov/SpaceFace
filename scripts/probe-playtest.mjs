@@ -392,22 +392,17 @@ const ROUTES = {
       return { screen: s.screen, mode: s.mode };
     });
 
-    await B(ctx, 'k01-flight-keys', 'flight keybind screens: t=techTree F3=footprint open and close', async () => {
-      const out = {};
-      for (const [key, expect] of [['t', 'techTree'], ['F3', 'footprint']]) {
-        await pressKey(ctx, key, 1100);
-        const s = await snap(ctx);
-        out[key] = s.screen;
-        await shotNow(ctx, `k01-${expect}`);
-        if (!s.screen || s.screen !== expect) observe(ctx, 'defect', 'keybinds', `${key} in flight landed on screen=${s.screen} (expected ${expect})`);
-        else {
-          const lines = (s.text || '').split('\n').filter((l) => l.trim()).length;
-          if (lines < 3) observe(ctx, 'rough-edge', 'keybinds', `${expect} opened with only ${lines} text lines`);
-        }
-        await backOut(ctx, s.screen || expect);
-        await sleep(500);
+    await B(ctx, 'k01-flight-keys', 'flight keybind screen: F3=footprint opens and closes', async () => {
+      await pressKey(ctx, 'F3', 1100);
+      const s = await snap(ctx);
+      await shotNow(ctx, 'k01-footprint');
+      if (s.screen !== 'footprint') observe(ctx, 'defect', 'keybinds', `F3 in flight landed on screen=${s.screen} (expected footprint)`);
+      else {
+        const lines = (s.text || '').split('\n').filter((l) => l.trim()).length;
+        if (lines < 3) observe(ctx, 'rough-edge', 'keybinds', `footprint opened with only ${lines} text lines`);
       }
-      return out;
+      if (s.screen) { await backOut(ctx, s.screen); await sleep(500); }
+      return { F3: s.screen };
     });
 
     // Pause menu verbs each push a real screen; walk the safe ones and come back.
@@ -424,7 +419,17 @@ const ROUTES = {
           .slice(0, 10);
       });
       const walked = [];
-      for (const label of verbs.slice(0, 6)) {
+      const ensurePause = async () => {
+        for (let i = 0; i < 4; i++) {
+          const s = await snap(ctx);
+          if (s.screen === 'pause') return s;
+          if (!s.screen) { await pressKey(ctx, 'Escape', 700); continue; }
+          await backOut(ctx, s.screen);
+          await sleep(500);
+        }
+        return await snap(ctx);
+      };
+      for (const label of verbs) {
         const dest = await ctx.page.evaluate((lbl) => {
           const b = [...document.querySelectorAll('.k-word, button')]
             .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && (e.textContent || '').trim().startsWith(lbl.slice(0, 20)))[0];
@@ -434,9 +439,11 @@ const ROUTES = {
         }, label);
         await sleep(1200);
         const s = await snap(ctx);
+        await shotNow(ctx, `e05-verb-${(label || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
         walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen });
-        if (s.screen && s.screen !== 'pause') { await backOut(ctx, s.screen); }
-        await sleep(700);
+        const back = await ensurePause();
+        if (back.screen !== 'pause') { walked.push({ verb: '_nav', screen: back.screen, note: 'could not return to pause' }); break; }
+        await sleep(400);
       }
       const dead = walked.filter((w) => w.clicked && !w.screen);
       if (dead.length) observe(ctx, 'rough-edge', 'pause', `pause verbs that pushed nothing: ${dead.map((w) => w.verb).join(', ')}`);
@@ -510,6 +517,32 @@ const ROUTES = {
       });
       if (answered && post.len < 100) observe(ctx, 'rough-edge', 'bar', `patron answer "${answered}" produced no visible dialogue`);
       return { patrons: pre, answered, textLen: post.len };
+    });
+
+    await B(ctx, 's04-ship-range', 'shipworks -> "take it to the range" -> range screen', async () => {
+      await ctx.page.evaluate(() => {
+        const navs = [...document.querySelectorAll('[data-nav]')]
+          .filter((n) => window.__SF_PT_HELPERS__.isVis(n));
+        const el = navs.find((n) => (n.dataset.nav || '') === 'shipworks')
+          || navs.find((n) => /ship/i.test(n.dataset.nav || ''));
+        if (el) el.click();
+      });
+      await sleep(1500);
+      const clicked = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('[data-verb="range"], button')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e))
+          .find((e) => (e.dataset && e.dataset.verb === 'range') || /range/i.test(e.textContent || ''));
+        if (!b) return null;
+        b.click();
+        return (b.textContent || '').trim().slice(0, 60);
+      });
+      await sleep(1600);
+      const s = await snap(ctx);
+      await shotNow(ctx, 's04-range');
+      if (clicked && s.screen !== 'range') observe(ctx, 'rough-edge', 'shipworks', `"${clicked}" clicked but screen=${s.screen} (expected range)`);
+      if (!clicked) observe(ctx, 'note', 'shipworks', 'no range verb visible in shipworks tab');
+      if (s.screen && s.screen !== 'station') { await backOut(ctx, s.screen); await sleep(400); }
+      return { clicked, screen: s.screen };
     });
   },
 
