@@ -137,6 +137,7 @@ const MAX_GATE_DEFERS = 60;        // a gated item that never becomes eligible e
 const POOL_MAX = 140;              // pressure pool cap per deck
 const ENTRY_GRACE_COMBAT = 22;     // pressure seeded on sector entry (first beats land ~40-90s in)
 const ENTRY_GRACE_CIVIL = 30;
+const ENTRY_GRACE_PATROL = 14;     // lawful space arrives already patrolled; mystery stays cold-start
 const RECEIPT_CAP = 12;            // receipts ring buffer length (saved)
 export const ESCALATION_SEED_CAP = 16;
 export const ESCALATION_MIN_DELAY_S = 8;
@@ -199,6 +200,11 @@ const CERES_ACTIVITY_AMBUSH_GUN_RANGE = 180;
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const CIVIL_ZONE_TYPES = new Set(['civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint', 'refinery_approach', 'colony']);
+// The mystery deck banks pressure where its authored wrecks live; the patrol deck banks it where
+// its cordons stand. Both sets are the decks' own zoneTypes — accrual rewards standing where the
+// shape could actually fire.
+const MYSTERY_ZONE_TYPES = new Set(['derelict_field', 'anomaly_deep']);
+const LAWFUL_ZONE_TYPES = new Set(['border_checkpoint', 'trade_lane', 'civilian_core']);
 const FREIGHT_PICKUP_MASS_MIN = 8;
 const FREIGHT_PICKUP_MASS_MAX = 80;
 const FREIGHT_PICKUP_RADIUS_MIN = 2.2;
@@ -391,6 +397,7 @@ export const encounterDirector = {
     const sec = sectorSecurityOf(state);
     dir.pressure.combat = Math.min(POOL_MAX, ENTRY_GRACE_COMBAT + (1 - sec) * 25);
     dir.pressure.civilian = Math.min(POOL_MAX, ENTRY_GRACE_CIVIL + sec * 20);
+    dir.pressure.patrol = Math.min(POOL_MAX, ENTRY_GRACE_PATROL + sec * 20);
     dir.window = [];
     dir.lastMeaningfulAt = now;                        // sector entry breathes ≥30 s before beats
     dir.lastAmbientAt = now - AMBIENT_GAP_S;
@@ -461,6 +468,7 @@ export const encounterDirector = {
       const sec = sectorSecurityOf(state);
       fresh.pressure.combat = Math.min(POOL_MAX, ENTRY_GRACE_COMBAT + (1 - sec) * 25);
       fresh.pressure.civilian = Math.min(POOL_MAX, ENTRY_GRACE_CIVIL + sec * 20);
+      fresh.pressure.patrol = Math.min(POOL_MAX, ENTRY_GRACE_PATROL + sec * 20);
       fresh.window = [];
       fresh.lastMeaningfulAt = now;                     // entry breath: first beats land ~40-90s in
       fresh.lastAmbientAt = now - AMBIENT_GAP_S;
@@ -575,8 +583,16 @@ export const encounterDirector = {
       (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
+    // Mystery accrues slow and strange — frontier drift plus a real pull where its wrecks lie.
+    // Patrol accrues like the law it is: security-scaled, hot inside a cordon zone.
+    const mysteryRate =
+      0.05 + (1 - sec) * 0.12 + (zone && MYSTERY_ZONE_TYPES.has(zone.type) ? 0.25 : 0);
+    const patrolRate =
+      0.08 + sec * 0.4 + (zone && LAWFUL_ZONE_TYPES.has(zone.type) ? 0.3 : 0);
     dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step * tensionAccrualScale(state, 'combat'));
     dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step * tensionAccrualScale(state, 'civilian'));
+    dir.pressure.mystery = Math.min(POOL_MAX, dir.pressure.mystery + mysteryRate * step * tensionAccrualScale(state, 'mystery'));
+    dir.pressure.patrol = Math.min(POOL_MAX, dir.pressure.patrol + patrolRate * step * tensionAccrualScale(state, 'patrol'));
   },
 
   // ═══ THE PACING GATE (fires at most one due item per 1 Hz beat) ═══════════════════════════════
@@ -3081,6 +3097,25 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       cultureId: squad.cultureId,
     });
   }
+  // A squad may name archetypes that must appear at least once — a teaching raid that needs
+  // a throwable wasp cannot leave its light pool to the draw. Deterministic and rng-free:
+  // the earliest non-anchor slots yield to missing guaranteed archetypes in authored order,
+  // after the i.i.d. draw so the stream stays aligned.
+  if (Array.isArray(squad.guaranteeArchetypes) && squad.guaranteeArchetypes.length) {
+    const added = ships.slice(ships.length - n);
+    const claimed = new Set();
+    for (const g of squad.guaranteeArchetypes) {
+      if (added.some((s) => s.archetype === g)) continue;
+      let idx = -1;
+      for (let i = hasIdentityAnchor ? 1 : 0; i < added.length; i++) {
+        if (!claimed.has(i) && !squad.guaranteeArchetypes.includes(added[i].archetype)) { idx = i; break; }
+      }
+      if (idx < 0) break;
+      claimed.add(idx);
+      added[idx].archetype = g;
+      added[idx].combatDoctrineId = ENEMY_BY_ID.get(g)?.combatDoctrineId || null;
+    }
+  }
 }
 
 // A deterministic clustered position inside a zone (tight so the squad forms one formation).
@@ -3508,7 +3543,7 @@ function freshState() {
     live: {},
     plannedKey: null,
     lastPlanned: null,
-    pressure: { combat: 0, civilian: 0 },
+    pressure: { combat: 0, civilian: 0, mystery: 0, patrol: 0 },
     noise: { mining: 0 },
     window: [],
     cooldowns: {},
@@ -3652,9 +3687,11 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.pending)) d.pending = [];
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
-  if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0 };
+  if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;
+  if (!Number.isFinite(d.pressure.mystery)) d.pressure.mystery = 0;
+  if (!Number.isFinite(d.pressure.patrol)) d.pressure.patrol = 0;
   if (!d.noise || typeof d.noise !== 'object') d.noise = { mining: 0 };
   if (!Number.isFinite(d.noise.mining)) d.noise.mining = 0;
   if (!Array.isArray(d.window)) d.window = [];
