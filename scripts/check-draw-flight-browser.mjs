@@ -17,7 +17,7 @@ const server=createServer(async(req,res)=>{
   const file=resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));
   if(!file.startsWith(root+sep)){res.writeHead(403);res.end();return}
   try{const bytes=await readFile(file);const ext=extname(file);
-    res.writeHead(200,{'Content-Type': ['.js','.mjs'].includes(ext)?'text/javascript':ext==='.html'?'text/html':ext==='.wasm'?'application/wasm':'application/octet-stream'});res.end(bytes)
+    res.writeHead(200,{'Content-Type': ['.js','.mjs'].includes(ext)?'text/javascript':ext==='.html'?'text/html':ext==='.wasm'?'application/wasm':ext==='.json'?'application/json':'application/octet-stream'});res.end(bytes)
   }catch{res.writeHead(404);res.end()}
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
