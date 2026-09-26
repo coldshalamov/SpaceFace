@@ -73,10 +73,12 @@ appear `noMesh` at R0_GLASS while their job waits behind station/fx misses.
 - MEASURED-REJECTED: pipeline-gate overlap under a deep queue (47f88a5cf — in-frame
   links tripled, leftUndrawn per episode 10×). The slot stays serial.
 - NEXT: (a) make one compose job cheaper (repo's stated precondition for re-trying
-  overlap — the merge cache was the named path); (b) far-actor restore radius is
-  sized by *player* speed only (`farActorTable.js:632` `enter`), so a fast inbound
-  row gets minimum decode margin — per-row enter radius from closing speed
-  (`rec.vel - player.vel`). **Sim-hash-moving: needs PQ-066 adjudication.**
+  overlap — the merge cache was the named path; `compositionPrimitiveCache` landed).
+  (b) CLOSED — already covered: `appendNearbyLedgerRows` scans far rows on a
+  `(travel + TABLE_INBOUND_APPROACH_WU) * TABLE_DECODE_RUNWAY_SECONDS` disc,
+  extrapolates shelved pos via `ledgerPredictedPos`, and pushes closing inbound
+  ship rows into `collectMeshPresentationEntities` → `kickDecodeRunwayAssets`
+  warms `preloadAuthoredAssetsForEntity` while the row is still shelved.
 - Retry/failover gap: a pending-subject root that stalls past admission stays
   invisible indefinitely (render explorer). `_liveGeometryAdmissions.enqueue` only
   arms when `mode==='flight' && firstPlayableFrameAt` — pre-first-frame pendings
@@ -133,14 +135,19 @@ Awaiting the UI explorer's structured output.
 Transport is already well-engineered (content-hash packages, zero-copy SHA-256 worker,
 embedded KTX2, ref-counted residency). Landed: meshopt decode on the vendored
 blob-worker pool; force-cache first read. Queued, not done this session:
-- **24 stale whole-ship-LOD release artifacts ship uncompressed** (raw PNG + unquantized
-  geometry, ~84 MB across lod1/lod2 pairs; e.g. wasp ~23.5 MB embedded PNG). These load
-  exactly when a hull family streams in — worst-case pop-in decode. Fix = re-run them
-  through the sg04 ktx2+meshopt transform, rebuild render packages, regenerate both
-  manifests atomically, extend `check-sg04-release-assets.mjs` WHOLE_SHIP_FILES so the
-  release-compression gate covers lod files. One manifest row (`leviathan_production_v1_lod2`)
-  is already drifted — a partial rebuild happened; verify `check:art` actually gates.
-  Effort M; PNG→ETC1S on distance LOD needs a frame-diff before commit.
+- **Stale whole-ship-LOD release artifacts ship uncompressed** — census (2026-09-26):
+  53 raw GLBs under `release/parts/wholeships/` (~70 MB; wasp lod1+lod2 alone ~25 MB,
+  15 raw PNGs each). Of these, 23 are manifest-managed `wholeship_*_lod*` entries whose
+  manifest rows claim ktx2+meshopt but hold byte-identical copies of the raw source
+  (`sourceSha256 === releaseSha256`); the other 30 are orphaned `*_production_v1` family
+  exports referenced by neither manifest nor code (sources stay in `parts/wholeships/`).
+  A further 24 `render-packages/*-lod*/render.glb` were compiled from those raw sources
+  (massline/wasp embed raw PNGs directly). Root cause: the build and the gate enumerate
+  `parts_manifest` `part.file` + a hand-maintained `WHOLE_SHIP_FILES` list, never the
+  part's `lodFamily` siblings — colossus/ironback/leviathan/pelican lod tiers fell
+  between the two lists. Fix landed this session: both scripts expand `lodFamily`;
+  `--only` rebuild of the 23 stale entries + pilot refresh/rebuild + orphan delete
+  (held pending the in-flight UI test run — build is CPU-saturating).
 - **Decoded-CPU-payload detach** — the only NEW write-to-disk lever found (ledger paging
   stays rejected): after the `spacefaceGpuResident` stamp, release decoded arrays and
   rebuild on context restore via re-fetch+re-parse of the resident package. Frees
@@ -217,6 +224,30 @@ retry-budget semantics.
 - `check-autopilot-v3` (not in the CI matrix, run locally): the
   `throughline-ambush` encounter never records `escaped` — identical on master
   tip. Master-side, unrelated to the straddle (fails with the straddle reverted).
+
+### Second-round CI adjudication (head 86bb8b59b, 2026-09-26)
+
+- `sim`: PASS — the calendar straddle (82da377ed) leaves the 47a golden
+  bit-identical as designed.
+- `static (1)`: same 33 program-docs ancestry errors as adjudicated above.
+- `static (2)` 9 failures, every one reproduced identically on a detached
+  master-tip worktree on this box (node24): `bar-faction-greetings-test`,
+  `check-title-attract` (hash `a719167d` vs expected `6b41e1fd`),
+  `check-ui-control-labels` (`'Space/F/3'` vs `'Space/F'`),
+  `check-gamepad-mission-log`, `check-countermeasures`,
+  `check-sg08-render-vfx` (fleet-overflow streak assert),
+  `check-phase0-slice-contract` (unclassified `Math.random` in
+  `constellation.js`), `check-authored-place-runtime`.
+  `check-sg05-runtime` fails only in CI — passes on BOTH master and this
+  branch locally → CI-environment flake, not the diff.
+- `static (3)` 3 failures, all identical on master tip: `check-onboarding`
+  (gamepad glyph drift: expects `B dock`, actual glyph map changed),
+  `check-kestrel-wholeship`, `check-bundle`.
+- `feel` ×4: same B2/B3 flight-contract + `hitstun-curve` failures, identical
+  on master tip (B2 turn-radius 1.264 vs ≤1 on both).
+- `draw-flight`: same adjudicated `accelerates to actual G cap` speed assert.
+- `browser`: cancelled (dependency), not run.
+- **Zero new failures attributable to this branch.**
 
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,

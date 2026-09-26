@@ -36,12 +36,24 @@ const WHOLE_SHIP_FILES = [
   'wholeships/wasp.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
-const unmanagedWholeShipFiles = WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(file));
+// lodFamily siblings (lod1/lod2/…) are separate runtime files the distance selector loads on
+// demand; enumerate them or a raw sibling ships while the gate only inspects each part's lod0.
+const manifestLodSiblingFiles = new Set();
+for (const part of partManifest.parts || []) {
+  if (part.status === 'blocked' || !part.lodFamily) continue;
+  for (const file of Object.values(part.lodFamily)) {
+    if (file !== part.file && !manifestPartFiles.has(file)) manifestLodSiblingFiles.add(file);
+  }
+}
+const unmanagedWholeShipFiles = WHOLE_SHIP_FILES.filter(
+  (file) => !manifestPartFiles.has(file) && !manifestLodSiblingFiles.has(file),
+);
 const devAssetPaths = [
   'assets/ships/kestrel/kestrel_reference.glb',
   ...(partManifest.parts || [])
     .filter((part) => part.status !== 'blocked')
     .map((part) => `assets/ships/parts/${part.file}`),
+  ...[...manifestLodSiblingFiles].map((file) => `assets/ships/parts/${file}`),
   ...unmanagedWholeShipFiles.map((file) => `assets/ships/parts/${file}`),
 ];
 const releaseAssetPaths = [
@@ -49,6 +61,7 @@ const releaseAssetPaths = [
   ...(partManifest.parts || [])
     .filter((part) => part.status !== 'blocked')
     .map((part) => `assets/ships/release/parts/${part.file}`),
+  ...[...manifestLodSiblingFiles].map((file) => `assets/ships/release/parts/${file}`),
   ...unmanagedWholeShipFiles.map((file) => `assets/ships/release/parts/${file}`),
 ];
 const assetPairs = devAssetPaths.map((source, index) => ({
