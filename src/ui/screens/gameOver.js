@@ -8,12 +8,42 @@
 // words. Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS. The DOM is
 // built from `el` + appendChild only so the after-action unit test's minimal fake document runs it.
 
+//
+// ORRERY (design/frontend/ORRERY.md §6 Meta, "Game over"): light rays cooled to red stand behind the
+// report; the cause is the headline line and decrypts on arrival; the career record is a ring (the
+// career's time round it, the lost hull's life the red arc that ends it at the top, the figures on
+// stations round the rim); restore is the one Lamp Key (the recovery berth, else Load save, else New
+// Game in Ironman). Red is only the loss. Composition: src/ui/orrery/saveLayouts.js.
+
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
+import { decrypt, rollTo } from '../orrery/text.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
+
+/** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
+ *  at the hub; the lost hull's life sits by the red arc it names (top left). */
+const RING_STATIONS = Object.freeze({
+  'Time flown': null,
+  'This hull lasted': 318,
+  'Contracts done': 42,
+  Kills: 90,
+  Trades: 138,
+  'Lifetime profit': 222,
+  'Best single trade': 270,
+});
+
+function parseDurationS(text) {
+  const m = /^(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?$/.exec(String(text || '').trim());
+  if (!m || !(m[1] || m[2] || m[3])) return null;
+  return (Number(m[1]) || 0) * 3600 + (Number(m[2]) || 0) * 60 + (Number(m[3]) || 0);
+}
 
 /** The receipt's fields and their labels. The kicker, the second line, the hero words and the
  *  coverage sentence are all spelled from this table (the screen-import check reads the pairs). */
@@ -194,13 +224,19 @@ export const gameOverScreen = {
     this._rootEl = rootEl;
 
     injectDeckplate();
+    injectSaveLayouts();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
     // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).
-    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold', 'sf-gameover');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold', 'sf-gameover', 'orr-gameover');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-gameover-title');
+    // Light rays cooled to red, behind the report (ORRERY §4 #16): one slow compositor turn, still
+    // under reduced motion.
+    const rays = el('div', 'orr-go-rays');
+    rays.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(rays);
 
     // .k-title — what killed you, at screen-title size; the sortie and the damage as the second line.
     const title = el('header', 'k-title');
@@ -246,6 +282,11 @@ export const gameOverScreen = {
     const recap = el('aside', 'sf-go-recap');
     recap.setAttribute('aria-label', 'Career record');
     recap.appendChild(el('p', 'k-caps sf-go-recap__title', 'Career record'));
+    // The ring the record's stations stand round (drawn by _paintCareerRing where SVG exists).
+    const ring = el('div', 'sf-go-ring');
+    ring.setAttribute('aria-hidden', 'true');
+    recap.appendChild(ring);
+    this._ringEl = ring;
     const recapRows = el('dl', 'sf-go-recap__rows');
     recap.appendChild(recapRows);
     this._recapRows = recapRows;
@@ -344,6 +385,8 @@ export const gameOverScreen = {
   onShow(ctx) {
     this._refreshSummary(ctx);
     this._armDeathSlide(ctx);
+    // The cause resolves out of telemetry noise once the report is on the glass (ORRERY §4 #4).
+    if (this._titleEl) this._stopTitleDecrypt = decrypt(this._titleEl, this._titleEl.textContent, { duration: 560, delay: 420 });
     // The kit's settle needs a real frame clock; the after-action unit test runs under a fake document.
     if (typeof requestAnimationFrame === 'function' && this._titleRegion) {
       settle(this._titleRegion, { from: 'left', state: 'gameover-title' });
@@ -412,9 +455,108 @@ export const gameOverScreen = {
       ['Best single trade', fmtCr(stats.biggestSingleProfit)],
     ];
     rows.textContent = '';
-    for (const [label, value] of items) {
-      rows.appendChild(el('dt', 'sf-go-recap__k', label));
-      rows.appendChild(el('dd', 'sf-go-recap__v', value));
+    // Each figure is a station round the ring (a dt/dd pair in its own group, so the list still reads
+    // as the career record); counts and credits roll up to their value like mechanical counters.
+    const rolls = typeof requestAnimationFrame === 'function';
+    items.forEach(([label, value], order) => {
+      const bearing = RING_STATIONS[label];
+      const station = el('div', 'sf-go-st' + (bearing == null ? ' sf-go-st--hub' : '')
+        + (label === 'This hull lasted' ? ' sf-go-st--lost' : ''));
+      if (station.style && typeof station.style.setProperty === 'function') station.style.setProperty('--i', String(order));
+      if (bearing != null && station.style && typeof station.style.setProperty === 'function') {
+        const rad = (bearing * Math.PI) / 180;
+        station.style.setProperty('--sx', Math.sin(rad).toFixed(4));
+        station.style.setProperty('--sy', (-Math.cos(rad)).toFixed(4));
+        station.dataset.side = bearing > 10 && bearing < 170 ? 'right' : bearing > 190 && bearing < 350 ? 'left' : 'mid';
+      }
+      station.appendChild(el('dt', 'sf-go-recap__k', label));
+      const dd = el('dd', 'sf-go-recap__v', '');
+      const money = /^([\d,]+) cr$/.exec(value);
+      if (rolls && money) {
+        const n = el('span', 'sf-go-n', '');
+        dd.appendChild(n);
+        dd.appendChild(el('span', 'sf-go-u', 'cr'));
+        rollTo(n, Number(money[1].replace(/,/g, '')));
+      } else if (rolls && /^[\d,]+$/.test(value)) {
+        const n = el('span', 'sf-go-n', '');
+        dd.appendChild(n);
+        rollTo(n, Number(value.replace(/,/g, '')));
+      } else dd.textContent = value;
+      station.appendChild(dd);
+      rows.appendChild(station);
+    });
+    const player = state.player || {};
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+    const ship = owned[Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0] || owned[0] || null;
+    const hullId = (ship && typeof ship.defId === 'string' && ship.defId) || NEW_GAME.shipId;
+    this._paintCareerRing(Number(state.meta && state.meta.playtimeS) || 0, parseDurationS(lastDeathSummary(ctx).lifespan), hullId);
+  },
+
+  /** The ring the career record stands round: the career's time as one closed track with a bezel of
+   *  ticks; the lost hull's life the red arc that ends it at the top (its share of the career), and
+   *  the red loss tick at the top. Nothing is drawn without SVG (the node tests' document). */
+  _paintCareerRing(playtimeS, lifespanS, hullId) {
+    const host = this._ringEl;
+    const doc = globalThis.document;
+    if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.replaceChildren !== 'function') return;
+    const root = svg('svg', { class: 'orr-svg sf-go-ring__svg', viewBox: '-120 -120 240 240', 'aria-hidden': 'true', focusable: 'false' });
+    const r = 100;
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 9, 60, { len: 3, major: 5, majorLen: 7, inward: true }), class: 'sf-go-ring__ticks' }));
+    // a lit band between the track and the inner ring (one annulus, even-odd)
+    root.appendChild(svg('path', { d: `${arcD(0, 0, r - 1, 0, 360)} ${arcD(0, 0, r - 21, 0, 360)}`, 'fill-rule': 'evenodd', class: 'sf-go-ring__band' }));
+    root.appendChild(svg('circle', { cx: 0, cy: 0, r, class: 'sf-go-ring__track' }));
+    root.appendChild(svg('circle', { cx: 0, cy: 0, r: r - 22, class: 'sf-go-ring__inner' }));
+    const share = playtimeS > 0 && lifespanS != null ? Math.max(0.012, Math.min(1, lifespanS / playtimeS)) : null;
+    if (playtimeS > 0) {
+      const lostFrom = share == null ? 360 : 360 - share * 360;
+      if (lostFrom > 0.5) {
+        const career = arcD(0, 0, r, 0, lostFrom - (share == null ? 0 : 1.2));
+        root.appendChild(svg('path', { d: career, class: 'sf-go-ring__bloom orr-draw', pathLength: 1 }));
+        root.appendChild(svg('path', { d: career, class: 'sf-go-ring__career orr-draw', pathLength: 1 }));
+      }
+      // one ice pulse runs the career round on arrival and dies at the loss
+      if (lostFrom > 0.5) root.appendChild(svg('path', { d: arcD(0, 0, r, 0, Math.max(1, lostFrom - 1.2)), class: 'sf-go-ring__sweep', pathLength: 1 }));
+      if (share != null) {
+        const lost = arcD(0, 0, r, lostFrom, 359.999);
+        root.appendChild(svg('path', { d: lost, class: 'sf-go-ring__lost-bloom' }));
+        root.appendChild(svg('path', { d: lost, class: 'sf-go-ring__lost' }));
+      }
+    }
+    // the loss: a red tick across the ring at the top, where the career stopped
+    const [x0, y0] = polar(0, 0, r - 9, 0);
+    const [x1, y1] = polar(0, 0, r + 12, 0);
+    root.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: 'sf-go-ring__stop' }));
+    // the hull that was lost, at the hub: its produced plan view, cooled, under the time flown
+    const art = hullPosterUrl(hullId, 'top');
+    const nodes = [root];
+    if (art) {
+      const img = el('img', 'sf-go-ring__hull');
+      img.alt = '';
+      img.decoding = 'async';
+      img.draggable = false;
+      img.src = art;
+      nodes.unshift(img);
+    }
+    host.replaceChildren(...nodes);
+  },
+
+  /** Restore is the one Lamp Key: the recovery berth when there is one, else the route the screen
+   *  focuses (Load save, or New Game in Ironman). The other words are small verbs with a notch. */
+  _dressRestore(primary) {
+    for (const button of [this._retryButton, this._loadButton, this._newButton, this._menuButton]) {
+      if (!button || !button.classList) continue;
+      if (button === primary) {
+        if (!button._orrDressed && button.childNodes) { dressLampKey(button); button._orrDressed = true; }
+        button.classList.add('orr-lampkey');
+        button.classList.remove('sf-go-verb');
+        // restore leads the row (and the tab order), whichever route it is
+        const li = button._kItem;
+        const list = li && li.parentNode;
+        if (list && typeof list.insertBefore === 'function' && list.firstChild !== li) list.insertBefore(li, list.firstChild);
+      } else {
+        button.classList.remove('orr-lampkey');
+        button.classList.add('sf-go-verb');
+      }
     }
   },
 
@@ -497,6 +639,8 @@ export const gameOverScreen = {
       const cause = String(values.cause || '');
       // With no recorded cause the title says so (the kicker above already carries the verdict).
       const text = cause && !/^unknown loss$/i.test(cause) ? cause : 'Cause unrecorded';
+      // A running decrypt would land its old word after this one: retire it first.
+      if (this._stopTitleDecrypt) { this._stopTitleDecrypt(); this._stopTitleDecrypt = null; }
       if (this._titleEl.textContent !== text) this._titleEl.textContent = text;
     }
     if (this._lineEl) {
@@ -532,5 +676,6 @@ export const gameOverScreen = {
     setWordHidden(this._newButton, recoverable);
     setWordHidden(this._menuButton, recoverable);
     this._defaultButton = recoverable ? this._retryButton : ironman ? this._newButton : this._loadButton;
+    this._dressRestore(this._defaultButton);
   },
 };
