@@ -1119,6 +1119,38 @@ const ROUTES = {
 
     await B(ctx, 'c01b-labdoors', 'crucible door -> Share codes / Practice room sub-screens', async () => {
       const out = {};
+      // The practice room launches into live sandbox flight: its exit is Esc→pause→Main Menu→
+      // crucible, not a single pop. Settle back at the door before continuing.
+      const backToDoor = async () => {
+        for (let i = 0; i < 8; i++) {
+          const s = await snap(ctx);
+          if (s.screen === 'crucible') return s;
+          if (s.screen === 'pause') {
+            await ctx.page.evaluate(() => {
+              const b = [...document.querySelectorAll('.k-word, button')]
+                .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu/i.test(e.textContent || ''))[0];
+              if (b) b.click();
+            });
+            await sleep(700);
+            // Quit may confirm first — answer it.
+            await ctx.page.evaluate(() => {
+              const root = document.querySelector('#sf-confirm-root');
+              const b = root && [...root.querySelectorAll('.k-word, button')]
+                .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /quit|yes|main menu|confirm|leave/i.test(e.textContent || ''))[0];
+              if (b) b.click();
+            });
+          } else if (s.screen === 'mainMenu') {
+            await clickWord(ctx, /crucible/i, 10_000);
+          } else if (!s.screen && s.mode === 'flight') {
+            await pressKey(ctx, 'Escape', 700);
+            continue;
+          } else {
+            await pressKey(ctx, 'Escape', 700);
+          }
+          await sleep(900);
+        }
+        return await snap(ctx);
+      };
       for (const re of [/share codes/i, /practice room/i]) {
         const opened = await ctx.page.evaluate((src) => {
           const rx = new RegExp(src, 'i');
@@ -1130,14 +1162,8 @@ const ROUTES = {
         const s = await snap(ctx);
         await shotNow(ctx, 'c01b-' + re.source.replace(/[^a-z]/gi, ''));
         out[re.source] = { verb: opened, screen: s.screen, mode: s.mode, controls: s.controls.length };
-        // back out: Esc, then re-open crucible door if we fell all the way to title.
-        await pressKey(ctx, 'Escape', 700);
-        await sleep(900);
-        const s2 = await snap(ctx);
-        if (s2.screen === 'mainMenu') {
-          await clickWord(ctx, /crucible/i, 10_000);
-          await sleep(1200);
-        }
+        const back = await backToDoor();
+        if (back.screen !== 'crucible') observe(ctx, 'rough-edge', 'crucible', `could not return to crucible door (screen=${back.screen} mode=${back.mode})`);
       }
       return out;
     });
