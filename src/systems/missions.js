@@ -136,6 +136,7 @@ import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
+import { rollBountyMark, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
@@ -959,7 +960,9 @@ function missionNavReason(m, station, sector) {
     case 'smuggling_run': return `Smuggle ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'passenger_transport': return `Transport passenger to ${stationName}`;
     case 'escort': return `Escort convoy to ${stationName}`;
-    case 'bounty_hunt': return `Find the bounty near ${sectorName}`;
+    case 'bounty_hunt': return p.markName
+      ? `Find ${p.markName} near ${sectorName}`
+      : `Find the bounty near ${sectorName}`;
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
     case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
@@ -1256,6 +1259,9 @@ export const missions = {
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
+      }
+      if (m.type === 'bounty_hunt' && m.storyTarget) {
+        this._maybeMarkHail(m, state);
       }
     }
     // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
@@ -2382,6 +2388,16 @@ export const missions = {
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
 
+    // The writ wall names a person at a place: generated single-mark bounties carry a
+    // deterministic storyTarget (seeded by offer id — never an rng draw, so every other rolled
+    // field stays bit-identical). Ghost-convoy offers already own their place fiction.
+    const offerId = `mo_${info.id}_${epoch}_${idx}`;
+    const bountyMark = (typeId === 'bounty_hunt' && !(params && params.ghostConvoy))
+      ? rollBountyMark({ seed: this.state.meta.seed, offerId, sectorId: destSectorId,
+          riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId) })
+      : null;
+    if (bountyMark) { params.markName = bountyMark.name; params.markPlace = bountyMark.placeName; }
+
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
     const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
@@ -2389,7 +2405,7 @@ export const missions = {
     const reward_cr = economyTerms.rewardCr;
     const time_limit_s = economyTerms.deadlineS;
     const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
-    const id = `mo_${info.id}_${epoch}_${idx}`;
+    const id = offerId;
     const offer = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
@@ -2400,6 +2416,8 @@ export const missions = {
       brief: this._briefFor(typeId, params, dest, info),
       expiresAtEpoch: epoch + 1,
       storyTag: null,
+      // placeName stays in params.markPlace — the stamped target keeps spawn-identity fields only.
+      ...(bountyMark ? { storyTarget: { ...bountyMark, placeName: undefined } } : {}),
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -2648,7 +2666,9 @@ export const missions = {
       case 'mining_quota': return `Mine ${p.qty}u ${cName(p.cmdtyId)}`;
       case 'salvage_retrieval': return `Recover ${p.qty}u ${cName(p.cmdtyId)} for ${destName}`;
       case 'smuggling_run': return `Smuggle ${p.qty}u ${cName(p.cmdtyId)} to ${destName}`;
-      case 'bounty_hunt': return `Eliminate a wanted target near ${destName}`;
+      case 'bounty_hunt': return p.markName
+        ? `Eliminate ${p.markName}${p.markPlace ? ` — ${p.markPlace}` : ` near ${destName}`}`
+        : `Eliminate a wanted target near ${destName}`;
       case 'escort': return `Escort a convoy to ${destName}`;
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
@@ -2691,7 +2711,9 @@ export const missions = {
         line = `${p.qty}u ${cName(p.cmdtyId)} into ${destName}. Customs is the whole job.`;
         break;
       case 'bounty_hunt':
-        line = `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
+        line = p.markName
+          ? `${destName} posted a writ on ${p.markName}${p.markPlace ? `, holding ${p.markPlace}` : ''}. Pay on hull, not on story.`
+          : `Someone working near ${destName} is worth more dead. Paperwork is already filed.`;
         break;
       case 'escort':
         line = `Convoy runs to ${destName}. Paid on arrivals, not on kills.`;
@@ -6609,6 +6631,14 @@ export const missions = {
       if (player && player.team != null) {
         ai.hostileTeams = [player.team];
       }
+      // Re-stamp person identity from the mission record: Continue-adopted hosts restore
+      // `ai.name` through the durable record but not `data.name`/`scanLabel`, so a rematerialized
+      // mark (or ghost-pack anchor) must be re-dressed here to keep its face on the scanner.
+      if (m.storyTarget && m.storyTarget.name) {
+        ent.data.name = m.storyTarget.name;
+        if (!ent.data.scanLabel) ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
+        if (!ent.data.ai.name) ent.data.ai.name = m.storyTarget.name;
+      }
     }
     ent.flags = ent.flags || {};
     ent.flags.missionPinned = true;
@@ -6652,6 +6682,30 @@ export const missions = {
       armed++;
     }
     return armed;
+  },
+
+  /**
+   * The mark speaks once: when the player closes inside scanner-contact range of the spawned
+   * writ target, the person behind the posting acknowledges the board that sent the hull. One
+   * shot per mission — `_markHailed` rides the ordinary active-mission serialization, so a save
+   * mid-stalk does not replay the line.
+   */
+  _maybeMarkHail(m, state) {
+    if (!m || !m.storyTarget || !m.storyTarget.name || m._markHailed) return;
+    const targetId = (m.targetEntityIds || [])[0];
+    const mark = targetId != null && state.entities && state.entities.get(targetId);
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!mark || mark.alive === false || !player || !mark.pos || !player.pos) return;
+    const dx = mark.pos.x - player.pos.x;
+    const dz = mark.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > 2200 * 2200) return;
+    m._markHailed = true;
+    const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
+    this.bus.emit('comms:popup', { sender: m.storyTarget.name, text, category: 'personal', ttl: 6 });
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({ channel: 'comms', text, kind: 'bountyMark', ttl: 4, id: `bountyMark:${m.id}` });
+    }
   },
 
   _spawnTargetsFor(m) {
@@ -6747,13 +6801,9 @@ export const missions = {
       // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
       // with the starter Pulse Laser S; higher risk opens tougher hulls.
       const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
-      const pool = riskTier <= 1
-        ? ['wasp_swarmer', 'wasp_swarmer', 'reaver_pirate']
-        : riskTier <= 2
-          ? ['wasp_swarmer', 'reaver_pirate', 'reaver_pirate']
-          : riskTier <= 3
-            ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
-            : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
+      // Single source with the board-writ hull pick so a named mark's implied hull is always one
+      // this table could roll.
+      const pool = markArchetypePoolFor(riskTier);
       let spawned = 0;
       for (let i = 0; i < grant; i++) {
         const durableSlot = vacantSlots[i];
