@@ -1740,8 +1740,20 @@
       "integration": "live",
       "commit": "f0cd1db5a",
       "verification": "focused_green"
+    },
+    {
+      "id": "INFERENCE-23",
+      "date": "2026-09-26",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "enemies.js authored occasional/defensiveOnly mount flags that resolveEnemyWeapon stripped, making every special secondary an always-on primary. The flags now survive spawn resolution and gate in the live fire service: reaver/jackal missiles arrive as a seeded lock-to-launch spike inside a deterministic sim-time window (lock warnings re-arm per window), EMP/plasma burst in windows, and cornered flak answers only inside its own close envelope. AI intent unchanged.",
+      "fingerprint": "verb=dodge,subject=occasional-volley,sector=any,layer=enemy-fire,tempo=spike,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "bb243366f",
+      "verification": "focused_green"
     }
-
   ],
   "knownDefects": [
     {
