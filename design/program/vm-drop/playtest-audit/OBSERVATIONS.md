@@ -383,8 +383,28 @@ render all cases; the "No recovery route" copy seen at l08 is the genuine no-ins
 | 12 | screens | 35 | clean | verifies D61/D62 in a fresh boot |
 | 13 | screens | 36 | clean | drill screen reached via real approachCompleted handoff |
 | 14 | edge+combat+loop | 8+7+10 | clean | regression pass on the D60–D62 fixes HEAD — full sweep green |
+| 14.5 | demo-path | 11 steps | clean + D64 found in c04b frame | lab rack off the HUD instruments `ad67e039b` |
+
+## Run 14.5 — canonical demo path on the fixes HEAD (probe-demo-path.mjs)
+
+Full route CLEAN PASS on the audit HEAD: title → crucible launch → flight → rounds to real
+death (448 s of arena combat) → results → belt → job → physical problem leg → dock → paid →
+upgrade → demoEnd. All 11 steps OK, no console errors. End card verified live: reads as a
+designed minimal closer (DEMO COMPLETE / emph sentence / credit + fitted-fact register / ORRERY
+dial aimed at KEEP PLAYING) — deliberately left as-is; the only absent row was Best Crucible
+chain, correctly skipped when no crucible meta persists in the isolated store.
+
+Perf info for the perf agent (SwiftShader-relative, consistent with prior census): the heavy
+legs are crucible-rounds (2497/3775 frames >100 ms) and adv-upgrade (519/2399) — one-time
+program-compile amplification, not steady state. adv-job/adv-paid/title legs run clean.
+
+**D64 — FIXED: physics-lab flight rack painted over the HUD instruments.** `showFlightToy`
+pinned the controls host `left:16px; bottom:16px` — dead on top of the speed readout, hull
+ring, and hull/shield/armor/heat stack, while HULL CRITICAL flashes (c04b frame). `ad67e039b`
+pins it bottom-center over the empty strip between the two dial clusters.
 
 ## Next runs
 
+- r16: screens-route re-run for the uncapped e05 walk (Clips verb now covered; Load confirm
+  is clicked through to the real saveLoad screen).
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
-- demoEnd card seam: verify the full-route probe end card reads as a designed closer.
