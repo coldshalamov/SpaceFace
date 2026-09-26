@@ -1,0 +1,44 @@
+From df8c74c537842b71ec28a97f745698ff0c120812 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Fri, 25 Sep 2026 22:36:36 +0000
+Subject: [PATCH 1/2] Baseline green again: the gamepad dock check still
+ expected A after dock moved to B
+
+Co-Authored-By: Robin Gattis <93robingattis@gmail.com>
+---
+ scripts/check-ui-control-labels.mjs | 3 ++-
+ src/systems/gamepad.js              | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/scripts/check-ui-control-labels.mjs b/scripts/check-ui-control-labels.mjs
+index aa544f13c..a5a4d5f72 100644
+--- a/scripts/check-ui-control-labels.mjs
++++ b/scripts/check-ui-control-labels.mjs
+@@ -113,7 +113,8 @@ assert.match(flightPrompt, new RegExp(`\\b${brake}\\b`),
+ assert.match(flightPrompt, new RegExp(MOUSE_ACTION_LABELS.fire),
+   'the kbm flight prompt must name LMB fire');
+ assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/);
+-assert.match(controlPrompt('station', 'gamepad'), /A dock/);
++assert.match(controlPrompt('station', 'gamepad'), /B dock/,
++  'gamepad dock is B (cancel while a screen is open; dock in flight) — see GAMEPAD_DEFAULT_BINDINGS.dock');
+ assert.match(controlPrompt('mining', 'touch'), /Mine button/);
+ 
+ const readme = read('README.md');
+diff --git a/src/systems/gamepad.js b/src/systems/gamepad.js
+index 4d6bfaa13..9a0fd0ff7 100644
+--- a/src/systems/gamepad.js
++++ b/src/systems/gamepad.js
+@@ -6,8 +6,8 @@
+ // merged in src/systems/input.js; UI navigation is consumed in src/ui/input.js.
+ //
+ // Standard mapping (Xbox / PlayStation equivalent):
+-//   0  A / Cross      -> accept / dock when prompted; otherwise Massline thumb action in flight
+-//   1  B / Circle      -> cancel / back
++//   0  A / Cross      -> accept / Massline thumb action in flight
++//   1  B / Circle      -> cancel / back; dock when the station prompt is up in flight
+ //   2  X / Square      -> cycle target
+ //   3  Y / Triangle    -> codex / journal
+ //   4  LB / L1         -> brake / reverse thrust
+-- 
+2.34.1
+
