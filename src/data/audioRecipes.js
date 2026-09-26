@@ -2642,7 +2642,9 @@ export const SAMPLE_BINDINGS = {
   sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
   sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
   sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
-  sfx_massline_bomb_drop: { id: 'ui_detent', share: 0.5, rate: 0.6 },
+  // Aft rack ejector: the massline release recording a register down — ordnance
+  // hardware letting go, never a menu detent.
+  sfx_massline_bomb_drop: { id: 'massline_release', share: 0.55, rate: 0.8 },
   'combat.action.attach.lock': { id: 'tether_latch', share: 0.62 },
   'combat.action.sling.release': { id: 'massline_sling', share: 0.6 },
   'combat.action.cut.snap': { id: 'tether_snap', share: 0.62 },
