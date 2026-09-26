@@ -703,6 +703,11 @@ const _arcadeStructuralBurstReq = {
   terrain: 0,
   hero: 0,
 };
+// Causal grammar families whose raw receipts already own a physical voice elsewhere on the bus
+// (entity:killed, tether:broken, physics:impact/collision, ricochet continuations). Their semantic
+// cues still travel the audio lanes for observability, but playback stays suppressed — the same
+// treatment presentationAdapters gives shield.collapse.
+const OWNED_CAUSAL_FAMILIES = new Set(['direct', 'tether', 'collision', 'terrain', 'bank', 'chain']);
 const _arcadeStructuralSpawnSpec = {
   priority: DEFAULT_VFX_ADMISSION_PRIORITY,
   life: 0.12,
@@ -5267,7 +5272,37 @@ export const vfx = {
     req.priority = admitted.admissionPriority;
     req.cause = admitted.family;
     req.hero = admitted.hero ? 1 : 0;
+    // The grammar declares a semantic audio id per cause; emit it on ADMISSION, not on spawn
+    // success — spawn refusal is visual-only (camera cull, frozen opening, headless pool) and
+    // must not swallow the ear's share of the event. playbackOwnedByRaw keeps ids whose raw
+    // receipt already speaks from double-firing; only unvoiced families actually play.
+    const audioId = admitted.audioCue;
+    if (audioId && this._claimCausalAudioEmit(audioId)) {
+      const audioPayload = {
+        id: audioId,
+        cueId: audioId,
+        lane: 'audio.combat_causal',
+        position: { x: req.x, z: req.z },
+        gain: 0.65,
+        playbackOwnedByRaw: OWNED_CAUSAL_FAMILIES.has(admitted.family),
+      };
+      this.bus.emit('presentation:audioCue', audioPayload);
+      this.bus.emit('audio:cue', audioPayload);
+    }
     return this._spawnArcadeStructuralBurst(req);
+  },
+
+  // First voice per cue id per tick wins; a massacre tick adds at most one causal voice per
+  // family on top of what the raw events already play.
+  _claimCausalAudioEmit(audioId) {
+    const tick = (this.state && this.state.tick) | 0;
+    if (this._causalAudioTick !== tick || !this._causalAudioSeen) {
+      this._causalAudioTick = tick;
+      this._causalAudioSeen = new Set();
+    }
+    if (this._causalAudioSeen.has(audioId)) return false;
+    this._causalAudioSeen.add(audioId);
+    return true;
   },
 
   _onArcadeCausalReceipt(eventName, p) {

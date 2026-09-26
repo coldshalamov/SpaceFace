@@ -1064,6 +1064,17 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.comms.priority': 'sfx_ui_alert',
   'presentation.objective.split': 'sfx_objective_priority_split',
   'presentation.branch.resolved': 'sfx_branch_resolved',
+  // Causal grammar family voices (causalVfxGrammar.audioCue). field/reaction are the
+  // currently-unvoiced families and actually play; the rest ride the bus for observability
+  // behind playbackOwnedByRaw while their raw receipts keep ownership.
+  'combat.causal.direct': 'sfx.hullHit',
+  'combat.causal.bank': 'sfx.armorHit',
+  'combat.causal.chain': 'sfx.hullHit',
+  'combat.causal.collision': 'sfx_hull_scrape',
+  'combat.causal.terrain': 'sfx_mining_impact',
+  'combat.causal.tether': 'sfx.tetherSnap',
+  'combat.causal.field': 'sfx_mining_field_settle',
+  'combat.causal.reaction': 'sfx_reactor_overload_shudder',
 });
 
 export function resolveAudioCueRecipeId(cueId) {
