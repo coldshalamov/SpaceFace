@@ -11,16 +11,23 @@ same-seed PQ-066 procedure before merging.
 
 `probe-frame-solid --headless --cpu-profile`, `.devshots/frame-solid/2026-09-26T03-02-58-913Z.json`:
 
-| Metric | Baseline | After batch 1-2 (03-37Z) | After batch 3 + D38 fix (05-25Z) |
+| Metric | Baseline (03-02Z) | After batch 1-2 (03-37Z) | After batch 3 (06-06Z, first honest full route) |
 |---|---|---|---|
-| missingFrames | 819 | 314 | **0** |
-| stuckMissing | 596 | 237 | **0** |
-| flightShaderLinks | 20 | 7 | 11 (all admission lane, none presented-draw) |
-| inFrameShaderLinks | 8 | 2 | 0 |
-| appearOnTimeRate | 0.595 | 0.691 | **1.0** (14/14 on-time, 0 late/leftUndrawn) |
-| upgradePending | mean 21.6 / max 32, serial inFlight=1 | — | count=0 |
-| upgradeJobs p95 | 8388 ms (`station|miss` 6.7 s, `fx|miss` 8.4 s) | all cancelled-before-load this run | — |
+| missingFrames | 819 | 314 | 82 |
+| stuckMissing | 596 | 237 | 52 |
+| flightShaderLinks | 20 | 7 | 19 (all admission lane, none presented-draw) |
+| inFrameShaderLinks | 8 | 2 | 2 |
+| appearOnTimeRate | 0.595 | 0.691 | 0.889 (36 episodes — 2.6× more content approached) |
+| upgradePending | mean 21.6 / max 32, serial inFlight=1 | — | mean 17.3 / max 28, busyShare 1.0 — saturated |
+| upgradeJobs p95 | 8388 ms (`station|miss` 6.7 s, `fx|miss` 8.4 s) | all cancelled-before-load this run | 10 jobs, pending-bound |
 | CPU top inclusive | sim advance 14.6 s, renderUpdate 21 s, drawPreparedFrame 8.6 s, unreadyDrawGuard 5.4 s, sg02 5.0 s, residency service 3.4 s | same shape, new run | queryFarActors 440→0 self; updateMatrixWorld/unreadyDrawGuard/classifyWorld off top-self |
+
+NOTE on the 05-25Z intermediate run (not tabulated): it read as a clean pass (0 missing, appear
+1.0) but was degenerate — the probe ship never approached the station (`back` phase stalled at
+~2000 wu, 14 appear episodes, 0 upgrade jobs), so it sampled an empty deep-space window. The
+06-06Z run is the first post-leaf run to fly the complete route into a saturated admission burst;
+its residual is Pole A throughput, which the deep-queue pipeline-gate overlap leaf (e8cf5f4ec)
+targets. Directional headless numbers only.
 
 Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbiter
 (PQ-144.01 matrix is the reference protocol). Directional only.
@@ -52,6 +59,7 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | COOP/COEP on probe host | scripts/lib/gameServer.cjs | `crossOriginIsolated` → ~20× timer resolution + the SAB transport door; does NOT activate the phase-14 worker (explicit opt-ins still required) | Measurement explorer gap |
 | GPU-process metrics witness | electron/main.cjs, preload.cjs | `spaceface:perf-metrics` → `app.getAppMetrics()` per-process CPU/memory — attributes GPU-process link stalls vs renderer busy frames | In-page counters can't see the GPU process |
 | Probe GC boundary | scripts/probe-frame-solid.mjs | `--js-flags=--expose-gc` + `window.gc()` before the sampler — boot garbage out of the measured window | gcMs attribution noise |
+| Deep-queue flight overlap | partsLibrary.js (`flightQueueDeepEnoughForOverlap` + dispatch grant) | `overlapAuthoredPipelineCompile` granted at dispatch when `mode==='flight'` && pending > 8 — the running job releases the serial slot at the pipeline gate so the next CPU compose overlaps only its GPU stages; one admission per frame preserved; shallow queues keep strict serial semantics | 06-06Z run: queue busyShare 1.0 at 28 pending, asteroid 4 hidden 46 frames `asset:loading` |
 
 ## 2. The poles, ranked (evidence in §4)
 
