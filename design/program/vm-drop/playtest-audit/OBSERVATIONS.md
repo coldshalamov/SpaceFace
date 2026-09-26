@@ -436,7 +436,20 @@ beat after c01b (fight, deathwatch, death) ran against the Training Derelict ins
 crucible wave. Fixed in `46dbf8a41` — c01b now settles back to the door through the real exit chain
 and rough-edges if it can't. r18 re-run verifies the real crucible is reached again.
 
+## Run 18/19 — combat route repaired, real crucible + D64 verified @ 73d39e742
+
+r18 caught a residual race in the first fix: backToDoor accepted `screen=crucible` while
+`mode=loading`, so the practice launch still dropped the run into the lab after the settle
+returned (c02 verb=null again). `73d39e742` waits for the launch to resolve post-click and
+requires `screen=crucible && mode=menu` before returning.
+
+r19: 7 beats, 0 observations. The route now plays the real crucible loop end-to-end —
+door → Quick play → RICOCHET FOUNDRY round 1 (15 hostiles) → real death → `crucibleResults`
+("RUN OVER" + kill narrative + hit-side hull diagram + share/ghost codes + same-seed
+emphasized retry) → Main menu. The c01b practice-room frame also verifies the D64 fix live:
+the lab rack sits bottom-center, clear of the hull/speed cluster.
+
 ## Next runs
 
-- r18: combat re-run post `46dbf8a41` — verify real crucible + capture the lab-rack fix (D64) live.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
+- motionAsk boot gate remains the only unmounted screen surface.
