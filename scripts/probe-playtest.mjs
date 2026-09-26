@@ -447,13 +447,18 @@ const ROUTES = {
       }
       const dead = walked.filter((w) => w.clicked && !w.screen);
       if (dead.length) observe(ctx, 'rough-edge', 'pause', `pause verbs that pushed nothing: ${dead.map((w) => w.verb).join(', ')}`);
-      // Back to flight for the next beats.
-      await pressKey(ctx, 'Escape', 800);
-      const sEnd = await snap(ctx);
+      // Back to flight for the next beats — an in-screen layer (Replay mounts inside pause)
+      // can eat the first Esc, so drive until the stack is actually empty.
+      let sEnd = await snap(ctx);
+      for (let i = 0; i < 4 && sEnd.screen; i++) { await pressKey(ctx, 'Escape', 700); sEnd = await snap(ctx); }
+      if (sEnd.screen) observe(ctx, 'rough-edge', 'pause', `pause stack still open after 4 Esc (screen=${sEnd.screen})`);
       return { verbs, walked, endScreen: sEnd.screen };
     });
 
     await B(ctx, 's01-travel-dock', 'autopilot to nearest station and dock', async () => {
+      // Guard: a leftover modal freezes the sim and makes autopilot look stalled.
+      const pre = await snap(ctx);
+      if (pre.screen) { for (let i = 0; i < 3; i++) { await pressKey(ctx, 'Escape', 600); if (!(await snap(ctx)).screen) break; } }
       const stations = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.stationIds());
       if (!stations.length) { observe(ctx, 'defect', 'stations', 'no station entities in adventure world'); return { stations: [] }; }
       const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
