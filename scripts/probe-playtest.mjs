@@ -183,6 +183,66 @@ const ROUTES = {
     await walkVerb(ctx, 't08-verb-credits', /credits/i);
     await walkVerb(ctx, 't09-verb-achievements', /achievements/i);
 
+    await B(ctx, 't09b-newgame-hull', 'newGame: switch starter hull -> aria-pressed + hull card update', async () => {
+      await clickWord(ctx, /new game|adventure/i, 10_000).catch(() => {});
+      await sleep(1400);
+      const picked = await ctx.page.evaluate(() => {
+        const words = [...document.querySelectorAll('.k-word[data-action^="starter:"]')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e));
+        if (words.length < 2) return { starters: words.length };
+        const cur = words.find((w) => w.getAttribute('aria-pressed') === 'true');
+        const next = words.find((w) => w !== cur);
+        if (!next) return { starters: words.length, cur: cur && cur.dataset.action };
+        next.click();
+        return { starters: words.length, from: cur && cur.dataset.action, to: next.dataset.action };
+      });
+      await sleep(900);
+      const after = await ctx.page.evaluate(() => ({
+        pressed: document.querySelector('.k-word[data-action^="starter:"][aria-pressed="true"]')?.dataset.action || null,
+        hull: document.querySelector('.sf-slot-card-title')?.textContent || null,
+      }));
+      await shotNow(ctx, 't09b-hull-swap');
+      if (picked.to && after.pressed !== picked.to) observe(ctx, 'defect', 'newgame', `starter ${picked.to} clicked but aria-pressed stayed ${after.pressed}`);
+      const back = await backOut(ctx, 'newGame');
+      return { picked, after, back };
+    });
+
+    await B(ctx, 't09c-sandbox-launch', 'sandbox: launch first quick-setup tile -> a game mode starts', async () => {
+      await clickWord(ctx, /sandbox/i, 10_000).catch(() => {});
+      await sleep(1400);
+      const tiles = await ctx.page.evaluate(() =>
+        [...document.querySelectorAll('.sf-sandbox-tile')].map((t) => (t.textContent || '').trim().slice(0, 60)));
+      const clicked = await ctx.page.evaluate(() => {
+        const t = [...document.querySelectorAll('.sf-sandbox-tile')].filter((e) => window.__SF_PT_HELPERS__.isVis(e))[0];
+        if (!t) return null;
+        t.click();
+        return (t.textContent || '').trim().slice(0, 60);
+      });
+      await sleep(2000);
+      const s0 = await snap(ctx);
+      const launched = s0.mode === 'flight' || (s0.screen && s0.screen !== 'sandbox' && s0.screen !== 'mainMenu');
+      if (clicked && !launched) observe(ctx, 'rough-edge', 'sandbox', `scenario tile "${clicked.slice(0, 30)}" click left screen=${s0.screen} mode=${s0.mode}`);
+      // Quit back to title if a session actually booted.
+      if (s0.mode === 'flight') {
+        await pressKey(ctx, 'Escape', 900);
+        await ctx.page.evaluate(() => {
+          const b = [...document.querySelectorAll('.k-word, button')].filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu/i.test(e.textContent || ''))[0];
+          if (b) b.click();
+        });
+        await sleep(1400);
+        await ctx.page.evaluate(() => {
+          const root = document.querySelector('#sf-confirm-root');
+          const b = root && [...root.querySelectorAll('.k-word, button')].filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu|confirm|yes|leave/i.test(e.textContent || ''))[0];
+          if (b) b.click();
+        });
+        await sleep(1600);
+      } else {
+        await backOut(ctx, s0.screen);
+      }
+      const after = await snap(ctx);
+      return { tiles: tiles.length, clicked, launchedMode: s0.mode, launchedScreen: s0.screen, after: after.screen };
+    });
+
     await B(ctx, 't10-title-afk', 'idle 16s on title — attract tape should swap in (12s arm)', async () => {
       await sleep(16_000);
       const s = await snap(ctx);
@@ -242,6 +302,50 @@ const ROUTES = {
       });
     }
 
+    await B(ctx, 'i09-find-query', "find palette: type a query -> rows -> Enter opens the dossier", async () => {
+      await pressKey(ctx, '/', 800);
+      const opened = await ctx.page.evaluate(() => !!document.querySelector('.sf-find'));
+      if (!opened) { observe(ctx, 'defect', 'find', '/ did not mount .sf-find in flight'); return { opened }; }
+      await ctx.page.type('.sf-find__input', 'ceres');
+      await sleep(900);
+      const rows = await ctx.page.evaluate(() => [...document.querySelectorAll('.sf-find__row')]
+        .map((r) => (r.textContent || '').trim().slice(0, 60)));
+      if (!rows.length) observe(ctx, 'rough-edge', 'find', "query 'ceres' returned no rows");
+      await pressKey(ctx, 'Enter', 1200);
+      const dossier = await ctx.page.evaluate(() => {
+        const d = document.querySelector('.sf-drawerlayer');
+        return d && window.__SF_PT_HELPERS__.isVis(d) ? (d.textContent || '').trim().slice(0, 140) : null;
+      });
+      await shotNow(ctx, 'i09-find-dossier');
+      if (rows.length && !dossier) observe(ctx, 'defect', 'find', 'Enter on a find row opened no dossier drawer');
+      await pressKey(ctx, 'Escape', 700);
+      await pressKey(ctx, 'Escape', 700);
+      return { opened, rows: rows.length, rowHead: rows.slice(0, 3), dossier };
+    });
+
+    await B(ctx, 'i10-codex-read', 'codex: focus an entry -> the stage shows its article', async () => {
+      await pressKey(ctx, 'k', 1200);
+      const onCodex = await snap(ctx);
+      const clicked = await ctx.page.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-entity], .k-row button, button')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && (e.textContent || '').trim().length > 4)
+          .filter((e) => !/back|close|esc/i.test(e.textContent || ''));
+        const t = rows[0];
+        if (!t) return null;
+        t.focus(); t.click();
+        return (t.textContent || '').trim().slice(0, 60);
+      });
+      await sleep(1100);
+      const article = await ctx.page.evaluate(() => {
+        const a = document.querySelector('.sf-codex-entry');
+        return a && window.__SF_PT_HELPERS__.isVis(a) ? (a.textContent || '').trim().slice(0, 140) : null;
+      });
+      await shotNow(ctx, 'i10-codex-entry');
+      if (onCodex.screen === 'codex' && clicked && !article) observe(ctx, 'rough-edge', 'codex', `entry "${clicked}" click produced no visible article`);
+      await backOut(ctx, 'codex');
+      return { screen: onCodex.screen, clicked, article };
+    });
+
     await B(ctx, 'e01-pause', 'Esc pause menu + resume', async () => {
       await pressKey(ctx, 'Escape', 1200);
       const paused = await snap(ctx);
@@ -280,6 +384,42 @@ const ROUTES = {
       await sleep(900);
       const s = await snap(ctx);
       return { screen: s.screen, mode: s.mode };
+    });
+
+    // Pause menu verbs each push a real screen; walk the safe ones and come back.
+    await B(ctx, 'e05-pause-verbs', 'pause: every nav verb pushes its screen and Esc returns', async () => {
+      await pressKey(ctx, 'Escape', 1200);
+      const paused = await snap(ctx);
+      if (paused.screen !== 'pause') return { paused: paused.screen, walked: [] };
+      const verbs = await ctx.page.evaluate(() => {
+        const root = document.querySelector('.screen[data-screen="pause"], [data-screen="pause"]') || document;
+        return [...root.querySelectorAll('.k-word, button[data-action]')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e))
+          .map((e) => (e.textContent || '').trim())
+          .filter((t) => t && !/resume|back|save|main menu|quit|exit|abandon|photo|capture/i.test(t))
+          .slice(0, 10);
+      });
+      const walked = [];
+      for (const label of verbs.slice(0, 6)) {
+        const dest = await ctx.page.evaluate((lbl) => {
+          const b = [...document.querySelectorAll('.k-word, button')]
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && (e.textContent || '').trim().startsWith(lbl.slice(0, 20)))[0];
+          if (!b) return { clicked: false };
+          b.click();
+          return { clicked: true, lbl };
+        }, label);
+        await sleep(1200);
+        const s = await snap(ctx);
+        walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen });
+        if (s.screen && s.screen !== 'pause') { await backOut(ctx, s.screen); }
+        await sleep(700);
+      }
+      const dead = walked.filter((w) => w.clicked && !w.screen);
+      if (dead.length) observe(ctx, 'rough-edge', 'pause', `pause verbs that pushed nothing: ${dead.map((w) => w.verb).join(', ')}`);
+      // Back to flight for the next beats.
+      await pressKey(ctx, 'Escape', 800);
+      const sEnd = await snap(ctx);
+      return { verbs, walked, endScreen: sEnd.screen };
     });
 
     await B(ctx, 's01-travel-dock', 'autopilot to nearest station and dock', async () => {
