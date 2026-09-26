@@ -22,6 +22,7 @@ import {
   collectMeshPresentationEntities,
   resolveWorldPresentationEntity,
 } from '../src/world/presentationSources.js';
+import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
 
 const CERES = 'sector_ceres_belt';
 
@@ -137,14 +138,23 @@ test('quiet Ceres combat list drops the dormant belt and dressing', () => {
   const census = asteroidFieldCensus(state);
   const fx = dressingCensus(state);
   const alive = aliveList(state);
-  const liveAsteroids = alive.filter((e) => e.type === 'asteroid').length;
+  const allLiveAsteroids = alive.filter((e) => e.type === 'asteroid');
+  // Optic-lattice bodies are authored structural dressing that share the asteroid entity type:
+  // invulnerable, unmineable, off the field census. They stand beside the minable live set,
+  // not inside it — count them apart so the activity/geology bound keeps its meaning.
+  const liveFieldAsteroids = allLiveAsteroids.filter((e) => !(e.data && e.data.opticStructureId));
+  const liveOptics = allLiveAsteroids.length - liveFieldAsteroids.length;
+  const liveAsteroids = liveFieldAsteroids.length;
   const liveFx = alive.filter((e) => e.type === 'fx').length;
   assert.ok(census.fieldRocks > 200, `expected a compact field, got ${census.fieldRocks}`);
-  assert.equal(liveAsteroids, census.liveAsteroids);
+  assert.equal(allLiveAsteroids.length, census.liveAsteroids);
   assert.ok(liveAsteroids < 40, `live asteroids should be the activity/geology set, got ${liveAsteroids}`);
+  assert.ok(liveOptics > 0, 'the authored optic lattice stands as structural dressing');
   assert.ok(fx.dressingRows > 10, `expected dressing off the combat list, got ${fx.dressingRows}`);
   assert.ok(liveFx < 40, `live fx should be landmarks/claimables, got ${liveFx}`);
-  assert.ok(alive.length < 80, `quiet combat list should shrink toward ~50, got ${alive.length}`);
+  // The authored optic lattice and activity anchors put ~60 structural bodies on the list; the
+  // bound's job is catching dormant/dressing leakage (hundreds), not pinning the authored set.
+  assert.ok(alive.length < 120, `quiet combat list should stay near the authored set, got ${alive.length}`);
   assert.ok(census.fieldRocks + fx.dressingRows > liveAsteroids + liveFx);
   void origin;
 });
@@ -180,4 +190,32 @@ test('ram overlap promotes a field rock onto the combat list', () => {
   assert.ok(live);
   assert.equal(live.type, 'asteroid');
   assert.equal(helpers.getEntity(rec.id), live);
+});
+
+test('ram promotion fires at the real collider skin, never spawning a body over the player', () => {
+  const { state, world, player } = bootWorld(9);
+  // Crystalline carries the largest collider factor (1.55): this gap is outside the record
+  // disc (8 + 12 = 20) but inside the ball that actually spawns (8 + 18.6 = 26.6). A
+  // record-skin trigger leaves the rock dormant while its collider overlaps the player.
+  const rec = insertAsteroidFieldRock(state, {
+    pos: { x: player.pos.x + 22, z: player.pos.z },
+    radius: 12,
+    mass: 400,
+    data: { typeId: 'ast_crystalline', oreHP: 40, oreHPMax: 40 },
+  });
+  // Inside the query reach (8 + 36 + 12 = 56) but outside the collider skin — a
+  // "promote everything in reach" regression would light this one too.
+  const far = insertAsteroidFieldRock(state, {
+    pos: { x: player.pos.x + 40, z: player.pos.z },
+    radius: 12,
+    mass: 400,
+    data: { typeId: 'ast_crystalline', oreHP: 40, oreHPMax: 40 },
+  });
+  world._tickAsteroidFieldInteractions(state);
+  const live = state.entities.get(rec.id);
+  assert.ok(live, 'the collider reaching the player must already be a live body');
+  assert.equal(live.radius, 12, 'record radius stays the entity radius');
+  assert.equal(live.physicsBody.radius, asteroidColliderRadius('ast_crystalline', 12));
+  assert.equal(live.pos.x, rec.pos.x, 'promotion keeps the record position');
+  assert.equal(state.entities.has(far.id), false, 'a rock outside its collider stays dormant');
 });
