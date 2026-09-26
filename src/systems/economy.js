@@ -51,7 +51,7 @@ import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
-  serializeCycles, deserializeCycles, applyCycleToMid,
+  serializeCycles, deserializeCycles, applyCycleToMid, stockDriftTarget,
 } from './economyCycles.js';
 import {
   hiddenHoldCapacity,
@@ -386,10 +386,8 @@ function effectiveEq(entry, state, stationId, cmdtyId) {
     ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
     : null;
   const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
-  // Soft structural pull: 70% role equilibrium + 30% cycle-scaled, so hauling still matters
-  // but formula waves do not empty/flood stock on their own.
-  const soft = 0.70 + 0.30 * cf;
-  return entry.equilibrium * m * soft;
+  // Same structural mix the forecast band uses.
+  return stockDriftTarget(entry.equilibrium, cf, m);
 }
 
 function cycleRngFor(state, stationId, cmdtyId) {
@@ -406,7 +404,7 @@ function spreadOf(entry, frontierPenalty) {
   return clamp(SPREAD_BASE * ev * (1 + (frontierPenalty || 0)), SPREAD_LO, SPREAD_HI);
 }
 
-function pricePointAt(entry, def, cycle, t) {
+function pricePointAt(entry, def, cycle, t, origin) {
   const stockMid = economyMidPrice(def, entry.stock, entry.baseEq);
   const persistentMid = applyPersistentDemand(stockMid, entry && entry.demandMult);
   const mid = Math.max(1, round(cycle
@@ -414,7 +412,13 @@ function pricePointAt(entry, def, cycle, t) {
     : persistentMid));
   // The chart only needs its mid-price trace; current bid/ask remains on the listing. Keeping
   // snapshots this small preserves a long lived history without bloating save files.
-  return { t: Number(t) || 0, mid };
+  // Origin is session display only and non-enumerable, so saves stay [t, mid] pairs and a
+  // loaded trace does not pretend to remember which points were backfilled.
+  const point = { t: Number(t) || 0, mid };
+  if (origin === 'modelled' || origin === 'observed') {
+    Object.defineProperty(point, 'origin', { value: origin, enumerable: false, writable: true });
+  }
+  return point;
 }
 
 function sanitizeHistory(raw) {
@@ -1057,7 +1061,7 @@ export const economy = {
     entry.history = [];
     for (let i = 0; i < HISTORY_POINT_LIMIT; i++) {
       const t = now - HISTORY_SPAN_S + i * HISTORY_SAMPLE_S;
-      entry.history.push(pricePointAt(entry, def, cycle, t));
+      entry.history.push(pricePointAt(entry, def, cycle, t, 'modelled'));
     }
     return entry.history;
   },
@@ -1072,7 +1076,7 @@ export const economy = {
     const history = entry.history;
     const last = history[history.length - 1];
     if (!force && last && (now - Number(last.t)) < HISTORY_SAMPLE_S) return history;
-    const point = pricePointAt(entry, def, cycle, now);
+    const point = pricePointAt(entry, def, cycle, now, 'observed');
     if (last && Math.abs(Number(last.t) - now) < 0.001) history[history.length - 1] = point;
     else history.push(point);
     if (history.length > HISTORY_POINT_LIMIT) history.splice(0, history.length - HISTORY_POINT_LIMIT);
