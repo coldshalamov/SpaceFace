@@ -53,8 +53,8 @@ const CSS = `
 .con-sky__stars { position:absolute; inset:0; pointer-events:none; }
 /* the Lens: the sky under the pointer, twice as near, every name in it */
 .con-lens { position:absolute; left:0; top:0; width:var(--con-lens, 220px); height:var(--con-lens, 220px); margin:calc(var(--con-lens, 220px) / -2) 0 0 calc(var(--con-lens, 220px) / -2);
-  pointer-events:none; z-index:4; opacity:0; transition:opacity .16s linear; }
-.con-sky.is-lens .con-lens { opacity:1; }
+  pointer-events:none; z-index:4; opacity:0; visibility:hidden; transition:opacity .16s linear, visibility 0s .16s; }
+.con-sky.is-lens .con-lens { opacity:1; visibility:visible; transition:opacity .16s linear, visibility 0s; }
 .con-lens, .con-lens * { pointer-events:none !important; }
 .con-lens__view { position:absolute; inset:0; border-radius:50%; overflow:hidden; background:rgb(5 7 10); }
 .con-lens__view > .con-sky__world { inset:auto; left:0; top:0; width:var(--con-w, 100%); height:var(--con-h, 100%); will-change:auto; }

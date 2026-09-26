@@ -2739,6 +2739,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     else if (!posterOn) drawSaleRing(stageRingGeo());
     const ringNow = stageRingGeo();
     seatVerbs(ringNow);
+    // the verb row just took its seat at the stage's foot: a card the solver leaves on it reads as
+    // print under glass, so its box joins the chrome the columns must stand clear of
+    { const verbsRack = el.querySelector('.sx-sw-verbs');
+      const verbsZone = verbsRack && verbsRack.isConnected && verbsRack.offsetWidth > 0
+        ? stageLocalRect(verbsRack.getBoundingClientRect(), stageRect, 6) : null;
+      if (verbsZone) obstacles.push(verbsZone); }
     drawFleetCaption(ringNow);
     drawJigBand();
     if (explodeSlot >= 0) placeExplode();

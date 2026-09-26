@@ -547,8 +547,14 @@ async function goto(rawId) {
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
       const root = document.createElement('div');
-      if (id === 'station') {
-        root.dataset.screen = 'station';
+      // The game's shell contract (screenManager.build): `.screen` + `data-screen` is what the
+      // drill screen's `height:100vh` selector and the range's scrim rule key on. Mounting bare
+      // divs left `.ast-screen` with nothing to size against — a 40px screen and a 0px stage.
+      root.className = 'screen sf-screen--visible';
+      root.dataset.screen = shot.screen || id;
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      if (shot.screen === 'station') {
         state.ui.docked = true;
         state.ui.dockedStationId = 'station_helios';
       } else {

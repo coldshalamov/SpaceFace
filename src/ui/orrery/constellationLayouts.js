@@ -118,7 +118,9 @@ ${T} .con-view__reset::before { content:"› "; color:rgb(${BONE} / .55); }
 ${T} .con-view__reset[hidden] { display:none; }
 ${T} .con-view__reset:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
 ${T} .con-picker { display:flex; align-items:center; gap:14px; margin-left:auto; }
-${T} .con-picker:not(:focus-within) { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+/* the picker sleeps as a zero-size point until it is focused: a 1 px clip left the select's real
+   box wandering past the frame's edge, so the box itself collapses instead */
+${T} .con-picker:not(:focus-within) { position:absolute; transform:scale(0); }
 ${T} .con-picker__label { ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.2em; color:rgb(${BONE} / .66); }
 ${T} select.k-select.con-select { min-width:clamp(180px, 13vw, 280px); min-height:36px; ${READ} font-size:clamp(14px, .8vw, 16px) !important; color:rgb(${WARM}) !important;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ece6d8' stroke-width='1.4'/%3E%3C/svg%3E") right 4px center / 10px 6px no-repeat,

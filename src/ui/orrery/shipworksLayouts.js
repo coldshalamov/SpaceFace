@@ -65,7 +65,9 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     sys += `<path class="orr-power__sys ${state}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
       + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
   });
-  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`
+  // the words ride outside the arc, so the ink box is wider than the drawing: the viewBox carries
+  // their reach (measured -18..267 on a 0..232 dial) or the rail's clip takes the first letters
+  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="-24 0 ${w + 64} ${h}" aria-hidden="true" focusable="false">`
     + `<path class="orr-power__band" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 5, from, to, inward: false })}"/>`
@@ -299,8 +301,10 @@ ${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; 
   mask-composite:intersect; }
 ${W} .sx-sw-circuit__identity { ${LABEL} font-size:10px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:none; letter-spacing:.04em; }
-${W} .sx-sw-circuit__core { position:relative; width:176px; height:118px; margin:6px 0 10px !important; display:block !important; }
-${W} .sx-sw-circuit__core .orr-power { position:absolute; inset:0; width:176px; height:118px; overflow:visible; }
+/* the core borrows the side's padding: the dial's words ride past the drawing, so the box must be
+   wider than the content column or the rail's clip eats the first and last letters */
+${W} .sx-sw-circuit__core { position:relative; width:auto; height:118px; margin:6px -28px 10px !important; display:block !important; }
+${W} .sx-sw-circuit__core .orr-power { position:absolute; inset:0; width:auto; height:auto; overflow:visible; }
 ${W} .orr-power path { fill:none; }
 ${W} .sx-sw-circuit__core .orr-power .orr-power__track { stroke:rgb(${BONE} / .2) !important; stroke-width:3; fill:none !important; }
 ${W} .orr-power__ticks { stroke:rgb(${BONE} / .42); stroke-width:1; }
@@ -309,8 +313,10 @@ ${W} .orr-power__notch { stroke:rgb(7 8 10); stroke-width:2; }
 ${W} .orr-power.is-over .orr-power__lit { stroke:var(--dp-danger, #ff5038); }
 ${W} .orr-power__ghost { stroke:var(--dp-ice, #8fcbff); stroke-width:1.6; stroke-dasharray:4 3; }
 ${W} .orr-power__ghost.is-over { stroke:var(--dp-danger, #ff5038); }
-${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:0; top:44px; text-align:center; line-height:1 !important; }
-${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:0; top:88px; text-align:center; }
+/* the dial sits at 47.3% of the widened box (its viewBox pads left less than right): the number
+   and the word centre on the dial, not the box */
+${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; top:44px; text-align:center; line-height:1 !important; }
+${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size:9.5px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
@@ -409,7 +415,7 @@ ${W} .sx-sw-rack__cell:is(:hover, :focus-visible)::before { border-color:var(--d
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand-hot, #ffd98c) !important; }
 /* the circuit: the dial says it all; the seven-row table and the instruction retire */
 ${W} .sx-sw-circuit__flows, ${W} .sx-sw-circuit__instruction { display:none !important; }
-${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:232px; height:150px; }
+${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:150px; }
 ${W} .sx-sw-circuit__core .k-hero__n { top:60px; }
 ${W} .sx-sw-circuit__core .k-hero__w { top:104px; }
 ${W} .orr-power__sys { stroke:rgb(${BONE} / .42); stroke-width:1; }
@@ -434,7 +440,7 @@ ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
   ${W} .sx-sw-bar { padding:3px 0 !important; }
   ${W} .sx-sw-hero { padding:0 0 4px !important; }
   ${W}.orr-sw--jig .sx-sw-bands { gap:6px 14px !important; }
-  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:200px; height:130px; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:130px; }
   ${W} .sx-sw-circuit__core .k-hero__n { top:50px; font-size:28px !important; }
   ${W} .sx-sw-circuit__core .k-hero__w { top:88px; }
   ${W} .sx-sw-side__name { font-size:24px !important; }
@@ -508,8 +514,8 @@ ${W} .sx-sw__stage.has-poster:not(.is-live)::before { content:""; position:absol
   ${W} .orr-sw-readouts .sx-sw-gauge { grid-template-columns:1fr !important; padding:1px 0 !important; row-gap:0; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:8px !important; letter-spacing:.12em !important; line-height:1.1; }
   ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-size:12px !important; justify-self:start; text-align:left; line-height:1.15; }
-  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:184px; height:119px; }
-  ${W} .sx-sw-circuit__core { margin:4px 0 4px !important; }
+  ${W} .sx-sw-circuit__core, ${W} .sx-sw-circuit__core .orr-power { width:auto; height:119px; }
+  ${W} .sx-sw-circuit__core { margin:4px -28px !important; }
   ${W} .sx-sw-circuit__core .k-hero__n { top:45px; font-size:26px !important; }
   ${W} .sx-sw-circuit__core .k-hero__w { top:80px; }
   ${W} .sx-sw-rack { margin-top:8px !important; }
