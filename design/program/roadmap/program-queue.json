@@ -5644,7 +5644,7 @@
       "priority": 49,
       "title": "Chains go off: tether-two, primed ships, wells",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.04"
       ],
@@ -5662,7 +5662,8 @@
         "npm run check:combat"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137-09-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137-09-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-05 (integrator-verified: 15 secondary consequences from one action on seed 4242, 4 kinds, well convergence 42.5 WU/s, 2 hulls primed by grind; chain tests 21/26; goldens unmoved). OWED before done: one shipping-camera strip using the chain_reaction tape proposed in the receipt (the strip file is held by PQ-137.11). Tethered pairs share helm loss and inertia; a primed ship detonates on slam and primes what it knocks past the stun threshold for ~0.8 s; wells converge ships to 30-60 WU/s relative and prime on grind. One deterministic prime-sling-chain scenario producing >= 3 secondary consequences from one action."
     },
@@ -9487,7 +9488,7 @@
       "priority": 182,
       "title": "Visible builds",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9513,7 +9514,8 @@
         "npm run check:sim:v3"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-176.04-REPORT.md"
+        "design/program/roadmap/receipts/PQ-176.04-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-12: modules ≥ 15 % of the outfit budget mount authored parts on the fit sockets (pods/greebles), the fitted drive re-tints nacelle glow, fitted weapons bristle on whole-ship hulls too; shipping-camera stills show light vs heavy builds, all referenced files in the authored contract. Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. DONE WHEN: Stills at the shipping camera show the build; the asset reachability check stays green."
     },
@@ -10809,7 +10811,9 @@
         "node --test test/pq022-h3-performance.test.mjs",
         "npm run check:pq022:corridor-assets"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022.h3-performance-REPORT.md"
+      ],
       "brief": "IMPLEMENTED 2026-09-15, capture not run: the brokered H3 harness is on master (capture script, lib, route, broker manifest and focused test; budgets are declared in the lib before any capture) and its focused test and broker fast gate are green. The owner cancelled the roughly 50-minute three-cycle run in-session, so no performance verdict exists; run it later on a quiet host with `node scripts/validation-broker-cli.mjs --manifest pq022-h3-performance`. Diagnostic runs found and fixed two player-facing defects: the accepted billboard, nav buoy and relay collar were resident on the GPU but never drawn (c3b4599b5), and far-actor ids were recycled while still held, so the relay beacon wore a wreck or Mule body and never loaded its own release (ee9ac4580). Open for the real run: the relay release was still pending at 180 s under an 8-10-core foreign load (cause unproven); loaded geometry count grew 645 to 955 between cycle ends while GPU bytes stayed flat; the billboard reauthor receipt table lists release 1a780be0 while the live release is f94ce276.",
       "blocker": null
     },
@@ -12542,7 +12546,7 @@
       "priority": 277,
       "title": "Ordinary-life rhythm",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.02"
       ],
@@ -12559,7 +12563,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-143-01-REPORT.md"
+        "design/program/roadmap/receipts/PQ-143-01-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-06: the tug is dispatched against a real body (zero ambient weight, like the salvor), tows the yard's own booked lot — an authored pod_cargo_container whose salvagePool is the booked manifest — through the combat attachment service under Rapier, and works the berth nearest the player so the tow is both visible and inside SG-02's reach. Both towable gates refuse world_site_* bodies and pinned mass. A five-minute HUD-hidden capture on the public Ceres route (seed 47, 98.8% realtime, 301 samples, 8 workers) shows all six quiet behaviours; scripts/capture-ordinary-life.mjs scores them and exits non-zero if one is missing. check:playable is red on that machine at a 29.1s boot against a 30s budget, not a broken game."
     },
@@ -13751,7 +13756,9 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050.01-REPORT.md"
+      ],
       "brief": "Hornet C85 is a wired candidate, not a quality-close: ledger has MTX-02/03/04/06/07/08 only, C85 has no three subagent reviews, Hitch-plus unmet. Remaining: complete the player-flyable MTX ledger bound to the close hash, five valid reviewed cycles, then recopy only Hornet LOD0/1/2 if the body changes. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
     },
     {
@@ -15499,7 +15506,7 @@
       "priority": 380,
       "title": "Ten-wave shell (Phase 2)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-133.01"
       ],
@@ -15529,7 +15536,8 @@
         "npm run check:crucible:run"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-133.02.md"
+        "design/program/roadmap/receipts/PQ-133.02.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "Complete replayable ten-wave run with existing weapons, enemies, fields, pickups and one greybox arena: pure wave schema + planner (CRU-009/010), survivalRun phase machine (CRU-011), spawn materialization bridge through spawnBudget (CRU-012), completion/cleanup (CRU-013), run wallet + XP (CRU-014), physical credit pickup + sweep (CRU-015), seeded three-choice draft v0 (CRU-016), refit transaction through canonical fit APIs (CRU-017), results + causal death summary + same-seed restart (CRU-018). Campaign-contamination test A.8 is mandatory."
     },
@@ -15907,7 +15915,7 @@
       "priority": 394,
       "title": "Causal VFX/audio grammar (CRU-051)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-134.01",
         "PQ-133.05"
@@ -15925,7 +15933,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-134.02-REPORT.md"
+        "design/program/roadmap/receipts/PQ-134.02-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "Direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants; four-way capture at play size."
     },
@@ -16228,7 +16237,7 @@
       "priority": 407,
       "title": "Traffic and heat layers",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -16250,7 +16259,8 @@
         "npm run check:starmap-objective"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: the chart on the kit (5b1ee35e0): the ink palette mapped to the six kit values, no plates, the canvas clears to the sky; lens words with aria-pressed; layers unchanged in behaviour. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory). Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18033,7 +18043,7 @@
       "priority": 465,
       "title": "The flight HUD to the direction",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -18056,7 +18066,8 @@
         "npm run check:responsive"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: the flight HUD in the kit faces and tokens with no plates (injectHudCss + hud.js blocks swept; neighbouring law/comms/band/onboarding/massline instruments de-plated under #hud); speed as the hero number; the Power Rail as words; hud.arrive() on undock; heat/alert on --k-signal so the frame goes cold when wanted; budgets re-baselined. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18066,7 +18077,7 @@
       "priority": 466,
       "title": "THE SHIP to the direction",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -18084,7 +18095,8 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: THE SHIP and Shipworks share one kit-panel stage (shipworks.js): hull at full bleed and orbitable, six static corner rows instead of dials, pins by hairline leaders, four hero bands along the foot with the selected band explaining itself in rows, verbs as words, the module chooser takes the hang column instead of a modal; shipScreen.js host root is k-screen--stage. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18094,7 +18106,7 @@
       "priority": 467,
       "title": "THE FOOTPRINT and THE RANGE to the direction",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -18112,7 +18124,8 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: THE FOOTPRINT (1b8f79e3b) and THE RANGE (052b06f47) on the kit: k-screen regions, chains/marks as rows, hero figures in the corner, verbs as foot words; injected style blocks and legacy fp-* rules deleted. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18174,7 +18187,7 @@
       "priority": 470,
       "title": "Missions log and codex",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -18192,7 +18205,8 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: the missions log (missionLog.js) is a `k-screen`: current action, active, career and completed as rows down the hang, the focused mission on the stage with its name at title size, its next step as one sentence, the payout at hero size and Timer / Route and risk / Stake / On failure as static rows, Track / Open on the chart / Abandon as words; the codex (codex.js, `992d2129e`) as tab words, entry names as rows and the entry as a measure of text on the stage; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18202,7 +18216,7 @@
       "priority": 471,
       "title": "Help and tech tree",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -18220,7 +18234,8 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
+        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
       ],
       "brief": "IMPLEMENTED 2026-09-07: help (help.js, `2345e7d49`) as hairline rows of action and key with the profile named; the tech tree (techTree.js, `cac3adefd`) as hairline lanes on the sky, nodes as words, the selected node at title size with its cost at hero size and Unlock as a word; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
