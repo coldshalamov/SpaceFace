@@ -216,6 +216,14 @@ app.commandLine.appendSwitch('disable-features',
 // background networking stack (component updater, variations/seed fetches, safe-browsing and
 // dictionary downloads) can never produce bytes the app consumes — only wakeups and disk IO.
 app.commandLine.appendSwitch('disable-background-networking');
+// Remaining browser-process services that still initialize despite the blanket switch:
+// the component updater, domain-reliability reporter, and UMA upload scheduling. The shell
+// ships no updatable components and uploads nothing, so all three are idle wakeups + IO.
+// metrics-recording-only keeps local histogram recording (useful for debugging) while
+// cutting the upload path entirely. Page-initiated fetches are unaffected.
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('disable-domain-reliability');
+app.commandLine.appendSwitch('metrics-recording-only');
 
 async function startServer() {
   let root;
