@@ -100,6 +100,18 @@ const CSS = `
 .con-medal__glyph .accent { fill:currentColor; }
 .con-medal__face.has-art > .con-medal__glyph { display:none; }
 .con-medal__face.has-art.has-glyph > .con-medal__glyph { display:grid; }
+.con-medal__glyph:has(.con-medal__scramble) { width:auto; height:auto; }
+.con-medal__glyph:has(.con-medal__emblem) { width:56%; height:56%; }
+.con-medal__emblem { width:100%; height:100%; overflow:visible; }
+.con-medal__emblem .con-emblem__core { fill:none; stroke:rgb(${WARM}); stroke-width:1.9; stroke-linejoin:round; stroke-linecap:round; }
+.con-medal__emblem .con-emblem__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:5.5; opacity:.22; stroke-linejoin:round; stroke-linecap:round; }
+.con-medal__emblem .con-emblem__seal { fill:rgb(6 8 11); stroke:rgb(${WARM}); stroke-width:1.9; }
+.con-medal__emblem .con-emblem__ring { fill:none; stroke:rgb(${WARM}); stroke-width:1.1; stroke-dasharray:1.6 1.8; }
+.con-medal__emblem .con-emblem__dot { fill:rgb(${WARM}); }
+.con-medal[data-state="locked"] .con-medal__glyph:has(.con-medal__emblem) { opacity:.34; }
+.con-medal[data-state="going"] .con-medal__glyph:has(.con-medal__emblem) { opacity:.72; }
+.con-medal[data-state="locked"]:is(:hover, :focus-visible, [aria-current="true"]) .con-medal__glyph:has(.con-medal__emblem) { opacity:.75; }
+.con-medal__scramble { display:block; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:calc(var(--ms, 90px) * .12); line-height:1.08; letter-spacing:.1em; color:rgb(${BONE} / .6); text-align:center; white-space:nowrap; }
 .con-medal__q { font-family:var(--dp-face-numeral, "Archivo"); font-weight:250; font-size:calc(var(--ms, 90px) * .3); line-height:1; }
 .orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .46); stroke-width:1.5; stroke-dasharray:1.4 3.2; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 .orr-svg .con-medal__arc { fill:none; stroke:rgb(${WARM}); stroke-width:4.5; stroke-linecap:butt; }
@@ -368,7 +380,15 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       const [x, y] = posOf.get(id);
       return { id, star: { x, y, ox: x - geo.cx, oy: y - geo.cy }, boxes: [{ w: el.__w, h: el.__h, nameH: el.__nh, lines: [] }], gap: front.size / 2 + 8, rank: 0, depth: 0 };
     });
-    const solved = solveLabels(items, { discs, segs, rects: geo.avoid || [], points: [], bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
+    const points = [];
+    for (const ring of rings) {
+      if (!ring.nameArc) continue;
+      const { mid, span, r } = ring.nameArc;
+      for (let a = mid - span / 2; a <= mid + span / 2; a += (5 / r) * (180 / Math.PI)) {
+        for (const rr of [r - ring.namePx * 0.9, r - ring.namePx * 0.2, r + ring.namePx * 0.4]) { const [x, y] = polar(geo.cx, geo.cy, rr, a); points.push({ x, y }); }
+      }
+    }
+    const solved = solveLabels(items, { discs, segs, rects: geo.avoid || [], points, bounds: { x: 4, y: 4, w: geo.W - 8, h: geo.H - 8 } });
     for (const [id, sol] of Object.entries(solved)) {
       const el = labels.get(id);
       if (!el || !sol) continue;
@@ -407,6 +427,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
         const score = room - Math.abs(wrap180(mid - 180)) * 0.6;
         if (!best || score > best.score) best = { mid, score };
       }
+      ring.nameArc = null;
       if (!best) continue;
       const lower = best.mid > 90 && best.mid < 270;
       const r = lower ? ring.nameR + ring.namePx * 0.1 : ring.nameR - ring.namePx * 0.72;
@@ -416,6 +437,7 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       ring.namePath.setAttribute('d', `M ${f(x0)} ${f(y0)} A ${f(r)} ${f(r)} 0 0 ${lower ? 0 : 1} ${f(x1)} ${f(y1)}`);
       ring.nameText.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
       ring.nameText.classList.add('is-on');
+      ring.nameArc = { mid: best.mid, span: ring.nameSpan, r: lower ? r : r + ring.namePx * 0.72 };
     }
   }
 
@@ -443,8 +465,9 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       }
     }
     reachSpring.set(reachTarget(), { instant });
-    placeLabels(out, front, { instant });
+    // the orbits' names first: the medal names then stand clear of them
     placeNames(out, { instant });
+    placeLabels(out, front, { instant });
     for (const ring of rings) paintRing(ring);
     paintArm();
   }

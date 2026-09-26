@@ -58,15 +58,36 @@ const MEDAL_ROOT = (() => {
   try { return new URL('../../../assets/ui/generated/achievements/', import.meta.url).href; }
   catch (_) { return '/assets/ui/generated/achievements/'; }
 })();
+/** Emblems drawn for the deeds whose sheet faces were stock pictograms (a 48 grid, lines of light). */
+const DRAWN_EMBLEM = Object.freeze({
+  // a sealed manifest, a berth stamp pressed on its corner
+  signed_and_delivered: 'M14 9 H30 L35 14 V39 H14 Z M30 9 V14 H35 M18 17 H28 M18 21 H30 M18 25 H25 M27.6 30 V35 H34.4 V30',
+  // a torn strip of ledger tape, its price ticked out to the side
+  paper_trail: 'M16 7 H31 V34 L28.5 37.5 L26 34 L23.5 37.5 L21 34 L18.5 37.5 L16 34 Z M19.5 13 H27.5 M19.5 17.5 H27.5 M19.5 22 H25 M19.5 26.5 H27.5 M31 17.5 H37.5',
+  // two stepped crests side by side, the second one taller
+  better_than_last_time: 'M6 39 H42 M8 39 V33 H12 V29 H16 V26 H20 V39 M25 39 V31 H29 V25 H33 V19 H37 V13 H41 V39',
+  // a counter drum: its wheels in their windows
+  six_figures: 'M8 16 H40 Q43 24 40 32 H8 Q5 24 8 16 Z M12 19 H17 V29 H12 Z M19.5 19 H24.5 V29 H19.5 Z M27 19 H32 V29 H27 Z M34.5 19 H38 M34.5 29 H38 M13.5 22.5 H15.5 M13.5 25.5 H15.5 M21 22.5 H23 M21 25.5 H23 M28.5 22.5 H30.5 M28.5 25.5 H30.5',
+});
+const STAMP = '<circle cx="31" cy="32.5" r="8.4" class="con-emblem__seal"></circle><circle cx="31" cy="32.5" r="5.6" class="con-emblem__ring"></circle>';
+function emblemSvg(id) {
+  const d = DRAWN_EMBLEM[id];
+  if (!d) return '';
+  const extra = id === 'signed_and_delivered' ? STAMP : id === 'paper_trail' ? '<circle cx="38.6" cy="17.5" r="1.8" class="con-emblem__dot"></circle>' : '';
+  return `<svg class="con-medal__emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path class="con-emblem__bloom" d="${d}"></path><path class="con-emblem__core" d="${d}"></path>${extra}</svg>`;
+}
+
 function medalArt(row) {
   if (!row || !row.id) return null;
-  const hiddenEarned = row.hidden && !row.masked;
-  if (hiddenEarned) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
+  if (DRAWN_EMBLEM[row.id]) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
+  // a hidden deed is a plain medallion: scrambled telemetry until it is earned, then its glyph
+  if (row.hidden) return { url: MEDAL_ROOT + 'medal-base.webp', glyph: true };
   return { url: MEDAL_ROOT + 'medal-' + String(row.id).replace(/_/g, '-') + '.webp', glyph: false };
 }
 
 function glyphFor(row, size = 30) {
-  if (row && row.masked) return '<span class="con-medal__q">?</span>';
+  if (row && DRAWN_EMBLEM[row.id]) return emblemSvg(row.id);
+  if (row && row.masked) return '<span class="con-medal__scramble" aria-hidden="true">▚▞▖<br>▗%▝<br>▙#▟</span>';
   return dpIcon(ACHIEVEMENT_EMBLEM[row && row.id] || 'check', size);
 }
 

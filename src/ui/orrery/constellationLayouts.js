@@ -180,6 +180,7 @@ ${A} .con-medal-read > * { margin:0; }
 ${A} .con-medal-read__dial { position:relative; width:clamp(150px, 12vw, 280px); height:clamp(150px, 12vw, 280px); margin:0 0 clamp(6px, 1.4vh, 18px) !important; --ms:clamp(150px, 12vw, 280px); }
 ${A} .con-medal-read__dial > .con-medal__body { position:absolute; inset:5%; border-radius:50% !important; background:rgb(6 8 11 / .96); }
 ${A} .con-medal-read__dial > .con-medal__art { position:absolute; left:7%; top:7%; width:86%; height:86%; object-fit:contain; }
+${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal__emblem) { opacity:.4; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__bloom { stroke-width:10; }
 ${A} .con-medal-read__rim { position:absolute; left:-30px; top:-30px; width:calc(100% + 60px); height:calc(100% + 60px); overflow:visible; }
