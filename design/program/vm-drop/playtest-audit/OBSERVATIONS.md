@@ -212,8 +212,49 @@ all clean.
 |-----|--------|-------|-----|-------------------|
 | 7 | screens+edge+combat+loop | 26+8+7+10 | 1 probe-gap (l04b card-click) + 1 console error (prewarm race) | — (probe fixes only) |
 
-**Run 8 queue**: l04b leaf-verb fix verify → l09 real deliver-and-get-paid chain; x08 confirm-step
-verify; s03 bar patron dialogue; i08 find palette; prewarm-invariant repro result.
+## Run 8 — routes=loop+edge(x08)+screens @ a39b9a915
+
+Clean: loop 10 beats / 8.1 min, edge→x08 8 beats / 3.5 min, screens 28 beats / 7 min.
+0 console errors on screens+edge; loop carried the prewarm invariant again (below).
+
+**VERIFIED — the full economy chain is now proven end-to-end on the real path:**
+- l04b-job: leaf-verb fix worked — "Dispatch this job" accepted m_2 (dest sector_ceres_belt /
+  station_ceres), active 1→2.
+- l06-jump: starmap → gate jump → CHARGING 3s → `arrived:true` in sector_ceres_belt, autosave
+  `saveNow:true` on arrival.
+- l09-deliver: traveled to station_ceres, docked → mission completed: credits 4806→5113 (+307 CR),
+  active 2→1, completedLog=1.
+- l07-hail: deckOpen on targeted ship (already verified run 7).
+- l08-death: synthetic `ship_destroyed` → gameOver "ENVIRONMENTAL HAZARD / Final sortie 7m30s /
+  Recovery receipt unavailable" — screen reads A-list (career dial + LOAD SAVE / NEW GAME /
+  MAIN MENU). The flight verb row in census `verbs` is DOM-under-screen, not painted — PNG clean.
+- screens: all 8 title verbs resolve; flight instruments m/n/j/i/k/l/t all open; station tabs all
+  walk (market|shipworks|industry|contracts|factions|bar|ledger); s03 bar-talk exercised.
+
+**Probe defects fixed this run (all were census/actuator blindness, not game bugs):**
+- x08-load-slot: confirm lookup `querySelector('#sf-confirm-root, [role="dialog"], …')` bound the
+  FIRST match — an unrelated hidden `[role=dialog]` earlier in DOM — so `confirmed=null` while the
+  real "Load this save?" modal sat open (PNG-verified). Fixed: prefer `#sf-confirm-root`, wait for
+  the dialog to mount, then search it. `4e88c4f1e`
+- i08-find: `/` palette DID open — `.sf-find` is `position:fixed` so the beat's raw
+  `offsetParent!==null` check reported invisible. Swept all 28 raw offsetParent checks to
+  `isVis()` (fixed-aware). `b773c1c57`
+- l03-mine: cursor-aimed mining — probe now projects the nearest asteroid through
+  `helpers.worldToScreen` and moves the RMB there (was blind point 800,450 → missed, cascading to
+  l04 "no live Sell commit" on an empty hold). `a39b9a915` — verify next run.
+
+**Game-side change:** prewarm publish error now carries per-candidate status
+(`fail(active=…,state=…,inMap=…)`) so the next occurrence identifies whether the lost record was
+superseded/aborted vs genuinely unclaimed. `9e119fd55` — invariant still strict; D59 stays open
+until the next sighting classifies it.
+
+**Perf notes (SwiftShader-relative, for the perf lane):** s01-travel-dock 458/1011 heavy frames
+(long travel leg), x06-job-accept 233/530, e01-pause-open 16/22 — screen-open bursts remain
+shader-compile suspects.
+
+| 8 | loop+edge+screens | 10+8+28 | 3 probe-defects fixed, prewarm 2/3 ceres arrivals | `9e119fd55` diagnostics; probe fixes `4e88c4f1e` `b773c1c57` `a39b9a915` |
+
+**Run 9 queue**: verify x08 confirm + l03 aim + i08 overlay fixes (same routes, stop-after).
 
 ## Run ledger
 
