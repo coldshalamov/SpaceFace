@@ -5752,7 +5752,7 @@
       "parentId": "PQ-189",
       "priority": 53,
       "title": "The control contract, generated from the bindings",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "ui-labels"
@@ -5782,7 +5782,7 @@
       "parentId": "PQ-173",
       "priority": 54,
       "title": "The critic's verdict: blockers, intent result, play judgment",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "fun-loop-instrument"
@@ -17800,7 +17800,7 @@
       "priority": 458,
       "title": "JSON content loader",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17827,7 +17827,7 @@
       "priority": 459,
       "title": "Workshop",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
