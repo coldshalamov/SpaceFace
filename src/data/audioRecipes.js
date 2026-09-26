@@ -111,6 +111,78 @@ export const RECIPES = [
     pitchRange: [0.9, 1.12],
   },
 
+  // --- Physics-weapon families (CV-EAR slice 2) — the physics tools stop borrowing the
+  // autocannon and generic discharge: concussion/plasma/gravitic/disruptor/charge each read
+  // their own one-shot, classified from weapon data in recipeForWeapon.
+  {
+    // Concussion cannon / seismic gong: a compressed deep thoom — the shove guns.
+    id: 'sfx_wpn_concussion',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 90, freqSweep: [90, 40], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.003, decay: 0.1, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 260,
+    distortionAmount: 0.55, distortionCurve: 'tanh',
+    subBass: { startFreq: 95, endFreq: 34, dur: 0.3, gain: 1.0 },
+    transientClick: { gain: 0.5 },
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Plasma cannon: a thick bubbling bolt.
+    id: 'sfx_wpn_plasma',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 220, freqSweep: [220, 120], sweepTimeS: 0.18,
+    freqMod: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 600, filterQ: 1.8,
+    distortionAmount: 0.45, distortionCurve: 'softclip',
+    subBass: { startFreq: 140, endFreq: 70, dur: 0.2, gain: 0.5 },
+    pitchRange: [0.93, 1.07],
+  },
+  {
+    // Gravity / inertia / field tools: a low warbling sub sweep — the fight folding.
+    id: 'sfx_wpn_gravitic',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 70, freqSweep: [70, 35], sweepTimeS: 0.38,
+    freqMod: 0.18,
+    gainEnvelope: { attack: 0.05, sustain: 0.06, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 220,
+    subBass: { startFreq: 80, endFreq: 30, dur: 0.5, gain: 0.8 },
+    pitchRange: [0.95, 1.05],
+  },
+  {
+    // EMP / RCS disruptor / hijack / primer tools: a crackling burst.
+    id: 'sfx_wpn_disruptor',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 900, freqSweep: [900, 300], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 1500, filterQ: 4.0,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    transientClick: { gain: 0.6 },
+    pitchRange: [0.9, 1.1],
+  },
+  {
+    // Placed charges (vector mine, sticky detonator): a hard magnetic click-thunk on the throw.
+    id: 'sfx_wpn_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 260, freqSweep: [260, 140], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.2,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 130, endFreq: 55, dur: 0.1, gain: 0.6 },
+    transientClick: { gain: 0.7 },
+    pitchRange: [0.95, 1.05],
+  },
+
   // --- Combat doctrine signatures ---------------------------------------------------------
   // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
   // incoming actor will fly through, seize with a line, or hold range and charge a shot.

@@ -17,6 +17,7 @@
 // loop/alarm state and (re)started once audio resumes.
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
+import { WEAPONS } from '../data/weapons.js';
 import { CUE_GAIN } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
@@ -893,15 +894,81 @@ export const BARK_PUNCT = Object.freeze({
 export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
-// payload carries weaponId. We classify by substring so any catalog id resolves. A mount whose id
-// carries no known family must NEVER borrow the starter pulse's voice: two different guns would
-// become indistinguishable, and an unknown weapon would masquerade as the player's first one. Those
-// fall to the authored generic combat discharge (`sfx_wpn_unclassified`) instead.
-function recipeForWeapon(weaponId) {
+// payload carries weaponId. CV-EAR: classify from the weapon DEF first (damageType, mount,
+// tracking, deployKind, mineArmS, statuses, emergentPrimitive — what the mount IS), with id
+// substrings only for ids outside the catalog. A mount whose id carries no known family must
+// NEVER borrow the starter pulse's voice: two different guns would become indistinguishable, and
+// an unknown weapon would masquerade as the player's first one. Those fall to the authored
+// generic combat discharge (`sfx_wpn_unclassified`) instead.
+const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
+// Field-tool primitives (src/data/emergentPrimitives.js): standing-field emitters ride the
+// gravitic voice, crackle payloads the disruptor, placed bombs the charge.
+const GRAVITIC_PRIMITIVES = new Set(['grav', 'polarity', 'viscosity', 'quantum', 'prism']);
+const DISRUPTOR_PRIMITIVES = new Set(['primer', 'hijack']);
+const CHARGE_PRIMITIVES = new Set(['sticky']);
+const GRAVITIC_STATUS_IDS = new Set(['status_gravity_marked', 'status_momentum_sink']);
+// Kinetic projectile guns at or above this impulse read as shove weapons (concussion family),
+// not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
+const CONCUSSION_IMPULSE_MIN = 200;
+
+export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
+  const def = WEAPON_DEF_BY_ID.get(weaponId);
+  if (def) {
+    // Sustained hitscan emitters sound like beams whatever their damageType reads (beam lasers,
+    // and the thermal cooker — a cooking beam, not a placed charge).
+    if (def.continuous && def.tracking === 'hitscan') return 'sfx_wpn_beam_laser';
+    // Spinal barrels and named slug drivers are the rail family.
+    if (def.mount === 'spinal' || /(rail|lance|driver)/.test(id)) return 'sfx_wpn_railgun';
+    // Gravitic: gravity/inertia/field tools — deployed wellheads, mark/sink statuses, and the
+    // emergent field primitives (grav anchor, polarity, viscosity, quantum, hardlight prism).
+    if (def.deployKind === 'gravity_well'
+      || (def.statuses || []).some((s) => GRAVITIC_STATUS_IDS.has(s && s.id))
+      || GRAVITIC_PRIMITIVES.has(def.emergentPrimitive)
+      || /(gravity|grav|anchor|inertial|momentum)/.test(id)) {
+      return 'sfx_wpn_gravitic';
+    }
+    // Disruptor: EMP/ion-class payloads and the hijack/primer tools (thruster hijacker, primer,
+    // disruptors — and the snarl webcaster's ion entangle).
+    if (def.damageType === 'emp' || def.damageType === 'ion'
+      || DISRUPTOR_PRIMITIVES.has(def.emergentPrimitive)
+      || /(disruptor|emp|hijack|primer|snarl)/.test(id)) {
+      return 'sfx_wpn_disruptor';
+    }
+    // Charge: placed or delayed payloads — armed mines, deploy frames, sticky bombs.
+    if (def.mineArmS != null || def.deployKind
+      || CHARGE_PRIMITIVES.has(def.emergentPrimitive)
+      || /(mine|detonator|sticky|charge)/.test(id)) {
+      return 'sfx_wpn_charge';
+    }
+    // Missile: launched seekers.
+    if ((def.mount === 'launcher' && def.tracking === 'homing')
+      || /(missile|rocket|torp)/.test(id)) return 'sfx_wpn_missile';
+    // Concussion: the big kinetic shove guns — concussion cannons and the seismic gong.
+    if (def.damageType === 'kinetic' && (def.impulsePerHit || 0) >= CONCUSSION_IMPULSE_MIN) {
+      return 'sfx_wpn_concussion';
+    }
+    // Plasma: thermal bolt throwers.
+    if (def.damageType === 'thermal') return 'sfx_wpn_plasma';
+    // Autocannon: kinetic projectile guns.
+    if (def.damageType === 'kinetic') return 'sfx_wpn_autocannon';
+    // Pulse: energy projectile guns — the starter voice belongs to this family only.
+    if (def.damageType === 'energy') return 'sfx_wpn_pulse_laser';
+    return 'sfx_wpn_unclassified';
+  }
+  // Unknown id — substring families, then the authored generic combat discharge.
   if (id.includes('beam')) return 'sfx_wpn_beam_laser';
   if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
-  if (id.includes('missile') || id.includes('rocket') || id.includes('torp') || id.includes('mine')) return 'sfx_wpn_missile';
+  if (id.includes('concussion') || id.includes('seismic')) return 'sfx_wpn_concussion';
+  if (id.includes('plasma')) return 'sfx_wpn_plasma';
+  if (id.includes('gravity') || id.includes('grav') || id.includes('inertial')
+    || id.includes('momentum') || id.includes('polarity') || id.includes('viscosity')
+    || id.includes('quantum') || id.includes('anchor')) return 'sfx_wpn_gravitic';
+  if (id.includes('disruptor') || id.includes('emp') || id.includes('hijack')
+    || id.includes('primer') || id.includes('snarl')) return 'sfx_wpn_disruptor';
+  if (id.includes('mine') || id.includes('detonator') || id.includes('sticky')
+    || id.includes('charge')) return 'sfx_wpn_charge';
+  if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
   if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
   if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
   // No recognized family — a named generic combat voice, never the starter pulse.
