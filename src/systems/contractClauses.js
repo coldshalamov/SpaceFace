@@ -54,6 +54,7 @@ import {
   tallyMissionCondition,
 } from '../data/missionConditions.js';
 import { MISSION_TYPES } from '../data/missions.js';
+import { SECTORS } from '../data/sectors.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 
@@ -69,6 +70,23 @@ const CONDITION_ATTACH_PROB = Object.freeze([0.20, 0.34, 0.48, 0.62, 0.72]); // 
 const CONDITION_MAX_PER_OFFER = 2;
 const CONDITION_SECOND_PROB = 0.30;
 
+// Stations whose berth sweeps every dock — a no_scan clause destinationed there is uncompletable,
+// not strict (the customs post emits player:scannedByPatrol even on a clean manifest).
+const SCAN_SERVICE_STATIONS = new Set(
+  SECTORS.flatMap((sector) => (sector && sector.stations) || [])
+    .filter((station) => station && Array.isArray(station.services) && station.services.includes('scan'))
+    .map((station) => station.id),
+);
+
+// Sources whose offers already carry authored terms — mirrored from the twist attacher so fine
+// print never stacks onto set pieces, capital runs, mutation successors, or onboarding choices.
+const CLAUSE_SKIP_SOURCES = new Set([
+  'authoredSetPiece',
+  'capitalBoss',
+  'missionMutation',
+  'onboardingChoice',
+]);
+
 /**
  * attachClauses(offer, seed) -> offer with an optional `clauses: [{id, event, label, prose, rewardMult}]`
  * array, or the offer unchanged if no clause attaches. SEEDED via hash32(seed, offer.id, 'clause').
@@ -80,7 +98,11 @@ const CONDITION_SECOND_PROB = 0.30;
  * PURE over its inputs; deterministic per (seed, offerId).
  */
 export function attachClauses(offer, seed) {
-  if (!offer || !offer.id) return offer;
+  if (!offer || !offer.id || !offer.type) return offer;
+  // Authored offers keep their own fiction; Helios is the 47-A teaching board.
+  if (offer.storyTag || offer.campaign47aBeat != null || offer.storyBranch) return offer;
+  if (offer.source && CLAUSE_SKIP_SOURCES.has(offer.source)) return offer;
+  if (offer.stationId === 'station_helios') return offer;
   const rng = mulberry32(hash32(seed, offer.id, 'clause') >>> 0);
   if (rng() > ATTACH_PROB) return offer; // clause-free (the common case — no observable difference)
 
@@ -162,10 +184,17 @@ function clauseFitsOffer(clause, offer) {
     return t === 'escort' || t === 'patrol_clear' || t === 'bounty_hunt';
   }
   if (clause.id === 'rescue_priority') {
-    return t === 'escort' || t === 'passenger_transport';
+    // Escort only: m._escorteeId is stamped on escort missions alone, so on passenger_transport
+    // the breach predicate can never fire — a guaranteed free +25% premium is a dead term.
+    return t === 'escort';
   }
-  if (clause.id === 'cargo_intact' || clause.id === 'no_scan') {
-    // cargo/smuggling runs care about scans; pure combat types don't haul scan-relevant cargo.
+  if (clause.id === 'cargo_intact') {
+    return t === 'cargo_delivery' || t === 'smuggling_run' || t === 'bulk_trade' || t === 'salvage_retrieval';
+  }
+  if (clause.id === 'no_scan') {
+    // Any scan breaches — including a clean berth sweep — so a scan-post destination is a
+    // guaranteed breach, not a stricter contract. The authored terms always leave a clean line.
+    if (SCAN_SERVICE_STATIONS.has(offer.destStationId)) return false;
     return t === 'cargo_delivery' || t === 'smuggling_run' || t === 'bulk_trade' || t === 'salvage_retrieval';
   }
   if (clause.id === 'time_limit') return true; // any type can carry a deadline

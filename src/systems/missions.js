@@ -104,7 +104,7 @@ import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { attachConditions } from './contractClauses.js';
+import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
@@ -2384,6 +2384,10 @@ export const missions = {
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
     const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
+    // D59: standing buys harder bounty marks (riskTier above drives spawn strength), never richer
+    // pay — pricing the standing tier re-paid the same bounty loop at escalating wages. Pay keeps
+    // the destination sector's own risk.
+    const payRiskTier = typeId === 'bounty_hunt' ? clamp(sectorRisk, rLo, rHi) : riskTier;
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
@@ -2401,7 +2405,7 @@ export const missions = {
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier,distance,params,
+    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
     const reward_cr = economyTerms.rewardCr;
@@ -2441,7 +2445,10 @@ export const missions = {
     const seed = (this.helpers && this.helpers.hash32)
       ? this.helpers.hash32(this.state.meta.seed, 'conditions', epoch)
       : (((this.state.meta.seed || 0) ^ 0x5bf03635) >>> 0);
-    const withTerms = attachConditions(offer, seed, { isFragile: isFragileCommodity });
+    // Fine print runs FIRST: attachClauses assigns offer.clauses outright while conditions,
+    // twists, and traps append through `existing`. Its 'clause' hash key is disjoint from the
+    // 'condition'/'twist'/'trap' streams, so no prior draw moves.
+    const withTerms = attachConditions(attachClauses(offer, seed), seed, { isFragile: isFragileCommodity });
     const twistSeed = (this.helpers && this.helpers.hash32)
       ? this.helpers.hash32(this.state.meta.seed, 'twists', epoch)
       : (((this.state.meta.seed || 0) ^ 0x71c3a91b) >>> 0);
