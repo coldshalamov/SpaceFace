@@ -347,9 +347,15 @@ const ROUTES = {
     });
 
     await B(ctx, 'e01-pause', 'Esc pause menu + resume', async () => {
-      await pressKey(ctx, 'Escape', 1200);
-      const paused = await snap(ctx);
+      // A prior beat can leave a screen/drawer mid-pop (Esc unwinds one layer at a time);
+      // drive until the pause stack is actually up before asserting it.
+      let paused = await snap(ctx);
+      for (let tries = 0; tries < 3 && !paused.screen; tries++) {
+        await pressKey(ctx, 'Escape', 900);
+        paused = await snap(ctx);
+      }
       await shotNow(ctx, 'e01-pause-open');
+      if (!paused.screen) observe(ctx, 'defect', 'pause', 'Esc never opened a pause/menu screen after 3 presses');
       let resumed = null;
       if (paused.screen && paused.screen !== 'flight' && paused.screen !== 'mainMenu') {
         const w = await ctx.page.evaluate(() => {
@@ -467,7 +473,13 @@ const ROUTES = {
     });
 
     await B(ctx, 's03-bar-talk', 'bar: click a patron answer -> dialogue advances', async () => {
-      await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /bar/i.test(n.dataset.nav || '')); if (el) el.click(); });
+      await ctx.page.evaluate(() => {
+        const navs = [...document.querySelectorAll('[data-nav]')]
+          .filter((n) => window.__SF_PT_HELPERS__.isVis(n));
+        const el = navs.find((n) => (n.dataset.nav || '') === 'bar')
+          || navs.find((n) => /bar/i.test(n.dataset.nav || ''));
+        if (el) el.click();
+      });
       await sleep(1200);
       const pre = await ctx.page.evaluate(() => (document.body.innerText.match(/[A-Z][a-z]+ [A-Z][a-z]+/g) || []).slice(0, 3));
       // Click the first numbered answer row ("1 — Answer the captain" etc.).
