@@ -449,7 +449,18 @@ door → Quick play → RICOCHET FOUNDRY round 1 (15 hostiles) → real death �
 emphasized retry) → Main menu. The c01b practice-room frame also verifies the D64 fix live:
 the lab rack sits bottom-center, clear of the hull/speed cluster.
 
+## Run 20 — demo-path re-run on fix HEAD (harness timeout, not a game defect)
+
+All played steps OK — title → crucible launch → round 1 (real fight, died at sim≈105s,
+hull 68→0 under swarm fire) → results → belt → job accept → travel → paid. The run died at
+`adv-upgrade` when the probe's own `timeout 1200` killed the browser mid-step — crucible
+survival took 666.7 s this run (longer fight than r15), pushing the total past the cap.
+Every game step that ran was clean. Re-run as r21 with the cap raised to 2400 s.
+
 ## Next runs
 
+- r21 in flight: demo-path @ 2400 s cap for a clean end-to-end pass on the fix HEAD.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
-- motionAsk boot gate remains the only unmounted screen surface.
+- crucibleDraft / crucibleRefit / motionAsk audited via ui-bench stills (r18/19 section) —
+  all composed and clean; no live probe path exists (a probe cannot legitimately win a
+  crucible round, and motionAsk only mounts on a true first boot).
