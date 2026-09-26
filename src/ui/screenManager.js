@@ -224,6 +224,10 @@ export function createScreenManager(ctx) {
         // would override it. The deckplate frame (.dp-frame, src/ui/deckplate/layout.js) is the
         // same head/body/foot grid — the station dropped k-screen but still is a grid shell.
         // Every other screen keeps the legacy flex root.
+        // Injected screen layouts (e.g. orrery constellation screens) pin `display` with
+        // !important on the root; that rule outranks the hide path's important none only if the
+        // none is still sitting on the element — clear the property so the fresh value applies.
+        rec.el.style.removeProperty('display');
         rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
           && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
         rec.el.removeAttribute('aria-hidden');
@@ -238,7 +242,8 @@ export function createScreenManager(ctx) {
         });
       } else {
         rec.el.classList.remove('sf-screen--visible', 'sf-screen--entering');
-        rec.el.style.display = 'none';
+        // Injected screen layouts pin display with !important; only an important inline none wins.
+        rec.el.style.setProperty('display', 'none', 'important');
         rec.el.setAttribute('aria-hidden', 'true');
         rec.el.removeAttribute('aria-modal');
         rec.el.inert = true;
@@ -455,7 +460,7 @@ export function createScreenManager(ctx) {
       closingRec.exitTimer = setTimeout(() => {
         closingRec.exitTimer = null;
         el.classList.remove('sf-screen--exiting');
-        el.style.display = 'none';
+        el.style.setProperty('display', 'none', 'important');
       }, 200); // matches the 0.2s exiting transition
     }
 
