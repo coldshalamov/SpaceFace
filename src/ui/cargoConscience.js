@@ -136,10 +136,15 @@ export const cargoConscience = {
     this._bus = ctx && ctx.bus;
     this._onCargo = () => this._refresh();
     this._onDock = () => this._refresh();
+    this._onSaveLoad = () => this._refresh();
     if (this._bus && this._bus.on) {
       // cargo.js emits cargo:changed on any add/remove; dock:docked is a stable refresh point.
       this._bus.on('cargo:changed', this._onCargo);
       this._bus.on('dock:docked', this._onDock);
+      // state.ui is not serialized — a loaded or fresh game must recompute, or the panel would
+      // show the boot-time (or previous session's) leans until the first cargo change.
+      this._bus.on('save:loaded', this._onSaveLoad);
+      this._bus.on('game:newGame', this._onSaveLoad);
     }
     this._refresh();
   },
@@ -159,9 +164,14 @@ export const cargoConscience = {
     if (this._bus && this._bus.off) {
       if (this._onCargo) this._bus.off('cargo:changed', this._onCargo);
       if (this._onDock) this._bus.off('dock:docked', this._onDock);
+      if (this._onSaveLoad) {
+        this._bus.off('save:loaded', this._onSaveLoad);
+        this._bus.off('game:newGame', this._onSaveLoad);
+      }
     }
     this._onCargo = null;
     this._onDock = null;
+    this._onSaveLoad = null;
   },
 };
 

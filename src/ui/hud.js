@@ -40,7 +40,7 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
-import { holdSentiment, conscienceLeanLabel } from './cargoConscience.js';
+import { holdLeanChips } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
@@ -3513,26 +3513,29 @@ export function createHud(ctx, alerts) {
     applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
     cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
 
-    // HOLD READS — the Cargo Conscience's precomputed moral leans, surfaced as chips. A lean is
-    // a read, never a rep delta; a neutral hold renders nothing rather than a fake label. The
-    // additive state is authoritative when refreshed; holdSentiment covers bench/fresh mounts.
+    // HOLD READS — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
+    // never a rep delta; a neutral hold renders '—' rather than a fake label.
     const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
     if (leanHost) {
-      const cc = state.ui && state.ui.cargoConscience;
-      const leans = cc && Array.isArray(cc.leans) ? cc.leans : holdSentiment(c).leans;
+      // Pure recompute per panel refresh — O(item types) — so a loaded save can never print a
+      // stale session's leans (state.ui is not serialized; cargoConscience keeps its own
+      // authoritative copy for system readers/tests).
+      const chips = holdLeanChips(c);
       leanHost.replaceChildren();
       const labels = [];
-      leans.forEach((l, i) => {
-        if (!l || (l.lean !== 'warm' && l.lean !== 'cool')) return;
-        const label = conscienceLeanLabel(l.factionId, l.lean);
-        labels.push(label);
-        if (i) leanHost.appendChild(document.createTextNode(' · '));
+      chips.forEach((entry) => {
+        if (!entry || (entry.lean !== 'warm' && entry.lean !== 'cool')) return;
+        labels.push(entry.label);
+        if (labels.length > 1) leanHost.appendChild(document.createTextNode(' · '));
         const chip = document.createElement('span');
-        chip.className = `sf-cargo-lean sf-cargo-lean--${l.lean}`;
-        chip.textContent = label;
+        chip.className = `sf-cargo-lean sf-cargo-lean--${entry.lean}`;
+        chip.textContent = entry.label;
         leanHost.appendChild(chip);
       });
-      leanHost.parentElement.setAttribute('aria-label',
+      if (!labels.length) leanHost.textContent = '—';
+      const gaugeItem = leanHost.closest('.sf-cargo-gauge-item') || leanHost;
+      gaugeItem.setAttribute('role', 'status');
+      gaugeItem.setAttribute('aria-label',
         labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
     }
 

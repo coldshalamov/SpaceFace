@@ -82,6 +82,7 @@ const SCAN_SERVICE_STATIONS = new Set(
 // print never stacks onto set pieces, capital runs, mutation successors, or onboarding choices.
 const CLAUSE_SKIP_SOURCES = new Set([
   'authoredSetPiece',
+  'setPieceMission',
   'capitalBoss',
   'missionMutation',
   'onboardingChoice',
