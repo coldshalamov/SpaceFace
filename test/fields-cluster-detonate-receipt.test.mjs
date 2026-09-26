@@ -13,6 +13,7 @@ import { makeEntity } from '../src/core/entity.js';
 import { WELL_CLUSTER } from '../src/data/fields.js';
 import { rateClusterMoment } from '../src/core/fields/clusterDetonate.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
+import { fields } from '../src/systems/fields.js';
 import { presentationAdapters, PRESENTATION_AUDIO_CUE_BY_ID } from '../src/systems/presentationAdapters.js';
 import { PRESENTATION_RECIPES } from '../src/presentation/cueRecipes.js';
 import { AUDIO_RECIPE_BY_ID, resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
@@ -20,18 +21,19 @@ import { AUDIO_RECIPE_BY_ID, resolveAudioCueRecipeId } from '../src/audio/audioS
 const CUE_IDS = ['fields.cluster_detonate', 'fields.cluster_detonate.cascade'];
 const SECONDARY_KINDS = WELL_CLUSTER.secondaryKinds;
 
-function rows(count) {
-  return Array.from({ length: count }, (_, i) => ({ kind: SECONDARY_KINDS[i % SECONDARY_KINDS.length], id: i }));
+function rows(count, kinds = SECONDARY_KINDS) {
+  return Array.from({ length: count }, (_, i) => ({ kind: kinds[i % kinds.length], id: i }));
 }
 
 test('rateClusterMoment keeps the rated threshold and adds the cascade tier', () => {
   const two = rateClusterMoment(rows(2));
   assert.equal(two.rated, false, 'two secondaries never rate the moment');
-  const three = rateClusterMoment(rows(3));
+  const three = rateClusterMoment(rows(3, ['other_body_hit']));
   assert.equal(three.rated, true, 'three secondaries rate the moment (PQ-147.03 threshold)');
-  assert.equal(three.tier, 'detonation');
-  const six = rateClusterMoment(rows(6));
-  assert.equal(six.tier, 'cascade', 'six secondaries reads as a cascade');
+  assert.equal(three.tier, 'detonation', 'three same-kind secondaries read as a detonation');
+  // Six rows of only three kinds isolate the count branch — all-kinds alone must not be required.
+  const six = rateClusterMoment(rows(6, SECONDARY_KINDS.slice(0, 3)));
+  assert.equal(six.tier, 'cascade', 'six secondaries reads as a cascade even with three kinds');
   const allKinds = rateClusterMoment(SECONDARY_KINDS.map((kind, i) => ({ kind, id: i })));
   assert.equal(allKinds.tier, 'cascade', 'all four consequence kinds reads as a cascade');
 });
@@ -100,9 +102,9 @@ function clusterEmit(h, over = {}) {
     sourceId: h.state.playerId,
     pos: { x: 40, z: 0 },
     tier: 'detonation',
-    secondaries: rows(4),
+    secondaries: rows(4, ['other_body_hit', 'terrain_slam']),
     count: 4,
-    kinds: SECONDARY_KINDS.slice(),
+    kinds: ['other_body_hit', 'terrain_slam'],
     rated: true,
     tick: h.state.tick,
     ...over,
@@ -122,6 +124,8 @@ test('a player-authored rated moment lands one banner, caption, camera, and auth
     assert.match(seen.captions[0].text, /4 secondary consequences/);
     assert.equal(seen.camera.length, 1, 'the camera takes the small detonation kick');
     assert.equal(seen.vfx.length, 1);
+    assert.deepEqual(seen.vfx[0].position, { x: 40, y: 0, z: 0 },
+      'the VFX fires where the sim said the clump was');
     const audioIds = seen.audio.map((a) => a.id);
     assert.ok(audioIds.includes('presentation.fields.cluster_detonate'),
       'the authored boom speaks through the presentation lane');
@@ -136,6 +140,7 @@ test('a player-authored rated moment lands one banner, caption, camera, and auth
     clusterEmit(h, { fieldId: 'field_well_big', tier: 'cascade', count: 6 });
     assert.equal(seen.alerts.at(-1).text, 'MASS CASCADE', 'the cascade tier gets its own banner');
     assert.equal(seen.alerts.at(-1).sev, 'warn');
+    assert.match(seen.captions.at(-1).text, /Mass cascade/, 'the cascade caption names the tier');
   } finally {
     adapters.dispose();
     presenter.dispose();
@@ -156,4 +161,64 @@ test('an NPC-authored cluster keeps world lanes but never raises the player bann
     adapters.dispose();
     presenter.dispose();
   }
+});
+
+// ── Sim-side contract: the receipt that publishes the cue must describe the real well ────────────
+
+function wireFields(h) {
+  const sys = Object.create(fields);
+  const seen = { detonations: [] };
+  h.bus.on('fields:clusterDetonate', (p) => seen.detonations.push(p));
+  sys.init({ state: h.state, bus: h.bus });
+  return { sys, seen };
+}
+
+function deployWell(h, sys, over = {}) {
+  sys._kernel.register({
+    id: 'well_1', kind: 'well', center: { x: 120, z: 40 }, radius: 170,
+    ownerId: h.state.playerId, sourceId: 7, durationS: 30, ...over,
+  });
+  h.bus.emit('fields:deployed', { kind: 'well', fieldId: 'well_1', sourceId: 7 });
+}
+
+function body(h, id, type = 'ship') {
+  const e = makeEntity({ type, team: 1, pos: { x: 200 + id, z: 0 }, vel: { x: 0, z: 0 }, radius: 6, data: {} });
+  e.id = id;
+  h.state.entities.set(id, e);
+  h.state.entityList.push(e);
+  return e;
+}
+
+test('the published receipt carries the well\'s own center, owner, and id — not a stray receipt pos', () => {
+  const h = createHarness();
+  const { sys, seen } = wireFields(h);
+  deployWell(h, sys);
+  body(h, 11); body(h, 12); body(h, 13);
+  // An ambient impact with a pos of its own must not stamp the watch location.
+  h.bus.emit('physics:impact', { aId: 11, bId: 12, pos: { x: -900, z: -900 } });
+  h.bus.emit('charge:detonated', { trigger: 'proximity', hostId: 3, hits: [11, 12, 13] });
+  assert.equal(seen.detonations.length, 1, 'three blast-hit secondaries publish one receipt');
+  const emit = seen.detonations[0];
+  assert.equal(emit.fieldId, 'well_1');
+  assert.equal(emit.ownerId, h.state.playerId, 'ownership resolves from the field, not the emitter');
+  assert.deepEqual(emit.pos, { x: 120, z: 40 }, 'presentation lands on the well\'s kernel center');
+  assert.equal(emit.tier, 'detonation');
+  assert.equal(emit.rated, true);
+});
+
+test('a retired well closes its watch — later detonations cannot publish under its id', () => {
+  const h = createHarness();
+  const { sys, seen } = wireFields(h);
+  deployWell(h, sys);
+  body(h, 11); body(h, 12); body(h, 13);
+  // Two secondaries, still shy of the rating threshold, then the well expires.
+  h.bus.emit('charge:detonated', { trigger: 'proximity', hostId: 3, hits: [11, 12] });
+  assert.equal(seen.detonations.length, 0);
+  sys._retireDeployed(h.state, h.state.fields,
+    { fieldId: 'well_1', emitterId: 7, kind: 'well' }, 'expired');
+  // A slammed proximity charge afterwards is somebody else's problem — not this well's cluster.
+  h.state.tick += 30;
+  h.bus.emit('charge:detonated', { trigger: 'slam', hostId: 3, hits: [13] });
+  assert.equal(seen.detonations.length, 0,
+    'receipts after the well retires must not publish a phantom CLUSTER DETONATION');
 });

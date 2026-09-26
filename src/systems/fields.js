@@ -1081,6 +1081,12 @@ export const fields = {
         if (rt.hitches[id] && rt.hitches[id].fieldId === rec.fieldId) delete rt.hitches[id];
       }
     }
+    // The cluster watch belongs to this field: once it retires, later detonation receipts must
+    // not keep accumulating secondaries under a dead well's id and publish a phantom premium cue.
+    if (rt.cluster && rt.cluster.fieldId === rec.fieldId) {
+      rt.cluster = null;
+      this._clusterSecondaries = [];
+    }
     const pos = entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null;
     this._emitCollapseCue(rec.kind, pos);
     this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason });
@@ -1603,7 +1609,7 @@ export const fields = {
       // fields:deployed's sourceId is the emitter entity, not the deployer — the field's own
       // ownerId is the author of the moment.
       ownerId: (field && field.ownerId != null) ? field.ownerId : (sourceId != null ? sourceId : null),
-      pos: (field && field.pos) ? { x: field.pos.x, z: field.pos.z } : null,
+      pos: (field && field.center) ? { x: field.center.x, z: field.center.z } : null,
       count: 0,
       kinds: [],
       rated: false,
@@ -1671,12 +1677,14 @@ export const fields = {
     ctx.actionTick = rt.cluster.actionTick;
     ctx.primedId = rt.cluster.primedId;
     ctx.nowTick = state.tick | 0;
-    if (payload.tick == null) payload.tick = ctx.nowTick;
+    const incoming = classifyClusterReceipt(eventName, payload, ctx);
+    if (!incoming.length) return;
+    // The watch position is the well's kernel center; only when the kernel record is missing
+    // does a receipt that actually produced secondaries get to stamp it — ambient impacts and
+    // unrelated detonations carry their own pos and would misplace the presentation.
     if (rt.cluster.pos == null && payload.pos && Number.isFinite(payload.pos.x)) {
       rt.cluster.pos = { x: payload.pos.x, z: payload.pos.z };
     }
-    const incoming = classifyClusterReceipt(eventName, payload, ctx);
-    if (!incoming.length) return;
     this._clusterSecondaries = mergeClusterSecondaries(this._clusterSecondaries, incoming);
     const rating = rateClusterMoment(this._clusterSecondaries);
     rt.cluster.count = rating.count;

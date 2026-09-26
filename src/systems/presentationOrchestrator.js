@@ -1372,7 +1372,9 @@ export const presentationOrchestrator = {
       sequence: payload && payload.fieldId != null ? String(payload.fieldId) : null,
       tags: ['cluster', payload && payload.tier === 'cascade' ? 'cascade' : 'detonation',
         ...((payload && payload.kinds) || [])],
-      accessibilityText: `Cluster detonation — ${count || 'multiple'} secondary consequences.`,
+      accessibilityText: payload && payload.tier === 'cascade'
+        ? `Mass cascade — ${count || 'multiple'} secondary consequences.`
+        : `Cluster detonation — ${count || 'multiple'} secondary consequences.`,
     });
   },
 
