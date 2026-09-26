@@ -450,3 +450,36 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   (bloom timing/guard, hotpath, perf-budget) green. Probe: stuck 286→182,
   missing 450→339, on-time 0.48→0.58. Lane documented the dry-tree list:
   renderBufferDirect bypass / CAS fold / sweep narrowing rejected.
+
+- `hud` `c161e23fd` — **kept**. Removes the DOM touches a settled frame pays
+  BEFORE the write-on-change gates: whole-write signature for
+  updateShipCondition (~40 cached attr/text/opacity calls + String allocs
+  skipped), JS-mirror text reads instead of textContent, latched dataset/
+  class toggles via setAttr/_sfAttr, one-time element lookups (dock-alert
+  query scoped to #alerts, reticle from in-scope node, body-class toggle on
+  change), masslineCadenceReadout JS-side last-value caches with a hide() so
+  caches stay authoritative. Probe: **best reading of the campaign** — stuck
+  182→20, missing 339→74, appearOnTime 0.583→0.794, leftUndrawn 9→5.
+
+## Fan-out scoreboard (10 lanes, parallel child sessions + VM A/B)
+
+| lane | commit | verdict | headline |
+|------|--------|---------|----------|
+| electron | merge `86efa5239` | kept | GPU-power flags, v8 compile cache, no background net |
+| shaderwarm | `cfd21b7b8` | reverted `2de602116` | wrong-key probes; no link reduction |
+| batching | `b103b393d` | kept | memoized authored-chunk castShadow verdict |
+| decode | `c7671ad7f` | kept (flagged) | KTX2 pool 4→min(8,cores-2), Basis warm early |
+| admission | `98ea6cc45` | kept | deadline splice in serial decode FIFO |
+| textures | `0f16bf3ad` | kept | texture-upload version stamps |
+| allocs | `4fc52a614` | kept | retained propulsion packets, hash-identical |
+| simwalk | `78fd174b3` | kept | empty-payloads census early-out, golden-identical |
+| postfx | `8e7463fae` | kept | bloom blit dead work |
+| hud | `c161e23fd` | kept | pre-gate DOM touches removed |
+
+Final probe on merged tip: missingFrames=74 stuckMissing=20
+appearOnTime=0.794 — vs post-merge-fix baseline 199/106/0.70 and the
+pre-pipeline origin 819/596/0.595. All kept lanes are zero-visual-diff and
+non-hash-moving (verified per-lane: sim goldens bit-identical on this box).
+Residual lane notes (canopy test-locked probes, deeper prefetch lookahead,
+cross-decoder pool budget, whole-ship-LOD deadline flag) are recorded in the
+per-lane entries above.
