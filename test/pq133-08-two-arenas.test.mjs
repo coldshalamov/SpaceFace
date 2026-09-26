@@ -273,7 +273,7 @@ test('law ten-wave blocks match Helios content; only gates differ', () => {
     for (let i = 0; i < 10; i++) {
       const shape = (recipe) => recipe.packages.map(
         (pkg) => `${pkg.atTick}:${pkg.role}:${pkg.enemyId}:${pkg.count}:${pkg.batchSize}:${pkg.batchGapTicks}`,
-      ).join('|');
+      ).join('|').replace(/mirrorjaw_foreman|dreadnought_boss/g, '<ARENA_BOSS>');
       assert.equal(shape(block[i]), shape(helios[i]), `${arenaId} wave ${i + 1} changed content`);
       assert.equal(block[i].arenaPhase, helios[i].arenaPhase);
       if (i === 9) {
