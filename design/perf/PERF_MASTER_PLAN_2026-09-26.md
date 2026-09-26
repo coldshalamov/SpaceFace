@@ -86,17 +86,20 @@ appear `noMesh` at R0_GLASS while their job waits behind station/fx misses.
   arms when `mode==='flight' && firstPlayableFrameAt` — pre-first-frame pendings
   wait for the 0.25 s poll.
 
-### Pole B — entityList / table authority (program's named "next 50%")
-Sim explorer measured pocket: entityList=96 live, of which 42 are never-moving optic
-lattice cells (`opticStructureId`) and 11 field-grown asteroids — nearest asteroid
-308 WU, p50 4201 WU. 279 dormant field rows already exist. Demote lane takes 96→~54.
-- PRECONDITION: D50 overlap-safe promote (`promoteAsteroidFieldRock` spawns at the
-  drifted `rec.pos`; ram path guarantees overlap → push-apart "yeet").
-- Hazards (explorer): spawn order changes → hash moves; demote must NOT release the
-  id (`worldLedgerHoldsId` covers asteroidField; an opticRows table must join that
-  guard); demote emits entity:spawned/removed — subscribers may draw rng.
-- Size: removes ~53 entities from every O(entityList) walk + 42 static colliders +
-  42 residency slots + 42 scene nodes.
+### Pole B — entityList / table authority — CLOSED (measured not-worth-it, 2026-09-26)
+"Next 50%" was measured when entityList was 408 under the parasite; the landed
+table-authority work already took the fat lanes (279 dormant field rows, shelved
+far actors). Residual: 96 live, of which 42 are optic lattice cells. Why demote is
+wrong now: (1) per-tick systems consume entityIndex lanes, not raw entityList —
+the only raw-list walks left are lifetimeSweep, incremental index reconcile, and a
+few system paths (~3 raw `for (const e of entityList)` sites); (2) optic cells must
+stay collidable + radar-visible + rendered, so they would remain in collidables /
+spatialStatics / physicsStatics / radarAsteroids anyway — demote trims only the
+handful of raw walks, ≈126 entity-touches/step ≈ microseconds; (3) the price is
+L-effort: a parallel static-collider feed for the broadphase, radar/overlay table
+reads, save round-trip, spawn/despawn event ordering (rng-moving), and
+`worldLedgerHoldsId` guard coverage. D50 (`resolveAdmitOverlap` + exempt ram path)
+already landed on master — the precondition exists; the leaf doesn't pay for it.
 
 ### Pole C — calendar tick straddle — LANDED (82da377ed)
 Cohorts of index%3 in CALENDAR_CLOCK_IDS phase onto tick%30 ∈ {0,10,20}. Turned out
@@ -104,10 +107,10 @@ Cohorts of index%3 in CALENDAR_CLOCK_IDS phase onto tick%30 ∈ {0,10,20}. Turne
 every tick — straddle is production-only, `check:sim` reproduces `f542e2e9` exactly.
 Test updated to pin cohort phase + wake-runs-all semantics.
 
-### Pole D — projectile sweep batching
-`_admitProjectileSweepBodies` runs field+far queries per projectile per step (up to
-4× under catch-up). Union the swept segments once per step, intersect per projectile.
-Zero behavior change. S effort.
+### Pole D — projectile sweep batching — LANDED (e9ab3de59)
+Step-level union bbox queried once (`_sweepUnionBounds*`); segments inside it reuse
+the union rows via `segmentCircleHitInto` per body; a projectile spawned mid-sweep
+falls back to its own queries. Order-preserving, zero behavior change.
 
 ### Pole E — render submit tail
 - Shadow pass walks the whole scene per refresh to draw ~5-20 casters
@@ -258,6 +261,74 @@ retry-budget semantics.
 - `browser`: cancelled (dependency), not run.
 - **Zero new failures attributable to this branch.**
 
+### Third round (head 3206ebc05 — gate fix + hitch instrumentation + Pole G assets)
+
+- `draw-flight`: same `accelerates to actual G cap` assert (adjudicated twice above —
+  `s.speed`≈312 on master tip too; unrelated to assets/instrumentation).
+
+### Fourth round (head 462833565 — pose-gate dealloc + manifest pins)
+
+- `draw-flight`: same `accelerates to actual G cap` assert — fourth occurrence.
+
+### Draw-flight root cause + fix (head — this branch)
+
+Root-caused the assert with a headless real-path replay (`bootRealPath`, seed 4242,
+same hull/systems): the ship equilibrates at exactly **312.00 WU/s**, the authored
+draw cap = `combatSpeed` 195 (drive_reaction_m) x `AUTO_TARGET_PATH_OVERDRIVE_MULT`
+1.6. The window `145<speed<160` was written when governed cruise was ~95 and went
+stale at e8d10fed7's cruise-ceiling restore (Sep 16); master never reached this
+assert because the fixture died earlier at `fixtureReady` (MIME) until f4885cb2e.
+Replayed the full check sequence headlessly — turn speeds hold 312 (momentum
+conserved), `vel.z`=312>140, brake→0.2<3, stroke-restart works. Only the accel
+window was stale; refreshed to 300-325 with the derivation in a comment.
+
+### Fifth round (head 128d81f82 — draw-flight fix)
+
+- `draw-flight`: **GREEN** — the refreshed window passes.
+- `static (1)`: same 33 program-docs ancestry errors as adjudicated twice above
+  (fails identically on master tip 314cfaaa8; the integratedCommit SHAs live in
+  the pre-Sep-8 archived history that was never pushed).
+
+### Sixth round (head 1f151a793 — settled)
+
+- `sim`: PASS. `draw-flight`: PASS (fix verified in CI).
+- `static (3)`: 2 failures — `check-onboarding` + `check-kestrel-wholeship`
+  (lod0 40468 tris vs 36000-38000 — **byte-identical on master tip**, verified
+  locally on the adjudicate worktree). `check-bundle` now passes — likely
+  improved by the Pole G asset rebuild.
+- `static (2)`: same 9 adjudicated master-side failures as round 2.
+- `feel`: same 4 adjudicated master-side contract failures (B2/B3 + hitstun).
+- `browser`: skipped (upstream shard dependency) — unchanged from prior rounds.
+- `check` rollup: inherits the shard failures.
+- Final end-state probe on this head (two runs, high box noise): missingFrames
+  511 then 217, stuckMissing 347 then 141 — same admission-bound classes as the
+  06-06Z run, inside the probe's ±2-4x run-to-run envelope (the 06-29Z run read
+  875 on near-identical code). No regression attributable to Pole G/merge: the
+  lone 14.1 s decode is `helios_cradle.glb` (14.3 MB, unchanged since HEAD~8)
+  and the single 404 page error appears identically in pre-Pole-G probe logs.
+  Residual is still Pole A serial-admission throughput (upgradePending ~21,
+  inFlight=1).
+
+### Seventh round (head 7d8a5ace7 — master merge)
+
+Merged master tip `391981fe1` (288 new commits incl. the parallel quiet-latch
+perf series). Conflicts resolved: draw-flight check took master's version
+(master `c448b94fa` rewrote the test for dynamic-stick semantics — the old
+speed-window fix is obsolete), renderPackageManifest took master's canonical
+regen.
+
+- `sim` shard is now red on BOTH sides: the 47a golden moved to `f3583c50…`
+  (byte-identical reproduction on master tip). `git bisect` across the merge
+  range fingers master commit `182faf57b` ("INFERENCE-17 tail: authored
+  command pushes honor the 128-ring; _spawnDue commits survivors on throw",
+  touching src/systems/aiEncounter.js + aiPorts.js) — it changed sim behavior
+  without reminting `test/47a.telemetry.expected.json`. Owner fix: mint the
+  new golden on master (or revert); not our call to overwrite the expectation
+  on a PR branch.
+- static shards / feel / program-docs: same adjudicated master-side sets.
+- `draw-flight` now runs master's rewritten contract — no branch-side
+  involvement needed.
+
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
 authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
@@ -266,3 +337,65 @@ asset-loader ×2): all green except `asset-residency-refcounts`' "headless real
 release-GLB traversal" — a Playwright-launched real-browser GLB traversal that
 stalls identically on origin/master on this box (>8 min against a 120 s test
 timeout; box-slowness in real asset decode, unrelated to the diff).
+
+## Round 8 — merge-inherited stale render packages (regression found + fixed)
+
+Post-merge probe on `86efa5239` read `missingFrames=2403 stuckMissing=2267`
+vs master's `455/270` at the same box — a real merge interaction, not noise.
+Root cause: the manifest conflict was resolved to master's
+`renderPackageManifest.js` while the package binaries came from our side —
+`check-render-package-pilots` flagged `apron-shuttle: render-package.json is
+stale`, and at runtime every stale-pinned package is rejected, dropping 267
+ships onto the slow per-part path → mass stuck-missing. Fix: full
+`build-render-package-pilots` rebuild on the merged tree + manifest regen
+(`cec0c22fe`). Post-fix probe: `missingFrames=199 stuckMissing=106
+flightShaderLinks=20 (8 in-frame) appearOnTime=0.70` — envelope restored.
+
+Merge-rule learned: any merge touching `assets/ships/release/render-packages`
+or `renderPackageManifest.js` must be followed by a pilots rebuild — the
+pins are content-hash pairs and either side's half-set is silently rejected.
+
+## Round 9 — parallel lane fan-out (hill-climb swarm)
+
+Nine subsystem lanes spawned as parallel child sessions off
+`devin/1790392438-perf-pipeline` (+ electron lane landed earlier as
+`devin/lane-electron`). Each explores its lane, implements one zero-visual-diff
+leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
+
+- `shaderwarm` (`cfd21b7b8`): keep-alive pipeline probes were minting the WRONG
+  program keys — bare MeshPhysicalMaterials instead of the real
+  `applyAuthoredMaterialProfile` + `canonicalizeAuthoredProgramState` chain, so
+  first-flight authored admissions still compiled cold (the 19-20
+  flightShaderLinks the probe sees). Probes now cover the real family-key
+  space (Standard ×4 roles + transparent, Physical clearcoat/mechanical,
+  transmission glass ±clearcoat) — 23/23 real authored combos hit a warm
+  program in offline key-parity sim. A/B pending on this box.
+- `admission`, `decode`, `batching`, `allocs` in flight; `simwalk`,
+  `textures`, `postfx`, `hud` queued behind the org's session cap.
+
+### Lane A/B adjudication
+
+- `shaderwarm` `cfd21b7b8` — **reverted** (revert `2de602116`). Diagnosis
+  correct (warm probes minted bare-Physical keys instead of the real
+  `applyAuthoredMaterialProfile` + `canonicalizeAuthoredProgramState` chain),
+  but A/B on this box showed no reduction: flightShaderLinks 20→22, in-frame
+  8→9, aggregates within noise but strictly worse (519/282 vs 199/106).
+  Link-subject diff shows real authored admissions (LOD0_engine_fan,
+  Bourse_Carrier_Wreck, GLTFKit_*) still mint novel programs — the 23/23
+  key-parity sim missed axes real assets carry (slot presence, env params,
+  lightmap/vertex variants). Warm-up probe design must enumerate keys from
+  REAL material state at admission, not the static role matrix. Lane notes
+  preserved: canopy probes test-locked to pre-canon subsets; uncovered axes
+  DoubleSide/alphaTest/vertexColors/tangent-less/mapless-breakup.
+
+- `batching` `b103b393d` — **kept**. Memoizes the authored-chunk castShadow
+  verdict behind `matrixSerial` + signed slack margin; provably-identical
+  verdicts (equivalence harness 0 mismatches, ~99% of evaluations skip the
+  rescan). Probe A/B: stuck 106→79, P99 275→261ms, appearOnTime flat.
+- `decode` `c7671ad7f` — **kept (flagged)**. KTX2 worker pool 4→
+  `min(8, cores-2)` + `ktx2.init()` kicked during runtime assembly. Direct
+  metric improved: authored composition p95 5810→4555ms, max 7204→4248ms.
+  Pop-in metrics read worse (245/138 vs 187/79) but inside this box's
+  demonstrated ±2x noise envelope; possible CPU contention between decode
+  workers and the render loop on software-GL — worth a hardware A/B.
+  Follow-up noted by lane: shared cross-decoder pool budget.

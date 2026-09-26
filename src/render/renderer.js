@@ -13905,7 +13905,6 @@ export const render = {
     const originSeq = (this.state.world && this.state.world.frameOriginSeq) | 0;
     const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
     const fieldCount = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
-    const fieldKey = `${originSeq}:${fieldVersion}:${fieldCount}`;
     let posedField = 0;
     const poseRow = (row) => {
       if (!row || row.alive === false || !row.pos) return false;
@@ -13916,21 +13915,30 @@ export const render = {
       mesh.rotation.y = -(row.rot || 0);
       return true;
     };
-    if (this._worldFieldPoseKey !== fieldKey && field && Array.isArray(field.rocks)) {
+    if ((this._worldFieldPoseOriginSeq !== originSeq
+        || this._worldFieldPoseVersion !== fieldVersion
+        || this._worldFieldPoseCount !== fieldCount)
+      && field && Array.isArray(field.rocks)) {
       for (let i = 0; i < field.rocks.length; i++) {
         if (poseRow(field.rocks[i])) posedField++;
       }
-      this._worldFieldPoseKey = fieldKey;
+      this._worldFieldPoseOriginSeq = originSeq;
+      this._worldFieldPoseVersion = fieldVersion;
+      this._worldFieldPoseCount = fieldCount;
       if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     }
     // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
     // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
     const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
     const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
-    const dressingKey = `${originSeq}:${dressingVersion}:${dressingCount}`;
-    if (dressing && Array.isArray(dressing.rows) && this._worldDressingPoseKey !== dressingKey) {
+    if (dressing && Array.isArray(dressing.rows)
+      && (this._worldDressingPoseOriginSeq !== originSeq
+        || this._worldDressingPoseVersion !== dressingVersion
+        || this._worldDressingPoseCount !== dressingCount)) {
       for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
-      this._worldDressingPoseKey = dressingKey;
+      this._worldDressingPoseOriginSeq = originSeq;
+      this._worldDressingPoseVersion = dressingVersion;
+      this._worldDressingPoseCount = dressingCount;
     }
     return posedField;
   },
