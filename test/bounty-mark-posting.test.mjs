@@ -10,6 +10,7 @@ import test from 'node:test';
 // the ordinary kill path still settles the contract.
 
 import { missions } from '../src/systems/missions.js';
+import { contractClausesSystem } from '../src/systems/contractClauses.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
@@ -75,7 +76,11 @@ function makeWorld(state = makeState()) {
   };
   const missionSystem = { ...missions };
   missionSystem.init({ state, bus, helpers, registry: { get: () => null } });
-  return { state, bus, voiceCalls, spawnedSpecs, missionSystem };
+  // The real route always registers contractClauses: clause-observing missions defer kill
+  // settlement to its `contract:clauseSettledKill` pass-through, so the harness needs it live.
+  const clauseSystem = { ...contractClausesSystem };
+  clauseSystem.init({ state, bus, helpers, registry: { get: () => null } });
+  return { state, bus, voiceCalls, spawnedSpecs, missionSystem, clauseSystem };
 }
 
 function bountyOffers(board) {
@@ -328,6 +333,10 @@ test('killing the named mark still settles the contract', () => {
   const { state, bus, missionSystem } = world;
   const board = missionSystem.ensureBoard(BOARD_ID);
   const offer = bountyOffers(board)[0];
+  // Contract fine print (INFERENCE-28) can attach a hostile kill-observing clause to a bounty;
+  // that offer fails when the mark dies — the sibling test pins it. The ordinary settle path
+  // this test owns is a contract without a kill-observing clause.
+  offer.clauses = (offer.clauses || []).filter((c) => c && c.event !== 'entity:killed');
   assert.ok(missionSystem.acceptMission(offer.id));
   const active = state.missions.active[0];
   state.world.currentSectorId = active.destSectorId; // arrival: targets spawn on-site
@@ -337,6 +346,47 @@ test('killing the named mark still settles the contract', () => {
   assert.equal(state.missions.active.length, 0, 'the mark kill completes the bounty');
   const completed = bus.emitted.filter((e) => e.name === 'mission:completed');
   assert.equal(completed.length, 1);
+});
+
+test('a bounty carrying hostile no-kill fine print fails when the mark dies', () => {
+  const world = makeWorld();
+  const { state, bus, missionSystem } = world;
+  const board = missionSystem.ensureBoard(BOARD_ID);
+  const offer = bountyOffers(board)[0];
+  // This seed's offer rolls no_kills: disclosed hostile terms — the kill breaches, the contract
+  // fails, and the objective must NOT have completed behind the observer's back.
+  assert.ok((offer.clauses || []).some((c) => c && c.id === 'no_kills'),
+    'seed 0x5eed expanse board carries the no_kills clause');
+  assert.ok(missionSystem.acceptMission(offer.id));
+  const active = state.missions.active[0];
+  state.world.currentSectorId = active.destSectorId;
+  missionSystem._ensureMissionTargets(active);
+  const markId = active.targetEntityIds[0];
+  bus.emit('entity:killed', { id: markId, killerId: state.playerId, type: 'ship' });
+  assert.equal(state.missions.active.length, 0);
+  assert.ok(bus.emitted.some((e) => e.name === 'contract:clauseBroken' && e.payload.clauseId === 'no_kills'));
+  assert.equal(bus.emitted.filter((e) => e.name === 'mission:completed').length, 0);
+  assert.ok(bus.emitted.some((e) => e.name === 'mission:failed'));
+});
+
+test('a mark killed by a third party still settles through the clause pass-through', () => {
+  const world = makeWorld();
+  const { state, bus, missionSystem } = world;
+  const board = missionSystem.ensureBoard(BOARD_ID);
+  const offer = bountyOffers(board)[0];
+  // no_kills only breaches on PLAYER kills; a third-party kill is not a breach, but the clause-
+  // observing mission defers its whole kill path to the observer — the settled-kill pass-through
+  // must still deliver the objective.
+  assert.ok(missionSystem.acceptMission(offer.id));
+  const active = state.missions.active[0];
+  state.world.currentSectorId = active.destSectorId;
+  missionSystem._ensureMissionTargets(active);
+  const markId = active.targetEntityIds[0];
+  bus.emit('entity:killed', { id: markId, killerId: 4242, type: 'ship' });
+  assert.equal(state.missions.active.length, 0,
+    'non-breaching kill settles through contract:clauseSettledKill');
+  assert.equal(bus.emitted.filter((e) => e.name === 'mission:completed').length, 1);
+  assert.equal(bus.emitted.filter((e) => e.name === 'mission:failed').length, 0);
 });
 
 test('the mark hails once when the player closes inside scanner range', () => {

@@ -58,7 +58,9 @@ export const CONTRACT_CLAUSES = Object.freeze({
     prose: 'Complete the run without destroying any vessel.',
     rewardMult: 1.15,
     breachOn(payload, ctx) {
-      // Any player kill during an active contract with this clause breaches it.
+      // Any player kill during an active contract with this clause breaches it — including the
+      // contract's own targets. The clause is disclosed hostile fine print (missions yields kill
+      // completion to this observer); a bounty that rolls it fails when the mark dies.
       return !!(payload && payload.killerId && ctx && ctx.playerId && payload.killerId === ctx.playerId);
     },
   }),

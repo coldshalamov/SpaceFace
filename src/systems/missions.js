@@ -1131,6 +1131,8 @@ export const missions = {
       this._onKill(p);
       this._onPhysicalKill(p);
     });
+    // contractClauses judged this kill clean of every observed clause; the objective still owes.
+    bus.on('contract:clauseSettledKill', (p) => this._onClauseSettledKill(p));
     // escort fail: escortee destroyed.
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
@@ -2384,10 +2386,19 @@ export const missions = {
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
     const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
-    // D59: standing buys harder bounty marks (riskTier above drives spawn strength), never richer
-    // pay — pricing the standing tier re-paid the same bounty loop at escalating wages. Pay keeps
-    // the destination sector's own risk.
-    const payRiskTier = typeId === 'bounty_hunt' ? clamp(sectorRisk, rLo, rHi) : riskTier;
+    // D59: a bounty pays the boarding board's local rate — the board sector's own tier and danger —
+    // while standing and the destination's danger escalate the MARK (riskTier above: harder, longer
+    // fights, more return fire), never the priced rate. Pricing destination/standing escalation into
+    // the rate re-paid the same loop at operator-to-industrial wages and walked the hunter route out
+    // of its healthy band within one session.
+    const bountyPay = typeId === 'bounty_hunt';
+    let payRiskTier = riskTier;
+    let payTier = null;
+    if (bountyPay) {
+      const boardSector = SECTOR_BY_ID.get(info.sectorId);
+      payRiskTier = clamp(boardSector ? dangerTier(boardSector) : 1, rLo, rHi);
+      payTier = Math.max(info?.sectorTier ?? info?.tier ?? 0, payRiskTier);
+    }
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
@@ -2405,7 +2416,7 @@ export const missions = {
     const { placeName: _markPlace, ...markStoryTarget } = bountyMark || {};
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,distance,params,
+    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
     const reward_cr = economyTerms.rewardCr;
@@ -3993,22 +4004,45 @@ export const missions = {
       // contractClauses observes this same synchronous event after missions. Never let the kill
       // objective pay/complete first; the observer will emit the one canonical breach intent.
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
-      if (!m.targetEntityIds.includes(p.id)) continue;
-      if (m.storyTag === CONTRACT_47A_B2_TAG) {
-        this._resolveContract47aB2(m, i, 'force', p.id);
-        continue;
-      }
-      const defeated = this.state.entities && this.state.entities.get(p.id);
-      const defeatedSlot = missionTargetSlotOf(defeated, m.id);
-      if (defeatedSlot != null) {
-        const completed = completedMissionTargetSlots(m);
-        completed.add(defeatedSlot);
-        m.completedTargetSlots = [...completed].sort((a, b) => a - b);
-      }
-      m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
-      m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
-      if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
-      else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+      this._settleBountyTargetKill(m, i, p);
+    }
+  },
+
+  /**
+   * Objective settlement for a bounty/patrol target kill. Called directly from the entity:killed
+   * loop for clause-free missions, and via `contract:clauseSettledKill` for clause-observing ones
+   * after contractClauses has judged the kill — a kill no clause fails must still complete.
+   */
+  _settleBountyTargetKill(m, i, p) {
+    if (!m.targetEntityIds.includes(p.id)) return;
+    if (m.storyTag === CONTRACT_47A_B2_TAG) {
+      this._resolveContract47aB2(m, i, 'force', p.id);
+      return;
+    }
+    const defeated = this.state.entities && this.state.entities.get(p.id);
+    const defeatedSlot = missionTargetSlotOf(defeated, m.id);
+    if (defeatedSlot != null) {
+      const completed = completedMissionTargetSlots(m);
+      completed.add(defeatedSlot);
+      m.completedTargetSlots = [...completed].sort((a, b) => a - b);
+    }
+    m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
+    m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
+    if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
+    else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+  },
+
+  /**
+   * A kill contractClauses judged clean — no clause failed, so the mission owes its objective.
+   * Without this pass-through a clause-observing bounty could never complete (the entity:killed
+   * loop defers to the observer; the observer used to only ever speak on breach).
+   */
+  _onClauseSettledKill(p) {
+    if (!p || !p.missionId) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.id !== p.missionId || m.status !== 'active') continue;
+      this._settleBountyTargetKill(m, i, { ...p, id: p.entityId });
     }
   },
 

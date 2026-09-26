@@ -254,6 +254,7 @@ export const contractClausesSystem = {
     for (const m of [...active]) {
       if (!m || !m.clauses || !m.clauses.length) continue;
       if (m._clauseState && m._clauseState._completed) continue;
+      this._evalBreachFail = false;
       for (const c of m.clauses) {
         if (c.event !== eventName) continue;
         const key = c.id;
@@ -280,6 +281,17 @@ export const contractClausesSystem = {
         }
         // Physics condition: an N-count predicate with forbid/require semantics.
         this._scoreCondition(m, termDef, payload, ctx, eventName);
+      }
+      // The observer deferred the kill objective to us: a kill no clause fails still owes the
+      // mission its settlement (exempt targets, non-player killers). Forfeit-level breaches leave
+      // the contract alive, so the kill settles there too — only a fail suppresses the pass-through.
+      if (eventName === 'entity:killed' && !this._evalBreachFail
+        && m.clauses.some((c) => c && c.event === 'entity:killed') && this._bus && this._bus.emit) {
+        this._bus.emit('contract:clauseSettledKill', {
+          missionId: m.id, entityId: payload && payload.id,
+          killerId: payload && payload.killerId, type: payload && payload.type,
+          pos: payload && payload.pos, sectorId: payload && payload.sectorId,
+        });
       }
     }
   },
@@ -376,6 +388,8 @@ export const contractClausesSystem = {
 
   _emitBreach(m, clause, eventName, breachText = null) {
     if (!this._bus || !this._bus.emit) return;
+    // Fail-level breach: suppress the settled-kill pass-through for this event.
+    this._evalBreachFail = true;
     // The ONE penalty intent — the missions layer routes this through its shipped collateral-forfeit
     // fail path. This system NEVER writes credits/cargo/rep itself.
     this._bus.emit('contract:clauseBroken', {
