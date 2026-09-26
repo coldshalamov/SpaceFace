@@ -415,8 +415,7 @@ const ROUTES = {
         return [...root.querySelectorAll('.k-word, button[data-action]')]
           .filter((e) => window.__SF_PT_HELPERS__.isVis(e))
           .map((e) => (e.textContent || '').trim())
-          .filter((t) => t && !/resume|back|save|main menu|quit|exit|abandon|photo|capture/i.test(t))
-          .slice(0, 10);
+          .filter((t) => t && !/resume|back|save|main menu|quit|exit|abandon|photo|capture|quick load/i.test(t));
       });
       const walked = [];
       const ensurePause = async () => {
@@ -438,9 +437,19 @@ const ROUTES = {
           return { clicked: true, lbl };
         }, label);
         await sleep(1200);
+        // A verb may raise a confirm first (Load asks "Open load screen?") — answer it so the
+        // walk actually reaches the destination screen.
+        const confirmed = await ctx.page.evaluate(() => {
+          const root = document.querySelector('#sf-confirm-root');
+          if (!root) return null;
+          const b = [...root.querySelectorAll('.k-word, button')]
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /open|yes|confirm|continue|proceed/i.test(e.textContent || ''))[0];
+          if (!b) return null; b.click(); return (b.textContent || '').trim();
+        });
+        if (confirmed) await sleep(1200);
         const s = await snap(ctx);
         await shotNow(ctx, `e05-verb-${(label || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
-        walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen });
+        walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen, confirm: confirmed });
         const back = await ensurePause();
         if (back.screen !== 'pause') { walked.push({ verb: '_nav', screen: back.screen, note: 'could not return to pause' }); break; }
         await sleep(400);
