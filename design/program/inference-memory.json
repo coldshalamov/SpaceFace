@@ -1727,7 +1727,21 @@
       "integration": "live",
       "commit": "cc4373ae1",
       "verification": "focused_green"
+    },
+    {
+      "id": "INFERENCE-22",
+      "date": "2026-09-26",
+      "wf": "WF-07",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Hull insurance was a 500-cr purchase whose 60%-payout math lived in dead code and whose 'protect installed modules' copy insured a risk that does not exist — provably a no-op on the starter hull. recoveryCostQuote() now prices the active hull at purchase time; the service row and confirm dialog name covered credits, and the defeat toast reports the real numbers (Pelican 6,000 → 500; Hitch honest no-op).",
+      "fingerprint": "verb=buy,subject=hull-insurance,sector=any-station,layer=service-truth,tempo=purchase,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "f0cd1db5a",
+      "verification": "focused_green"
     }
+
   ],
   "knownDefects": [
     {
