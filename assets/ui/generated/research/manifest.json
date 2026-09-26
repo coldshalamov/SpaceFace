@@ -1,0 +1,13 @@
+{
+  "set": "research branch stars",
+  "source": "codex gpt-5.5 image generation, one image per branch",
+  "date": "2026-09-25",
+  "stars": {
+    "combat": "star-combat.webp",
+    "industry": "star-industry.webp",
+    "drives": "star-drives.webp",
+    "logistics": "star-logistics.webp"
+  },
+  "prompt": "A single luminous star glyph for a research constellation map: a four-pointed star with long thin diffraction spikes and a bright core, a small branch emblem inside the core; warm white light, transparent background, no text",
+  "notes": "logistics: regenerated once (the first came out a flat filled kite), cropped to 64% round its core with a radial alpha falloff so its core matches the other three"
+}

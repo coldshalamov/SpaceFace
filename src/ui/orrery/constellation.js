@@ -21,7 +21,7 @@
 
 import { svg, polar, arcD, ticksD } from './svg.js';
 import { injectOrrery } from './tokens.js';
-import { createSpring, reducedMotion } from './motion.js';
+import { createSpring, reducedMotion, onFrame } from './motion.js';
 
 const STYLE_ID = 'orr-constellation-style';
 const BONE = '236 230 216';
@@ -36,45 +36,68 @@ const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'
 const f = (n) => Math.round(n * 100) / 100;
 
 const CSS = `
-.con-sky { position:absolute; inset:0; isolation:isolate; }
-.con-sky::before { content:""; position:absolute; z-index:-1; left:var(--con-cx, 50%); top:var(--con-cy, 50%); width:var(--con-pool, 900px); height:var(--con-pool, 900px);
+.con-sky { position:absolute; inset:0; isolation:isolate; overflow:hidden; cursor:grab; touch-action:none; }
+.con-sky.is-dragging { cursor:grabbing; }
+.con-sky.is-dragging .con-star-btn, .con-sky.is-dragging .con-label { cursor:grabbing; }
+.con-sky__world { position:absolute; inset:0; transform-origin:0 0; will-change:transform; }
+.con-sky__pool { position:absolute; z-index:-1; left:var(--con-cx, 50%); top:var(--con-cy, 50%); width:var(--con-pool, 900px); height:var(--con-pool, 900px);
   transform:translate(-50%, -50%); pointer-events:none; border-radius:50%;
   background:radial-gradient(closest-side, rgb(5 7 10 / .86), rgb(5 7 10 / .72) 62%, rgb(5 7 10 / .34) 84%, rgb(5 7 10 / 0)); }
 .con-sky.is-off > * { display:none !important; }
-.con-sky > svg.con-sky__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.con-sky svg.con-sky__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .con-sky__stars { position:absolute; inset:0; pointer-events:none; }
+/* the Lens: the sky under the pointer, twice as near, every name in it */
+.con-lens { position:absolute; left:0; top:0; width:var(--con-lens, 220px); height:var(--con-lens, 220px); margin:calc(var(--con-lens, 220px) / -2) 0 0 calc(var(--con-lens, 220px) / -2);
+  pointer-events:none; z-index:4; opacity:0; transition:opacity .16s linear; }
+.con-sky.is-lens .con-lens { opacity:1; }
+.con-lens, .con-lens * { pointer-events:none !important; }
+.con-lens__view { position:absolute; inset:0; border-radius:50%; overflow:hidden; background:rgb(5 7 10 / .94); }
+.con-lens__view > .con-sky__world { inset:auto; left:0; top:0; width:var(--con-w, 100%); height:var(--con-h, 100%); will-change:auto; }
+.con-lens__view .con-label.is-dropped { display:block; }
+.con-lens__view .con-label.is-under-hand, .con-lens__view .con-label.is-covered { opacity:1; }
+.con-lens__view .con-label::before { display:none; }
+.con-lens__rim { position:absolute; inset:-14px; width:calc(100% + 28px); height:calc(100% + 28px); overflow:visible; }
+.orr-svg .con-lens__ring { fill:none; stroke:rgb(${WARM}); stroke-width:1.8; }
+.orr-svg .con-lens__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:8; opacity:.14; }
+.orr-svg .con-lens__ticks { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.2; }
+.orr-svg text.con-lens__mag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.16em; fill:rgb(${WARM}); text-anchor:middle; }
+html.sf-reduce-motion .con-lens { transition:none; }
 
 /* the dial: orbits, the rim scale, the branch sectors, the tier spoke */
-.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .15); stroke-width:1; vector-effect:non-scaling-stroke; }
-.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .26); }
+.orr-svg .con-orbit { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1.5; }
+.orr-svg .con-orbit.is-outer { stroke:rgb(${BONE} / .36); stroke-width:1.8; }
+.orr-svg .con-band { fill:none; stroke:rgb(${BONE} / .032); }
+.orr-svg .con-band.is-inner { stroke:rgb(${BONE} / .05); }
 .orr-svg .con-rim { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1; }
 .orr-svg .con-rim--major { stroke:rgb(${BONE} / .55); }
-.orr-svg .con-sector__track { fill:none; stroke:rgb(${BONE} / .2); stroke-width:2; stroke-linecap:butt; }
-.orr-svg .con-sector__fill { fill:none; stroke:rgb(${WARM}); stroke-width:2; stroke-linecap:butt; transition:stroke-dasharray .6s var(--dp-ease-out, ease-out); }
-.orr-svg .con-sector__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:7; opacity:.16; stroke-linecap:butt; }
+.orr-svg .con-sector__track { fill:none; stroke:rgb(${BONE} / .16); stroke-width:4; stroke-linecap:butt; }
+.orr-svg .con-sector__fill { fill:none; stroke:rgb(${WARM}); stroke-width:4; stroke-linecap:butt; transition:stroke-dasharray .6s var(--dp-ease-out, ease-out); }
+.orr-svg .con-sector__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:13; opacity:.18; stroke-linecap:butt; }
 .orr-svg text.con-sector__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--con-rim-px, 10px); letter-spacing:.26em;
   text-transform:uppercase; fill:rgb(${BONE} / .74); }
 .orr-svg text.con-sector__name tspan.con-sector__count { fill:rgb(${WARM}); letter-spacing:.1em; }
 .orr-svg text.con-tier { font-family:var(--dp-face-label, "Archivo"); font-stretch:100%; font-weight:600; font-size:var(--con-tier-px, 9.5px); letter-spacing:.06em;
   fill:rgb(${BONE} / .6); text-anchor:middle; dominant-baseline:central; }
 .orr-svg .con-spoke { stroke:rgb(${BONE} / .16); stroke-width:1; stroke-dasharray:1 4; }
-.orr-svg .con-core__track { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1.5; }
-.orr-svg .con-core__fill { fill:none; stroke:rgb(${WARM}); stroke-width:2.5; stroke-linecap:round; }
+.orr-svg .con-core__track { fill:none; stroke:rgb(${BONE} / .16); stroke-width:5; }
+.orr-svg .con-core__fill { fill:none; stroke:rgb(${WARM}); stroke-width:5; stroke-linecap:butt; }
+.orr-svg .con-core__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:14; opacity:.16; }
 .orr-svg .con-core__ticks { stroke:rgb(${BONE} / .28); stroke-width:1; }
 .orr-svg .con-drift { fill:none; stroke:rgb(${BONE} / .14); stroke-width:1; }
 
 /* beams: a prerequisite as a line of light */
-.orr-svg .con-beam__core { fill:none; stroke:rgb(${BONE} / .17); stroke-width:1; stroke-linecap:round; }
-.orr-svg .con-beam__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:6; opacity:0; stroke-linecap:round; }
-.orr-svg .con-beam__sweep { fill:none; stroke:rgb(255 251 242); stroke-width:2.2; stroke-linecap:round; stroke-dasharray:.28 1.4; stroke-dashoffset:.3; opacity:0; }
-.orr-svg .con-beam[data-state="open"] .con-beam__core { stroke:rgb(${BONE} / .44); stroke-width:1.2; }
-.orr-svg .con-beam[data-state="lit"] .con-beam__core { stroke:rgb(${WARM} / .88); stroke-width:1.5; }
-.orr-svg .con-beam[data-state="lit"] .con-beam__bloom { opacity:.2; }
-.orr-svg .con-beam.is-path .con-beam__core { stroke:rgb(${BONE} / .5); stroke-width:1.3; }
-.orr-svg .con-beam.is-path[data-state="open"] .con-beam__core { stroke:rgb(${WARM} / .8); stroke-width:1.5; }
-.orr-svg .con-beam.is-path[data-state="lit"] .con-beam__core { stroke:rgb(255 251 242); stroke-width:1.8; }
-.orr-svg .con-beam.is-path .con-beam__bloom { opacity:.14; }
-.orr-svg .con-beam.is-path[data-state="lit"] .con-beam__bloom { opacity:.3; }
+.orr-svg .con-beam__core { fill:none; stroke:rgb(${BONE} / .28); stroke-width:1.6; stroke-linecap:round; }
+.orr-svg .con-beam__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:7; opacity:.05; stroke-linecap:round; }
+.orr-svg .con-beam__sweep { fill:none; stroke:rgb(255 251 242); stroke-width:3.2; stroke-linecap:round; stroke-dasharray:.28 1.4; stroke-dashoffset:.3; opacity:0; }
+.orr-svg .con-beam[data-state="open"] .con-beam__core { stroke:rgb(${BONE} / .58); stroke-width:2; }
+.orr-svg .con-beam[data-state="open"] .con-beam__bloom { opacity:.1; }
+.orr-svg .con-beam[data-state="lit"] .con-beam__core { stroke:rgb(${WARM} / .95); stroke-width:2.2; }
+.orr-svg .con-beam[data-state="lit"] .con-beam__bloom { opacity:.26; stroke-width:9; }
+.orr-svg .con-beam.is-path .con-beam__core { stroke:rgb(${BONE} / .62); stroke-width:2; }
+.orr-svg .con-beam.is-path[data-state="open"] .con-beam__core { stroke:rgb(${WARM} / .9); stroke-width:2.2; }
+.orr-svg .con-beam.is-path[data-state="lit"] .con-beam__core { stroke:rgb(255 251 242); stroke-width:2.6; }
+.orr-svg .con-beam.is-path .con-beam__bloom { opacity:.16; }
+.orr-svg .con-beam.is-path[data-state="lit"] .con-beam__bloom { opacity:.34; stroke-width:10; }
 .orr-svg .con-beam.is-sweep .con-beam__sweep { animation:con-sweep 560ms cubic-bezier(.3, .1, .3, 1) both; animation-delay:var(--con-d, 0ms); }
 @keyframes con-sweep { 0% { opacity:1; stroke-dashoffset:.3; } 88% { opacity:1; } 100% { opacity:0; stroke-dashoffset:-1.1; } }
 .orr-svg .con-pulse { fill:var(--dp-ice, #8fcbff); }
@@ -85,6 +108,18 @@ const CSS = `
 .orr-svg .con-star__ring { fill:rgb(5 7 10 / .9); stroke:rgb(${BONE} / .34); stroke-width:1; }
 .orr-svg .con-star__core { fill:rgb(${BONE} / .55); transform-box:fill-box; transform-origin:center; transform:scale(.5); }
 .orr-svg .con-star__glint { fill:none; stroke:rgb(${WARM}); stroke-width:1; opacity:0; stroke-linecap:round; }
+/* the produced star: full light when researched, a lit star in its ring when open, a faint small one when locked */
+.orr-svg .con-star__art { transform-box:fill-box; transform-origin:center; opacity:.4; transform:scale(.46); transition:opacity .3s linear, transform .4s var(--dp-ease-over, ease-out); }
+.orr-svg .con-star[data-state="available"] .con-star__art { opacity:.95; transform:scale(.72); }
+.orr-svg .con-star[data-state="researched"] .con-star__art { opacity:1; transform:none; }
+.orr-svg .con-star.is-hot .con-star__art { opacity:1; }
+.orr-svg .con-star.has-art .con-star__ring { fill:none; stroke:none; }
+.orr-svg .con-star.has-art[data-state="researched"] .con-star__core { opacity:0; }
+.orr-svg .con-star.has-art[data-state="available"] .con-star__core { opacity:0; }
+.orr-svg .con-star.has-art[data-state="locked"] .con-star__core { opacity:0; }
+.orr-svg .con-star.has-art[data-state="available"] .con-star__halo { opacity:.3; }
+.orr-svg .con-star.has-art.is-hot .con-star__halo { opacity:.42; }
+html.sf-reduce-motion .orr-svg .con-star__art { transition:none; }
 .orr-svg .con-star[data-state="locked"] .con-star__ring { stroke-dasharray:2 2.2; }
 .orr-svg .con-star[data-state="available"] .con-star__ring { stroke:rgb(${WARM}); stroke-width:1.5; }
 .orr-svg .con-star[data-state="available"] .con-star__core { fill:rgb(${WARM}); transform:scale(.46); }
@@ -102,13 +137,13 @@ const CSS = `
 .orr-svg .con-star__halo { transform-box:fill-box; transform-origin:center; }
 
 /* the chosen star: a bone reticle; the Hand is the only amber */
-.orr-svg .con-reticle path { fill:none; stroke:rgb(${WARM}); stroke-width:1.4; stroke-linecap:butt; }
-.orr-svg .con-reticle circle { fill:none; stroke:rgb(${WARM} / .34); stroke-width:1; }
+.orr-svg .con-reticle path { fill:none; stroke:rgb(${WARM}); stroke-width:2; stroke-linecap:butt; }
+.orr-svg .con-reticle circle { fill:none; stroke:rgb(${WARM} / .4); stroke-width:1.5; }
 .orr-svg .con-reticle.is-snap > g { animation:con-snap 360ms cubic-bezier(.34, 1.36, .64, 1) both; transform-box:fill-box; transform-origin:center; }
 @keyframes con-snap { from { opacity:0; transform:scale(1.7) rotate(-30deg); } to { opacity:1; transform:none; } }
-.orr-svg .con-hand__arm { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:1.7; stroke-linecap:round; }
-.orr-svg .con-hand__bloom { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:7; opacity:.22; stroke-linecap:round; }
-.orr-svg .con-hand__tip { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:1.7; stroke-linejoin:miter; }
+.orr-svg .con-hand__arm { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.2; stroke-linecap:round; }
+.orr-svg .con-hand__bloom { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:9; opacity:.24; stroke-linecap:round; }
+.orr-svg .con-hand__tip { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.2; stroke-linejoin:miter; }
 .orr-svg .con-hand__hub { fill:var(--dp-hand, #f2b950); }
 .orr-svg .con-hand__hubring { fill:rgb(5 7 10); stroke:rgb(${WARM}); stroke-width:1.3; }
 .orr-svg .con-hand__pin { fill:rgb(255 244 214); }
@@ -134,7 +169,8 @@ const CSS = `
 .con-label.is-w, .con-label.is-nw, .con-label.is-sw { text-align:right; }
 .con-label.is-n, .con-label.is-s { text-align:center; }
 .con-label.is-dropped { display:none; }
-.con-label.is-under-hand { opacity:.3; transition:opacity .2s linear; }
+.con-label.is-under-hand, .con-label.is-covered { opacity:.3; transition:opacity .2s linear; }
+.con-label.is-covered { opacity:0; }
 .con-star-btn:is(:hover, :focus-visible) > .con-label.is-under-hand { opacity:1; }
 .con-label__name { display:block; font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-weight:500; font-size:var(--con-px, 13px);
   line-height:var(--con-lh, 16px); letter-spacing:.005em; color:rgb(${BONE} / .7); text-transform:none; }
@@ -454,7 +490,18 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   starLayer.className = 'con-sky__stars';
   starLayer.setAttribute('role', 'group');
   starLayer.setAttribute('aria-label', 'Research constellation');
-  host.append(layer, starLayer);
+  const world = doc.createElement('div');
+  world.className = 'con-sky__world';
+  const pool = doc.createElement('div');
+  pool.className = 'con-sky__pool';
+  world.append(pool, layer, starLayer);
+  const lens = doc.createElement('div');
+  lens.className = 'con-lens';
+  lens.setAttribute('aria-hidden', 'true');
+  const lensView = doc.createElement('div');
+  lensView.className = 'con-lens__view';
+  lens.appendChild(lensView);
+  host.append(world, lens);
   starLayer.addEventListener('keydown', (event) => {
     const from = event.target && event.target.closest ? event.target.closest('.con-star-btn') : null;
     if (!from) return;
@@ -472,6 +519,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let beamNodes = [];
   let sectorFills = new Map();
   let coreFill = null;
+  let coreBloom = null;
   let reticle = null;
   let handArm = null;
   let handBloom = null;
@@ -483,6 +531,9 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let bearing = 0;
   let arriveTimer = 0;
   let pendingArrive = false;
+  /** a label shown over its neighbours (a peek) steps them back: id -> ids it covers */
+  let covers = new Map();
+  const hot = new Set();
   const paintHand = () => {
     if (!geo || !handArm) return;
     const { cx, cy } = geo;
@@ -497,6 +548,166 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   };
   const angle = createSpring({ value: 0, preset: 'swing', onUpdate: (v) => { bearing = v; paintHand(); } });
   const length = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => { reach = v; paintHand(); } });
+
+  // ---- the view: the sky pans under a drag (with the drift a flung chart has) and zooms under the
+  // wheel toward the pointer; a Lens rides the pointer and shows the sky beneath it twice as near,
+  // with every name in it. The view never changes the layout: it is one transform on the world. ----
+  const view = { x: 0, y: 0, z: 1 };
+  const Z_MIN = 1;
+  const Z_MAX = 2.6;
+  const LENS_K = 2;
+  let drag = null;
+  let dragged = false;
+  let glideOff = null;
+  let lensOn = false;
+  let lensDirty = true;
+  let lensWorld = null;
+  let lensAt = { x: 0, y: 0 };
+  let onViewCb = null;
+  const clampView = () => {
+    if (!geo) return;
+    const W = geo.W;
+    const H = geo.H;
+    // the dial's centre may travel anywhere inside the frame, never off it
+    const cx = geo.cx * view.z + view.x;
+    const cy = geo.cy * view.z + view.y;
+    const lim = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    view.x += lim(cx, W * 0.12, W * 0.88) - cx;
+    view.y += lim(cy, H * 0.12, H * 0.88) - cy;
+  };
+  const applyView = () => {
+    clampView();
+    const moved = Math.abs(view.z - 1) > 0.001 || Math.abs(view.x) > 0.5 || Math.abs(view.y) > 0.5;
+    world.style.transform = moved ? `translate(${f(view.x)}px, ${f(view.y)}px) scale(${view.z.toFixed(4)})` : '';
+    host.classList.toggle('is-moved', moved);
+    if (typeof onViewCb === 'function') onViewCb({ zoom: view.z, moved });
+    if (lensOn) placeLens();
+  };
+  const toWorld = (mx, my) => ({ x: (mx - view.x) / view.z, y: (my - view.y) / view.z });
+  const hostPoint = (e) => { const r = host.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function zoomAt(mx, my, z) {
+    const w = toWorld(mx, my);
+    view.z = Math.max(Z_MIN, Math.min(Z_MAX, z));
+    view.x = mx - w.x * view.z;
+    view.y = my - w.y * view.z;
+    applyView();
+  }
+  function stopGlide() { if (glideOff) { glideOff(); glideOff = null; } }
+  function glide(vx, vy) {
+    stopGlide();
+    if (reducedMotion() || Math.hypot(vx, vy) < 60) return;
+    let last = null;
+    glideOff = onFrame((now) => {
+      const dt = last == null ? 1 / 60 : Math.min(0.05, (now - last) / 1000);
+      last = now;
+      view.x += vx * dt;
+      view.y += vy * dt;
+      const k = Math.exp(-4.2 * dt);
+      vx *= k; vy *= k;
+      applyView();
+      if (Math.hypot(vx, vy) < 12) { glideOff = null; return false; }
+      return true;
+    });
+  }
+  function refreshLens() {
+    lensDirty = false;
+    if (lensWorld) lensWorld.remove();
+    lensWorld = world.cloneNode(true);
+    lensWorld.style.transform = '';
+    for (const b of lensWorld.querySelectorAll('button')) { b.setAttribute('tabindex', '-1'); b.setAttribute('aria-hidden', 'true'); b.removeAttribute('aria-label'); }
+    lensWorld.setAttribute('inert', '');
+    lensView.appendChild(lensWorld);
+    if (geo) { lensView.style.setProperty('--con-w', `${geo.W}px`); lensView.style.setProperty('--con-h', `${geo.H}px`); }
+  }
+  function placeLens() {
+    if (!lensWorld || lensDirty) refreshLens();
+    const D = lens.offsetWidth || 220;
+    const w = toWorld(lensAt.x, lensAt.y);
+    const k = view.z * LENS_K;
+    lens.style.transform = `translate(${f(lensAt.x)}px, ${f(lensAt.y)}px)`;
+    lensWorld.style.transform = `translate(${f(D / 2 - w.x * k)}px, ${f(D / 2 - w.y * k)}px) scale(${k.toFixed(4)})`;
+  }
+  function showLens(on) {
+    lensOn = !!on && !!geo;
+    host.classList.toggle('is-lens', lensOn);
+    if (lensOn) placeLens();
+  }
+  host.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || !geo) return;
+    stopGlide();
+    const m = hostPoint(e);
+    drag = { id: e.pointerId, x: m.x, y: m.y, vx0: view.x, vy0: view.y, t: performance.now(), px: m.x, py: m.y, vx: 0, vy: 0 };
+    dragged = false;
+  });
+  host.addEventListener('pointermove', (e) => {
+    const m = hostPoint(e);
+    lensAt = m;
+    if (drag && drag.id === e.pointerId) {
+      const dx = m.x - drag.x;
+      const dy = m.y - drag.y;
+      if (!dragged && Math.hypot(dx, dy) < 5) { if (lensOn) placeLens(); return; }
+      if (!dragged) {
+        dragged = true;
+        host.classList.add('is-dragging');
+        showLens(false);
+        try { host.setPointerCapture(e.pointerId); } catch (_) { /* capture is a nicety */ }
+      }
+      const now = performance.now();
+      const dt = Math.max(1, now - drag.t) / 1000;
+      drag.vx = (m.x - drag.px) / dt;
+      drag.vy = (m.y - drag.py) / dt;
+      drag.t = now; drag.px = m.x; drag.py = m.y;
+      view.x = drag.vx0 + dx;
+      view.y = drag.vy0 + dy;
+      applyView();
+      return;
+    }
+    // the Lens rides the pointer over the dial, never over the rim words or empty sky
+    if (!geo) return;
+    const w = toWorld(m.x, m.y);
+    const inside = Math.hypot(w.x - geo.cx, w.y - geo.cy) < geo.R + 16;
+    if (inside !== lensOn) showLens(inside);
+    else if (lensOn) placeLens();
+  });
+  const endDrag = (e) => {
+    if (!drag || (e && drag.id !== e.pointerId)) return;
+    const was = dragged;
+    const v = drag;
+    drag = null;
+    host.classList.remove('is-dragging');
+    if (was) glide(v.vx, v.vy);
+  };
+  host.addEventListener('pointerup', endDrag);
+  host.addEventListener('pointercancel', endDrag);
+  host.addEventListener('pointerleave', () => { if (!drag) showLens(false); });
+  // a drag is not a click: the star under a released drag stays unchosen
+  host.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
+  host.addEventListener('wheel', (e) => {
+    if (!geo) return;
+    e.preventDefault();
+    stopGlide();
+    const m = hostPoint(e);
+    zoomAt(m.x, m.y, view.z * (e.deltaY > 0 ? 1 / 1.15 : 1.15));
+  }, { passive: false });
+  host.addEventListener('dblclick', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.con-star-btn')) return;
+    stopGlide();
+    view.x = 0; view.y = 0; view.z = 1;
+    applyView();
+  });
+  /** Bring a star into view if the view has left it outside the frame. */
+  function keepInView(id) {
+    const s = geo && geo.stars[id];
+    if (!s) return;
+    const x = s.x * view.z + view.x;
+    const y = s.y * view.z + view.y;
+    const pad = 60;
+    let dx = 0;
+    let dy = 0;
+    if (x < pad) dx = pad - x; else if (x > geo.W - pad) dx = geo.W - pad - x;
+    if (y < pad) dy = pad - y; else if (y > geo.H - pad) dy = geo.H - pad - y;
+    if (dx || dy) { view.x += dx; view.y += dy; applyView(); }
+  }
 
   const schedule = () => {
     if (frame) return;
@@ -618,6 +829,12 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       t.textContent = ROMAN[d] || String(d + 1);
       dial.appendChild(t);
     });
+    // luminous bands: every other annulus between two orbits lit faintly, like the plates of an orrery
+    for (let d = 0; d < radii.length - 1; d += 2) {
+      const r = (radii[d] + radii[d + 1]) / 2;
+      const w = Math.max(2, radii[d] - radii[d + 1] - 3);
+      dial.insertBefore(svg('circle', { cx: f(cx), cy: f(cy), r: f(r), class: `con-band${d >= radii.length - 3 ? ' is-inner' : ''}`, 'stroke-width': f(w) }), dial.firstChild);
+    }
     // the tier spoke: a dotted scale down the top gap from the rim to the core
     dial.appendChild(svg('path', { d: `M ${f(cx)} ${f(cy - R - 6)} L ${f(cx)} ${f(cy - radii[radii.length - 1] + 12)}`, class: 'con-spoke' }));
     // the rim scale, turning slowly
@@ -629,7 +846,24 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     dial.appendChild(svg('circle', { cx: f(cx), cy: f(cy), r: f(coreR), class: 'con-core__track' }));
     dial.appendChild(svg('path', { d: ticksD(cx, cy, coreR - 3, 36, { len: 2.5, major: 9, majorLen: 5 }), class: 'con-core__ticks' }));
     coreFill = svg('path', { d: arcD(cx, cy, coreR, 0, 359.99), class: 'con-core__fill', pathLength: 1, 'stroke-dasharray': '0 1' });
-    dial.appendChild(coreFill);
+    coreBloom = svg('path', { d: arcD(cx, cy, coreR, 0, 359.99), class: 'con-core__bloom', pathLength: 1, 'stroke-dasharray': '0 1' });
+    dial.append(coreBloom, coreFill);
+    // the Lens: a rim of light with its scale and its power
+    const D = Math.round(Math.max(170, Math.min(280, R * 0.56)));
+    host.style.setProperty('--con-lens', `${D}px`);
+    const oldRim = lens.querySelector('.con-lens__rim');
+    if (oldRim) oldRim.remove();
+    const rim = svg('svg', { class: 'orr-svg con-lens__rim', viewBox: `${-D / 2 - 14} ${-D / 2 - 14} ${D + 28} ${D + 28}` });
+    rim.append(
+      svg('circle', { r: f(D / 2), class: 'con-lens__bloom' }),
+      svg('circle', { r: f(D / 2), class: 'con-lens__ring' }),
+      svg('path', { d: ticksD(0, 0, D / 2 + 9, 48, { len: 3, major: 6, majorLen: 7, inward: true }), class: 'con-lens__ticks' }),
+    );
+    const mag = svg('text', { y: f(D / 2 + 13), class: 'con-lens__mag' });
+    mag.textContent = `${LENS_K}×`;
+    rim.appendChild(mag);
+    lens.appendChild(rim);
+    lensDirty = true;
     layer.appendChild(dial);
 
     // ---- the branch sectors on the rim: a gauge of what is researched, the name engraved beside ----
@@ -724,12 +958,20 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const s = stars[n.id];
       if (!s) continue;
       const g = delayed(svg('g', { class: 'con-star', 'data-node': n.id, transform: `translate(${f(s.x)} ${f(s.y)})` }), 200 + s.depth * 60);
+      const art = data.art && data.art[s.branch];
+      const A = sr * 9;
       g.append(
         svg('circle', { r: f(sr * 3.2), class: 'con-star__halo', fill: 'url(#con-glow)' }),
-        svg('path', { d: `M ${f(-sr * 2.5)} 0 L ${f(sr * 2.5)} 0 M 0 ${f(-sr * 2.5)} L 0 ${f(sr * 2.5)}`, class: 'con-star__glint' }),
-        svg('circle', { r: f(sr), class: 'con-star__ring' }),
+        svg('circle', { r: f(sr * 1.25), class: 'con-star__ring' }),
         svg('circle', { r: f(sr * 0.62), class: 'con-star__core' }),
       );
+      if (art) {
+        const im = svg('image', { class: 'con-star__art', href: art, x: f(-A / 2), y: f(-A / 2), width: f(A), height: f(A), preserveAspectRatio: 'xMidYMid meet' });
+        g.appendChild(im);
+        g.classList.add('has-art');
+      } else {
+        g.insertBefore(svg('path', { d: `M ${f(-sr * 2.5)} 0 L ${f(sr * 2.5)} 0 M 0 ${f(-sr * 2.5)} L 0 ${f(sr * 2.5)}`, class: 'con-star__glint' }), g.children[1]);
+      }
       starG.appendChild(g);
       starNodes.set(n.id, g);
     }
@@ -804,6 +1046,16 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     for (const it of items) it.room = freePlaces(it, statics);
     items.sort((a, b) => (a.rank - b.rank) || (a.room - b.room) || (a.depth - b.depth));
     const solved = solveLabels(items, { discs, segs, rects: statics.rects, points: rimPoints, bounds });
+    covers = new Map();
+    for (const [id, sol] of Object.entries(solved)) {
+      if (!sol || !sol.dropped) continue;
+      const under = [];
+      for (const [other, o] of Object.entries(solved)) {
+        if (other === id || !o || o.dropped) continue;
+        if (hit(sol.rect, o.rect, 6)) under.push(other);
+      }
+      if (under.length) covers.set(id, under);
+    }
 
     starLayer.textContent = '';
     buttons = new Map();
@@ -860,10 +1112,22 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   function markHot(id, on) {
     const g = starNodes.get(id);
     if (g) g.classList.toggle('is-hot', !!on);
+    if (on) hot.add(id); else hot.delete(id);
+    markCovered();
+  }
+
+  function markCovered() {
+    const covered = new Set();
+    for (const id of [...hot, chosen]) for (const other of covers.get(id) || []) covered.add(other);
+    for (const [id, b] of buttons) {
+      const label = b.firstElementChild;
+      if (label) label.classList.toggle('is-covered', covered.has(id) && !hot.has(id) && id !== chosen);
+    }
   }
 
   function paint({ instant = false } = {}) {
     if (!geo || !data) return;
+    lensDirty = true;
     const researched = (id) => stateOf(id) === 'researched';
     for (const [id, g] of starNodes) {
       const st = stateOf(id);
@@ -904,8 +1168,10 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const all = data.nodes.length || 1;
       const k = data.nodes.filter((n) => researched(n.id)).length / all;
       coreFill.setAttribute('stroke-dasharray', `${f(k)} 1`);
+      if (coreBloom) coreBloom.setAttribute('stroke-dasharray', `${f(k)} 1`);
     }
     aim({ instant });
+    markCovered();
   }
 
   function setPulse(bm, on) {
@@ -1011,6 +1277,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const prev = chosen;
       chosen = id || null;
       paint({ instant });
+      if (chosen) keepInView(chosen);
       if (!instant && prev !== chosen) {
         snapReticle();
         if (sweepPath && chosen) {
@@ -1045,7 +1312,12 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     },
     button: (id) => buttons.get(id) || null,
     relayout() { drawnKey = ''; schedule(); },
+    /** Called with { zoom, moved } whenever the view changes. */
+    onView(cb) { onViewCb = cb; },
+    recentre() { stopGlide(); view.x = 0; view.y = 0; view.z = 1; applyView(); },
+    zoomBy(k) { if (geo) zoomAt(geo.W / 2, geo.H / 2, view.z * k); },
     dispose() {
+      stopGlide();
       angle.stop();
       length.stop();
       clearTimeout(arriveTimer);

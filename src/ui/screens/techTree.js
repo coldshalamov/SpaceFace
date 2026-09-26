@@ -42,6 +42,11 @@ const UNLOCK_NAME_BY_ID = new Map(
   [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
 );
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+// Each branch's star is produced art (assets/ui/generated/research/, see its manifest).
+const STAR_ART = Object.freeze(Object.fromEntries(BRANCHES.map((b) => {
+  try { return [b.id, new URL(`../../../assets/ui/generated/research/star-${b.id}.webp`, import.meta.url).href]; }
+  catch (_) { return [b.id, `/assets/ui/generated/research/star-${b.id}.webp`]; }
+})));
 
 // The canvas measures each star's name in the face the label is drawn in. ctx.font cannot resolve
 // var(), so the faces are spelled: the kit's text face (styles/kit.css --k-text / --dp-face-read) for
@@ -227,11 +232,23 @@ export const techTreeScreen = {
     for (const [kind, word] of [['researched', 'Researched'], ['available', 'Open'], ['locked', 'Locked']]) {
       const item = el('span', 'con-legend__item');
       item.dataset.legend = kind;
-      item.innerHTML = legendStarSvg(kind);
+      item.innerHTML = legendStarSvg(kind, STAR_ART.combat);
       item.appendChild(el('span', 'con-legend__word', word));
       legend.appendChild(item);
     }
     foot.appendChild(legend);
+    // the view: a reading of the zoom, and the one verb that puts the sky back
+    const viewRead = el('div', 'con-view');
+    viewRead.setAttribute('aria-live', 'off');
+    const viewWord = el('span', 'con-view__word', 'Drag to pan · wheel to zoom');
+    const viewZoom = el('span', 'con-view__zoom', '1.0×');
+    const recentre = el('button', 'con-view__reset', 'Recentre');
+    recentre.type = 'button';
+    recentre.dataset.action = 'recentre';
+    recentre.hidden = true;
+    recentre.addEventListener('click', () => { if (this._sky && this._sky.recentre) this._sky.recentre(); });
+    viewRead.append(viewZoom, viewWord, recentre);
+    foot.appendChild(viewRead);
     // Stars are keyboard and pad reachable; the labelled selector is the second route. Selecting a
     // locked node is allowed: it reveals the exact prerequisite reason without pretending it can be
     // researched.
@@ -271,6 +288,13 @@ export const techTreeScreen = {
       onPick: (id, how) => this._selectNode(id, { how }),
     });
 
+    if (this._sky && typeof this._sky.onView === 'function') {
+      this._sky.onView(({ zoom, moved }) => {
+        setText(viewZoom, `${zoom.toFixed(1)}×`);
+        recentre.hidden = !moved;
+        viewRead.dataset.moved = moved ? '1' : '0';
+      });
+    }
     this._regions = { head, corner, stage, side, foot };
     this._els = { cr: crEl, rp: rpEl, count: countEl, branch: branchLine, selected, actions };
 
@@ -296,6 +320,7 @@ export const techTreeScreen = {
     }
     if (this._nodeSelect) this._nodeSelect.value = this._selectedId || '';
     this._drawSig = '';
+    this._sidebarSig = '';
     this._researchedBefore = null;
     this.refresh(this._ctx);
     if (this._sky) {
@@ -324,13 +349,15 @@ export const techTreeScreen = {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
     this._syncHeader();
+    // Both halves repaint only when what they show changed: a rebuilt reading under the player's
+    // focus (the Unlock key, an unlock's name) would drop that focus.
     const sidebarSig = this._sidebarSignature();
-    if (!opts.periodic || sidebarSig !== this._sidebarSig) {
+    if (sidebarSig !== this._sidebarSig) {
       this._sidebarSig = sidebarSig;
       this._syncSidebar();
     }
     const drawSig = this._drawSignature();
-    if (!opts.periodic || drawSig !== this._drawSig) {
+    if (drawSig !== this._drawSig) {
       this._drawSig = drawSig;
       const before = this._researchedBefore;
       const now = new Set(this._researched());
@@ -404,6 +431,7 @@ export const techTreeScreen = {
       states,
       ready,
       costs,
+      art: STAR_ART,
       chosen: this._selectedId,
     });
   },
@@ -480,6 +508,9 @@ export const techTreeScreen = {
     const byId = new Map(nodes.map((x) => [x.id, x]));
     const n = byId.get(this._selectedId);
     if (!n) { sel.innerHTML = ''; actions.innerHTML = ''; return; }
+    // a rebuild under the player's focus (Unlock just pressed) hands focus to the new verb
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    const hadFocus = !!(active && ((typeof sel.contains === 'function' && sel.contains(active)) || (typeof actions.contains === 'function' && actions.contains(active))));
     const st = this._ctx.state;
     const player = st.player || {};
     const cost = n.cost || {};
@@ -526,6 +557,10 @@ export const techTreeScreen = {
     const costEl = sel.querySelector('.con-dossier__cost');
     if (costEl) costEl.insertAdjacentElement('afterend', actions);
     this._paintDossier();
+    if (hadFocus) {
+      const verb = actions.querySelector('button');
+      if (verb) { try { verb.focus({ preventScroll: true }); } catch (_) { /* focus is a nicety */ } }
+    }
   },
 
   _onAction(act) {

@@ -25,9 +25,14 @@ const f = (n) => Math.round(n * 100) / 100;
 
 const CSS = `
 .con-medalgrid { position:relative; }
+/* a spotlight rides the pointer across the grid of rings */
+.con-medalgrid::after { content:""; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0; transition:opacity .25s linear;
+  background:radial-gradient(circle at var(--con-mx, 50%) var(--con-my, 50%), rgb(248 244 234 / .075), rgb(248 244 234 / .025) 16%, transparent 34%); }
+.con-medalgrid.is-lit::after { opacity:1; }
+html.sf-reduce-motion .con-medalgrid::after { transition:none; }
 .con-medal-lattice { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.orr-svg .con-medal-lattice__line { fill:none; stroke:rgb(${BONE} / .17); stroke-width:1; stroke-dasharray:1 5; }
-.orr-svg .con-medal-lattice__mark { fill:none; stroke:rgb(${BONE} / .3); stroke-width:1; }
+.orr-svg .con-medal-lattice__line { fill:none; stroke:rgb(${BONE} / .26); stroke-width:2.2; stroke-dasharray:0 8; stroke-linecap:round; }
+.orr-svg .con-medal-lattice__mark { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.6; }
 .con-medalgrid.is-arriving .con-medal-lattice { opacity:0; animation:con-medal-in 600ms var(--dp-ease-out, ease-out) 420ms forwards; }
 .con-medals { position:relative; list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(var(--con-cols, 4), minmax(0, 1fr)); row-gap:var(--con-row-gap, 18px); column-gap:12px; }
 .con-medals > li { display:flex; justify-content:center; min-width:0; }
@@ -35,6 +40,14 @@ const CSS = `
   padding:4px 6px 6px; cursor:pointer; text-align:center; -webkit-tap-highlight-color:transparent; }
 .con-medal__face { position:relative; display:block; width:var(--con-medal, 112px); height:var(--con-medal, 112px); flex:none; }
 .con-medal__face > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.con-medal__art { position:absolute; left:9%; top:9%; width:82%; height:82%; display:block; object-fit:contain; pointer-events:none; opacity:.3;
+  transition:opacity .25s linear, transform .35s var(--dp-ease-over, ease-out); }
+.con-medal[data-state="going"] .con-medal__art { opacity:.62; }
+.con-medal[data-state="earned"] .con-medal__art { opacity:1; }
+.con-medal:is(:hover, :focus-visible, [aria-current="true"]) .con-medal__art { opacity:calc(var(--con-art-o, .3) + .3); }
+.con-medal[data-state="earned"]:is(:hover, :focus-visible, [aria-current="true"]) .con-medal__art { opacity:1; transform:scale(1.04); }
+.con-medal__face.has-art > .con-medal__glyph { display:none; }
+.con-medal__face.has-art.has-glyph > .con-medal__glyph { display:grid; }
 .con-medal__glyph { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); display:grid; place-items:center; width:var(--con-glyph, 30px); height:var(--con-glyph, 30px);
   color:rgb(${BONE} / .5); pointer-events:none; }
 .con-medal__glyph svg { width:100%; height:100%; display:block; }
@@ -55,11 +68,12 @@ const CSS = `
 .con-medal:focus-visible { outline:none !important; }
 .con-medal:focus-visible .con-medal__focus { opacity:1; }
 .orr-svg .con-medal__ticks { fill:none; stroke:rgb(${BONE} / .26); stroke-width:1; }
-.orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .3); stroke-width:1.4; stroke-dasharray:2.2 3.2; }
+.orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .3); stroke-width:2; stroke-dasharray:2.2 3.4; }
 .orr-svg .con-medal__inner { fill:none; stroke:rgb(${BONE} / 0); stroke-width:1; }
-.orr-svg .con-medal__arc { fill:none; stroke:rgb(${WARM}); stroke-width:3; stroke-linecap:butt; }
-.orr-svg .con-medal__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:9; opacity:.14; stroke-linecap:butt; }
+.orr-svg .con-medal__arc { fill:none; stroke:rgb(${WARM}); stroke-width:4; stroke-linecap:butt; }
+.orr-svg .con-medal__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:12; opacity:.2; stroke-linecap:butt; }
 .orr-svg .con-medal__head { fill:rgb(255 252 245); }
+.orr-svg .con-medal__head-bloom { fill:rgb(255 252 245); opacity:.3; }
 .orr-svg .con-medal__focus { fill:none; stroke:rgb(${WARM} / .9); stroke-width:1; opacity:0; transition:opacity .15s linear; }
 .con-medal[data-state="earned"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${WARM} / .5); }
 .con-medal[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .5); }
@@ -126,21 +140,20 @@ export function medalState(row) {
  * arc of progress with its bloom and a bright head, and (earned) a second ring inside.
  */
 export function medalDialSvg(k, { focusRing = true } = {}) {
-  const r = 40;
+  const r = 46;
   const p = Math.max(0, Math.min(1, Number(k) || 0));
-  const ticks = ticksD(0, 0, 47.5, 60, { len: 2.2, major: 15, majorLen: 5, inward: true });
+  const ticks = ticksD(0, 0, 50, 60, { len: 1.6, major: 15, majorLen: 3.4, inward: true });
   const [hx, hy] = polar(0, 0, r, 360 * p);
   const arc = p > 0
     ? `<circle class="con-medal__bloom" r="${r}" pathLength="1" stroke-dasharray="${f(p)} 1" transform="rotate(-90)"></circle>`
       + `<circle class="con-medal__arc" r="${r}" pathLength="1" stroke-dasharray="${f(p)} 1" transform="rotate(-90)"></circle>`
-      + (p < 1 ? `<circle class="con-medal__head" cx="${f(hx)}" cy="${f(hy)}" r="2.6"></circle>` : '')
+      + (p < 1 ? `<circle class="con-medal__head-bloom" cx="${f(hx)}" cy="${f(hy)}" r="6"></circle><circle class="con-medal__head" cx="${f(hx)}" cy="${f(hy)}" r="3"></circle>` : '')
     : '';
   return `<svg class="orr-svg con-medal__dial" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">`
     + `<path class="con-medal__ticks" d="${ticks}"></path>`
     + `<circle class="con-medal__ghost" r="${r}"></circle>`
-    + `<circle class="con-medal__inner" r="33"></circle>`
     + arc
-    + (focusRing ? `<circle class="con-medal__focus" r="52"></circle>` : '')
+    + (focusRing ? `<circle class="con-medal__focus" r="55"></circle>` : '')
     + `</svg>`;
 }
 
@@ -148,7 +161,7 @@ export function medalDialSvg(k, { focusRing = true } = {}) {
  * @param {HTMLElement} host the grid's stage
  * @param {{ onPick?: (id: string, how: string) => void, onEdge?: (dir: string) => void, glyph?: (row: object) => string }} [opts]
  */
-export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = null } = {}) {
+export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = null, art = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, list: null, set() {}, choose() {}, focusChosen() {}, arrive() {}, button: () => null, dispose() {} };
   if (!host || !doc || typeof doc.createElement !== 'function') return inert;
@@ -263,9 +276,18 @@ export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = nu
     if (!(host.clientHeight > 0) || !list.children.length) return;
     const cs = typeof getComputedStyle === 'function' ? getComputedStyle(host) : null;
     const room = host.clientHeight - (cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0);
+    // the medal's own size from the sheet, then a little smaller before a column is added: a square
+    // grid of rings reads better than a wide one
+    list.style.removeProperty('--con-medal');
+    const face = list.querySelector('.con-medal__face');
+    const base = face ? face.offsetWidth : 0;
     for (const c of [4, 5, 6, 8]) {
       list.style.setProperty('--con-cols', String(c));
-      if (list.offsetHeight <= room + 1) break;
+      for (const k of base > 0 ? [1, 0.92, 0.85] : [1]) {
+        if (k < 1) list.style.setProperty('--con-medal', `${Math.round(base * k)}px`);
+        if (list.offsetHeight <= room + 1) return;
+      }
+      list.style.removeProperty('--con-medal');
     }
   }
 
@@ -281,6 +303,14 @@ export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = nu
   }
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => { fitColumns(); drawLattice(); aim({ instant: true }); }); ro.observe(host); }
 
+  host.addEventListener('pointermove', (event) => {
+    if (typeof host.getBoundingClientRect !== 'function') return;
+    const r = host.getBoundingClientRect();
+    host.style.setProperty('--con-mx', `${Math.round(event.clientX - r.left)}px`);
+    host.style.setProperty('--con-my', `${Math.round(event.clientY - r.top)}px`);
+    host.classList.add('is-lit');
+  });
+  host.addEventListener('pointerleave', () => host.classList.remove('is-lit'));
   list.addEventListener('keydown', (event) => {
     const from = event.target && event.target.closest ? event.target.closest('.con-medal') : null;
     if (!from || !/^Arrow/.test(event.key)) return;
@@ -321,7 +351,11 @@ export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = nu
         const face = doc.createElement('span');
         face.className = 'con-medal__face';
         face.setAttribute('aria-hidden', 'true');
-        face.innerHTML = medalDialSvg(medalProgress(row)) + `<span class="con-medal__glyph">${typeof glyph === 'function' ? glyph(row) : ''}</span>`;
+        const src = typeof art === 'function' ? art(row) : null;
+        face.innerHTML = medalDialSvg(medalProgress(row)) + (src && src.url ? `<img class="con-medal__art" src="${src.url}" alt="" draggable="false" decoding="async">` : '')
+          + `<span class="con-medal__glyph">${typeof glyph === 'function' ? glyph(row) : ''}</span>`;
+        if (src && src.url) face.classList.add('has-art');
+        if (src && src.glyph) face.classList.add('has-glyph');
         const name = doc.createElement('span');
         name.className = 'con-medal__name';
         name.textContent = row.name;
