@@ -11,16 +11,16 @@ same-seed PQ-066 procedure before merging.
 
 `probe-frame-solid --headless --cpu-profile`, `.devshots/frame-solid/2026-09-26T03-02-58-913Z.json`:
 
-| Metric | Baseline | After leaves batch 1-2 (03-37Z run) |
-|---|---|---|
-| missingFrames | 819 | 314 |
-| stuckMissing | 596 | 237 |
-| flightShaderLinks | 20 | 7 |
-| inFrameShaderLinks | 8 | 2 |
-| appearOnTimeRate | 0.595 | 0.691 |
-| upgradePending | mean 21.6 / max 32, serial inFlight=1 | — |
-| upgradeJobs p95 | 8388 ms (`station|miss` 6.7 s, `fx|miss` 8.4 s) | all cancelled-before-load this run |
-| CPU top inclusive | sim advance 14.6 s, renderUpdate 21 s, drawPreparedFrame 8.6 s, unreadyDrawGuard 5.4 s, sg02 5.0 s, residency service 3.4 s | same shape, new run |
+| Metric | Baseline | After batch 1-2 (03-37Z) | After batch 3 + D38 fix (05-25Z) |
+|---|---|---|---|
+| missingFrames | 819 | 314 | **0** |
+| stuckMissing | 596 | 237 | **0** |
+| flightShaderLinks | 20 | 7 | 11 (all admission lane, none presented-draw) |
+| inFrameShaderLinks | 8 | 2 | 0 |
+| appearOnTimeRate | 0.595 | 0.691 | **1.0** (14/14 on-time, 0 late/leftUndrawn) |
+| upgradePending | mean 21.6 / max 32, serial inFlight=1 | — | count=0 |
+| upgradeJobs p95 | 8388 ms (`station|miss` 6.7 s, `fx|miss` 8.4 s) | all cancelled-before-load this run | — |
+| CPU top inclusive | sim advance 14.6 s, renderUpdate 21 s, drawPreparedFrame 8.6 s, unreadyDrawGuard 5.4 s, sg02 5.0 s, residency service 3.4 s | same shape, new run | queryFarActors 440→0 self; updateMatrixWorld/unreadyDrawGuard/classifyWorld off top-self |
 
 Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbiter
 (PQ-144.01 matrix is the reference protocol). Directional only.
@@ -40,6 +40,18 @@ Headless SwiftShader exaggerates compile costs; headed GPU numbers are the arbit
 | Package fetch force-cache | renderPackageLoader.js (`fetchVerifiedRenderBytes`) | `read('no-cache')` → `read('force-cache')` first pass; SHA-256 + `reload` re-read still gate correctness. URLs are content-hash immutable. | Per-package ETag revalidation round-trip per fetch |
 | Geology fallback stays visible through admission | partsLibrary.js (`wrapPlacePropWithAuthoredPart`) | Same-envelope skins (`placeTargetRadius === radius`) keep `fallbackRoot.visible = true` wrap→commit instead of blanking at wrap. Commit still swaps; fail path already re-showed. | Loading explorer: the D38 residual (~0.9 s, six stuck frames, asteroid id 4) was structural — nothing drew for the whole admission window |
 | Geometry-admission retry cooldown | liveGeometryAdmission.js | After `MAX_ADMISSION_RETRIES=4` the dedup latch was permanent — one transient GL failure left a mesh invisible forever. Now a 4 s cooldown reopens dedup so the ambient lane retries on a slow cadence (the no-per-frame-loop intent is kept). | Permanent-latch pop-in vector |
+| Union-sweep projectile batching | physics.js | One union-disc field+far query per step covers all projectile sweeps; per-projectile `segmentCircleHitInto` filter; not-covered fallback for mid-sweep spawns | `queryFarActors` 440.5 ms self → off the profile |
+| Shipworks boot defect fixed | modelTruth.js | `shipworks.js` imported `modelTruthMountFractions` — never exported in git history → ES link error on open. Implemented as sockets→entityRadius fractions | Dead-on-open screen; round-trip verified |
+| Write-on-change audio params | audioSystem.js | `_setParam` last-value guard on engine-hum/duck/drill/slipstream beds (was ~10 AudioParam automation inserts/frame on own rAF) | UI explorer: per-frame automation churn |
+| HUD signature gates | hud.js, bandHud.js, masslineHud.js, comms.js, survivalHud.js, hullIntegrity.js | Scalar sig gates skip string builds + DOM writes when the rendered value didn't move; massline/comms idle fast-paths return before pos/camera reads | hud frame-path string churn |
+| Retained projection/pick scratch | renderer.js (`raycastToPlane(ndc,out)`, `writePlaneXZ`, `_rayLocalXZ`), bulletTime.js, drawFlightInput.js, floatingText.js, damageIndicators.js, capitalBossOverlayMount.js, input.js | Per-frame `{x,y,onScreen}`/`{x,z}` allocations → caller-owned scratch (all consumers synchronous) | `getBoundingClientRect`-adjacent alloc residue, 89 ms self |
+| ship:thrust payload reuse | flight.js, flightV3.js | One retained payload + 4-slot nozzle pool; subscribers are synchronous (eventTrace deep-copies) | Per-tick payload + nozzle array alloc while thrusting |
+| Moment-pulse edge trigger | bulletTime.js (`_updateMomentPulse`) | `timeEffects.clear()` = Map delete + min-scan every sim tick; now transitions only, trick-arm path syncs the latch | 206 ms self |
+| Corridor manifest memo | dockingCorridor.js | `resolveCollisionProxyManifest` ran 2×/station/tick (update + diag publish); memoized per entity on the static `collisionProxy` key; retained `state.dockingCorridor` readout (berth keeps null contract) | 123 ms self |
+| Seam-marker relevance latch | vfx.js (`_seamMarkersRelevant`) | Full asteroids-bucket scan per frame → `{indexVersion, drawWu, margin, ttl}` cache; re-scans only when membership, radius, or a closing-speed bound says the verdict can flip | Per-frame O(asteroids) relevance scan |
+| COOP/COEP on probe host | scripts/lib/gameServer.cjs | `crossOriginIsolated` → ~20× timer resolution + the SAB transport door; does NOT activate the phase-14 worker (explicit opt-ins still required) | Measurement explorer gap |
+| GPU-process metrics witness | electron/main.cjs, preload.cjs | `spaceface:perf-metrics` → `app.getAppMetrics()` per-process CPU/memory — attributes GPU-process link stalls vs renderer busy frames | In-page counters can't see the GPU process |
+| Probe GC boundary | scripts/probe-frame-solid.mjs | `--js-flags=--expose-gc` + `window.gc()` before the sampler — boot garbage out of the measured window | gcMs attribution noise |
 
 ## 2. The poles, ranked (evidence in §4)
 
