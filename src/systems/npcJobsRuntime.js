@@ -971,6 +971,8 @@ export const npcJobsRuntime = {
     const entry = intent.jobId != null ? this._byId()[intent.jobId] : null;
     const sectorId = entry && entry.sectorId;
     if (!sectorId) return;
+    // The relief crew borrows the one-shot transport itinerary for patients, not ore custody.
+    if (entry.job?.payload?.choirRelief === true) return;
     const lots = this._lots();
     const now = Number(this.state && this.state.simTime) || 0;
     if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
@@ -3830,11 +3832,25 @@ export const npcJobsRuntime = {
       if (rock) return { pos: rock.pos, vel: rock.vel, reach: BEAM_MK1.range * 0.8 + (rock.radius || 0) };
     }
     if (slot === 'choir_relief_attendant' && job.kind === NPC_JOB_KIND.TENDER
-      && waypoint.targetRef?.startsWith('prey:')) {
-      const patient = this.state.entities.get(Number(waypoint.targetRef.slice(5)));
+      && waypoint.id?.startsWith('prey:')) {
+      const patient = this.state.entities.get(Number(waypoint.id.slice(5)));
       if (patient?.alive && patient.data?.choirReliefRole === 'patient') {
         return { pos: { x: patient.pos.x + patient.radius + entity.radius + 14, z: patient.pos.z },
           vel: patient.vel, reach: 10 };
+      }
+    }
+    const stationId = /^(?:home|origin|dest):(station_[a-z0-9_]+)$/.exec(waypoint.id || '')?.[1];
+    if (stationId) {
+      const station = this.state.entityList.find((candidate) => candidate.alive
+        && candidate.type === 'station' && candidate.data?.stationId === stationId);
+      if (station) {
+        const reach = Math.max((station.radius || 0) + (entity.radius || 0) + 20,
+          station.data?.dockRadius || 0);
+        // Center-authored home marks mean the station's docking envelope. Exterior
+        // authored medical berths keep their more precise, collision-clear position.
+        if (Math.hypot(waypoint.pos.x - station.pos.x, waypoint.pos.z - station.pos.z) < reach) {
+          return { pos: station.pos, reach };
+        }
       }
     }
     return { pos: waypoint.pos, reach: 12 };
