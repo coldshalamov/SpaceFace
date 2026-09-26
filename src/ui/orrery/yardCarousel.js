@@ -21,6 +21,11 @@ const CSS = `
 .orr-yard.is-dragging > .orr-turntable__row > li, .orr-yard.is-dragging > .orr-turntable__art { transition:none !important; }
 .orr-yard > .orr-turntable__row { z-index:1; }
 .orr-svg .orr-yard__floor { pointer-events:none; }
+.orr-yard__back { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:-1; }
+/* the detent: the index bead flashes as each hull passes the front */
+.orr-yard .orr-yard__bead { transform-box:fill-box; transform-origin:center; transition:transform 220ms cubic-bezier(.2,1.6,.4,1); }
+.orr-yard .orr-yard__bead.is-detent { transform:scale(1.9); transition:none; }
+html.sf-reduce-motion .orr-yard .orr-yard__bead { transition:none; }
 `;
 let seq = 0;
 
@@ -97,10 +102,14 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   const litBloom = svg('path', { d: '', class: 'orr-lit-bloom is-hand' });
   const lit = svg('path', { d: '', class: 'orr-lit is-hand' });
   const slot = svg('path', { d: '', class: 'orr-lit is-hand', style: '--orr-w-lit:2px' });
-  const beadBloom = svg('circle', { r: 10, fill: 'var(--dp-hand, #f2b950)', opacity: '.24' });
-  const bead = svg('circle', { r: 4.5, fill: 'var(--dp-hand-hot, #ffd98c)' });
-  face.append(defs, floor, backBand, backEdge, frontBand, frontEdge, fine, litBloom, lit, slot, beadBloom, bead);
+  const beadBloom = svg('circle', { r: 10, fill: 'var(--dp-hand, #f2b950)', opacity: '.24', class: 'orr-yard__bead' });
+  const bead = svg('circle', { r: 4.5, fill: 'var(--dp-hand-hot, #ffd98c)', class: 'orr-yard__bead' });
+  // the back half of the yard lies BEHIND the hero: its floor and rim go in a layer under the stage's picture
+  const back = svg('svg', { class: 'orr-svg orr-yard__back', 'aria-hidden': 'true' });
+  back.append(defs, floor, backBand, backEdge);
+  face.append(frontBand, frontEdge, fine, litBloom, lit, slot, beadBloom, bead);
   const arts = [];
+  let lastFront = -1;
 
   function place(r) {
     if (!g) return;
@@ -112,11 +121,15 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
       const [x, y] = pt(t);
       if (at < 30) { li.style.left = `${x.toFixed(1)}px`; li.style.top = `${(y + 20).toFixed(1)}px`; li.style.transform = ''; li.style.textAlign = ''; }
       else {
+        // a hull off the front names itself beside the ring's widest point, outside the rim and clear of the hero
         const side = t < 0 ? -1 : 1;
-        li.style.left = `${(x + side * 16).toFixed(1)}px`; li.style.top = `${(y - 14).toFixed(1)}px`;
+        const edgeX = g.cx + side * (g.rx + 26);
+        const lx = at < 60 ? x + side * 16 : edgeX;
+        const ly = at < 60 ? y - 14 : g.cy - 42;
+        li.style.left = `${lx.toFixed(1)}px`; li.style.top = `${ly.toFixed(1)}px`;
         li.style.transform = side < 0 ? 'translateX(-100%)' : 'none'; li.style.textAlign = side < 0 ? 'right' : 'left';
       }
-      const fade = at > 108 ? clamp(1 - (at - 108) / 46, 0, 1) : 1;
+      const fade = at > 128 ? clamp(1 - (at - 128) / 36, 0, 1) : 1;
       li.style.opacity = fade.toFixed(2);
       li.style.pointerEvents = fade < 0.35 ? 'none' : '';
       li.classList.toggle('is-front', at < 12);
@@ -129,6 +142,12 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
         img.classList.toggle('is-on', at < 12);
       }
     });
+    const nearest = lis.reduce((best, _, i) => (Math.abs(wrapDeg(i * step - r)) < Math.abs(wrapDeg(best * step - r)) ? i : best), 0);
+    if (lastFront !== -1 && nearest !== lastFront && !reducedMotion()) {
+      for (const b of [bead, beadBloom]) b.classList.add('is-detent');
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => { for (const b of [bead, beadBloom]) b.classList.remove('is-detent'); }));
+    }
+    lastFront = nearest;
     if (typeof onTurn === 'function') {
       const count = lis.length;
       const p = (((r / step) % count) + count) % count;
@@ -148,6 +167,10 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     const ry = rx * 0.2;
     g = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // the back layer lives in the anchor (the stage), under its picture, measured in the host's box
+    if (!back.isConnected && anchor.firstChild) anchor.insertBefore(back, anchor.firstChild);
+    const sb = anchor.getBoundingClientRect();
+    back.setAttribute('viewBox', `${(sb.left - hb.left).toFixed(1)} ${(sb.top - hb.top).toFixed(1)} ${sb.width.toFixed(1)} ${sb.height.toFixed(1)}`);
     Object.entries({ cx: g.cx, cy: g.cy, rx: rx * 1.02, ry: ry * 1.1 }).forEach(([k, v]) => floor.setAttribute(k, v.toFixed(1)));
     backBand.setAttribute('d', ring(104, 256));
     backEdge.setAttribute('d', ring(104, 256));
@@ -181,8 +204,8 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     settleTarget = target;
     if (instant || reducedMotion() || typeof requestAnimationFrame !== 'function') { settle = null; settling = false; rot = target; place(rot); return; }
     const light = lightest();
-    const k = 150 * clamp(light / m, 0.5, 1.3);
-    const c = 2 * Math.sqrt(k) * 0.62;
+    const k = 170 * clamp(light / m, 0.55, 1.3);
+    const c = 2 * Math.sqrt(k) * 0.74;
     settling = true;
     settle = createSpring({ value: rot, preset: { k, c }, onUpdate: (x) => { rot = x; place(rot); if (x === settleTarget) settling = false; } });
     settle.set(target);
@@ -265,6 +288,6 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     update,
     layout: build,
     get geometry() { return g; },
-    dispose() { if (settle) settle.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); },
+    dispose() { if (settle) settle.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); back.remove(); },
   };
 }

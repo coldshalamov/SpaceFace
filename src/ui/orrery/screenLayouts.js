@@ -883,6 +883,32 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 /* the difficulty dial in the form column */
 #screens .orr-newgame .orr-stoparc { margin:6px 0 0 !important; max-width:100%; }
 
+/* ================================ NEW GAME r5 ================================================== */
+/* both field rules with the same body */
+#screens .orr-newgame .orr-ng-input { background-size:100% 2px !important; }
+#screens .orr-newgame .orr-ng-input:focus { background-size:100% 2.5px !important; }
+/* the rear hull names read at bone .66 (they are choices, not captions) */
+#screens .orr-newgame .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { color:rgb(232 226 212 / .7) !important; }
+#screens .orr-newgame .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { color:rgb(232 226 212 / .62) !important; }
+/* a large screen: the form column scales with the stage so the columns keep their proportion */
+@media (min-width:2200px) and (min-height:1200px) {
+  #screens .orr-newgame > :is(.sf-ng-header, .sf-ng-body, .sf-ng-footer, .k-fine) { zoom:1.3; }
+  /* the stage's own words scale with the form: the hull's sentence, its loadout and the run's tape */
+  #screens .orr-newgame .orr-ng-caption > :is(.k-sentence, .sf-ng-route), #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { zoom:1.3; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__num { font-size:32px; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__num tspan { font-size:13px; }
+  #screens .orr-newgame .orr-hullring text.orr-hullring__label { font-size:12px; }
+  #screens .orr-newgame .orr-yard > .orr-turntable__row > li .k-word { font-size:19px !important; }
+  #screens .orr-newgame .orr-yard > .orr-turntable__row > li .k-word-sub { font-size:12px !important; }
+}
+/* the launch beat: on LAUNCH the run's four beads light in sequence (it plays while the run boots) */
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { animation:ng-bead-lit 360ms ease-out both; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(2)::before { animation-delay:120ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(3)::before { animation-delay:240ms; }
+#screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step:nth-child(4)::before { animation-delay:360ms; }
+@keyframes ng-bead-lit { to { background:rgb(252 249 240); box-shadow:0 0 0 2px rgb(252 249 240), 0 0 14px 3px rgb(255 240 214 / .55); } }
+html.sf-reduce-motion #screens .orr-newgame.is-launching .sf-ng-route .sf-ng-route__step::before { animation-duration:1ms; animation-delay:0ms; }
+
 `;
 
 export function injectOrreryScreens(doc = globalThis.document) {
