@@ -3,10 +3,13 @@
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
 // intents only (§5, §0.6). No career progression or owner writes from this surface.
 //
-// Frontend kit (design/frontend/direction/KIT_SPEC.md): the root is `k-screen`; the hang holds the
-// current action, the active missions as rows, the career rows and the completed receipts; the
-// focused mission opens on the stage with its name at title size, its next step as one sentence,
-// its payout at hero and its terms as static rows. No style block — styles/kit.css is the only CSS.
+// A TRACING BEAM (design/frontend/ORRERY.md §6 Meta): the hang is one beam — the current action at
+// its head, every active contract a node on it with its progress lit down the beam below the node,
+// the Hand on the chosen node, the career paths and the settled receipts further down. The chosen
+// contract opens on the stage as a reading (its name, next step, payout, terms as a ledger of caps
+// and values) beside a dial of its progress and its clock; its verbs are words, Track the one Lamp
+// Key while the contract is not yet tracked, Abandon red only where the player reaches it. No style
+// block here: the composition is src/ui/orrery/archiveLayouts.js, the dial archiveInstruments.js.
 //
 // Export: missionLogScreen  (id 'missionLog').
 
@@ -38,6 +41,33 @@ import {
 } from '../careerLadderView.js';
 import { el, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { missionDialSvg, createLadderHand } from '../orrery/archiveInstruments.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { syncScrollExtent } from '../orrery/scrollExtent.js';
+
+/** A host that can draw SVG and measure (the reachability checks mount on a minimal fake DOM). */
+function richDom() {
+  return typeof document !== 'undefined' && typeof document.createElementNS === 'function';
+}
+
+/** How far a contract has come, 0..1. */
+function missionProgressFrac(m) {
+  const prog = Math.max(0, Number(m && m.objectiveProgress) || 0);
+  const tgt = Math.max(1, Number(m && m.objectiveTarget) || 1);
+  return Math.max(0, Math.min(1, prog / tgt));
+}
+
+/** The share of a contract's clock still left (null when it has no clock). */
+function missionClockFrac(m, simTime) {
+  const deadline = Number(m && m.deadline_s);
+  if (!Number.isFinite(deadline) || deadline <= 0) return null;
+  const remaining = Math.max(0, deadline - (Number(simTime) || 0));
+  const accepted = Number(m && m.acceptedAt_s);
+  const total = Number(m && m.duration_s) > 0 ? Number(m.duration_s)
+    : (Number.isFinite(accepted) && deadline > accepted ? deadline - accepted : deadline);
+  return total > 0 ? Math.max(0, Math.min(1, remaining / total)) : null;
+}
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -1762,14 +1792,17 @@ export const missionLogScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
+    injectArchiveLayouts();
     this._ctx = ctx;
     this._rootEl = rootEl;
+    if (this._hand) { try { this._hand.dispose(); } catch (_) { /* detached */ } }
+    this._hand = null;
 
     // The DOM is built from el + appendChild so the gamepad reachability check's minimal fake
     // document (appendChild only) can mount it; the kit builders (append) run only for content that
     // exists when a mission is active or focused.
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'sf-mlog');
+    rootEl.classList.add('k-screen', 'sf-mlog', 'orr-mlog');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', 'Mission Log');
 
@@ -1852,6 +1885,7 @@ export const missionLogScreen = {
       toggle.setAttribute('aria-expanded', this._compVisible ? 'true' : 'false');
       cue('confirm');
       if (this._compVisible) this._renderCompleted();
+      this._placeHand(true);
     });
 
     // The stage: the focused mission.
@@ -2165,6 +2199,7 @@ export const missionLogScreen = {
       this._focusedId = null;
       this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();
+      this._placeHand();
       this._rootEl.dataset.kReady = '1';
       return;
     }
@@ -2197,7 +2232,14 @@ export const missionLogScreen = {
       const m = activeMissions.find((x) => x.id === row.dataset.id);
       if (!m) continue;
       row.classList.add('sf-mlog-row');
-      if (m.id === tracked) row.classList.add('tracked');
+      // The beam below the node is lit as far as the contract has come.
+      const frac = missionProgressFrac(m);
+      if (row.style && typeof row.style.setProperty === 'function') row.style.setProperty('--mlog-p', String(Math.round(frac * 1000) / 1000));
+      if (m.id === tracked) {
+        row.classList.add('tracked');
+        const name = row.querySelector('.k-row__name');
+        if (name && name.parentNode) name.parentNode.insertBefore(el('span', 'sf-mlog-tag', 'Tracked'), name.nextSibling || null);
+      }
       if (urgentIds.has(m.id)) {
         const sub = row.querySelector('.k-row__sub');
         if (sub) sub.classList.add('k-bad');
@@ -2213,7 +2255,18 @@ export const missionLogScreen = {
     this._renderStage(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked);
     if (this._compVisible) this._renderCompleted();
     this._restoreFocusToken(focusToken);
+    this._placeHand();
     this._rootEl.dataset.kReady = '1';
+  },
+
+  /** The Hand swings to the chosen contract's node on the beam; the beam's light cursor follows the scroll. */
+  _placeHand(instant = false) {
+    if (!this._hangEl || !richDom()) return;
+    // the Hand points at the node (13px below a row's top, 13px across), not the row's middle
+    if (!this._hand) this._hand = createLadderHand(this._hangEl, { nodeY: 19.5 });
+    const row = this._listEl ? this._listEl.querySelector('.k-row[aria-selected="true"]') : null;
+    this._hand.moveTo(row, { instant });
+    try { syncScrollExtent(this._hangEl); } catch (_) { /* layout-free host */ }
   },
 
   /** Focus a mission from the hang: mark its row and open it on the stage. */
@@ -2230,6 +2283,7 @@ export const missionLogScreen = {
     const active = (state.missions && state.missions.active) || [];
     const m = active.find((x) => x && x.id === missionId && x.status === 'active') || null;
     this._renderStage(state, m, state.ui && state.ui.trackedMissionId);
+    this._placeHand();
     if (!quiet) cue('move');
   },
 
@@ -2288,6 +2342,27 @@ export const missionLogScreen = {
     card.setAttribute('aria-label', (isTracked ? 'Tracked mission: ' : 'Mission: ') + titleText);
     card.dataset.mid = m.id;
 
+    // The kicker: what kind of contract, and whether the nav is on it.
+    const kicker = el('p', 'sf-mlog-kicker', prettyType(m.type));
+    if (isTracked) kicker.appendChild(el('span', 'sf-mlog-tag', 'Tracked'));
+    card.appendChild(kicker);
+    // The dial: the progress round the inner ring, the clock round the outer, the readings inside.
+    const simTime = Number(state && state.simTime) || 0;
+    const clock = missionClockFrac(m, simTime);
+    const remaining = Math.max(0, (Number(m.deadline_s) || 0) - simTime);
+    const urgent = remaining > 0 && remaining < 120;
+    const frac = missionProgressFrac(m);
+    const dial = el('div', 'orr-mdial');
+    dial.setAttribute('role', 'img');
+    dial.setAttribute('aria-label', missionProgressLabel(m) + (clock != null ? ', ' + fmtTime(remaining) + ' left' : ''));
+    dial.innerHTML = missionDialSvg({ progress: frac, time: clock, urgent })
+      + '<div class="orr-mdial__read"><span class="orr-mdial__pct">' + Math.round(frac * 100) + '<small>%</small></span>'
+      + '<span class="orr-mdial__w">Complete</span></div>'
+      + (clock != null
+        ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left on the clock</div>'
+        : '<div class="orr-mdial__clock-read">No clock</div>');
+    card.appendChild(dial);
+
     card.appendChild(el('h2', 'k-display k-t-title', titleText));
     if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
     else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m) + ' · ' + missionProgressLabel(m)));
@@ -2319,6 +2394,11 @@ export const missionLogScreen = {
     card.appendChild(btns);
 
     stage.appendChild(card);
+    // The one Lamp Key: Track, while this contract is not the tracked one.
+    if (!isTracked && richDom()) {
+      const track = btns.querySelector('.sf-mlog-btn-track');
+      if (track) { try { dressLampKey(track); } catch (_) { /* the word stays a word */ } }
+    }
   },
 
   // Only final disposition / post-ending continuity persists beside normal work. Earlier story
