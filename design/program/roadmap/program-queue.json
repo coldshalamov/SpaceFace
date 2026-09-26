@@ -12905,7 +12905,7 @@
       "priority": 289,
       "title": "Skeleton and data states adopted",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12937,7 +12937,7 @@
       "priority": 290,
       "title": "Hierarchy and colour discipline",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12969,7 +12969,7 @@
       "priority": 291,
       "title": "Arriving somewhere",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -17933,7 +17933,7 @@
       "priority": 462,
       "title": "The kit",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-187.01"
       ],

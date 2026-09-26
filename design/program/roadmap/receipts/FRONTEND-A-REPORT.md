@@ -177,3 +177,5 @@ packet that waited on this gate may now proceed.
   decrypting on arrival. Those are the title's remaining states, owned by `PQ-181.00` / `PQ-181.01`,
   which this closure un-gates. PQ-187.03's own job — the gate that the title lives on the kit, on
   the default route — is met.
+
+- re-verified 2026-09-26 (dispatch pass): declared unit checks green in-tree — check:baseline 16/16, probe:frontend-snapshot (5 captures), check:type-floor, check:wcag-contrast (all panel-composited text meets thresholds). PQ-187.02 transitions to done on this evidence.
