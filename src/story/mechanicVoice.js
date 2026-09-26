@@ -12,6 +12,7 @@ import {
   livingHullPatchedScars,
   livingHullScars,
 } from '../core/livingHull.js';
+import { NEW_GAME_PLUS_SCHEMA, scarCarryPhrase } from '../core/newGamePlus.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { shipLedgerHasFactOutside } from '../systems/shipLedger.js';
 import { LEDGER_SPEAKER } from './storyLedger.js';
@@ -81,6 +82,39 @@ function leftoverCleanPlateLine(hull) {
   return leftoverLine('Clean plate. Nothing on this hull to file.');
 }
 
+function leftoverCapitalised(text) {
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : '';
+}
+
+/**
+ * New Run+ history, while any of it is still live: the carried scar still open on this hull, the
+ * lead hunter still undefeated. Once the yard patches the scar and the ace is settled it stops
+ * being news and the line goes. "This hull" only when the hull on the berth still carries a
+ * carried scar (open or patched); a hull bought since did not come over.
+ */
+function leftoverLegacyLine(state, hull) {
+  const record = state && state.story && state.story.newGamePlus;
+  if (!record || record.schema !== NEW_GAME_PLUS_SCHEMA) return null;
+  const endingTitle = leftoverLine(record.sourceEndingTitle);
+  if (!endingTitle) return null;
+  const carried = Array.isArray(record.scars) ? record.scars.filter((scar) => scar && scar.id) : [];
+  const onHull = livingHullScars(hull);
+  const hullCameOver = carried.some((scar) => onHull.some((row) => row.id === scar.id));
+  const openIds = new Set(onHull.filter((row) => row.patchedAtT == null).map((row) => row.id));
+  const openScar = carried.find((scar) => openIds.has(scar.id));
+  const scarPhrase = leftoverCapitalised(leftoverLine(openScar && scarCarryPhrase(openScar)) || '');
+  const aceId = leftoverLine(record.leadGrudgeAceId);
+  const aceRecord = aceId && state.aceMemory && typeof state.aceMemory === 'object'
+    ? state.aceMemory[aceId]
+    : null;
+  const aceName = aceId && !(aceRecord && aceRecord.defeated) ? leftoverLine(record.leadGrudgeName) : null;
+  if (!scarPhrase && !aceName) return null;
+  const parts = [`${hullCameOver ? 'This hull' : 'You'} came over from ${endingTitle}.`];
+  if (scarPhrase) parts.push(`${scarPhrase} came with it.`);
+  if (aceName) parts.push(`${aceName} is still out there.`);
+  return leftoverLine(parts.join(' '));
+}
+
 /** Cargo left one spilled commodity on the hold. No receipt, no sentence. */
 function leftoverDockSpillLine(state) {
   const spill = state && state.player && state.player.cargo && state.player.cargo.dockSpill;
@@ -113,6 +147,11 @@ export function leftoverMechanicLines(state) {
     }
     const rap = leftoverRapLine(state, hull);
     if (rap) lines.push(rap);
+    // After the live-hull lines: audioSystem speaks lines[0] on dock, and the lead ace is usually
+    // undefeated all run, so a first-position legacy line would bury every fresh scar/repair/rap
+    // line for the whole carried run. It still joins the berth card body after them.
+    const legacy = leftoverLegacyLine(state, hull);
+    if (legacy) lines.push(legacy);
   }
   const spill = leftoverDockSpillLine(state);
   if (spill) lines.push(spill);

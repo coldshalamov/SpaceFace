@@ -10277,7 +10277,7 @@
       "priority": 206,
       "title": "NG+ carries a legacy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10299,8 +10299,10 @@
         "npm run check:sim",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. DONE WHEN: Save migration test; the mechanic names the carried history."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-032.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-25: the berth mechanic names the carried scar and hunter while they are live; only player-held (stunt) titles carry; v1 record migration test green (receipt: Acceptance 2026-09-25). Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. DONE WHEN: Save migration test; the mechanic names the carried history."
     },
     {
       "id": "PQ-152.00",

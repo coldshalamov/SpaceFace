@@ -35,6 +35,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./lib/gameServer.cjs');
+const { PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES } = require('./lib/performanceLifecycleLaunchPolicy.cjs');
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const BANNED_HEX = new Set(['#14171d', '#1b2027', '#0b1220', '#2a303a', '#0d0f13']);
@@ -56,7 +57,11 @@ try {
   browser = await chromium.launch(executablePath ? {
     headless: true,
     executablePath,
-    args: ['--no-first-run', '--no-default-browser-check', '--disable-extensions'],
+    args: ['--no-first-run', '--no-default-browser-check', '--disable-extensions',
+      // D36: keep the works tab's schedulers alive under host load — the same background-execution
+      // switches every long probe carries, plus the Windows occlusion feature this host trips on.
+      ...PLAYWRIGHT_BACKGROUND_EXECUTION_SWITCHES,
+      '--disable-features=CalculateNativeWinOcclusion'],
   } : { headless: true });
 
   for (const viewport of VIEWPORTS) {

@@ -9,10 +9,12 @@ import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
   leftoverNewRunLine,
+  legacyFlightLine,
   normalizeStoryNewGamePlusRecord,
 } from '../src/core/newGamePlus.js';
 import { FRESH_RUN_SYSTEMS, resetFreshRunSystems } from '../src/core/runReset.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
+import { authoredTitleId } from '../src/data/titles.js';
 import { THREAD_B_FRAGMENT_ID } from '../src/data/narrative.js';
 import { fnv1a } from '../src/save/checksum.js';
 import { save } from '../src/save/saveSystem.js';
@@ -70,18 +72,34 @@ function completedRunData() {
         flags: { contract_47a_closed: true, contract_47b_pending: true },
         endgameChoice: 'E',
         endgameResolved: true,
+        // The player's carried title is a stunt title in its live shape (stuntWitnesses
+        // qualifyStuntTitles): seen id title_<trick>:<pilotId>, holder the pilot id, plus trickId.
+        // This used to be title_thunderchild:0:player, which the live game cannot write: every
+        // Thunderchild holder is an NPC world record id (PQ-032.03 receipt, WHAT IS NOT).
         titlesSeen: [{
-          id: 'title_thunderchild:0:player',
-          title: 'Thunderchild',
-          holderKey: 'player',
+          id: 'title_bolas:pilot:4701',
+          title: 'Knotmaker',
           seenAt: 54000,
+          holderKey: 'pilot:4701',
+          trickId: 'bolas',
         }],
         titles: {
           byId: {
             title_thunderchild: {
-              status: 'held',
-              holderKey: 'player',
+              status: 'vacant',
+              holderKey: null,
+              holder: null,
               successionCount: 0,
+            },
+            title_bolas: {
+              titleId: 'title_bolas',
+              title: 'Knotmaker',
+              trickId: 'bolas',
+              status: 'held',
+              scope: 'pilot_ship',
+              holderKey: 'pilot:4701',
+              pilotId: 'pilot:4701',
+              earnedTick: 54000,
             },
           },
         },
@@ -150,12 +168,12 @@ test('completed run projects one selectable keepsake and only unresolved named-h
   ]));
   assert.equal(candidate.grudgeCount, 1, 'defeated and unknown hunters do not carry');
   assert.equal(candidate.scarCount, 1, 'leftover living-hull scars carry');
-  assert.equal(candidate.titleCount, 1, 'leftover Thunderchild carries');
+  assert.equal(candidate.titleCount, 1, 'the player\'s own stunt title carries');
   assert.equal(candidate.worldFactCount, 1);
   assert.equal(candidate.worldFactTitle, 'CONTRACT 47-B');
   assert.equal(
     leftoverNewRunLine(candidate),
-    'THE NEXT RUN · keep one item · 1 unresolved hunter grudge · 1 scar · 1 title · CONTRACT 47-B',
+    'THE NEXT RUN · keep one item · Yara No-Cut still hunting · weapon scar on the bow · Knotmaker · CONTRACT 47-B',
   );
 
   const overlay = buildNewGamePlusOverlay(data, { keepsakeId: 'mod_market_data_s' }, { slot: 'legacy' });
@@ -231,6 +249,10 @@ test('story owns a save-safe visible legacy receipt after game start', () => {
   assert.equal(state.story.newGamePlus.sourceEnding, 'E');
   assert.equal(state.story.newGamePlus.keepsakeId, 'unique_veil_cutter');
   assert.equal(state.story.newGamePlus.hunterGrudgeCount, 1);
+  assert.equal(state.story.newGamePlus.leadGrudgeName, 'Yara No-Cut');
+  assert.match(legacyFlightLine(state.story.newGamePlus), /Yara No-Cut still hunting/);
+  assert.match(legacyFlightLine(state.story.newGamePlus), /weapon scar on the bow/);
+  assert.match(legacyFlightLine(state.story.newGamePlus), /Knotmaker/);
   assert.equal(state.player.cargo.items[THREAD_B_FRAGMENT_ID], 1, 'ordinary opening fragment remains');
   assert.deepEqual(
     normalizeStoryNewGamePlusRecord(JSON.parse(JSON.stringify(state.story.newGamePlus))),
@@ -281,14 +303,14 @@ test('the legacy receipt rides the real save carrier, and a pre-New-Run+ save st
   assert.equal(older.state.story.newGamePlus, null, 'an absent receipt stays absent');
 });
 
-test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the fresh run', () => {
+test('leftover New Run+ writes scars, the player\'s title, and CONTRACT 47-B onto the fresh run', () => {
   const overlay = buildNewGamePlusOverlay(
     completedRunData(),
     { keepsakeId: 'unique_veil_cutter' },
     { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
   );
   assert.equal(overlay.scars[0].id, 'weapon:54000:bow');
-  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].id, 'title_bolas');
   assert.equal(overlay.titles[0].status, 'held');
   assert.equal(overlay.worldFacts.title, 'CONTRACT 47-B');
   assert.deepEqual(overlay.worldFacts.flags, ['contract_47a_closed', 'contract_47b_pending']);
@@ -318,8 +340,10 @@ test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the f
   assert.equal(state.story.flags.contract_47b_pending, true);
   assert.equal(state.story.flags.contract47bPending, true);
   assert.equal(state.story.postEnding && state.story.postEnding.directiveId, 'contract_47b');
-  assert.equal(state.story.titles.byId.title_thunderchild.status, 'held');
-  assert.equal(state.story.titles.byId['title_thunderchild:0:player'], undefined);
+  assert.equal(state.story.titles.byId.title_bolas.status, 'held');
+  assert.equal(state.story.titles.byId.title_bolas.holderKey, 'player', 'the carried title is the player\'s');
+  assert.equal(state.story.titles.byId['title_bolas:pilot:4701'], undefined, 'no phantom composite byId row');
+  assert.equal(state.story.titles.byId.title_thunderchild.status, 'vacant', 'no Thunderchild was the player\'s to carry');
   const carriedScar = livingHullScars(state.player.ownedShips[0].livingHull)
     .find((scar) => scar.id === 'weapon:54000:bow');
   assert.equal(carriedScar && carriedScar.atT, 0, 'leftover scar restamps to the new run clock');
@@ -331,7 +355,7 @@ test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the f
   assert.equal(hullEvents[0] && hullEvents[0].source, 'new_game_plus');
 });
 
-test('leftover Thunderchild recovers from the byId map key when titlesSeen is empty', () => {
+test('leftover player title recovers from the byId map key when titlesSeen is empty', () => {
   const data = completedRunData();
   data.missions.story.titlesSeen = [];
   const overlay = buildNewGamePlusOverlay(
@@ -339,7 +363,7 @@ test('leftover Thunderchild recovers from the byId map key when titlesSeen is em
     { keepsakeId: 'unique_veil_cutter' },
     { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
   );
-  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].id, 'title_bolas');
   assert.equal(overlay.titles[0].status, 'held');
 });
 
@@ -347,7 +371,9 @@ test('leftover Thunderchild recovers from the byId map key when titlesSeen is em
 // hold-opener, _observeCombatant, requires isDurableNpcShip, which excludes state.playerId, and
 // nothing assigns worldRecordId to the player hull. So the live Thunderchild sighting id is
 // title_thunderchild:<succession>:<world record id> — the holder half is never 'player'.
-test('leftover Thunderchild peels a live NPC sighting id and carries that dead holder key', () => {
+// PQ-032.03: that NPC's title is not the player's history, so it no longer carries at all (it used
+// to carry the dead holder key and then write "you" under it). The peel itself still holds.
+test('leftover Thunderchild: a live NPC sighting id peels, and that NPC title does not carry', () => {
   const npcKey = 'wr_ship_1a2b3c4d';
   const data = completedRunData();
   data.missions.story.titlesSeen = [{
@@ -367,9 +393,11 @@ test('leftover Thunderchild peels a live NPC sighting id and carries that dead h
     { keepsakeId: 'unique_veil_cutter' },
     { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
   );
-  assert.equal(overlay.titles[0].id, 'title_thunderchild', 'the live composite peels to the authored id');
-  assert.equal(overlay.titles[0].status, 'held');
-  assert.equal(overlay.titles[0].holderKey, npcKey, 'the carried holder is the previous run NPC, not the player');
+  assert.equal(authoredTitleId(`title_thunderchild:0:${npcKey}`), 'title_thunderchild',
+    'the live composite peels to the authored id');
+  assert.equal(overlay.titles.some((title) => title.id === 'title_thunderchild'), false,
+    'the previous run NPC\'s Thunderchild does not carry');
+  assert.equal(overlay.titles.some((title) => title.holderKey === npcKey), false);
 
   const state = createGameState(7711);
   state.onboarding = { active: true, finished: false };
@@ -386,7 +414,7 @@ test('leftover Thunderchild peels a live NPC sighting id and carries that dead h
   story.init({ state, bus, helpers: { voice: { say() {} } }, registry: { get: () => null } });
   bus.emit('game:started', { newGamePlus: overlay });
 
-  assert.equal(state.story.titles.byId.title_thunderchild.status, 'held');
+  assert.equal(state.story.titles.byId.title_thunderchild.status, 'vacant');
   assert.equal(
     state.story.titles.byId[`title_thunderchild:0:${npcKey}`],
     undefined,
@@ -394,10 +422,8 @@ test('leftover Thunderchild peels a live NPC sighting id and carries that dead h
   );
   assert.equal(
     state.story.titles.byId.title_thunderchild.holderKey,
-    npcKey,
-    'apply keeps the previous run NPC holder key',
+    null,
+    'no dead NPC holder key rides into the new run',
   );
-  // syncTitleStamp matches entity.data.worldRecordId against that key, so the fresh hull is skipped:
-  // the carried title is a state row plus a Ledger sighting, not something the new ship wears.
-  assert.equal(playerEntity.data.titleId, undefined, 'the new hull is not stamped with the carried title');
+  assert.equal(playerEntity.data.titleId, undefined, 'the new hull is not stamped with Thunderchild');
 });

@@ -16,6 +16,7 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
+import { legacyFlightLine } from '../core/newGamePlus.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
@@ -81,8 +82,10 @@ export function createHudMeta(ctx) {
       ? [
         legacy.sourceEnding,
         legacy.keepsakeId,
+        legacy.leadGrudgeName,
         legacy.hunterGrudgeCount,
         (legacy.scars && legacy.scars.length) || 0,
+        (legacy.scars && legacy.scars[0] && legacy.scars[0].cause) || '',
         (legacy.titles && legacy.titles[0] && legacy.titles[0].title) || '',
         legacy.worldFacts && legacy.worldFacts.title || '',
       ].join('|')
@@ -95,20 +98,7 @@ export function createHudMeta(ctx) {
       legacyReadout.style.display = 'none';
       return;
     }
-    const count = Number(legacy.hunterGrudgeCount) || 0;
-    const scarCount = Array.isArray(legacy.scars) ? legacy.scars.length : 0;
-    const leftoverTitle = legacy.titles && legacy.titles[0] && legacy.titles[0].title;
-    const leftoverFact = legacy.worldFacts && legacy.worldFacts.title;
-    const clauses = [
-      `LEGACY ${legacy.sourceEnding}`,
-      legacy.sourceEndingTitle,
-      legacy.keepsakeName,
-      `${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`,
-    ];
-    if (scarCount) clauses.push(`${scarCount} ${scarCount === 1 ? 'SCAR' : 'SCARS'}`);
-    if (leftoverTitle) clauses.push(leftoverTitle);
-    if (leftoverFact) clauses.push(leftoverFact);
-    legacyReadout.textContent = clauses.join(' · ');
+    legacyReadout.textContent = legacyFlightLine(legacy);
     legacyReadout.style.display = metaVisible ? '' : 'none';
   }
   bus.on('story:newGamePlusStarted', syncLegacyReadout);

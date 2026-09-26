@@ -8,7 +8,13 @@ import { livingHullScars, normalizeHullScar } from './livingHull.js';
 import { MODULES } from '../data/modules.js';
 import { ENDGAME_CHOICES } from '../data/narrative.js';
 import { PIRATE_PROMOTION_MAX_TIER, aceById } from '../data/namedAces.js';
-import { authoredTitleId, TITLES, TITLES_SEEN_LIMIT } from '../data/titles.js';
+import {
+  authoredTitleId,
+  isPlayerHeldTitleRecord,
+  isPlayerTitleHolder,
+  TITLES,
+  TITLES_SEEN_LIMIT,
+} from '../data/titles.js';
 import { WEAPONS } from '../data/weapons.js';
 import { endingDef } from '../story/endings/endingDefs.js';
 import {
@@ -60,6 +66,9 @@ export function buildNewGamePlusCandidate(data, source = {}) {
   const scars = leftoverLivingHullScars(data);
   const titles = leftoverEarnedTitles(storyFromSaveData(data));
   const worldFacts = leftoverPostEndingWorldFacts(storyFromSaveData(data), sourceEnding);
+  const leadGrudge = grudges[0] && aceById(grudges[0].aceId);
+  const leadScar = scars[0];
+  const leadTitle = titles[0];
   return {
     schema: NEW_GAME_PLUS_SCHEMA,
     sourceSlot: clean(source.slot),
@@ -72,6 +81,9 @@ export function buildNewGamePlusCandidate(data, source = {}) {
     titleCount: titles.length,
     worldFactCount: worldFacts ? 1 : 0,
     worldFactTitle: worldFacts && worldFacts.title || '',
+    leadGrudgeName: leadGrudge && leadGrudge.name || '',
+    leadScarPhrase: scarCarryPhrase(leadScar),
+    leadTitleName: leadTitle && leadTitle.title || '',
   };
 }
 
@@ -81,16 +93,90 @@ export function leftoverNewRunLine(candidate) {
   const grudgeCount = clampInt(candidate.grudgeCount, 0, 64);
   const scarCount = clampInt(candidate.scarCount, 0, LIVING_HULL_SCAR_CARRY_MAX);
   const titleCount = clampInt(candidate.titleCount, 0, TITLES_SEEN_LIMIT);
+  const grudgeName = clean(candidate.leadGrudgeName);
+  const scarPhrase = clean(candidate.leadScarPhrase);
+  const titleName = clean(candidate.leadTitleName);
   const clauses = [
     clean(candidate.sourceEndingTitle),
     'keep one item',
-    `${grudgeCount} unresolved hunter ${grudgeCount === 1 ? 'grudge' : 'grudges'}`,
   ];
-  if (scarCount) clauses.push(`${scarCount} ${scarCount === 1 ? 'scar' : 'scars'}`);
-  if (titleCount) clauses.push(`${titleCount} ${titleCount === 1 ? 'title' : 'titles'}`);
+  if (grudgeName) {
+    const extra = Math.max(0, grudgeCount - 1);
+    clauses.push(extra
+      ? `${grudgeName} and ${extra} other ${extra === 1 ? 'grudge' : 'grudges'}`
+      : `${grudgeName} still hunting`);
+  } else if (grudgeCount) {
+    clauses.push(`${grudgeCount} unresolved hunter ${grudgeCount === 1 ? 'grudge' : 'grudges'}`);
+  }
+  if (scarPhrase) {
+    const extra = Math.max(0, scarCount - 1);
+    clauses.push(extra ? `${scarPhrase} and ${extra} more` : scarPhrase);
+  } else if (scarCount) {
+    clauses.push(`${scarCount} ${scarCount === 1 ? 'scar' : 'scars'}`);
+  }
+  if (titleName) clauses.push(titleName);
+  else if (titleCount) clauses.push(`${titleCount} ${titleCount === 1 ? 'title' : 'titles'}`);
   const fact = clean(candidate.worldFactTitle);
   if (fact) clauses.push(fact);
   return clauses.filter(Boolean).join(' · ');
+}
+
+function leadGrudgeAce(grudges) {
+  const first = Array.isArray(grudges) ? grudges[0] : null;
+  return first && aceById(first.aceId) || null;
+}
+
+function leadGrudgeNameFrom(grudges) {
+  const ace = leadGrudgeAce(grudges);
+  return ace && ace.name || '';
+}
+
+function leadGrudgeAceIdFrom(grudges) {
+  const ace = leadGrudgeAce(grudges);
+  return ace && ace.id || '';
+}
+
+/** Quiet provenance on the flight HUD for a carried run. Names the hunter and the scar when they exist. */
+export function legacyFlightLine(record) {
+  if (!record || record.schema !== NEW_GAME_PLUS_SCHEMA) return '';
+  const count = clampInt(record.hunterGrudgeCount, 0, 64);
+  const name = clean(record.leadGrudgeName);
+  const scars = Array.isArray(record.scars) ? record.scars : [];
+  const scarPhrase = scarCarryPhrase(scars[0]);
+  const title = record.titles && record.titles[0] && clean(record.titles[0].title);
+  const fact = record.worldFacts && clean(record.worldFacts.title);
+  const clauses = [
+    `LEGACY ${clean(record.sourceEnding)}`,
+    clean(record.sourceEndingTitle),
+    clean(record.keepsakeName),
+  ];
+  if (name) {
+    const extra = Math.max(0, count - 1);
+    clauses.push(extra
+      ? `${name} and ${extra} other ${extra === 1 ? 'grudge' : 'grudges'}`
+      : `${name} still hunting`);
+  } else if (count) {
+    clauses.push(`${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`);
+  }
+  if (scarPhrase) {
+    const extra = Math.max(0, scars.length - 1);
+    clauses.push(extra ? `${scarPhrase} and ${extra} more` : scarPhrase);
+  } else if (scars.length) {
+    clauses.push(`${scars.length} ${scars.length === 1 ? 'SCAR' : 'SCARS'}`);
+  }
+  if (title) clauses.push(title);
+  if (fact) clauses.push(fact);
+  return clauses.filter(Boolean).join(' · ');
+}
+
+/** How a carried scar is named out loud: "weapon scar on the bow". Shared by the lines and the mechanic. */
+export function scarCarryPhrase(scar) {
+  if (!scar) return '';
+  const cause = clean(scar.cause).replace(/_/g, ' ');
+  const facing = clean(scar.facing).replace(/_/g, ' ');
+  if (cause && facing) return `${cause} scar on the ${facing}`;
+  if (cause) return `${cause} scar`;
+  return '';
 }
 
 export function buildNewGamePlusOverlay(data, selection = {}, source = {}) {
@@ -132,6 +218,8 @@ export function storyNewGamePlusRecord(overlay, seed = 0) {
     keepsakeId: keepsakeDef.id,
     keepsakeName: keepsakeDef.name,
     hunterGrudgeCount: clampInt(grudgeCount, 0, 64),
+    leadGrudgeName: leadGrudgeNameFrom(overlay && overlay.grudges),
+    leadGrudgeAceId: leadGrudgeAceIdFrom(overlay && overlay.grudges),
     startedSeed: (Number(seed) >>> 0) || 1,
     scars: leftoverScarList(overlay.scars),
     titles: leftoverTitleList(overlay.titles),
@@ -145,6 +233,9 @@ export function normalizeStoryNewGamePlusRecord(input) {
   const ending = ENDING_BY_ID.get(sourceEnding);
   const keepsakeDef = ITEM_BY_ID.get(input.keepsakeId);
   if (!ending || !keepsakeDef) return null;
+  // Records written before the grudge was named carry neither field; both migrate to ''. A known
+  // ace id re-reads its name from the authored roster, like the ending title above.
+  const leadAce = aceById(clean(input.leadGrudgeAceId));
   return {
     schema: NEW_GAME_PLUS_SCHEMA,
     sourceEnding,
@@ -154,6 +245,8 @@ export function normalizeStoryNewGamePlusRecord(input) {
     keepsakeId: keepsakeDef.id,
     keepsakeName: keepsakeDef.name,
     hunterGrudgeCount: clampInt(input.hunterGrudgeCount, 0, 64),
+    leadGrudgeName: leadAce ? leadAce.name : clean(input.leadGrudgeName),
+    leadGrudgeAceId: leadAce ? leadAce.id : '',
     startedSeed: (Number(input.startedSeed) >>> 0) || 1,
     scars: leftoverScarList(input.scars),
     titles: leftoverTitleList(input.titles),
@@ -264,6 +357,10 @@ function leftoverScarList(input) {
   return out;
 }
 
+// Only a title the player held carries. titlesSeen also records titles the player merely
+// witnessed — every live Thunderchild row is an NPC's (PQ-032.03 receipt, WHAT IS NOT) — and
+// carrying one of those wrote "you" under a dead stranger's key. The test runs on the merged
+// record: the seen row's holderKey/trickId plus the live byId row's status.
 function leftoverEarnedTitles(story) {
   const seen = new Set();
   const out = [];
@@ -271,14 +368,14 @@ function leftoverEarnedTitles(story) {
   const byId = titles && titles.byId && typeof titles.byId === 'object' ? titles.byId : {};
   for (const raw of Array.isArray(story && story.titlesSeen) ? story.titlesSeen : []) {
     const title = leftoverTitleRecord(raw, byId);
-    if (!title || seen.has(title.id)) continue;
+    if (!title || seen.has(title.id) || !isPlayerHeldTitleRecord(title)) continue;
     seen.add(title.id);
     out.push(title);
     if (out.length >= TITLES_SEEN_LIMIT) return out;
   }
   for (const id of Object.keys(byId).sort()) {
     const title = leftoverTitleRecord(byId[id], byId, id);
-    if (!title || seen.has(title.id)) continue;
+    if (!title || seen.has(title.id) || !isPlayerHeldTitleRecord(title)) continue;
     seen.add(title.id);
     out.push(title);
     if (out.length >= TITLES_SEEN_LIMIT) break;
@@ -317,13 +414,15 @@ function leftoverAuthoredTitle(value) {
   return TITLE_BY_NAME.get(clean(value).toLowerCase()) || null;
 }
 
+// Story-record titles. A record written by an older save may carry an NPC-keyed title (the
+// pre-PQ-032.03 carry took every sighting); it migrates out here.
 function leftoverTitleList(input) {
   if (!Array.isArray(input) || !input.length) return [];
   const seen = new Set();
   const out = [];
   for (const raw of input) {
     const title = leftoverTitleRecord(raw);
-    if (!title || seen.has(title.id)) continue;
+    if (!title || seen.has(title.id) || !isPlayerTitleHolder(title)) continue;
     seen.add(title.id);
     out.push(title);
     if (out.length >= TITLES_SEEN_LIMIT) break;

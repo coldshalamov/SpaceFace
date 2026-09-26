@@ -6,6 +6,7 @@
 
 import {
   authoredTitleId,
+  isPlayerTitleHolder,
   THUNDERCHILD,
   THUNDERCHILD_TITLE_ID,
   TITLE_ACTIVE_HOLD_LIMIT,
@@ -425,9 +426,17 @@ export function createTitlesSystem() {
       let applied = 0;
       for (const carried of titles) {
         if (!carried || typeof carried !== 'object') continue;
+        // Only the player's own titles carry (PQ-032.03). A record from an older save can still
+        // hold an NPC's Thunderchild key; writing it produced "you" under a dead stranger's key.
+        // A carried title is the player's in the new run, so its rows are keyed 'player'.
+        const trickId = cleanText(carried.trickId);
+        // No silent 'player' default here: a record with neither trickId nor a player-shaped
+        // holderKey is an NPC's title and is refused, not adopted. leftoverTitleRecord already
+        // drops records with no holderKey, so this cannot refuse a legitimate carry.
+        if (!isPlayerTitleHolder({ holderKey: cleanText(carried.holderKey), trickId })) continue;
         const titleId = authoredTitleId(carried.id || carried.titleId);
         const titleName = cleanText(carried.title, titleId === THUNDERCHILD_TITLE_ID ? THUNDERCHILD.title : '');
-        const holderKey = cleanText(carried.holderKey, 'player');
+        const holderKey = 'player';
         if (!titleId || !titleName) continue;
         const seenId = cleanText(carried.seenId, `${titleId}:${holderKey}:legacy`);
         if (!story.titlesSeen.some((record) => record && record.id === seenId)) {
@@ -436,7 +445,7 @@ export function createTitlesSystem() {
             title: titleName,
             seenAt: 0,
             holderKey,
-            ...(carried.trickId ? { trickId: cleanText(carried.trickId) } : {}),
+            ...(trickId ? { trickId } : {}),
           }, TITLES_SEEN_LIMIT);
         }
         if (titleId === THUNDERCHILD_TITLE_ID) {
@@ -451,11 +460,11 @@ export function createTitlesSystem() {
             };
             own.earnedTick = 0;
           }
-        } else if (carried.trickId || titleId.startsWith('title_')) {
+        } else if (trickId || titleId.startsWith('title_')) {
           story.titles.byId[titleId] = {
             schemaVersion: TITLES_SCHEMA_VERSION,
             titleId,
-            trickId: cleanText(carried.trickId),
+            trickId,
             title: titleName,
             status: 'held',
             holderKey,

@@ -44,3 +44,24 @@ export function authoredTitleId(value) {
   }
   return id;
 }
+
+/**
+ * A title record whose holder is the player: keyed to the player, or a stunt title. Stunt titles
+ * are the only titles the live route awards the player; their holderKey is the pilot id
+ * (`pilot:<seed>`), so the trickId is what marks them. A Thunderchild holderKey is always an NPC
+ * world record id — titles.js only opens holds for durable NPC ships.
+ */
+export function isPlayerTitleHolder(record) {
+  if (!record || typeof record !== 'object') return false;
+  const key = String(record.holderKey || '');
+  if (key === 'player' || key === 'player_ship' || key.startsWith('player')) return true;
+  return !!record.trickId;
+}
+
+/**
+ * A title the player actually holds. Same rule as the save slot card's reader
+ * (saveLoad.js isPlayerHeldTitle), so every surface agrees on whose title it is.
+ */
+export function isPlayerHeldTitleRecord(record) {
+  return !!record && typeof record === 'object' && record.status === 'held' && isPlayerTitleHolder(record);
+}
