@@ -45,7 +45,11 @@ class El {
     this.children = [];
     this.parentNode = null;
     this.attrs = Object.create(null);
-    this.style = {};
+    this.style = {
+      _props: Object.create(null),
+      removeProperty(name) { delete this._props[name]; delete this[name]; },
+      setProperty(name, value) { this._props[name] = value; this[name] = value; },
+    };
     this.listeners = new Map();
     this.disabled = false;
     this.hidden = false;
@@ -340,6 +344,7 @@ function installDom() {
     navigator: nav,
     document: doc,
     requestAnimationFrame(cb) { cb(0); return 0; },
+    cancelAnimationFrame(id) { /* rAF callbacks fire synchronously in this stub */ },
     addEventListener(type, fn) {
       const list = winListeners.get(type) || [];
       list.push(fn);
@@ -356,6 +361,7 @@ function installDom() {
     value: nav, configurable: true, writable: true, enumerable: true,
   });
   globalThis.requestAnimationFrame = win.requestAnimationFrame;
+  globalThis.cancelAnimationFrame = win.cancelAnimationFrame;
   globalThis.addEventListener = win.addEventListener.bind(win);
   globalThis.removeEventListener = win.removeEventListener.bind(win);
 
@@ -388,8 +394,8 @@ const promptsScan = stripJsComments(promptsSrc);
 const missionLogScan = stripJsComments(read('src/ui/screens/missionLog.js'));
 const screenManagerScan = stripJsComments(read('src/ui/screenManager.js'));
 
-assert.match(promptsScan, /Start → Pause → Mission Log/,
-  'gamepad flight prompt must state the truthful Start → Pause → Mission Log route');
+assert.match(promptsScan, /(\$\{padGlyph\('pause'\)\}|Start|Menu) → Pause → Mission Log/,
+  'gamepad flight prompt must state the truthful Start/Menu → Pause → Mission Log route');
 assert.match(helpScan, /Start \/ Options → Pause → Mission Log/,
   'Help Controls must document the truthful gamepad route through Pause');
 assert.doesNotMatch(uiInputScan, /gp\.actions\.missionLog/,

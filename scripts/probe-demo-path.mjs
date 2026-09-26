@@ -1106,6 +1106,7 @@ try {
     await page.evaluate((id) => window.__SF_DEMO_HELPERS__.autopilot(id), stationId);
     const problem = { mined: 0, fought: 0, salvaged: 0 };
     const deadline = Date.now() + timeoutMs;
+    let lastD = Infinity;
     let left = false; let right = false;
     const setButtons = async (wantLeft, wantRight) => {
       if (wantLeft !== left) { left = wantLeft; await page.mouse[wantLeft ? 'down' : 'up'](); }
@@ -1126,6 +1127,7 @@ try {
           };
         }, stationId);
         if (!snap.alive) throw new Error('player died during transit');
+        lastD = snap.d;
         if (snap.d <= snap.range && !snap.docked) break;
         // Emergency shelter: critically low hull under fire inside a dock ring -> dock, wait out
         // the threat behind the patrol, then resume the leg. The A6 slice's honest survival.
@@ -1162,13 +1164,18 @@ try {
           if (acted === 'mine') problem.mined++;
           else if (acted === 'salvage') problem.salvaged++;
         }
+        // Autopilot can drop on manual input, a lost target, or a shelter undock — a leg that
+        // never re-engages coasts to a stop and burns the whole deadline.
+        const apLive = await page.evaluate(() =>
+          !!(window.SF.state.nav && window.SF.state.nav.autopilot && window.SF.state.nav.autopilot.active));
+        if (!apLive && !snap.docked) await page.evaluate((id) => window.__SF_DEMO_HELPERS__.autopilot(id), stationId);
         await sleep(500);
       }
     } finally {
       await setButtons(false, false);
     }
     const arrived = await page.evaluate((id) => window.__SF_DEMO_HELPERS__.distTo(id) <= window.__SF_DEMO_HELPERS__.dockRange(id) + 5, stationId);
-    if (!arrived) throw new Error(`never reached ${stationId}`);
+    if (!arrived) throw new Error(`never reached ${stationId} (lastD=${lastD} fought=${problem.fought} mined=${problem.mined} salvaged=${problem.salvaged} sheltered=${problem.sheltered || 0})`);
     return problem;
   }
 

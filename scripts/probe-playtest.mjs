@@ -415,8 +415,7 @@ const ROUTES = {
         return [...root.querySelectorAll('.k-word, button[data-action]')]
           .filter((e) => window.__SF_PT_HELPERS__.isVis(e))
           .map((e) => (e.textContent || '').trim())
-          .filter((t) => t && !/resume|back|save|main menu|quit|exit|abandon|photo|capture/i.test(t))
-          .slice(0, 10);
+          .filter((t) => t && !/resume|back|save|main menu|quit|exit|abandon|photo|capture|quick load/i.test(t));
       });
       const walked = [];
       const ensurePause = async () => {
@@ -438,22 +437,37 @@ const ROUTES = {
           return { clicked: true, lbl };
         }, label);
         await sleep(1200);
+        // A verb may raise a confirm first (Load asks "Open load screen?") — answer it so the
+        // walk actually reaches the destination screen.
+        const confirmed = await ctx.page.evaluate(() => {
+          const root = document.querySelector('#sf-confirm-root');
+          if (!root) return null;
+          const b = [...root.querySelectorAll('.k-word, button')]
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /open|yes|confirm|continue|proceed/i.test(e.textContent || ''))[0];
+          if (!b) return null; b.click(); return (b.textContent || '').trim();
+        });
+        if (confirmed) await sleep(1200);
         const s = await snap(ctx);
         await shotNow(ctx, `e05-verb-${(label || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
-        walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen });
+        walked.push({ verb: label.slice(0, 30), clicked: dest.clicked, screen: s.screen, confirm: confirmed });
         const back = await ensurePause();
         if (back.screen !== 'pause') { walked.push({ verb: '_nav', screen: back.screen, note: 'could not return to pause' }); break; }
         await sleep(400);
       }
       const dead = walked.filter((w) => w.clicked && !w.screen);
       if (dead.length) observe(ctx, 'rough-edge', 'pause', `pause verbs that pushed nothing: ${dead.map((w) => w.verb).join(', ')}`);
-      // Back to flight for the next beats.
-      await pressKey(ctx, 'Escape', 800);
-      const sEnd = await snap(ctx);
+      // Back to flight for the next beats — an in-screen layer (Replay mounts inside pause)
+      // can eat the first Esc, so drive until the stack is actually empty.
+      let sEnd = await snap(ctx);
+      for (let i = 0; i < 4 && sEnd.screen; i++) { await pressKey(ctx, 'Escape', 700); sEnd = await snap(ctx); }
+      if (sEnd.screen) observe(ctx, 'rough-edge', 'pause', `pause stack still open after 4 Esc (screen=${sEnd.screen})`);
       return { verbs, walked, endScreen: sEnd.screen };
     });
 
     await B(ctx, 's01-travel-dock', 'autopilot to nearest station and dock', async () => {
+      // Guard: a leftover modal freezes the sim and makes autopilot look stalled.
+      const pre = await snap(ctx);
+      if (pre.screen) { for (let i = 0; i < 3; i++) { await pressKey(ctx, 'Escape', 600); if (!(await snap(ctx)).screen) break; } }
       const stations = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.stationIds());
       if (!stations.length) { observe(ctx, 'defect', 'stations', 'no station entities in adventure world'); return { stations: [] }; }
       const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
@@ -543,6 +557,37 @@ const ROUTES = {
       if (!clicked) observe(ctx, 'note', 'shipworks', 'no range verb visible in shipworks tab');
       if (s.screen && s.screen !== 'station') { await backOut(ctx, s.screen); await sleep(400); }
       return { clicked, screen: s.screen };
+    });
+
+    await B(ctx, 's05-drill-screen', 'undock -> drill approach completes -> asteroid screen mounts', async () => {
+      // Drive the uiRoot handoff directly: the screen itself is the audit target; the physical
+      // tether-approach is covered by systems tests and too slow to re-derive every probe run.
+      await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        const sid = st.ui && st.ui.dockedStationId;
+        if (window.__SF_PT_HELPERS__.docked()) window.__SF_PT_HELPERS__.undock(sid || undefined);
+        if (st.ui) st.ui.docked = false;
+      });
+      await sleep(1800);
+      const opened = await ctx.page.evaluate(() => {
+        const st = window.SF.state;
+        let rock = null;
+        for (const e of st.entities.values()) {
+          if (e && e.type === 'asteroid' && e.alive !== false) { rock = e; break; }
+        }
+        if (!rock) return null;
+        const attachmentId = `probe:drill:${rock.id}`;
+        st.ui.pendingDrillAsteroidId = null;
+        window.SF.bus.emit('drill:approachStarted', { asteroidId: rock.id, attachmentId });
+        window.SF.bus.emit('drill:approachCompleted', { asteroidId: rock.id, attachmentId });
+        return rock.id;
+      });
+      await sleep(1800);
+      const s = await snap(ctx);
+      await shotNow(ctx, 's05-drill');
+      if (opened && s.screen !== 'drill') observe(ctx, 'defect', 'drill', `approachCompleted emitted for asteroid ${opened} but screen=${s.screen}`);
+      if (!opened) observe(ctx, 'note', 'drill', 'no asteroid entity to attach the drill approach to');
+      return { asteroid: opened, screen: s.screen };
     });
   },
 
@@ -1074,6 +1119,40 @@ const ROUTES = {
 
     await B(ctx, 'c01b-labdoors', 'crucible door -> Share codes / Practice room sub-screens', async () => {
       const out = {};
+      // The practice room launches into live sandbox flight: its exit is Esc→pause→Main Menu→
+      // crucible, not a single pop. Settle back at the door before continuing.
+      const backToDoor = async () => {
+        for (let i = 0; i < 12; i++) {
+          const s = await snap(ctx);
+          // The door is only "back" once it's mounted AND the shell settled — a snap taken
+          // mid-launch still shows screen=crucible while mode=loading/flight races on.
+          if (s.screen === 'crucible' && s.mode === 'menu') return s;
+          if (s.screen === 'pause') {
+            await ctx.page.evaluate(() => {
+              const b = [...document.querySelectorAll('.k-word, button')]
+                .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu/i.test(e.textContent || ''))[0];
+              if (b) b.click();
+            });
+            await sleep(700);
+            // Quit may confirm first — answer it.
+            await ctx.page.evaluate(() => {
+              const root = document.querySelector('#sf-confirm-root');
+              const b = root && [...root.querySelectorAll('.k-word, button')]
+                .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /quit|yes|main menu|confirm|leave/i.test(e.textContent || ''))[0];
+              if (b) b.click();
+            });
+          } else if (s.screen === 'mainMenu') {
+            await clickWord(ctx, /crucible/i, 10_000);
+          } else if (!s.screen && s.mode === 'flight') {
+            await pressKey(ctx, 'Escape', 700);
+            continue;
+          } else {
+            await pressKey(ctx, 'Escape', 700);
+          }
+          await sleep(900);
+        }
+        return await snap(ctx);
+      };
       for (const re of [/share codes/i, /practice room/i]) {
         const opened = await ctx.page.evaluate((src) => {
           const rx = new RegExp(src, 'i');
@@ -1081,18 +1160,19 @@ const ROUTES = {
             .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
           if (!b) return null; b.click(); return (b.textContent || '').trim();
         }, re.source);
-        await sleep(1400);
+        // Practice room goes through a loading transition into flight; wait for the launch to
+        // resolve (or the sub-screen to settle) before snapping, so backToDoor starts stable.
+        try {
+          await ctx.page.waitForFunction(
+            () => window.SF && window.SF.state && (window.SF.state.mode === 'flight' || window.SF.state.mode === 'menu'),
+            { timeout: 15_000 });
+        } catch { /* menu-leg sub-screens settle on their own */ }
+        await sleep(1000);
         const s = await snap(ctx);
         await shotNow(ctx, 'c01b-' + re.source.replace(/[^a-z]/gi, ''));
         out[re.source] = { verb: opened, screen: s.screen, mode: s.mode, controls: s.controls.length };
-        // back out: Esc, then re-open crucible door if we fell all the way to title.
-        await pressKey(ctx, 'Escape', 700);
-        await sleep(900);
-        const s2 = await snap(ctx);
-        if (s2.screen === 'mainMenu') {
-          await clickWord(ctx, /crucible/i, 10_000);
-          await sleep(1200);
-        }
+        const back = await backToDoor();
+        if (back.screen !== 'crucible') observe(ctx, 'rough-edge', 'crucible', `could not return to crucible door (screen=${back.screen} mode=${back.mode})`);
       }
       return out;
     });

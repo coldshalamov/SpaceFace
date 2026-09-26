@@ -220,7 +220,10 @@ function buildContent(container, ctx) {
 
   const readout = el('p', 'k-fine');
   readout.dataset.role = 'clips-readout';
-  readout.textContent = summary.available ? summary.label : summary.detail;
+  // The header already spells the empty-state detail line; the readout earns its keep only
+  // once clips exist (Ready, then Exported …). Same contract as the replay readout.
+  readout.textContent = summary.available ? 'Ready' : '';
+  if (!summary.available) readout.style.display = 'none';
   container.append(readout);
 
   const list = el('ul', 'k-stage');

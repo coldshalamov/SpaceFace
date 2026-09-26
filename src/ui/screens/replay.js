@@ -138,7 +138,10 @@ function buildContent(container, recording, ctx) {
 
   const readout = el('p', 'k-fine');
   readout.dataset.role = 'replay-readout';
-  readout.textContent = summary.available ? 'Ready' : summary.detail;
+  // The header already carries the empty-state detail line; the readout only earns its keep
+  // once a recording exists (Ready, then End · … during playback).
+  readout.textContent = summary.available ? 'Ready' : '';
+  if (!summary.available) readout.style.display = 'none';
   container.append(readout);
 
   const stage = el('section', 'k-stage');

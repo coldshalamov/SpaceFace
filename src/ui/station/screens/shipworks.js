@@ -3933,8 +3933,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       await deleteSelectedPreset();
       return;
     }
+    if (await onVerbClick(ev)) { ev.stopPropagation(); return; }
+  });
+
+  // The verbs rack is pinned out of statsEl onto its parent (footer row under the stats scroll,
+  // see renderApron), so verb clicks never reach the delegated statsEl listener — the rack needs
+  // its own dispatch on the element it actually lives under.
+  async function onVerbClick(ev) {
     const verb = ev.target.closest('[data-verb]');
-    if (!verb) return;
+    if (!verb) return false;
     const action = verb.getAttribute('data-verb');
     if (action === 'range') {
       const previewCtx = currentPreviewContext();
@@ -3948,43 +3955,46 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         try { ctx.screenManager.pushScreen('range'); } catch (_) {}
       }
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
-      return;
+      return true;
     }
     if (action === 'record') {
       recordOpen = !recordOpen;
       rememberShipView();
       if (activeBandModel) renderApron(activeBandModel);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      return;
+      return true;
     }
     if (action === 'fit') {
       const fitAction = verb.getAttribute('data-fit-action') || 'fit-slot';
       if (fitAction === 'apply-preset') {
         applySelectedPreset();
-        return;
+        return true;
       }
       const availability = shipworksActionAvailability(ctx.state);
       if (!(availability.outfitEnabled && selectedSlot >= 0)) {
         if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-        return;
+        return true;
       }
       const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${selectedSlot}"]`);
       openChooser(selectedSlot, anchor || null);
-      return;
+      return true;
     }
     if (action === 'activate') {
       const availability = shipworksActionAvailability(ctx.state);
       if (host !== 'dock' || mode !== 'fleet' || !availability.hullEnabled) {
         if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-        return;
+        return true;
       }
       if (ctx.bus) {
         ctx.bus.emit('ui:setActiveShip', { index: viewIdx });
         ctx.bus.emit('audio:cue', { id: 'ui_accept' });
       }
       setTimeout(refresh, 60);
+      return true;
     }
-  });
+    return false;
+  }
+  if (statsEl.parentElement) statsEl.parentElement.addEventListener('click', onVerbClick);
 
   slotfieldEl.addEventListener('click', (ev) => {
     const node = ev.target.closest('[data-spatial-slot]');
