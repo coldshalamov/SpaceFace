@@ -87,3 +87,23 @@ test('GLTF blob errors are ignored only during the harness-owned reload', () => 
   assert.equal(isExpectedNavigationTextureAbort(blobError, 'flight'), false);
   assert.equal(isExpectedNavigationTextureAbort('unrelated texture failure', 'harness-reload'), false);
 });
+
+test('collectPageIssues routes GLTF texture-blob aborts to ignored only during expected navigation', () => {
+  const page = new EventEmitter();
+  const tracker = collectPageIssues(page);
+  const blobError = "THREE.GLTFLoader: Couldn't load texture blob:http://game.test/texture";
+
+  page.emit('console', consoleMessage('error', blobError));
+  assert.equal(tracker.issues.length, 1, 'blob abort outside navigation is a real issue');
+
+  const token = tracker.beginExpectedNavigation('gold-corridor-continue');
+  page.emit('console', consoleMessage('error', blobError));
+  page.emit('console', consoleMessage('error', 'live console error'));
+  tracker.endExpectedNavigation(token);
+  page.emit('console', consoleMessage('error', blobError));
+
+  assert.equal(tracker.ignoredIssues.length, 1);
+  assert.match(tracker.ignoredIssues[0].text, /Couldn't load texture blob/);
+  assert.deepEqual(tracker.ignoredIssues[0].expectedNavigation, ['gold-corridor-continue']);
+  assert.equal(tracker.issues.length, 3, 'live error and post-navigation blob abort stay issues');
+});

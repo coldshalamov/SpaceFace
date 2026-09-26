@@ -33,6 +33,14 @@ export function collectPageIssues(page, options = {}) {
     const issue = { type: msg.type(), text: msg.text(), at: new Date().toISOString() };
     if (location) issue.location = location;
     if (isGenericResourceLoadConsoleError(issue)) return;
+    // The requestfailed twin of this class is already tagged via expectedNavigationAborts;
+    // GLTFLoader also logs a console error when its in-flight texture/blob fetch is aborted
+    // by the same deliberate navigation — it is not an error in the replacement document.
+    if (expectedNavigationTokens.size > 0
+      && /^THREE\.GLTFLoader: Couldn't load texture blob:/i.test(issue.text || '')) {
+      ignoredIssues.push({ ...issue, expectedNavigation: [...expectedNavigationTokens.values()] });
+      return;
+    }
     if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
       ignoredIssues.push(issue);
       return;

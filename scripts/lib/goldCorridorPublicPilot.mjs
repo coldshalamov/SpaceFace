@@ -640,6 +640,7 @@ export async function runGoldCorridorPublicPilot({
   career = GOLD_CORRIDOR_CAREERS[0],
   stop = GOLD_CORRIDOR_DEFAULT_STOP,
   timeoutScale = 1,
+  issueTracker = null,
   log = () => {},
   now = () => Date.now(),
 } = {}) {
@@ -934,7 +935,16 @@ export async function runGoldCorridorPublicPilot({
 
   await step('continue-restored', 'continue', async ({ timeoutMs }) => {
     act('reload', 'page-reload', expectedRootUrl);
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    // Cold-Continue destroys the outgoing document mid-fetch: Chromium answers its
+    // in-flight GLB/texture requests with net::ERR_ABORTED. Those are navigation
+    // bookkeeping, not game errors — tag the window so they land in ignoredIssues
+    // instead of producing an unclassified pass:false verdict (ledger D68).
+    const navToken = issueTracker?.beginExpectedNavigation?.('gold-corridor-continue') ?? null;
+    try {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    } finally {
+      if (navToken != null) issueTracker?.endExpectedNavigation?.(navToken);
+    }
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 60_000 });
     await installPilotObservers(page);
     const splash = page.locator('#cinematic-splash');
