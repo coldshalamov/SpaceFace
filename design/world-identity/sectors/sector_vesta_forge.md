@@ -28,10 +28,11 @@ Industrial band air — adequate tolerance, yellow-white lighting, contracts and
 
 | Field | Value |
 |-------|-------|
-| **placement_id** | `station_forge` |
-| **Name** | Forge Foundry |
-| **Position** | `{ x: -480, z: 720 }` |
-| **Role** | Fab-ring foundry — module-craft silhouette with slag-radiation hazard read at distance |
+| **placement_id** | `poi_vesta_resonant_cathedral` |
+| **Name** | The Resonant Cathedral (depth program C13e) |
+| **Position** | `{ x: -330, z: 1060 }` — ~350 WU off station_forge, on the f_vesta_3 crystal-field rim |
+| **Role** | Twin spires and a resonance arch raised where the Choir first sang inside a foundry's own roar; landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
+| **Stand-in** | `place_maintenance_gantry` until depth H1h pass 2 authors the bespoke twin-spire asset |
 
 ## Required renderable asset roles
 
@@ -42,3 +43,4 @@ Not procedural-only — each ID must resolve to a manifest-valid GLB.
 | `station_forge` | Landmark station | `archetypeGlb`: `place_station_fab` |
 | `station_depot3` | Secondary station | `archetypeGlb`: `place_station_mining` |
 | `poi_freighter` | Landmark derelict POI | `landmarkGlb`: `place_dead_hulk` |
+| `poi_vesta_resonant_cathedral` | Hero landmark POI | `landmarkGlb`: `place_maintenance_gantry` (stand-in; H1h pass 2 owns the bespoke asset) |

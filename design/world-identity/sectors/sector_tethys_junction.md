@@ -28,10 +28,11 @@ Adequate air quality at 18 degrees; graffiti survives a full maintenance cycle b
 
 | Field | Value |
 |-------|-------|
-| **placement_id** | `station_tethys` |
-| **Name** | Tethys Trade Hub |
-| **Position** | `{ x: 1050, z: 380 }` |
-| **Role** | Four-gate junction hub; contracts-board silhouette at the relay crossroads |
+| **placement_id** | `zone_tethys_anvil` |
+| **Name** | The Anvil |
+| **Position** | sector-local `{ x: 2000, z: -2200 }` (global 14288, 5992) |
+| **Role** | A colossal ocean world anchoring the Junction's southern approach; its live gravity well is the sector's hazard geometry. Landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
+| **Asset** | No GLB by design — the zone record lives in `authoredPlaces.js`; `planetRuntime.js` refuses to spawn the physics planet unless the atlas record resolves |
 
 ## Required renderable asset roles
 
@@ -41,4 +42,5 @@ Not procedural-only — each ID must resolve to a manifest-valid GLB.
 |--------------|------|--------------------------------|
 | `station_tethys` | Landmark station | `archetypeGlb`: `place_station_trade_hub` |
 | `station_customs` | Secondary station | `archetypeGlb`: `place_station_military` |
+| `zone_tethys_anvil` | Hero landmark planetary mass | no `landmarkGlb` — registered via `authoredPlaces.js` + `planets.js`, built by the `planetRuntime` adapter |
 | `poi_blackmkt` | Hidden contact POI | `landmarkGlb`: `place_nav_buoy` |

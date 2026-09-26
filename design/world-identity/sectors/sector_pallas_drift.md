@@ -28,10 +28,11 @@
 
 | Field | Value |
 |-------|-------|
-| **placement_id** | `station_smuggler` |
-| **Name** | Smuggler Den |
-| **Position** | `{ x: -1080, z: 540 }` |
-| **Role** | Hollowed-out blackmarket station — Quiet-route silhouette, Voss territory marker |
+| **placement_id** | `poi_quiessence` |
+| **Name** | The Quiessence (depth program C14) |
+| **Position** | `{ x: -1900, z: -1700 }` (sector anchor) |
+| **Role** | Seventeen intact freighters holding formation around one violet buoy — the sector's standing mystery. Landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
+| **Stand-in** | Marker hulls (`bandLandmarkFleet: 17`, scanner/Band identities only) + `place_nav_buoy` until depth H1c authors the dark-freighter art |
 
 ## Required renderable asset roles
 
@@ -41,5 +42,6 @@ Not procedural-only — each ID must resolve to a manifest-valid GLB.
 |--------------|------|--------------------------------|
 | `station_smuggler` | Landmark station | `archetypeGlb`: `place_station_blackmarket` |
 | `station_drift` | Secondary station | `archetypeGlb`: `place_station_trade_hub` |
+| `poi_quiessence` | Hero landmark POI | `landmarkGlb`: `place_nav_buoy` (centre marker; H1c owns the 17 dark freighters) |
 | `poi_pwreck` | Pirate wreck POI | `landmarkGlb`: `place_dead_hulk` |
 | `poi_hcache` | Hidden cache POI | `landmarkGlb`: `place_debris_chunk` |

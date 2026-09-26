@@ -28,10 +28,11 @@ Maintenance every 96 hours instead of 48; air quality adequate, temperature 18 d
 
 | Field | Value |
 |-------|-------|
-| **placement_id** | `station_ceres` |
-| **Name** | Ceres Refinery |
-| **Position** | `{ x: -1100, z: 620 }` |
-| **Role** | Belt refinery stack — rust/amber silhouette marking the Meridian Exchange industrial beat |
+| **placement_id** | `world_site_wreck_cathedral` |
+| **Name** | Wreck Cathedral (depth program C1, the bar-setter) |
+| **Position** | `{ x: 300, z: 2700 }` (`CERES_WRECK_CATHEDRAL_LOCAL_POS`) |
+| **Role** | The Concord Vigilant, split and splayed — the working belt's hero screenshot. Landmarked per PQ-153.02 (fielded 2026-09-25 still review) |
+| **Asset** | Bespoke `place_landmark_wreck_cathedral.glb`; stages and evidence catalog live in `worldSiteManifests.js` / `wreckCathedralEvidenceCatalog.js` |
 
 ## Required renderable asset roles
 
@@ -41,5 +42,6 @@ Not procedural-only — each ID must resolve to a manifest-valid GLB.
 |--------------|------|--------------------------------|
 | `station_ceres` | Landmark station | `archetypeGlb`: `place_station_refinery` |
 | `station_beltout` | Secondary station | `archetypeGlb`: `place_station_mining` |
+| `world_site_wreck_cathedral` | Hero landmark world site | bespoke `place_landmark_wreck_cathedral` via `asteroidSites` |
 | `poi_driller` | Landmark derelict POI | `landmarkGlb`: `place_dead_hulk` |
 | `poi_survey` | Survey cache POI | `landmarkGlb`: `place_debris_chunk` |
