@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { COMMODITIES } from '../src/data/commodities.js';
 import { addCargo } from '../src/systems/cargo.js';
 import {
   ECONOMY_CURVE_SINK_RECIPE,
@@ -23,6 +24,11 @@ const SEED = 15520;
 const START_CREDITS = 20000;
 const RESTITUTION_CR = 180;
 const IMPOUND_CR = 900;
+// The contraband fine is live data × the economy's 1.5 contraband multiplier — derive it from
+// the commodity table instead of pinning a price the market rebalance will move.
+const NARCOTICS_FINE_CR = Math.round(
+  (COMMODITIES.find((c) => c.id === 'cmdty_narcotics')?.basePrice || 0) * 1 * 1.5,
+);
 
 const LIVE_CAUSES = Object.freeze({
   repair: SESSION_SINK_CAUSES.repair,
@@ -140,7 +146,7 @@ test('PQ-155.02 seed 15520: each sink appears in the session ledger with its cau
     assert.ok(state.player.credits < creditsBefore, 'economy spent credits');
     assert.equal(state.player.credits, creditsBefore - (
       Math.round((200 - 50) * SERVICE_PRICES.repairCrPerHp)
-      + 330
+      + NARCOTICS_FINE_CR
       + INSURANCE_DEFAULTS.deductibleCr
       + RESTITUTION_CR
       + IMPOUND_CR
