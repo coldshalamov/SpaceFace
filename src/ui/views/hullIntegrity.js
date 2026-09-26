@@ -156,13 +156,30 @@ export function shipConditionMarkup(defId = 'ship_kestrel', namespace) {
     '</div>';
 }
 
+// getAttribute/textContent are real DOM reads — the only HUD writer still paying
+// them per frame. Keep the same write-on-change contract against a JS-side map.
+const _attrCache = new WeakMap();
+function _attrs(el) {
+  let m = _attrCache.get(el);
+  if (!m) { m = new Map(); _attrCache.set(el, m); }
+  return m;
+}
 function attr(el, name, value) {
   if (!el) return;
   const text = String(value);
-  if (el.getAttribute(name) !== text) el.setAttribute(name, text);
+  const m = _attrs(el);
+  if (m.get(name) !== text) { el.setAttribute(name, text); m.set(name, text); }
 }
-function text(el, value) { if (el && el.textContent !== value) el.textContent = value; }
-function remove(el, name) { if (el?.getAttribute(name) != null) el.removeAttribute(name); }
+function text(el, value) {
+  if (!el) return;
+  const m = _attrs(el);
+  if (m.get('\0text') !== value) { el.textContent = value; m.set('\0text', value); }
+}
+function remove(el, name) {
+  if (!el) return;
+  const m = _attrs(el);
+  if (m.get(name) != null) { el.removeAttribute(name); m.set(name, null); }
+}
 function opacity(el, value) { attr(el, 'opacity', quantize(value)); }
 function wireGeometry(c) {
   c.cells = c.host.querySelectorAll('.sf-integrity__lamina');

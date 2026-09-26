@@ -3953,7 +3953,7 @@ export function createHud(ctx, alerts) {
         setText(lockLabel, 'ACQUIRING ' + Math.round(lockProgress * 100) + '%');
         if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
       }
-      const innerRing = lockRing.firstElementChild;
+      const innerRing = lockRing._sfInner || (lockRing._sfInner = lockRing.firstElementChild);
       if (innerRing) {
         setLagTranslate(innerRing, opticalGLag.x * 0.95, opticalGLag.y * 0.95);
       }
@@ -3966,7 +3966,7 @@ export function createHud(ctx, alerts) {
         if (lockDiamond) clearAttr(lockDiamond, 'data-stage');
       }
       if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
-      const innerRing = lockRing.firstElementChild;
+      const innerRing = lockRing._sfInner || (lockRing._sfInner = lockRing.firstElementChild);
       if (innerRing) setLagTranslate(innerRing, 0, 0);
     }
     // Lock-acquired tone & snap-shut latch: fire on rising edge (not-locked → locked).
@@ -4035,7 +4035,7 @@ export function createHud(ctx, alerts) {
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
         const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
         if (lockDiamond.dataset.shape !== shape) lockDiamond.dataset.shape = shape;
-        const innerDiamond = lockDiamond.firstElementChild;
+        const innerDiamond = lockDiamond._sfInner || (lockDiamond._sfInner = lockDiamond.firstElementChild);
         if (innerDiamond) {
           const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
           setLagTranslate(innerDiamond, opticalGLag.x * 0.9, opticalGLag.y * 0.9, {
@@ -4067,7 +4067,7 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
-      const innerPip = leadPip.firstElementChild;
+      const innerPip = leadPip._sfInner || (leadPip._sfInner = leadPip.firstElementChild);
       if (innerPip) {
         setLagTranslate(innerPip, opticalGLag.x * 1.05, opticalGLag.y * 1.05);
       }
@@ -4904,8 +4904,9 @@ export function createHud(ctx, alerts) {
     }
 
     if (!elReticle) elReticle = document.getElementById('aim-reticle');
-    if (elReticle && elReticle.firstElementChild) {
-      setLagTranslate(elReticle.firstElementChild, opticalGLag.x, opticalGLag.y);
+    const reticleInner = elReticle && (elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild));
+    if (reticleInner) {
+      setLagTranslate(reticleInner, opticalGLag.x, opticalGLag.y);
     }
 
     // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
@@ -5112,7 +5113,7 @@ export function createHud(ctx, alerts) {
       // expands the crosshair (1 -> 1.25); it contracts as you stop. Purely cosmetic readability.
       _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
       if (elReticle) {
-        const inner = elReticle.firstElementChild;
+        const inner = elReticle._sfInner || (elReticle._sfInner = elReticle.firstElementChild);
         if (inner) {
           const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
           const bloomScale = (bloomQ / 1000).toFixed(3);

@@ -165,9 +165,18 @@ export function deathLineFor(receipt, tell = null, deathSimTime = 0) {
   return cause;
 }
 
+// toLocaleString pays the Intl machinery on every call; score/credits/kills move
+// on kill events, not ticks, and the callsites alternate — so a small bounded map,
+// not a single slot, covers ~every call.
+const _numCache = new Map();
 function num(value) {
   const n = Number.isFinite(value) ? Math.trunc(value) : 0;
-  return n.toLocaleString('en-US');
+  const hit = _numCache.get(n);
+  if (hit !== undefined) return hit;
+  const str = n.toLocaleString('en-US');
+  if (_numCache.size >= 64) _numCache.clear();
+  _numCache.set(n, str);
+  return str;
 }
 
 export const survivalHud = {

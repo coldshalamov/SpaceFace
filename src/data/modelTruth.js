@@ -134,6 +134,28 @@ export function modelTruthCameraMarginWu() {
   return CAMERA_NEAR_MARGIN_WU;
 }
 
+/**
+ * Authored socket positions for a def, as fractions of the gameplay entity
+ * radius — multiply back by collisionRadius to recover world-unit offsets.
+ * Sockets whose row lacks gameplay.entityRadius fall back to the widest
+ * horizontal extent so a call-site radius still lands near the authored spot.
+ */
+export function modelTruthMountFractions(id, prefix) {
+  const row = BY_ID.get(id);
+  const sockets = row && row.sockets;
+  if (!Array.isArray(sockets) || !sockets.length) return [];
+  const denom =
+    (row.gameplay && Number(row.gameplay.entityRadius)) ||
+    Math.max(Number(row.worldSize && row.worldSize[0]) || 0, Number(row.worldSize && row.worldSize[2]) || 0, 1);
+  const out = [];
+  for (const socket of sockets) {
+    if (!socket || typeof socket.name !== 'string' || !socket.name.startsWith(prefix)) continue;
+    const p = Array.isArray(socket.position) ? socket.position : [0, 0, 0];
+    out.push({ name: socket.name, pos: [(Number(p[0]) || 0) / denom, (Number(p[1]) || 0) / denom, (Number(p[2]) || 0) / denom] });
+  }
+  return out;
+}
+
 export function modelTruthFlightTolerance(entity) {
   const row = modelTruthRowForEntity(entity);
   const radius = row && row.shell ? row.shell.silhouetteRadius : Number(entity && entity.radius) || 0;
