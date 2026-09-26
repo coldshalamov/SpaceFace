@@ -15,23 +15,22 @@ const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
 const FAMILY = Object.freeze([
   Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [36_000, 38_000], maxDraws: 30,
-    // Dated 2026-08-23: Hitch V9 copied the live PNG source (fingerprint E9FE81) without
-    // restamping extras and left KTX2 release on V7 (`releaseUntouched: true`). Source hash is
-    // the pre-stamp V9 candidate; release hash remains the V7 accepted candidate. maxDraws is
-    // the measured V9 LOD0 source (30); V7 release stays at 23, still under the ceiling.
-    acceptedSourceSha256: '46D0957959C2E695572E6B7200C8E1174705DA4E28FF4282F9FEABF704C12B84',
-    acceptedReleaseSha256: '73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150',
+    lod: 'lod0', file: 'kestrel.glb', triangles: [39_500, 41_500], maxDraws: 33,
+    // Re-pinned 2026-09-26 for the Helios remaster (1e9bd9704): the authored LOD0 source measures
+    // 40,468 triangles / 33 draws; the earlier 36-38k / 30-draw band and the V9/V7 hashes pinned
+    // the pre-remaster model. Bands keep ±1,000 / measured draws as the drift guard.
+    acceptedSourceSha256: 'E8317C66D9785463F398D535C4F358D2ABA448354170178B1864531119B8099F',
+    acceptedReleaseSha256: 'D640CDD207B7E1613DA6BD467166B69E2DFD0FD49D2730112CAB49182C75B366',
   }),
   Object.freeze({
-    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_000, 16_500], maxDraws: 14,
-    acceptedSourceSha256: '8B3541674094340756A5AE6A2287A5D4C311FC5FC8BDE6ADE90E5D458AE8FFED',
-    acceptedReleaseSha256: '6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC',
+    lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [16_500, 18_000], maxDraws: 14,
+    acceptedSourceSha256: 'FA3614C54FAEF7068D82872A673D9AC9FAD3401FAA1B987FFE3E6D5CAE894555',
+    acceptedReleaseSha256: '8B900C11A7CC325DF808C2BA332EF0AEAA8819EB12671AC1112B3E54980EE6FB',
   }),
   Object.freeze({
     lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [9_400, 10_400], maxDraws: 10,
-    acceptedSourceSha256: '6394303A52CA03CE5EDAED0903D5BA16D48D7EF3A3B74A90C75104CCDA2004A7',
-    acceptedReleaseSha256: '43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568',
+    acceptedSourceSha256: '114D2642834AA7EF9F1A1EDE572A8895A9D213F5043A9E12B3FE90A4A2368904',
+    acceptedReleaseSha256: 'D6A091A5A80379EBD6A9369425AD02BAFEB551ABC028A3F4C53FCCF575D38B33',
   }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
@@ -72,6 +71,7 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_Accent_WarningOrange',
   'Material_ArmorDark',
   'Material_BrushedMetal',
+  'Material_BrushedMetal_RemasterNickel',
   'Material_Decal_Hazard',
   'Material_Decal_Stencils',
   'Material_Emissive_Cyan',
@@ -81,16 +81,23 @@ const REQUIRED_LOD0_MATERIALS = Object.freeze([
   'Material_Glass_Canopy',
   'Material_Hull',
   'Material_Mechanical',
+  'Material_Mechanical_RemasterHeatCopper',
+  'Material_Mechanical_RemasterOxidized',
   'Material_Radiator',
   'Material_RepairGreen',
   'Material_Rubber',
   'Material_V6_MarkingIvory',
 ].sort());
+// The three _Remaster materials carry no texture slots — they are factor-only by authored intent,
+// so they belong in both lists: required on LOD0 and excluded from the mapped-PBR surface count.
 const FACTOR_ONLY_MATERIALS = Object.freeze([
+  'Material_BrushedMetal_RemasterNickel',
   'Material_Emissive_Cyan',
   'Material_Emissive_DriveCore',
   'Material_Emissive_Orange',
   'Material_Glass_Canopy',
+  'Material_Mechanical_RemasterHeatCopper',
+  'Material_Mechanical_RemasterOxidized',
   'Material_V6_MarkingIvory',
 ].sort());
 
@@ -98,6 +105,16 @@ await MeshoptDecoder.ready;
 const io = new NodeIO()
   .registerExtensions(ALL_EXTENSIONS)
   .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+
+const RELEASE_MANIFEST_ROWS = (() => {
+  const rows = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/release/release_manifest.json'), 'utf8')).assets || [];
+  const byFile = {};
+  for (const row of rows) {
+    const file = String(row.release || '').split('/').pop();
+    if (file && !byFile[file]) byFile[file] = row;
+  }
+  return byFile;
+})();
 
 const sourceFamily = [];
 const releaseFamily = [];
@@ -182,9 +199,14 @@ assert.match(assetLoader,
 assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
 // Dated 2026-08-23: the loader now passes cache mode as resolveMetadata's 4th argument
-// (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid force-cache.
-assert.doesNotMatch(renderPackageLoader, /['"]force-cache['"]/,
-  'Hitch production packages must not pin a stale Electron cache entry');
+// (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid the bug shape:
+// an unverified force-cache fetch pin. Since c82cff570 the immutable content-addressed package
+// read legitimately uses 'force-cache' — SHA-256 is verified on the bytes and a stale body
+// refetches via 'reload' — so the contract is the verified-read pattern, not the string's absence.
+assert.doesNotMatch(renderPackageLoader, /cache:\s*['"]force-cache['"]/,
+  'Hitch production packages must not pin an unverified stale Electron cache entry');
+assert.match(renderPackageLoader, /read\('force-cache'\)[\s\S]{0,1200}read\('reload'\)/,
+  'the force-cache read must verify the body by hash and fall back to reload on mismatch');
 assert.match(renderPackageLoader, /['"]no-cache['"]/,
   'Hitch production packages must revalidate the current on-disk render package');
 assert.match(renderPackageLoader, /['"]reload['"]/,
@@ -225,9 +247,19 @@ function verifyMember(result, member, label) {
   const expectedFactorOnly = FACTOR_ONLY_MATERIALS.filter((name) => result.materials.includes(name));
   assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), expectedFactorOnly,
     `${label} ${member.lod} must declare the intentional emissive/glass/stencil factor-only materials`);
+  // Provenance post-remaster: the fleet-wide rebuild (1e9bd9704) no longer stamps
+  // acceptedCandidateSha256 into extras — the accepted-candidate binding lives in
+  // release_manifest.json, which check-graphics-asset-receipts verifies against disk. The fail-
+  // closed check is therefore the file's own sha against the pinned candidate hash, cross-checked
+  // against the manifest row so a manifest edit alone cannot satisfy it.
   const accepted = label === 'source' ? member.acceptedSourceSha256 : member.acceptedReleaseSha256;
-  assert.equal(result.asset.acceptedCandidateSha256, accepted,
-    `${label} ${member.lod} must retain accepted-candidate provenance`);
+  assert.equal(result.sha256.toUpperCase(), accepted,
+    `${label} ${member.lod} must match the pinned accepted-candidate hash`);
+  const manifestRow = RELEASE_MANIFEST_ROWS[member.file];
+  assert.ok(manifestRow, `${label} ${member.lod} must have a release-manifest row`);
+  const manifestSha = label === 'source' ? manifestRow.sourceSha256 : manifestRow.releaseSha256;
+  assert.equal(String(manifestSha).toUpperCase(), accepted,
+    `${label} ${member.lod} release-manifest ${label === 'source' ? 'source' : 'release'}Sha256 must equal the pinned accepted hash`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
     `${label} ${member.lod} wiring status`);
 }
