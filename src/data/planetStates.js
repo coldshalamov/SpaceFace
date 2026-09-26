@@ -1,6 +1,7 @@
 // Depth Program W1 planet-state data contract.
 // Immutable authored identities and future hooks only: no render, scanner, gameplay, or save state.
 import { hash32 } from '../core/rng.js';
+import { sectorGlobalOrigin } from './sectorCoordinates.js';
 
 const EMPTY_ASSIGNMENTS = Object.freeze([]);
 
@@ -37,7 +38,7 @@ export const PLANET_STATE_DEFS = deepFreeze({
   ),
 });
 
-function placement({ bodyId, stateId, sectorId, variantId, scannerKind, scannerLabel, gameplayHooks, challenge = null }) {
+function placement({ bodyId, stateId, sectorId, variantId, scannerKind, scannerLabel, bodyName = null, gameplayHooks, challenge = null }) {
   const seedKey = `w1-v1|${sectorId}|${bodyId}|${variantId}`;
   const row = {
     bodyId,
@@ -51,6 +52,10 @@ function placement({ bodyId, stateId, sectorId, variantId, scannerKind, scannerL
       kind: scannerKind,
       sourceId: bodyId,
       label: scannerLabel,
+      // Several bodies share one state archetype (the Crown of Thorns wears Razor-Ring tech;
+      // two dead worlds wear the Reach Scrawl). The body must name ITSELF, not the archetype —
+      // canonical placements fall back to the state label.
+      ...(bodyName ? { bodyName } : {}),
     },
     gameplayHooks,
   };
@@ -80,20 +85,20 @@ export const PLANET_STATE_ASSIGNMENTS = Object.freeze([
   placement({
     bodyId: 'planet_crown_of_thorns', stateId: 'planet_state_razor_ring',
     sectorId: 'sector_sker_haven', variantId: 'crown_of_thorns',
-    scannerKind: 'salvage', scannerLabel: 'Crown of Thorns wreck ring',
+    scannerKind: 'salvage', scannerLabel: 'Crown of Thorns wreck ring', bodyName: 'Crown of Thorns',
     gameplayHooks: ['ring_plane_kinetic_damage', 'wreck_shard_salvage', 'flagship_black_box_bounty'],
   }),
   placement({
     bodyId: 'planet_reach_scrawl_sker', stateId: 'planet_state_reach_scrawl',
     sectorId: 'sector_sker_haven', variantId: 'sker',
-    scannerKind: 'ambush', scannerLabel: 'Reach ace challenge tag',
+    scannerKind: 'ambush', scannerLabel: 'Reach ace challenge tag', bodyName: 'The Sker Scrawl',
     gameplayHooks: ['named_ace_sector_challenge', 'planetary_tag_bounty_board'],
     challenge: { trigger: 'sector:enter', aceId: 'ace_yara_no_cut' },
   }),
   placement({
     bodyId: 'planet_reach_scrawl_ashfall', stateId: 'planet_state_reach_scrawl',
     sectorId: 'sector_ashfall_reach', variantId: 'ashfall',
-    scannerKind: 'ambush', scannerLabel: 'Reach ace challenge tag',
+    scannerKind: 'ambush', scannerLabel: 'Reach ace challenge tag', bodyName: 'The Ashfall Scrawl',
     gameplayHooks: ['named_ace_sector_challenge', 'planetary_tag_bounty_board'],
     challenge: { trigger: 'sector:enter', aceId: 'ace_toll_saint_venn' },
   }),
@@ -113,18 +118,21 @@ export function planetStatesForSector(sectorId) {
   return ASSIGNMENTS_BY_SECTOR.get(String(sectorId || '')) || EMPTY_ASSIGNMENTS;
 }
 
-// A planet fills the sky: its scanner anchor hangs just outside the playable rim in sector-LOCAL
-// space (local (0,0) is the sector's galactic seat — SECTOR_GLOBAL_ORIGINS is a map transform,
-// not a sim position), and the range covers rim-to-rim so the return is live anywhere in sector.
+// A planet fills the sky: its scanner anchor hangs on a fixed ring around the sector's galactic
+// seat. Sim positions are GALACTIC-GLOBAL (player.pos lives in the same space sectorGlobalOrigin
+// offsets into — every spawned POI is translated the same way), so the anchor must be emitted in
+// global space or the return is unreachable outside Helios. The range covers the return anywhere
+// the player flies inside the sector; the ring keeps the read far.
 export const PLANET_SIGNAL_ANCHOR_DIST = 9000;
 export const PLANET_SIGNAL_RANGE = 16000;
 
-/** Deterministic far-rim anchor for one assignment — pure hash of its frozen seedKey, no sim rng. */
+/** Deterministic far-rim anchor for one assignment, in galactic-global sim space. No sim rng. */
 export function planetSignalAnchor(assignment) {
   const angle = (hash32(assignment.seedKey, 'orbit-anchor') / 4294967296) * Math.PI * 2;
+  const origin = sectorGlobalOrigin(assignment && assignment.sectorId);
   return {
-    x: Math.cos(angle) * PLANET_SIGNAL_ANCHOR_DIST,
-    z: Math.sin(angle) * PLANET_SIGNAL_ANCHOR_DIST,
+    x: origin.x + Math.cos(angle) * PLANET_SIGNAL_ANCHOR_DIST,
+    z: origin.z + Math.sin(angle) * PLANET_SIGNAL_ANCHOR_DIST,
   };
 }
 
