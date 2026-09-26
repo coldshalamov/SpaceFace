@@ -766,6 +766,70 @@ ${W} .sx-buybar .orr-lampkey small, ${W} .sx-buybar .sx-btn-primary small { disp
   ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 62px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 62px), transparent) !important; }
 }
 
+/* ================================ ROUND 14: a buying decision =================================== */
+/* For Sale: the hull as readings against the one you fly. Each value carries yours as its ghost: ice where
+   this hull gains, dim bone where it costs (the Weapon readouts' rule) */
+${W} .sx-sw-side__class { ${LABEL} margin:5px 0 0 !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-read { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 16px; margin:14px 0 0 !important; padding:0 !important; list-style:none !important; }
+${W} .sx-sw-read__cell { display:flex; flex-direction:column; gap:4px; min-width:0; margin:0; padding:0; }
+${W} .sx-sw-read__v { display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
+${W} .sx-sw-read__v b { font-family:var(--dp-face-display, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 300; font-weight:300;
+  font-size:24px; line-height:1; letter-spacing:-.005em; color:rgb(248 244 234); font-variant-numeric:tabular-nums; }
+${W} .sx-sw-read__v b small { font-size:13px; margin-left:3px; color:rgb(${BONE} / .7); letter-spacing:.02em; }
+${W} .sx-sw-read__ghost { font-style:normal; font-family:var(--dp-face-body, "Instrument Sans"); font-size:12.5px; letter-spacing:.02em; font-variant-numeric:tabular-nums; }
+${W} .sx-sw-read__ghost.is-gain { color:var(--dp-ice, #8fcbff); }
+${W} .sx-sw-read__ghost.is-loss { color:rgb(146 143 135); }
+${W} .sx-sw-read__k { ${LABEL} font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-read__vs { ${LABEL} margin:12px 0 0 !important; font-size:9.5px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .56) !important; }
+/* the hardpoints stand on the disc as sockets; their words stay here for a reader, and show where no disc is drawn */
+${W} .sx-sw-read__hp { margin:12px 0 0 !important; font-size:12.5px; line-height:1.4; color:rgb(${BONE} / .8); }
+${W} .sx-sw-read__hp .sx-spec__hp:not(:last-child)::after { content:"\\00a0\\00b7\\0020" !important; color:rgb(${BONE} / .45); }
+${W}.sx-sw--buying:has(.sx-sw__stage.has-sockets) .sx-sw-read__hp { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
+@media (max-height:800px) {
+  ${W} .sx-sw-read { gap:8px 14px; margin-top:10px !important; }
+  ${W} .sx-sw-read__v b { font-size:20px; }
+  ${W} .sx-sw-read__vs { margin-top:8px !important; }
+}
+/* the sockets on the disc: this hull's across the stroke, a socket your hull lacks in ice, yours as ghosts inside */
+${W} .sx-sw__socket { stroke:rgb(${BONE} / .8); }
+${W} .sx-sw__socket.is-gain { stroke:var(--dp-ice, #8fcbff); }
+${W} .sx-sw__socket.is-ghost { stroke:rgb(${BONE} / .5); }
+${W} text.sx-sw__socket-word { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; font-weight:650; letter-spacing:.2em; fill:rgb(${BONE} / .6); }
+/* a Buy key that cannot be pressed: its own cut outline in bone, the verb dim inside, the reason under it */
+${W} .sx-buybar [data-buyship]:disabled { position:relative !important; background:none !important; background-image:none !important; box-shadow:none !important; text-decoration:none !important;
+  color:rgb(${BONE} / .55) !important; border-color:transparent !important; opacity:1 !important; filter:none !important; cursor:default; }
+${W} .sx-buybar [data-buyship]:disabled::before, ${W} .sx-buybar [data-buyship]:disabled::after { content:none !important; display:none !important; }
+${W} .sx-buybar [data-buyship] > .sx-buykey__rim { position:absolute; overflow:visible; pointer-events:none; }
+${W} .sx-buybar [data-buyship] > .sx-buykey__rim path { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1; vector-effect:non-scaling-stroke; }
+${W} .sx-buybar.is-blocked { flex-direction:column !important; flex-wrap:nowrap !important; align-items:flex-start !important; gap:9px !important; }
+${W} .sx-buybar__why { ${LABEL} list-style:none; margin:0 !important; padding:0 !important; font-size:10px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66) !important; }
+${W} .sx-buybar__why::before, ${W} .sx-buybar__why::after { content:none !important; display:none !important; }
+/* a scrolled ladder folds its head as its foot folds; the spine and its thumb stay lit */
+${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-foot="0"][data-fold-head="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold-foot="1"] {
+  -webkit-mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent) !important;
+  mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent) !important; }
+${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold-foot="0"] {
+  -webkit-mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 40px) !important;
+  mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 40px) !important; }
+@media (min-height:801px) {
+  ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold-foot="1"] {
+    -webkit-mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 62px, #000 calc(100% - 62px), transparent) !important;
+    mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 62px, #000 calc(100% - 62px), transparent) !important; }
+  ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"][data-fold-head="1"][data-fold-foot="0"] {
+    -webkit-mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 62px) !important;
+    mask-image:linear-gradient(90deg, #000 24px, transparent 24px), linear-gradient(180deg, transparent 0, #000 62px) !important; }
+}
+/* Fleet on a tall screen: the six figures as readings, each value over its word, two to a row */
+@media (min-height:801px) {
+  ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:14px 16px !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge { display:flex !important; flex-direction:column-reverse !important; align-items:flex-start !important; justify-content:flex-end !important; gap:4px !important; padding:0 !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__num { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
+    font-size:22px !important; line-height:1 !important; text-align:left !important; justify-self:start !important; color:rgb(248 244 234) !important; white-space:nowrap; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .k-row__name { font-size:9.5px !important; letter-spacing:.16em !important; }
+  ${W} .orr-sw-readouts .sx-sw-gauge .sx-sw-ghost { font-family:var(--dp-face-body, "Instrument Sans") !important; font-variation-settings:normal !important; font-weight:400 !important; font-size:12.5px !important; margin-left:7px; }
+}
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

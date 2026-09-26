@@ -25,6 +25,7 @@ import { hullPosterUrl } from '../../hullPosters.js';
 // `.sx-sw`, `.sx-sw__canvas`, `.sx-sw__stage`, `.sx-sw__stats`, `.sx-sw-row[data-fleet|data-buy]`,
 // `.sx-hardpoint[data-spatial-slot]`, `.sx-hardpoint__copy`, `.sx-modrow[data-preview-module]`,
 // `[data-buyfit]`, `[data-buyship]`, `[data-verb]`, `.sx-sw__acquiring` are hooks the checks query.
+import { modelTruthMountFractions } from '../../../data/modelTruth.js';
 import {
   buildSlotList,
   dryRunLoadoutPresetApply,
@@ -1573,22 +1574,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const ordinal = typeOrdinal(slots, slotIndex);
     let pos = null;
     let authored = false;
-    if (slot.type === 'weapon' && visuals.hardpoints && visuals.hardpoints[ordinal]) {
-      pos = visuals.hardpoints[ordinal].pos;
+    const weaponMounts = modelTruthMountFractions(def.id, 'SOCKET_Weapon_');
+    const engineMounts = modelTruthMountFractions(def.id, 'SOCKET_Engine_');
+    if (slot.type === 'weapon' && weaponMounts[ordinal]) {
+      pos = weaponMounts[ordinal].pos;
       authored = true;
-    } else if (slot.type === 'engine' && visuals.engineMounts && visuals.engineMounts.length) {
-      const mounts = visuals.engineMounts;
-      if (slots.filter((s) => s.type === 'engine').length > 1 && mounts[ordinal]) {
-        pos = mounts[ordinal].pos;
+    } else if (slot.type === 'engine' && engineMounts.length) {
+      if (slots.filter((s) => s.type === 'engine').length > 1 && engineMounts[ordinal]) {
+        pos = engineMounts[ordinal].pos;
       } else {
-        const sum = mounts.reduce((a, m) => [a[0] + m.pos[0], a[1] + m.pos[1], a[2] + m.pos[2]], [0, 0, 0]);
-        pos = sum.map((n) => n / mounts.length);
+        const sum = engineMounts.reduce((a, m) => [a[0] + m.pos[0], a[1] + m.pos[1], a[2] + m.pos[2]], [0, 0, 0]);
+        pos = sum.map((n) => n / engineMounts.length);
       }
       authored = true;
-    } else if (slot.type === 'mining' && visuals.drill) {
-      const spread = (ordinal - (slots.filter((s) => s.type === 'mining').length - 1) / 2) * .18;
-      pos = [visuals.drill[0], visuals.drill[1] - .04, visuals.drill[2] + spread];
-      authored = true;
+    } else if (slot.type === 'mining') {
+      const miningMounts = modelTruthMountFractions(def.id, 'SOCKET_Mining_');
+      if (miningMounts[ordinal] || miningMounts[0]) {
+        pos = (miningMounts[ordinal] || miningMounts[0]).pos;
+        authored = true;
+      } else if (visuals.drill) {
+        const spread = (ordinal - (slots.filter((s) => s.type === 'mining').length - 1) / 2) * .18;
+        pos = [visuals.drill[0], visuals.drill[1] - .04, visuals.drill[2] + spread];
+        authored = true;
+      }
     } else if (slot.type === 'utility' && visuals.sensor) {
       pos = visuals.sensor;
       authored = true;
@@ -1736,6 +1744,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     tp.textContent = text;
     t.appendChild(tp);
     svgEl.appendChild(t);
+    return t;
   }
   // the caption's radius: the jig engraving's on a tall stage, tucked under the foot on a short one
   const captionRadius = (g) => g.R + (ringShort() ? 16 : 38);
@@ -1755,31 +1764,167 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   let saleRing = null;
   let saleZoomKey = '';
+  // The live hull on the glass: hulls are painted from bright copper to near-black, and the preview lights
+  // them for a bay they no longer stand in. After each change of hull, bearing or asset the render is read
+  // back once (a 96px copy) and lifted until its bright pixels read like the Pelican's, and the canvas is
+  // shifted so the silhouette's box is centred on the ring.
+  let saleLightKey = '';
+  let saleLightAt = 0;
+  let saleLightTimer = 0;
+  let saleSample = null;
+  let saleLightHull = '';
+  let saleLightTries = 0;
+  const SALE_HULL_P90 = 88;
+  // the authored hull arrives on its own clock (no projection follows it on a hull with no render):
+  // look again shortly while the picture is empty or still a stand-in
+  function relightSaleHullSoon(g) {
+    if (saleLightTimer || saleLightTries >= 24) return;
+    saleLightTries += 1;
+    saleLightTimer = setTimeout(() => {
+      saleLightTimer = 0;
+      if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g);
+    }, 500);
+  }
+  function lightSaleHull(g) {
+    if (!mount || typeof mount.frame !== 'function' || !canvas) return;
+    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; }
+    if (poster.has() && !poster.isLive()) return;
+    const view = typeof mount.getView === 'function' ? mount.getView() : { yaw: 0, zoom: 1 };
+    const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
+    const key = `${buyId}|${Math.round(g.R)}|${Number(view.yaw || 0).toFixed(2)}|${Number(view.zoom || 1).toFixed(2)}|${state}|${canvas.clientWidth}`;
+    if (key === saleLightKey) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - saleLightAt < 140) {
+      if (!saleLightTimer) saleLightTimer = setTimeout(() => { saleLightTimer = 0; if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g); }, 160);
+      return;
+    }
+    saleLightAt = now;
+    try {
+      const N = 96;
+      if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
+      const c2 = saleSample.getContext('2d', { willReadFrequently: true });
+      if (!c2) return;
+      // the drawing buffer is only readable in the task that drew it
+      mount.frame();
+      c2.clearRect(0, 0, N, N);
+      c2.drawImage(canvas, 0, 0, N, N);
+      const d = c2.getImageData(0, 0, N, N).data;
+      const lum = [];
+      let x0 = N; let y0 = N; let x1 = -1; let y1 = -1;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+          if (l < 6) continue;
+          lum.push(l);
+          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+      if (lum.length < 40) { relightSaleHullSoon(g); return; }
+      saleLightKey = key;
+      if (!/^authored/.test(String(state || ''))) relightSaleHullSoon(g);
+      lum.sort((a, b) => a - b);
+      const p90 = lum[Math.floor(lum.length * 0.9)];
+      const k = Math.max(1.2, Math.min(3.2, SALE_HULL_P90 / Math.max(1, p90)));
+      canvas.style.setProperty('filter', `brightness(${k.toFixed(2)}) contrast(1.04)`);
+      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
+      const dx = (((x0 + x1 + 1) / 2) / N) * cw - cw / 2;
+      const dy = (((y0 + y1 + 1) / 2) / N) * ch - ch / 2;
+      canvas.style.setProperty('translate', `${Math.round(-dx)}px ${Math.round(-dy)}px`);
+      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} dx ${Math.round(dx)} dy ${Math.round(dy)}`;
+    } catch (_) { /* a render that cannot be read keeps the sheet's lift */ }
+  }
   // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
   // words as marks on the upper arc, a glass under the render so the ship separates from the hangar
+  // the hull's socket kinds on the disc's lower arc, flanking the caption: left from the equator down,
+  // right from the foot up (bearings clockwise from the top)
+  const SOCKET_MARKS = [['weapon', 255], ['shield', 240], ['engine', 225], ['cargo', 210], ['mining', 150], ['utility', 135], ['thruster', 120]];
+  // a short stage's caption takes a wider share of its small dial: the marks step up away from it
+  const SOCKET_MARKS_SHORT = [['weapon', 258], ['shield', 244], ['engine', 230], ['cargo', 216], ['mining', 144], ['utility', 130], ['thruster', 116]];
   function drawSaleRing(g) {
     if (!g) {
       if (saleRing) { saleRing.remove(); saleRing = null; }
       saleZoomKey = '';
-      stageEl.classList.remove('has-salering', 'has-viewmarks');
+      saleLightKey = '';
+      stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets');
+      if (canvas && canvas.style) { canvas.style.removeProperty('filter'); canvas.style.removeProperty('translate'); }
       return;
     }
     if (!saleRing) { saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(saleRing); }
     saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
     saleRing.textContent = '';
     const f = (n) => Math.round(n * 100) / 100;
+    const short = ringShort();
     saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'orr-core sx-sw__salering-ring', 'stroke-width': 1 }));
-    saleRing.appendChild(orrSvg('path', { d: orrTicksD(g.hx, g.hy, g.R + 6, 72, { len: 4, major: 6, majorLen: 8 }), class: 'orr-core sx-sw__salering-ticks', 'stroke-width': 1 }));
+    // the arcs the scale leaves open: under the caption and under each socket group
+    const open = [];
     // the caption on the lower arc leads with the hull's name, then what the column beside does not say:
-    // its length and its role
+    // its length, and on a tall stage its role (a short stage keeps it to the name and the length)
     const def = SHIP_BY_ID.get(buyId);
     if (def) {
       const len = hullLengthM(def.id);
-      const role = (describeHullRole(def.id) || {}).roleLabel || def.role || '';
+      const role = short ? '' : ((describeHullRole(def.id) || {}).roleLabel || def.role || '');
       const text = [def.name, len ? `${len.toFixed(1)} m` : '', role].filter(Boolean).join(' \u00b7 ').toUpperCase();
-      if (text) captionArc(saleRing, g, captionRadius(g), text, 'sx-sw-salecap');
+      if (text) {
+        const rc = captionRadius(g);
+        const t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+        let span = 0;
+        try { span = (t.getComputedTextLength() / rc) * (180 / Math.PI); } catch (_) { span = 0; }
+        if (!(span > 0)) span = (text.length * 8) / rc * (180 / Math.PI);
+        open.push([180 - span / 2 - 3, 180 + span / 2 + 3]);
+      }
     }
+    // the sockets: this hull's across the stroke (one your hull lacks in ice), yours as ghost ticks inside
+    // it, each kind named beyond its ticks by the word's nearest corner (the view marks' rule)
+    const mine = activeOwnedDef();
+    const compare = !!(def && mine && mine.id !== def.id);
+    let socketPaths = { sale: '', gain: '', ghost: '' };
+    if (def) {
+      for (const [type, bearing] of (short ? SOCKET_MARKS_SHORT : SOCKET_MARKS)) {
+        const n = ((def.slots && def.slots[type]) || []).length;
+        const m = compare ? ((mine.slots && mine.slots[type]) || []).length : n;
+        const count = Math.max(n, m);
+        if (!count) continue;
+        const stepPx = count > 1 ? Math.min(short ? 5 : 6, (g.R * (10 * Math.PI / 180)) / (count - 1)) : 0;
+        const stepDeg = (stepPx / g.R) * (180 / Math.PI);
+        for (let i = 0; i < count; i++) {
+          const a = bearing + (i - (count - 1) / 2) * stepDeg;
+          if (i < n) {
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - 4, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 7, a);
+            socketPaths[compare && i >= m ? 'gain' : 'sale'] += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+          }
+          if (compare && i < m) {
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - 11, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 6, a);
+            socketPaths.ghost += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+          }
+        }
+        const half = ((count - 1) / 2) * stepDeg;
+        open.push([bearing - half - 2.5, bearing + half + 2.5]);
+        // the word, seated by its corner nearest the ring at R + 12
+        const [px, py] = orrPolar(g.hx, g.hy, g.R + 12, bearing);
+        const left = Math.sin((bearing * Math.PI) / 180) < 0;
+        const word = orrSvg('text', { x: f(px), y: f(py), class: `sx-sw__socket-word${n ? '' : ' is-none'}`, 'text-anchor': left ? 'end' : 'start', 'dominant-baseline': 'hanging' });
+        word.textContent = (SLOT_LABEL[type] || type).toUpperCase();
+        saleRing.appendChild(word);
+      }
+    }
+    // the scale: 72 ticks, open where the caption and the sockets stand
+    const shut = (a) => open.some(([a0, a1]) => a >= a0 && a <= a1);
+    let scale = '';
+    for (let i = 0; i < 72; i++) {
+      const a = i * 5;
+      if (shut(a)) continue;
+      const l = i % 6 === 0 ? 8 : 4;
+      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 6 - l, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 6, a);
+      scale += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+    }
+    if (scale) saleRing.appendChild(orrSvg('path', { d: scale.trim(), class: 'orr-core sx-sw__salering-ticks', 'stroke-width': 1 }));
+    if (socketPaths.ghost) saleRing.appendChild(orrSvg('path', { d: socketPaths.ghost.trim(), class: 'orr-core sx-sw__socket is-ghost', 'stroke-width': 1 }));
+    if (socketPaths.sale) saleRing.appendChild(orrSvg('path', { d: socketPaths.sale.trim(), class: 'orr-core sx-sw__socket', 'stroke-width': 1.4 }));
+    if (socketPaths.gain) saleRing.appendChild(orrSvg('path', { d: socketPaths.gain.trim(), class: 'orr-core sx-sw__socket is-gain', 'stroke-width': 1.4 }));
+    stageEl.classList.toggle('has-sockets', !!def);
     stageEl.classList.add('has-salering');
+    lightSaleHull(g);
     // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale):
     // at zoom 1 its bounding sphere fills 0.95 of the ring, so the hull stays inside it at every bearing
     const zoomKey = `${buyId}|${Math.round(g.R)}`;
@@ -1855,7 +2000,42 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const w = rack.offsetWidth || 300;
     const rh = rack.offsetHeight || 29;
     const top = ringShort() && host !== 'dock' ? sr.bottom - rh + 4 : sr.top + verbRowTop(g.W, g.H);
-    rack.style.cssText = `position:fixed !important; left:${Math.round(sr.left + g.hx - w / 2)}px !important; top:${Math.round(top)}px !important; margin:0 !important; z-index:4;`;
+    const left = Math.round(sr.left + g.hx - w / 2);
+    rack.style.cssText = `position:fixed !important; left:${left}px !important; top:${Math.round(top)}px !important; margin:0 !important; z-index:4;`;
+    // centre the words on the dial, not the box: an empty slot's gap or the last word's tracking must not
+    // pull the row off the ring's axis
+    const ink = verbInk(rack);
+    if (ink) {
+      const shift = Math.round(sr.left + g.hx - (ink.left + ink.right) / 2);
+      if (shift) rack.style.setProperty('left', `${left + shift}px`, 'important');
+    }
+  }
+  // the lit extent of the verb row: from the first verb's chevron to the last glyph of the last word
+  function verbInk(rack) {
+    const verbs = [...rack.querySelectorAll('[data-verb]')].filter((b) => b.offsetWidth > 0 && getComputedStyle(b).visibility !== 'hidden');
+    if (!verbs.length) return null;
+    let left = Infinity; let right = -Infinity; let trail = 0;
+    for (const b of verbs) {
+      const r = b.getBoundingClientRect();
+      left = Math.min(left, r.left);
+      const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        if (!t.nodeValue || !t.nodeValue.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(t);
+        for (const rr of range.getClientRects()) {
+          if (rr.width > 0 && rr.right > right) { right = rr.right; trail = parseFloat(getComputedStyle(t.parentElement || b).letterSpacing) || 0; }
+        }
+      }
+    }
+    if (!(right > left)) return null;
+    return { left, right: right - trail };
+  }
+  // a scrolled ladder folds at the end that has more beyond it: its head once rows hang above, its foot while rows hang below
+  function syncListFold() {
+    const max = Math.max(0, railListEl.scrollHeight - railListEl.clientHeight);
+    railListEl.setAttribute('data-fold-head', max > 6 && railListEl.scrollTop > 2 ? '1' : '0');
+    railListEl.setAttribute('data-fold-foot', max > 6 && railListEl.scrollTop < max - 2 ? '1' : '0');
   }
   let jig = null;
   let jigHost = null;
@@ -2352,7 +2532,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     dressRail();
     syncScrollExtent(railListEl);
+    syncListFold();
     requestAnimationFrame(updateRailControls);
+    requestAnimationFrame(syncListFold);
   }
 
   function selectRailButton(button, { focus = false } = {}) {
@@ -2408,24 +2590,42 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
-      const buyLabel = availability.hullEnabled ? (afford ? 'Buy ship' : 'Not enough credits') : availability.hullLabel;
-      // The stage-right column: the hull's name, its price as the hero number, the spec as rows,
-      // Buy as one primary word.
+      const canBuy = afford && availability.hullEnabled;
+      // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
+      const whyNot = !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(def.price - credits)} cr short`);
+      const buyAria = canBuy ? 'Buy ship' : `Buy ship, ${whyNot}`;
+      // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
+      // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
+      // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
+      const mine = activeOwnedDef();
+      const compare = !!(mine && mine.id !== def.id);
+      const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
+        const v = Number(value) || 0; const o = Number(ownValue) || 0;
+        let ghost = '';
+        if (compare && v !== o) {
+          const better = lowerIsBetter ? v < o : v > o;
+          ghost = `<i class="sx-sw-read__ghost ${better ? 'is-gain' : 'is-loss'}">\u2190 ${fmt(o)}</i>`;
+        }
+        return `<li class="sx-sw-read__cell"><span class="sx-sw-read__v"><b>${fmt(v)}${unit ? `<small>${unit}</small>` : ''}</b>${ghost}</span><span class="sx-sw-read__k">${label}</span></li>`;
+      };
       sideEl.innerHTML =
         `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
+        `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
         `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${def.price > 0 ? fmt(def.price) : 'Starter'}</span><span class="k-hero__w">${def.price > 0 ? 'credits' : 'hull'}</span></div>` +
-        `<ul class="k-rows sx-spec">` +
-          specRow('Class', (def.role || 'ship') + ' · T' + def.tier) +
-          specRow('Base hull', fmt(def.hull)) + specRow('Base shield', fmt(def.shield)) +
-          specRow('Base cargo', fmt(def.cargo) + ' u') + specRow('Mass', fmt(def.mass) + ' t') +
-          specRow('Hardpoints', slotSummary || '—') +
+        `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
+          reading('Hull', def.hull, mine && mine.hull, '') + reading('Shield', def.shield, mine && mine.shield, '') +
+          reading('Cargo', def.cargo, mine && mine.cargo, 'u') + reading('Mass', def.mass, mine && mine.mass, 't', true) +
         `</ul>` +
-        `<ul class="k-words k-words--row sx-buybar">` +
+        (compare ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)}</p>` : '') +
+        `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
+        `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}${afford && availability.hullEnabled ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>`) +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">Buy ship${canBuy ? ` <small>${fmt(def.price)} cr</small>` : ''}</button></li>` +
+              (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
         `</ul>`;
       dressSide();
+      drawBuyRim();
       const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
       if (priceN && def.price > 0) rollTo(priceN, def.price);
       return;
@@ -2553,6 +2753,34 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return { sockets, cells, stock, credits: Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0) };
   }
 
+  // the hull the player flies: the For Sale readings and sockets are read against it
+  function activeOwnedDef() {
+    const o = owned();
+    const idx = Number(ctx.state && ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+    const ship = o[idx] || o[0];
+    return ship ? SHIP_BY_ID.get(ship.defId) || null : null;
+  }
+  // a Buy key that cannot be pressed is its own cut outline (the 45 degree corner the lit key carries) in
+  // bone, the verb dim inside it
+  function drawBuyRim() {
+    const key = sideEl.querySelector('.sx-buybar [data-buyship]:disabled');
+    if (!key) return;
+    const place = () => {
+      const w = key.offsetWidth || 0; const h = key.offsetHeight || 0;
+      if (w < 20 || h < 12) return;
+      let rim = key.querySelector(':scope > .sx-buykey__rim');
+      if (!rim) { rim = orrSvg('svg', { class: 'sx-buykey__rim', 'aria-hidden': 'true', focusable: 'false' }); key.appendChild(rim); }
+      rim.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      // the rim covers the key's border box (the lit key's field fills its border too)
+      const cs = getComputedStyle(key);
+      Object.assign(rim.style, { left: `${-(parseFloat(cs.borderLeftWidth) || 0)}px`, top: `${-(parseFloat(cs.borderTopWidth) || 0)}px`, width: `${w}px`, height: `${h}px` });
+      const c = 10;
+      rim.innerHTML = '';
+      rim.appendChild(orrSvg('path', { d: `M 0.5 0.5 L ${w - c - 0.5} 0.5 L ${w - 0.5} ${c + 0.5} L ${w - 0.5} ${h - 0.5} L 0.5 ${h - 0.5} Z` }));
+    };
+    place();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(place);
+  }
   function specRow(k, v) { return `<li class="k-row k-row--static sx-kv"><span class="k-row__name k-62">${k}</span><span class="k-row__num">${v}</span></li>`; }
 
   function moduleRole(def) {
@@ -3213,6 +3441,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     railListEl.scrollBy({ left: direction * Math.max(220, railListEl.clientWidth * .72), behavior: 'smooth' });
   });
   railListEl.addEventListener('scroll', updateRailControls, { passive: true });
+  railListEl.addEventListener('scroll', syncListFold, { passive: true });
 
   railListEl.addEventListener('keydown', (ev) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(ev.key)) return;
