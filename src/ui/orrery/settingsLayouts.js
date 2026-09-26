@@ -382,9 +382,10 @@ ${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrume
 ${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size:10.5px; letter-spacing:.2em; color:rgb(${HOT}); }
 ${C} .of-credits-notice .orr-cr-unfold::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice .orr-cr-unfold:hover { color:rgb(255 253 248); }
-${C} .of-credits-notice .orr-cr-unfold:focus-visible { color:var(--dp-hand-hot, #ffd98c); outline:none !important; box-shadow:none !important; }
+${C} .of-credits-notice .orr-cr-unfold:focus-visible { color:rgb(255 253 248); outline:none !important; box-shadow:none !important; }
 ${C} .of-credits-notice .orr-cr-unfold:focus { outline:none !important; }
-${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 8px rgb(255 217 140 / .7); }
+/* on Credits the one amber is the orrery's Hand: focus is a vertical segment of bone light */
+${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:rgb(255 253 248); box-shadow:0 0 8px rgb(255 250 236 / .6); }
 ${C} .of-credits-notice .orr-cr-full { margin-top:10px; }
 ${C} .of-credits-notice .orr-cr-full[hidden] { display:none !important; }
 ${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size:10.5px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
@@ -404,7 +405,7 @@ ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size:10px !important; letter-spacing:.2em !important;
   color:rgb(${BONE} / .58) !important; }
-${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
+${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
 
 @media (max-width:1500px) {
   ${C} { grid-template-columns:minmax(180px, 210px) minmax(0, 1fr) !important; }

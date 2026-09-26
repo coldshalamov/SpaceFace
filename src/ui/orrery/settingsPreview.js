@@ -225,7 +225,7 @@ const CSS = `
 .orr-set-hud__fovread.is-on { opacity:1; }
 /* a narrow stage: the fan tucks into the top-right corner, over the keys */
 .orr-set-hud.is-compact .orr-set-hud__fov { width:112px; height:84px; }
-.orr-set-hud.is-compact .orr-set-hud__fovread { top:0; right:118px; width:auto; }
+.orr-set-hud.is-compact .orr-set-hud__fovread { top:54px; right:118px; width:auto; }
 .orr-set-hud.is-compact .orr-set-hud__fovread b { font-size:22px; }
 .orr-set-hud__fovread b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-weight:300; font-size:26px; line-height:1; color:rgb(248 244 234);
   display:inline-flex; font-variant-numeric:tabular-nums; }
