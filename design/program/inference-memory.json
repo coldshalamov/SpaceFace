@@ -1753,6 +1753,19 @@
       "integration": "live",
       "commit": "bb243366f",
       "verification": "focused_green"
+    },
+    {
+      "id": "INFERENCE-24",
+      "date": "2026-09-26",
+      "wf": "WF-13",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "barks.js authored a complete distress situation for all 13 registers (52 dying-transmission lines) but BARK_SITUATIONS never listed it and no death path existed — every NPC hull exploded in radio silence. entity:killed now routes through _speakVictimDistress: the victim keys open once with its register last line, gated to kills the player caused, player-hostile victims, or deaths inside the table authority radius so far-side attrition stays silent. BARK_EVENT_SITUATIONS keeps the generated-WAV index contract frozen; barkVoice normalization accepts the event set so a mayday is not laundered into a scan receipt.",
+      "fingerprint": "verb=hear,subject=distress-bark,sector=any,layer=radio,tempo=combat-tail,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "8de1b6963",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
