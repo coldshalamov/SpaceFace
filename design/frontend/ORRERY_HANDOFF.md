@@ -26,26 +26,31 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 4. The memory note `orrery-is-the-frontend-authority` (loaded automatically in this project) has the
    same traps with history.
 
-## 2. Status board (2026-09-25 late night)
+## 2. Status board (2026-09-26 morning)
+
+Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a) no thin wireframe / generic
+elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
+a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
+that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
 
 | Screen | State | Last score | Composition file | What is left |
 |---|---|---|---|---|
 | Flight HUD (bench `orrery-flight`) | Phase 0a passed; live via `hudAdapter.js` | 8 | `flightPreview.js`, `hudSkin.js` | Live-route pass: ring brightness, orphan hairlines, objective dial. Radar/lock |
 | Title / main menu | **Passed** (r3 8.1): the emblem behind the logotype, one knockout round the name and kicker, the head lifted over the dial's pool | **8.1 (r3)** | `arcRail.js` (`place`, `clearOf`), `screenLayouts.js`, `mainMenu.js` | A planet node cut by the knockout's top edge at 1920 (cosmetic) |
 | Pause | **Passed** (r3 8.0): seven stops, the Hand's row lights its legend, a smaller dial clear of the key strip, the brief's readings in phosphor | **8.0 (r3)** | `arcRail.js` (`grouped`), `pause.js`, `screenLayouts.js` | The pentagon rock on the dial face; small labels at 2560 |
-| New game | r1-rebuild scored 7.1 (the title plate put a hauler behind the chosen hull); r2 landed its own bare backdrop (render_title_backdrop.py `bare` → backdrop-newgame.jpg), the hull at zoom 1.55, the craft items | 7.1 (r1 rebuild) | `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | r2 in critic (`frontdoor-r4-critic.txt`) |
+| New game | **APPROVED** (r7 8.2, both owner criteria): Spin the yard (`yardCarousel.js`, mass-weighted drag, stat arcs sweep between hulls), the difficulty stop-arc, the hull ring, the launch beat | **8.2 (r7)** | `yardCarousel.js`, `hullRing.js`, `stopDial.js`, `newGame.js`, `screenLayouts.js` | The form column's empty band (270 px at 1920); the Pelican poster is blockout (asset job) |
 | Crucible door / armory / refit / results | **Passed** | 8 / 8 / 8 / 8 | `screenLayouts.js`, `slotJig.js`, `hullSchematic.js`, `deathDial.js` | Door: HINGE crowding at 1280, launch glow. Refit still carries key caps (HOLD F·X, ENTER) — the station retired caps for dotted words; align |
 | Station shell (all 7 tabs share it) | **Passed** | 8 | `stationLayouts.js` | Ring swing on tab arrival. Every tab critic names the shell's amber tab-rail cursor as a second amber mark: make it bone or phosphor |
 | Station Market | **Passed** | 8 | `marketLayouts.js` | 1280: dial over bright backdrop. Name the one reason a trade is unavailable |
-| Station Shipworks (dock host) | r12 scored 7.3 (the 720 For Sale disc is the model; 1920 still a photograph); r13 (the 1920 stage as the 720 one, one ring box for both modes, readout wraps, one verb row, view marks on the ring) is with a builder | 7.3 (r12) | `shipworks.js`, `shipworksLayouts.js` | Score r13 with the same critic |
+| Station Shipworks (dock host) | r15 7.9 (the ring read as a wire); r16 landed the inward bezel annulus (band lum 69 on glass 10, 126 turning), fit cap 82% of R, mass in the turn, Fleet's Exploded Schematic | 7.9 (r15) | `shipworks.js`, `shipworksLayouts.js` | r16 with its critic (`sw-r16-critic.txt`) |
 | Station Missions | **Passed** (r13 8.07) — r14 landed the critic's defects (the landing tick is two notches outside the berth ring, whole-pixel tick phases, 8px air round the destination, leaders cross no name) | **8.07 (r13)** | `routeOrrery.js`, `contracts.js`, `stationTabsLayouts.js` | Beyond 8: the ice pulse along the tether; section ticks at the glyph centre |
 | Station Bar | **Passed** (r13 8.1) — r14 landed the polish (the spine clamped to its box, arm/bead/tick from one number) | **8.1 (r13)** | `waveform.js`, `bar.js`, `stationTabsLayouts.js` | Beyond 8: content in the lower centre (the contact's standing as an arc under the replies) |
 | Station Factions | **Passed** (r10 8.0) — then r11 landed the critic's margin items (graduations and future rung words over 4.5:1, the next rung's word above its detail, the cursor broken across the tier word) | **8.0 (r10)** | `crestOrbit.js`, `factions.js`, `stationTabsLayouts.js` | Beyond 8: the chosen crest large on a Tilt Plate with its lore scroll-revealed (§6); the 1280 scale widened for tier gaps |
 | Station Industry | **Passed** (r12 8.1) — r13 landed the must-fix (a list that fits reports it fits) and the polish (header separator, ticks on names, augment rungs name what they consume) | **8.1 (r12)** | `chainBeam.js`, `industry.js`, `lampKey.js` (rim on whole pixels), `stationTabsLayouts.js` | — |
 | Station Ledger | **Passed** (r8 8.0, r9 8.1) | **8.1 (r9)** | `ledgerTape.js`, `stationTabsLayouts.js`, `ledger.js` (the reading's figure rolls) | Nits only (leader mid-run weight under the reading's glass, the 1280 axis column). Motion: a posting receipt drawing its stem with settle |
 | THE SHIP (F2, flight host of the Shipworks stage) | Old sheet | — | `shipworksLayouts.js` scopes the dock host only | Extend the jig composition to `#sf-ship` |
-| Chart / galaxy map | Not started | — | — | ORRERY §6 Chart: sectors on orbital tracks, lanes as beams, lens, route as the amber beam |
-| Meta (tech tree, codex, mission log, settings) | Not started | — | — | ORRERY §6 Meta |
+| Chart / galaxy map | Builder r1 (`chartInstruments.js`, `chartLayouts.js`, `galaxyMap.js` presentation layer; signature "Lay the line"). 24 sector tokens rendered in Blender: `assets/ui/deckplate/tools/render_sector_tokens.py` (two passes) + `finish_sector_tokens.mjs` → `assets/ui/generated/chart/<sector id>.webp` | — | as named | Critic after the builder's round |
+| Meta | Settings 7.5 / Credits 7.3 (r1) → r2 in critic; Save/Load 7.4 / Game Over 7.0 → r11 builder (berth object, sortie timeline, ring bug); Codex 7.0 / Mission Log 6.2 → r3 landed (the plate's ring is the dial; the trace drives a route band); Research 7.2 / Achievements 6.3 → builder (star bodies + ignite; the Medal Orrery landed) | see left | `settingsLayouts.js`, `saveLayouts.js`, `saveFilmstrip.js`, `saveBerth.js`, `saveSortieTape.js`, `archiveLayouts.js`, `archiveInstruments.js`, `constellation*.js` | Each back to its critic |
 | Loading | Not started | — | `bootRing.js` exists | Emblem dial; the load's real stages as ticks; no developer copy |
 | Comms / radials / confirm dialogs / toasts / Asteroid Works | Not started | — | — | Audit each with the same eye. The trade toast overprints UNDOCK at 1280 (Ledger critic) |
 
@@ -187,6 +192,14 @@ structural item got skipped. The revised loop:
 Reports live beside the session scratchpad as `<tab>-r<n>-critic.txt`.
 
 ## 7. Ranked backlog — do these in order, each to a persistent-critic pass
+
+**2026-09-26 update (supersedes the order below where they differ):** New Game APPROVED 8.2. The station
+weight sweep landed (every tab's rings, tracks and spines measured >= 2:1; 15 commits 73b5a87aa…138988b43),
+so the five station tabs + shell + Title + Pause + Crucible are due a re-score under the owner criteria. In
+flight: Shipworks r16, Settings/Credits r2 (critics); Save/Load/Game Over, Codex/Mission Log,
+Research/Achievements, Chart, Help (builders). Next to dispatch: Footprint (`scratchpad/footprint-brief.md`),
+THE SHIP, Range, Automation, Replay/Clips, then Asteroid Works/Drill/Base, Loading, flight HUD weight
+(perf-gated). Codex imagen is locked until 2026-09-29; generated art until then is Blender (see the Chart row).
 
 Scores late on 2026-09-25: **Ledger 8.1, Factions 8.0, Missions 8.07, Industry 8.1, Bar 8.1 — all PASSED**;
 Shipworks 7.3 (r12, r13 with a builder); Title 7.1 / Pause 6.7 / New game 6.4 were round-1 scores before
