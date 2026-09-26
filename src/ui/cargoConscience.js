@@ -105,6 +105,25 @@ const GLYPHRASE = Object.freeze({
   faction_dmc: Object.freeze({ warm: 'Drift approving', cool: 'Drift wary' }),
 });
 
+/** Authored phrase for one (faction, lean) pair — the same wording the dominant glyph uses. */
+export function conscienceLeanLabel(factionId, lean) {
+  return (GLYPHRASE[factionId] && GLYPHRASE[factionId][lean]) || `${factionId} ${lean}`;
+}
+
+/**
+ * holdLeanChips(cargo) -> [{factionId, lean, magnitude, label}] — every lean, not just the
+ * dominant, each already resolved to its authored phrase. The cargo panel renders one chip per
+ * entry; a neutral hold returns [] (renders nothing — never a fake label). PURE.
+ */
+export function holdLeanChips(cargo) {
+  return holdSentiment(cargo).leans.map((l) => ({
+    factionId: l.factionId,
+    lean: l.lean,
+    magnitude: l.magnitude,
+    label: conscienceLeanLabel(l.factionId, l.lean),
+  }));
+}
+
 // ── registry SYSTEMS-only entry (no update; refreshes additive UI state; zero voice) ───────────
 //
 // The conscience refreshes state.ui.cargoConscience on cargo change + dock so the cargo panel can

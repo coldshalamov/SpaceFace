@@ -40,6 +40,7 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
+import { holdSentiment, conscienceLeanLabel } from './cargoConscience.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
@@ -2768,6 +2769,8 @@ export function createHud(ctx, alerts) {
     font-weight: bold;
     color: var(--visor-cyan);
   }
+  .sf-cargo-lean--warm { color: var(--visor-cyan); }
+  .sf-cargo-lean--cool { color: var(--warn); }
   .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
   .sf-cargo-panel__close:hover,
   .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
@@ -3153,6 +3156,9 @@ export function createHud(ctx, alerts) {
         <div class="sf-cargo-gauge-item" id="sf-gauge-risk">
           <span class="sf-gauge-label">SCAN RISK: <span class="sf-cargo-summary-risk">0%</span></span>
         </div>
+        <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
+          <span class="sf-gauge-label">HOLD READS: <span class="sf-cargo-summary-lean"></span></span>
+        </div>
       </div>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
     </div>
@@ -3485,6 +3491,29 @@ export function createHud(ctx, alerts) {
     }
     applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
     cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
+
+    // HOLD READS — the Cargo Conscience's precomputed moral leans, surfaced as chips. A lean is
+    // a read, never a rep delta; a neutral hold renders nothing rather than a fake label. The
+    // additive state is authoritative when refreshed; holdSentiment covers bench/fresh mounts.
+    const leanHost = cargoPanel.querySelector('.sf-cargo-summary-lean');
+    if (leanHost) {
+      const cc = state.ui && state.ui.cargoConscience;
+      const leans = cc && Array.isArray(cc.leans) ? cc.leans : holdSentiment(c).leans;
+      leanHost.replaceChildren();
+      const labels = [];
+      leans.forEach((l, i) => {
+        if (!l || (l.lean !== 'warm' && l.lean !== 'cool')) return;
+        const label = conscienceLeanLabel(l.factionId, l.lean);
+        labels.push(label);
+        if (i) leanHost.appendChild(document.createTextNode(' · '));
+        const chip = document.createElement('span');
+        chip.className = `sf-cargo-lean sf-cargo-lean--${l.lean}`;
+        chip.textContent = label;
+        leanHost.appendChild(chip);
+      });
+      leanHost.parentElement.setAttribute('aria-label',
+        labels.length ? `Hold reads: ${labels.join(', ')}` : 'Hold reads: neutral');
+    }
 
     const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
     const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
