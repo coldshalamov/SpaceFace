@@ -29,6 +29,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 2.1,
     spin: 0.32,
     radius: 22,
+    // The yard tug is the one set piece with body agency: the player's existing rope/shove can
+    // move it, and worldRecords carries that same body identity across sector residency.
+    physicalBody: Object.freeze({ mass: 180 }),
     why: 'She set down for a refit the yard never finished; she turns a degree a season.',
   }),
   Object.freeze({

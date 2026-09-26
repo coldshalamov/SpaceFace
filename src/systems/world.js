@@ -2418,15 +2418,67 @@ export const world = {
         x: anchorPos.x + oneOff.offsetLocal.x,
         z: anchorPos.z + oneOff.offsetLocal.z,
       };
-      const ent = this._spawnPlaceProp(active, sector, oneOff.placeId, pos, {
-        rot: oneOff.rot,
-        name: oneOff.name,
-        radius: oneOff.radius,
-        // The PQ-020 structural-cost census classifies additive dressing by data flag; without
-        // it the authored one-offs would be counted as core sector entities.
-        worldOneOff: true,
-      });
-      if (ent && oneOff.spin) this._trackOneOffSpin(active, ent.id, oneOff.spin);
+      let ent = null;
+      if (oneOff.physicalBody) {
+        const identityKey = `worldOneOff:${oneOff.id}`;
+        const seed = (this.state.meta && this.state.meta.seed) || 1;
+        const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, identityKey);
+        const records = ensureWorldRecords(this.state.world);
+        const durable = records.byId[recordId];
+        // A player-destroyed one-off is history. Keep its permanent tombstone from turning into
+        // a fresh copy when the sector becomes resident again.
+        if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
+        ent = findLiveRecordEntity(this.state, recordId);
+        if (ent) {
+          this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else {
+          const mass = oneOff.physicalBody.mass;
+          ent = this.helpers.spawnEntity({
+            type: 'wreck',
+            pos,
+            vel: { x: 0, z: 0 },
+            rot: oneOff.rot,
+            angVel: oneOff.spin || 0,
+            radius: oneOff.radius,
+            mass,
+            hull: 1000,
+            hullMax: 1000,
+            collides: true,
+            physicsBody: { radius: oneOff.radius, mass },
+            flags: { noInterp: true },
+            data: {
+              placeId: oneOff.placeId,
+              placeScale: 1,
+              name: oneOff.name,
+              wreckClass: 'yard_tug',
+              worldOneOff: true,
+              oneOffId: oneOff.id,
+              worldRecordId: recordId,
+              identityKey,
+              homeSectorId: sector.id,
+              sectorId: sector.id,
+              visualRadius: oneOff.radius,
+              placeRadius: oneOff.radius,
+              masslineTetherable: true,
+            },
+          });
+          if (ent) this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        }
+        if (ent) active.dressing.push({
+          id: ent.id, placeId: oneOff.placeId, pos: { x: ent.pos.x, z: ent.pos.z },
+          paletteClass: paletteClassForSector(sector),
+        });
+      } else {
+        ent = this._spawnPlaceProp(active, sector, oneOff.placeId, pos, {
+          rot: oneOff.rot,
+          name: oneOff.name,
+          radius: oneOff.radius,
+          // The PQ-020 structural-cost census classifies additive dressing by data flag; without
+          // it the authored one-offs would be counted as core sector entities.
+          worldOneOff: true,
+        });
+        if (ent && oneOff.spin) this._trackOneOffSpin(active, ent.id, oneOff.spin);
+      }
       for (const part of oneOff.cluster ? oneOff.cluster.props : EMPTY_ONE_OFF_PARTS) {
         this._spawnPlaceProp(active, sector, part.placeId, {
           x: pos.x + part.dx,
@@ -2435,6 +2487,34 @@ export const world = {
       }
     }
     this._spawnHeliosRopeCache(sector, active);
+  },
+
+  _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
+    if (!ent) return ent;
+    const mass = oneOff.physicalBody.mass;
+    ent.type = 'wreck';
+    ent.collides = true;
+    ent.radius = oneOff.radius;
+    ent.mass = mass;
+    ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),
+      radius: oneOff.radius, mass };
+    ent.data = Object.assign({}, ent.data, {
+      placeId: oneOff.placeId,
+      placeScale: 1,
+      name: oneOff.name,
+      wreckClass: 'yard_tug',
+      worldOneOff: true,
+      oneOffId: oneOff.id,
+      worldRecordId: recordId,
+      identityKey,
+      homeSectorId: sector.id,
+      sectorId: sector.id,
+      visualRadius: oneOff.radius,
+      placeRadius: oneOff.radius,
+      masslineTetherable: true,
+    });
+    this._stampHomeSector(ent, sector.id);
+    return ent;
   },
 
   // The Candle Fleet cache is a live cargo pod, not dressing: dressing cannot be roped, and a

@@ -97,7 +97,11 @@ function bootOneOffHarness() {
         type: spec.type,
         pos: { ...spec.pos },
         rot: spec.rot,
+        angVel: spec.angVel,
         radius: spec.radius,
+        mass: spec.mass,
+        collides: spec.collides,
+        physicsBody: spec.physicsBody && { ...spec.physicsBody },
         data: { ...spec.data },
       };
       spawned.push(ent);
@@ -114,7 +118,7 @@ function bootOneOffHarness() {
 }
 
 test('the world spawns the one-offs verbatim on sector activation, and spins the tug', () => {
-  const { system, dressingRows } = bootOneOffHarness();
+  const { system, dressingRows, entities } = bootOneOffHarness();
 
   // Ceres Belt: the tug, the shrine, the ram, and the pod-field cluster (1 hero + 7 shells).
   const ceres = SECTOR_BY_ID.get('sector_ceres_belt');
@@ -125,8 +129,11 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
     assert.equal(prop.data.worldOneOff, true,
       'every one-off prop carries the additive-dressing flag the PQ-020 census classifies by');
   }
-  const tug = dressingRows().find((e) => e.data.name === 'The Long Berth — an abandoned yard tug');
-  assert.ok(tug, 'the abandoned tug spawns');
+  const tug = [...entities.values()].find((e) => e.data.name === 'The Long Berth — an abandoned yard tug');
+  assert.ok(tug, 'the abandoned tug spawns as a live physical body');
+  assert.equal(tug.type, 'wreck');
+  assert.equal(tug.collides, true);
+  assert.equal(tug.data.masslineTetherable, true);
   const station = ceres.stations.find((s) => s.id === 'station_ceres');
   assert.equal(tug.pos.x, station.pos.x - 260, 'the tug sits exactly where the data says, no rng');
   assert.equal(tug.pos.z, station.pos.z + 240);
@@ -136,15 +143,13 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   assert.equal(shrine.pos.x, station.pos.x + 980, 'the shrine hangs across the refinery approach');
   assert.equal(shrine.pos.z, station.pos.z + 1140);
 
-  // The spin is tracked and the tick advances exactly the tracked prop — one second moves the
-  // tug by its spin and NOTHING else (snapshot every prop's rot before the tick).
-  assert.equal(activeCeres.worldOneOffSpins.length, 1, 'only the tug carries a spin in Ceres');
-  assert.equal(activeCeres.worldOneOffSpins[0].id, tug.id);
+  // The tug's authored spin is angular velocity owned by physics; it is no longer a render-only
+  // mutation in the dressing spin list.
+  assert.equal(tug.angVel, 0.32);
+  assert.equal(activeCeres.worldOneOffSpins, undefined, 'the physical tug is not double-spun as dressing');
   const rotBefore = new Map(dressingRows().map((p) => [p.id, p.rot]));
   system._tickWorldOneOffSpin(1, { world: { activeSector: activeCeres } });
-  assert.ok(Math.abs(tug.rot - (rotBefore.get(tug.id) + 0.32)) < 1e-9, 'one second advances the tug by its spin');
   for (const prop of dressingRows()) {
-    if (prop === tug) continue;
     assert.equal(prop.rot, rotBefore.get(prop.id),
       `${prop.data.name || prop.data.placeId} must never be spun`);
   }
