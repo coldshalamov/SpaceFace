@@ -19444,7 +19444,7 @@
       "priority": 9832,
       "title": "Degenerate flee-cell egress",
       "kind": "implementation",
-      "state": "planned",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19452,8 +19452,12 @@
         "src/systems/tacticalAI.js"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Low-hull morale flee plus 960 WU egress stacks when the pilot cannot finish the wing; bound the degenerate cells without removing authored flee behaviour."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-206.02-REPORT.md"
+      ],
+      "brief": "Low-hull morale flee plus 960 WU egress stacks when the pilot cannot finish the wing; bound the degenerate cells without removing authored flee behaviour.",
+      "implementedAt": "2026-09-26",
+      "note": "2026-09-26: egress bound landed (egressExit.js + wingMorale fsm restore, b0281d014); 10/10 focused + 69/69 neighbor tests green, sim hash at baseline. Owed before done: representative-encounter route proof on the headed stack (host contention)."
     },
     {
       "id": "PQ-206.03",
