@@ -862,10 +862,10 @@ export const pauseScreen = {
     mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', bank: true, icon: 'clock' });
+    mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', bank: true, icon: 'record' });
+    mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
