@@ -47,7 +47,10 @@ import {
   createStrictElectronApplicationIssueTracker,
 } from './alphaLiveBaselineElectronContracts.mjs';
 import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
-import { runBrowserPublicRoute } from './alphaLiveBaselineRoute.mjs';
+import {
+  AUTHORED_FLIGHT_READY_BUDGET_MS,
+  runBrowserPublicRoute,
+} from './alphaLiveBaselineRoute.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
 import {
   PERFORMANCE_REGISTERED_SCENARIO_IDS,
@@ -182,9 +185,8 @@ export async function runReleaseSoakProbe({
   viewport = DEFAULT_VIEWPORT,
   outputRoot = path.join(root, '.devshots', 'spec2'),
   taskId = `release-soak-${runtime}`,
-  // 240s: packaged-Electron new-game loads measured 123s quiet / >150s contended; see
-  // alphaLiveBaselineRoute.mjs for the budget rationale.
-  flightTimeoutMs = 240_000,
+  // Shared launch-readiness budget; see alphaLiveBaselineRoute.mjs for the rationale.
+  flightTimeoutMs = AUTHORED_FLIGHT_READY_BUDGET_MS,
   dockTimeoutMs = 90_000,
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
@@ -5958,9 +5960,8 @@ async function runPerformanceAttributionProbe({
   seed = 47,
   warmupMs = 2_000,
   sampleMs = 5_000,
-  // 240s: packaged-Electron new-game loads measured 123s quiet / >150s contended; see
-  // alphaLiveBaselineRoute.mjs for the budget rationale.
-  flightTimeoutMs = 240_000,
+  // Shared launch-readiness budget; see alphaLiveBaselineRoute.mjs for the rationale.
+  flightTimeoutMs = AUTHORED_FLIGHT_READY_BUDGET_MS,
   dockTimeoutMs = 90_000,
   enableTier1Counters = false,
   activityInspector = inspectPerformanceActivity,

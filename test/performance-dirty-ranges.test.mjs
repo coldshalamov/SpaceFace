@@ -846,3 +846,30 @@ test('every committed src named import resolves to a committed export', async ()
   assert.deepEqual(missing, [],
     `tracked sources import names that tracked modules do not export (module eval rejects):\n${missing.join('\n')}`);
 });
+
+test('acceptance launch and settle budgets cover a contended host without weakening the windows', async () => {
+  const { AUTHORED_FLIGHT_READY_BUDGET_MS } = await import('../scripts/lib/alphaLiveBaselineRoute.mjs');
+  const { performanceScenario, performanceScenarioPipelineSettleTimeoutMs } = await import(
+    '../scripts/lib/performanceClosureContracts.mjs'
+  );
+
+  // The launch gate waits for readiness and does not measure load speed. The packaged
+  // Electron shell measured 123s new-game -> flight-ready on a quiet host
+  // (2026-09-25T20-28-40Z) and was still compositing its loading progress at 96% when a
+  // 150s budget expired (2026-09-25T22-12-38Z): the budget, not the product, was binding.
+  assert.equal(AUTHORED_FLIGHT_READY_BUDGET_MS, 240_000);
+
+  // The settle phase waits for pipeline counters to hold stable before a window opens and
+  // measures nothing itself. At 100% host load (2026-09-26T07-18Z) background compilation
+  // outlasted the 20s default and both windows demoted pipeline-warmup-unsettled; combat
+  // scenarios use the probe's full 30s patience. A genuinely unsettled pipeline still
+  // fails the window contract, so this only widens the wait.
+  assert.equal(performanceScenarioPipelineSettleTimeoutMs('combat_vfx_burst'), 30_000);
+  assert.equal(performanceScenario('combat_vfx_burst').pipelineSettleTimeoutMs, 30_000);
+
+  // The attribution route must actually consume the scenario settle timeout.
+  assert.ok(
+    probeSource.includes('pipelineSettleTimeoutMs: performanceScenarioPipelineSettleTimeoutMs(routeTag)'),
+    'attribution windows must take their settle budget from the scenario table',
+  );
+});
