@@ -1,0 +1,76 @@
+{
+ "schema": "spaceface.generatedArt.v1",
+ "set": "codex plates",
+ "use": "ORRERY section 5 \"Codex plates\": the art in the codex reader's circular aperture (src/ui/screens/codex.js)",
+ "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account), transparent PNG",
+ "date": "2026-09-25",
+ "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+ "style": "Style: a codex plate for a hard sci-fi space-trucking game archive. A cinematic concept-art vignette composed to sit inside a circular porthole: the subject centred and filling the circle, painterly but precise, high detail, deep blue-black space and dark industrial shadow, warm sodium-amber work lights as the only strong colour, a touch of cold rim light, subtle film grain, square 1:1. Transparent background (alpha) outside a soft circular vignette that fades to fully transparent at the edge. Centred, no text, no letters, no numbers, no signage, no logos, no UI, no frame, no border.",
+ "files": {
+  "beat0": {
+   "file": "beat0.webp",
+   "size": 640,
+   "use": "Story · B0 Cold Start",
+   "subject": "an impounded, battered mid-size cargo hauler sitting alone in a dark docking berth under a single hanging work lamp, one sealed cargo container strapped to its deck with a clipped paper manifest tag",
+   "alphaFromSource": true,
+   "sourceSha256": "ce10969edea68f2578ab9185e24910b61f658225272b92265b2986ba34f4d2e3"
+  },
+  "beat1": {
+   "file": "beat1.webp",
+   "size": 640,
+   "use": "Story · B1 Honest Work",
+   "subject": "a cargo hauler towing a short train of shipping containers along a lit freight lane through a dim asteroid belt, one container freshly half-repainted",
+   "alphaFromSource": true,
+   "sourceSha256": "7b9917a73585aac8a1ba698032cdd641f0e24415ca84c9492e9314e555b531f3"
+  },
+  "beat2": {
+   "file": "beat2.webp",
+   "size": 640,
+   "use": "Story · B2 First Blood",
+   "subject": "a small armed hauler firing one tracer burst at a hostile fighter silhouetted against a burning asteroid, sparks and debris in the dark",
+   "alphaFromSource": true,
+   "sourceSha256": "0b50c74bc6f8ef444ce8b6443eb31054faca4fc7a0bf0a9e3c76dc73a4c5e65b"
+  },
+  "beat3": {
+   "file": "beat3.webp",
+   "size": 640,
+   "use": "Story · B3 Bigger Boat",
+   "subject": "a larger freighter hull held in a shipyard cradle under scaffolds and bright welding sparks, a single sale lamp glowing over the berth",
+   "alphaFromSource": true,
+   "sourceSha256": "9f81f57b4ebaef1cffd607c82aeb6305e98236b6fa39e52202d98dc5cb1f9eb3"
+  },
+  "beat4": {
+   "file": "beat4.webp",
+   "size": 640,
+   "use": "Story · B4 Pick a Side",
+   "subject": "three different warships holding station around one small clearing station, each ship lit by running lights of a different colour, one lit administrator window in the station",
+   "alphaFromSource": true,
+   "sourceSha256": "15eb0f046c7ce2f832dc2a8b2ad20e13416fac26049437ed5a44aa8a0810553e"
+  },
+  "beat7": {
+   "file": "beat7.webp",
+   "size": 640,
+   "use": "Story · B7 The Deep Reach, and the endgame choices offered there",
+   "subject": "a lone ship approaching a violet swirling anomaly at the edge of charted space, a dark derelict station silhouetted against its glow",
+   "alphaFromSource": true,
+   "sourceSha256": "22344c51af41fe7d28c04afb56e01607abd719ee03ef96512501ca699c17f69b"
+  },
+  "beat5": {
+   "file": "beat5.webp",
+   "size": 640,
+   "use": "Story · B5 Proving Ground",
+   "subject": "a salvage crew in suits cutting into a derelict ship inside a debris ring, sealed data cores carried out under floodlights",
+   "alphaFromSource": true,
+   "sourceSha256": "72f8c4134f8ec0a41d78e14dc27b17b85dd03787b08682c4b060c4e03a465da0"
+  },
+  "beat6": {
+   "file": "beat6.webp",
+   "size": 640,
+   "use": "Story · B6 Empire Seed",
+   "subject": "a first small automated mining outpost anchored to an asteroid, drones and a cargo tether, its first beacon light just switching on",
+   "alphaFromSource": true,
+   "sourceSha256": "44dc8b84610044d64a0b79fabceb813255cce5dff201c2466119c1527b94efc0"
+  }
+ },
+ "note": "Section entries without a plate (comms, graffiti, discoveries without a still) stand their section glyph; figures use their portrait or faction crest; the Ship pages use the flown hull render."
+}

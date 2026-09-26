@@ -42,7 +42,9 @@ import {
 import { el, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
-import { missionDialSvg, createLadderHand } from '../orrery/archiveInstruments.js';
+import { missionDialSvg, createLadderHand, archiveZoom } from '../orrery/archiveInstruments.js';
+import { createSpring } from '../orrery/motion.js';
+import { rollTo } from '../orrery/text.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
 
@@ -1820,6 +1822,16 @@ export const missionLogScreen = {
     const body = el('div', 'k-hang sf-mlog-body');
     rootEl.appendChild(body);
     this._hangEl = body;
+    // Tracing the beam: the pointer runs a bead of light along it; the node it passes is marked.
+    if (richDom() && typeof body.addEventListener === 'function') {
+      let frame = 0;
+      let pointerY = null;
+      const later = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+      const apply = () => { frame = 0; this._traceTo(pointerY); };
+      body.addEventListener('pointermove', (ev) => { pointerY = ev.clientY; if (!frame) frame = later(apply); });
+      body.addEventListener('pointerleave', () => { pointerY = null; if (!frame) frame = later(apply); });
+      body.addEventListener('scroll', () => { if (!frame) frame = later(apply); }, { passive: true });
+    }
 
     // Campaign thread (final disposition / post-ending only): its body, routes and words. Earlier
     // story beats stay folded into Current action so the screen never shows competing commands.
@@ -2078,6 +2090,7 @@ export const missionLogScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._render();
+    this._arrive();
     cue('open');
     // Kit motion: the title and hang settle from the left, the stage from the right. The gamepad
     // check's fake document has no element styles; settle is best-effort there.
@@ -2091,6 +2104,26 @@ export const missionLogScreen = {
 
   onHide() {
     cue('close');
+  },
+
+  /**
+   * Arrival (ORRERY §3.5): the nodes come down the beam one after another and the dial draws its
+   * arcs. A class on the root for a moment, so a later repaint never replays it; reduced motion
+   * (and a host without layout) simply shows the still.
+   */
+  _arrive() {
+    const root = this._rootEl;
+    if (!root || !root.classList || !richDom()) return;
+    let i = 0;
+    for (const node of this._hangEl ? this._hangEl.querySelectorAll('.sf-mlog-rec-item, .sf-mlog-list .k-row, .sf-mlog-career') : []) {
+      if (node.style && typeof node.style.setProperty === 'function') node.style.setProperty('--orr-delay', (60 + 55 * i) + 'ms');
+      i += 1;
+    }
+    root.classList.remove('ml-arrive');
+    if (typeof root.getBoundingClientRect === 'function') root.getBoundingClientRect();
+    root.classList.add('ml-arrive');
+    if (this._arriveTimer) clearTimeout(this._arriveTimer);
+    this._arriveTimer = setTimeout(() => { root.classList.remove('ml-arrive'); this._arriveTimer = 0; }, 1500);
   },
 
   /**
@@ -2267,6 +2300,80 @@ export const missionLogScreen = {
     const row = this._listEl ? this._listEl.querySelector('.k-row[aria-selected="true"]') : null;
     this._hand.moveTo(row, { instant });
     try { syncScrollExtent(this._hangEl); } catch (_) { /* layout-free host */ }
+    this._traceTo(this._tracePointer == null ? null : this._tracePointer, { instant });
+  },
+
+  /** A node's height on the beam, in the hang's own scrolled pixels (a zoomed screen scales them). */
+  _beamY(node, offset) {
+    const hang = this._hangEl;
+    if (!hang || !node || typeof node.getBoundingClientRect !== 'function') return null;
+    const hr = hang.getBoundingClientRect();
+    const r = node.getBoundingClientRect();
+    if (!(r.height > 0)) return null;
+    const z = archiveZoom(hang, hr);
+    return (r.top - hr.top) / z + (Number(hang.scrollTop) || 0) + offset;
+  },
+
+  /**
+   * Trace the beam: light runs from the current action's head down to a bead. At rest the bead sits
+   * on the chosen contract's node; under the pointer it follows the pointer along the beam and snaps
+   * to the node it passes, which lights. A pulse of ice runs down the lit trace (data in motion).
+   */
+  _traceTo(clientY, { instant = false } = {}) {
+    const hang = this._hangEl;
+    if (!hang || !richDom() || typeof hang.getBoundingClientRect !== 'function') return;
+    this._tracePointer = clientY;
+    if (!this._trace || this._trace.line.parentNode !== hang) {
+      const line = el('i', 'ml-trace');
+      const bead = el('i', 'ml-trace__bead');
+      line.setAttribute('aria-hidden', 'true');
+      bead.setAttribute('aria-hidden', 'true');
+      hang.appendChild(line);
+      hang.appendChild(bead);
+      const trace = { line, bead, head: 0, shown: false };
+      trace.spring = createSpring({ value: 0, preset: 'swing', onUpdate: (y) => {
+        const h = Math.max(0, y - trace.head);
+        line.style.transform = 'translate3d(0, ' + trace.head.toFixed(1) + 'px, 0)';
+        line.style.height = h.toFixed(1) + 'px';
+        line.style.setProperty('--ml-trace-h', h.toFixed(0) + 'px');
+        bead.style.transform = 'translate3d(0, ' + y.toFixed(1) + 'px, 0)';
+      } });
+      this._trace = trace;
+    }
+    const trace = this._trace;
+    const rec = this._recommendEl && this._recommendEl.querySelector('.sf-mlog-rec-item');
+    const rows = this._listEl ? [...this._listEl.querySelectorAll('.k-row[data-id]')] : [];
+    const nodes = rows.map((row) => ({ row, y: this._beamY(row, 19.5) })).filter((n) => n.y != null);
+    const head = (rec && this._beamY(rec, 11)) ?? (nodes[0] ? nodes[0].y : null);
+    if (head == null || !nodes.length) {
+      trace.line.hidden = true; trace.bead.hidden = true;
+      for (const row of rows) row.classList.remove('is-traced');
+      return;
+    }
+    trace.line.hidden = false; trace.bead.hidden = false;
+    trace.head = head;
+    const chosen = nodes.find((n) => n.row.getAttribute('aria-selected') === 'true') || nodes[0];
+    let target = chosen.y;
+    let traced = null;
+    if (clientY != null) {
+      const hr = hang.getBoundingClientRect();
+      const z = archiveZoom(hang, hr);
+      const y = (clientY - hr.top) / z + (Number(hang.scrollTop) || 0);
+      const last = nodes[nodes.length - 1].y;
+      target = Math.max(head, Math.min(last, y));
+      let best = null;
+      for (const n of nodes) if (!best || Math.abs(n.y - target) < Math.abs(best.y - target)) best = n;
+      if (best && Math.abs(best.y - target) < 26) { target = best.y; traced = best.row; }
+    }
+    for (const n of nodes) n.row.classList.toggle('is-traced', n.row === traced);
+    if (!trace.shown) {
+      // arrival: the trace draws down the beam from the head
+      trace.shown = true;
+      trace.spring.set(head, { instant: true });
+      trace.spring.set(target, { instant });
+      return;
+    }
+    trace.spring.set(target, { instant });
   },
 
   /** Focus a mission from the hang: mark its row and open it on the stage. */
@@ -2332,7 +2439,16 @@ export const missionLogScreen = {
     if (!stage) return;
     stage.innerHTML = '';
     if (!m) {
-      stage.appendChild(el('p', 'k-empty sf-mlog-empty', EMPTY_TEXT));
+      // No contract on the beam: the dial stands bare beside the one sentence that says how to get one.
+      const empty = el('article', 'sf-mlog-card is-empty');
+      empty.appendChild(el('p', 'sf-mlog-kicker', 'No contract'));
+      const dial = el('div', 'orr-mdial is-empty');
+      dial.setAttribute('aria-hidden', 'true');
+      dial.innerHTML = missionDialSvg({ progress: 0, time: null })
+        + '<div class="orr-mdial__read"><span class="orr-mdial__pct">—</span><span class="orr-mdial__w">Standing by</span></div>';
+      empty.appendChild(dial);
+      empty.appendChild(el('p', 'k-empty sf-mlog-empty', EMPTY_TEXT));
+      stage.appendChild(empty);
       return;
     }
     const isTracked = tracked === m.id;
@@ -2361,8 +2477,20 @@ export const missionLogScreen = {
       + (clock != null
         ? '<div class="orr-mdial__clock-read' + (urgent ? ' is-threat' : '') + '"><b>' + escapeHtml(fmtTime(remaining)) + '</b>left on the clock</div>'
         : '<div class="orr-mdial__clock-read">No clock</div>');
-    card.appendChild(dial);
+    // The dial and, on a short screen, the verbs under it (the sheet lays them out; the DOM keeps the
+    // verbs after the terms, so keyboard order reads the contract before acting on it).
+    const side = el('div', 'sf-mlog-side');
+    side.appendChild(dial);
 
+    const pctEl = dial.querySelector('.orr-mdial__pct');
+    if (pctEl && richDom() && (this._rolledFor !== m.id)) {
+      const pctText = pctEl.querySelector('small');
+      const digits = el('span', 'orr-mdial__num');
+      pctEl.textContent = '';
+      pctEl.appendChild(digits);
+      if (pctText) pctEl.appendChild(pctText); else pctEl.appendChild(el('small', '', '%'));
+      rollTo(digits, Math.round(frac * 100));
+    }
     card.appendChild(el('h2', 'k-display k-t-title', titleText));
     if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
     else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m) + ' · ' + missionProgressLabel(m)));
@@ -2370,7 +2498,14 @@ export const missionLogScreen = {
     const reward = Math.max(0, Number(m.reward_cr) || 0);
     // The hero number is the payout; a contract that pays in a phrase ("close cleanly") has no
     // number to be about, and its Pays row below already says so — no "0" at hero size.
-    if (reward > 0) card.appendChild(hero(reward.toLocaleString(), 'cr on delivery', { size: 'hero', signal: true }));
+    if (reward > 0) {
+      const payout = hero(reward.toLocaleString(), 'cr on delivery', { size: 'hero', signal: true });
+      const figure = payout.querySelector && payout.querySelector('.k-hero__n');
+      // the payout rolls to its figure the first time this contract is read
+      if (figure && richDom() && this._rolledFor !== m.id) rollTo(figure, reward);
+      card.appendChild(payout);
+    }
+    this._rolledFor = m.id;
 
     const terms = el('div');
     terms.innerHTML = contractTermsHtml(m, state);
@@ -2391,7 +2526,8 @@ export const missionLogScreen = {
           : '') +
         '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>' +
       '</ul>';
-    card.appendChild(btns);
+    side.appendChild(btns);
+    card.appendChild(side);
 
     stage.appendChild(card);
     // The one Lamp Key: Track, while this contract is not the tracked one.
