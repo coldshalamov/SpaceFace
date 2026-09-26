@@ -23,6 +23,7 @@ import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
+import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
@@ -450,11 +451,15 @@ const registry = {
     if (name === 'survivalDraft') return benchDraftOwner;
     // A shot marked `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js).
     if (name === 'save') return benchSaves;
+    // A chart shot plans with the game's own route planner (tools/ui-bench-chart.js).
+    if (name === 'world') return benchWorldFor(currentShot);
     return null;
   },
 };
 
 let current = null;
+/** The shot being mounted (the chart reads its planner through the registry). */
+let currentShot = null;
 let currentScreen = null;
 /** The save system the load screen reads: null (no saves) unless the shot files some. */
 let benchSaves = null;
@@ -507,6 +512,9 @@ async function goto(rawId) {
   const id = shot.screen;
   applyBackdrop(shot);
   benchSaves = shot.saves === 'filed' ? createBenchSaveSystem() : null;
+  currentShot = shot;
+  // A chart shot (`chart: 'seeded'`) mounts over a real sector with traffic; every other shot over the baseline.
+  if (shot.chart) { await loadBenchWorld(state); seedChartShot(state, shot); } else unseedChartShot(state);
   // A shot marked `live` is a run in progress, so the load screen offers Save here: the screen's
   // canSave() needs a non-zero player id, and the seeded hull sits at id 0.
   rekeyPlayer(shot.live ? 1 : 0);
@@ -797,7 +805,9 @@ function visibleControls() {
   const seen = new Set();
   const found = [];
   for (const root of benchRoots()) {
-    for (const el of root.querySelectorAll('button, a, [role="tab"], [role="button"], input, select, summary, [data-action]')) {
+    // `[data-why]` rides along: a tier-2 hover/focus reveal is a picture change a reviewer must be
+    // able to see (whyReveal.js carriers are readouts with a keyboard seat, not always buttons).
+    for (const el of root.querySelectorAll('button, a, [role="tab"], [role="button"], input, select, summary, [data-action], [data-why]')) {
       if (seen.has(el) || el.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
       if (!shownRect(el)) continue;
       seen.add(el);
@@ -1247,9 +1257,13 @@ function controlAction(index, kind) {
   window.__BENCH_LAST_DISABLED = !!(el.disabled || el.getAttribute('aria-disabled') === 'true');
   if (window.__BENCH_LAST_DISABLED) return labelOf(el);
   if (kind === 'hover') {
-    el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
-    el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    // Seat the synthetic pointer at the control's centre: hover reveals position themselves at the
+    // pointer (whyReveal.js), and a bare 0,0 event made every tip screenshot land in the corner.
+    const r = el.getBoundingClientRect();
+    const at = { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    el.dispatchEvent(new PointerEvent('pointerover', at));
+    el.dispatchEvent(new MouseEvent('mouseover', at));
+    el.dispatchEvent(new MouseEvent('mouseenter', at));
   } else {
     el.focus();
     el.click();
@@ -1270,7 +1284,12 @@ window.BENCH = {
   hover(index) { return controlAction(index, 'hover'); },
   click(index) { return controlAction(index, 'click'); },
   signature() {
-    const text = `${screensEl.innerText || ''}\n${hudEl.innerText || ''}`.replace(/\s+/g, ' ').slice(0, 5000);
+    // The shared tier-2 tip (#sf-why-tip) is mounted on document.body, outside both roots — fold
+    // its visible words into the signature or a hover reveal reads as "no visible change" and the
+    // walk refuses to write the PNG that proves it.
+    const tip = document.getElementById('sf-why-tip');
+    const tipText = tip && tip.style.display !== 'none' ? `TIP:${tip.textContent}` : '';
+    const text = `${screensEl.innerText || ''}\n${hudEl.innerText || ''}\n${tipText}`.replace(/\s+/g, ' ').slice(0, 5000);
     return {
       screen: current,
       text,

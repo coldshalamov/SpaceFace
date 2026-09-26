@@ -10,7 +10,7 @@ export const BACKDROPS = Object.freeze({
 });
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string}[]} */
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -49,9 +49,14 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'ship', screen: 'ship', backdrop: 'world' },
   { id: 'footprint', screen: 'footprint', backdrop: 'world' },
   { id: 'range', screen: 'range', backdrop: 'world' },
-  { id: 'chart', screen: 'galaxyMap', backdrop: 'world' },
-  { id: 'galaxyMap', screen: 'galaxyMap', backdrop: 'world' },
-  { id: 'chart-galaxy', screen: 'galaxyMap', focus: 'galaxy', backdrop: 'world' },
+  // The chart over the paused flight it was opened from: Helios Prime with its stations, the starter
+  // seam's rocks and local traffic (tools/ui-bench-chart.js). `route` plots a course with the game's
+  // own planner, the way ENGAGE ROUTE would find it.
+  { id: 'chart', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded' },
+  { id: 'galaxyMap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-galaxy', screen: 'galaxyMap', focus: 'galaxy', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-local', screen: 'galaxyMap', focus: 'local', backdrop: 'space', chart: 'seeded' },
+  { id: 'chart-route', screen: 'galaxyMap', focus: 'galaxy', backdrop: 'space', chart: 'seeded', route: 'sector_io_reach' },
 
   { id: 'station', screen: 'station', backdrop: 'shell' },
   { id: 'station-dock', screen: 'station', backdrop: 'shell' },
