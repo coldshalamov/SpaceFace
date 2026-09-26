@@ -407,8 +407,15 @@ const ROUTES = {
       // If a prior beat left us docked, undock so Esc opens the flight pause, not a station exit.
       await ctx.page.evaluate(() => { const H = window.__SF_PT_HELPERS__; if (H.docked()) H.undock(window.SF.state.ui.dockedStationId); });
       await sleep(1200);
-      await pressKey(ctx, 'Escape', 1000);
-      const p = await snap(ctx);
+      // First Esc may be consumed closing a residual screen the undock helper left open. screen=null
+      // is the flight HUD — keep pressing until 'pause'; two consecutive nulls means it never opened.
+      let p = null, nulls = 0;
+      for (let i = 0; i < 3; i++) {
+        await pressKey(ctx, 'Escape', 1000);
+        p = await snap(ctx);
+        if (p.screen === 'pause') break;
+        if (p.screen === null && ++nulls >= 2) break;
+      }
       await shotNow(ctx, 'x03-pause');
       const quit = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
