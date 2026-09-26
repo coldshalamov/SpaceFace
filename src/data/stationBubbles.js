@@ -158,4 +158,78 @@ export function createNoFireWatch(opts = {}) {
   };
 }
 
-export default { bubblesFor, createNoFireWatch, BUBBLE_MULTIPLIERS, BUBBLE_SIZE_FACTOR, BUBBLE_COLORS, NO_FIRE_BARK };
+// ── noFireAdvisory — the runtime owner of ONE createNoFireWatch (registered system) ────────────
+// The render half of this packet (src/render/stationBubbleRings.js) is still a graphics-lane
+// handoff, but the bark half is legible without rings: the watch below is headless and the
+// voice:surface floor already renders 'warn'. Registered beside hazardHints in the BP-11 cluster
+// (see src/core/registry.js). Pure call-sequence state — nothing is saved; newGame rebuilds.
+
+export const noFireAdvisory = {
+  name: 'noFireAdvisory',
+
+  init(ctx) {
+    this._ctx = ctx;
+    this._bus = ctx && ctx.bus;
+    this._state = ctx && ctx.state;
+    this._watch = createNoFireWatch({
+      say: (msg) => {
+        const helpers = (this._ctx && this._ctx.helpers) || {};
+        if (helpers.voice && typeof helpers.voice.say === 'function') helpers.voice.say(msg);
+      },
+    });
+    this._onFire = (p) => this._weaponDrawn(p);
+    if (this._bus && this._bus.on) this._bus.on('combat:fire', this._onFire);
+  },
+
+  newGame() {
+    // Per-session memory — re-arm every ring for a fresh run (hazardHints._hinted precedent).
+    const ctx = this._ctx;
+    this._watch = createNoFireWatch({
+      say: (msg) => {
+        const helpers = (ctx && ctx.helpers) || {};
+        if (helpers.voice && typeof helpers.voice.say === 'function') helpers.voice.say(msg);
+      },
+    });
+  },
+
+  _player(state) {
+    return state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+  },
+
+  _stations(state) {
+    const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+    const out = [];
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      out.push(e);
+    }
+    return out;
+  },
+
+  _weaponDrawn(payload) {
+    const state = this._state;
+    if (!state || !this._watch || !payload) return;
+    if (payload.ownerId !== state.playerId) return;
+    const player = this._player(state);
+    if (!player || !player.pos) return;
+    this._watch.weaponDrawn(player.pos, this._stations(state));
+  },
+
+  update(dt, state) {
+    const s = state || this._state;
+    if (!s || !this._watch) return;
+    const player = this._player(s);
+    if (!player || !player.pos) return;
+    this._watch.update(player.pos, this._stations(s)); // exit re-arms the bark
+  },
+
+  destroy() {
+    if (this._bus && this._bus.off && this._onFire) this._bus.off('combat:fire', this._onFire);
+    this._onFire = null;
+    this._watch = null;
+  },
+};
+
+export default { bubblesFor, createNoFireWatch, BUBBLE_MULTIPLIERS, BUBBLE_SIZE_FACTOR, BUBBLE_COLORS, NO_FIRE_BARK, noFireAdvisory };

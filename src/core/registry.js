@@ -136,6 +136,7 @@ import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arr
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
 import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { noFireAdvisory } from '../data/stationBubbles.js';            // BP-11 A2: station no-fire ring 'warn' advisory on player fire
 import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';             // T3-17: TOW-THE-CHUNK oversized mining chunk prompt
 import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
 // BP-12 Causal Economy (Wave 3, design/revamp/detail/E_salvage_economy_contracts.md) — SYSTEMS-only
@@ -504,6 +505,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],
+    ['noFireAdvisory', noFireAdvisory],
     ['bulkHaulTag', bulkHaulTag],
     ['dangerGradient', dangerGradient],
     ['causeLedger', causeLedger],
