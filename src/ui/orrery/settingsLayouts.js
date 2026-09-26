@@ -270,10 +270,10 @@ ${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !impor
   color:rgb(${BONE} / .6) !important; display:flex; align-items:center; gap:14px; }
 ${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
 /* the drift field and the emblem stand behind everything */
-${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:hidden; }
 ${C} > .orr-cr-emblem { position:absolute; z-index:1; right:max(-8vw, -140px); top:50%; width:min(86vh, 980px); height:min(86vh, 980px); margin-top:calc(min(86vh, 980px) / -2);
-  pointer-events:none; background:url("${EMBLEM}") center / contain no-repeat; opacity:.15; mix-blend-mode:screen;
-  -webkit-mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .5), #000 70%); mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .5), #000 70%);
+  pointer-events:none; background:url("${EMBLEM}") center / contain no-repeat; opacity:.15; will-change:transform;
+  /* the art is light on transparent: no blend and no mask, so the slow turn is a plain compositor rotation */
   animation:orr-cr-turn 1200s linear infinite; }
 @keyframes orr-cr-turn { to { transform:rotate(360deg); } }
 
@@ -308,7 +308,7 @@ ${C} .of-credits-made { margin:0 0 20px !important; }
 ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
   font-weight:800 !important; font-size:clamp(48px, 7vh, 80px) !important; line-height:.92 !important; white-space:nowrap; letter-spacing:-.005em !important; text-transform:uppercase !important;
-  color:rgb(${HOT}) !important; text-shadow:0 2px 24px rgb(0 0 0 / .5); }
+  color:rgb(${HOT}) !important; text-shadow:none !important; }
 ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size:11px !important; letter-spacing:.24em !important;
   color:rgb(${BONE} / .72) !important; }
 ${C} .of-credits-ver { color:var(--dp-phos, #dfeeff) !important; }
@@ -374,47 +374,48 @@ ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 
 /**
  * Drift Field (ORRERY §4 #17): slow points of light on one canvas behind the credits, in three depths,
- * drifting up with the reel and shifted by its scroll (parallax). It runs only while its screen is
- * shown and never under reduced motion (one still frame instead). Returns null on a shim document.
+ * drifting up and shifted by the reel's scroll (parallax). It runs only while its screen is shown and
+ * stands still under reduced motion (one drawn frame). Returns null on a shim document.
  */
-export function createDriftField(host, { count = 110 } = {}) {
+export function createDriftField(host, { count = 90 } = {}) {
   const doc = host && host.ownerDocument;
   if (!doc || typeof doc.createElement !== 'function') return null;
   const canvas = doc.createElement('canvas');
-  const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+  const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d', { alpha: true }) : null;
   if (!ctx) return null;
   canvas.className = 'orr-cr-drift';
   canvas.setAttribute('aria-hidden', 'true');
   // cosmetic randomness only (the sim's rng is never touched by presentation)
   const motes = Array.from({ length: count }, () => {
     const z = 0.25 + Math.random() * 0.75;
-    return { x: Math.random(), y: Math.random(), z, r: 0.5 + z * 1.1, a: 0.1 + z * 0.4, vx: (Math.random() - 0.5) * 3 * z, vy: -(4 + Math.random() * 10) * z };
+    return { x: Math.random(), y: Math.random(), z, r: 0.6 + z * 1.2, a: 0.14 + z * 0.42, vx: (Math.random() - 0.5) * 3 * z, vy: -(4 + Math.random() * 10) * z };
   });
-  let w = 0; let h = 0; let dpr = 1; let scroll = 0; let off = null; let last = 0;
+  // Budget: the motes are slow (a few pixels a second), so the field draws at 20 Hz into a backing store
+  // at half the layout size; the drawing is cheap enough to leave the menu its frame rate on an iGPU.
+  const HZ_MS = 50;
+  const SCALE = 0.5;
+  let w = 0; let h = 0; let scroll = 0; let off = null; let last = 0; let lastDraw = 0;
   const size = () => {
-    // layout pixels for the drawing, screen pixels for the backing store (a 1440p screen zooms the frame)
-    const r = host.getBoundingClientRect ? host.getBoundingClientRect() : { width: 0, height: 0 };
-    w = Math.max(1, host.offsetWidth || Math.round(r.width)); h = Math.max(1, host.offsetHeight || Math.round(r.height));
-    const zoom = r.width > 0 ? r.width / w : 1;
-    dpr = Math.min(3, (globalThis.devicePixelRatio || 1) * zoom);
-    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    w = Math.max(1, host.offsetWidth || 0); h = Math.max(1, host.offsetHeight || 0);
+    canvas.width = Math.max(1, Math.round(w * SCALE)); canvas.height = Math.max(1, Math.round(h * SCALE));
     canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
   };
   const draw = () => {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     ctx.clearRect(0, 0, w, h);
     for (const m of motes) {
       const y = ((m.y * h - scroll * m.z * 0.18) % h + h) % h;
       const x = ((m.x * w) % w + w) % w;
       ctx.globalAlpha = m.a;
-      ctx.fillStyle = m.z > 0.8 ? 'rgb(248 244 234)' : 'rgb(236 230 216)';
-      ctx.beginPath(); ctx.arc(x, y, m.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = m.z > 0.8 ? '#f8f4ea' : '#ece6d8';
+      ctx.beginPath(); ctx.arc(x, y, Math.max(1.1, m.r), 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
   };
   const step = (now) => {
-    const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
-    last = now;
+    if (lastDraw && now - lastDraw < HZ_MS) return true;
+    const dt = last ? Math.min(0.2, (now - last) / 1000) : 0;
+    last = now; lastDraw = now;
     for (const m of motes) { m.x += (m.vx * dt) / Math.max(1, w); m.y += (m.vy * dt) / Math.max(1, h); }
     draw();
     return true;
@@ -425,9 +426,9 @@ export function createDriftField(host, { count = 110 } = {}) {
     el: canvas,
     start() {
       size();
-      if (off) return;
-      if (reducedMotion() || typeof requestAnimationFrame !== 'function') { draw(); return; }
-      last = 0;
+      draw();
+      if (off || reducedMotion() || typeof requestAnimationFrame !== 'function') return;
+      last = 0; lastDraw = 0;
       off = onFrame(step);
     },
     stop() { if (off) { off(); off = null; } },
