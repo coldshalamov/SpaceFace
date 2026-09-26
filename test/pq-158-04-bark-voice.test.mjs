@@ -169,6 +169,9 @@ test('_onDocked speaks the mechanic on the same directed-voice path', () => {
   host._syncEnvironmentMix = () => {};
   host._markMusicDirty = () => {};
   host._startStationHum = () => {};
+  // The mechanic only speaks a filed fact now (d097ea0d8 — silence beats an invented scar);
+  // a dockSpill row is the lightest real line the fixture can carry.
+  host.state = { player: { cargo: { dockSpill: { commodityId: 'cmdty_ore_iron', count: 2 } } } };
   host._onDocked({ stationId: 'station_test' });
   const barkPlay = plays.find((row) => row.recipeId === BARK_RECIPE_ID);
   assert.ok(barkPlay, 'dock must speak the mechanic');
