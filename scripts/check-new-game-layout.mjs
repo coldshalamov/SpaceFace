@@ -534,7 +534,8 @@ function ignoredLayoutIssues(issues) {
 }
 
 function isIgnoredLayoutIssue(issue) {
-  return isDisposedPreviewRequest(issue) || isHandledStoreProbeAbort(issue);
+  return isDisposedPreviewRequest(issue) || isHandledStoreProbeAbort(issue)
+    || isDisposedCinematicRequest(issue);
 }
 
 function isDisposedPreviewRequest(issue) {
@@ -545,6 +546,12 @@ function isDisposedPreviewRequest(issue) {
 function isHandledStoreProbeAbort(issue) {
   return issue && issue.type === 'error'
     && String(issue.text || '').includes('__spaceface_player_store')
+    && String(issue.text || '').includes('net::ERR_ABORTED');
+}
+
+function isDisposedCinematicRequest(issue) {
+  return issue && issue.type === 'error'
+    && String(issue.text || '').includes('assets/cinematics/')
     && String(issue.text || '').includes('net::ERR_ABORTED');
 }
 

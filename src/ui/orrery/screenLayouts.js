@@ -764,11 +764,11 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 /* the pilot's choices on the left (name, difficulty, seed, then LAUNCH under them); the hull's choice,
    its numbers and the run it opens are one instrument on the right, round the hull */
 #screens .k-screen.orr-newgame { grid-template-columns:clamp(340px, 25vw, 470px) minmax(0, 1fr) !important;
-  grid-template-rows:auto auto auto auto minmax(0, 1fr) !important;
+  grid-template-rows:auto minmax(0, 1fr) auto auto auto !important;
   grid-template-areas:"title stage" "hang stage" "foot stage" "note stage" ". stage" !important;
   column-gap:clamp(40px, 4.4vw, 104px) !important; row-gap:clamp(16px, 2.6vh, 34px) !important; }
 #screens .orr-newgame > .sf-ng-header { grid-area:title !important; }
-#screens .orr-newgame > .sf-ng-body { grid-area:hang !important; overflow:visible !important; min-height:0; }
+#screens .orr-newgame > .sf-ng-body { grid-area:hang !important; overflow-y:auto !important; overflow-x:hidden !important; min-height:0; }
 #screens .orr-newgame > .sf-ng-footer { grid-area:foot !important; justify-content:flex-start !important; gap:32px !important; margin:0 !important; }
 #screens .orr-newgame > .k-fine { position:static !important; grid-area:note !important; max-width:420px !important; margin:0 !important; inset:auto !important; }
 #screens .orr-newgame > .k-stage { grid-area:stage !important; position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; }
