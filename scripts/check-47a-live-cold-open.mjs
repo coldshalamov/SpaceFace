@@ -131,6 +131,19 @@ try {
         record.type === 'presentation:cueApplied' && record.payload && record.payload.id === 'scenario.signal.pulse'),
       kesslerCommsVisible: /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
       onboardingGateActive: !!(state.onboarding && state.onboarding.active && !state.onboarding.finished),
+      // Replicated from src/ui/hudAttention.js openingWindowActive + openingObjectivePending +
+      // openingInstructionSolo — the page does not export hudAttention, so the rule is spelled
+      // out here from the same state fields it reads.
+      openingSoloHolds: (() => {
+        const now = Number(state.simTime);
+        const startedAt = Number(state.onboarding && state.onboarding.startedAt);
+        const elapsed = now - (Number.isFinite(startedAt) ? startedAt : 0);
+        const windowActive = Number.isFinite(now) && elapsed >= 0 && elapsed < 120;
+        const pending = !!(state.onboarding && state.onboarding.active && !state.onboarding.finished)
+          || !!(state.nav && state.nav.waypoint
+            && String(state.nav.waypoint.reason || state.nav.waypoint.label || '').trim());
+        return windowActive && pending;
+      })(),
       ambientGateProbeVisible: (document.body.textContent || '').includes(ambientGateProbe),
       scenarioId,
       scenarioPath,
@@ -154,10 +167,36 @@ try {
   assert(report.hasKesslerDialogue, 'live cold open should emit Kessler scenario dialogue');
   assert(report.hasSignalCue, 'live cold open should emit the first signal presentation cue');
   assert(report.hasSignalCueApplied, 'live cold open should apply the first signal presentation cue');
-  assert(report.kesslerCommsVisible, 'live cold open should render Kessler dialogue in the comms feed');
   assert.equal(report.onboardingGateActive, true, 'cold-open comms proof must exercise the active onboarding gate');
   assert.equal(report.ambientGateProbeVisible, false,
     'ordinary ambient chatter should remain held while authored scenario dialogue bypasses the onboarding gate');
+  // ff87322f3 ("Opening one-instruction rule") retires the authored-dialogue gate bypass while
+  // openingInstructionSolo(state) holds — the Kessler line is now held in the comms queue until
+  // the player does the thing. The gate assertions above ran at the original moment; now prove
+  // the line EVENTUALLY renders: if it is still held and the solo rule holds, release the rule
+  // the cheap way a player would (finish the rail and clear the pending objective through the
+  // same state fields the rule reads), then wait out the held-line drip (~3.5 s cadence).
+  if (!report.kesslerCommsVisible) {
+    assert.equal(report.openingSoloHolds, true,
+      'Kessler line held from the comms feed while the opening one-instruction rule does not hold — report this state, do not patch it');
+    await page.evaluate(() => {
+      const state = window.SF.state;
+      if (state.onboarding) { state.onboarding.active = false; state.onboarding.finished = true; }
+      if (state.nav) state.nav.waypoint = null;
+      if (state.ui) state.ui.trackedMissionId = null;
+      const splash = document.querySelector('.sf-firstrun-splash');
+      if (splash) splash.remove();
+    });
+    await page.waitForFunction(
+      () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
+      null,
+      { timeout: 60000 },
+    );
+  }
+  const kesslerCommsEventuallyVisible = await page.evaluate(
+    () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''));
+  assert(kesslerCommsEventuallyVisible,
+    'live cold open should render Kessler dialogue in the comms feed once the solo rule releases');
 
   const missing = report.actors.filter((actor) => actor.required && actor.status !== 'bound');
   assert.deepEqual(missing, [], 'all required scenario actors should bind');
@@ -210,6 +249,9 @@ async function startFreshServer() {
 function spawnProbeServer(port) {
   const child = spawn(process.execPath, ['server.js', String(port)], {
     cwd: ROOT,
+    // server.js mounts the real save drawer by default; a browser test server must boot
+    // with the store explicitly unmounted so the check can never touch real saves.
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
