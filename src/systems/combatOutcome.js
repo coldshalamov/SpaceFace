@@ -7,7 +7,29 @@
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+
+/** Bench A/B: production default ON. Quiet latch skips the 4-tick shipLike flee-scan
+ * when no unrecalled flee candidates remain. Wakes on kill/flee/disable/surrender /
+ * spawn/destroy/save/sector/new-game / 0.5 s rescan. Soft-GPU fps not claimed.
+ * Fresh registry.step residual (#163). */
+let COMBAT_OUTCOME_QUIET_LATCH = true;
+export function setCombatOutcomeQuietLatchForBench(enabled) {
+  COMBAT_OUTCOME_QUIET_LATCH = enabled !== false;
+}
+export function getCombatOutcomeQuietLatchForBench() {
+  return COMBAT_OUTCOME_QUIET_LATCH !== false;
+}
+
+/** Rescan while latched (0.5 s). Sim-time based so scripted tests that advance
+ * simTime without matching tick cadence still re-evaluate forceFlee stamps. */
+const COMBAT_OUTCOME_QUIET_RESCAN_S = 0.5;
+
+function publishCombatOutcomeQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.combatOutcomeRuntime || (state.combatOutcomeRuntime = {});
+  rt.quietLatched = !!latched;
+}
 
 const STATE_VERSION = 2;
 const MAX_OUTCOMES = 64;
@@ -108,33 +130,111 @@ export const combatOutcome = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this._combatOutcomeQuiet = null;
+    this._combatOutcomeWakeSeq = 0;
+    this._unsubs = [];
     ensureState(this.state);
 
-    this._onKilled = (payload) => this._killed(payload || {});
-    this._onFlee = (payload) => this._flee(payload || {});
-    this._onDisabled = (payload) => this._disabled(payload || {});
-    this._onSurrendered = (payload) => this._surrendered(payload || {});
+    this._onKilled = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._killed(payload || {});
+    };
+    this._onFlee = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._flee(payload || {});
+    };
+    this._onDisabled = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._disabled(payload || {});
+    };
+    this._onSurrendered = (payload) => {
+      this._wakeCombatOutcomeQuiet();
+      this._surrendered(payload || {});
+    };
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('combat:subsystemDisabled', this._onDisabled);
       this.bus.on('combat:surrendered', this._onSurrendered);
+      this._unsubs = [
+        this.bus.on('entity:spawned', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('entity:destroyed', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('game:new', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('sector:enter', () => this._wakeCombatOutcomeQuiet()),
+        // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
+        // escape, pacing pin release, pirate parley/disengage) — wake so the next 4-tick
+        // scan records them on the same cadence as before.
+        this.bus.on('combat:damage', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('ai:stateChange', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('surrender:escaped', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('difficulty:pinReleased', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateParley:started', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateParley:resolved', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('pirateDisengage:triggered', () => this._wakeCombatOutcomeQuiet()),
+      ].filter(Boolean);
     }
   },
 
   update(_dt, state) {
+    // Quiet open flight: every 4 ticks still walked shipLike for forceFlee/fsm:flee
+    // stamps even when no unrecalled flee candidates remained (event path already
+    // covers ai:flee). Quiet latch short-circuits that scan; wakes on combat
+    // outcome seams / spawn·destroy / save·sector·new-game / 0.5 s rescan.
+    // Soft-GPU fps not claimed.
+    if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
+      const quiet = this._combatOutcomeQuiet;
+      if (quiet) {
+        const membership = entityIndexVersion(state);
+        const wakeSeq = this._combatOutcomeWakeSeq | 0;
+        const nowS = Number(state && state.simTime) || 0;
+        if (membership != null
+          && quiet.membership === membership
+          && quiet.wakeSeq === wakeSeq
+          && (nowS - (Number(quiet.armedSimT) || 0)) < COMBAT_OUTCOME_QUIET_RESCAN_S) {
+          publishCombatOutcomeQuiet(state, true);
+          return;
+        }
+      }
+    } else if (this._combatOutcomeQuiet) {
+      this._combatOutcomeQuiet = null;
+      publishCombatOutcomeQuiet(state, false);
+    }
+
     if (state && state.ui && state.ui.docked === true) return;
     if (state && state.mode && state.mode !== 'flight') return;
     if (!shouldRunOnTick(state && state.tick, 'combatOutcome:scan', 4)) return;
     const own = ensureState(state);
     const list = indexedShipLikeScan(state);
+    let recorded = 0;
     for (const entity of list) {
       if (!entity || !entity.alive || own.byEntity[entity.id]) continue;
       const ai = entity.data && entity.data.ai;
       if (ai && (ai.forceFlee || ai.fsm === 'flee') && isCandidate(entity, state)) {
         this._record(entity, { entityId: entity.id, sourceEvent: 'forceFlee' }, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee');
+        recorded++;
       }
     }
+
+    if (COMBAT_OUTCOME_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      if (membership != null && recorded === 0) {
+        this._combatOutcomeQuiet = {
+          membership,
+          armedSimT: Number(state.simTime) || 0,
+          wakeSeq: this._combatOutcomeWakeSeq | 0,
+        };
+        publishCombatOutcomeQuiet(state, true);
+      } else {
+        this._combatOutcomeQuiet = null;
+        publishCombatOutcomeQuiet(state, false);
+      }
+    }
+  },
+
+  _wakeCombatOutcomeQuiet() {
+    this._combatOutcomeWakeSeq = (this._combatOutcomeWakeSeq | 0) + 1;
+    this._combatOutcomeQuiet = null;
   },
 
   _killed(payload) {
@@ -214,6 +314,12 @@ export const combatOutcome = {
       if (this._onDisabled) this.bus.off('combat:subsystemDisabled', this._onDisabled);
       if (this._onSurrendered) this.bus.off('combat:surrendered', this._onSurrendered);
     }
+    for (const off of this._unsubs || []) {
+      if (typeof off === 'function') off();
+    }
+    this._unsubs = [];
+    this._combatOutcomeQuiet = null;
+    this._combatOutcomeWakeSeq = 0;
     this._onKilled = this._onFlee = this._onDisabled = this._onSurrendered = null;
   },
 };
