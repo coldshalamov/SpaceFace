@@ -10,6 +10,16 @@
 const electron = require('electron');
 const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
 const path = require('path');
+// Bytecode-cache the shell's own module graph under userData so launches after the first skip
+// recompiling the main-process modules below. Isolated evidence keeps its cache inside the
+// throwaway profile (its setPath override has not run yet). No-op where the host lacks support.
+try {
+  const compileCacheBase = process.env.SPACEFACE_ELECTRON_TEST_MODE === 'isolated-evidence'
+    && process.env.SPACEFACE_ELECTRON_TEST_USER_DATA
+    ? process.env.SPACEFACE_ELECTRON_TEST_USER_DATA
+    : app.getPath('userData');
+  require('node:module').enableCompileCache?.(path.join(compileCacheBase, 'v8-compile-cache'));
+} catch {}
 const fs = require('fs');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const { resolveMountedUserContentDir } = require('../scripts/lib/userContentStore.cjs');
@@ -195,6 +205,25 @@ installCrashReportWriters(electron, releaseIdentity);
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
+// Hybrid-GPU systems may hand a browser-style app the power-saving adapter; the game
+// always wants the high-performance GPU. No-op where only one adapter exists.
+app.commandLine.appendSwitch('force_high_performance_gpu');
+// Browser-chrome subsystems a localhost game shell never uses — keeps their periodic
+// discovery/sync work out of the process.
+app.commandLine.appendSwitch('disable-features',
+  'MediaRouter,DialMediaRouteProvider,OptimizationHints,Translate,AutofillServerCommunication');
+// The game is served entirely same-origin from the in-process loopback server, so Chromium's
+// background networking stack (component updater, variations/seed fetches, safe-browsing and
+// dictionary downloads) can never produce bytes the app consumes — only wakeups and disk IO.
+app.commandLine.appendSwitch('disable-background-networking');
+// Remaining browser-process services that still initialize despite the blanket switch:
+// the component updater, domain-reliability reporter, and UMA upload scheduling. The shell
+// ships no updatable components and uploads nothing, so all three are idle wakeups + IO.
+// metrics-recording-only keeps local histogram recording (useful for debugging) while
+// cutting the upload path entirely. Page-initiated fetches are unaffected.
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('disable-domain-reliability');
+app.commandLine.appendSwitch('metrics-recording-only');
 
 async function startServer() {
   let root;
@@ -618,8 +647,15 @@ async function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      // Every text input in the UI already carries spellcheck="false"; turning the webPreference
+      // off skips the hunspell/dictionary service entirely instead of per-element opt-outs.
+      spellcheck: false,
       preload: path.join(__dirname, 'preload.cjs'),
       backgroundThrottling,
+      // Each module is fetched once per launch, so the 'code' heat check never arms on
+      // this graph; 'bypassHeatCheck' writes the V8 code cache on first load and lets
+      // later launches deserialize bytecode instead of recompiling every module.
+      v8CacheOptions: 'bypassHeatCheck',
     },
   });
   const gameUrl = `http://127.0.0.1:${port}/`;
@@ -762,6 +798,9 @@ if (!app.requestSingleInstanceLock()) {
     migratePlayerStore: true,
     runtime: collectRuntimeIdentity(),
   });
+  // Binding the loopback listener is pure Node work; run it while Chromium still initializes
+  // so it leaves the window-critical path. The first awaiter still owns failure handling.
+  void ensureGameServerPort().catch(() => {});
   app.whenReady()
     .then(() => runPlayerStoreMigration())
     .catch(handleWindowCreationFailure);
@@ -774,6 +813,9 @@ if (!app.requestSingleInstanceLock()) {
     evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
     runtime: collectRuntimeIdentity(),
   });
+  // Binding the loopback listener is pure Node work; run it while Chromium still initializes
+  // so it leaves the window-critical path. The first awaiter still owns failure handling.
+  void ensureGameServerPort().catch(() => {});
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
     if (w) {
