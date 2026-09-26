@@ -1,6 +1,6 @@
-// PQ-158.04 — directed synthetic voice for the 277-line bark corpus.
+// PQ-158.04 — directed synthetic voice for the 437-line bark corpus.
 //
-// Eight faction registers + the mechanic. No recorded actors. Speech params, radio processing,
+// Thirteen faction registers + the mechanic. No recorded actors. Speech params, radio processing,
 // and caption text are pure functions of (faction, situation, line). Sim RNG is never read.
 // Agents run scripts/generate-bark-voice.mjs to emit representative WAVs.
 
@@ -9,7 +9,7 @@ import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
-export const BARK_CORPUS_TARGET = 277;
+export const BARK_CORPUS_TARGET = 437;
 
 export const BARK_RECIPE_ID = 'sfx_bark_radio';
 
@@ -38,7 +38,7 @@ function register(id, label, spec) {
   });
 }
 
-// Eight registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
+// Thirteen registers a stranger can tell apart blind: pitch, cadence, filter, and grit.
 export const FACTION_VOICE_REGISTERS = Object.freeze({
   faction_scn: register('faction_scn', 'Concord', {
     sampleId: 'bark_scn', f0: 110, pitch: 0.88, rate: 0.94,
@@ -79,6 +79,38 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     sampleId: 'bark_vael', f0: 80, pitch: 0.74, rate: 0.86,
     filterHz: 600, q: 2.8, noise: 0.05, bandpassLo: 220, bandpassHi: 1600, drive: 0.32,
     formants: [350, 800, 1900],
+  }),
+  // Deep factions (K1 route). f0 sits ≥5 Hz from every other register so the blind-listen
+  // identifier (tolerance <3 Hz) can never cross-name two houses.
+  faction_archive: register('faction_archive', 'Archive', {
+    // Monastic librarian: low, slow, dry — a voice that files you while it talks.
+    sampleId: 'bark_archive', f0: 102, pitch: 0.85, rate: 0.82,
+    filterHz: 1000, q: 2.6, noise: 0.03, bandpassLo: 320, bandpassHi: 2000, drive: 0.05,
+    formants: [500, 1100, 2350],
+  }),
+  faction_fulfillment: register('faction_fulfillment', 'Fulfillment', {
+    // Administrative automaton: cleanest signal in the set, clipped and fast, zero grit.
+    sampleId: 'bark_fulfillment', f0: 147, pitch: 1.02, rate: 1.14,
+    filterHz: 2200, q: 0.7, noise: 0.02, bandpassLo: 480, bandpassHi: 3200, drive: 0.04,
+    formants: [620, 1380, 2600],
+  }),
+  faction_pitborn: register('faction_pitborn', 'Pitborn', {
+    // Yard scrapper: rough and loud — highest noise+drive of the talkative houses.
+    sampleId: 'bark_pitborn', f0: 117, pitch: 0.96, rate: 1.06,
+    filterHz: 1400, q: 1.3, noise: 0.22, bandpassLo: 300, bandpassHi: 2500, drive: 0.30,
+    formants: [560, 1250, 2400],
+  }),
+  faction_understory: register('faction_understory', 'Understory', {
+    // Saprophyte keeper: breathy sub-register, slowest cadence, sounds like it grows.
+    sampleId: 'bark_understory', f0: 88, pitch: 0.80, rate: 0.72,
+    filterHz: 700, q: 3.2, noise: 0.13, bandpassLo: 240, bandpassHi: 1700, drive: 0.10,
+    formants: [380, 850, 1950],
+  }),
+  faction_verge_layers: register('faction_verge_layers', 'Verge-Layer', {
+    // Gate-auditor: highest fundamental, resonant and deliberate — the ancient instrument.
+    sampleId: 'bark_verge', f0: 182, pitch: 1.26, rate: 0.80,
+    filterHz: 2600, q: 4.5, noise: 0.05, bandpassLo: 540, bandpassHi: 3600, drive: 0.15,
+    formants: [900, 1550, 2900],
   }),
 });
 

@@ -127,6 +127,36 @@ export const STUNT_BARKS = Object.freeze({
     'The {title} is entered into the record without dispute.',
     'Kinetic clause satisfied: {title}. The terms stand amended.',
   ]),
+  faction_archive: Object.freeze([
+    'The index files that as a {title}. First of its kind in this shelf.',
+    'A {title}. The stacks have read about it; seeing it is rarer.',
+    'Filed under {title}. Your entry keeps outgrowing its margins.',
+    'That {title} is now part of the record. So are you.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Maneuver logged as {title}. Outside standard transit parameters.',
+    'A {title}. Route-variance flag applied to your file.',
+    'Observed: {title}. The schedule does not cover that shape.',
+    '{title} noted. Your efficiency rating has been recalculated.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Look at that — a {title}! Kin, somebody\'s flying like the yard built them!',
+    'A {title}! The fence didn\'t believe it either, but we all saw it!',
+    'That {title} was ugly-beautiful, kin. Yard style.',
+    'Heard the burn from here! That was a {title}, swear on the fence!',
+  ]),
+  faction_understory: Object.freeze([
+    'The bloom watched a {title}. The garden grows stranger today.',
+    'A {title}, flowering out of the dark. Rare and brief.',
+    'The roots felt that {title}. Even the wreck-light stirred.',
+    '{title}. The garden counts it among its weathers.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'A {title}. The lattice did not predict that crossing.',
+    'The prism records a {title}. Unusual transits are the memorable ones.',
+    '{title}, inscribed. The audit adds your maneuver to the gates\' history.',
+    'Observed: {title}. The lattice has seen many crossings; that one was new.',
+  ]),
 });
 
 export const CARGO_SPILL_BARKS = Object.freeze({

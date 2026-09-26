@@ -28,11 +28,21 @@
 //   faction_choir Choir     — zealot, ritual cadence, ascension / the Pattern
 //   faction_free  Frontier  — independent, plainspoken, live-and-let-live
 //   faction_vael  Vael      — alien contract-language, formal, clause-numbered
+//   faction_archive      Archive    — monastic librarian, archival/index register, terrifying calm
+//   faction_fulfillment  Fulfillment— administrative automaton, queue/routing updates, no affect
+//   faction_pitborn      Pitborn    — escaped yard scrapper, kin-talk, scrap prices, Concord-hate
+//   faction_understory   Understory — saprophyte keeper, decay-as-harvest, eerie gentleness
+//   faction_verge_layers Verge-Layer— precursor gate-auditor, interrogative, ancient patience
+// (Helix is canonically voiceless — it has no corpus on purpose.)
 
-// The eight code faction ids, exported for validators/consumers.
+// The code faction ids with a voice corpus, exported for validators/consumers.
+// Appended ids keep earlier indices stable: the generated line_*.wav corpus is indexed by
+// BARK_FACTIONS order × situation × line.
 export const BARK_FACTIONS = [
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_choir', 'faction_free', 'faction_vael',
+  'faction_archive', 'faction_fulfillment', 'faction_pitborn',
+  'faction_understory', 'faction_verge_layers',
 ];
 
 // The core situations every faction is guaranteed to cover.
@@ -533,6 +543,287 @@ export const BARKS = {
       'Termination proceeds. Custody of the record transfers.',
     ],
   },
+  // ── Deep factions (K1 route) — each speaks its own register, never the Frontier fallback ──────
+  faction_archive: {
+    scan: [
+      'The reading room sees you. Your file opens itself.',
+      'Shelf notice: a vessel enters the catalogue. Remain legible.',
+      'Your transponder is read aloud in a dead tongue. Hold still.',
+      'The index turns toward you. Nothing about you is new to it.',
+    ],
+    warn: [
+      'Shelve your velocity. The stacks are not a corridor.',
+      'Your wake smudges the folios. The librarians are patient, not forgiving.',
+      'Margin note: this approach is annotated as carelessness.',
+      'Reading-room order: silence, distance, and no fire near the paper.',
+    ],
+    'demand-cargo': [
+      'Your hold contains unindexed mass. Surrender it for cataloguing.',
+      'The Archive does not steal. It recovers what was never yours to shelve.',
+      'Deliver the undocumented cargo. The rest of you may leave the stacks.',
+      'What you carry is a loan. The lending period is over.',
+    ],
+    attack: [
+      'Redaction begins. Your name will keep; the rest of you will not.',
+      'You chose the burning wing. The Codex records who chose first.',
+      'We do not fight. We erase what resists being remembered.',
+      'Every reader has a lighter. Yours is lit now.',
+    ],
+    flee: [
+      'Withdrawing to closed stacks. The file remains open.',
+      'The index retreats a shelf. Your entry does not.',
+      'Censors fall back. Nothing you did is unread.',
+      'Retreating to the Severed Codex. Distance does not unwrite you.',
+    ],
+    reinforce: [
+      'Additional readers summoned. The index converges.',
+      'The abbot-cruisers turn their lamps this way.',
+      'More eyes on the same page. Your page.',
+      'The reading room expands. You are still inside it.',
+    ],
+    taunt: [
+      'Your hull is a rumor. We keep the confirmed volumes.',
+      'You shoot at a library. The bruise on the universe is already filed.',
+      'Burn one book and every reader in the dark learns your name.',
+      'We have read braver pilots. Their chapters are short.',
+    ],
+    'patrol-greeting': [
+      'Reader\'s courtesy: state nothing you want unremembered.',
+      'The Archive transits. Your secrets arrive early.',
+      'Reading-room greeting. We already know the interesting parts.',
+      'Pass gently. The stacks remember the rude.',
+    ],
+    distress: [
+      'The codex leaks folios. A reader requests the loan of rescue.',
+      'Hull breach in the stacks. Witnesses are obligated to remember us.',
+      'We sink into our own index. Assistance is requested, not begged.',
+      'The Archive dims. Even enemies of knowledge answer this page.',
+    ],
+  },
+  faction_fulfillment: {
+    scan: [
+      'Vessel detected at waypoint. Submitting for re-sequence.',
+      'Transponder received. Queue position assigned.',
+      'Sensor sweep routine. Your compliance is already logged.',
+      'Checkpoint reached. Your transit enters the manifest.',
+    ],
+    warn: [
+      'Deviation from fixed route detected. A correction will be scheduled.',
+      'Your heading conflicts with the assigned lane. Amend it.',
+      'Waypoint tolerance exceeded. Return to sequence.',
+      'Transit anomaly logged. The next unit will hold for your correction.',
+    ],
+    'demand-cargo': [
+      'Administrative boarding is now a routing event. Hold position.',
+      'Your cargo requires manifest reconciliation. Stand by for boarding.',
+      'Seizure is a routing outcome, not a negotiation. Hold still.',
+      'Cargo inspection is scheduled at this waypoint. It is scheduled now.',
+    ],
+    attack: [
+      'Escalation protocol: your non-compliance has been re-routed.',
+      'Defensive fire authorized. Your incident number is assigned.',
+      'First-fire prohibition satisfied. Disabling you is now routine.',
+      'Compliance enforcement engaged. This was itemized in advance.',
+    ],
+    flee: [
+      'Unit withdrawing to assigned waypoint. This interaction is archived.',
+      'Route deviation: self-preservation. Your file retains the debt.',
+      'This unit exits the sequence. Another will hold the waypoint.',
+      'Withdrawal scheduled. Your route rating is adjusted.',
+    ],
+    reinforce: [
+      'Support units dispatched on the fixed route. Arrival is scheduled.',
+      'Waypoint saturation increased. Additional hulls inbound on schedule.',
+      'Escort re-sequence complete. Your odds were tabulated.',
+      'The route provides. More units are already en route by design.',
+    ],
+    taunt: [
+      'Your transit is inefficient. The route will absorb it.',
+      'Resistance adds handling time. It does not add outcomes.',
+      'Your deviation is unremarkable. The schedule is not.',
+      'Every route ends at a waypoint. Yours ends sooner.',
+    ],
+    'patrol-greeting': [
+      'Route status: nominal. Your presence is noted and sequenced.',
+      'Fixed-route transit. Keep your lane and there is no incident.',
+      'The Fulfillment passes on schedule. You are not part of the schedule.',
+      'Waypoint traffic is routine. Your transponder has been filed.',
+    ],
+    distress: [
+      'Hull integrity below route tolerance. Requesting scheduled assistance.',
+      'This unit cannot complete the route. A recovery waypoint is filed.',
+      'Transit failure declared. The manifest must record the cause.',
+      'Propulsion lost. Stand by for administrative rescue.',
+    ],
+  },
+  faction_pitborn: {
+    scan: [
+      'Yard eyes on you, kin. What\'s your manifest weigh?',
+      'The fence reads your hull. Scrap or sibling — the scale decides.',
+      'Dock-credit check. Pitborn don\'t stare, we appraise.',
+      'Seen your weld seams from here. Yard born, or bought?',
+    ],
+    warn: [
+      'Easy on the lane — that\'s the yard\'s shooting lane, not a stroll.',
+      'Mind the fence line. Trespass gets sold, not chased.',
+      'You\'re drifting into the burn zone, kin. Steer.',
+      'Concord rules end at the yard light. Yard law started already.',
+    ],
+    'demand-cargo': [
+      'Fence takes it all — the hold, not the hull. Your choice.',
+      'Dump the cargo, kin. Scrap\'s worth more than your pride.',
+      'Yard tax: everything heavy you\'re hauling. Tonight it feeds the yard.',
+      'We weigh your hold and take our cut. Cheaper than the alternative, always.',
+    ],
+    attack: [
+      'Yard law! Scrap is scrap — yours is coming home!',
+      'For the yard! Cut the engines, keep the hull!',
+      'You picked the wrong fence to lean on, kin!',
+      'The Pitborn don\'t fire first on kin. You stopped being kin a blink ago.',
+    ],
+    flee: [
+      'Falling back to the fence! The yard don\'t bleed for pride.',
+      'Scrap ain\'t worth dying for twice. We\'re out.',
+      'Back to the burn piles! The yard keeps what it can hold.',
+      'Kin inbound get hurt — pull out! Live scrappers eat tomorrow.',
+    ],
+    reinforce: [
+      'Kin inbound! The yard answers its own.',
+      'More of us on the burn! The fence holds by numbers.',
+      'Yardmaster sent the reserve — salvage crews with teeth.',
+      'Brothers and sisters, converge! Somebody weighed our kin wrong.',
+    ],
+    taunt: [
+      'Seen better hulls in the burn pile, friend.',
+      'Your guns are Concord-issue. Cute. We melt those.',
+      'Bright target, dim pilot. The yard prices both.',
+      'That hull\'s worth more dead than you are flying it.',
+    ],
+    'patrol-greeting': [
+      'Yard keeps the lights on. Wrecks welcome, Concord ain\'t.',
+      'Safe passage through the fence, kin. Don\'t make us re-weigh that.',
+      'Pitborn on the lane. Sell us your scrap or stay out of it.',
+      'The yard\'s open. First drink\'s a story, second one\'s your manifest.',
+    ],
+    distress: [
+      'Yard\'s going down! Any kin listening — scrap the difference later!',
+      'Hull\'s burning, fuel\'s worse. Pitborn asks the dark for a pull.',
+      'Fence breached! If the Concord gets this wreck, we all lose.',
+      'We\'re losing the hull. Somebody tow a Pitborn home — the yard pays.',
+    ],
+  },
+  faction_understory: {
+    scan: [
+      'You drift over a garden. We read what you will leave.',
+      'The bloom tastes your wake. It remembers the flavor of steel.',
+      'Small bright thing. The garden measures what feeds it.',
+      'Your hull is warm and full. The wreck-light notices.',
+    ],
+    warn: [
+      'Careful passage. The roots have long patience, not none.',
+      'The garden does not chase. It only keeps what falls.',
+      'You bruise the bloom. It has eaten harder bruises.',
+      'Move gently here. The dead built this place, and the dead are touchy.',
+    ],
+    'demand-cargo': [
+      'The dead give freely. The living may also be persuaded.',
+      'What you carry rots slower in our hold. Relinquish it.',
+      'Feed the garden the heavy things. Your hull stays lighter — and intact.',
+      'We ask nothing of the dead. Of you, we ask only cargo.',
+    ],
+    attack: [
+      'The bloom defends the garden. It is what feeding looks like.',
+      'You have become mulch with engines. The garden accepts.',
+      'We did not fire first. We never do. The bloom fires now.',
+      'Your resistance is just slower decay. The roots are patient.',
+    ],
+    flee: [
+      'We recede into the wreck-light. The garden keeps growing.',
+      'The bloom folds back. Nothing uproots the garden but time.',
+      'We retreat as rot does — everywhere at once, slowly.',
+      'Into the grave-fields. Your leavings will find us anyway.',
+    ],
+    reinforce: [
+      'More tendrils rise. The bloom answers its own hunger.',
+      'The wreck-light swells. What sleeps here wakes for this.',
+      'The garden calls its keepers. More arrive to tend you.',
+      'Bloom upon bloom. The graveyard is never under-crewed.',
+    ],
+    taunt: [
+      'You are bright and brief. The dark is patient and fed.',
+      'Everything you carry was once ours. It returns eventually.',
+      'Strike the bloom and it flowers elsewhere. Gardens do not die in pieces.',
+      'We have eaten navies. You are a snack with a transponder.',
+    ],
+    'patrol-greeting': [
+      'The garden admits all travelers. Especially the tired.',
+      'Drift easy. The wreck-light warms those who mean no cutting.',
+      'Tender\'s greeting. The garden asks what you will become.',
+      'Pass through the bloom gently. It keeps what it catches.',
+    ],
+    distress: [
+      'The bloom is wounded. Tenders ask the dark for hands.',
+      'We rot faster than the garden feeds. Assistance, while we still flower.',
+      'The wreck-light dims. Even reapers fear the clearing.',
+      'Our hold is cracking. The garden remembers who helped it live.',
+    ],
+  },
+  faction_verge_layers: {
+    scan: [
+      'Query: is this vessel gate-true? Your wake is being read.',
+      'The prism observes. Transit logged in the standing ledger.',
+      'Assessment: your mass disturbs the lattice within tolerance.',
+      'The gate remembers every crossing. Yours is being inscribed.',
+    ],
+    warn: [
+      'Assessment pending: your transit disturbs the lattice.',
+      'The lattice reads instability in your wake. Compose it.',
+      'You pass close to a closure wound. The lattice asks your intent.',
+      'Transit irregularity detected. The prism brightens its question.',
+    ],
+    'demand-cargo': [
+      'The lattice requires an accounting of what you carry.',
+      'Your hold is un-audited mass. Present it for inscription.',
+      'Closure audit: surrender the undocumented cargo to the lattice.',
+      'What transits is owed an entry. Render the cargo for the record.',
+    ],
+    attack: [
+      'Closure response: the lattice unmakes what unmakes it.',
+      'You chose to be a closure event. The lattice complies.',
+      'We do not destroy. We revoke. Your transit ends here.',
+      'Gate-shutter logic applies: what threatens the passage is removed.',
+    ],
+    flee: [
+      'The prism recedes. The lattice does not pursue — it waits.',
+      'We withdraw from the crossing. The gate still stands.',
+      'The lattice dims this facet. Others watch other gates.',
+      'Retreat is a routing fact. The lattice is a standing one.',
+    ],
+    reinforce: [
+      'The lattice brightens. Additional prisms respond.',
+      'Gate-audit quorum reached. More facets turn this way.',
+      'The crossing is reinforced. The lattice always outnumbers.',
+      'More of us cohere. The gate does not stand alone.',
+    ],
+    taunt: [
+      'You are a brief signal. The lattice is a standing question.',
+      'Brief light, loud wake. The lattice has closed louder.',
+      'Your defiance is a minor vibration. It damps itself.',
+      'The gates stood before your star warmed. You are weather.',
+    ],
+    'patrol-greeting': [
+      'The gates hold. Your transit is tolerated — answer honestly.',
+      'Prism-watch acknowledges your passage. Cross clean.',
+      'The lattice admits you. It admits everyone it watches.',
+      'Transit approved for now. The audit never fully closes.',
+    ],
+    distress: [
+      'The lattice frays at this facet. Aid requested of any true crossing.',
+      'A prism dims. The gate-keepers ask passage of mercy.',
+      'Structural clarity failing. The lattice petitions the living.',
+      'We hold the crossing even broken. Assistance preserves the gate.',
+    ],
+  },
 };
 
 /**
@@ -640,6 +931,36 @@ export const HULL_RECOGNITION = Object.freeze({
     'Identification affirmed — {ship}, {class} form. Terms are amended.',
     'The {ship} appears. Prior obligations resume without notice.',
     '{ship}. Your history is admissible.',
+  ]),
+  faction_archive: Object.freeze([
+    '{ship}. The entry exists. The index did not write itself.',
+    'That is the {ship}. Your {class} has a chapter already.',
+    'Shelf note: the {ship} returns. The record grows by a page.',
+    '{ship}, {class} class. The reading room recognizes its characters.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Vessel identified as {ship}. Priority re-sequence initiated.',
+    'The {ship}. Your route history has been loaded.',
+    'Manifest match: {ship}, {class}. Deviation tolerance reassessed.',
+    '{ship} on the route. Its incident file precedes it.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'That\'s the {ship}! The yard talks about that {class}, kin.',
+    '{ship} on the lane. The fence remembers what it towed in.',
+    'Yard eyes know the {ship}. Stories like that hull don\'t stay quiet.',
+    'The {ship}. Kin or quarry — the yard weighed you long ago.',
+  ]),
+  faction_understory: Object.freeze([
+    'The {ship} flowers again. The garden remembers its scent.',
+    'That hull is the {ship}. The wreck-light kept its shape.',
+    '{ship}, a {class} the roots have tasted before.',
+    'The garden reads the {ship}\'s wake. It has read it before.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'The lattice recognizes {ship}. Prior crossings are recalled.',
+    '{ship} transits again. The gate keeps every inscription.',
+    'Assessment: the {ship}, a {class} of record. Its file is ancient.',
+    '{ship}. The lattice does not forget a signature.',
   ]),
 });
 
@@ -811,6 +1132,96 @@ export const HISTORY_RECOGNITION = Object.freeze({
     offers_work: Object.freeze([
       '{captain} extends {ship} provisional credit. Rare terms.',
       '{captain} names {ship} a party of record in good standing.',
+    ]),
+  }),
+  faction_archive: Object.freeze({
+    kills: Object.freeze([
+      '{ship}: {kills} readers\' hulls unwritten. The index keeps the count in red.',
+      '{kills} folios closed by {ship}. The reading room does not forgive a burned page.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} petitioned the abbot for {ship}\'s chapter. Granted.',
+      '{captain} reads the hunt aloud at every crossing. {ship} is the text.',
+    ]),
+    fears: Object.freeze([
+      '{captain} refused the shelf where {ship} hunts. Noted without judgment.',
+      '{captain} closes their folio when {ship} is sighted. The stacks understand.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} vouched {ship}\'s name into the catalogue. The loan stands.',
+      '{captain} reads {ship} kindly. The index trusts a reader\'s memory.',
+    ]),
+  }),
+  faction_fulfillment: Object.freeze({
+    kills: Object.freeze([
+      '{ship}: {kills} hull losses on the route ledger. Your routing is flagged.',
+      'Incident tally: {kills} Fulfillment hulls, attributed {ship}. Variance logged.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} re-sequenced to {ship}\'s route. The schedule is deliberate.',
+      '{captain} holds {ship}\'s incident file. Recovery is on the manifest.',
+    ]),
+    fears: Object.freeze([
+      '{captain} deviated on sighting {ship}. The route granted it.',
+      '{captain} queued behind other waypoints when {ship} transits.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} rated {ship} route-friendly. The score is filed.',
+      '{captain} shares a waypoint ledger with {ship}. Standing: good.',
+    ]),
+  }),
+  faction_pitborn: Object.freeze({
+    kills: Object.freeze([
+      '{ship}. {kills} of our kin scrapped by your guns. The fence don\'t forget.',
+      '{kills} Pitborn hulls to your name, {ship}. The yard tallies in blood.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} sharpened a tow-hook for {ship}. The yard knows why.',
+      '{captain} priced {ship}\'s hull already. Kin pays up when asked.',
+    ]),
+    fears: Object.freeze([
+      '{captain} sold their salvage rights rather than meet {ship}. Smart yard trade.',
+      '{captain} saw the {ship} burn-scar and turned for the fence.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} says {ship} trades square with the yard. That\'s rare gold.',
+      '{captain} owes {ship} a tow. The fence settles its kin-debts.',
+    ]),
+  }),
+  faction_understory: Object.freeze({
+    kills: Object.freeze([
+      '{ship}: {kills} blooms cut down. The garden composts grievances too.',
+      '{kills} tenders lost to {ship}. The wreck-light remembers the shape.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} tends the root that grows toward {ship}. Slow, patient, fed.',
+      '{captain} marked {ship}\'s scent in the bloom. The garden follows.',
+    ]),
+    fears: Object.freeze([
+      '{captain} wilted at {ship}\'s wake. The garden permits retreat.',
+      '{captain} folds into the wreck-light when {ship} crosses the field.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} says {ship} leaves good leavings. The garden repays in kind.',
+      '{captain} calls {ship} a tender-friend. The bloom remembers warmth.',
+    ]),
+  }),
+  faction_verge_layers: Object.freeze({
+    kills: Object.freeze([
+      '{ship}: {kills} prism-facets dimmed. The lattice archives the loss.',
+      '{kills} gate-keepers closed by {ship}. The audit keeps the count.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} recalibrates for {ship}. The lattice appoints its auditors.',
+      '{captain} holds the closure-warrant on {ship}. It predates your flight.',
+    ]),
+    fears: Object.freeze([
+      '{captain} diverted to an outer gate when {ship} transited. Prudent prism.',
+      '{captain} dims voluntarily rather than audit {ship} again.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} inscribed {ship} as gate-true. A rare entry.',
+      '{captain} stands surety for {ship} at the lattice. The record honors it.',
     ]),
   }),
 });
@@ -1160,6 +1571,66 @@ export const BAR_GREETING_BARKS = Object.freeze({
       'Rest. The chorus holds your place.',
     ]),
   }),
+  faction_archive: Object.freeze({
+    any: Object.freeze([
+      'The reading room admits you. Speak; it will be filed.',
+      'A chair opens. The stacks are listening.',
+      'Ask. Your question joins the catalogue either way.',
+      'Reader\'s courtesy. Keep your voice off the folios.',
+    ]),
+    barkeep: Object.freeze([
+      'The pour is documented. So are you. Order.',
+      'Sit. Your account predates your arrival.',
+    ]),
+  }),
+  faction_fulfillment: Object.freeze({
+    any: Object.freeze([
+      'You have reached the head of the queue. Proceed.',
+      'This station accepts inquiries in sequence. You are now sequenced.',
+      'State your requirement. Processing begins on speech.',
+      'Interaction window open. It closes on schedule.',
+    ]),
+    barkeep: Object.freeze([
+      'Order is logged on submission. State it.',
+      'Service slot assigned. Order within the window.',
+    ]),
+  }),
+  faction_pitborn: Object.freeze({
+    any: Object.freeze([
+      'Pull up, kin. The yard drinks first, weighs second.',
+      'New hull at the bar. What\'s your story worth in scrap?',
+      'Sit. First round\'s a story, and yours better be good.',
+      'The fence keeps a stool for honest scrappers. That you?',
+    ]),
+    barkeep: Object.freeze([
+      'Pour\'s on the yard. The tab goes on the fence.',
+      'Drink up, kin. Yard credit don\'t transfer to corps.',
+    ]),
+  }),
+  faction_understory: Object.freeze({
+    any: Object.freeze([
+      'Sit by the wreck-light. The garden warms the tired.',
+      'A place is kept. All things that arrive are kept.',
+      'Rest. The bloom listens better than most bars.',
+      'You came a long way. The garden counts the crossing.',
+    ]),
+    barkeep: Object.freeze([
+      'The pour is dark and honest. The garden provides.',
+      'Drink slow. Everything here keeps a while.',
+    ]),
+  }),
+  faction_verge_layers: Object.freeze({
+    any: Object.freeze([
+      'The prism registers your approach. State your question.',
+      'A crossing is permitted. Speak within the audit.',
+      'You transit to this seat. The lattice notes intent.',
+      'Inquiry accepted. The ledger stays open while you talk.',
+    ]),
+    barkeep: Object.freeze([
+      'Service is an open channel. Place your order.',
+      'The prism pours. Your account is inscribed on receipt.',
+    ]),
+  }),
 });
 
 export const BAR_APPROACH_BARKS = Object.freeze({
@@ -1202,6 +1673,31 @@ export const BAR_APPROACH_BARKS = Object.freeze({
     'They incline their head. The Pattern receives you.',
     'A measure of silence, then room. Speak.',
     'The chorus pauses for you. Ask.',
+  ]),
+  faction_archive: Object.freeze([
+    'They close a folio as you sit. Your entry opens.',
+    'A reader\'s nod — already annotated. Ask your question.',
+    'They turn a page instead of a stare. Speak; it is filed.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'A status light acknowledges you. Interaction begins.',
+    'Your approach is time-stamped. State your requirement.',
+    'They process your arrival without looking up. Proceed.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'A scarred grin. They weigh your boots before your words.',
+    'They wave you over like kin. The yard don\'t do formal.',
+    'A mug raised your way. Talk scrap or talk trouble — both pay.',
+  ]),
+  faction_understory: Object.freeze([
+    'They turn slowly, like something growing toward light.',
+    'The wreck-light shifts. They had already noticed you.',
+    'A gentle tilt of the head. The garden receives its visitor.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'Their attention arrives before their eyes do. Speak.',
+    'A facet turns toward you. The audit is informal — for now.',
+    'They regard you the way a gate regards a crossing. Ask.',
   ]),
 });
 
@@ -1295,6 +1791,36 @@ export const WITNESS_CRIME_BARKS = Object.freeze({
     'Termination witnessed under accord. The ledger does not unsee.',
     'This-vessel attests: the destruction was observed. Attestation is binding.',
   ]),
+  faction_archive: Object.freeze([
+    'A hull burned in the open. The index files the burning under your name.',
+    'The stacks saw it. The stacks file everything.',
+    'Destruction witnessed. Your chapter gains a red marginalia.',
+    'The reading room watched the whole of it. Nothing burns unread.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Vessel destruction logged at this waypoint. Incident attributed.',
+    'Observation complete: hull lost, outside sequence. A report generates itself.',
+    'Your action has been appended to the route ledger. Retrieval is pending.',
+    'Termination event filed. The manifest now includes the cause.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Whole yard saw that, kin. Torch-work like that gets talked about.',
+    'You just scrapped somebody in front of the fence. Bold or stupid — we\'ll see.',
+    'That kill\'s got a price now. The yard always learns the price.',
+    'We watched you burn a hull. The fence decides what it means.',
+  ]),
+  faction_understory: Object.freeze([
+    'The garden watched the hull come apart. It knows the sound of feeding.',
+    'Something fell. The roots noticed who let it go.',
+    'A death is never wasted here. But it is always witnessed.',
+    'The bloom saw. It keeps the memory of what you cut.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'The lattice observed the termination. The audit expands to include it.',
+    'A vessel was unmade within sight of the prism. It is inscribed.',
+    'The crossing registered a closure. Your signature is on it.',
+    'Destruction inside the audit is still an audit item. It is yours now.',
+  ]),
 });
 
 /**
@@ -1365,6 +1891,36 @@ export const PURSUIT_BARKS = Object.freeze({
     'Evasion is a recognized remedy. It is also a priced one.',
     'The pursuit interval is contractually bounded. Your hull is not.',
   ]),
+  faction_archive: Object.freeze([
+    'You run through the stacks. The index is faster than you are.',
+    'Flee if you must. The catalogue travels with your name.',
+    'The reading room does not chase. It already knows where this ends.',
+    'Your heading is a footnote. The chapter has been decided.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Evasion logged. Intercept units re-sequenced onto your route.',
+    'Deviation escalates recovery priority. The schedule adjusts.',
+    'Your flight adds transit time. It does not add distance.',
+    'Pursuit is a routing operation. Yours is being executed.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Run, kin! The yard loves a chase — scrap falls off a fast hull.',
+    'You run like a Concord debtor! Keep the lane straight, we\'re behind you.',
+    'The whole fence is on your tail now. Ditch the cargo and maybe we stop.',
+    'Fast one! Fast don\'t matter — the yard knows every shortcut you\'ll take.',
+  ]),
+  faction_understory: Object.freeze([
+    'Flee deeper if you like. The garden has no edge.',
+    'The bloom does not hurry. What it tends is already caught.',
+    'You drift toward more garden. The roots thank you.',
+    'Running is a kind of falling. We catch what falls.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'The lattice does not pursue. It is already at your destination.',
+    'Your heading crosses a gate. All gates answer to the same audit.',
+    'Evasion increases the interval, not the outcome.',
+    'The prism tracks every crossing. There is no outside the lattice.',
+  ]),
 });
 
 /** One pursuit-chatter line for the chasing faction. Deterministic; falls back to faction_free. */
@@ -1428,6 +1984,36 @@ export const SURRENDER_BARKS = Object.freeze({
     'Yield your form. The accord permits survival.',
     'Surrender is a valid clause. Invoke it.',
     'Cease propulsion. Custody is the offered remedy.',
+  ]),
+  faction_archive: Object.freeze([
+    'Power down and be read as a survivor. The alternative is a short chapter.',
+    'Yield your helm. The index prefers intact entries.',
+    'Cut your drive. The reading room accepts surrendered texts.',
+    'Strike and live inside the record. Resist and be the record.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Reduce thrust to zero. A surrender waypoint has been assigned.',
+    'Submission is a routing option. It is the lowest-cost one remaining.',
+    'Cease maneuvering. Compliance terminates this incident early.',
+    'Power down. Your manifest can still be reconciled.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Cut the drive, kin! Live scrappers trade again tomorrow.',
+    'Drop the guns — hull\'s worth more parked than burning.',
+    'Strike and walk! The fence only takes the hold, not the life.',
+    'Power down before the yard decides you\'re scrap instead.',
+  ]),
+  faction_understory: Object.freeze([
+    'Still your engines. The garden keeps living things too.',
+    'Yield to the bloom. Surrender is only a slower arrival.',
+    'Stop burning fuel. What rests here is tended, not taken.',
+    'Let the hull drift. The roots are gentler than the alternative.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'Cease transit and hold position. The audit can still conclude gently.',
+    'Stand down at this crossing. The lattice accepts halted accounts.',
+    'Stop your engines. Compliance is the shortest route out of this.',
+    'Hold still for the prism. A closed crossing may reopen.',
   ]),
 });
 
@@ -1493,6 +2079,36 @@ export const ESCAPE_TAUNT_BARKS = Object.freeze({
     'Your escape is recorded as a deferral, not a release.',
     'Flight postpones disposition. It does not amend it.',
     'The accord closes no matter where you park.',
+  ]),
+  faction_archive: Object.freeze([
+    'You left the reading room. The record did not.',
+    'Fled from a library. Everything you did is on a shelf now.',
+    'Distance is just an unfiled delay. The index is patient.',
+    'Your chapter pauses. Chapters do not end this way.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Evasion complete. Your incident file stays open indefinitely.',
+    'You exited the pursuit queue. The queue retains your entry.',
+    'Recovery deferred, not cancelled. The route is patient too.',
+    'Your waypoint assignment lapses. Your rating does not recover.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Gone! Enjoy the scrap money — the fence charges interest too.',
+    'You outran the yard today. The yard eats tomorrow anyway.',
+    'Fast bird! The whole fence knows your hull now.',
+    'Escaped clean, kin. Next time we weigh you at the light.',
+  ]),
+  faction_understory: Object.freeze([
+    'You slipped the bloom. The garden grows where you are going.',
+    'Fled the wreck-light. All light dims eventually.',
+    'The roots release you. The roots always release — once.',
+    'Go. What falls later still falls here.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'The crossing closed behind you. The audit remains open.',
+    'You exited this gate. Every gate is the same gate.',
+    'Escape logged as transit. Your file follows the lattice.',
+    'A deferred inscription. The lattice has outwaited stars.',
   ]),
 });
 
