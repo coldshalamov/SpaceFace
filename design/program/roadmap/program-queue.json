@@ -5662,8 +5662,7 @@
         "npm run check:combat"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137-09-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/PQ-137-09-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-05 (integrator-verified: 15 secondary consequences from one action on seed 4242, 4 kinds, well convergence 42.5 WU/s, 2 hulls primed by grind; chain tests 21/26; goldens unmoved). OWED before done: one shipping-camera strip using the chain_reaction tape proposed in the receipt (the strip file is held by PQ-137.11). Tethered pairs share helm loss and inertia; a primed ship detonates on slam and primes what it knocks past the stun threshold for ~0.8 s; wells converge ships to 30-60 WU/s relative and prime on grind. One deterministic prime-sling-chain scenario producing >= 3 secondary consequences from one action."
     },
@@ -9514,8 +9513,7 @@
         "npm run check:sim:v3"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-176.04-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/PQ-176.04-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-12: modules ≥ 15 % of the outfit budget mount authored parts on the fit sockets (pods/greebles), the fitted drive re-tints nacelle glow, fitted weapons bristle on whole-ship hulls too; shipping-camera stills show light vs heavy builds, all referenced files in the authored contract. Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. DONE WHEN: Stills at the shipping camera show the build; the asset reachability check stays green."
     },
@@ -12563,8 +12561,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-143-01-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/PQ-143-01-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-06: the tug is dispatched against a real body (zero ambient weight, like the salvor), tows the yard's own booked lot — an authored pod_cargo_container whose salvagePool is the booked manifest — through the combat attachment service under Rapier, and works the berth nearest the player so the tow is both visible and inside SG-02's reach. Both towable gates refuse world_site_* bodies and pinned mass. A five-minute HUD-hidden capture on the public Ceres route (seed 47, 98.8% realtime, 301 samples, 8 workers) shows all six quiet behaviours; scripts/capture-ordinary-life.mjs scores them and exits non-zero if one is missing. check:playable is red on that machine at a 29.1s boot against a 30s budget, not a broken game."
     },
@@ -15536,8 +15533,7 @@
         "npm run check:crucible:run"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-133.02.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/PQ-133.02.md"
       ],
       "brief": "Complete replayable ten-wave run with existing weapons, enemies, fields, pickups and one greybox arena: pure wave schema + planner (CRU-009/010), survivalRun phase machine (CRU-011), spawn materialization bridge through spawnBudget (CRU-012), completion/cleanup (CRU-013), run wallet + XP (CRU-014), physical credit pickup + sweep (CRU-015), seeded three-choice draft v0 (CRU-016), refit transaction through canonical fit APIs (CRU-017), results + causal death summary + same-seed restart (CRU-018). Campaign-contamination test A.8 is mandatory."
     },
@@ -15629,9 +15625,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "implemented 2026-08-23 (f010fc3e): chain + payload + bridge KERNEL. Exit gate met - three build identities from one Pulse Laser with measurably different causal distributions (Ion Circuit chain 16 / Bank Relay bank 8 / Incendiary status 12), stable digests, chain selection deterministic by score-distance-id, and hops bounded four ways (proc cost, hop count, visited-target set, generation cap). Mutation-tested three ways. STILL OWED: live shots do not hop in play - the kernel is callable but not wired into the gun/hit path - plus causal score tags, draft exclusions and the results distribution (all UI). NOT integrated: no receipt issued.",
-        "design/program/roadmap/receipts/PQ-133.05.md",
-        "verified 2026-09-26: every declared check green — check:sim + check:combat + check:playable all green in-tree this session; check:baseline 16/16 at clean-HEAD worktree 863fede8f. Live wiring (hop path, Cryo Lock helm, orbit telemetry) confirmed against current source, not the stale inline note."
+        "design/program/roadmap/receipts/PQ-133.05.md"
       ],
       "brief": "Deterministic chain selector (CRU-032), Ion Payload + Relay Arc (CRU-033), Gravity Tag bridge (CRU-034), Incendiary bridge (CRU-035), causal style ledger (CRU-036), draft quality planner (CRU-037), one build evolution (CRU-038)."
     },
@@ -15660,10 +15654,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "implemented 2026-08-23: orbit fields + Cryo Lock + Thermal Shock KERNEL. Active positioning enforced (an ignored orbit is inert, not an aura); Cryo Lock COPIES velocity so momentum is preserved and only control authority drops to 0.35, never zero; nodes bounded by the shared lineage budget (5 each of 12) and capped at 8; placement and contact order deterministic. Mutation-tested. OWED: live helm does not read the control scale, Cryo Lock is not in the status catalog, no Cryo Gyro Rack / Lab / VFX / thermal pocket. NOT integrated: no receipt.",
-        "debts CLOSED 2026-08-23 (424caf2c): all three named in the phase 6 commit plus a fourth found in the Lab telemetry. (1) the live helm now reads the reduced control scale - flightV3 calls scaleHelmCommandForCryoLock; (2) status_cryo_lock is a real catalog entry (90 ticks, refresh, max 3 stacks, empty effects) and was genuinely absent from STATUS_DEFS at HEAD; (3/4) orbit nodes have a runtime identity - ORBIT_NODE_TYPE, countLiveOrbitNodes(), state.fields.orbit = {count,nodes} - so the Lab telemetry comment \"no runtime type, index, or counter exists\" is retired. THE MOMENTUM RULE HELD through the helm wiring, verified directly: a body at (40,-12) is unchanged after applyCryoLock with controlScale 0.35; locked force is 0.35 of unlocked on the same heading. STILL OPEN: orbit still COMPILES through stack targets (trait catalog), and the Lab overlay does not DRAW the counter (screens were out of scope) - the number exists, nothing shows it.",
-        "design/program/roadmap/receipts/PQ-133.06.md",
-        "verified 2026-09-26: every declared check green — check:sim + check:combat + check:playable all green in-tree this session; check:baseline 16/16 at clean-HEAD worktree 863fede8f. Live wiring (hop path, Cryo Lock helm, orbit telemetry) confirmed against current source, not the stale inline note."
+        "design/program/roadmap/receipts/PQ-133.06.md"
       ],
       "brief": "Orbit field node kernel (CRU-039), Cryo Lock status (CRU-040), Thermal Shock reaction (CRU-041), Cryo Gyro Rack prototype (CRU-042), Lab controls and perf metrics, one thermal pocket."
     },
@@ -15695,7 +15686,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (e948066f): the SYSTEMS half landed - three acts over thirty waves, difficulty by COMPOSITION not spawn count (enemy-type swaps, extra bearings, tighter arrivals, room behaviour), peak still <= DEFAULT_MAX 24 and well under HARD_MAX 40, wave-20 plate-theft event latched to fire exactly once, seed-deterministic. Mutation-tested. STILL OPEN: the wave-30 boss HULL variant, build evolutions as authored content, the unlock surface and the results-history screen - all content/UI needing the GPU lane. State left `ready`: the leaf is not done."
+        "partial 2026-08-23 (e948066f): the SYSTEMS half landed - three acts over thirty waves, difficulty by COMPOSITION not spawn count (enemy-type swaps, extra bearings, tighter arrivals, room behaviour), peak still <= DEFAULT_MAX 24 and well under HARD_MAX 40, wave-20 plate-theft event latched to fire exactly once, seed-deterministic. Mutation-tested. STILL OPEN: the wave-30 boss HULL variant, build evolutions as authored content, the unlock surface and the results-history screen - all content/UI needing the GPU lane. State left `ready`: the leaf is not done.",
+        "verification 2026-09-26: crucible-thirty-wave-arc suite 9/9 green; sim/combat/playable green; unlock surface + run-log history surface landed; wave-30 boss hull variant, authored build evolutions and check:perf still owed - stays ready. design/program/roadmap/receipts/PQ-133.07-REPORT.md"
       ],
       "brief": "Acts I-III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding (CRU-043), swarm AI tiering (CRU-049), spawn-scale profile (CRU-050), run HUD (CRU-052), refit/draft polish (CRU-053), run history (CRU-054)."
     },
@@ -15723,7 +15715,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (de5f17cb): SYSTEMS half landed - Lagrange Crucible (paired wells with a real ridge) and Cinder Sluice (cycling directional current), both registered as existing field consumers rather than a forked kernel, both scoped at the tick to arena identity AND a live Survival run. Exit gate met by integrated trajectory (180 steps @60Hz, real mass): the physics build is WORST station-keeper and BEST rider in both, tied at zero in Helios. Adding the arenas moved the build-code digest 0U3BLV9 -> 0GWHFVV, invalidating older codes by design. STILL OPEN: boss hulls, prop meshes, VFX; bosses are currently roles over the existing dreadnought. NOTE the gate measures how the room MOVES you, not a combat outcome. State left `ready`."
+        "partial 2026-08-23 (de5f17cb): SYSTEMS half landed - Lagrange Crucible (paired wells with a real ridge) and Cinder Sluice (cycling directional current), both registered as existing field consumers rather than a forked kernel, both scoped at the tick to arena identity AND a live Survival run. Exit gate met by integrated trajectory (180 steps @60Hz, real mass): the physics build is WORST station-keeper and BEST rider in both, tied at zero in Helios. Adding the arenas moved the build-code digest 0U3BLV9 -> 0GWHFVV, invalidating older codes by design. STILL OPEN: boss hulls, prop meshes, VFX; bosses are currently roles over the existing dreadnought. NOTE the gate measures how the room MOVES you, not a combat outcome. State left `ready`.",
+        "verification 2026-09-26: pq133-08 suite 18/18 green; sim/combat/playable green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stays ready. design/program/roadmap/receipts/PQ-133.08-REPORT.md"
       ],
       "brief": "Gravity arena with pull/repel/tide/pulse states, pylons and Tidal Engine Carrier (CRU-044); current arena with warn/surge/calm, ballast, shutters and Chain Tug (CRU-045)."
     },
@@ -15751,7 +15744,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "verification 2026-09-26: pq133-09 suite 19/19 green; sim/combat green; authored boss hull variants, prop meshes and VFX still owed (asset lane) - stays ready. design/program/roadmap/receipts/PQ-133.09-REPORT.md"
+      ],
       "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning."
     },
     {
@@ -15760,7 +15755,7 @@
       "priority": 388,
       "title": "Meta progression, challenges, endless (Phase 10)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.08",
         "PQ-133.09"
@@ -15779,9 +15774,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (fc5eae50): unlock catalog, local records, run history and challenge mutators landed. All 14 unlocks are zero on all seven power axes, and the freely-available Pulse (44 DPS) is the hardest-hitting weapon in the set - the unlockables are 32, 31, 0.75, 0.6 - so a fresh account cannot be out-gunned by a returning one. DEFERRED because a concurrent lane held the wave/arena files: endless recipes past wave 30, the boss circuit, the extraction experiment, versioned build codes. All UI (unlock surface, run-history screen) still owed. State left `ready`.",
-        "systems COMPLETE 2026-08-23 (b223d13e): 10b added deterministic opt-in endless past wave 30 (11 distinct archetypes over waves 31-90, 9 distinct plan hashes, 6-7 bodies against a cap of 24), a five-room boss circuit, extraction windows at waves 10/20/30 that end the run `aborted` with reason `extracted` and are explicitly NOT the authored victory, and build codes that name a stale catalog instead of failing generically. With 10a the phase systems are done. STILL OWED: the unlock/records UI shipped on the Crucible door (5c92f7c7) but a dedicated results-history screen and the causal score tags in results are not built.",
-        "gate wiring 2026-09-26 (9fa69865f): crucible-phase-10b.test.mjs (endless/boss-circuit/extraction/build-codes) was orphaned from every gate; wired into check:crucible:meta and the check chain. Stale flat dreadnought_boss pin repaired to per-step authored bossEnemyId; fresh-starter pin updated for shipped mirror_demonstrator. UI residuals (results-history screen, causal score tags) still owed - row stays ready."
+        "design/program/roadmap/receipts/PQ-133.10-REPORT.md"
       ],
       "brief": "Unlock catalog of possibility not stats (CRU-055), deterministic endless recipe (CRU-056), challenge rulesets (CRU-057), local records, versioned build codes."
     },
@@ -15791,7 +15784,7 @@
       "priority": 389,
       "title": "Adventure migration (Phase 11)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.10"
       ],
@@ -15809,7 +15802,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "systems COMPLETE 2026-08-23 (bca4c34e): fifteen Crucible modifiers became fitted Adventure Rigs carrying slot type, size, mass, energy draw and price - they cost hull space and power rather than being handed over by a draft. Exit gate demonstrated: three fitted builds on one Hitch produce three distinct causal KINDs (Twin Mount VOLLEY, Bank Shot BANK, Relay Arc CHAIN) with a combined fit showing all three, through the SAME compiler. No run economy leaked - an explicit RUN_ECONOMY_KEYS list (draft/reroll/score/wave/waveIndex) with a leak detector, and run modifiers merge only on a live Survival run. The lane claim that 179 whole-suite failures were pre-existing was spot-checked in a clean sparse worktree at HEAD: identical 11 pass / 2 fail. STILL OWED: Mirrorjaw is not in the twelve-wreck unique ledger (needs the reservation manifest and a frozen count), and the Pursuit ladder step teaches Twin Mount without granting the Rig."
+        "design/program/roadmap/receipts/PQ-133.11-REPORT.md"
       ],
       "brief": "Proven traits to modules/Rigs/variants/tech/salvage (CRU-058), arena laws as authored world sites (CRU-059), enemy doctrine transfer (CRU-060). No run-modifier leakage into persistence."
     },
@@ -15819,7 +15812,7 @@
       "priority": 390,
       "title": "Content factory and authoring tools (Phase 12)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.10"
       ],
@@ -15836,7 +15829,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "COMPLETE 2026-08-23 (f4814182): schemas, validators, wave-recipe simulator, compatibility lint, performance estimates, arena module library, separable loc text, six CLIs. EXIT GATE PROVEN BY DIFF: a new modifier (Herald Fan) and a new wave recipe were authored end to end with `git status -- src/combat/` EMPTY - the kernel this phase exists to avoid editing was not edited. Validators verified by feeding bad input: stack adding damage REFUSED, mul damage 1.5 REFUSED, mul 1.0 no-op allowed, heat COST allowed, 100-body recipe refused against the hard cap of 40. Simulator agrees with planner 9/9 seed-wave pairs (checked independently). 352 tests green in an isolated worktree carrying only these 15 files. Wired as factory:* plus check:content-factory. NOTE phase 13 (community/network) is explicitly NOT implied by local completion - the plan calls it a separate product decision with infrastructure, security, moderation and cost implications. It is the owner's call, not outstanding engineering."
+        "design/program/roadmap/receipts/PQ-133.12-REPORT.md"
       ],
       "brief": "Schemas and validators (CRU-061), arena recipe toolkit (CRU-062), wave recipe simulator, compatibility lint, localization-ready text."
     },
@@ -15935,8 +15928,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-134.02-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/PQ-134.02-REPORT.md"
       ],
       "brief": "Direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants; four-way capture at play size."
     },
@@ -16261,8 +16253,7 @@
         "npm run check:starmap-objective"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: the chart on the kit (5b1ee35e0): the ink palette mapped to the six kit values, no plates, the canvas clears to the sky; lens words with aria-pressed; layers unchanged in behaviour. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory). Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18068,8 +18059,7 @@
         "npm run check:responsive"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: the flight HUD in the kit faces and tokens with no plates (injectHudCss + hud.js blocks swept; neighbouring law/comms/band/onboarding/massline instruments de-plated under #hud); speed as the hero number; the Power Rail as words; hud.arrive() on undock; heat/alert on --k-signal so the frame goes cold when wanted; budgets re-baselined. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18097,8 +18087,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: THE SHIP and Shipworks share one kit-panel stage (shipworks.js): hull at full bleed and orbitable, six static corner rows instead of dials, pins by hairline leaders, four hero bands along the foot with the selected band explaining itself in rows, verbs as words, the module chooser takes the hang column instead of a modal; shipScreen.js host root is k-screen--stage. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18126,8 +18115,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: THE FOOTPRINT (1b8f79e3b) and THE RANGE (052b06f47) on the kit: k-screen regions, chains/marks as rows, hero figures in the corner, verbs as foot words; injected style blocks and legacy fp-* rules deleted. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18207,8 +18195,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: the missions log (missionLog.js) is a `k-screen`: current action, active, career and completed as rows down the hang, the focused mission on the stage with its name at title size, its next step as one sentence, the payout at hero size and Timer / Route and risk / Stake / On failure as static rows, Track / Open on the chart / Abandon as words; the codex (codex.js, `992d2129e`) as tab words, entry names as rows and the entry as a measure of text on the stage; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
@@ -18236,8 +18223,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md",
-        "verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file."
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: help (help.js, `2345e7d49`) as hairline rows of action and key with the profile named; the tech tree (techTree.js, `cac3adefd`) as hairline lanes on the sky, nodes as words, the selected node at title size with its cost at hero size and Unlock as a word; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },

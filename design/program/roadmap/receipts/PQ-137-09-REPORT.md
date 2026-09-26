@@ -319,3 +319,6 @@ produces swarm-on-swarm kills too; and `candidateId` should probably be defaulte
 left to the caller, since the default collides with itself on the first retry.
 
 This section supersedes §8's first bullet ("No frames"). Everything else in §8 stands.
+
+## Prior queue notes
+- verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file.

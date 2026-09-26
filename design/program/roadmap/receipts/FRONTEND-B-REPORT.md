@@ -99,3 +99,6 @@ migration. Nothing in Task B's screens reads them.
 Per the owner's direction (2026-09-07) no capture set was produced for this receipt; the reviewer
 runs the game. The undock and wanted moments are exercised on the default route (dock at any
 station, undock; fire on a clean ship until the law notices).
+
+## Prior queue notes
+- verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file.

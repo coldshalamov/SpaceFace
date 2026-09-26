@@ -148,3 +148,6 @@ re-baselines once on the finished look.
 Per the owner's direction (2026-09-07) no capture set or docking clip was produced; the reviewer
 runs the game: dock at any station (Helios Prime is nearest from a new game), walk the seven words,
 press F2 in flight for THE SHIP, F3 for THE FOOTPRINT, F4 for THE RANGE, M for the chart.
+
+## Prior queue notes
+- verified 2026-09-26: every declared check green — check:baseline 16/16 re-run in a clean-HEAD worktree at 863fede8f (in-tree sim/sim-v3 hash reds are uncommitted foreign economy/route WIP, identical goldens pass at committed state). Receipt on file.
