@@ -11,6 +11,10 @@ import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
 
+// Retained worldToScreen scratch — projection results are consumed synchronously.
+const _ftWorld = { x: 0, y: 0, z: 0 };
+const _ftScreen = { x: 0, y: 0, onScreen: false };
+
 // Lookup tables built once at module load
 const CMDTY_BY_ID = Object.create(null);
 for (const c of COMMODITIES) CMDTY_BY_ID[c.id] = c;
@@ -277,7 +281,8 @@ export function createFloatingText(ctx) {
       // follow the entity if it still exists, else stay at the world point
       let wx = n.wx, wz = n.wz;
       if (n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
-      const s = helpers.worldToScreen({ x: wx, y: 0, z: wz });
+      _ftWorld.x = wx; _ftWorld.z = wz;
+      const s = helpers.worldToScreen(_ftWorld, _ftScreen);
       const t = n.age / n.life;
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;

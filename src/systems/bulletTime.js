@@ -35,6 +35,9 @@ const BT_REQUEST = Object.freeze({ scale: BT_SCALE });
 // held bullet-time meter (no drain, no engage floor, no require-release latch).
 export const MOMENT_EVENT = 'moment:holyShit';
 const MOMENT_TIME_SOURCE = 'moment:slow-mo';
+// Retained worldToScreen scratch — projection results are consumed synchronously.
+const _btScreenA = { x: 0, y: 0, onScreen: false };
+const _btScreenB = { x: 0, y: 0, onScreen: false };
 export const MOMENT_THRESHOLD = 3.6;
 export const MOMENT_SLOWMO_SCALE = 0.80;  // moment pulse bound (shallower than the held 0.35)
 export const MOMENT_SLOWMO_DUR_S = 0.20;  // pulse length in SIM seconds (deterministic)
@@ -285,14 +288,15 @@ export const bulletTime = {
 
   _visibleMoment(trick) {
     const project=this.helpers?.worldToScreen;if(typeof project!=='function')return false;
+    const scratchA=_btScreenA,scratchB=_btScreenB;
     const player=this.state.entities?.get(this.state.playerId);
-    if(!player?.pos||!project(player.pos)?.onScreen)return false;
+    if(!player?.pos||!project(player.pos,scratchA)?.onScreen)return false;
     const target=this.state.entities?.get(trick.targetId),terminal=target?.pos??trick.terminalPos;
-    if(!terminal||!project(terminal)?.onScreen)return false;
+    if(!terminal||!project(terminal,scratchA)?.onScreen)return false;
     const source=this.state.entities?.get(trick.secondaryIds?.[0]);
     const pos=source?.pos??trick.causeChain?.find(n=>n.pos)?.pos;
     if(!pos)return false;
-    const center=project(pos),edge=project({x:pos.x+(source?.radius??trick.sourceRadius??0),z:pos.z});
+    const center=project(pos,scratchA),edge=project({x:pos.x+(source?.radius??trick.sourceRadius??0),z:pos.z},scratchB);
     return center?.onScreen===true&&edge&&Math.hypot(edge.x-center.x,edge.y-center.y)>=3;
   },
   _framingSafe(trick) {
@@ -301,7 +305,7 @@ export const bulletTime = {
     if(Math.hypot(player?.vel?.x??0,player?.vel?.z??0)>=1.25*(trick.metrics?.referenceCruise??0))return false;
     const w=window.innerWidth,h=window.innerHeight;
     for(const e of this.state.entities.values())if(e?.pos&&e.collides!==false&&e.alive!==false){
-      const p=this.helpers.worldToScreen(e.pos);
+      const p=this.helpers.worldToScreen(e.pos,_btScreenA);
       if(p?.onScreen&&(p.x<w*.08||p.x>w*.92||p.y<h*.08||p.y>h*.92))return false;
     }
     return true;

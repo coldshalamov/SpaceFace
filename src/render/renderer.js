@@ -361,6 +361,16 @@ const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
 const _rayGlobalXZ = { x: 0, z: 0 };
+const _rayLocalXZ = { x: 0, z: 0 };
+
+function writePlaneXZ(out, x, z) {
+  if (out && typeof out === 'object') {
+    out.x = x;
+    out.z = z;
+    return out;
+  }
+  return { x, z };
+}
 
 function writeScreenProjection(out, x, y, onScreen) {
   if (out && typeof out === 'object') {
@@ -15094,16 +15104,21 @@ export const render = {
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
-  raycastToPlane(ndc) {
+  // `out` is an optional caller-owned {x,z} scratch; results are consumed synchronously so a
+  // retained object is safe (membrane path already returns the shared _rayGlobalXZ scratch).
+  raycastToPlane(ndc, out) {
     const cam = this.cam && this.cam.obj;
-    if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return { x: 0, z: 0 };
+    if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return writePlaneXZ(out, 0, 0);
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, cam);
     const hit = _ray.ray.intersectPlane(_plane, _pt);
-    if (!hit) return { x: 0, z: 0 };
+    if (!hit) return writePlaneXZ(out, 0, 0);
     const membrane = this._frameMembrane;
-    if (!membrane) return { x: hit.x, z: hit.z };
-    return membrane.toGlobal({ x: hit.x, z: hit.z }, _rayGlobalXZ);
+    if (!membrane) return writePlaneXZ(out, hit.x, hit.z);
+    _rayLocalXZ.x = hit.x;
+    _rayLocalXZ.z = hit.z;
+    const g = membrane.toGlobal(_rayLocalXZ, _rayGlobalXZ);
+    return out ? writePlaneXZ(out, g.x, g.z) : g;
   },
 
   // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no
