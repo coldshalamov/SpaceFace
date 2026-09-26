@@ -430,3 +430,13 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   base (c3fa7d52); legacy golden unchanged. Probe: stuck 295→150, links
   24→16 (in-frame 8→2); P99 tail 1534ms inside box tail-noise; flagged for a
   tail-latency re-check on hardware.
+
+- `simwalk` `78fd174b3` — **kept**. Empty-payloads early-out on the two
+  per-tick jettisoned-pod censuses in lawSecurity (NEAR clock): pods are only
+  `type:'payload'` entities, so a live index with an empty payloads bucket
+  proves the census produces nothing; skips the five-bucket index walk in
+  `_updateCustomsScanCones` and the entityList walk in `_dwellWeirPods`.
+  Mirrors `lootShards._catchPodsInNets`' existing early-out. Keeps the
+  entityList walk verbatim when payloads is non-empty (bucket order diverges
+  post-swap-pop — avoids an emit-order change). 47a golden bit-identical
+  (f3583c50 on this box, matches post-merge baseline). Probe within noise.
