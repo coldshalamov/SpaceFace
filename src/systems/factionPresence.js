@@ -4,7 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -27,6 +27,27 @@ import {
   findLiveEntityForRecord,
   stableRecordId,
 } from '../world/worldRecords.js';
+
+
+/** Bench A/B: production default ON. Quiet latch skips shipLike fulfillment-route +
+ * pitborn-bind scans when no fixed-route / pitborn presence remains. Soft-GPU fps not
+ * claimed. Fresh registry.step residual (#160). */
+let FACTION_PRESENCE_QUIET_LATCH = true;
+export function setFactionPresenceQuietLatchForBench(enabled) {
+  FACTION_PRESENCE_QUIET_LATCH = enabled !== false;
+}
+export function getFactionPresenceQuietLatchForBench() {
+  return FACTION_PRESENCE_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
+
+function publishPresenceQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.factionPresenceRuntime || (state.factionPresenceRuntime = {});
+  rt.quietLatched = !!latched;
+}
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const CERES_REFINERY_ACTIVITY = ceresActivityPocket('ceres_refinery_pocket');
@@ -395,6 +416,8 @@ export const factionPresence = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._boardingRepairRequested = false;
+    this._presenceQuiet = null;
+    this._presenceWakeSeq = 0;
     ensureOwnState(this.state);
     this._unsub = [
       this.bus.on('sector:enter', (payload) => this._onSectorEnter(payload || {})),
@@ -413,6 +436,8 @@ export const factionPresence = {
 
   newGame() {
     this._boardingRepairRequested = false;
+    this._presenceQuiet = null;
+    this._presenceWakeSeq = 0;
     this.state.factionPresence = {
       active: {}, receipts: [], sequence: 0, boarding: null, processedDisable: {},
       servicesByStation: {}, serviceReceipts: {},
@@ -423,17 +448,77 @@ export const factionPresence = {
     // Reconcile against the live entity set rather than consuming combat-death events here. This
     // keeps the Understory strictly downstream of lossLedger:recorded while still promoting a
     // surviving Concord patrol for Pitborn on the next deterministic simulation tick.
+    //
+    // Quiet open flight: every tick still walked shipLike for fulfillment fixed-route anchors
+    // and (via || short-circuit) pitborn-gone probes even when no fixed-route / pitborn markers
+    // existed. Quiet latch short-circuits those scans; wakes on membership, presence wake seq
+    // (sector enter / spawn / combat / boarding / save), or 0.5 s rescan. Soft-GPU fps not claimed.
+    const state = this.state;
+    const own = ensureOwnState(state);
+    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const wakeSeq = this._presenceWakeSeq | 0;
+      const quiet = this._presenceQuiet;
+      if (!own.boarding
+        && quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < FACTION_PRESENCE_QUIET_RESCAN_TICKS)) {
+        publishPresenceQuiet(state, true);
+        return;
+      }
+    } else if (this._presenceQuiet) {
+      this._presenceQuiet = null;
+    }
+
     if (
-      shouldRunOnTick(this.state.tick, 'factionPresence:pitbornBind', 8)
+      shouldRunOnTick(state.tick, 'factionPresence:pitbornBind', 8)
       || this._boundPitbornConcordIsGone()
     ) {
       this._bindPitbornConcordTargets();
     }
     this._updateFulfillmentRoutes();
     this._updateBoarding();
+
+    if (FACTION_PRESENCE_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const census = this._censusPresenceWork();
+      if (membership != null && !own.boarding && !census.busy) {
+        this._presenceQuiet = {
+          membership,
+          armedTick: state.tick | 0,
+          wakeSeq: this._presenceWakeSeq | 0,
+        };
+        publishPresenceQuiet(state, true);
+      } else {
+        this._presenceQuiet = null;
+        publishPresenceQuiet(state, false);
+      }
+    }
+  },
+
+  _wakePresenceQuiet() {
+    this._presenceWakeSeq = (this._presenceWakeSeq | 0) + 1;
+    this._presenceQuiet = null;
+  },
+
+  /** Count live fixed-route / pitborn markers that force per-tick shipLike work. */
+  _censusPresenceWork() {
+    let fixedRoute = 0;
+    let pitborn = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      if (!marker) continue;
+      if (marker.fixedRoute) fixedRoute++;
+      if (marker.factionId === 'faction_pitborn') pitborn++;
+    }
+    return { fixedRoute, pitborn, busy: fixedRoute > 0 || pitborn > 0 };
   },
 
   _onSectorEnter(payload) {
+    this._wakePresenceQuiet();
     const state = this.state;
     const sectorId = payload.sectorId || (state.world && state.world.currentSectorId);
     if (!sectorId) return;
@@ -578,7 +663,12 @@ export const factionPresence = {
     const entity = payload.entity || (payload.id != null && this.state.entities && this.state.entities.get
       ? this.state.entities.get(payload.id)
       : null);
-    if (!entity || !['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
+    if (!entity) return;
+    const marker = entity.data && entity.data.factionPresence;
+    if (marker || ['faction_scn', 'faction_pitborn', 'faction_fulfillment'].includes(entity.factionId)) {
+      this._wakePresenceQuiet();
+    }
+    if (!['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
     this._bindPitbornConcordTargets();
   },
 
@@ -586,6 +676,7 @@ export const factionPresence = {
    *  seeded anchor so the flipped sector reads as fought-over the next time the player enters.
    *  aftermathWrecks owns wreck state — this only emits its documented wreckField:source seam. */
   _onConflictFlip(payload) {
+    this._wakePresenceQuiet();
     const state = this.state;
     const sectorId = payload && payload.sectorId;
     const pairKey = payload && payload.pairKey;
@@ -652,6 +743,7 @@ export const factionPresence = {
   },
 
   _onCombatDamage(payload) {
+    this._wakePresenceQuiet();
     if (payload.attackerId !== this.state.playerId || payload.targetId == null || !(payload.applied > 0)) return;
     const target = this.state.entities && this.state.entities.get
       ? this.state.entities.get(payload.targetId)
@@ -783,6 +875,7 @@ export const factionPresence = {
   },
 
   _onSaveLoaded() {
+    this._wakePresenceQuiet();
     const sectorId = this.state.world && this.state.world.currentSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       const seed = ((this.state.meta && this.state.meta.seed) || 1) >>> 0;
@@ -965,6 +1058,7 @@ export const factionPresence = {
   },
 
   _onSubsystemDisabled(payload) {
+    this._wakePresenceQuiet();
     if (payload.dependencyDisabled === true) return;
     if (payload.targetId !== this.state.playerId) return;
     if (!['subsystem_drive', 'subsystem_power'].includes(payload.subsystemId)) return;
