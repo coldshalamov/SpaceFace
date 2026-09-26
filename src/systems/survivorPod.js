@@ -612,8 +612,39 @@ export const survivorPod = {
     const sectorId = state.world && state.world.currentSectorId || null;
     const memoryId = `survivor:${victim.id}:${hash32((state.meta && state.meta.seed) || 1, victim.id, 'podId').toString(36)}`;
 
+    // D65 / cc93d8461: spawn beside the wreck's line, never on it. The wreck inherits the
+    // victim's full velocity at victim.pos; a pod co-spawned there is nudged +2.5 WU by the
+    // SG-02 coincident-spawn guard into a valid contact pair, and the fast wreck plows into
+    // the slow pod — bleeding ~30% of the wreck's momentum in the first ticks (PQ-138.03).
+    // wreckR replicates aftermathWrecks.js boundedVictimRadius() (finite > 0 else the 9 WU
+    // fallback) so the clearance matches the wreck that is actually spawned.
+    const podR = 5;
+    const victimR = Number(victim && victim.radius);
+    const wreckR = Number.isFinite(victimR) && victimR > 0 ? victimR : 9;
+    const clearance = wreckR + podR + 4;
+    const vvX = Number.isFinite(velSrc.x) ? velSrc.x : 0;
+    const vvZ = Number.isFinite(velSrc.z) ? velSrc.z : 0;
+    const vLen = Math.hypot(vvX, vvZ);
+    let perpX;
+    let perpZ;
+    if (vLen > 1e-3) {
+      perpX = -vvZ / vLen;
+      perpZ = vvX / vLen;
+    } else {
+      // Heading fallback: forward is (cos(rot), sin(rot)), so the right-perpendicular is
+      // (-sin(rot), cos(rot)).
+      const rot = Number.isFinite(Number(victim && victim.rot)) ? Number(victim.rot) : 0;
+      perpX = -Math.sin(rot);
+      perpZ = Math.cos(rot);
+    }
+    const side = Number(victim && victim.id) % 2 ? 1 : -1;
+    const spawnPos = {
+      x: pos.x + side * perpX * clearance,
+      z: pos.z + side * perpZ * clearance,
+    };
+
     const entity = spawnPayloadEntity(state, {
-      pos: { x: pos.x, z: pos.z },
+      pos: { x: spawnPos.x, z: spawnPos.z },
       vel,
       radius: 5,
       mass: 24,
