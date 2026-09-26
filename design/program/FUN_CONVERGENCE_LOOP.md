@@ -112,8 +112,9 @@ the cycle to capture. If no strip exists, leave visual blockers unraised unless 
 proves a stand-in (a `THREE.Sprite` / glow disc as the object).
 
 <!-- critic-rubric:begin (generated from scripts/lib/critic/rubric.mjs — do not edit by hand) -->
-A vision-capable model that did not make the change reads the frame strips **when present** and the metrics and
-answers ten yes/no questions, each with the frame index that proves the answer **or** the metric/receipt when no strip exists.
+A vision-capable model that did not make the change reads the frame strips and the metrics and
+answers ten yes/no questions, each with the frame index that proves the answer. Prose without a
+frame is not a verdict.
 
 1. Can I tell what the player did from the frames alone?
 2. Did the world answer within a third of a second (motion, light, or a visible receipt)?
