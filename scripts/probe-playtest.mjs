@@ -223,6 +223,7 @@ const ROUTES = {
       ['i04-cargo', 'i', 'overlay', '.sf-cargo-panel.open, .sf-cargo-panel[class*="open"], [class*="cargo-panel"]'],
       ['i05-codex', 'k', 'screen'], ['i06-comms', 'l', 'overlay', '#sf-comm-backlog, .sf-comm-backlog'],
       ['i07-techtree', 't', 'screen'],
+      ['i08-find', '/', 'overlay', '.sf-find, .sf-find--host'],
     ];
     for (const [id, key, kind, sel] of INSTRUMENTS) {
       await B(ctx, id, `flight instrument '${key}'`, async () => {
