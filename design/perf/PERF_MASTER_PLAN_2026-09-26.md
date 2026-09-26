@@ -399,3 +399,13 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   demonstrated ±2x noise envelope; possible CPU contention between decode
   workers and the render loop on software-GL — worth a hardware A/B.
   Follow-up noted by lane: shared cross-decoder pool budget.
+
+- `admission` `98ea6cc45` — **kept**. Deadline-aware splice into the strict-FIFO
+  entity-plan decode lane: admitted upgrade jobs jump queued ambient
+  prefetch/runway/warm-up decodes (FIFO within each class, running task never
+  preempted, serial bound and failure isolation unchanged). This was the
+  plan's own named leftover. Probe A/B: appearOnTime 0.50→0.70,
+  P99 330→242ms, flightShaderLinks 20→16, stuck 138→126; missing 271 vs 245
+  inside noise. Lane notes: deeper prefetch lookahead is now safer to try
+  with ordering fixed; whole-ship LOD demotion could also take the deadline
+  flag.
