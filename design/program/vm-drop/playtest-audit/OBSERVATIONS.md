@@ -132,6 +132,44 @@ fixed the 2 that upstream commit 6ff452c31 left stale: `check:ui:control-labels`
 Digit3 hotbar alias) and `check:gamepad-mission-log` (live-glyph prompt dropped the Start → Pause →
 Mission Log sentence; stub lacked `style.removeProperty`/`cancelAnimationFrame`).
 
+
+## Run 6 — routes=screens+edge+combat+loop @ c86319628
+
+**screens**: t02b-settings-toggle false-positive corrected — the switch state lives on the
+`.k-words--row.is-on` class, not the Off/On word text; beat now flips the switch, asserts `is-on`,
+and restores deterministically (was previously a no-op click + blind restore). i04-cargo/i06-comms
+keys emit `ui:toggleCargo`/`ui:toggleComms` → HUD overlays, never `ui.screen` — beats now assert the
+overlay element (.sf-cargo-panel.open / #sf-comm-backlog) instead of a screen id.
+
+**edge**: x06 job-accept now clicks the real DISPATCH row (accepted "8u Fuel Cells to Ceres").
+**x07 quicksave verified**: F5 stamped meta.lastSavedAt, F9 restored flight with credits intact
+(5000→5000, simDrift 0.3s). x03 found Esc was consumed by the residual station screen after the
+undock helper — beat now presses through screens until `pause` (also why x04 showed no Continue).
+
+**combat**: c01b labdoors walked Share codes + Practice room (practice entry goes through
+mode=loading). c04/c04b could not kill the player inside 60s (hull 2 survived; crucible invulnerable
+toggle or weak aggro) — crucible death path still unproven live, but the demo-path run proved
+death→results earlier. Lab deck (Spawn bodies/Clear enemies/Refill) overlaps the speed dial during
+the death beat — practice tooling, flagged as a watch item only.
+
+**loop**: l03 mining produced cargo (composite + 47-A assay sample). l04 SELL clicked the Buy/Sell
+mode TAB (view switch), not the data-go commit — probe now picks a held row and clicks the live
+"Sell N" verb, flagging DISABLED/none explicitly. **REAL DEFECT → fixed**: `world:requestJump`
+accepted while docked wedges `jump.state=CHARGING` forever (chargeT never ticks under the station
+screen) — `_onRequestJump` now rejects with `docked` (commit 05db48a78). l06's stall also exposed
+that l05's Undock click silently failed: the footer Undock verb is `position:fixed`, so
+`offsetParent!==null` filters are blind to it — added `H.clickText`/`H.isVis` helpers covering
+fixed elements. l07 hail ran while docked → deck opened "CHANNEL IDLE" (correct: not_in_flight);
+needs rerun in flight. l08 synthetic ship_destroyed → gameOver showed only Load save / New Game —
+recoverable berth verb needs the real combat receipt path; synthetic emit can't produce it.
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 6 | screens+edge+combat+loop | 26+7+6+8 | 2 real (jump-wedge, sell-tab) + probe gaps | requestJump docked-reject |
+
+**Run 7 queue**: full-route rerun with all beats — i/l overlays, t02b switch, l04 sell commit,
+l04b job-accept→l06 mission-sector jump→l09 dock-and-get-paid, l07 hail in flight, l08 gameOver.
+
 ## Run ledger
 
 | run | routes | beats | obs | game fixes landed |
