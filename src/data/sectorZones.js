@@ -215,7 +215,16 @@ const CORE_SECTOR_ZONES = {
   sector_sker_haven: [
     { id: 'zone_sker_haven', name: 'Skerris Deep', type: 'outlaw_zone', factionId: 'faction_reach',
       reason: 'An open pirate haven — the Reach fence stolen cargo and refit raiders here.',
-      center: { x: -540, z: 680 }, radius: 1400, presence: P.raiders([3, 5]) },
+      center: { x: -540, z: 680 }, radius: 1400,
+      presence: {
+        ...P.raiders([3, 5]),
+        // Sker Bazaar is the Reach's market, not a kill box — the door vets standing, the
+        // deep picket does not. Neutral visitors fly to the refusal; negative standing (or
+        // direct provocation) turns the picket hostile.
+        standingHostileBelow: 0,
+        // Picket off the Skerris Throne, outside station_sker's berth safety bubble.
+        spawnCenter: { x: -1700, z: 1500 },
+      } },
     { id: 'zone_sker_gatecamp', name: 'Reach Gate-Camp', type: 'ambush_lane', factionId: 'faction_reach',
       reason: 'Anything that jumps in is scanned, then swarmed. Jump out fast or don\'t jump in.',
       center: { x: 1600, z: -1200 }, radius: 900, presence: P.raiders([3, 5]) },
