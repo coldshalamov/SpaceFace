@@ -78,10 +78,13 @@ export function quoteMissionEconomics({
   };
 }
 
-/** Read-only adapter for the ordinary missions owner's known info/destination contracts. */
-export function priceProceduralOffer({ type, info, dest, riskTier, distance, params, loyaltyMultiplier=1 }) {
-  return quoteMissionEconomics({type, tier:Math.max(economyTier(info?.sectorTier ?? info?.tier),
-    economyTier(dest?.sectorTier ?? dest?.tier),economyTier(riskTier)),
+/** Read-only adapter for the ordinary missions owner's known info/destination contracts.
+ *  `tier` pins the priced tier, escaping the sector-max walk for a type that owns its pay class. */
+export function priceProceduralOffer({ type, info, dest, riskTier, distance, params, loyaltyMultiplier=1, tier=null }) {
+  return quoteMissionEconomics({type,
+    tier: tier != null ? economyTier(tier)
+      : Math.max(economyTier(info?.sectorTier ?? info?.tier),
+        economyTier(dest?.sectorTier ?? dest?.tier),economyTier(riskTier)),
     riskTier,distance,params,loyaltyMultiplier});
 }
 

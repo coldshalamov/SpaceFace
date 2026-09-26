@@ -10,7 +10,7 @@ export const MISSION_TUNING = {
     // Generated compatibility values. economyMissionTerms is the canonical live quote.
     cargo_delivery: 411,
     bulk_trade: 453,
-    bounty_hunt: 552,
+    bounty_hunt: 303,
     mining_quota: 677,
     salvage_retrieval: 614,
     escort: 598,
