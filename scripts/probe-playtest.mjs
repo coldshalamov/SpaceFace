@@ -44,7 +44,7 @@ async function backOut(ctx, fromScreen) {
   if ((await screenOf(ctx)) !== fromScreen) return 'esc';
   const hit = await ctx.page.evaluate(() => {
     const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-      .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /back|return|close|resume|depart|undock|exit/i.test(e.textContent || ''))[0];
+      .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /back|return|close|resume|depart|undock|exit/i.test(e.textContent || ''))[0];
     if (!w) return null;
     w.click();
     return (w.textContent || '').trim();
@@ -136,7 +136,7 @@ const ROUTES = {
         const group = [...document.querySelectorAll('.k-words--row')]
           .filter((g) => {
             const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
-            return g.offsetParent !== null && !g.closest('#toasts,#alerts,#toast-live') && acts.length === 2 && acts.includes('off') && acts.includes('on');
+            return window.__SF_PT_HELPERS__.isVis(g) && !g.closest('#toasts,#alerts,#toast-live') && acts.length === 2 && acts.includes('off') && acts.includes('on');
           })[0];
         if (!group) return { found: false };
         const rowLabel = (group.closest('.k-row') || group.parentElement || group).textContent.trim().slice(0, 60);
@@ -151,7 +151,7 @@ const ROUTES = {
         const group = [...document.querySelectorAll('.k-words--row')]
           .filter((g) => {
             const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
-            return g.offsetParent !== null && acts.length === 2 && acts.includes('off') && acts.includes('on');
+            return window.__SF_PT_HELPERS__.isVis(g) && acts.length === 2 && acts.includes('off') && acts.includes('on');
           })[0];
         return group ? { isOn: group.classList.contains('is-on'), rowLabel: (group.closest('.k-row') || group).textContent.trim().slice(0, 60) } : null;
       });
@@ -160,7 +160,7 @@ const ROUTES = {
         const group = [...document.querySelectorAll('.k-words--row')]
           .filter((g) => {
             const acts = [...g.querySelectorAll('.k-word')].map((w) => w.dataset.action);
-            return g.offsetParent !== null && acts.length === 2 && acts.includes('off') && acts.includes('on');
+            return window.__SF_PT_HELPERS__.isVis(g) && acts.length === 2 && acts.includes('off') && acts.includes('on');
           })[0];
         if (!group) return null;
         const isOn = group.classList.contains('is-on');
@@ -196,7 +196,7 @@ const ROUTES = {
       await shotNow(ctx, 'f01-config');
       const started = await ctx.page.evaluate(() => {
       const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live')
             && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
             && !/back|cancel|return/i.test(e.textContent || ''))[0];
         if (!w) return null;
@@ -230,7 +230,8 @@ const ROUTES = {
         await pressKey(ctx, key);
         const opened = await snap(ctx);
         const overlayVisible = kind === 'overlay'
-          ? await ctx.page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => e.offsetParent !== null && (e.offsetWidth > 0 || e.offsetHeight > 0)), sel)
+          ? await ctx.page.evaluate((s) => [...document.querySelectorAll(s)]
+            .some((e) => window.__SF_PT_HELPERS__.isVis(e)), sel)
           : null;
         await shotNow(ctx, `${id}-open`);
         const back = await backOut(ctx, opened.screen);
@@ -249,7 +250,7 @@ const ROUTES = {
       if (paused.screen && paused.screen !== 'flight' && paused.screen !== 'mainMenu') {
         const w = await ctx.page.evaluate(() => {
           const b = [...document.querySelectorAll('.k-word, button, [role="button"]')]
-            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /resume|return|continue|back/i.test(e.textContent || ''))[0];
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /resume|return|continue|back/i.test(e.textContent || ''))[0];
           if (!b) return null; b.click(); return (b.textContent || '').trim();
         });
         resumed = w;
@@ -310,7 +311,7 @@ const ROUTES = {
         // Close whatever modal the last tab opened before navigating.
         await ctx.page.evaluate(() => {
           const pop = document.querySelector('.sx-pop:not([hidden]) [data-action="close"], .sx-pop:not([hidden]) .k-word, [role="dialog"] button');
-          if (pop && pop.offsetParent !== null) pop.click();
+          if (pop && window.__SF_PT_HELPERS__.isVis(pop)) pop.click();
         });
         await ctx.page.evaluate((id) => {
           const el = document.querySelector(`[data-nav="${id}"]`);
@@ -388,7 +389,7 @@ const ROUTES = {
       const row = await ctx.page.evaluate(() => {
         const isVerb = (t) => /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(t || '');
         const rows = [...document.querySelectorAll('li, tr, [data-offer], .offer, .job, [class*="offer"], [class*="job"]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'));
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live'));
         for (const el of rows) {
           const btn = [...el.querySelectorAll('button, .k-word, [role="button"], [data-action]')].find((b) => isVerb(b.textContent));
           if (btn) { btn.click(); return (el.textContent || '').trim().slice(0, 80); }
@@ -398,7 +399,7 @@ const ROUTES = {
         const cand = rows.find((el) => /deliver|transport|escort|scan|mine|haul|cargo|convoy|passenger|survey|bounty/i.test(el.textContent || '') && !/sell what/i.test(el.textContent || ''));
         if (cand) cand.click();
         const bare = [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
-          .find((b) => b.offsetParent !== null && !b.closest('#toasts,#alerts,#toast-live') && isVerb(b.textContent));
+          .find((b) => window.__SF_PT_HELPERS__.isVis(b) && !b.closest('#toasts,#alerts,#toast-live') && isVerb(b.textContent));
         if (bare) { bare.click(); return (cand ? '(row+pane) ' : '(pane) ') + (bare.textContent || '').trim(); }
         return cand ? '(row selected, no verb) ' + (cand.textContent || '').trim().slice(0, 60) : null;
       });
@@ -407,7 +408,7 @@ const ROUTES = {
         /blocked/i.test(document.body.innerText || '') && /need\s+\d/i.test(document.body.innerText || ''));
       const accepted = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live')
             && /dispatch this job|^\s*accept|take on|sign|take contract/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
@@ -436,7 +437,7 @@ const ROUTES = {
       await shotNow(ctx, 'x03-pause');
       const quit = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /main menu/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1600);
@@ -446,7 +447,7 @@ const ROUTES = {
         const root = document.querySelector('#sf-confirm-root');
         if (!root) return null;
         const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1600);
@@ -641,7 +642,7 @@ const ROUTES = {
       // Switch to the IN HOLD filter, then sell the first row's commodity once.
       const inHold = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /in hold/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /in hold/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(900);
@@ -649,22 +650,22 @@ const ROUTES = {
       // data-go verb ("Sell N") — not the Buy/Sell mode tab, which only switches the pane.
       const picked = await ctx.page.evaluate(() => {
         const row = [...document.querySelectorAll('.sx-mkt-row, tr, .k-row')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /held [0-9]+u|held\b/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /held [0-9]+u|held\b/i.test(e.textContent || ''))[0];
         if (row) { row.click(); return (row.textContent || '').trim().slice(0, 60); }
         return null;
       });
       await sleep(900);
       const sellMode = await ctx.page.evaluate(() => {
         const tab = [...document.querySelectorAll('.sx-trade__go--sell, button, [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*sell\s*$/i.test((e.textContent || '').trim()) && !e.hasAttribute('data-go'))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /^\s*sell\s*$/i.test((e.textContent || '').trim()) && !e.hasAttribute('data-go'))[0];
         if (tab) { tab.click(); return true; } return false;
       });
       await sleep(700);
       const sold = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('[data-go]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^sell/i.test((e.textContent || '').trim()) && !e.disabled)[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /^sell/i.test((e.textContent || '').trim()) && !e.disabled)[0];
         if (!b) {
-          const dead = [...document.querySelectorAll('[data-go]')].filter((e) => e.offsetParent !== null && /sell/i.test(e.textContent || '') && e.disabled)[0];
+          const dead = [...document.querySelectorAll('[data-go]')].filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /sell/i.test(e.textContent || '') && e.disabled)[0];
           return dead ? 'DISABLED:' + (dead.textContent || '').trim() : null;
         }
         b.click(); return (b.textContent || '').trim();
@@ -691,7 +692,7 @@ const ROUTES = {
             && !/sell what/i.test(t);
         };
         const all = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action], .k-row, li, tr')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'));
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live'));
         const commit = all.find((e) => isLeafVerb(e) && !e.querySelector('.k-word, button, [data-action]'));
         if (commit) { commit.click(); return (commit.textContent || '').trim().slice(0, 80); }
         const row = all.find((e) => /to [A-Z]|deliver|haul|cargo/i.test(e.textContent || '') && (e.textContent || '').length < 300 && !/sell what/i.test(e.textContent || ''));
@@ -702,7 +703,7 @@ const ROUTES = {
       if (clicked && clicked.startsWith('row:')) {
         await ctx.page.evaluate(() => {
           const v = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live')
               && (e.textContent || '').trim().length < 80
               && /dispatch this job|accept|take on|take contract|sign on|take job/i.test(e.textContent || ''))[0];
           if (v) v.click();
@@ -724,7 +725,7 @@ const ROUTES = {
       await shotNow(ctx, 'l05-shipworks');
       const verbs = await ctx.page.evaluate(() =>
         [...document.querySelectorAll('button, .k-word, [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'))
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live'))
           .map((e) => (e.textContent || '').trim()).filter(Boolean).slice(0, 40));
       // Undock back to flight (position:fixed footer verb — use the fixed-aware helper).
       const undock = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/undock/i));
@@ -842,12 +843,12 @@ const ROUTES = {
       await shotNow(ctx, 'l08-gameover');
       const verbs = await ctx.page.evaluate(() =>
         [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'))
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live'))
           .map((e) => (e.textContent || '').trim()).filter(Boolean).slice(0, 24));
       // Click the recovery/continue verb if present and verify we return to flight.
       const recover = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live')
             && /continue|recover|respawn|rebuild|fly again|wake/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
@@ -874,7 +875,7 @@ const ROUTES = {
         const opened = await ctx.page.evaluate((src) => {
           const rx = new RegExp(src, 'i');
           const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && rx.test(e.textContent || ''))[0];
           if (!b) return null; b.click(); return (b.textContent || '').trim();
         }, re.source);
         await sleep(1400);
@@ -896,7 +897,7 @@ const ROUTES = {
     await B(ctx, 'c02-launch', 'Quick play -> crucible flight', async () => {
       const clicked = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /quick play|launch|begin|fight|enter/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /quick play|launch|begin|fight|enter/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(2500);
@@ -949,14 +950,14 @@ const ROUTES = {
       const p = await snap(ctx);
       const verb = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|leave|abandon|exit|concede|forfeit/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /main menu|leave|abandon|exit|concede|forfeit/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1500);
       await ctx.page.evaluate(() => {
         const root = document.querySelector('#sf-confirm-root') || document;
         const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave|forfeit/i.test(e.textContent || ''))[0];
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave|forfeit/i.test(e.textContent || ''))[0];
         if (b) b.click();
       });
       await sleep(1500);
@@ -974,7 +975,7 @@ async function newGameToFlight(ctx) {
   await sleep(1500);
   await ctx.page.evaluate(() => {
     const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-      .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+      .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && !e.closest('#toasts,#alerts,#toast-live')
         && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
         && !/back|cancel|return/i.test(e.textContent || ''))[0];
     if (w) w.click();
