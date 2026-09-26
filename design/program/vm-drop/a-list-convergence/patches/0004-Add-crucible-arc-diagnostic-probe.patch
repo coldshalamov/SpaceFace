@@ -1,0 +1,259 @@
+From 63484c4ba8e8aa8adf3faf203d1750d9cd717160 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 00:59:31 +0000
+Subject: [PATCH 2/2] Add crucible arc diagnostic probe
+
+Timed series + field snapshots + scene census at crucible start to
+identify arena-filling arc sources.
+
+Co-Authored-By: Robin Gattis <93robingattis@gmail.com>
+---
+ scripts/probe-crucible-arcs.mjs | 236 ++++++++++++++++++++++++++++++++
+ 1 file changed, 236 insertions(+)
+ create mode 100644 scripts/probe-crucible-arcs.mjs
+
+diff --git a/scripts/probe-crucible-arcs.mjs b/scripts/probe-crucible-arcs.mjs
+new file mode 100644
+index 000000000..1eb0ba99e
+--- /dev/null
++++ b/scripts/probe-crucible-arcs.mjs
+@@ -0,0 +1,236 @@
++// Dump the large/cyan objects dominating the crucible-start frame: names, bounds, materials.
++// Boot -> title -> Crucible -> Quick play -> first playable frame -> scene census + screenshot.
++// Writes only to .devshots/crucible-arcs/.
++
++import fs from 'node:fs';
++import net from 'node:net';
++import path from 'node:path';
++import { spawn } from 'node:child_process';
++import { fileURLToPath } from 'node:url';
++import { chromium } from 'playwright';
++
++const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++const OUT_DIR = path.join(ROOT, '.devshots', 'crucible-arcs');
++const HEADLESS = true;
++
++const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
++async function freePort() {
++  return new Promise((resolve, reject) => {
++    const srv = net.createServer();
++    srv.once('error', reject);
++    srv.listen(0, '127.0.0.1', () => {
++      const port = srv.address().port;
++      srv.close(() => resolve(port));
++    });
++  });
++}
++async function waitForServer(url, timeoutMs = 120_000) {
++  const deadline = Date.now() + timeoutMs;
++  while (Date.now() < deadline) {
++    try {
++      const response = await fetch(url);
++      if (response.ok) return;
++    } catch { /* not up yet */ }
++    await sleep(150);
++  }
++  throw new Error(`game server did not answer at ${url}`);
++}
++
++fs.mkdirSync(OUT_DIR, { recursive: true });
++const port = await freePort();
++const server = spawn(process.execPath, ['server.js', String(port)], {
++  cwd: ROOT, stdio: 'ignore',
++  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
++});
++let browser = null;
++const report = { bigObjects: [], ribbons: [], consoleErrors: [] };
++
++try {
++  await waitForServer(`http://127.0.0.1:${port}/`);
++  browser = await chromium.launch({
++    headless: HEADLESS,
++    args: ['--disable-renderer-backgrounding', '--disable-background-timer-throttling',
++      '--disable-backgrounding-occluded-windows', '--window-size=1600,900'],
++  });
++  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
++  page.on('pageerror', (e) => report.consoleErrors.push(`[pageerror] ${String(e).slice(0, 200)}`));
++  page.on('console', (m) => {
++    if (m.type() === 'error') report.consoleErrors.push(`[console] ${m.text().slice(0, 200)}`);
++  });
++  await page.addInitScript(() => {
++    sessionStorage.setItem('sf.cinematicSeen', '1');
++    try {
++      if (!localStorage.getItem('sf.settings.profile.v1')) {
++        localStorage.setItem('sf.settings.profile.v1', JSON.stringify({
++          version: 1,
++          settings: { accessibility: { motionPreference: 'system' }, video: { motionReduce: true } },
++        }));
++      }
++    } catch (_) { /* storage unavailable */ }
++  });
++
++  await page.goto(`http://127.0.0.1:${port}/?demo=1`, { waitUntil: 'domcontentloaded' });
++  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
++  await page.waitForSelector('[data-action="crucible"]', { timeout: 60_000 });
++  await page.click('[data-action="crucible"]');
++  await page.waitForFunction(
++    () => !!document.querySelector('.sf-crucible, [data-screen="crucible"], [data-action]'),
++    null, { timeout: 60_000 },
++  );
++  // click "Quick play"
++  await page.evaluate(() => {
++    const words = [...document.querySelectorAll('button, [data-action], [role="button"]')];
++    const w = words.find((el) => /quick play/i.test(el.textContent || ''));
++    if (w) w.click();
++  });
++  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 240_000 });
++  await page.waitForFunction(() => Number.isFinite(window.SF.state.render
++    && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
++  // Timed series: catch the arc lifetime + field state at each beat.
++  const fieldSnaps = [];
++  for (const [tag, waitMs] of [['t2', 2000], ['t6', 4000], ['t15', 9000], ['t30', 15000], ['t60', 30000]]) {
++    await sleep(waitMs);
++    const snap = await page.evaluate(() => {
++      const SF = window.SF;
++      const render = SF.registry.get('render');
++      const ffx = render && render._vfx && render._vfx._fieldGeom;
++      const fields = SF.state.fields && (SF.state.fields.active || SF.state.fields.snapshot);
++      return {
++        simTime: SF.state.simTime,
++        fieldsActive: Array.isArray(fields) ? fields.map((f) => ({ kind: f.kind, r: Math.round(f.radius || 0), x: Math.round(f.center?.x || 0), z: Math.round(f.center?.z || 0) })) : fields,
++        fieldStats: ffx && typeof ffx.inspect === 'function' ? ffx.inspect() : (render && render._vfx && render._vfx.diag ? render._vfx.diag.fieldForceLanguage : null),
++      };
++    });
++    fieldSnaps.push({ tag, ...snap });
++    await page.screenshot({ path: path.join(OUT_DIR, `series-${tag}.png`) });
++  }
++  report.fieldSnaps = fieldSnaps;
++
++
++  const census = await page.evaluate(() => {
++    const SF = window.SF;
++    const render = SF.registry.get('render');
++    const THREE = SF.THREE;
++    const scene = render && render.scene;
++    if (!scene) return { error: 'no scene' };
++    const player = SF.state.entities.get(SF.state.playerId);
++    const box = new THREE.Box3();
++    const tmp = new THREE.Vector3();
++    const big = [];
++    const ribbons = [];
++    scene.updateMatrixWorld(true);
++    scene.traverse((o) => {
++      if (!o.visible) return;
++      if (!(o.isMesh || o.isLine || o.isPoints)) return;
++      box.setFromObject(o);
++      if (box.isEmpty()) return;
++      const size = box.getSize(new THREE.Vector3());
++      const span = Math.max(size.x, size.z);
++      const c = box.getCenter(new THREE.Vector3());
++      const distP = player && player.pos ? Math.round(c.distanceTo(new THREE.Vector3(player.pos.x, 0, player.pos.z))) : null;
++      const mat = o.material;
++      const colorHex = mat && mat.color ? `#${mat.color.getHexString()}` : null;
++      const row = {
++        name: o.name || o.type,
++        type: o.type,
++        span: Math.round(span),
++        y: Math.round(c.y),
++        distToPlayer: distP,
++        color: colorHex,
++        matType: mat && mat.type,
++        opacity: mat && mat.opacity,
++        transparent: !!(mat && mat.transparent),
++        parent: o.parent && (o.parent.name || o.parent.type),
++        renderOrder: o.renderOrder,
++      };
++      if (o.name === 'SF_RibbonTrail' || (o.name || '').includes('Ribbon')) ribbons.push(row);
++      if (span > 40 || /trail|ribbon|arc|tether|cable|sling|rail|stream|orbit|lane|guide|sweep|spiral|beam|loop/i.test(o.name || '')) {
++        if (!ribbons.includes(row)) big.push(row);
++      }
++    });
++    // engine trail summaries
++    const trails = render && render._vfx && render._vfx._ribbonTrails
++      ? [...render._vfx._ribbonTrails.values()].map((t) => t.inspect && t.inspect()) : null;
++    // One asteroid subtree in full detail — what carries the cyan ring/loop?
++    const astRoot = scene.children.find((c) => /^Asteroid_\d+$/.test(c.name || ''));
++    const astKids = [];
++    if (astRoot) {
++      astRoot.traverse((o) => {
++        if (!(o.isMesh || o.isLine || o.isPoints)) return;
++        const m = o.material;
++        const mats = Array.isArray(m) ? m : [m];
++        astKids.push({
++          name: o.name || o.type,
++          type: o.type,
++          geo: o.geometry && o.geometry.type,
++          mats: mats.filter(Boolean).map((x) => ({
++            type: x.type, color: x.color ? `#${x.color.getHexString()}` : null,
++            emissive: x.emissive ? `#${x.emissive.getHexString()}` : null,
++            transparent: !!x.transparent, opacity: x.opacity,
++          })),
++          scale: o.scale ? [o.scale.x, o.scale.y, o.scale.z].map((v) => +v.toFixed(2)) : null,
++          pos: [o.position.x, o.position.y, o.position.z].map((v) => +v.toFixed(1)),
++        });
++      });
++    }
++    return { big, ribbons, trails, astKids, astRootName: astRoot && astRoot.name, playerPos: player && player.pos ? [player.pos.x, player.pos.z] : null };
++  });
++  report.census = census;
++  await page.screenshot({ path: path.join(OUT_DIR, 'crucible-census.png') });
++
++  // Raycast the cyan-arc pixels seen in the frame to name the objects under them.
++  const probePixels = [
++    [300, 300], [700, 250], [1050, 450], [550, 620], [950, 680], [300, 700],
++    [600, 480], [900, 380], [450, 150], [1100, 850],
++  ];
++  const hits = await page.evaluate((pixels) => {
++    const SF = window.SF;
++    const render = SF.registry.get('render');
++    const THREE = SF.THREE;
++    const scene = render && render.scene;
++    const cam = render && render.cam && (render.cam.obj || render.cam.camera || render.cam);
++    if (!scene || !cam) return { error: 'no scene/cam' };
++    const w = window.innerWidth, h = window.innerHeight;
++    const raycaster = new THREE.Raycaster();
++    raycaster.far = 4000;
++    const out = [];
++    for (const [px, py] of pixels) {
++      const ndc = new THREE.Vector2((px / w) * 2 - 1, -(py / h) * 2 + 1);
++      raycaster.setFromCamera(ndc, cam);
++      const hits = raycaster.intersectObjects(scene.children, true)
++        .filter((x) => x.object && x.object.visible !== false && x.distance < 3800)
++        .slice(0, 5)
++        .map((x) => ({
++          name: x.object.name || x.object.type,
++          type: x.object.type,
++          dist: Math.round(x.distance),
++          parentChain: (() => { const c = []; let n = x.object; while (n && c.length < 6) { c.push(n.name || n.type); n = n.parent; } return c.join(' < '); })(),
++          matType: x.object.material && x.object.material.type,
++          color: x.object.material && x.object.material.color ? `#${x.object.material.color.getHexString()}` : null,
++        }));
++      out.push({ px, py, hits });
++    }
++    return out;
++  }, probePixels);
++  report.pixelHits = hits;
++
++  // Isolation: hide DeepField painted-light/dust elements, screenshot again.
++  await page.evaluate(() => {
++    const SF = window.SF;
++    const render = SF.registry.get('render');
++    const scene = render && render.scene;
++    if (!scene) return;
++    scene.traverse((o) => {
++      if (o.name && /PaintedStellarLight|ecliptic-dust|left-drift|outer-shepherd|StellarFormation/.test(o.name)) {
++        o.visible = false;
++      }
++    });
++  });
++  await sleep(400);
++  await page.screenshot({ path: path.join(OUT_DIR, 'crucible-no-deepfield.png') });
++} finally {
++  if (browser) await browser.close().catch(() => {});
++  server.kill('SIGTERM');
++}
++fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
++console.log(JSON.stringify({ astRootName: report.census?.astRootName, astKids: report.census?.astKids, ribbons: report.census?.ribbons, consoleErrors: report.consoleErrors.slice(0, 5) }, null, 1));
+-- 
+2.34.1
+

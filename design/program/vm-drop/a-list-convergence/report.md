@@ -50,9 +50,45 @@ Proof (same seeds, authored state live):
 Instrument: `scripts/probe-station-occlusion.mjs` — `--headless` flies the real approach;
 `SF_OCCL_MAP=1` raycasts a polar roof map + lane ceiling profile + bearing screenshots.
 
-## Current worst problem (post-repair-1 census)
+## Repair 2 — arena-scale field ribbons bury the crucible frame (commit 8729b472b)
 
-Giant blue arcs fill the crucible-start frame — next candidate under the loop.
+Cause: the giant cyan arcs at crucible start were `SF_FieldForceLanguage` — the
+field-force presentation drawing live sim fields. Arena phases install
+environmental fields at r=300-620 WU (`survivalArena.js`: loose_plate well r=470,
+furnace repulsor r=430, absorbent_screen r=620, boss wells r=560), but run the
+same recipes authored for hand-deployed tools (r<=~150): 19 ribbon surfaces per
+well at proportional width (r*0.05-0.07 -> 24-33 WU-wide bands) and flat ~0.88
+alpha. At arena radius that is a wall of neon scythes over the whole combat
+frame for the first 30-60s of every round — the top readability break.
+
+Fix (`fieldForcePresentation.js`): per-field `presence` scales non-boundary
+surface alpha linearly past `FIELD_LANGUAGE_FULL_RADIUS=170`, floored at 0.30.
+The physics-boundary role keeps full alpha (the zone edge must stay truthful);
+small deploys unchanged (presence=1). Same surface counts/shapes — lifecycle
+and recipe contracts untouched.
+
+Proof (same seeds, `scripts/probe-crucible-arcs.mjs` timed series):
+- cyan arc pixels at crucible start: 45-53k -> 10-21k; zone edge + inward
+  direction remain legible; ship/targets/rocks read over the field, not under.
+- `check:vfx-force-language` 92 pass; `check:baseline` 16/16; demo-path CLEAN
+  PASS re-run post-fix (~14.5 min), module fitted + paid + demoEnd reached.
+
+Instrument: `scripts/probe-crucible-arcs.mjs` (timed frame series +
+`state.fields.active` snapshots + scene census + pixel raycasts).
+
+## Post-repair-2 census (remaining ranked)
+
+1. ~15-26% frames >100 ms in transit/dock segments (SwiftShader caveat — "GPU
+   brick" logs are one-time bloom program compiles on first-seen materials;
+   needs a real-GPU pass before chasing).
+2. Target card density (designed jargon language; would be a taste edit, not a
+   defect fix — deferred unless owner wants it).
+3. Beige-clay rocks — authored object-space geology PBR IS live (vertex colors,
+   sfGeologyPbr AO/roughness/normalStrength, 42-deg crease); reads smooth at
+   flight scale on SwiftShader. Not a code defect on this tier.
+4. `SF_StationArchetypeFallback` cyan scaffolds at 3-20k WU = designed
+   progressive-load placeholders; authored GLBs resolve on approach (verified
+   dock frames show authored hull). Not a defect.
 
 ## Reverted experiments
 
