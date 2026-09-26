@@ -23,10 +23,12 @@ const CSS = `
 html.sf-reduce-motion .orr-wave__bar, html.sf-reduce-motion .orr-wave.is-speaking .orr-wave__bar { animation:none; transform:scaleY(var(--orr-wave-rest, .18)); }
 /* the voice arc: bars of light radiating from an open arc round a face, breathing as a whole */
 .orr-voicearc { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
-.orr-voicearc .orr-voicearc__track { fill:none; stroke:rgb(${BONE} / .2); stroke-width:1; }
-.orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.1; stroke-linecap:butt; }
-.orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .48); stroke-width:2; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
-.orr-voicearc .orr-voicearc__leader { fill:none; stroke:rgb(${BONE} / .4); stroke-width:1; stroke-linejoin:miter; }
+/* weight, not wire: the voice stands on a luminous band with a crisp edge; its bars are 2.6px of light */
+.orr-voicearc .orr-voicearc__band { --orr-w-band:7px; --orr-band-a:.075; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__track { --orr-w-edge:1.5px; --orr-edge-a:.36; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:7; opacity:.12; stroke-linecap:butt; }
+.orr-voicearc .orr-voicearc__bars { fill:none; stroke:rgb(${BONE} / .56); stroke-width:2.6; stroke-linecap:butt; transform-box:fill-box; transform-origin:center; animation:orr-voicearc-breathe 3.2s ease-in-out infinite alternate; }
+.orr-voicearc .orr-voicearc__leader { fill:none; stroke:rgb(${BONE} / .45); stroke-width:1.5; stroke-linejoin:miter; }
 .orr-voicearc .orr-voicearc__foot { fill:rgb(${BONE} / .7); }
 @keyframes orr-voicearc-breathe { from { opacity:.82; } to { opacity:1; } }
 html.sf-reduce-motion .orr-voicearc .orr-voicearc__bars { animation:none; opacity:1; }
@@ -167,7 +169,8 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
   });
   for (let k = cursor; k < n; k += 1) lens[k] = 4;
   const span = to - from;
-  layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-voicearc__track' }));
+  layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-band orr-voicearc__band' }));
+  layer.appendChild(svg('path', { d: arcD(cx, cy, r, from, to), class: 'orr-edge orr-voicearc__track' }));
   let leaderSegs = [];
   let leaderPath = '';
   if (leaderFrom) {
@@ -184,10 +187,10 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
     const a = from + (span * (i + 0.5)) / n;
     const len = lens[i];
     if (!len) continue;
-    const [x0, y0] = polar(cx, cy, r + 3, a);
+    const [x0, y0] = polar(cx, cy, r + 5.5, a);
     const s = Math.min(1, r / 310);
     const L = len <= 4 ? Math.max(3, Math.round(4 * s)) : len * s;
-    const [x1, y1] = polar(cx, cy, r + 3 + L, a);
+    const [x1, y1] = polar(cx, cy, r + 5.5 + L, a);
     if (leaderFrom && nearLeader(x0, y0, x1, y1)) continue; // the bars part wherever the leader passes
     dBars += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
   }
@@ -195,7 +198,7 @@ export function createVoiceArc(host, { text = '', cx, cy, r, from = 232, to = 30
   layer.appendChild(svg('path', { d: dBars, class: 'orr-voicearc__bars' }));
   if (leaderFrom && leaderPath) {
     layer.appendChild(svg('path', { d: leaderPath, class: 'orr-voicearc__leader' }));
-    layer.appendChild(svg('circle', { cx: f(leaderSegs[0][0]), cy: leaderSegs[0][1], r: 1.6, class: 'orr-voicearc__foot' }));
+    layer.appendChild(svg('circle', { cx: f(leaderSegs[0][0]), cy: leaderSegs[0][1], r: 2.4, class: 'orr-voicearc__foot' }));
   }
   host.appendChild(layer);
   return { el: layer, dispose() { if (layer.parentNode) layer.parentNode.removeChild(layer); } };
