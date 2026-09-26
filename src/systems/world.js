@@ -165,6 +165,7 @@ import {
 } from '../world/asteroidField.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import {
+  dropDressingRow,
   dropDressingSector,
   insertDressingRow,
   getDressingRow,
@@ -1079,6 +1080,8 @@ export const world = {
       RESIDENCY_TIER.FULL,
       opts,
     );
+    // A bag first built REDUCED presented its POIs as dressing rows; FULL owes the live actors.
+    this._promotePoiRowsToLive(sector, active);
     // Already has combat presence → keep anchors; still may need dressing.
     if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
       if (!(active.dressing && active.dressing.length)) {
@@ -1105,6 +1108,42 @@ export const world = {
     }
     this._ensureOpticStructures(sector, active);
     this.helpers.requestPresentationRebuild?.('sector-full');
+  },
+
+  /**
+   * FULL residents keep the POIs that must stay live actors (poiMustStayLiveActor: landmarks,
+   * scanner signals, discovery plates, band-fleet hulls) on the live list, exactly as a bag first
+   * materialized FULL spawns them. A bag first built REDUCED holds them as dressing rows; move each
+   * such row to a live marker under the same data and poi identity, and repoint the bag entry.
+   * Idempotent: rows already live are not dressing rows and are skipped.
+   */
+  _promotePoiRowsToLive(sector, active) {
+    if (!sector || !active || !Array.isArray(active.pois)) return;
+    const sourceById = new Map((sector.pois || []).map((poi) => [poi.id, poi]));
+    for (const entry of active.pois) {
+      const row = entry && entry.id != null ? getDressingRow(this.state, entry.id) : null;
+      if (!row || !row.data || row.data.poi !== true) continue;
+      const data = row.data;
+      const bandHull = Number.isFinite(Number(data.quiessenceShipIndex));
+      const source = sourceById.get(data.poiId) || null;
+      const slot = typeof data.activityObjectSlotId === 'string' ? data.activityObjectSlotId : null;
+      if (!bandHull && !(source && poiMustStayLiveActor(source, slot))) continue;
+      const pos = { x: row.pos.x, z: row.pos.z };
+      dropDressingRow(this.state, row.id);
+      const ent = this.helpers.spawnEntity({
+        type: 'fx',
+        factionId: (source && source.factionId) || null,
+        pos,
+        radius: row.radius,
+        mass: 0,
+        collides: !!(source && source.collides),
+        ...(bandHull ? { physicsBody: false } : {}),
+        ttl: Infinity,
+        data,
+      });
+      this._stampHomeSector(ent, sector.id);
+      entry.id = ent.id;
+    }
   },
 
   // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
@@ -1243,7 +1282,12 @@ export const world = {
     // entity-list walk. Sector entry used to scan the full population twice here (capture, then
     // despawn), making outgoing retirement a measurable arrival-frame cost.
     this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
-    dropDressingSector(this.state, sectorId);
+    // POI markers (and band-landmark hulls) share the dressing table with the FULL props, and this
+    // strip also runs the instant a neighbour is first materialized REDUCED. A sector-wide drop
+    // erased every non-live POI there before its first frame (the Skerris Throne, the Resonant
+    // Cathedral) and FULL promotion never re-spawned them. Keep the structural rows, per the
+    // contract above ("keep ... pois").
+    dropDressingSector(this.state, sectorId, (row) => !!(row && row.data && row.data.poi === true));
     active.enemies = [];
     active.dressing = [];
     active.worldOneOffSpins = [];

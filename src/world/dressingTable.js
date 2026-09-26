@@ -94,7 +94,8 @@ export function dropDressingRow(state, id) {
   return true;
 }
 
-export function dropDressingSector(state, sectorId) {
+/** Drop every row homed in `sectorId`; an optional `keep(row)` predicate retains matching rows. */
+export function dropDressingSector(state, sectorId, keep = null) {
   const table = state && state.world && state.world.dressing;
   if (!table || !sectorId) return 0;
   let dropped = 0;
@@ -102,6 +103,7 @@ export function dropDressingSector(state, sectorId) {
     const row = table.rows[i];
     const home = row && (row.homeSectorId || (row.data && row.data.homeSectorId));
     if (home !== sectorId) continue;
+    if (typeof keep === 'function' && keep(row)) continue;
     table.rows.splice(i, 1);
     table.byId.delete(row.id);
     clearEntityRuntime(row);
