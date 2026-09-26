@@ -9774,7 +9774,7 @@
       "priority": 191,
       "title": "The ticker and event cards",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9799,8 +9799,8 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. DONE WHEN: Every ticker line traces to a sim event; capture of a blockade line and its card."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-177.00-REPORT.md"],
+      "brief": "DONE 2026-09-26: every ticker line traces to a sim event; a seeded blockade produces its line and the berth dock card, and a spontaneous economy roll reaches the HUD tape without injection. Receipt: design/program/roadmap/receipts/PQ-177.00-REPORT.md. Original: One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. DONE WHEN: Every ticker line traces to a sim event; capture of a blockade line and its card."
     },
     {
       "id": "PQ-177.01",
@@ -9842,7 +9842,7 @@
       "priority": 193,
       "title": "Supply-chain glyphs",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9867,8 +9867,8 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. DONE WHEN: Blind test: a player names where to sell ore and why after one screen."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-177.02-REPORT.md"],
+      "brief": "DONE 2026-09-26: the selected commodity inspector paints producedBy to consumedBy and names a live consumer dock; the Helios market capture reads Mining to Refinery and Trade Hub - This dock buys it. Receipt: design/program/roadmap/receipts/PQ-177.02-REPORT.md. Original: Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. DONE WHEN: Blind test: a player names where to sell ore and why after one screen."
     },
     {
       "id": "PQ-177.03",
@@ -9876,7 +9876,7 @@
       "priority": 194,
       "title": "Contracts that twist",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-138.04",
         "PQ-138.00",
@@ -9902,8 +9902,8 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). DONE WHEN: ≥ 5 twist clauses live on boards; each has a scenario."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-177.03-REPORT.md"],
+      "brief": "DONE 2026-09-26: seed 15230 boards carry all five twist clauses and every clause mutates into a live scenario (hunt, recovery, reroute, hunt, field-clear) in test/pq-152-03-twist-clauses.test.mjs. Receipt: design/program/roadmap/receipts/PQ-177.03-REPORT.md. Original: Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). DONE WHEN: ≥ 5 twist clauses live on boards; each has a scenario."
     },
     {
       "id": "PQ-177.04",
@@ -9911,7 +9911,7 @@
       "priority": 195,
       "title": "The black market",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-148.02",
         "PQ-151.02",
@@ -9938,8 +9938,8 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "IMPLEMENTED 2026-09-13: Tethys contact supplies one persistent Pallas parcel; an unscanned physical customs-and-catch run opens Smuggler Den docking, trade, and laundering exactly once. The seeded loop washes cargo, shows the ledger receipt, and shifts its next quote; focused save/residency and independent review pass. Full headed player-route acceptance remains open."
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-177.04-REPORT.md"],
+      "brief": "DONE 2026-09-26: the seeded smuggling loop completes — physical customs-and-catch delivery opens Smuggler Den, the 35 percent wash cut lands in the persistent laundering ledger, and the berth own-supply moves its next quote. Stale 616-cut pin re-pinned to live catalog math. Receipt: design/program/roadmap/receipts/PQ-177.04-REPORT.md. Original: IMPLEMENTED 2026-09-13: Tethys contact supplies one persistent Pallas parcel; an unscanned physical customs-and-catch run opens Smuggler Den docking, trade, and laundering exactly once. The seeded loop washes cargo, shows the ledger receipt, and shifts its next quote; focused save/residency and independent review pass. Full headed player-route acceptance remains open."
     },
     {
       "id": "PQ-177.05",
