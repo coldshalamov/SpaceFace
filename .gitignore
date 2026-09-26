@@ -76,3 +76,4 @@ design/program/roadmap/receipts/fun-loop/runs/2026-09-14-fun-bench-summary.json
 
 # Cinematic bake intermediates — hundreds of PNG frames, re-derivable via tools/cinematic/render-intro.mjs
 assets/cinematics/.intro-frames/
+tools/cinematic/.boot-video-check.png
