@@ -658,6 +658,16 @@ export const combat = {
     // The marker is written onto the victim by the wave materializer, so this reserves the
     // authored bounty/loot path for the run without asking whether a run happens to be live.
     const runOwns = runOwnsReward(t);
+    // The career kill tally: gameOver's recap, the Life Ledger, and the finale's combat-tally
+    // sentence all read stats.kills and nothing ever wrote it. Same adjudication as the
+    // telemetry sink — killerId === playerId only (NPC attrition, drone-owned kills, and the
+    // player's own death all excluded); Survival bodies stay run-scoped like the run wallet,
+    // while mission-owned kills still count (missions own the reward, not the fact).
+    if (killedByPlayer && !runOwns) {
+      const p = state.player || (state.player = {});
+      const stats = p.stats || (p.stats = {});
+      stats.kills = (Number(stats.kills) || 0) + 1;
+    }
     const authoredRewardEligible = killedByPlayer && !missionOwns && !runOwns;
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
       ? lethal.factionLawful
