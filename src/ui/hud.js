@@ -2715,6 +2715,10 @@ export function createHud(ctx, alerts) {
   .sf-cargo-panel.open {
     display: flex;
   }
+  /* Same HUD-overlay contract as the comms feed: a modal screen owns the frame while it is up;
+     the hold stays open in state and returns when the screen closes. */
+  body.ui-modal-open .sf-cargo-panel.open,
+  body.ui-live-screen .sf-cargo-panel.open { display: none; }
   .sf-cargo-panel__head {
     display: flex;
     align-items: center;

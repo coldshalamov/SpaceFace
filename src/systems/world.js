@@ -4424,6 +4424,10 @@ export const world = {
 
     const reject = (reason) => this.bus.emit('jump:chargeAbort', { reason });
 
+    // A jump request issued while docked (or outside flight) is rejected outright: the charge
+    // state machine ticks under the flight sim, so accepting here would wedge CHARGING with no
+    // player-visible path to it. Emitters on the docked surface should surface 'docked'.
+    if ((state.ui && state.ui.docked) || state.mode !== 'flight') return reject('docked');
     if (!target) return reject('unknown_target');
     if (jump.state !== 'IDLE') return reject('busy');
     if (jump.cooldownT > 0) return reject('cooldown');
