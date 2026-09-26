@@ -440,3 +440,13 @@ leaf, pushes `devin/lane-<slug>`; winners merge here after probe A/B.
   entityList walk verbatim when payloads is non-empty (bucket order diverges
   post-swap-pop — avoids an emit-order change). 47a golden bit-identical
   (f3583c50 on this box, matches post-merge baseline). Probe within noise.
+
+- `postfx` `8e7463fae` — **kept**. Dead per-frame work in the bloom blit:
+  `matrixWorldAutoUpdate` frozen on quadScene/quadCam (QUAD_VERT ignores
+  transforms — skips a scene walk + 4x4 camera invert per blit), stencil-free
+  rtScene clear (stencilBuffer:false made the stencil bit a spec no-op that
+  still paid a setMask), `uGrainFrame` clock read gated behind grain>0.001
+  matching the shader's own threshold. ~2-5µs/frame CPU; contract tests
+  (bloom timing/guard, hotpath, perf-budget) green. Probe: stuck 286→182,
+  missing 450→339, on-time 0.48→0.58. Lane documented the dry-tree list:
+  renderBufferDirect bypass / CAS fold / sweep narrowing rejected.
