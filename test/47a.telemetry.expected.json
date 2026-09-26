@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "f542e2e96a47e0f2ba2bedc35633b70231a8c9a25dccc4b95267211809d97ab2",
+    "authoritativeHash": "f3583c50e2f06924438da92a7085869b80a743b29427dd4b209875fca869f4bf",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -176,6 +176,9 @@
     "d225c6222 (ships keep their own colliders) repaired the measured-skin collider bug from ad1f92053/4f102db53 that had broken reload determinism; reload@600 reproduces the uninterrupted hash exactly.",
     "Evidence on the fixed tree at 9d957b603: repeat-20 deterministic; check:sim:compare reports hashEqual with zero envelope diffs — zero phase0ObservedTraceCounts moved.",
     "Recorded against a clean HEAD worktree; the dirty primary tree carries foreign lanes that move this hash and is excluded.",
-    "2026-09-26 shots leave the weapon socket for every aim, including off the nose. Prior authoritativeHash was e1e77328792bfee15f7a4465758da568456a0901d307e875fe8f04879bc2742f. Trace counts and reload@600 are unchanged; the in-flight rounds are the hash."
+    "2026-09-26 shots leave the weapon socket for every aim, including off the nose. Prior authoritativeHash was e1e77328792bfee15f7a4465758da568456a0901d307e875fe8f04879bc2742f. Trace counts and reload@600 are unchanged; the in-flight rounds are the hash.",
+    "2026-09-26 deliberate re-record over ae2d5217d (D59 bounty pay prices the hunt it actually takes). The prior authoritativeHash was f542e2e96a47e0f2ba2bedc35633b70231a8c9a25dccc4b95267211809d97ab2.",
+    "Bisected in a clean HEAD worktree: green at 546f75f78, red at ae2d5217d. Canonical snapshot diff at tick 720 moves exactly one leaf.",
+    "$.missions.config.BASE.bounty_hunt 552 -> 303 — the authored EHP/DPS-model reconciliation the commit states byte-equal. Metrics, trace counts, entity states and reload@600 are unchanged."
   ]
 }
