@@ -64,7 +64,8 @@ try{
   await move(560,400,60,0);
   let s=await page.evaluate(()=>drawFlightFixture.step(120));
   assert.ok(s.command?.active,'real movement, not injected autoTargetPath, starts draw flight');
-  assert.ok(s.speed>145 && s.speed<160,'accelerates to actual G cap');
+  // Draw path overdrives the profile: cap = combatSpeed(195) x AUTO_TARGET_PATH_OVERDRIVE_MULT(1.6) = 312.
+  assert.ok(s.speed>300 && s.speed<325,'accelerates to actual G cap');
   const start=s.pos;
   s=await page.evaluate(()=>drawFlightFixture.step(60));
   assert.ok(Math.hypot(s.pos.x-start.x,s.pos.z-start.z)>145,'finger lift never parks at a stroke end');

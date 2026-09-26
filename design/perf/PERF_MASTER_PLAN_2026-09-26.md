@@ -268,8 +268,19 @@ retry-budget semantics.
 
 ### Fourth round (head 462833565 — pose-gate dealloc + manifest pins)
 
-- `draw-flight`: same `accelerates to actual G cap` assert — fourth occurrence of
-  the adjudicated master-side failure.
+- `draw-flight`: same `accelerates to actual G cap` assert — fourth occurrence.
+
+### Draw-flight root cause + fix (head — this branch)
+
+Root-caused the assert with a headless real-path replay (`bootRealPath`, seed 4242,
+same hull/systems): the ship equilibrates at exactly **312.00 WU/s**, the authored
+draw cap = `combatSpeed` 195 (drive_reaction_m) x `AUTO_TARGET_PATH_OVERDRIVE_MULT`
+1.6. The window `145<speed<160` was written when governed cruise was ~95 and went
+stale at e8d10fed7's cruise-ceiling restore (Sep 16); master never reached this
+assert because the fixture died earlier at `fixtureReady` (MIME) until f4885cb2e.
+Replayed the full check sequence headlessly — turn speeds hold 312 (momentum
+conserved), `vel.z`=312>140, brake→0.2<3, stroke-restart works. Only the accel
+window was stale; refreshed to 300-325 with the derivation in a comment.
 
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
