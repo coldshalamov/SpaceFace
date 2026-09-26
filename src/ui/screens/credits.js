@@ -8,7 +8,7 @@
 import { CREDITS } from '../../data/credits.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
-import { injectOrrerySettings, createDriftField, createCreditsEmblem, createReelProgress, revealReel } from '../orrery/settingsLayouts.js';
+import { injectOrrerySettings, createDriftField, createCreditsEmblem, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { reducedMotion } from '../orrery/motion.js';
 
 const CREDITS_SHEET_ID = 'of-credits-css';
@@ -150,7 +150,8 @@ export const creditsScreen = {
     if (emblem && typeof rootEl.insertBefore === 'function') rootEl.insertBefore(emblem, rootEl.firstChild);
     if (drift && typeof rootEl.insertBefore === 'function') rootEl.insertBefore(drift.el, rootEl.firstChild);
 
-    refs = { root: rootEl, title, hang, stage, foot, sectionWords, progress, drift, reveal: null, sections: {}, lock: null, lockTimer: 0 };
+    refs = { root: rootEl, title, hang, stage, foot, sectionWords, progress, drift, reveal: null, sections: {}, lock: null, lockTimer: 0, spot: null };
+    try { refs.spot = attachSpotlight(rootEl); } catch (e) { refs.spot = null; }
     if (typeof stage.addEventListener === 'function') stage.addEventListener('scroll', () => this._spy(), { passive: true });
     this._render();
   },
@@ -285,6 +286,7 @@ export const creditsScreen = {
       clearTimeout(refs.lockTimer);
       try { if (refs.drift) refs.drift.dispose(); } catch (e) { /* cosmetic */ }
       try { if (refs.reveal) refs.reveal.dispose(); } catch (e) { /* cosmetic */ }
+      try { if (refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
     }
     refs = null;
   },

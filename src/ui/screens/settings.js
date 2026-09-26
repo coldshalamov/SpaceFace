@@ -43,7 +43,7 @@ import { recordMotionChoice } from '../accessibility.js';
 import { el, words, settle, cue } from '../kit/index.js';
 // ORRERY (design/frontend/ORRERY.md §6 Meta): the categories on a Ladder with the Hand, the sliders as
 // graduated Scales, and a live preview of what the focused row changes beside the list.
-import { injectOrrerySettings, dressSettingsPane } from '../orrery/settingsLayouts.js';
+import { injectOrrerySettings, dressSettingsPane, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { createSettingsPreview } from '../orrery/settingsPreview.js';
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
@@ -325,7 +325,8 @@ export const settingsScreen = {
     let preview = null;
     try { preview = createSettingsPreview(); } catch (e) { preview = null; }
     if (preview) rootEl.insertBefore(preview.el, foot);
-    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio', preview };
+    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio', preview, arrive: false, spot: null };
+    try { refs.spot = attachSpotlight(rootEl); } catch (e) { refs.spot = null; }
     if (preview && typeof pane.addEventListener === 'function') {
       const rowOf = (target) => (target && typeof target.closest === 'function' ? target.closest('.k-row') : null);
       const later = (fn) => { if (typeof queueMicrotask === 'function') queueMicrotask(fn); else Promise.resolve().then(fn); };
@@ -350,6 +351,7 @@ export const settingsScreen = {
       b.tabIndex = active ? 0 : -1;
     });
     refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
+    refs.arrive = true;
     this._render(ctx);
     try { if (refs.preview) refs.preview.show(tab, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
     if (!silent) {
@@ -623,7 +625,9 @@ export const settingsScreen = {
       this._renderGamepadSettings(ctx, pane);
     }
     dressSettingsControls(pane);
-    dressSettingsPane(pane);
+    // a category arrives row by row when it is opened; a rebuild after a change does not replay it
+    dressSettingsPane(pane, { arrive: !!refs.arrive });
+    refs.arrive = false;
   },
 
   _renderGamepadSettings(ctx, pane, build = paneBuilder(pane)) {
@@ -884,7 +888,9 @@ export const settingsScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    refs.arrive = true;
     this._render(ctx);
+    try { if (refs.preview) refs.preview.show(refs.active, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
     rootReady(refs.root);
     try {
       settle(refs.title, { from: 'top', state: 'settings:open' });
@@ -907,6 +913,7 @@ export const settingsScreen = {
   refresh() {},
   dispose() {
     try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
+    try { if (refs && refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
     refs = null;
   },
 };
