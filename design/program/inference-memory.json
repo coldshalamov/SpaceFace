@@ -1843,6 +1843,22 @@
       "commit": "d1318a8f8",
       "status": "integrated",
       "verification": "focused 7/7 green; combat neighbors 28/28; no rng, no schema change"
+    },
+    {
+      "unit": "INFERENCE-30",
+      "title": "The no-fire zone speaks — traffic control logs your registry",
+      "lane": "audio/voice",
+      "fingerprint": "verb=warn,subject=no_fire_ring,sector=any_station,layer=comms,tempo=per_entry,domain=law",
+      "summary": "BP-11 packet A2 shipped authored NO_FIRE_BARK + CI-pinned createNoFireWatch (one warn per ring entry, exit re-arms) with a wiring contract naming a render-lane owner that was never built — firing inside a station no-fire core stayed silent. noFireAdvisory owns the watch as a registered system (hazardHints precedent): player combat:fire inside a ring speaks the authored line once per entry, faction-attributed; manifest lists it init+update.",
+      "files": [
+        "src/data/stationBubbles.js",
+        "src/core/registry.js",
+        "src/runtime/authoritativeSystemManifest.js",
+        "test/no-fire-advisory.test.mjs"
+      ],
+      "commit": "6ce2d8eaf",
+      "status": "integrated",
+      "verification": "focused 7/7 green; check-station-bubbles + check-station-mood + sg06 registry-init/live-registry all green"
     }
   ],
   "knownDefects": [
