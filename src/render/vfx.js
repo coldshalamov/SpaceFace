@@ -1221,6 +1221,10 @@ export const vfx = {
         x: 0, z: 0,
       });
     }
+    // Quiet settled flight: empty pending-detonation pool still walked all 12
+    // slots every tick. Latch after first empty observe; wake on schedule
+    // (_scheduleDetonation clears the latch). Soft-GPU fps not claimed.
+    this._pendingDetonationsQuietEmpty = false;
     // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
     // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
     this._transitSweepT = -1;
@@ -4995,6 +4999,8 @@ export const vfx = {
     }
     if (rec && rec.active) this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
     if (!rec) return;
+    // Dirty-wake: a fresh queued kill must leave the quiet empty latch.
+    this._pendingDetonationsQuietEmpty = false;
     rec.active = true;
     rec.at = now + OVERLOAD_FLARE_S;
     rec.sputterAt = now + OVERLOAD_FLARE_S * 0.5;
@@ -5039,8 +5045,13 @@ export const vfx = {
   _updatePendingDetonations() {
     const list = this._pendingDetonations;
     if (!list) return;
+    // Quiet settled flight: empty 12-slot walk every tick. Latch after first
+    // empty observe; wake via _scheduleDetonation / _resetPendingDetonations.
+    // Soft-GPU fps not claimed.
+    if (this._pendingDetonationsQuietEmpty) return;
     const now = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime : (this._t || 0);
+    let anyActive = false;
     for (let i = 0; i < list.length; i++) {
       const rec = list[i];
       if (!rec.active) continue;
@@ -5061,13 +5072,17 @@ export const vfx = {
         const payload = rec.p;
         rec.p = null;
         this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
+      } else {
+        anyActive = true;
       }
     }
+    if (!anyActive) this._pendingDetonationsQuietEmpty = true;
   },
 
   _resetPendingDetonations() {
     if (!this._pendingDetonations) return;
     for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; }
+    this._pendingDetonationsQuietEmpty = false;
     this._transitSweepT = -1;
     this._transitSweepSpawned = 0;
   },
