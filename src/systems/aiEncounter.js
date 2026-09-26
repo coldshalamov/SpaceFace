@@ -40,6 +40,17 @@ const REINFORCEMENT_PACKAGES = Object.freeze({
     factionId: 'faction_scn',
     squadPrefix: 'sg06_scn_interceptor',
   }),
+  reaver_swarm_screen: Object.freeze({
+    typeId: 'wasp_swarmer',
+    count: Object.freeze([1, 2]),
+    level: 1,
+    delayTicks: 90,
+    radiusMin: 180,
+    radiusMax: 300,
+    doctrine: 'scavenger',
+    factionId: 'faction_reach',
+    squadPrefix: 'sg06_reaver_screen',
+  }),
   iron_maw_screen: Object.freeze({
     typeId: 'wasp_swarmer',
     count: Object.freeze([2, 4]),
@@ -198,6 +209,8 @@ export const aiEncounter = {
       packageId: pkg.id,
       count,
       dueTick,
+      entityId: command.callerId == null ? null : command.callerId,
+      callerId: command.callerId == null ? null : command.callerId,
     });
   },
 
@@ -275,8 +288,18 @@ export const aiEncounter = {
         tick: finiteInt(state.tick),
         pos: { x: finite(pending.pos && pending.pos.x), z: finite(pending.pos && pending.pos.z) },
       };
+      const firstOfSquad = !owner.spawned.some((r) => r.commandSeq === pending.commandSeq);
       pushCapped(owner.spawned, record);
       emit(this.bus, 'ai:reinforcementSpawned', record);
+      if (firstOfSquad) {
+        emit(this.bus, 'alert', {
+          key: `reinforcements_arrived_${pending.commandSeq}`,
+          sev: 'warn',
+          text: 'REINFORCEMENTS ON FIELD',
+          ttl: 2.5,
+        });
+        emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
+      }
     }
     owner.pendingReinforcements = keep;
   },

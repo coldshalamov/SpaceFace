@@ -102,7 +102,10 @@ export const ENEMY_TYPES = [
     maxSpeed: 112, accel: 78, turnRate: 1.55, collisionRadius: 18, mass: 60,
     weapons: [{ id: 'wpn_autocannon_s' }, { id: 'wpn_pulse_laser_s', dmgOverride: 6 }, { id: 'wpn_missile_rack_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2600 },
-    reinforcements: { type: 'wasp_swarmer', count: [1, 2], hullThreshold: 0.3 },
+    reinforcements: {
+      packageId: 'reaver_swarm_screen',
+      type: 'wasp_swarmer', count: [1, 2], hullThreshold: 0.3,
+    },
     behavior: 'aggressive pursue+attack, calls 1-2 swarmers, flees at <20% hull',
     bountyCr: 340, shipClass: 'gunship',
     loot: {
