@@ -282,7 +282,10 @@ loop→l04 / edge→x08 / screens→i08, all three fixed beats green:
 test, check-title-attract, check-countermeasures, check-sg05-runtime, check-sg08-render-vfx,
 check-phase0-slice-contract, check-authored-place-runtime, check-perf-packets — verified identical
 on detached clean master; the vm branch diff touches none of these files. Owners: whoever landed
-the last ~80 commits on master (build-map lanes).
+the last ~80 commits on master (build-map lanes). Same row now also covers the pq-160-01 auto-clip
+detector reds (bolas-kill mark, replayed-window hash, export writes) — identical at detached master
+`314cfaaa8`, unrelated to the clips presentation edits on this branch (asserted by the readout/readout
+contract lines the tests still pass against).
 
 ## Next runs
 
@@ -384,6 +387,7 @@ render all cases; the "No recovery route" copy seen at l08 is the genuine no-ins
 | 13 | screens | 36 | clean | drill screen reached via real approachCompleted handoff |
 | 14 | edge+combat+loop | 8+7+10 | clean | regression pass on the D60–D62 fixes HEAD — full sweep green |
 | 14.5 | demo-path | 11 steps | clean + D64 found in c04b frame | lab rack off the HUD instruments `ad67e039b` |
+| 16 | screens | 36 | D65 found+fixed | clips readout dedupe + sibling-overlay close `577612803`; e05 walk 12/12 verbs |
 
 ## Run 14.5 — canonical demo path on the fixes HEAD (probe-demo-path.mjs)
 
@@ -398,13 +402,25 @@ Perf info for the perf agent (SwiftShader-relative, consistent with prior census
 legs are crucible-rounds (2497/3775 frames >100 ms) and adv-upgrade (519/2399) — one-time
 program-compile amplification, not steady state. adv-job/adv-paid/title legs run clean.
 
+**D65 — FIXED: Clips empty state doubled its hint, and media overlays could stack.** `buildContent`
+wrote `summary.detail` into the header AND the `clips-readout` paragraph — the same duplicate-hint
+defect as D62 (replay). `577612803` hides the readout until clips exist (then it reports Ready /
+Exported …). Pause now also closes the sibling media overlay before opening Replay or Clips —
+previously a stacked pair could leave replay's header/words bleeding through clips' empty state.
+
 **D64 — FIXED: physics-lab flight rack painted over the HUD instruments.** `showFlightToy`
 pinned the controls host `left:16px; bottom:16px` — dead on top of the speed readout, hull
 ring, and hull/shield/armor/heat stack, while HULL CRITICAL flashes (c04b frame). `ad67e039b`
 pins it bottom-center over the empty strip between the two dial clusters.
 
+## Run 16 — e05 verb-walk completion (12/12 verbs)
+
+Screens re-run after uncapping the e05 walk: all 12 pause verbs now exercised — Load clicks
+through the "Open load screen?" confirm onto the real saveLoad screen, Clips opens its overlay
+inside pause, Sandbox (dev build) mounts. The run surfaced D65 (clips readout double-hint +
+overlay stacking), fixed same-run at `577612803`. 36 beats, 0 residual defects.
+
 ## Next runs
 
-- r16: screens-route re-run for the uncapped e05 walk (Clips verb now covered; Load confirm
-  is clicked through to the real saveLoad screen).
+- r17: final screens pass to capture the clean Clips frame post-D65.
 - Adventure real-death → recovery-berth (insurance-carrying save) if a fixtured state lands.
