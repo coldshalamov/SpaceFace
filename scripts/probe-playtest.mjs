@@ -324,6 +324,22 @@ const ROUTES = {
       observe(ctx, 'note', 'station', `station tabs walked: ${visited.map((v) => `${v.tab}(${v.screen || 'panel'})`).join(' | ')}`);
       return { dockedAt: s0.dockedStationId, visited };
     });
+
+    await B(ctx, 's03-bar-talk', 'bar: click a patron answer -> dialogue advances', async () => {
+      await ctx.page.evaluate(() => { const el = [...document.querySelectorAll('[data-nav]')].find((n) => /bar/i.test(n.dataset.nav || '')); if (el) el.click(); });
+      await sleep(1200);
+      const pre = await ctx.page.evaluate(() => (document.body.innerText.match(/[A-Z][a-z]+ [A-Z][a-z]+/g) || []).slice(0, 3));
+      // Click the first numbered answer row ("1 — Answer the captain" etc.).
+      const answered = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/answer|ask about|take the|tell me|hear|why|what/i));
+      await sleep(1500);
+      await shotNow(ctx, 's03-bar-answer');
+      const post = await ctx.page.evaluate(() => {
+        const t = document.body.innerText;
+        return { len: t.length, head: t.slice(0, 200) };
+      });
+      if (answered && post.len < 100) observe(ctx, 'rough-edge', 'bar', `patron answer "${answered}" produced no visible dialogue`);
+      return { patrons: pre, answered, textLen: post.len };
+    });
   },
 
   // Edge states: hostile input + lifecycle seams on the real path.
