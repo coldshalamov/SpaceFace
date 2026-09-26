@@ -1829,6 +1829,20 @@
       "commit": "c39da074c",
       "status": "integrated",
       "verification": "focused 7/7 green; sp1-clauses 10/10, docked-customs-post 13/13, check:contract-clauses + check:mission-conditions pass, board neighbors green"
+    },
+    {
+      "unit": "INFERENCE-29",
+      "title": "The career tally counts — a kill is a fact even when it is not a crime",
+      "lane": "progression/meta",
+      "fingerprint": "verb=count,subject=player_kills,sector=any,layer=career_stat,tempo=per_kill,domain=combat",
+      "summary": "player.stats.kills shipped three authored readers (death-screen recap, Life Ledger basis, finale combat-tally line gated f.kills>0) and no writer — the finale sentence was unreachable in a real playthrough. combat.kill() tallies under the telemetry sink's adjudication: killerId===playerId only, Survival bodies stay run-scoped, mission-owned kills still count.",
+      "files": [
+        "src/systems/combat.js",
+        "test/player-stats-kills.test.mjs"
+      ],
+      "commit": "d1318a8f8",
+      "status": "integrated",
+      "verification": "focused 7/7 green; combat neighbors 28/28; no rng, no schema change"
     }
   ],
   "knownDefects": [
