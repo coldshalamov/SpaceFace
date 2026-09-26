@@ -1784,6 +1784,21 @@
       "commit": "d869c5e75",
       "status": "integrated",
       "verification": "focused 6/6 green; regression set 42/42; verb-audit + localization-readiness PASS"
+    },
+    {
+      "unit": "INFERENCE-26",
+      "title": "A planet is a signal environment",
+      "lane": "WF-10",
+      "fingerprint": "verb=scan,subject=planet_state_signal,sector=charon_expanse,layer=horizon,tempo=ambient,domain=wf-10",
+      "summary": "Six W1 planet-state assignments carried authored scannerSignal records the scanner never emitted — Shatterstone's pulsing DMC distress signature read silent. Each assignment now emits a far non-trackable return from a deterministic hash anchor outside the playable rim; stage progression reads generic kind grammar until full classification lets the world name itself. Zero rng draws; rides signalInvestigation serialization.",
+      "files": [
+        "src/data/planetStates.js",
+        "src/systems/scanner.js",
+        "test/planet-state-scanner-signals.test.mjs"
+      ],
+      "commit": "3a4700307",
+      "status": "integrated",
+      "verification": "focused 7/7 green; regression set 50/53 (3 fails attributed to live PQ-153.02 landmark lane — dressingTable spawn machinery + sector semantic hash, see D63)"
     }
   ],
   "knownDefects": [
