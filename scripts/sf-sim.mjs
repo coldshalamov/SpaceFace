@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -78,6 +78,9 @@ const reloadAt = readOptionalInt('--reload-at', null);
 if (reloadAt != null && (reloadAt <= 0 || reloadAt >= ticks)) {
   throw new RangeError('--reload-at must be greater than 0 and less than --ticks');
 }
+// Opt-in fork for checks that share a long deterministic prefix. Absent on every golden run.
+const writeEnvelopePath = argValue('--write-envelope', null);
+const loadEnvelopePath = argValue('--load-envelope', null);
 const includeSnapshot = command === 'inspect' || hasFlag('--snapshot') || !hasFlag('--hash');
 const expectPath = command === 'run' || command === 'compare' || command === 'profile' ? argValue('--expect', null) : null;
 const expectedEnvelope = expectPath ? readJson(expectPath) : null;
@@ -122,8 +125,15 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
-  const traced = await run47a({ seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
-  assert47aPhase0Metrics(traced.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
+  const traced = await run47a({
+    seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true,
+    physicsBackend, tacticalAI, counterTetherProbe, flightSystem,
+    writeEnvelopePath, loadEnvelopePath,
+  });
+  // A resumed tail did not replay the opening tape, so the phase-0 counters stay at zero.
+  if (!loadEnvelopePath) {
+    assert47aPhase0Metrics(traced.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
+  }
   const result = {
     schema: 'spaceface.sfSimTraceResult.v1',
     deterministic: true,
@@ -212,16 +222,20 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exitCode = comparison.ok ? 0 : 1;
 } else {
-  const baseline = await run47a({ seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
-  assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
-  const first = reloadAt == null ? baseline : await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
-  assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
+  const runOptions = {
+    seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem,
+    writeEnvelopePath, loadEnvelopePath,
+  };
+  const baseline = await run47a(runOptions);
+  if (!loadEnvelopePath) assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
+  const first = reloadAt == null ? baseline : await run47a({ ...runOptions, reloadAt });
+  if (!loadEnvelopePath) assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
   if (reloadAt != null) {
     assert.equal(first.sha256, baseline.sha256, `reload-at ${reloadAt} hash diverged from uninterrupted baseline`);
   }
   for (let i = 1; i < repeat; i++) {
-    const next = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
-    assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt, counterTetherProbe });
+    const next = await run47a({ ...runOptions, reloadAt });
+    if (!loadEnvelopePath) assert47aPhase0Metrics(next.metrics, { physicsBackend, reloadAt, counterTetherProbe });
     assert.equal(next.sha256, first.sha256, `repeat ${i + 1} hash diverged`);
   }
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, first, { inputPath, seed, repeat });
@@ -286,6 +300,8 @@ async function run47a({
   tacticalAI = false,
   counterTetherProbe = null,
   flightSystem = 'legacy',
+  writeEnvelopePath = null,
+  loadEnvelopePath = null,
 }) {
   // Select the flight controller. V3 only functions under rapier-dynamic (it emits no motion
   // commands otherwise), so a 'v3' request under another backend falls back to legacy with a warn.
@@ -486,12 +502,33 @@ async function run47a({
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
   await preparePhysicsBackend(registry, state, physicsBackend);
+  if (loadEnvelopePath) {
+    await resumeLoadedEnvelope({
+      registry,
+      state,
+      metrics,
+      eventTrace,
+      loadEnvelopePath,
+      physicsBackend,
+      flightBackend: flightSlot === flightV3 ? 'v3' : 'legacy',
+      tacticalAI,
+    });
+    assert(state.tick > 0 && state.tick < ticks,
+      `resumed tick ${state.tick} must sit inside the run (ticks ${ticks})`);
+  }
 
   const frames = normalizeTape(tape);
   let frameIndex = 0;
   let currentInput = frames[0] ? frames[0].input : {};
+  if (loadEnvelopePath) {
+    while (frameIndex < frames.length && frames[frameIndex].tick < state.tick) {
+      currentInput = frames[frameIndex].input || currentInput;
+      frameIndex++;
+    }
+  }
+  const tickStart = loadEnvelopePath ? state.tick : 0;
 
-  for (let tick = 0; tick < ticks; tick++) {
+  for (let tick = tickStart; tick < ticks; tick++) {
     while (frameIndex < frames.length && frames[frameIndex].tick <= tick) {
       const frame = frames[frameIndex];
       currentInput = frame.input || {};
@@ -539,11 +576,42 @@ async function run47a({
     };
     combatTrace = readCombatTrace(state.combat, traceLimit == null ? {} : { limit: traceLimit });
   }
+  if (writeEnvelopePath) {
+    const saveSys = registry.get('save');
+    assert(saveSys && typeof saveSys.serialize === 'function', 'write-envelope requires the save system');
+    writeFileSync(writeEnvelopePath, JSON.stringify(saveSys.serialize('sf-sim-prefix')));
+  }
   eventTrace.dispose();
   sim.dispose();
   return includeTrace
     ? { snapshot, sha256, metrics, traceSummary, trace, combatTrace, physicsBackend, scenarioContract: scenarioContractSummary }
     : { snapshot, sha256, metrics, traceSummary, physicsBackend, scenarioContract: scenarioContractSummary };
+}
+
+async function resumeLoadedEnvelope({
+  registry,
+  state,
+  metrics,
+  eventTrace,
+  loadEnvelopePath,
+  physicsBackend,
+  flightBackend,
+  tacticalAI,
+}) {
+  const saveSys = registry.get('save');
+  assert(saveSys && typeof saveSys.loadEnvelope === 'function', 'load-envelope requires the save system');
+  const envelope = JSON.parse(readFileSync(loadEnvelopePath, 'utf8'));
+  assert.equal(saveSys.loadEnvelope(envelope, 'sf-sim-resume'), true, 'load-envelope should restore the prefix save');
+  // Load forces the live defaults. Put back the controller this process already booted.
+  state.settings.gameplay.physicsBackend = physicsBackend;
+  state.settings.gameplay.aiBackend = tacticalAI ? 'sg06-tactical' : 'legacy';
+  state.settings.gameplay.flightBackend = flightBackend;
+  state.settings.gameplay.runtimeProfile = 'legacy47a';
+  await preparePhysicsBackend(registry, state, physicsBackend, { reset: true });
+  for (const key of Object.keys(metrics)) {
+    metrics[key] = typeof metrics[key] === 'number' ? 0 : null;
+  }
+  eventTrace.clear();
 }
 
 async function reloadThroughSave(registry, state, metrics, reloadAt, options = {}) {
@@ -1264,7 +1332,7 @@ function usage(code, message) {
   process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic] [--load-envelope path] [--write-envelope path]\n');
   process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  default physics backend: rapier-dynamic\n');
   process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json, --tactical-ai, --counter-tether-probe dash|cut\n');

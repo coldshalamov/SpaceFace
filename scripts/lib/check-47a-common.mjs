@@ -102,6 +102,7 @@ export function runTraceAsync(options = {}) {
     tacticalAI = false,
     counterTetherProbe = null,
     reloadAt = null,
+    loadEnvelope = null,
   } = options;
   const args = [
     'trace',
@@ -122,6 +123,7 @@ export function runTraceAsync(options = {}) {
   if (tacticalAI) args.push('--tactical-ai');
   if (counterTetherProbe) args.push('--counter-tether-probe', counterTetherProbe);
   if (reloadAt != null) args.push('--reload-at', String(reloadAt));
+  if (loadEnvelope) args.push('--load-envelope', loadEnvelope);
   return runSfSimAsync(args);
 }
 
