@@ -235,11 +235,13 @@ export const environmentalMachinery = {
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
-    const inside = !!(player && player.pos && pointInsideMetronomeBeam(player.pos, simTime));
+    const inside = !!(player && player.alive !== false && player.pos
+      && pointInsideMetronomeBeam(player.pos, simTime));
     if (inside !== this._metronomePlayerInside) {
       this._emitHazardBoundary(inside, HAZARD_TYPE, METRONOME_FIELD.id, METRONOME_POI_ID, undefined, {
         phase: 'sweep',
-        remainingS: inside ? 0 : metronomeBeamEtaAt(player.pos, simTime),
+        remainingS: inside ? 0
+          : (player && player.pos ? metronomeBeamEtaAt(player.pos, simTime) : null),
       });
       this._metronomePlayerInside = inside;
     }
@@ -256,7 +258,10 @@ export const environmentalMachinery = {
     const combat = this.registry && typeof this.registry.get === 'function'
       ? this.registry.get('combat')
       : null;
-    if (!combat || typeof combat.ensureKernel !== 'function') return;
+    // Parity with the world radiation route: only route through a kernel bound to THIS state —
+    // a divergent combat.state would silently reject the packet as target_missing.
+    const live = state || this.state;
+    if (!combat || combat.state !== live || typeof combat.ensureKernel !== 'function') return;
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'thermal',
