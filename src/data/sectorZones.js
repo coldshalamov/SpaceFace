@@ -192,7 +192,21 @@ const CORE_SECTOR_ZONES = {
       center: { x: -1420, z: -780 }, radius: 460, presence: P.scavengers([1, 2]) },
     { id: 'zone_io_merc', name: 'Mercenary Outpost', type: 'outlaw_zone', factionId: 'faction_quiet',
       reason: 'Guns for hire — if the price is right and your reputation isn\'t red.',
-      center: { x: 1280, z: 620 }, radius: 420 },
+      center: { x: 1280, z: 620 }, radius: 420,
+      presence: {
+        // The Quiet's contracted lance holds the nebula approach — a picket, not a kill box.
+        // Off-berth on purpose: zone_hostile spawns are suppressed inside the ~1134 WU station
+        // bubble (world._ambientSpawnIsSafe), so the squad works the camp's lane while the
+        // station door does the vetting — the same contract as the Skerris Deep picket.
+        role: 'guards',
+        archetypes: ['quiet_ghost', 'warden_escort'],
+        size: [2, 3],
+        doctrine: 'balanced', formation: 'ring',
+        context: 'zone_hostile', hostile: true,
+        factionId: 'faction_quiet',
+        standingHostileBelow: 0,
+        spawnCenter: { x: 2750, z: 850 },
+      } },
   ],
 
   // ── S6–S7 Charon Expanse — Cinder refinery frontier, thin escort coverage ──

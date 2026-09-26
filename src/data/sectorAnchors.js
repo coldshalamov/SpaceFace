@@ -154,6 +154,7 @@ const CORE_SECTOR_ANCHORS = {
   sector_io_reach: {
     stations: [
       { id: 'station_reach', pos: { x: -720, z: 940 }, archetypeGlb: 'place_station_trade_hub', landmark: true },
+      { id: 'station_io_merc', pos: { x: 1280, z: 620 }, archetypeGlb: 'place_station_blackmarket', landmark: true },
     ],
     gates: [
       { to: 'sector_tethys_junction', pos: { x: -2092, z: -3138 } },
@@ -166,7 +167,7 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'f_io_2', center: { x: -1180, z: -320 }, clusterRadius: 400 },
     ],
     pois: [
-      { id: 'poi_merc', pos: { x: 1280, z: 620 }, landmarkGlb: 'place_nav_buoy' },
+      { id: 'poi_merc', pos: { x: 1520, z: 780 }, landmarkGlb: 'place_nav_buoy' },
       { id: 'poi_cruiser', pos: { x: -1420, z: -780 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_claim_pallas', pos: { x: 320, z: 1280 }, landmarkGlb: 'place_asteroid_seamed' },
     ],

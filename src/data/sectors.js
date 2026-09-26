@@ -299,6 +299,11 @@ const CORE_SECTORS = [
     stations: [
       { id: 'station_reach', name: 'Reach Station', type: 'trade_hub', factionId: 'faction_free', size: 'M', services: ['trade','repair','refuel','missions'], contested: true,
         chartNote: 'Contested floor. Prices swing with whoever holds the docks this week.' },
+      { id: 'station_io_merc', name: 'Mercenary Outpost', type: 'blackmarket', factionId: 'faction_quiet', size: 'M',
+        missionProfile: 'bounty_board', boardAnchorType: 'bounty_hunt',
+        services: ['black_market','missions','repair','refuel'],
+        minRep: -30,
+        chartNote: 'Quiet contracting post. The writ wall pays by the job; the berth vets standing.' },
     ],
     fields: [
       { id: 'f_io_1', type: 'ast_metallic',    countWeight: 1.0 },

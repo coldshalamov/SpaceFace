@@ -201,6 +201,15 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_quiet',
     line: 'Same rates. Same management. Same drawer under the bar.',
   },
+  {
+    key: 'sallow',
+    stationIds: ['station_io_merc'],
+    name: 'Sallow',
+    role: 'bounty_hunter',
+    roleLabel: 'Contract Broker',
+    factionId: 'faction_quiet',
+    line: 'Writs on the wall. The Quiet price is the quiet price.',
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
