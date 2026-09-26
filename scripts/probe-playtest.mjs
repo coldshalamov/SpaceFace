@@ -1,0 +1,285 @@
+// Playtest audit probe — one clean run walks the reachable player surface and writes
+// per-beat screenshots + a text/DOM census to .devshots/playtest-<route>/ for cheap review.
+//
+//   node scripts/probe-playtest.mjs --route=screens            # title -> flight -> station -> edges
+//   node scripts/probe-playtest.mjs --route=screens --only=t01-title
+//   node scripts/probe-playtest.mjs --list
+//
+// Requires the shared harness (scripts/lib/playtest.mjs). Same isolation contract as
+// probe-demo-path: own port, empty player store, headless chromium.
+
+import path from 'node:path';
+import { bootPlaytest, beat, clickWord, observe, finish, sleep, shotNow, ROOT } from './lib/playtest.mjs';
+
+const ARGS = process.argv.slice(2);
+const argVal = (name, dflt) => {
+  const a = ARGS.find((x) => x.startsWith(`--${name}=`));
+  return a ? a.split('=').slice(1).join('=') : dflt;
+};
+const ONLY = new Set(argVal('only', '').split(',').map((s) => s.trim()).filter(Boolean));
+const ROUTE = argVal('route', 'screens');
+const OUT_DIR = path.join(ROOT, '.devshots', `playtest-${ROUTE}`);
+// Beats are sequential and later ones depend on earlier state, so --only is a STOP-AFTER
+// list (same contract as probe-demo-path's SF_DEMO_STOP_AFTER): run until every named beat
+// has executed, then stop.
+const beatsDone = new Set();
+const allDone = () => ONLY.size > 0 && [...ONLY].every((id) => beatsDone.has(id));
+const BEATS_DONE = Symbol('beats-done');
+
+async function B(ctx, id, note, fn, opts) {
+  const r = await beat(ctx, id, note, fn, opts);
+  beatsDone.add(id);
+  if (allDone()) throw BEATS_DONE;
+  return r;
+}
+
+async function snap(ctx) { return ctx.page.evaluate(() => window.__SF_PT_SNAP__()); }
+async function screenOf(ctx) { const s = await snap(ctx); return s && s.screen; }
+async function modeOf(ctx) { const s = await snap(ctx); return s && s.mode; }
+
+// Escape pops the top screen; if the screen doesn't change, click a back-like word.
+async function backOut(ctx, fromScreen) {
+  await ctx.page.keyboard.press('Escape');
+  await sleep(700);
+  if ((await screenOf(ctx)) !== fromScreen) return 'esc';
+  const hit = await ctx.page.evaluate(() => {
+    const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+      .filter((e) => e.offsetParent !== null && /back|return|close|resume|depart|undock|exit/i.test(e.textContent || ''))[0];
+    if (!w) return null;
+    w.click();
+    return (w.textContent || '').trim();
+  });
+  await sleep(700);
+  return hit || 'stuck';
+}
+
+// Walk one title verb: open, census, leave. Records the destination screen id.
+async function walkVerb(ctx, id, pattern) {
+  await B(ctx, id, `title verb ${pattern}`, async () => {
+    const before = await screenOf(ctx);
+    const clicked = await clickWord(ctx, pattern, 12_000);
+    await sleep(1400);
+    const s = await snap(ctx);
+    await shotNow(ctx, `${id}-open`);
+    const dest = s.screen;
+    observe(ctx, 'note', 'title', `verb "${clicked}" -> screen=${dest} controls=${s.controls.length}`);
+    const back = await backOut(ctx, dest);
+    // A1: after popping, no screen besides the base should still be mounted+visible.
+    const after = await snap(ctx);
+    const leftovers = (after.screens || []).filter((x) => x.visible && x.id !== after.screen);
+    if (leftovers.length) {
+      observe(ctx, 'defect', 'screens', `after Esc-pop of ${dest}: still-visible screens ${JSON.stringify(leftovers.map((x) => x.id))} (top=${after.screen})`);
+    }
+    return { verb: clicked, from: before, to: dest, backVia: back, leftovers };
+  });
+}
+
+async function pressKey(ctx, key, settleMs = 900) {
+  await ctx.page.keyboard.press(key);
+  await sleep(settleMs);
+}
+
+async function waitMode(ctx, want, timeoutMs = 120_000) {
+  await ctx.page.waitForFunction((w) => window.SF && window.SF.state && window.SF.state.mode === w, want, { timeout: timeoutMs });
+}
+
+async function travelToStation(ctx, stationId, timeoutMs = 5 * 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.autopilot(id), stationId);
+  let lastD = Infinity;
+  while (Date.now() < deadline) {
+    const s = await ctx.page.evaluate((id) => ({
+      d: window.__SF_PT_HELPERS__.distTo(id),
+      inRange: window.__SF_PT_HELPERS__.stationInRange(),
+      docked: window.__SF_PT_HELPERS__.docked(),
+      hostiles: window.__SF_PT_HELPERS__.hostilesNear(420),
+      alive: (() => { const p = window.__SF_PT_HELPERS__.player(); return p && p.alive !== false; })(),
+    }), stationId);
+    if (s.docked) return { docked: true };
+    if (!s.alive) return { dead: true, d: s.d };
+    if (s.d <= (await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dockRange(id), stationId)) * 1.05) {
+      return { arrived: true, d: s.d };
+    }
+    lastD = s.d;
+    await sleep(1500);
+  }
+  return { timeout: true, d: lastD };
+}
+
+// ---------------------------------------------------------------- routes
+
+const ROUTES = {
+  'screens': async (ctx) => {
+    await B(ctx, 't01-title', 'normal-route title: verbs, lit pick, save state line', async () => {
+      await ctx.page.waitForFunction(() =>
+        document.body.dataset.kScreen === 'mainMenu'
+        || !!document.querySelector('.screen[data-screen="mainMenu"]'), null, { timeout: 60_000 });
+      await sleep(2500); // let the title scene present before measuring
+      const s = await snap(ctx);
+      observe(ctx, 'note', 'title', `title census: controls=${s.controls.map((c) => c.text).join(' | ').slice(0, 300)}`);
+      return { verbs: s.controls.filter((c) => c.tag !== 'input').map((c) => c.text) };
+    });
+
+    // Walk every title surface that doesn't start a run or quit.
+    await walkVerb(ctx, 't02-verb-settings', /settings/i);
+    await walkVerb(ctx, 't03-verb-newgame', /new game|adventure/i);
+    await walkVerb(ctx, 't04-verb-load', /^load\b/i);
+    await walkVerb(ctx, 't05-verb-crucible', /crucible/i);
+    await walkVerb(ctx, 't06-verb-archive', /archive/i);
+    await walkVerb(ctx, 't07-verb-sandbox', /sandbox/i);
+    await walkVerb(ctx, 't08-verb-credits', /credits/i);
+    await walkVerb(ctx, 't09-verb-achievements', /achievements/i);
+
+    await B(ctx, 't10-title-afk', 'idle 16s on title — attract tape should swap in (12s arm)', async () => {
+      await sleep(16_000);
+      const s = await snap(ctx);
+      return { screen: s.screen, textHead: (s.text || '').slice(0, 120) };
+    });
+
+    await B(ctx, 'f01-newgame-start', 'New Game -> config -> start -> first flight frame', async () => {
+      await clickWord(ctx, /new game|adventure/i, 12_000);
+      await sleep(1500);
+      const cfg = await snap(ctx);
+      await shotNow(ctx, 'f01-config');
+      const started = await ctx.page.evaluate(() => {
+      const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null
+            && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
+            && !/back|cancel|return/i.test(e.textContent || ''))[0];
+        if (!w) return null;
+        w.click();
+        return (w.textContent || '').trim();
+      });
+      await waitMode(ctx, 'flight', 90_000);
+      return { configScreen: cfg.screen, startVerb: started, mode: await modeOf(ctx) };
+    });
+
+    await B(ctx, 'f02-hud', 'free flight HUD census', async () => {
+      await ctx.page.evaluate(() => { window.SF.state.nav.autopilot = { active: false, target: null, label: '', arrivalRadius: 36, status: 'idle' }; });
+      await ctx.page.keyboard.down('w');
+      await sleep(1200);
+      await ctx.page.keyboard.up('w');
+      const s = await snap(ctx);
+      return { screen: s.screen, mode: s.mode, controls: s.controls.length, player: s.player };
+    });
+
+    // Flight instruments: each binding opens a screen; census, then close.
+    const INSTRUMENTS = [
+      ['i01-localmap', 'm'], ['i02-starmap', 'n'], ['i03-missionlog', 'j'],
+      ['i04-cargo', 'i'], ['i05-codex', 'k'], ['i06-comms', 'l'], ['i07-techtree', 't'],
+    ];
+    for (const [id, key] of INSTRUMENTS) {
+      await B(ctx, id, `flight instrument '${key}'`, async () => {
+        await pressKey(ctx, key);
+        const opened = await snap(ctx);
+        await shotNow(ctx, `${id}-open`);
+        const back = await backOut(ctx, opened.screen);
+        observe(ctx, 'note', 'flight-screens', `key ${key} -> screen=${opened.screen} controls=${opened.controls.length}`);
+        return { key, screen: opened.screen, backVia: back };
+      });
+    }
+
+    await B(ctx, 'e01-pause', 'Esc pause menu + resume', async () => {
+      await pressKey(ctx, 'Escape', 1200);
+      const paused = await snap(ctx);
+      await shotNow(ctx, 'e01-pause-open');
+      let resumed = null;
+      if (paused.screen && paused.screen !== 'flight' && paused.screen !== 'mainMenu') {
+        const w = await ctx.page.evaluate(() => {
+          const b = [...document.querySelectorAll('.k-word, button, [role="button"]')]
+            .filter((e) => e.offsetParent !== null && /resume|return|continue|back/i.test(e.textContent || ''))[0];
+          if (!b) return null; b.click(); return (b.textContent || '').trim();
+        });
+        resumed = w;
+        await sleep(900);
+      }
+      return { pauseScreen: paused.screen, pauseText: (paused.text || '').slice(0, 200), resumeVerb: resumed, after: await screenOf(ctx) };
+    });
+
+    await B(ctx, 'e02-resize-small', 'viewport 960x600 mid-flight', async () => {
+      await ctx.page.setViewportSize({ width: 960, height: 600 });
+      await sleep(1200);
+      await shotNow(ctx, 'e02-small');
+      return { screen: await screenOf(ctx) };
+    });
+    await B(ctx, 'e03-resize-ultrawide', 'viewport 2560x900 mid-flight', async () => {
+      await ctx.page.setViewportSize({ width: 2560, height: 900 });
+      await sleep(1200);
+      await shotNow(ctx, 'e03-ultrawide');
+      const r = { screen: await screenOf(ctx) };
+      await ctx.page.setViewportSize({ width: 1600, height: 900 });
+      await sleep(900);
+      return r;
+    });
+
+    await B(ctx, 'e04-toggle-spam', 'rapid instrument toggling m,n,m,Esc', async () => {
+      for (const k of ['m', 'n', 'm', 'Escape']) await pressKey(ctx, k, 220);
+      await sleep(900);
+      const s = await snap(ctx);
+      return { screen: s.screen, mode: s.mode };
+    });
+
+    await B(ctx, 's01-travel-dock', 'autopilot to nearest station and dock', async () => {
+      const stations = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.stationIds());
+      if (!stations.length) { observe(ctx, 'defect', 'stations', 'no station entities in adventure world'); return { stations: [] }; }
+      const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
+      dists.sort((a, b) => a.d - b.d);
+      const target = dists[0].id;
+      const r = await travelToStation(ctx, target, 4 * 60_000);
+      if (!r.arrived) { observe(ctx, 'rough-edge', 'stations', `travel to ${target} ended ${JSON.stringify(r)}`); return { target, ...r }; }
+      await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), target);
+      await sleep(1800);
+      await shotNow(ctx, 's01-docked');
+      const s = await snap(ctx);
+      return { target, ...r, docked: s.docked, screen: s.screen };
+    });
+
+    // Station screens: the real tabs are [data-nav] tiles in the dock group, not .k-word rows.
+    await B(ctx, 's02-station-walk', 'walk every station tab/screen', async () => {
+      const s0 = await snap(ctx);
+      const tabs = await ctx.page.evaluate(() =>
+        [...document.querySelectorAll('[data-nav]')].map((el) => ({
+          id: el.dataset.nav,
+          label: (el.textContent || el.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 30),
+        })).filter((t) => t.id));
+      const visited = [];
+      for (const tab of tabs) {
+        if (/undock|depart|launch|back|close|quit/i.test(tab.id + ' ' + tab.label)) continue;
+        // Close whatever modal the last tab opened before navigating.
+        await ctx.page.evaluate(() => {
+          const pop = document.querySelector('.sx-pop:not([hidden]) [data-action="close"], .sx-pop:not([hidden]) .k-word, [role="dialog"] button');
+          if (pop && pop.offsetParent !== null) pop.click();
+        });
+        await ctx.page.evaluate((id) => {
+          const el = document.querySelector(`[data-nav="${id}"]`);
+          if (el) el.click();
+        }, tab.id);
+        await sleep(1100);
+        await shotNow(ctx, `s02-tab-${tab.id.replace(/[^a-z0-9]+/gi, '-').slice(0, 24)}`);
+        const s = await snap(ctx);
+        visited.push({ tab: tab.id, label: tab.label, screen: s.screen, controls: s.controls.length, textHead: (s.text || '').slice(0, 160) });
+      }
+      observe(ctx, 'note', 'station', `station tabs walked: ${visited.map((v) => `${v.tab}(${v.screen || 'panel'})`).join(' | ')}`);
+      return { dockedAt: s0.dockedStationId, visited };
+    });
+  },
+};
+
+// ---------------------------------------------------------------- run
+
+if (ARGS.includes('--list')) {
+  console.log('routes:', Object.keys(ROUTES).join(', '));
+  console.log('stops: pass --only=<beatId>[,<beatId>...] to end the run after those beats');
+  process.exit(0);
+}
+if (!ROUTES[ROUTE]) { console.error(`unknown route ${ROUTE}`); process.exit(2); }
+console.log(`probe-playtest route=${ROUTE} out=${OUT_DIR}${ONLY.size ? ` only=${[...ONLY].join(',')}` : ''}`);
+
+const ctx = await bootPlaytest({ outDir: OUT_DIR });
+try {
+  await ROUTES[ROUTE](ctx);
+} catch (e) {
+  if (e !== BEATS_DONE) throw e;
+} finally {
+  await finish(ctx);
+}
