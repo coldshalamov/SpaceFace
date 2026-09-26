@@ -282,6 +282,43 @@ const ROUTES = {
       return { screen: await screenOf(ctx), mode: await modeOf(ctx) };
     });
 
+    await B(ctx, 'x05-rapid-toggles', 'open/close spam: m Esc n Esc j Esc t Esc', async () => {
+      for (const k of ['m', 'Escape', 'n', 'Escape', 'j', 'Escape', 't', 'Escape']) await pressKey(ctx, k, 260);
+      await sleep(900);
+      const s = await snap(ctx);
+      const leftovers = (s.screens || []).filter((x) => x.visible && x.id !== s.screen);
+      if (leftovers.length) observe(ctx, 'defect', 'screens', `toggle-spam leftovers visible: ${JSON.stringify(leftovers.map((x) => x.id))}`);
+      return { screen: s.screen, mode: s.mode, leftovers };
+    });
+
+    await B(ctx, 'x06-job-accept', 'dock -> Missions -> ACCEPT an offer -> confirm it is tracked', async () => {
+      const stations = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.stationIds());
+      if (!stations.length) return { stations: 0 };
+      const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
+      dists.sort((a, b) => a.d - b.d);
+      const r = await travelToStation(ctx, dists[0].id, 4 * 60_000);
+      if (!r.arrived && !r.docked) { observe(ctx, 'rough-edge', 'stations', `job-accept travel ended ${JSON.stringify(r)}`); return { travel: r }; }
+      if (!r.docked) { await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), dists[0].id); await sleep(1800); }
+      await ctx.page.evaluate(() => {
+        const el = [...document.querySelectorAll('[data-nav]')].find((n) => /mission/i.test(n.dataset.nav || ''));
+        if (el) el.click();
+      });
+      await sleep(1300);
+      await shotNow(ctx, 'x06-missions');
+      const accepted = await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*accept\s*$/i.test(e.textContent || ''))[0];
+        if (!b) return null; b.click(); return (b.textContent || '').trim();
+      });
+      await sleep(1500);
+      await shotNow(ctx, 'x06-accepted');
+      const after = await snap(ctx);
+      if (accepted && !(after.text || '').match(/track|job|mission|contract|objective/i)) {
+        observe(ctx, 'rough-edge', 'missions', `accepted an offer but no tracking hint surfaced (screen=${after.screen})`);
+      }
+      return { station: dists[0].id, acceptVerb: accepted, screen: after.screen, textHead: (after.text || '').slice(0, 200) };
+    });
+
     await B(ctx, 'x03-pause-quit', 'Esc -> pause -> quit/abandon to title mid-flight', async () => {
       await pressKey(ctx, 'Escape', 1000);
       const p = await snap(ctx);
@@ -315,15 +352,6 @@ const ROUTES = {
       await sleep(3000);
       const s = await snap(ctx);
       return { continueAvailable: true, screen: s.screen, mode: s.mode, simTime: s.simTime, player: s.player };
-    });
-
-    await B(ctx, 'x05-rapid-toggles', 'open/close spam: m Esc n Esc j Esc t Esc', async () => {
-      for (const k of ['m', 'Escape', 'n', 'Escape', 'j', 'Escape', 't', 'Escape']) await pressKey(ctx, k, 260);
-      await sleep(900);
-      const s = await snap(ctx);
-      const leftovers = (s.screens || []).filter((x) => x.visible && x.id !== s.screen);
-      if (leftovers.length) observe(ctx, 'defect', 'screens', `toggle-spam leftovers visible: ${JSON.stringify(leftovers.map((x) => x.id))}`);
-      return { screen: s.screen, mode: s.mode, leftovers };
     });
   },
 
@@ -368,6 +396,23 @@ const ROUTES = {
       const s = await snap(ctx);
       await shotNow(ctx, 'c04-late');
       return { screen: s.screen, mode: s.mode, player: s.player, textHead: (s.text || '').slice(0, 200) };
+    });
+
+    await B(ctx, 'c04b-death', 'wound hull to near-zero, let the swarm finish -> results/death path', async () => {
+      const pre = await ctx.page.evaluate(() => {
+        const p = window.__SF_PT_HELPERS__.player();
+        if (p) { p.hull = 2; if (p.shield) p.shield = 0; }
+        return p && p.hull;
+      });
+      let s = null;
+      for (let i = 0; i < 45; i++) {
+        await sleep(2000);
+        s = await snap(ctx);
+        const t = s.text || '';
+        if ((s.player && s.player.alive === false) || /results|game over|destroyed|wrecked|killed|replay/i.test(t)) break;
+      }
+      await shotNow(ctx, 'c04b-death');
+      return { preHull: pre, screen: s.screen, mode: s.mode, alive: s.player && s.player.alive, textHead: (s.text || '').slice(0, 220) };
     });
 
     await B(ctx, 'c05-exit', 'leave crucible (pause -> quit or results -> menu)', async () => {
