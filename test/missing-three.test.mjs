@@ -1,4 +1,5 @@
-// Missing-three proof (PQ-163.02): boost, draw-to-fly, and the well enter the first-hour rail.
+// Missing-three proof (PQ-163.02 + INFERENCE-9): boost, draw-to-fly, the well, the repulsor,
+// and the clearing cone enter the first-hour rail.
 //
 // After the rescue grab, each verb is taught by doing, then silence, with a Range fallback.
 // Funnel events fire on use. No invented unaided-tester percentages.
@@ -338,11 +339,11 @@ function driveRescueToGrab(h) {
   completeGrab(h);
 }
 
-test('missing-three contract: three verbs after grab, one line each, Range-backed', () => {
-  assert.deepEqual(MISSING_THREE_ORDER, ['boost', 'stroke', 'well']);
+test('missing-three contract: five verbs after grab, one line each, Range-backed where a rung exists', () => {
+  assert.deepEqual(MISSING_THREE_ORDER, ['boost', 'stroke', 'well', 'repulsor', 'cone']);
   assert.deepEqual(MISSING_THREE_BEATS.map((b) => b.key), MISSING_THREE_ORDER);
-  assert.deepEqual(MISSING_THREE_PREREQ, { boost: 'grab', stroke: 'boost', well: 'stroke' });
-  assert.deepEqual(MISSING_THREE_GATE, { boost: 'seam', stroke: 'seam', well: 'seam' });
+  assert.deepEqual(MISSING_THREE_PREREQ, { boost: 'grab', stroke: 'boost', well: 'stroke', repulsor: 'well', cone: 'repulsor' });
+  assert.deepEqual(MISSING_THREE_GATE, { boost: 'seam', stroke: 'seam', well: 'seam', repulsor: 'seam', cone: 'seam' });
   for (const key of MISSING_THREE_ORDER) {
     const line = missingThreeBeatLine(key);
     assert.ok(line, `missing-three beat needs its verb line: ${key}`);
@@ -354,6 +355,8 @@ test('missing-three contract: three verbs after grab, one line each, Range-backe
   assert.equal(missingThreeRangeRungId('boost'), 'boost_keep_speed');
   assert.equal(missingThreeRangeRungId('stroke'), 'draw_the_stroke');
   assert.equal(missingThreeRangeRungId('well'), 'well_pulls_light');
+  assert.equal(missingThreeRangeRungId('repulsor'), null, 'no authored repulsor rung — teach without pointing');
+  assert.equal(missingThreeRangeRungId('cone'), null, 'no authored cone rung — teach without pointing');
   assert.equal(rangeRungIndex('swing_do_not_pull'), 2, 'swing rung index stays put');
   assert.equal(rangeRungIndex('boost_keep_speed'), 4);
   assert.equal(rangeRungIndex('draw_the_stroke'), 5);
@@ -407,6 +410,12 @@ test('Range fallback lands on the current missing-three rung', () => {
     onboarding: { missingThree: { current: 'well' } },
   }), 6);
   assert.equal(resolveRescueEntryRung({
+    onboarding: { missingThree: { current: 'repulsor' } },
+  }), 0, 'a rung-less verb falls through to the rail start, never a wrong drill');
+  assert.equal(resolveRescueEntryRung({
+    onboarding: { missingThree: { current: 'cone' } },
+  }), 0);
+  assert.equal(resolveRescueEntryRung({
     onboarding: { rescue: { current: 'swing' } },
   }), 2, 'rescue swing still owns SWING, DO NOT PULL');
   assert.equal(resolveRescueEntryRung({
@@ -417,7 +426,7 @@ test('Range fallback lands on the current missing-three rung', () => {
   }), 4);
 });
 
-test('the three verbs complete in play after the rescue grab, then seam may start', () => {
+test('the five verbs complete in play after the rescue grab, then seam may start', () => {
   const h = boot();
   // Stub the law owner so the theft receipt is ACCEPTED and the heat path runs end to end.
   h.sys.registry = { get: () => ({ reportIncident: () => ({
@@ -473,22 +482,106 @@ test('the three verbs complete in play after the rescue grab, then seam may star
   h.bus.emit('fields:deployed', { kind: 'well', sourceId: st.playerId, fieldId: 'field_well_test' });
   tick(h);
   assert.equal(st.onboarding.missingThree.beats.well.state, 'done');
+
+  advanceTime(h);
+  tick(h);
+  assert.equal(st.onboarding.missingThree.current, 'repulsor');
+  assert.equal(tutorialLines(h).at(-1), missingThreeBeatLine('repulsor'));
+  assert.equal(st.onboarding.missingThree.ids.clump.length, 3, 'repulsor lesson stages its scrap clump');
+  assert.equal(st.onboarding.rangePromptActive, false, 'a rung-less verb does not point at the Range');
+  assert.equal(
+    h.seen.rangePrompt.filter((p) => p.beat === 'repulsor').length, 0,
+    'no range-prompt emit fires for a rung-less verb',
+  );
+
+  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: st.playerId, fieldId: 'field_repulsor_test' });
+  tick(h);
+  assert.equal(st.onboarding.missingThree.beats.repulsor.state, 'done');
+
+  advanceTime(h);
+  tick(h);
+  assert.equal(st.onboarding.missingThree.current, 'cone');
+  assert.equal(tutorialLines(h).at(-1), missingThreeBeatLine('cone'));
+  assert.equal(st.onboarding.missingThree.ids.lane.length, 3, 'cone lesson stages its lane');
+
+  h.bus.emit('fields:coneToggled', { active: true, fieldId: 'field_cone_test' });
+  tick(h);
+  assert.equal(st.onboarding.missingThree.beats.cone.state, 'done');
   assert.equal(st.onboarding.missingThree.completed, true);
   const complete = h.seen.firsthour.find((e) => e.event === 'firsthour:complete');
   assert.ok(complete);
-  assert.deepEqual(complete.beats, ['boost', 'stroke', 'well']);
+  assert.deepEqual(complete.beats, ['boost', 'stroke', 'well', 'repulsor', 'cone']);
 
   const threeLines = tutorialLines(h).filter((t) => Object.values(MISSING_THREE_BEAT_LINES).includes(t));
   assert.deepEqual(threeLines, [
     missingThreeBeatLine('boost'),
     missingThreeBeatLine('stroke'),
     missingThreeBeatLine('well'),
+    missingThreeBeatLine('repulsor'),
+    missingThreeBeatLine('cone'),
   ]);
 
   advanceTime(h);
   tick(h);
   const seam = ROUTE_BEATS.findIndex((b) => b.key === 'seam'); // seam follows the raid + claimed beats
-  assert.equal(st.onboarding.currentBeat, seam, 'seam opens after the three verbs and silence');
+  assert.equal(st.onboarding.currentBeat, seam, 'seam opens after the five verbs and silence');
+});
+
+test('npc field emissions never teach the rail', () => {
+  const h = boot();
+  launchDefaultRoute(h);
+  driveRescueToGrab(h);
+  completeRaid(h);
+  completeClaimed(h);
+  const st = h.state;
+  const three = st.onboarding.missingThree;
+  three.current = 'repulsor';
+  three.beats.repulsor.state = 'current';
+
+  const verbEvents = () => h.seen.firsthour.filter((e) => e.event === 'firsthour:verb');
+  const before = verbEvents().length;
+
+  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: 99, npc: true });
+  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: 99 });
+  h.bus.emit('fields:coneToggled', { active: true, fieldId: 'f1', sourceId: 99, npc: true });
+  h.bus.emit('fields:coneToggled', { active: true, fieldId: 'f2', sourceId: 99 });
+  h.bus.emit('fields:coneToggled', { active: false, fieldId: 'f3' });
+  tick(h);
+
+  assert.equal(three.beats.repulsor.state, 'current', 'npc repulsor fields cannot complete the beat');
+  assert.equal(three.beats.cone.state, 'pending', 'npc cone toggles cannot complete the beat');
+  assert.equal(verbEvents().length, before, 'no firsthour:verb fires for somebody else\'s field');
+});
+
+test('an older mid-tutorial save gets the new verbs backfilled without wedging', () => {
+  const h = boot();
+  launchDefaultRoute(h);
+  driveRescueToGrab(h);
+  completeRaid(h);
+  completeClaimed(h);
+  const three = h.state.onboarding.missingThree;
+  // Simulate a save written before repulsor/cone existed.
+  delete three.beats.repulsor;
+  delete three.beats.cone;
+  delete three.used.repulsor;
+  delete three.used.cone;
+  delete three.ids.clump;
+  delete three.ids.lane;
+
+  const st = h.state;
+  three.current = 'repulsor';
+  three.beats.repulsor = undefined; // proof the record accessor rebuilds the beat row
+  tick(h);
+  assert.ok(three.beats.repulsor, 'the backfill restores the repulsor beat row');
+  assert.equal(three.beats.repulsor.state === 'current' || three.beats.repulsor.state === 'pending', true);
+  assert.ok(Array.isArray(three.ids.clump));
+  assert.ok(three.used.repulsor && three.used.cone, 'use tallies backfill too');
+
+  const completed = h.state.onboarding.missingThree;
+  completed.completed = true;
+  delete completed.beats.cone;
+  const normalized = h.sys._missingThreeRecord();
+  assert.equal(normalized.beats.cone.state, 'done', 'a finished rail marks added verbs done');
 });
 
 test('a later unprompted use is recorded without inventing a tester percentage', () => {

@@ -200,8 +200,9 @@ function makeContext(state) {
   return { state, bus, helpers, missions, sys, registry, ctx };
 }
 
-// The live rail, driven exactly as rescue-opening.test.mjs / pq-163-03-sentence.test.mjs drive it.
-const DRILL_KEYS = ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage'];
+// The live rail, driven exactly as rescue-opening.test.mjs / pq-163-03-sentence.test.mjs drive it:
+// the tether attach leads, raid/claimed sit inside the rail, the movement drills follow.
+const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 
 function tick(h, dt = 0.25) {
   h.sys.update(dt, h.state);
@@ -223,7 +224,37 @@ function driveDrillTo(h, beatKey) {
   const trainerOf = () => (h.sys._trainerId != null ? st.entities.get(h.sys._trainerId) : null);
 
   const step = (key) => {
-    if (key === 'thrust') {
+    if (key === 'tether') {
+      tick(h); // the route opens on the tether beat: one tick stages its derelict
+      const derelict = derelictOf();
+      assert.ok(derelict, 'tether lesson must stage its derelict');
+      st.player.targetId = derelict.id;
+      h.bus.emit('tether:latched', { targetId: derelict.id });
+      h.bus.emit('tether:reel', { targetId: derelict.id, before: 80, after: 58 });
+      h.bus.emit('tether:released', { targetId: derelict.id });
+      tick(h);
+    } else if (key === 'raid') {
+      tick(h); // the raid beat enters and stages its cast
+      const raid = st.onboarding.raid;
+      assert.ok(raid && raid.ids.raider != null, 'raid lesson stages its raider');
+      const raider = st.entities.get(raid.ids.raider);
+      h.bus.emit('tether:latched', { targetId: raider.id });
+      raider.vel.x = 200; // the fling: a genuine release at speed
+      h.bus.emit('tether:released', { targetId: raider.id });
+      h.bus.emit('entity:killed', { id: raider.id, killerId: player.id, type: 'ship' });
+    } else if (key === 'claimed') {
+      tick(h); // the claimed beat enters and stages the spill + witness
+      const claimed = st.onboarding.claimed;
+      assert.ok(claimed && claimed.ids && claimed.ids.pickups.length >= 1, 'claimed lesson stages its spill');
+      h.bus.emit('pickup:collected', {
+        pickupId: claimed.ids.pickups[0],
+        collectorId: st.playerId,
+        kind: 'cargo',
+        amount: 4,
+        commodityId: 'cmdty_salvage_electronics',
+        pos: { x: player.pos.x, z: player.pos.z },
+      });
+    } else if (key === 'thrust') {
       player.vel.x = 41;
       tick(h);
     } else if (key === 'brake') {
@@ -241,14 +272,6 @@ function driveDrillTo(h, beatKey) {
       const trainer = trainerOf();
       assert.ok(trainer, 'focus lesson needs its trainer');
       h.bus.emit('flybyFocus:start', { targetId: trainer.id });
-      tick(h);
-    } else if (key === 'tether') {
-      const derelict = derelictOf();
-      assert.ok(derelict, 'tether lesson must stage its derelict');
-      st.player.targetId = derelict.id;
-      h.bus.emit('tether:latched', { targetId: derelict.id });
-      h.bus.emit('tether:reel', { targetId: derelict.id, before: 80, after: 58 });
-      h.bus.emit('tether:released', { targetId: derelict.id });
       tick(h);
     } else if (key === 'burst') {
       player.data.weapons[0]._heat = 36;
@@ -321,7 +344,8 @@ function completeGrab(h) {
   tick(h);
 }
 
-// The missing three (PQ-163.02): boost, stroke, well — each via its live verb signal.
+// The missing five (PQ-163.02 + INFERENCE-9): boost, stroke, well, repulsor, cone — each
+// via its live verb signal.
 function driveMissingThree(h) {
   const st = h.state;
   const three = st.onboarding.missingThree;
@@ -345,6 +369,18 @@ function driveMissingThree(h) {
   advanceTime(h);
   tick(h);
   assert.equal(three.beats.well.state, 'done', 'well must complete on the live fields:deployed signal');
+
+  // repulsor — a player-owned field deploy.
+  h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: st.playerId, atS: st.simTime });
+  advanceTime(h);
+  tick(h);
+  assert.equal(three.beats.repulsor.state, 'done', 'repulsor must complete on the live fields:deployed signal');
+
+  // cone — the fields owner's own toggle emit (no sourceId on the player path).
+  h.bus.emit('fields:coneToggled', { active: true, fieldId: 'field_cone_test' });
+  advanceTime(h);
+  tick(h);
+  assert.equal(three.beats.cone.state, 'done', 'cone must complete on the live fields:coneToggled signal');
   assert.equal(three.completed, true, 'the missing-three rail must complete in order');
 }
 
@@ -508,7 +544,7 @@ test('story beat 1 is authored as a named physical problem, not a fetch', () => 
 // ── The leaf scenario: opening → 47-A → session 2 → classify → measure ─────────────────────
 test('session 2 after 47-A opens on a set piece and holds the beat at T+180s', () => {
   const s1 = playSessionOne(SEED);
-  assert.deepEqual(s1.rail.missingThreeOrder, ['boost', 'stroke', 'well'], 'the leftover rail teaches the three');
+  assert.deepEqual(s1.rail.missingThreeOrder, ['boost', 'stroke', 'well', 'repulsor', 'cone'], 'the leftover rail teaches the five');
   assert.equal(s1.story.beatIndex, 1, 'session 1 hands off on beat 1');
 
   const s2 = playSessionTwo(SEED, s1.story);

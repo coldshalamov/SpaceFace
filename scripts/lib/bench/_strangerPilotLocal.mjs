@@ -1372,6 +1372,40 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           input.actions.deployWell = true; // edge
           return;
         }
+        if (t3.current === 'repulsor') {
+          const wp = waypoint();
+          flyTo(input, wp ? wp.pos : null, { arrive: 160 });
+          if (!decided.repulsorUse) {
+            decided.repulsorUse = true;
+            ledger.recordDecision({
+              situation: 'shove the scrap clump or nudge it by hand',
+              options: [
+                { id: 'repulsor_shove', tradeoff: 'the field scatters everything at once' },
+                { id: 'hand_nudge', tradeoff: 'slower, precise' },
+              ],
+              chosen: 'repulsor_shove',
+            });
+          }
+          input.actions.deployRepulsor = true; // edge
+          return;
+        }
+        if (t3.current === 'cone') {
+          const wp = waypoint();
+          flyTo(input, wp ? wp.pos : null, { arrive: 240 });
+          if (!decided.coneUse) {
+            decided.coneUse = true;
+            ledger.recordDecision({
+              situation: 'plow a lane with the cone or thread the rocks',
+              options: [
+                { id: 'cone_plow', tradeoff: 'the wedge clears a channel ahead' },
+                { id: 'thread_rocks', tradeoff: 'slower, no field running' },
+              ],
+              chosen: 'cone_plow',
+            });
+          }
+          input.actions.toggleClearingCone = true; // edge
+          return;
+        }
       }
 
       // ── The raid: latch the raider, swing, release into the big rock ───────────────────
