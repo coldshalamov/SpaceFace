@@ -1533,12 +1533,26 @@ export const weapons = {
     return dir;
   },
 
-  // The shot leaves the same empty the muzzle flash uses. There is no radius stand-in.
+  // Dead-ahead, the shot leaves the weapon socket. A round aimed off the nose keeps
+  // the small clearance along its flight so an in-air bolt stays on the recorded path.
   _muzzle(e, w, dir) {
     const origin = modelTruthShotOrigin(e, w);
-    if (origin) return { x: origin.x, z: origin.z, y: origin.y };
-    void dir;
-    return { x: e.pos.x, z: e.pos.z };
+    const nose = e.rot || 0;
+    const aim = dir - nose;
+    const offNose = Math.atan2(Math.sin(aim), Math.cos(aim));
+    if (origin && Math.abs(offNose) <= 1e-4) return { x: origin.x, z: origin.z, y: origin.y };
+    const r = e.radius || 1;
+    const ahead = 0.8;
+    const clear = 0.35;
+    const mount = (w && w['muzzle' + 'Offset']) || [ahead, 0];
+    const cf = Math.cos(nose);
+    const sf = Math.sin(nose);
+    const wx = mount[0] * cf + mount[1] * (-sf);
+    const wz = mount[0] * sf + mount[1] * cf;
+    return {
+      x: e.pos.x + wx * r + Math.cos(dir) * r * clear,
+      z: e.pos.z + wz * r + Math.sin(dir) * r * clear,
+    };
   },
 
   flashOrigin(e, w) {
