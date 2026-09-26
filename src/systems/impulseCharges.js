@@ -716,7 +716,11 @@ export const impulseCharges = {
     if (!actions?.chargeThrow) return;
     actions.chargeThrow = false;
 
-    if (rt.throwCdT > 0) return;
+    // The arming gap between throws was a silent no-op; say why instead of eating the press.
+    if (rt.throwCdT > 0) {
+      this.bus.emit('toast', { text: `Charge arming — ${Math.ceil(rt.throwCdT)}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
     if (player.flags && player.flags.docked) return;
     if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) return;
 

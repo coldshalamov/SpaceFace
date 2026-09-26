@@ -24,7 +24,7 @@ const line = (state, id) => crucibleCombatLines(state).find(row => row.id === id
 
 test('Pilot, Classic and Helm use the live charge action, including remaps and unbinding', () => {
   const state = fixture();
-  for (const [scheme, expected] of [['pilot', 'Y'], ['classic', 'Y'], ['helm-assist', 'Q']]) {
+  for (const [scheme, expected] of [['pilot', 'Y/1'], ['classic', 'Y/1'], ['helm-assist', 'Q/1']]) {
     state.settings.gameplay.controlScheme = scheme;
     assert.equal(resolveActionLabel(state, 'chargeThrow'), expected);
     assert.equal(line(state, 'trap').text, `Trap — ${expected} · 3 remaining · armed`);
@@ -99,14 +99,14 @@ test('Trap keeps empty/cooldown and deployed/arming facts distinct, ignoring for
     { ...trap, data: { ...trap.data, chargeId: 'charge_standard' } });
   state.player.cargo.items.cmdty_impulse_charge = 2;
   ship.data.impulseCharges.throwCdT = 0.5;
-  assert.equal(line(state, 'trap').text, 'Trap — Y · 2 remaining · cooldown · 1 arming');
+  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 2 remaining · cooldown · 1 arming');
   trap.data.armed = true;
   ship.data.impulseCharges.throwCdT = 0;
-  assert.equal(line(state, 'trap').text, 'Trap — Y · 2 remaining · armed · 1 deployed');
+  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 2 remaining · armed · 1 deployed');
   state.player.cargo.items.cmdty_impulse_charge = 0;
-  assert.equal(line(state, 'trap').text, 'Trap — Y · 0 remaining · empty · 1 deployed');
+  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 0 remaining · empty · 1 deployed');
   trap.alive = false;
-  assert.equal(line(state, 'trap').text, 'Trap — Y · 0 remaining · empty');
+  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 0 remaining · empty');
 });
 
 // Minimal DOM with mutation accounting: these tests prove lifecycle and writes, not browser layout.

@@ -21,6 +21,10 @@ import {
   CLAIM_FULL,
   codeToLabel,
   resolveSlotLabels,
+  resolveSlotKeys,
+  railSlotTip,
+  readRailModel,
+  slotDescription,
   worstState,
   applyClaims,
 } from '../src/ui/powerRail.js';
@@ -164,4 +168,59 @@ test('claims do not mutate the caller\'s slot model', () => {
   applyClaims(original, [{ claimId: 'x', slots: [1], answers: ['A'], mode: CLAIM_FULL }], 1000);
   assert.equal(original[0].answer, null, 'applyClaims is pure');
   assert.equal(original[0].claimedBy, null);
+});
+
+test('the rank reads as one hotbar: a slot shows its own digit whenever the action carries it', () => {
+  // The defect this pins: the shelf is nine verbs and the player reads it as a 1–9 hotbar, but the
+  // ORDNANCE seat used to print Y/R/SPACE while 4–9 printed digits — so 1–3 looked bound and did
+  // nothing. Each seat prefers the digit that IS its rank when the action carries that code.
+  const stock = resolveSlotLabels({
+    chargeThrow: ['KeyY', 'Digit1'], chargeDetonate: ['KeyR', 'Digit2'], tether: ['Space', 'KeyF', 'Digit3'],
+    deployMassSeed: ['Digit4'],
+  });
+  assert.equal(stock[1], '1');
+  assert.equal(stock[2], '2');
+  assert.equal(stock[3], '3');
+  assert.equal(stock[4], '4');
+  // The legacy keys stay bound; they just do not own the label. The tip lists them all.
+  const keys = resolveSlotKeys({ chargeThrow: ['KeyY', 'Digit1'], tether: ['Space', 'KeyF', 'Digit3'] });
+  assert.equal(keys[1], '1 · Y');
+  assert.equal(keys[3], '3 · Space · F');
+  // The label never invents a key: only the slot's own digit counts, and a digitless rebind
+  // falls back to the primary code.
+  assert.equal(resolveSlotLabels({ chargeThrow: ['KeyY'] })[1], 'Y');
+  assert.equal(resolveSlotLabels({ chargeThrow: ['KeyY', 'Digit5'] })[1], 'Y');
+});
+
+test('every verb carries its explanation bank, and a tip names the verb, the keys and the live state', () => {
+  for (const slot of RAIL_SLOTS) {
+    assert.ok(slot.description && slot.description.length > 8,
+      `${slot.name} (slot ${slot.index}) must carry a player-facing description`);
+    assert.ok(slotDescription(slot.index) === slot.description);
+  }
+  assert.equal(
+    railSlotTip({ name: 'Line', keys: '3 · Space · F', description: slotDescription(3), why: 'Ready' }),
+    'Line — throw the tether line onto a body and haul it — tap to latch or cut (3 · Space · F)\nReady',
+  );
+  assert.equal(railSlotTip({ name: 'Seed', description: 'goes somewhere' }), 'Seed — goes somewhere',
+    'no keys and no state invent nothing');
+});
+
+test('readRailModel answers WHY a verb is not ready, not only that it is not', () => {
+  const state = {
+    player: { cargo: { items: { cmdty_impulse_charge: 0 } }, massSeed: { cooldownUntil: 0 } },
+    fields: { cooldowns: { well: 4 }, coneActive: true },
+    entities: { get: () => null },
+    entityList: [],
+  };
+  const model = readRailModel(state, 1);
+  assert.equal(model[1].why, 'No impulse charges in cargo');
+  assert.equal(model[2].why, 'Nothing armed to detonate');
+  assert.equal(model[3].why, 'Ready');
+  assert.equal(model[5].why, 'Recharging — 3s');
+  assert.equal(model[7].why, 'Cone is on');
+  assert.equal(model[8].why, 'Only works grazing a planet band');
+  for (const slot of RAIL_SLOTS) {
+    assert.ok(model[slot.index].why, `slot ${slot.index} must say why it reads as it does`);
+  }
 });

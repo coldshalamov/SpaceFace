@@ -16,6 +16,7 @@ import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
   bombFieldEnvelope, fillBombViscosityImpulse,
 } from '../combat/bombDynamics.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
@@ -27,6 +28,12 @@ const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
 const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload']);
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
+
+/** Read-only: does the player's charge net have anything the shared detonate key could fire? */
+function armedPlayerCharges(state) {
+  return indexedTypeScan(state, 'charges').some((e) => e && e.alive && e.type === 'charge'
+    && e.data?.ownerId === state.playerId && e.data?.armed);
+}
 const craft = e => e?.type === 'ship' || e?.type === 'drone';
 const movable = e => e?.physicsBody !== false && (craft(e) || (LOOSE_TYPES.has(e?.type) && isDynamicPhysicsBodyEntity(e)));
 function massOf(e, fallback = 1) {
@@ -236,7 +243,14 @@ export const bombs = {
     this._collect(state);
     // R is the existing shared ordnance command. Read it BEFORE impulseCharges consumes it;
     // never clear another owner's edge. Both consumers are pinned by a manifest-order test.
-    if (actions?.chargeDetonate && !blocked(state, player)) this.commandDetonate(player.id, state);
+    if (actions?.chargeDetonate && !blocked(state, player)) {
+      const n = this.commandDetonate(player.id, state);
+      // The charge net detonates after us from the same press. A press that fires neither net is
+      // answered once, here — silence was how "pressing Blast does nothing" stayed invisible.
+      if (!n && !armedPlayerCharges(state)) {
+        this.bus.emit('toast', { text: 'Nothing armed to detonate', kind: 'info', ttl: 1.6 });
+      }
+    }
     this._tickBombs(dt, state);
     if (actions?.dropBomb) {
       actions.dropBomb = false;

@@ -3,6 +3,8 @@
 // The bench mounts it as `--shot=orrery-flight`; the live HUD adopts the same instruments in Phase 1.
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
+import { railSlotTip, slotDescription } from '../powerRail.js';
+import { mountWhyReveal } from '../whyReveal.js';
 import {
   createRadarOrrery, createObjectiveTape, createLockRing, createThreatChannel, createSignalToasts, createPlaceBlock,
 } from './flightInstruments.js';
@@ -40,17 +42,50 @@ const box = (cls) => {
   return node;
 };
 
+// The preview's ordnance shelf is the same rank the live HUD builds (hudAdapter.buildOrdnanceGroups):
+// nine verbs, hotbar digits 1–9, and the one tip bank (powerRail.js) explaining what each does.
+// Keys are drawn as the live Cluster draws them — the slot's own digit owns the label, and the tip
+// lists every key that fires the verb.
+const tipFor = (id, name, keys, why) => railSlotTip({ name, keys, description: slotDescription(id), why });
+
 export const ORDNANCE_LAYOUT = Object.freeze([
-  { name: 'Ordnance', icon: 'weapon', slots: [{ key: 'Y', name: 'Charge', icon: 'munitions' }, { key: 'R', name: 'Blast', icon: 'fire' }, { key: 'SPC', name: 'Line', icon: 'line' }] },
-  { name: 'Fieldwork', icon: 'well', slots: [{ key: '4', name: 'Seed', icon: 'seed' }, { key: '5', name: 'Well', icon: 'well' }, { key: '6', name: 'Repel', icon: 'repel' }] },
-  { name: 'Rig', icon: 'cone', slots: [{ key: '7', name: 'Cone', icon: 'cone' }, { key: '8', name: 'Skim', icon: 'skim' }] },
-  { name: 'Bay', icon: 'munitions', slots: [{ key: '9', name: 'Frag', icon: 'munitions' }] },
+  {
+    name: 'Ordnance', icon: 'weapon', tip: 'Ordnance — Charge 1 · Blast 2 · Line 3',
+    slots: [
+      { id: '1', key: '1', keys: '1 · Y', name: 'Charge', icon: 'munitions' },
+      { id: '2', key: '2', keys: '2 · R', name: 'Blast', icon: 'fire' },
+      { id: '3', key: '3', keys: '3 · Space · F', name: 'Line', icon: 'line' },
+    ],
+  },
+  {
+    name: 'Fieldwork', icon: 'well', tip: 'Fieldwork — Seed 4 · Well 5 · Repel 6',
+    slots: [
+      { id: '4', key: '4', keys: '4', name: 'Seed', icon: 'seed' },
+      { id: '5', key: '5', keys: '5', name: 'Well', icon: 'well' },
+      { id: '6', key: '6', keys: '6', name: 'Repel', icon: 'repel' },
+    ],
+  },
+  {
+    name: 'Rig', icon: 'cone', tip: 'Rig — Cone 7 · Skim 8',
+    slots: [
+      { id: '7', key: '7', keys: '7', name: 'Cone', icon: 'cone' },
+      { id: '8', key: '8', keys: '8', name: 'Skim', icon: 'skim' },
+    ],
+  },
+  {
+    name: 'Bay', icon: 'munitions', tip: 'Bay — Frag 9',
+    slots: [{ id: '9', key: '9', keys: '9', name: 'Frag', icon: 'munitions' }],
+  },
 ]);
 
 export const orreryFlightScreen = {
   mount(root) {
     injectOrrery();
     injectStyle();
+    // The tier-2 reveal is a document-level mechanism owned by uiRoot in the game; the bench mounts
+    // screens without uiRoot, so the preview brings the SAME one up (hover/focus a verb key to read
+    // what it does) and tears it down with the screen.
+    this._why = mountWhyReveal();
     this._root = root;
     const stage = box('orr-flightpreview');
     root.appendChild(stage);
@@ -81,9 +116,15 @@ export const orreryFlightScreen = {
       energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, boost: 0.7, drift: 24,
       tether: { state: 'Payload', mass: 960, strain: 0.62 },
       ordnance: {
-        Y: { state: 'armed', count: 3 }, R: { state: 'cooldown', cooldown: 0.55 }, SPC: { state: 'ready' },
-        4: { state: 'ready' }, 5: { state: 'cooldown', cooldown: 0.3 }, 6: { state: 'ready' },
-        7: { state: 'ready' }, 8: { state: 'locked' }, 9: { state: 'ready', count: 2 },
+        1: { state: 'armed', count: 3, tip: tipFor(1, 'Charge ×3', '1 · Y', 'Armed — press to detonate') },
+        2: { state: 'cooldown', cooldown: 0.55, tip: tipFor(2, 'Blast', '2 · R', 'Recharging — 3s') },
+        3: { state: 'ready', tip: tipFor(3, 'Line', '3 · Space · F', 'Ready') },
+        4: { state: 'ready', tip: tipFor(4, 'Seed', '4', 'Ready') },
+        5: { state: 'cooldown', cooldown: 0.3, tip: tipFor(5, 'Well', '5', 'Recharging — 2s') },
+        6: { state: 'ready', tip: tipFor(6, 'Repel', '6', 'Ready') },
+        7: { state: 'ready', tip: tipFor(7, 'Cone', '7', 'Ready') },
+        8: { state: 'locked', tip: tipFor(8, 'Skim', '8', 'Only works grazing a planet band') },
+        9: { state: 'ready', count: 2, tip: tipFor(9, 'Frag ×2', '9', 'Ready') },
       },
     });
     radar.setContacts([
@@ -107,6 +148,8 @@ export const orreryFlightScreen = {
   settled() { return new Promise((resolve) => setTimeout(resolve, 1700)); },
   unmount() {
     for (const part of Object.values(this._parts || {})) part.dispose?.();
+    this._why?.destroy?.();
+    this._why = null;
     if (this._root) this._root.textContent = '';
   },
 };
