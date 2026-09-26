@@ -59,6 +59,10 @@ test('seed 4242: one Helios starter miner cuts one rock with the live beam, then
   assert.ok(rock && rock.data, 'the shift names a live rock');
   assert.equal(rock.data.fieldId, 'f_helios_starter');
   assert.equal(miner.data.trafficRole, 'miner');
+  // This focused host has no flight/physics. Place the cutter at the face, rather than
+  // accidentally testing the old ability to mine from the refinery hundreds of units away.
+  miner.pos.x = rock.pos.x + (rock.radius || 6) + 25;
+  miner.pos.z = rock.pos.z;
   const oreBefore = Number(rock.data.oreHP);
   assert.ok(oreBefore > 0, 'the rock starts with ore');
 

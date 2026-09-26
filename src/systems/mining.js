@@ -854,9 +854,13 @@ export const mining = {
           asteroidData._richBonusPending = Math.max(0, asteroidData._richBonusPending - materializedRich);
         }
       } else {
-        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty, null, { tight: depleted });
+        // The working barge collects these same loose bodies. Keep the source on the pickup so
+        // it cannot conjure a second hold from a completed job timer or steal the player's cut.
+        const npcMiningSource = miner?.data?.minerShiftRockId === ast.id
+          ? { minerWorldRecordId: miner.data.worldRecordId, fieldId: ast.data.fieldId } : null;
+        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty, null, { tight: depleted, npcMiningSource });
         if (richQty > 0) {
-          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted });
+          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted, npcMiningSource });
           if (asteroidData && spawnedRich > 0) asteroidData._richBonusPending -= spawnedRich;
         }
       }
@@ -902,8 +906,10 @@ export const mining = {
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
       vel: { x: Math.cos(ang) * speed, z: Math.sin(ang) * speed },
       radius: PICKUP_RADIUS, mass: 0.1, collides: true,
+      ...(opts?.npcMiningSource ? { flags: { persistent: true } } : {}),
       data: {
         kind: 'ore', commodityId, amount, despawnAt: this.state.simTime + PICKUP_TTL,
+        ...(opts?.npcMiningSource ? { npcMiningSource: { ...opts.npcMiningSource } } : {}),
         ...(lotSource ? { richLotSource: lotSource } : {}),
       },
     });

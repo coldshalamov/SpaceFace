@@ -508,7 +508,8 @@ function isSweeperJob(entry, entity) {
 function isHeliosCuttingMiner(entity) {
   if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.data) return false;
   if (entity.data.trafficRole !== 'miner') return false;
-  if (entity.data.ceresActivityCast || entity.data.activityActorSlotId) return false;
+  if (entity.data.ceresActivityCast || (entity.data.activityActorSlotId
+    && entity.data.activityActorSlotId !== 'helios_starter_cutter')) return false;
   return typeof entity.data.worldRecordId === 'string' && entity.data.worldRecordId.length > 0;
 }
 
@@ -3119,9 +3120,23 @@ export const npcJobsRuntime = {
   // owner points that one hull at one starter rock and holds mining.applyMining for a bounded
   // slice of WORK. No second extractor, no heat shutdown, no site-anchored lock.
   _ensureHeliosStarterMiner() {
-    if (this._heliosStarterMinerRecordId) return;
     const sectorId = this.state.world && this.state.world.currentSectorId;
     if (sectorId !== HELIOS_STARTER_SECTOR_ID) return;
+    if (this._heliosStarterMinerRecordId) {
+      const entry = this._byId()['job:' + this._heliosStarterMinerRecordId];
+      const miner = entry && this.state.entities.get(entry.entityId);
+      // The shift belongs to a living hull, not a once-per-session latch. A depleted face is
+      // replaced at the home turn of the existing job; the return leg and its history survive.
+      if (entry && miner && miner.alive !== false) {
+        if (!this._starterRockForMinerJob(entry) && this._minerFieldRetargetSafe(entry.job)) {
+          this._commissionHeliosStarterMiner(miner);
+        }
+        return;
+      }
+      if (entry && entry.entityId == null) return; // residency will rebind this same worker
+      this._heliosStarterMinerRecordId = null;
+      this._heliosStarterRockId = null;
+    }
     const candidates = [];
     forEachLivingWorldActor(this.state, (entity) => {
       if (isHeliosCuttingMiner(entity)) candidates.push(entity);
@@ -3161,7 +3176,10 @@ export const npcJobsRuntime = {
     }
     this._heliosStarterMinerRecordId = recordId;
     this._heliosStarterRockId = live.id;
+    const entry = this._byId()[jobId];
+    if (entry) entry.heliosShiftStopped = false;
     miner.data.minerShiftRockId = live.id;
+    miner.data.activityActorSlotId = 'helios_starter_cutter';
     requestActivityReclassify(this.state, miner);
     return true;
   },
@@ -3238,6 +3256,8 @@ export const npcJobsRuntime = {
     const mining = this.registry && this.registry.get && this.registry.get('mining');
     if (!mining || typeof mining.applyMining !== 'function') { stop(); return; }
     const beam = ensureHeliosMinerBeam(entity);
+    if (Math.hypot(entity.pos.x - rock.pos.x, entity.pos.z - rock.pos.z)
+      > beam.range + (rock.radius || 0)) { stop(); return; }
     mining.applyMining(rock.id, beam.dps || BEAM_MK1.dps, step, entity.id);
     entry.heliosBeamS = (entry.heliosBeamS || 0) + step;
     entity.data.minerShiftBeamS = entry.heliosBeamS;
@@ -3403,7 +3423,20 @@ export const npcJobsRuntime = {
       }
 
       // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
-      if (step > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) advance(entry.job, step, this._sink);
+      const starterRock = entry.worldRecordId === this._heliosStarterMinerRecordId
+        && entry.job.phase === NPC_JOB_PHASE.WORK
+        ? this._starterRockForMinerJob(entry) : null;
+      const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
+        && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
+          > BEAM_MK1.range + (starterRock.radius || 0);
+      const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      const holdingForArrival = physicalTarget
+        && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
+        && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+          || Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0) > 8);
+      if (step > 0 && !approachingSeam && !holdingForArrival && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+        advance(entry.job, step, this._sink);
+      }
 
       // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
       // this stack. Never timestamp, release, or drive an entry/entity captured from the old run.
@@ -3783,6 +3816,59 @@ export const npcJobsRuntime = {
     return true;
   },
 
+  // Three authored opening workers require physical arrival, not a timetable standing in for
+  // contact. The pure job still owns the itinerary; this adapter owns convergence to its target.
+  _livingAdventureWorkTarget(entry, entity) {
+    const slot = entity.data?.activityActorSlotId;
+    if (slot !== 'helios_starter_cutter' && slot !== 'choir_relief_attendant' && slot !== 'choir_relief_patient') return null;
+    const job = entry.job;
+    if (!job || job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
+    const waypoint = this._ceresRealTargetWaypoint(job);
+    if (!waypoint?.pos) return null;
+    if (slot === 'helios_starter_cutter' && waypoint.id?.startsWith('field:')) {
+      const rock = this._starterRockForMinerJob(entry);
+      if (rock) return { pos: rock.pos, vel: rock.vel, reach: BEAM_MK1.range * 0.8 + (rock.radius || 0) };
+    }
+    if (slot === 'choir_relief_attendant' && job.kind === NPC_JOB_KIND.TENDER
+      && waypoint.targetRef?.startsWith('prey:')) {
+      const patient = this.state.entities.get(Number(waypoint.targetRef.slice(5)));
+      if (patient?.alive && patient.data?.choirReliefRole === 'patient') {
+        return { pos: { x: patient.pos.x + patient.radius + entity.radius + 14, z: patient.pos.z },
+          vel: patient.vel, reach: 10 };
+      }
+    }
+    return { pos: waypoint.pos, reach: 12 };
+  },
+
+  _driveLivingAdventureWorker(entry, entity, target) {
+    const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz), close = distance <= target.reach;
+    const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
+    const profile = resolvePropulsionProfile(entity, this.state);
+    const planningSpeed = Math.min(40, entry.job.speed || 35);
+    if (profile.family === DRIVE_FAMILIES.PULSE_PLATE) {
+      // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
+      const speed = close ? 0 : Math.min(planningSpeed,
+        Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
+      const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
+      const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+      const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
+      const forward = vx * c + vz * s, side = -vx * s + vz * c;
+      this._writeIntent(entity, clamp(side / Math.max(1, profile.rcsStrafeAccel), -1, 1),
+        clamp(forward / Math.max(1, forward < 0 ? profile.rcsReverseAccel : profile.rcsForwardAccel), -1, 1),
+        false, aim, false);
+      return;
+    }
+    const decel = Math.max(1, profile.reverseAccel || 0, (profile.mainAccel || 0) * 0.72);
+    const closing = Math.max(0, ((entity.vel?.x || 0) * dx + (entity.vel?.z || 0) * dz) / Math.max(1, distance));
+    const brake = close || Math.cos(aim - (entity.rot || 0)) < 0.85
+      || closing * closing / (2 * decel) >= distance - target.reach;
+    const speed = Math.min(planningSpeed, Math.sqrt(2 * decel * Math.max(0, distance - target.reach)));
+    const throttle = Math.max((profile.assist?.deadInput || 0.025) + 0.001,
+      speed / Math.max(1, profile.combatSpeed || entity.maxSpeed || 100));
+    this._writeIntent(entity, 0, brake ? 0 : Math.min(1, throttle), false, aim, brake);
+  },
+
   _drive(entry, entity) {
     const job = entry.job;
     if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
@@ -3835,6 +3921,9 @@ export const npcJobsRuntime = {
     // PQ-045 bounded real-target consumer. Only five exact, already-live Ceres relationships can
     // reach this branch; everything else retains the authored route controller below.
     if (this._tryDriveCeresRealTarget(entry, entity)) return;
+
+    const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
+    if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
       const planned = routePosition(job);

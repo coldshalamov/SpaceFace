@@ -28,6 +28,7 @@ import {
   ensureActivityClassified,
   entityNeedsAiThink,
   getActivityOwnerEntities,
+  requestActivityReclassify,
 } from '../world/activityRuntime.js';
 import {
   forEachFieldRock,
@@ -99,6 +100,8 @@ import {
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
+import { isMasslineLatchedPickup } from './mining.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -2358,6 +2361,8 @@ export const traffic = {
   // Other roles keep their ambient stepper. Builds the route from the same in-sector stations /
   // asteroids the ambient steppers already use, so no new spawn fountain and no new geometry authority.
   _maybeAssignJob(ent, role, originStation, target, stations, sectorId) {
+    // Helios' existing ore barge gathers the cutter's loose ore; it is not a second miner.
+    if (role === 'ore_carrier' && sectorId === 'sector_helios_prime') return;
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
     if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
@@ -3680,6 +3685,11 @@ export const traffic = {
    */
   _stampTrafficDurableIdentity(ent, sectorId, role, def, seq) {
     if (!ent) return;
+    if (sectorId === 'sector_helios_prime' && role === 'ore_carrier') {
+      ent.data = ent.data || {};
+      ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
+      requestActivityReclassify(this.state, ent);
+    }
     if (!ent.data) ent.data = {};
     ent.data.trafficRole = role;
     // Don't clobber a named lane callsign already stamped.
@@ -3737,6 +3747,10 @@ export const traffic = {
       const home = e.homeSectorId || d.homeSectorId || d.sectorId;
       if (home && home !== sectorId) return;
       if (tracked.has(e.id)) return;
+      if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
+        d.activityActorSlotId = 'helios_starter_ore_carrier';
+        requestActivityReclassify(this.state, e);
+      }
       // Ensure durable stamps survive even if rematerialize omitted a field.
       if (!e.homeSectorId && !d.homeSectorId) {
         e.homeSectorId = sectorId;
@@ -4146,6 +4160,19 @@ export const traffic = {
       }
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
       // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
+      if (rec.role === 'ore_carrier' && state.world?.currentSectorId === 'sector_helios_prime'
+        && !rec.worldSiteRoute && !rec.claimTravelRoute && !e.data?.claimDepotId) {
+        // Old saves may still carry the former generic miner job. Release that one ownership
+        // before the collector writes an intent, retaining any already-laden cargo.
+        if (e.data?.jobId && this.helpers.npcJobs?.controlClaim?.(e.data.jobId)) continue;
+        if (e.data?.jobId) this.helpers.npcJobs?.release?.(e.data.jobId);
+        if (e.data?.jobId) continue;
+        if (this._ambientPlanGate(state.tick, e, trafficPlanOpts)) {
+          this._stepHeliosOreCarrier(e, rec, stations, state);
+          this._syncTrafficRecordToData(e, rec);
+        }
+        continue;
+      }
       if (e.data && e.data.jobId) continue;
       if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
@@ -4996,6 +5023,98 @@ export const traffic = {
       rec.carrying = true; rec.targetId = this._pickStation(stations).id; rec.waitT = 1.5; setIntent(e, 0, 0, false, false, null, e.rot); return;
     }
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
+  },
+
+  // One existing hull runs seam -> loose ore -> refinery. Collection consumes the actual pickup;
+  // a player taking/towing it first leaves the barge empty, and a killed barge spills its real hold.
+  _stepHeliosOreCarrier(entity, rec, stations, state) {
+    const refinery = stations.find((station) => stationIdentity(station) === 'station_helios');
+    if (!refinery) return;
+    const current = entity.data.cargoManifest || rec.manifest;
+    const loaded = current?.totalQty > 0;
+    rec.carrying = loaded;
+    const steer = (target, reach) => {
+      const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+      const distance = Math.hypot(dx, dz);
+      const close = distance <= reach;
+      const aim = Math.atan2(dz, dx);
+      const propulsion = resolvePropulsionProfile(entity, state);
+      if (propulsion.family === DRIVE_FAMILIES.PULSE_PLATE) {
+        // The Ironback's brake fires its pulse plate. A cargo approach uses its ordinary
+        // precision thrusters instead: ask for a local velocity correction, never a pose snap.
+        const decel = Math.max(1, propulsion.rcsReverseAccel);
+        const speed = close ? 0 : Math.min(TRAFFIC_ROLES.ore_carrier.speed,
+          Math.sqrt(2 * decel * Math.max(0, distance - reach * 0.6)));
+        const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
+        const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+        const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
+        const forward = vx * c + vz * s;
+        const side = -vx * s + vz * c;
+        const throttle = Math.max(-1, Math.min(1, forward /
+          Math.max(1, forward < 0 ? propulsion.rcsReverseAccel : propulsion.rcsForwardAccel)));
+        const strafe = Math.max(-1, Math.min(1, side / Math.max(1, propulsion.rcsStrafeAccel)));
+        setIntent(entity, strafe, throttle, false, false, null, aim);
+        entity.data.intent.brake = false;
+        return close;
+      }
+      const brakeAccel = Math.max(1, propulsion.reverseAccel || 0, (propulsion.mainAccel || 0) * 0.72);
+      const closing = Math.max(0, ((entity.vel?.x || 0) * dx + (entity.vel?.z || 0) * dz) / Math.max(1, distance));
+      const brake = close || Math.cos(aim - (entity.rot || 0)) < 0.85
+        || closing * closing / (2 * brakeAccel) >= distance - reach;
+      const speed = Math.min(TRAFFIC_ROLES.ore_carrier.speed,
+        Math.sqrt(2 * brakeAccel * Math.max(0, distance - reach)));
+      const throttle = Math.max((propulsion.assist?.deadInput || 0.025) + 0.001,
+        speed / Math.max(1, propulsion.combatSpeed || entity.maxSpeed || 100));
+      setIntent(entity, 0, brake ? 0 : Math.min(1, throttle), false, false, null, aim);
+      entity.data.intent.brake = brake;
+      return close;
+    };
+    if (loaded) {
+      rec.targetId = refinery.id;
+      if (steer(refinery, (refinery.radius || 0) + DOCK_RANGE)
+        && this._emitArrival(entity, rec, refinery, { manifest: current })) {
+        this._setTrafficManifest(entity, rec,
+          this._buildMinerManifest(entity, rec.dockSeq, null, 0, 'ore_carrier'));
+        rec.carrying = false;
+      }
+      return;
+    }
+    const player = state.entities.get(state.playerId);
+    let pickup = null, nearest = Infinity;
+    forEachJobInteractable(state, (candidate) => {
+      if (candidate?.type !== 'pickup' || candidate.alive === false || !candidate.pos
+        || candidate.data?.npcMiningSource?.fieldId !== 'f_helios_starter'
+        || !(candidate.data.amount > 0) || !candidate.data.commodityId
+        || isMasslineLatchedPickup(state, player, candidate)) return;
+      const d2 = (candidate.pos.x - entity.pos.x) ** 2 + (candidate.pos.z - entity.pos.z) ** 2;
+      if (d2 < nearest) { pickup = candidate; nearest = d2; }
+    });
+    if (!pickup) {
+      // Wait beside the active face, not on top of it. There is no invented load on a timer.
+      const miner = state.traffic.freighters.map((row) => state.entities.get(row.id))
+        .find((worker) => worker?.alive !== false && worker?.data?.minerShiftRockId != null);
+      const rock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
+      steer(rock || refinery, (rock?.radius || refinery.radius || 0) + 100);
+      rec.targetId = rock?.id || refinery.id;
+      return;
+    }
+    rec.targetId = pickup.id;
+    if (!steer(pickup, (entity.radius || 6) + (pickup.radius || 1) + 6)) return;
+    const qty = Math.floor(pickup.data.amount);
+    if (!(qty > 0)) return;
+    const manifest = this._buildMinerManifest(entity, rec.dockSeq || 0,
+      pickup.data.commodityId, qty, 'ore_carrier', { ...pickup.data.npcMiningSource });
+    // Commit custody before the event: a synchronous listener cannot collect this body twice.
+    pickup.data.amount = 0;
+    pickup.alive = false;
+    this._setTrafficManifest(entity, rec, manifest);
+    rec.carrying = true;
+    rec.cargoDumped = false;
+    entity.data.cargoDumped = false;
+    this.bus.emit('traffic:oreCollected', {
+      carrierId: entity.id, pickupId: pickup.id, manifestId: manifest.manifestId,
+      commodityId: manifest.lines[0].commodityId, qty, ...pickup.data.npcMiningSource,
+    });
   },
 
   _pickScenicBody(state, stations) {
@@ -6440,6 +6559,7 @@ export const traffic = {
       freighterKey,
       role: role || 'hauler',
       market: market || FREIGHT_MARKET_KEYS_FALLBACK,
+      ...((role === 'ore_carrier' || role === 'miner') && sectorId === 'sector_helios_prime' ? { capacity: 0 } : {}),
     });
     if (ent) {
       if (!ent.data) ent.data = {};
@@ -8280,6 +8400,8 @@ export const traffic = {
     if (intent.kind !== 'miner') return false;
     const context = this._jobTrafficContext(intent, 'miner', ['miner', 'ore_carrier']);
     if (!context) return false;
+    // This cutter already paid out through mining.applyMining into collectable ore bodies.
+    if (context.entity.data.minerShiftRockId != null) return false;
     const fieldWaypoint = typeof intent.field === 'string' ? intent.field : '';
     if (!fieldWaypoint.startsWith('field:') || fieldWaypoint.length <= 6) return false;
     const rawAsteroidId = fieldWaypoint.slice(6);
@@ -9614,6 +9736,7 @@ export const traffic = {
     if (!context) return false;
 
     const destination = typeof intent.destination === 'string' ? intent.destination : '';
+    if (intent.kind === 'miner' && context.entity.data.minerShiftRockId != null) return false;
     const prefix = intent.kind === 'miner' ? 'home:' : 'dest:';
     if (!destination.startsWith(prefix) || destination.length <= prefix.length) return false;
     const stationId = destination.slice(prefix.length);
