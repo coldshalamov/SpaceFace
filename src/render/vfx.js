@@ -6496,20 +6496,20 @@ export const vfx = {
       // Lights-out runner: two thin cold rails at low opacity — running lights dialed down, not
       // the hauler's warm cargo lamps. A rare dim flash is the only giveaway.
       emitted += this._spawnStationSideEventStreak(x + nx * 0.42, 0.4, z + nz * 0.42,
-        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.2, '#5f7d8c', 0, 0, dx, dz);
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
       emitted += this._spawnStationSideEventStreak(x - nx * 0.42, 0.4, z - nz * 0.42,
-        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.2, '#5f7d8c', 0, 0, dx, dz);
+        reducedMotion ? 0.5 : 0.3, 0.16, 1.9, 0.34, '#8aa4b0', 0, 0, dx, dz);
       if (frame.accentSlot % 5 === 0 && this._spawnSprite(
         SPR_FLASH,
         x - dx * 0.8,
         0.4,
         z - dz * 0.8,
-        0.08,
+        0.12,
         0.2,
         0.3,
-        0.3,
+        0.42,
         0,
-        '#3d5561',
+        '#7f9aa8',
         0,
         0,
         1.2,

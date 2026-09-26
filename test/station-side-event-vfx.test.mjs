@@ -12,7 +12,7 @@ import {
 import { vfx } from '../src/render/vfx.js';
 import { stationSideEventDirector } from '../src/systems/stationSideEventDirector.js';
 
-const KINDS = ['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep'];
+const KINDS = ['hauler_dock', 'patrol_launch', 'repair_drone', 'cargo_tractor', 'sensor_sweep', 'quiet_dock'];
 
 function makeHarness({ motionReduce = false, flashReduce = false, patrol = false } = {}) {
   const scene = new THREE.Scene();
