@@ -91,7 +91,7 @@ assert.match(read('src/ui/screens/range.js'), /resolveActionLabel\(/,
 const tether = resolveActionLabel(PILOT_STATE, 'tether');
 const brake = resolveActionLabel(PILOT_STATE, 'brake');
 const forward = resolveActionLabel(PILOT_STATE, 'forward');
-assert.equal(tether, 'Space/F', 'PILOT Massline is Space with F as the permanent alias');
+assert.equal(tether, 'Space/F/3', 'PILOT Massline is Space with F and the 3 hotbar key as permanent aliases');
 assert.equal(brake, '0', 'PILOT dedicated brake is Digit0');
 assert.match(forward, /^W\//, 'PILOT forward still teaches W');
 assert.equal(resolveActionLabel(PILOT_STATE, 'fire'), MOUSE_ACTION_LABELS.fire);
@@ -133,6 +133,6 @@ const section41 = gdd.slice(gdd.indexOf('### 4.1 Control scheme'), gdd.indexOf('
 assert.match(section41, /Space became the Massline|Space is \*\*not\*\* brake; Space is the Massline/);
 assert.match(section41, /\*\*0 \(Digit0\)\*\* = dedicated zero-thrust brake/);
 assert.equal(DEFAULTS.SCHEMES.pilot.brake[0], 'Digit0');
-assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['Space', 'KeyF']);
+assert.deepEqual(DEFAULTS.SCHEMES.pilot.tether, ['Space', 'KeyF', 'Digit3']);
 
 console.log(`UI control labels OK — ${TAUGHT_FLIGHT_ACTIONS.length} taught flight actions resolve from input.js; README/GDD match PILOT.`);
