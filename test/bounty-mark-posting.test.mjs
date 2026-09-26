@@ -83,14 +83,38 @@ function bountyOffers(board) {
 }
 
 /** Resolve a storyTarget's anchor the same way missionStoryTargetSpawnPos does. */
-function anchorCenterGlobal(sectorId, anchorId) {
+function anchorCenterLocal(sectorId, anchorId) {
   const anchors = SECTOR_ANCHORS[sectorId];
   if (!anchors) return null;
   const anchor = ['stations', 'gates', 'fields', 'pois']
     .flatMap((key) => Array.isArray(anchors[key]) ? anchors[key] : [])
     .find((c) => c && (c.id === anchorId || c.to === anchorId));
-  const center = anchor && (anchor.pos || anchor.center);
-  return center ? sectorLocalToGlobalForSector({ x: center.x, z: center.z }, sectorId) : null;
+  return anchor ? (anchor.pos || anchor.center) : null;
+}
+function anchorCenterGlobal(sectorId, anchorId) {
+  const c = anchorCenterLocal(sectorId, anchorId);
+  return c ? sectorLocalToGlobalForSector({ x: c.x, z: c.z }, sectorId) : null;
+}
+
+/** Mirror of bountyMarks' lawful-protection volumes (local space): patrol bubble = dockRadius
+ * (by size) × 4 × size factor, floor 600 WU; station_helios owns the 1400 WU starter sanctuary. */
+const LAWFUL_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
+function lawfulVolumes(sectorId, sectorDef) {
+  const volumes = [];
+  const posById = new Map(((SECTOR_ANCHORS[sectorId] && SECTOR_ANCHORS[sectorId].stations) || [])
+    .map((a) => [a && a.id, a && a.pos]));
+  for (const st of (sectorDef && sectorDef.stations) || []) {
+    if (!st || !st.id) continue;
+    const pos = posById.get(st.id);
+    if (!pos) continue;
+    if (st.id === 'station_helios') { volumes.push({ x: pos.x, z: pos.z, radius: 1400 }); continue; }
+    if (!LAWFUL_FACTIONS.has(st.factionId)) continue;
+    const size = st.size || 'M';
+    const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
+    const patrol = dockRadius * 4.0 * (size === 'L' ? 1.15 : size === 'S' ? 0.9 : 1.0);
+    volumes.push({ x: pos.x, z: pos.z, radius: Math.max(600, patrol) });
+  }
+  return volumes;
 }
 
 test('rolled bounty offers carry a deterministic named mark at a named place', () => {
@@ -157,9 +181,8 @@ test('the mark roll is a pure function of (seed, offer id, sector, tier) — a f
     role: 'board_writ',
     archetype: 'wasp_swarmer',
     factionId: 'faction_reach',
-    anchorId: 'sector_io_reach',
-    anchorRadius: 300,
-    placeName: 'the Io Reach gate',
+    zoneId: 'zone_charon_belt',
+    placeName: 'Deep Frontier Seams',
   });
 });
 
@@ -201,6 +224,67 @@ test('a writ never names a hidden, gated, or owned place', () => {
   assert.ok(poiPlaces > 0, 'the sweep actually visited POI places');
 });
 
+test('a writ never posts a mark inside lawful protection', () => {
+  // A hostile holding a station bubble can never return fire — protection turns the hunt into
+  // an execution. Every place's scatter disc must sit clear of lawful volumes.
+  let placed = 0;
+  for (let seed = 1; seed <= 64; seed++) {
+    for (const sec of SECTORS) {
+      const volumes = lawfulVolumes(sec.id, sec);
+      if (!volumes.length) continue;
+      for (let i = 0; i < 4; i++) {
+        const mark = rollBountyMark({
+          seed, offerId: `mo_law_${seed}_${i}`, sectorId: sec.id,
+          riskTier: 1 + (seed % 4), sectorDef: sec,
+        });
+        if (!mark) continue;
+        let center = null;
+        let scatter = 0;
+        if (mark.anchorId) {
+          center = anchorCenterLocal(sec.id, mark.anchorId);
+          scatter = mark.anchorRadius || 200;
+        } else if (mark.zoneId) {
+          const zone = zonesForSector(sec.id).find((z) => z && z.id === mark.zoneId);
+          center = zone && zone.center;
+          scatter = zone ? Math.max(40, Math.min(240, (zone.radius || 400) * 0.35)) : 0;
+        }
+        if (!center) continue;
+        placed++;
+        for (const v of volumes) {
+          const reach = v.radius + scatter;
+          const dist = Math.hypot(center.x - v.x, center.z - v.z);
+          assert.ok(dist >= reach,
+            `${mark.placeName || mark.anchorId} sits inside lawful protection of ${sec.id} station (dist ${dist.toFixed(0)} < ${reach.toFixed(0)})`);
+        }
+      }
+    }
+  }
+  assert.ok(placed > 0, 'the sweep visited sectors with lawful stations');
+});
+
+test('gate marks hold an authored floor off the transit proxy', () => {
+  const gateAnchorIds = new Set();
+  for (const anchors of Object.values(SECTOR_ANCHORS)) {
+    for (const g of (anchors && anchors.gates) || []) if (g && g.to) gateAnchorIds.add(g.to);
+  }
+  let gatesSeen = 0;
+  for (let seed = 1; seed <= 64 && gatesSeen < 200; seed++) {
+    for (const sec of SECTORS) {
+      for (let i = 0; i < 4; i++) {
+        const mark = rollBountyMark({
+          seed, offerId: `mo_gate_${seed}_${i}`, sectorId: sec.id,
+          riskTier: 1 + (seed % 4), sectorDef: sec,
+        });
+        if (!mark || !gateAnchorIds.has(mark.anchorId)) continue;
+        gatesSeen++;
+        assert.ok(mark.anchorMinRadius >= 60,
+          `gate mark ${mark.anchorId} must floor its scatter off the gate proxy`);
+      }
+    }
+  }
+  assert.ok(gatesSeen > 0, 'the sweep actually rolled gate marks');
+});
+
 test('accepting spawns the named mark inside its named place, not on the player ring', () => {
   const world = makeWorld();
   const { state, missionSystem } = world;
@@ -223,6 +307,8 @@ test('accepting spawns the named mark inside its named place, not on the player 
     const dist = Math.hypot(mark.pos.x - center.x, mark.pos.z - center.z);
     assert.ok(dist <= Math.min(320, st.anchorRadius || 120) + 1,
       `mark must hold inside ${st.anchorId} (dist ${dist.toFixed(0)})`);
+    assert.ok(dist >= (st.anchorMinRadius || 0) - 0.001,
+      `mark must stay off the ${st.anchorId} proxy (dist ${dist.toFixed(0)})`);
   } else {
     const zone = zonesForSector(active.destSectorId).find((z) => z && z.id === st.zoneId);
     const center = sectorLocalToGlobalForSector({ x: zone.center.x, z: zone.center.z }, active.destSectorId);
@@ -230,6 +316,11 @@ test('accepting spawns the named mark inside its named place, not on the player 
     const maxR = Math.max(40, Math.min(240, (zone.radius || 400) * 0.35));
     assert.ok(dist <= maxR + 1, `mark must lurk inside ${zone.name} (dist ${dist.toFixed(0)})`);
   }
+
+  // The waypoint reason names the person once the hull is live.
+  const waypoint = missionSystem._missionWaypoint(active);
+  assert.equal(waypoint.reason, `Intercept ${offer.params.markName}`,
+    'the nav line keeps the warrant name after spawn');
 });
 
 test('killing the named mark still settles the contract', () => {
@@ -273,6 +364,8 @@ test('the mark hails once when the player closes inside scanner range', () => {
   assert.equal(popups.length, 1, 'the mark acknowledges the board exactly once');
   assert.equal(active._markHailed, true, 'the once-latch rides the mission record');
   assert.ok(popups[0].payload.text.length > 0);
+  assert.equal(popups[0].payload._viaVoice, true,
+    'a voiced hail logs to the backlog only — no double surface');
 });
 
 test('a mark beyond contact range stays silent; a dead mark stays silent', () => {

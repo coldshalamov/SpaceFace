@@ -3474,7 +3474,8 @@ export const missions = {
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
       const target = this._firstLiveMissionTarget(m);
-      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: 'Intercept the marked hostile' };
+      const markName = m.params && m.params.markName;
+      if (target) return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason: markName ? `Intercept ${markName}` : 'Intercept the marked hostile' };
       return base;
     }
 
@@ -6708,11 +6709,12 @@ export const missions = {
     if (dx * dx + dz * dz > MARK_HAIL_RANGE_WU * MARK_HAIL_RANGE_WU) return;
     m._markHailed = true;
     const text = bountyMarkHail((state.meta && state.meta.seed) || 1, m.id);
-    this.bus.emit('comms:popup', { sender: m.storyTarget.name, text, category: 'personal', ttl: 6 });
     const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({ channel: 'comms', text, kind: 'bountyMark', ttl: 4, id: `bountyMark:${m.id}` });
-    }
+    // A line the arbiter already voiced stays out of the live feed — `_viaVoice` logs it to the
+    // backlog only, so the player never reads the same hail twice.
+    const said = !!(voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'comms', text, kind: 'bountyMark', ttl: 4, id: `bountyMark:${m.id}` }));
+    this.bus.emit('comms:popup', { sender: m.storyTarget.name, text, category: 'personal', ttl: 6, _viaVoice: said });
   },
 
   _spawnTargetsFor(m) {
@@ -8103,9 +8105,14 @@ function missionStoryTargetSpawnPos(mission, target, rng) {
   if (anchorCenter) {
     const angle = rng() * Math.PI * 2;
     const authoredRadius = Number(target.anchorRadius);
-    const radius = Math.sqrt(rng()) * (Number.isFinite(authoredRadius)
+    const maxRadius = Number.isFinite(authoredRadius)
       ? Math.max(0, Math.min(320, authoredRadius))
-      : 120);
+      : 120;
+    // An authored floor keeps the scatter off solid bodies (gate proxies post a mark beside
+    // the transit ring, never inside it).
+    const authoredMin = Number(target.anchorMinRadius);
+    const minRadius = Number.isFinite(authoredMin) ? Math.max(0, Math.min(maxRadius, authoredMin)) : 0;
+    const radius = minRadius + Math.sqrt(rng()) * (maxRadius - minRadius);
     return sectorLocalToGlobalForSector({
       x: anchorCenter.x + Math.cos(angle) * radius,
       z: anchorCenter.z + Math.sin(angle) * radius,

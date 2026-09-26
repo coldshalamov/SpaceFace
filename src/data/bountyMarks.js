@@ -15,6 +15,8 @@ import { hash32 } from '../core/rng.js';
 import { SECTOR_ANCHORS } from './sectorAnchors.js';
 import { zonesForSector } from './sectorZones.js';
 import { SECTORS } from './sectors.js';
+import { BUBBLE_MULTIPLIERS, BUBBLE_SIZE_FACTOR } from './stationBubbles.js';
+import { HELIOS_STARTER_PROTECTION_RADIUS_WU } from './sectorCoordinates.js';
 
 /**
  * Wanted-poster person names, in the game's register ('Rook Nine', 'Red Ledger', 'Mira Bluepack').
@@ -112,6 +114,54 @@ function markPoiEligible(poi, sectorDef) {
   return true;
 }
 
+/**
+ * Station factions that project a lawful no-fire bubble — mirror of
+ * engagementAuthority.LAWFUL_STATION_FACTIONS (kept local: data modules stay leaf-ward).
+ */
+const MARK_LAWFUL_STATION_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
+
+/**
+ * A writ does not post a mark inside lawful protection — a hostile holding a station bubble can
+ * never return fire, which turns the hunt into an execution. Rebuilds the same volumes
+ * engagementAuthority.protectedStationAt computes, in pure data: dockRadius is a function of
+ * station size (world.js), the patrol bubble is dockRadius × patrol multiplier × size factor,
+ * the protection floor is 600 WU, and station_helios owns the 1400 WU starter sanctuary.
+ * Returns local-space {x, z, radius} volumes.
+ */
+function lawfulProtectionVolumes(sectorId, sectorDef) {
+  const volumes = [];
+  const anchorById = new Map(((SECTOR_ANCHORS[sectorId] && SECTOR_ANCHORS[sectorId].stations) || [])
+    .map((anchor) => [anchor && anchor.id, anchor]));
+  for (const station of (sectorDef && sectorDef.stations) || []) {
+    if (!station || !station.id) continue;
+    const lawful = MARK_LAWFUL_STATION_FACTIONS.has(station.factionId);
+    const starterSanctuary = station.id === 'station_helios';
+    if (!lawful && !starterSanctuary) continue;
+    const pos = anchorById.get(station.id) && anchorById.get(station.id).pos;
+    if (!pos) continue;
+    const size = station.size || 'M';
+    const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
+    const patrol = dockRadius * BUBBLE_MULTIPLIERS.patrol * (BUBBLE_SIZE_FACTOR[size] || BUBBLE_SIZE_FACTOR.M);
+    const radius = starterSanctuary
+      ? Math.max(HELIOS_STARTER_PROTECTION_RADIUS_WU, patrol)
+      : Math.max(600, patrol);
+    volumes.push({ x: pos.x, z: pos.z, radius });
+  }
+  return volumes;
+}
+
+/** True when the whole scatter disc for a candidate stays clear of lawful protection —
+ * padding by the spawn scatter radius since the mark lands up to that far off-center. */
+function clearOfLawfulVolumes(localX, localZ, scatter, volumes) {
+  for (const v of volumes) {
+    const dx = localX - v.x;
+    const dz = localZ - v.z;
+    const reach = v.radius + scatter;
+    if (dx * dx + dz * dz < reach * reach) return false;
+  }
+  return true;
+}
+
 const _sectorNameById = new Map(SECTORS.map((sec) => [sec.id, sec && sec.name]));
 
 /**
@@ -139,6 +189,7 @@ function markPlaceCandidates(sectorId, sectorDef) {
   const candidates = [];
   const anchors = SECTOR_ANCHORS[sectorId];
   const sectorPois = (sectorDef && sectorDef.pois) || [];
+  const lawfulVolumes = lawfulProtectionVolumes(sectorId, sectorDef);
   // A POI that another site unlocks only after its boss falls is an occupied arena, not a lair.
   const bossGateIds = new Set(sectorPois.map((poi) => poi && poi.unlockAfterBossId).filter(Boolean));
   const poiNameById = new Map(sectorPois
@@ -146,18 +197,28 @@ function markPlaceCandidates(sectorId, sectorDef) {
     .map((poi) => [poi.id, poi.name]));
   for (const anchorPoi of (anchors && anchors.pois) || []) {
     const name = anchorPoi && poiNameById.get(anchorPoi.id);
-    if (name) candidates.push({ anchorId: anchorPoi.id, anchorRadius: 200, placeName: name });
+    const pos = anchorPoi && anchorPoi.pos;
+    if (name && pos && clearOfLawfulVolumes(pos.x, pos.z, 200, lawfulVolumes)) {
+      candidates.push({ anchorId: anchorPoi.id, anchorRadius: 200, placeName: name });
+    }
   }
   for (const zone of zonesForSector(sectorId)) {
-    if (zone && zone.id && zone.name && BOUNTY_MARK_ZONE_TYPES.includes(zone.type)) {
+    if (!zone || !zone.id || !zone.name || !zone.center || !BOUNTY_MARK_ZONE_TYPES.includes(zone.type)) continue;
+    // Mirror of the zone scatter in missionStoryTargetSpawnPos — the mark lands up to this far
+    // off-center, so a center this close to lawful ground can still spawn a protected mark.
+    const scatter = Math.max(40, Math.min(240, (zone.radius || 400) * 0.35));
+    if (clearOfLawfulVolumes(zone.center.x, zone.center.z, scatter, lawfulVolumes)) {
       candidates.push({ zoneId: zone.id, placeName: zone.name });
     }
   }
   for (const gate of (anchors && anchors.gates) || []) {
-    if (!gate || !gate.to) continue;
+    if (!gate || !gate.to || !gate.pos) continue;
     const neighborName = _sectorNameById.get(gate.to);
-    candidates.push({ anchorId: gate.to, anchorRadius: 300,
-      placeName: neighborName ? `the ${neighborName} gate` : 'the far gate' });
+    // anchorMinRadius keeps the scatter off the ~35 WU gate collision proxy.
+    if (clearOfLawfulVolumes(gate.pos.x, gate.pos.z, 300, lawfulVolumes)) {
+      candidates.push({ anchorId: gate.to, anchorRadius: 300, anchorMinRadius: 80,
+        placeName: neighborName ? `the ${neighborName} gate` : 'the far gate' });
+    }
   }
   return candidates;
 }
