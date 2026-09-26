@@ -134,7 +134,12 @@ export async function bootPlaytest({ outDir, query = '', headless = true, viewpo
         mode: st.mode || null,
         run: st.run ? { kind: st.run.kind, phase: st.run.phase, wave: st.run.wave } : null,
         simTime: st.simTime != null ? +st.simTime.toFixed(1) : null,
-        player: p ? { alive: p.alive !== false, hull: p.hull, shield: p.shield, credits: st.player && st.player.credits } : null,
+        player: p ? {
+          alive: p.alive !== false, hull: p.hull, shield: p.shield, credits: st.player && st.player.credits,
+          cargo: st.player && st.player.cargo
+            ? { usedVolume: st.player.cargo.usedVolume, capVolume: st.player.cargo.capVolume, itemCount: Object.keys(st.player.cargo.items || {}).length }
+            : null,
+        } : null,
         docked: !!(st.ui && st.ui.docked),
         dockedStationId: st.ui && st.ui.dockedStationId || null,
         entities: st.entities ? st.entities.size : null,

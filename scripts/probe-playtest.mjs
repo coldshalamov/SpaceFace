@@ -305,9 +305,22 @@ const ROUTES = {
       });
       await sleep(1300);
       await shotNow(ctx, 'x06-missions');
+      // Select the first recommended offer row, then click its commit verb (DISPATCH THIS JOB /
+      // ACCEPT / TAKE ON). A blocked readiness row is a real outcome, not a harness failure.
+      const row = await ctx.page.evaluate(() => {
+        const r = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action], li, tr')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+            && /deliver|transport|escort|scan|mine|haul|cargo|convoy|passenger/i.test(e.textContent || '')
+            && !/dispatch|tracked|abandon/i.test(e.textContent || ''))[0];
+        if (!r) return null; r.click(); return (r.textContent || '').trim().slice(0, 80);
+      });
+      await sleep(900);
+      const blocked = await ctx.page.evaluate(() =>
+        /blocked/i.test(document.body.innerText || '') && /need\s+\d/i.test(document.body.innerText || ''));
       const accepted = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*accept\s*$/i.test(e.textContent || ''))[0];
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
+            && /dispatch this job|^\s*accept|take on|sign|take contract/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1500);
@@ -316,10 +329,13 @@ const ROUTES = {
       if (accepted && !(after.text || '').match(/track|job|mission|contract|objective/i)) {
         observe(ctx, 'rough-edge', 'missions', `accepted an offer but no tracking hint surfaced (screen=${after.screen})`);
       }
-      return { station: dists[0].id, acceptVerb: accepted, screen: after.screen, textHead: (after.text || '').slice(0, 200) };
+      return { station: dists[0].id, row, blocked, acceptVerb: accepted, screen: after.screen, textHead: (after.text || '').slice(0, 200) };
     });
 
     await B(ctx, 'x03-pause-quit', 'Esc -> pause -> quit/abandon to title mid-flight', async () => {
+      // If a prior beat left us docked, undock so Esc opens the flight pause, not a station exit.
+      await ctx.page.evaluate(() => { const H = window.__SF_PT_HELPERS__; if (H.docked()) H.undock(window.SF.state.ui.dockedStationId); });
+      await sleep(1200);
       await pressKey(ctx, 'Escape', 1000);
       const p = await snap(ctx);
       await shotNow(ctx, 'x03-pause');
