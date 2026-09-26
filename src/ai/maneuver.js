@@ -17,6 +17,12 @@ import {
 } from './contracts.js';
 import { createSquadFrameDirector } from './squadFrame.js';
 
+function bodyRadius(body) {
+  const measured = Number(body && body.planarRadius);
+  if (measured > 0) return measured;
+  return Number(body && body.radius) || 0;
+}
+
 export const MANEUVER_SPEED_CAPS = Object.freeze({
   interceptSpeed: 72,
   approachSpeed: 62,
@@ -719,7 +725,7 @@ function applyFriendlySeparation(desired, self, contacts, config, counters, coun
     const dx = self.pos.x - contact.pos.x;
     const dz = self.pos.z - contact.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
-    const clearance = config.friendlySeparationRadius + self.radius + contact.radius;
+    const clearance = config.friendlySeparationRadius + bodyRadius(self) + bodyRadius(contact);
     if (dist >= clearance) continue;
     const strength = saturate(1 - dist / clearance) * config.friendlySeparationWeight;
     x += dx / dist * strength;
@@ -749,7 +755,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     const distance = Math.hypot(dx, dz);
     const ahead = dx * dir.x + dz * dir.z;
     const lateral = dx * rightX + dz * rightZ;
-    const clearance = config.shipCollisionClearance + self.radius + contact.radius
+    const clearance = config.shipCollisionClearance + bodyRadius(self) + bodyRadius(contact)
       + massClearanceFor(contact, intent, self, config);
     if (seekDest && contact.id !== target.id
       && distance2(contact.pos, seekDest) < clearance) continue;
@@ -784,7 +790,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
 
 function closeApproachLimit(kind, intent, self, target, config, fallback) {
   if (explicitRamApproach(intent, self) || tetherApproach(kind)) return fallback;
-  const clearance = config.shipCollisionClearance + self.radius + target.radius
+  const clearance = config.shipCollisionClearance + bodyRadius(self) + bodyRadius(target)
     + massClearanceFor(target, intent, self, config);
   const distance = distance2(self.pos, target.pos);
   if (distance > clearance * config.massApproachRangeMult) return fallback;
@@ -841,7 +847,7 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
     const ahead = dx * dir.x + dz * dir.z;
     const across = -dx * dir.z + dz * dir.x;
     // Leave real hull clearance without sealing every authored choke with a 55-WU halo.
-    const margin = Math.min(config.obstacleClearance, Math.max(6, self.radius * 0.6)) + self.radius + contact.radius;
+    const margin = Math.min(config.obstacleClearance, Math.max(6, bodyRadius(self) * 0.6)) + bodyRadius(self) + bodyRadius(contact);
     if (ahead < 0 || ahead > lookahead + margin || Math.abs(across) >= margin) continue;
     const entry = ahead - Math.sqrt(Math.max(0, margin * margin - across * across));
     if (entry >= nearest) continue;
@@ -1141,7 +1147,7 @@ function separateDesiredFromFriends(desired, self, ships, minDist) {
     const dx = x - (contact.pos.x || 0);
     const dz = z - (contact.pos.z || 0);
     const dist = Math.hypot(dx, dz) || 1e-6;
-    const clearance = minDist + (self.radius || 0) + (contact.radius || 0) * 0.25;
+    const clearance = minDist + bodyRadius(self) + bodyRadius(contact) * 0.25;
     if (dist >= clearance) continue;
     const push = (clearance - dist) * 0.65;
     x += dx / dist * push;

@@ -8,6 +8,7 @@ import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates } from './decodeRunwayPick.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
+import { CAMERA_NEAR_MARGIN_WU, modelTruthSlideOutside } from '../data/modelTruth.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
 import {
@@ -1891,6 +1892,32 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
     if (roof > floor) floor = roof;
   }
   return floor;
+}
+
+/**
+ * Slide the chase camera in the plane so its near point stays outside a measured shell.
+ * Unsettled meshes are ignored, same as the roof. The ship is not moved.
+ */
+export function cameraKeepOutTarget(owner, camX, camZ, focusX, focusZ, camY) {
+  const meshes = owner && owner._meshes;
+  const entities = owner && owner.state && owner.state.entities;
+  if (!entities || typeof entities.values !== 'function') return { x: camX, z: camZ };
+  const dx = (Number(focusX) || 0) - camX;
+  const dy = -(Number(camY) || 0);
+  const dz = (Number(focusZ) || 0) - camZ;
+  const len = Math.hypot(dx, dy, dz) || 1;
+  const t = Math.min(1, 1 / len);
+  const nearX = camX + dx * t;
+  const nearZ = camZ + dz * t;
+  const solids = [];
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
+    const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(entity.id) : null;
+    if (!mesh || !mesh.userData || clearanceBoundUnsettled(mesh.userData)) continue;
+    solids.push(entity);
+  }
+  const slid = modelTruthSlideOutside(solids, nearX, nearZ, CAMERA_NEAR_MARGIN_WU);
+  return { x: camX + (slid.x - nearX), z: camZ + (slid.z - nearZ) };
 }
 
 /**
@@ -5604,6 +5631,8 @@ export const render = {
     // resolved XZ; the box pass reads the live mesh map so authored station bodies count once
     // they commit. Bound once — no per-frame closure allocation.
     this._cameraClearanceAt = (camX, camZ, camY) => cameraClearanceFloorAt(this, camX, camZ, camY);
+    this._cameraClearanceAt.keepOut = (camX, camZ, focusX, focusZ, camY) =>
+      cameraKeepOutTarget(this, camX, camZ, focusX, focusZ, camY);
     // Measurement-only entity-layer isolation. The probe never reaches into the
     // renderer's private mesh map; this owner-held seam snapshots each mesh's
     // exact visibility and restores it atomically after the sample window.
@@ -13067,6 +13096,11 @@ export const render = {
       && typeof this.state.perfRuntime.recordRenderWork === 'function');
     const started = useCpu && typeof performance !== 'undefined' ? performance.now() : 0;
     const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
+    // simNow anchors every absolute-phase visual to the sim clock: fan/plume phases, armed-sweeps
+    // and damage flicker freeze with the world instead of the wall clock. presFrameDt is the
+    // time-effects-scaled frame delta prepareFrame derives — 0 under a hard freeze.
+    const simNow = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+    const presFrameDt = Math.max(0, this._presentationFrameDt || 0);
     const settings = this.state.settings || {};
     _worldSiteA11y.reducedMotion = !!(settings.video && settings.video.motionReduce);
     _worldSiteA11y.reducedFlash = !!(settings.accessibility && settings.accessibility.flashReduce);
@@ -13338,7 +13372,7 @@ export const render = {
       // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
       // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
       const farSpeck = lodLevel === 'lod2' && !isPlayer;
-      if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
       if (isPlayer && entity && this._livingHullPresentation) {
         this._livingHullPresentation.sync(
           entity.data && entity.data.livingHull,
@@ -13358,15 +13392,17 @@ export const render = {
           userData._dmgHull = entity.hull;
           userData._dmgShield = entity.shield;
           userData._dmgAlive = entity.alive;
-          userData.updateDamageState(entity, now);
+          userData.updateDamageState(entity, simNow);
         }
       }
-      if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, now);
+      if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
 
-      // A-List dynamic mechanical micro-motion & environmental reactions
-      if (entity && !farSpeck) {
-        const frameDt = this._lastFrameDt || 0.016667;
-        const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+      // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
+      // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
+      // consumer floors its dt so passing 0 would still creep.
+      if (entity && !farSpeck && presFrameDt > 0) {
+        const frameDt = presFrameDt;
+        const simTime = simNow;
         if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
           _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
           _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
@@ -13425,17 +13461,10 @@ export const render = {
         const previousShield = shieldBubble.userData._prevShield != null
           ? shieldBubble.userData._prevShield
           : entity.shield;
-        const previousFlashTime = shieldBubble.userData._prevFlashT != null
-          ? shieldBubble.userData._prevFlashT
-          : now;
-        const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
-        shieldBubble.userData._prevFlashT = now;
-        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
-        // Resolved locally: the simTime binding a few blocks up is scoped to the micro-motion branch,
-        // and reaching it from here threw a ReferenceError every single frame, which killed the whole
-        // render loop (drawCalls 0, verdict draw-throwing) while every node gate stayed green.
-        const shellSimTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
-        setShieldShellClock(shieldBubble.material, shellSimTime, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
+        // Flash decay rides the time-effects-scaled frame delta: under a hard freeze it is 0,
+        // which holds uFlash still instead of decaying on the wall clock.
+        const dt = Math.min(0.1, presFrameDt);
+        setShieldShellClock(shieldBubble.material, simNow, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
 
         const up = entity.shield > 0;
         let flash = 0;
@@ -14015,6 +14044,13 @@ export const render = {
   prepareFrame(alpha, frameDt, presentationFrame = null) {
     this._presentationFrame = presentationFrame;
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
+    // World-anchored presentation integrates by the wall frame scaled by the live time-effects
+    // scale — the same model _bgTime already uses below. Hit-stop and bullet-time slow it; a zero
+    // scale (kill-cam freeze, pause, restore latch, lab hold) yields exactly 0 so consumers can
+    // skip rather than integrate a floor.
+    const presentationTs = Number.isFinite(this.state && this.state.timeScale)
+      ? this.state.timeScale : 1;
+    this._presentationFrameDt = Math.max(0, this._lastFrameDt * presentationTs);
     if (this.renderer) {
       const data = this.renderer.userData || (this.renderer.userData = {});
       const firstFlight = this.state && this.state.mode === 'flight'
@@ -14123,7 +14159,7 @@ export const render = {
       this._openingPictureHoldSinceMs = null;
     }
     if (!holdOpeningPicture) {
-      updateShipPitchPresentation(this.state, frameDt);
+      updateShipPitchPresentation(this.state, this._presentationFrameDt);
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
@@ -14160,8 +14196,7 @@ export const render = {
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
     this._updateSectorPostTransition(frameDt);
     this._updateSectorPaletteTransition(frameDt);
-    const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
-    this._bgTime = (this._bgTime || 0) + frameDt * ts;
+    this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
       parallaxLayers.update(frameDt);

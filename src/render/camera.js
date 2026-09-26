@@ -1180,6 +1180,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _clearanceY = 0;
   let _clearanceCandidate = -Infinity;
   let _clearanceCandidateAge = 0;
+  let _keepOutX = 0;
+  let _keepOutZ = 0;
+  let _keepOutTargetX = 0;
+  let _keepOutTargetZ = 0;
+  let _keepOutCandidateX = 0;
+  let _keepOutCandidateZ = 0;
+  let _keepOutCandidateAge = 0;
   let _clearanceAbsentAge = 0;
   let _clearanceTarget = 0;
   let _exceptionalHold = 0;
@@ -1253,6 +1260,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     _clearanceCandidateAge = 0;
     _clearanceAbsentAge = 0;
     _clearanceTarget = 0;
+    _keepOutX = 0;
+    _keepOutZ = 0;
+    _keepOutTargetX = 0;
+    _keepOutTargetZ = 0;
+    _keepOutCandidateX = 0;
+    _keepOutCandidateZ = 0;
+    _keepOutCandidateAge = 0;
     _exceptionalHold = 0;
     _anchorHoldValid = false;
     computeOffset(_dynamicZoom);
@@ -1902,8 +1916,34 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _clearanceY = Math.max(_clearanceTarget, _clearanceY - clearanceStep);
         }
         if (_clearanceY > camY) camY = _clearanceY;
+        // Measured shells slide the camera in the plane. The same adopt hold and the same
+        // 110 WU/s step as the roof, so a loading mesh cannot yank the view and the ship stays put.
+        if (typeof clearanceAt.keepOut === 'function') {
+          const focusX = c.focus.x + c.kickOffset.x;
+          const focusZ = c.focus.z + c.kickOffset.z;
+          const slid = clearanceAt.keepOut(camX, camZ, focusX, focusZ, camY);
+          const desiredX = slid && Number.isFinite(slid.x) ? slid.x - camX : 0;
+          const desiredZ = slid && Number.isFinite(slid.z) ? slid.z - camZ : 0;
+          const jumped = Math.hypot(desiredX - _keepOutCandidateX, desiredZ - _keepOutCandidateZ) > CAMERA_CLEARANCE_ROOF_JUMP_WU;
+          _keepOutCandidateX = desiredX;
+          _keepOutCandidateZ = desiredZ;
+          _keepOutCandidateAge = jumped ? 0 : _keepOutCandidateAge + frameDt;
+          if (_keepOutCandidateAge >= CAMERA_CLEARANCE_ADOPT_S) {
+            _keepOutTargetX = desiredX;
+            _keepOutTargetZ = desiredZ;
+          }
+          let ox = _keepOutTargetX - _keepOutX;
+          let oz = _keepOutTargetZ - _keepOutZ;
+          const olen = Math.hypot(ox, oz);
+          if (olen > clearanceStep && olen > 0) {
+            ox = ox / olen * clearanceStep;
+            oz = oz / olen * clearanceStep;
+          }
+          _keepOutX += ox;
+          _keepOutZ += oz;
+        }
       }
-      cam.position.set(camX, camY, camZ);
+      cam.position.set(camX + _keepOutX, camY, camZ + _keepOutZ);
       cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so

@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { segmentHitsProxy } from '../combat/lineOfSight.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
@@ -3200,6 +3201,9 @@ export function pointInScanCone(origin, heading, range, halfAngle, point) {
 
 export function scanLineOccluded(origin, target, occluder) {
   if (!origin || !target || !occluder || !occluder.pos) return false;
+  if (occluder.data || occluder.type || occluder.physicsBody) {
+    return segmentHitsProxy(occluder, origin, target);
+  }
   const r = Math.max(0, Number(occluder.radius) || 0);
   if (!(r > 0)) return false;
   const ax = origin.x;

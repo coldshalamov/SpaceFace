@@ -4,6 +4,7 @@
 import census from './modelTruthCensus.json' with { type: 'json' };
 import {
   CAMERA_NEAR_MARGIN_WU,
+  colliderRadiusAt,
   flightPlaneToleranceWu,
   scaleProxyPrimitives,
   skinContains,
@@ -52,10 +53,12 @@ export function modelTruthSkinPrimitives(entity) {
   const skin = row && row.proposedSkin;
   if (!skin || !skin.primitives || !skin.primitives.length) return null;
   const data = entity && entity.data || {};
+  // Primitives are stored in units of the census reference (1 = dockRadius or entity.radius).
+  // World size is that fraction times the live reference, not the fraction itself.
   const reference = row.gameplay && row.gameplay.dockRadius
     ? Number(data.dockRadius) || row.gameplay.dockRadius
-    : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || 1;
-  const local = scaleProxyPrimitives(skin.primitives, reference / Math.max(1e-6, skinReference(row)));
+    : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || skinReference(row);
+  const local = scaleProxyPrimitives(skin.primitives, Math.max(1e-6, reference));
   const rot = Number(entity && entity.rot) || 0;
   const c = Math.cos(rot);
   const s = Math.sin(rot);
@@ -143,6 +146,101 @@ export function modelTruthThroatOpen(entity) {
   const row = modelTruthRowForEntity(entity);
   const half = row && row.shell ? row.shell.silhouetteRadius * 0.2 : 4;
   return throatOpen(primitives, half);
+}
+
+/** Planar keep-out radius of the measured skin, in world units. Gameplay entity.radius is unchanged. */
+export function modelTruthPlanarRadius(entity) {
+  const row = (entity && entity.type === 'station' ? stationRow(entity) : null) || modelTruthRowForEntity(entity);
+  const gameplay = Number(entity && entity.radius) || 0;
+  if (!row || !row.proposedSkin || row.proposedSkin.adopted !== true) return gameplay;
+  const silhouette = Number(row.shell && row.shell.silhouetteRadius) || 0;
+  const reference = skinReference(row);
+  if (!(silhouette > 0) || !(reference > 0)) return gameplay;
+  const data = entity && entity.data || {};
+  const live = row.gameplay && row.gameplay.dockRadius
+    ? Number(data.dockRadius) || row.gameplay.dockRadius
+    : Number(entity && entity.radius) || (row.gameplay && row.gameplay.entityRadius) || reference;
+  return silhouette * (live / reference);
+}
+
+/**
+ * Slide a point out of every measured skin, radially, until it sits `margin` outside.
+ * Small bodies are ignored: only a shell wide enough to swallow the camera participates.
+ */
+export function modelTruthSlideOutside(entities, x, z, margin = CAMERA_NEAR_MARGIN_WU) {
+  let px = Number(x) || 0;
+  let pz = Number(z) || 0;
+  const list = entities || [];
+  for (let pass = 0; pass < 4; pass += 1) {
+    let moved = false;
+    for (const entity of list) {
+      if (!entity || !entity.pos || entity.collides === false) continue;
+      const primitives = modelTruthSkinPrimitives(entity);
+      if (!primitives || !primitives.length) continue;
+      const planar = modelTruthPlanarRadius(entity);
+      const span = planar * 2;
+      if (span < 120 || span > 14000) continue;
+      const ex = Number(entity.pos.x) || 0;
+      const ez = Number(entity.pos.z) || 0;
+      const dx = px - ex;
+      const dz = pz - ez;
+      const dist = Math.hypot(dx, dz);
+      const angle = dist > 1e-6 ? Math.atan2(dz, dx) : 0;
+      const local = primitives.map((primitive) => {
+        if (primitive.kind === 'circle') return { ...primitive, x: primitive.x - ex, z: primitive.z - ez };
+        if (primitive.kind === 'capsule') {
+          return {
+            ...primitive,
+            ax: primitive.ax - ex,
+            az: primitive.az - ez,
+            bx: primitive.bx - ex,
+            bz: primitive.bz - ez,
+          };
+        }
+        return { ...primitive, x: primitive.x - ex, z: primitive.z - ez };
+      });
+      const outer = colliderRadiusAt(angle, local, Math.max(planar, 1));
+      const target = outer + margin;
+      if (dist >= target - 1e-3) continue;
+      if (dist <= 1e-6) {
+        px = ex + target;
+        pz = ez;
+      } else {
+        px = ex + (dx / dist) * target;
+        pz = ez + (dz / dist) * target;
+      }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return { x: px, z: pz };
+}
+
+/** Move later solids until their planar skins no longer overlap. Counts stay the same. */
+export function separateSkinOverlaps(entities) {
+  const list = (entities || []).filter((entity) => entity && entity.pos && entity.alive !== false && entity.collides !== false);
+  for (let pass = 0; pass < 6; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i];
+        const b = list[j];
+        const dx = b.pos.x - a.pos.x;
+        const dz = b.pos.z - a.pos.z;
+        const dist = Math.hypot(dx, dz);
+        const need = modelTruthPlanarRadius(a) + modelTruthPlanarRadius(b);
+        if (dist >= need - 0.05) continue;
+        const gap = need - dist + 0.5;
+        const ux = dist > 1e-4 ? dx / dist : 1;
+        const uz = dist > 1e-4 ? dz / dist : 0;
+        b.pos.x += ux * gap;
+        b.pos.z += uz * gap;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return list;
 }
 
 export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU };

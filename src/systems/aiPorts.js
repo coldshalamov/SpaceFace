@@ -19,6 +19,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { modelTruthPlanarRadius } from '../data/modelTruth.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   CERES_ACTIVITY_POCKETS,
@@ -877,6 +878,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     vel: vec2(entity.vel, freeze),
     rot: wrapAngle(finite(entity.rot)),
     radius: positive(entity.radius, 1),
+    planarRadius: modelTruthPlanarRadius(entity),
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
@@ -1019,6 +1021,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     pos: vec2(other.pos, freeze),
     vel: vec2(other.vel, freeze),
     radius: positive(other.radius, 0),
+    planarRadius: modelTruthPlanarRadius(other),
     alive: true,
     valid: true,
     visible: true,

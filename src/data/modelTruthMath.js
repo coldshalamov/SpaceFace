@@ -233,6 +233,34 @@ function rayCircleOuter(directionX, directionZ, circle) {
   return far > 0 ? far : 0;
 }
 
+function rayCapsuleOuter(directionX, directionZ, capsule) {
+  const radius = capsule.r;
+  let far = rayCircleOuter(directionX, directionZ, { x: capsule.ax, z: capsule.az, r: radius });
+  far = Math.max(far, rayCircleOuter(directionX, directionZ, { x: capsule.bx, z: capsule.bz, r: radius }));
+  const abx = capsule.bx - capsule.ax;
+  const abz = capsule.bz - capsule.az;
+  const ab2 = abx * abx + abz * abz;
+  if (ab2 < 1e-12) return far;
+  const crossD = directionX * abz - directionZ * abx;
+  const crossA = capsule.ax * abz - capsule.az * abx;
+  const a = crossD * crossD;
+  const b = -2 * crossD * crossA;
+  const c = crossA * crossA - radius * radius * ab2;
+  if (a < 1e-18) return far;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return far;
+  const root = Math.sqrt(disc);
+  const inv = 1 / (2 * a);
+  for (const t of [(-b + root) * inv, (-b - root) * inv]) {
+    if (!(t > 0)) continue;
+    const px = directionX * t - capsule.ax;
+    const pz = directionZ * t - capsule.az;
+    const u = (px * abx + pz * abz) / ab2;
+    if (u >= -1e-3 && u <= 1 + 1e-3) far = Math.max(far, t);
+  }
+  return far;
+}
+
 export function colliderRadiusAt(angle, primitives, maxRadius) {
   const directionX = Math.cos(angle);
   const directionZ = Math.sin(angle);
@@ -241,6 +269,8 @@ export function colliderRadiusAt(angle, primitives, maxRadius) {
   for (const primitive of primitives || []) {
     if (primitive.kind === 'circle') {
       outer = Math.max(outer, rayCircleOuter(directionX, directionZ, primitive));
+    } else if (primitive.kind === 'capsule') {
+      outer = Math.max(outer, rayCapsuleOuter(directionX, directionZ, primitive));
     } else needsSample = true;
   }
   if (!needsSample) return outer;
@@ -520,39 +550,80 @@ export function buildPlanarSkin(slice, options) {
   }
   const half = options.opening === 'gate-throat' ? 0.5 : (options.opening === 'dock-mouth' ? 0.42 : 0);
   const open = (angle) => bearing != null && angleDelta(angle, bearing) <= half;
-  // One circle on each sampled ray, inset so the sample sits inside the circle and the
-  // circle is too small to bulge into the neighbouring ray. Openings are left empty.
+  const gate = options.opening === 'gate-throat';
+  const dock = options.opening === 'dock-mouth';
+  // One capsule along each solid ray, from the hub (or the origin) out to the silhouette.
+  // The mouth wedge and the gate throat stay empty. A dock core matches the old hub and
+  // stays inside the berth radius so the deck is still a place a ship can sit.
   const primitives = [];
+  let minSolid = Infinity;
+  if (dock) {
+    for (let i = 0; i < bins; i += 1) {
+      const visual = radii[i] || 0;
+      if (visual <= 0.4) continue;
+      const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
+      if (open(angle)) continue;
+      if (visual < minSolid) minSolid = visual;
+    }
+  }
+  const coreWorld = dock ? Math.min(reference * 0.42, Number.isFinite(minSolid) ? minSolid * 0.45 : 0) : 0;
+  if (dock && coreWorld > 1 && primitives.length < MAX_SKIN_PRIMITIVES) {
+    primitives.push({
+      kind: 'circle',
+      id: 'core',
+      x: 0,
+      z: 0,
+      r: roundWu(coreWorld / reference),
+    });
+  }
   for (let i = 0; i < bins; i += 1) {
     const visual = radii[i] || 0;
     if (visual <= 0.4) continue;
     const angle = -Math.PI + ((i + 0.5) / bins) * Math.PI * 2;
     if (open(angle)) continue;
     if (primitives.length >= MAX_SKIN_PRIMITIVES) break;
-    const radius = Math.min(tolerance * 0.5, Math.max(1.25, visual * 0.07));
-    const centerR = Math.max(0, visual - radius + 0.45);
-    primitives.push({
-      kind: 'circle',
-      id: `rim-${i}`,
-      x: roundWu((Math.cos(angle) * centerR) / reference),
-      z: roundWu((Math.sin(angle) * centerR) / reference),
-      r: roundWu(radius / reference),
-    });
-  }
-  // A small core stops flight through the middle without reaching past the rim.
-  if (options.opening !== 'gate-throat' && options.opening !== 'dock-mouth' && primitives.length < MAX_SKIN_PRIMITIVES) {
-    let minVisual = Infinity;
-    for (const radius of radii) if (radius > 0.4) minVisual = Math.min(minVisual, radius);
-    if (Number.isFinite(minVisual) && minVisual > 1) {
-      const radius = Math.min(tolerance * 0.45, minVisual * 0.55);
+    const halfBin = Math.PI / bins;
+    // Wide enough to meet the next sample on a round body, narrow enough that the
+    // capsule does not cross a shorter ray outside that ray's outline.
+    let radius = gate
+      ? Math.min(tolerance * 0.45, Math.max(1.25, visual * 0.08))
+      : visual * Math.sin(halfBin);
+    if (!gate) {
+      for (let j = 0; j < bins; j += 1) {
+        if (j === i) continue;
+        const other = radii[j] || 0;
+        if (other <= 0.4) continue;
+        const otherAngle = -Math.PI + ((j + 0.5) / bins) * Math.PI * 2;
+        const theta = angleDelta(angle, otherAngle);
+        if (theta < 1e-3) continue;
+        const limit = (other + tolerance * 0.35) * Math.sin(theta) * 0.9;
+        if (limit < radius) radius = limit;
+      }
+      radius = Math.max(0.45, radius);
+    }
+    const outer = Math.max(0, visual - radius + 0.25);
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const inner = dock ? Math.min(Math.max(0, outer - radius), coreWorld) : 0;
+    if (gate || outer - inner < radius * 0.35) {
       primitives.push({
         kind: 'circle',
-        id: 'core',
-        x: 0,
-        z: 0,
+        id: `rim-${i}`,
+        x: roundWu((c * outer) / reference),
+        z: roundWu((s * outer) / reference),
         r: roundWu(radius / reference),
       });
+      continue;
     }
+    primitives.push({
+      kind: 'capsule',
+      id: `arm-${i}`,
+      ax: roundWu((c * inner) / reference),
+      az: roundWu((s * inner) / reference),
+      bx: roundWu((c * outer) / reference),
+      bz: roundWu((s * outer) / reference),
+      r: roundWu(radius / reference),
+    });
   }
   return {
     primitives,

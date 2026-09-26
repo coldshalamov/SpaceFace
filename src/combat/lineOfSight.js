@@ -25,22 +25,43 @@ function segmentIntersects(a,b,c,d) {
   const cross=(p,q,r)=>(q.x-p.x)*(r.z-p.z)-(r.x-p.x)*(q.z-p.z);
   return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0;
 }
+function primitiveBlocksSegment(a, b, p) {
+  if (p.kind === 'circle' && p.r > 0 && pointSegmentDistance(p, a, b) < p.r) return true;
+  if (p.kind === 'obb' && crossesBox(a, b, p)) return true;
+  if (p.kind === 'capsule') {
+    const start = { x: p.ax, z: p.az };
+    const end = { x: p.bx, z: p.bz };
+    if (segmentIntersects(a, b, start, end)
+      || Math.min(
+        pointSegmentDistance(start, a, b),
+        pointSegmentDistance(end, a, b),
+        pointSegmentDistance(a, start, end),
+        pointSegmentDistance(b, start, end),
+      ) < p.r) return true;
+  }
+  return false;
+}
+
+/** True when the segment crosses the entity's measured skin, or its gameplay ball when it has none. */
+export function segmentHitsProxy(entity, a, b) {
+  if (!entity || !point(entity.pos) || !point(a) || !point(b)) return false;
+  const manifest = resolveCollisionProxyManifest(entity);
+  const primitives = manifest
+    ? proxyWorldPrimitives(entity, manifest)
+    : [{ kind: 'circle', x: entity.pos.x, z: entity.pos.z, r: entity.physicsBody?.radius ?? entity.radius ?? entity.r ?? 0 }];
+  for (const primitive of primitives) {
+    if (primitiveBlocksSegment(a, b, primitive)) return true;
+  }
+  return false;
+}
+
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
   for (const entity of state.entities?.values?.() || []) {
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
     if(!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type) && entity.data?.sensorBlocking!==true)continue;
-    const manifest=resolveCollisionProxyManifest(entity);
-    const primitives=manifest?proxyWorldPrimitives(entity,manifest):[{kind:'circle',x:entity.pos.x,z:entity.pos.z,r:entity.physicsBody?.radius??entity.radius??entity.r??0}];
-    for(const p of primitives) {
-      if(p.kind==='circle'&&p.r>0&&pointSegmentDistance(p,observer.pos,destination)<p.r)return false;
-      if(p.kind==='obb'&&crossesBox(observer.pos,destination,p))return false;
-      if(p.kind==='capsule') {
-        const a={x:p.ax,z:p.az},b={x:p.bx,z:p.bz};
-        if(segmentIntersects(observer.pos,destination,a,b)||Math.min(pointSegmentDistance(a,observer.pos,destination),pointSegmentDistance(b,observer.pos,destination),pointSegmentDistance(observer.pos,a,b),pointSegmentDistance(destination,a,b))<p.r)return false;
-      }
-    }
+    if (segmentHitsProxy(entity, observer.pos, destination)) return false;
   }
   return true;
 }

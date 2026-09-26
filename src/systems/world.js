@@ -23,6 +23,7 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
@@ -2167,6 +2168,24 @@ export const world = {
   // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.
   _spawnGates(sector, active, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const settleSkins = () => {
+      const bodies = [];
+      for (const row of active.stations || []) {
+        const ent = this.state.entities.get(row.id);
+        if (ent) bodies.push(ent);
+      }
+      for (const row of active.gates || []) {
+        const ent = this.state.entities.get(row.id);
+        if (ent) bodies.push(ent);
+      }
+      separateSkinOverlaps(bodies);
+      for (const ent of bodies) {
+        const station = (active.stations || []).find((row) => row.id === ent.id);
+        if (station) station.pos = { x: ent.pos.x, z: ent.pos.z };
+        const gate = (active.gates || []).find((row) => row.id === ent.id);
+        if (gate) gate.pos = { x: ent.pos.x, z: ent.pos.z };
+      }
+    };
     const authored = Array.isArray(sector.gates) && sector.gates.length > 0 ? sector.gates : null;
     const spawnGate = (nbId, pos, opts = {}) => {
       const nb = safeSector(this.state, nbId);
@@ -2210,6 +2229,7 @@ export const world = {
           archetypeGlb: g.archetypeGlb,
         });
       }
+      settleSkins();
       return;
     }
     for (const nbId of (sector.neighbors || [])) {
@@ -2226,6 +2246,7 @@ export const world = {
         wormhole: true, gatedBy: sector.wormholeTo.gatedBy,
       });
     }
+    settleSkins();
   },
 
   // POIs: tracked in the discovery overlay; spawn a lightweight marker entity for in-range scan.
