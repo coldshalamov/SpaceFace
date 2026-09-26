@@ -299,7 +299,7 @@ export async function clickWord(ctx, pattern, timeoutMs = 15_000) {
     const hit = await ctx.page.evaluate((rx) => {
       const re = new RegExp(rx, 'i');
       const words = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-        .filter((w) => w.offsetParent !== null && re.test(w.textContent || ''));
+        .filter((w) => w.offsetParent !== null && !w.closest('#toasts,#alerts,#toast-live') && re.test(w.textContent || ''));
       const w = words[0];
       if (!w) return false;
       w.click();

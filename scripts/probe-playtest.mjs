@@ -44,7 +44,7 @@ async function backOut(ctx, fromScreen) {
   if ((await screenOf(ctx)) !== fromScreen) return 'esc';
   const hit = await ctx.page.evaluate(() => {
     const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-      .filter((e) => e.offsetParent !== null && /back|return|close|resume|depart|undock|exit/i.test(e.textContent || ''))[0];
+      .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /back|return|close|resume|depart|undock|exit/i.test(e.textContent || ''))[0];
     if (!w) return null;
     w.click();
     return (w.textContent || '').trim();
@@ -143,7 +143,7 @@ const ROUTES = {
       await shotNow(ctx, 'f01-config');
       const started = await ctx.page.evaluate(() => {
       const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
             && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
             && !/back|cancel|return/i.test(e.textContent || ''))[0];
         if (!w) return null;
@@ -187,7 +187,7 @@ const ROUTES = {
       if (paused.screen && paused.screen !== 'flight' && paused.screen !== 'mainMenu') {
         const w = await ctx.page.evaluate(() => {
           const b = [...document.querySelectorAll('.k-word, button, [role="button"]')]
-            .filter((e) => e.offsetParent !== null && /resume|return|continue|back/i.test(e.textContent || ''))[0];
+            .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /resume|return|continue|back/i.test(e.textContent || ''))[0];
           if (!b) return null; b.click(); return (b.textContent || '').trim();
         });
         resumed = w;
@@ -288,14 +288,17 @@ const ROUTES = {
       await shotNow(ctx, 'x03-pause');
       const quit = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /quit|abandon|main menu|title|exit/i.test(e.textContent || ''))[0];
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1600);
-      // Quit may open a confirm dialog — accept it.
+      // "Main Menu" opens an sf-confirm dialog — its affirmative button is labelled the same.
+      // Scope to the confirm root so we never hit the neighbouring "Quit Game" row.
       const confirm = await ctx.page.evaluate(() => {
-        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /confirm|yes|quit|leave|abandon/i.test(e.textContent || ''))[0];
+        const root = document.querySelector('#sf-confirm-root');
+        if (!root) return null;
+        const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1600);
@@ -336,7 +339,7 @@ const ROUTES = {
     await B(ctx, 'c02-launch', 'Quick play -> crucible flight', async () => {
       const clicked = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /quick play|launch|begin|fight|enter/i.test(e.textContent || ''))[0];
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /quick play|launch|begin|fight|enter/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(2500);
@@ -372,13 +375,14 @@ const ROUTES = {
       const p = await snap(ctx);
       const verb = await ctx.page.evaluate(() => {
         const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /quit|leave|abandon|main menu|exit|concede|forfeit/i.test(e.textContent || ''))[0];
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|leave|abandon|exit|concede|forfeit/i.test(e.textContent || ''))[0];
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(1500);
       await ctx.page.evaluate(() => {
-        const b = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-          .filter((e) => e.offsetParent !== null && /confirm|yes|quit|leave|forfeit/i.test(e.textContent || ''))[0];
+        const root = document.querySelector('#sf-confirm-root') || document;
+        const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /main menu|confirm|yes|leave|forfeit/i.test(e.textContent || ''))[0];
         if (b) b.click();
       });
       await sleep(1500);
@@ -396,7 +400,7 @@ async function newGameToFlight(ctx) {
   await sleep(1500);
   await ctx.page.evaluate(() => {
     const w = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]
-      .filter((e) => e.offsetParent !== null
+      .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
         && /begin|launch|start|depart|embark|fly|confirm|create|accept|go/i.test(e.textContent || '')
         && !/back|cancel|return/i.test(e.textContent || ''))[0];
     if (w) w.click();
