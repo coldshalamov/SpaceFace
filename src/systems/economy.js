@@ -2385,14 +2385,12 @@ export const economy = {
     return this.smugglingCapabilities(state).scannerCloak;
   },
 
-  /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
-   *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
-   *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
-   *  is the incident/strike ledger; it must not apply a second reputation hit. */
   // A station posting 'toll'/'scan' is a working checkpoint: it reads every berthing hold and
   // collects its plate. Clean sweeps leave a line; exposed contraband resolves through the same
   // runScan path the gate-jump and patrol scans already use — so bust clauses, hot-faction
-  // memory, and the customs surface all consume one authority.
+  // memory, and the customs surface all consume one authority. The 'dock' source tag marks
+  // berth-sourced sweeps so flight-side consumers (the customs verb deck, a live patrolScan
+  // script) don't answer a scan the station already handled.
   _runDockedCustomsPost(stationId) {
     const state = this.state;
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
@@ -2403,6 +2401,7 @@ export const economy = {
         security: DOCK_SCAN_SECURITY,
         factionId: (info && info.factionId) || this.scanningFaction(state),
         stationId,
+        source: 'dock',
       });
       if (!res || res.found !== true) {
         this.bus.emit('toast', { text: 'CUSTOMS SWEEP — manifest reads clean.', kind: 'info', ttl: 3 });
@@ -2413,10 +2412,17 @@ export const economy = {
       const toll = Math.round(DOCK_TOLL_BASE_CR + DOCK_TOLL_SECURITY_CR * sec);
       if (toll > 0 && normalizeCredits(state.player && state.player.credits) > 0) {
         this.chargeCredits(toll, 'service:dock_toll');
+        // The berth-session receipt surface isn't up yet when the toll posts (economy runs
+        // before ui on dock:docked), so name the debit on the toast rail — silent ~180 cr.
+        this.bus.emit('toast', { text: `BERTH TOLL — ${toll} cr posted.`, kind: 'info', ttl: 3 });
       }
     }
   },
 
+  /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
+   *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
+   *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
+   *  is the incident/strike ledger; it must not apply a second reputation hit. */
   runScan(p) {
     const state = this.state;
     const illicit = this.illicitCargo(state);
@@ -2429,6 +2435,8 @@ export const economy = {
       : null;
     const scannedPayload = { hasContraband };
     if (lawfulInspectionCaseId) scannedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    if (p.source) scannedPayload.source = p.source;
+    if (p.stationId) scannedPayload.stationId = p.stationId;
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
     const security = p.security != null ? p.security : this.currentSecurity();
@@ -2448,7 +2456,7 @@ export const economy = {
           state.simTime + HOT_DURATION_S,
         );
       }
-      return { found: false }; // evaded; this faction's gates remember the run
+      return { found: false, evaded: true }; // evaded; this faction's gates remember the run
     }
     // CAUGHT — compute fine, confiscate, rep hit
     let fine = 0;
@@ -2487,6 +2495,7 @@ export const economy = {
       bribeCost: round(fine * BRIBE_FRAC),
     };
     if (lawfulInspectionCaseId) contrabandPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+    if (p.source) contrabandPayload.source = p.source;
     this.bus.emit('contraband:scanned', contrabandPayload);
     return { found: true, fine, confiscated, factionId, repHit };
   },

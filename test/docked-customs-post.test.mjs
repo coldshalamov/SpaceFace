@@ -83,6 +83,40 @@ test('a clean hold never rolls — zero rng draws on a warm berth', () => {
   assert.equal(rolls, 0, 'clean-hold scan early-returns before any roll');
 });
 
+test('the berth toll names its debit on the toast rail', () => {
+  const { bus, events } = harness();
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const tollToast = events.find((e) => e.name === 'toast' && /BERTH TOLL — 180 cr/.test(e.payload.text));
+  assert.ok(tollToast, 'silent ~180cr debit is the defect — the toll must name itself');
+});
+
+test('berth sweeps are tagged so the flight verb deck stays shut', () => {
+  const { bus, events } = harness();
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const scan = events.find((e) => e.name === 'player:scannedByPatrol');
+  assert.equal(scan.payload.source, 'dock');
+  assert.equal(scan.payload.stationId, 'station_customs');
+});
+
+test('an evaded hot hold reports evaded, not clean', () => {
+  const { state, sys, bus } = harness();
+  addCargo(state, 'cmdty_narcotics', 2);
+  sys._rng = () => 0.999; // detection roll over the scan chance → evade
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  const res = sys.runScan({ security: 0.5, factionId: 'faction_scn', stationId: 'station_customs', source: 'dock' });
+  assert.equal(res.found, false);
+  assert.equal(res.evaded, true, 'clean vs evaded must be distinguishable to consumers');
+  const hot = state.player.customsHotUntil || {};
+  assert.ok(Object.keys(hot).length > 0, 'evaded run still marks the faction hot');
+});
+
+test('a zero-credit dock skips the toll but still sweeps', () => {
+  const { bus, events } = harness(0);
+  bus.emit('dock:docked', { stationId: 'station_customs' });
+  assert.equal(events.filter((e) => e.name === 'credits:changed' && e.payload.reason === 'service:dock_toll').length, 0);
+  assert.equal(events.filter((e) => e.name === 'player:scannedByPatrol').length, 1);
+});
+
 test('a live survival run docks without checkpoint machinery', () => {
   const { state, sys, bus, events } = harness();
   state.run = { kind: 'survival', phase: 'wave' };

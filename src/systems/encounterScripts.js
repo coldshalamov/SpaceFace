@@ -455,7 +455,9 @@ const patrolScan = {
   },
 
   event(d, live, state, name, p) {
-    if (name === 'contrabandScanned') live.data.scan = p;   // routed only while this scan is live
+    // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
+    // that docked the player, not to this patrol's open scan script.
+    if (name === 'contrabandScanned' && !(p && p.source === 'dock')) live.data.scan = p;
   },
 };
 

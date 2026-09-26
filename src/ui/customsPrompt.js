@@ -153,6 +153,11 @@ export const customsPrompt = {
     // submit/run events have no live controller, so showing it for a correlated scan would offer
     // a false choice after economy has already resolved the owner path.
     if (p && p.lawfulInspectionCaseId) return;
+    // A berth-sourced sweep is the station's own surface: it fires inside the dock handler
+    // (before ui.docked is set), resolves synchronously, and the checkpoint toasts own the
+    // result. Opening the flight verb deck here would stamp a stale prompt + hail behind the
+    // station screen for three verbs that cannot act.
+    if (p && p.source === 'dock') return;
     // Debounce: the same ping inside the window is ONE panel (no double-hail, deterministic).
     const now = state.simTime || 0;
     if ((now - this._last.t) < DEBOUNCE_S) return;
