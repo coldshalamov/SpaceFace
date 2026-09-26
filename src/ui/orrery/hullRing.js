@@ -19,7 +19,7 @@ const CSS = `
 .orr-hullring__end { fill:none; stroke:rgb(${BONE} / .62); stroke-width:1.2; }
 .orr-hullring__fill { fill:none; stroke:rgb(246 241 230); stroke-width:2.2; stroke-linecap:round; }
 .orr-hullring__bloom { fill:none; stroke:rgb(255 236 200 / .2); stroke-width:7; stroke-linecap:round; }
-.orr-hullring__ghost { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.2; }
+.orr-hullring__ghost { fill:none; stroke:rgb(${BONE} / .6); stroke-width:2; stroke-linecap:round; }
 .orr-svg text.orr-hullring__num { font-family:var(--dp-face-numeral, var(--dp-face-display, "Archivo")), sans-serif; font-size:26px; font-weight:250;
   font-variation-settings:"wght" 250, "wdth" 100; letter-spacing:-.01em; fill:rgb(246 241 230); paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:4px; stroke-linejoin:round; }
 .orr-svg text.orr-hullring__num tspan { font-size:11px; font-weight:500; font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.08em; fill:rgb(${BONE} / .66); }
@@ -57,7 +57,7 @@ export function createHullRing({ host, anchor } = {}) {
   }
   injectOrrery();
   injectStyle(doc);
-  const layer = svg('svg', { class: 'orr-svg orr-hullring', 'aria-hidden': 'true' });
+  const layer = svg('svg', { class: 'orr-svg orr-hullring', 'aria-hidden': 'true', style: '--orr-w-band:9px; --orr-band-a:.1' });
   host.appendChild(layer);
   let stats = null;
   const f = (n) => Math.round(n * 10) / 10;
@@ -86,16 +86,22 @@ export function createHullRing({ host, anchor } = {}) {
       const span = seg.to - seg.from;
       const frac = Math.max(0, Math.min(1, Number(s.frac) || 0));
       const ticks = [];
-      for (let d = seg.from + 4; d < seg.to - 1; d += 4) ticks.push(radial(d, 3, 7));
-      layer.appendChild(svg('path', { d: ticks.join(' '), class: 'orr-hullring__ticks' }));
-      layer.appendChild(svg('path', { d: arc(seg.from, seg.to), class: 'orr-hullring__track' }));
-      layer.appendChild(svg('path', { d: `${radial(seg.from, -5, 10)} ${radial(seg.to, -5, 10)}`, class: 'orr-hullring__end' }));
+      for (let d = seg.from + 4; d < seg.to - 1; d += 4) ticks.push(radial(d, 6, (d - seg.from) % 16 === 0 ? 12 : 9));
+      // the track is a luminous band with an edge (weight, not wire); its scale ticks stand outside it
+      layer.appendChild(svg('path', { d: arc(seg.from, seg.to), class: 'orr-band' }));
+      layer.appendChild(svg('path', { d: arc(seg.from, seg.to), class: 'orr-edge' }));
+      layer.appendChild(svg('path', { d: ticks.join(' '), class: 'orr-tick' }));
+      layer.appendChild(svg('path', { d: `${radial(seg.from, -7, 12)} ${radial(seg.to, -7, 12)}`, class: 'orr-tick orr-tick--major' }));
       if (frac > 0) {
+        // the value: a lit core over its bloom, a bead where it ends
         const d = arc(seg.from, seg.from + span * frac);
-        layer.appendChild(svg('path', { d, class: 'orr-hullring__bloom' }));
-        layer.appendChild(svg('path', { d, class: 'orr-hullring__fill' }));
+        layer.appendChild(svg('path', { d, class: 'orr-lit-bloom' }));
+        layer.appendChild(svg('path', { d, class: 'orr-lit' }));
+        const [bx, by] = pt(seg.from + span * frac);
+        layer.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 9, class: 'orr-bead-bloom' }));
+        layer.appendChild(svg('circle', { cx: f(bx), cy: f(by), r: 4.5, class: 'orr-bead' }));
       }
-      const ghost = (s.ghosts || []).map((g) => radial(seg.from + span * Math.max(0, Math.min(1, g)), -7, 2)).join(' ');
+      const ghost = (s.ghosts || []).map((g) => radial(seg.from + span * Math.max(0, Math.min(1, g)), -8, 4)).join(' ');
       if (ghost) layer.appendChild(svg('path', { d: ghost, class: 'orr-hullring__ghost' }));
       // the reading at the arc's middle, outside the ring
       const mid = (seg.from + seg.to) / 2;

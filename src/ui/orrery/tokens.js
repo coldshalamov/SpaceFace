@@ -74,6 +74,20 @@ export const ORRERY_CSS = `
 .orr-svg .orr-micro text { font-weight:600; letter-spacing:.32em; fill:rgb(232 226 212 / .42); }
 .orr-svg .orr-micro--hi text { letter-spacing:.28em; fill:rgb(232 226 212 / .62); }
 
+/* WEIGHT (owner 2026-09-25: nothing reads as a thin wireframe). A structural track is a luminous BAND with a
+   crisp EDGE; a value is a LIT core over a bloom with a BEAD at its end. Instruments draw a path twice (band +
+   edge) instead of one hairline; screens never set hairline widths themselves. */
+.orr-svg .orr-band { fill:none; stroke:rgb(236 230 216 / var(--orr-band-a, .085)); stroke-width:var(--orr-w-band, 7px); stroke-linecap:round; }
+.orr-svg .orr-edge { fill:none; stroke:rgb(236 230 216 / var(--orr-edge-a, .46)); stroke-width:var(--orr-w-edge, 1.5px); stroke-linecap:round; }
+.orr-svg .orr-lit { fill:none; stroke:rgb(248 244 234); stroke-width:var(--orr-w-lit, 3.5px); stroke-linecap:round; }
+.orr-svg .orr-lit-bloom { fill:none; stroke:rgb(255 240 214 / .24); stroke-width:var(--orr-w-lit-bloom, 11px); stroke-linecap:round; }
+.orr-svg .orr-lit.is-hand { stroke:var(--dp-hand, #f2b950); }
+.orr-svg .orr-lit-bloom.is-hand { stroke:rgb(242 185 80 / .28); }
+.orr-svg .orr-bead { fill:rgb(252 249 240); }
+.orr-svg .orr-bead-bloom { fill:rgb(255 240 214 / .26); }
+.orr-svg .orr-tick { fill:none; stroke:rgb(236 230 216 / .42); stroke-width:var(--orr-w-tick, 1.5px); stroke-linecap:butt; }
+.orr-svg .orr-tick--major { stroke:rgb(236 230 216 / .72); stroke-width:2px; }
+
 /* Drift: the outer tick rings turn slowly, on the compositor. */
 .orr-drift { transform-box:view-box; animation:orr-drift var(--orr-drift-s, 900s) linear infinite; }
 .orr-drift--rev { animation-direction:reverse; }
