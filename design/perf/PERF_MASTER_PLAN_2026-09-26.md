@@ -266,6 +266,11 @@ retry-budget semantics.
 - `draw-flight`: same `accelerates to actual G cap` assert (adjudicated twice above —
   `s.speed`≈312 on master tip too; unrelated to assets/instrumentation).
 
+### Fourth round (head 462833565 — pose-gate dealloc + manifest pins)
+
+- `draw-flight`: same `accelerates to actual G cap` assert — fourth occurrence of
+  the adjudicated master-side failure.
+
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
 authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
