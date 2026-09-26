@@ -182,7 +182,7 @@ export const STATION_WORK = deepFreeze({
   military:{ cargo_delivery:1,bulk_trade:1,bounty_hunt:4,salvage_retrieval:2,escort:3,patrol_clear:4,passenger_transport:1,recon_scan:3,tow_recovery:1,demolition:2,rescue_under_fire:3 },
   research:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:4,tow_recovery:1,demolition:1,rescue_under_fire:2 },
   blackmarket:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:3,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:2,smuggling_run:4,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:2,rescue_under_fire:2 },
-  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:4,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3 },
+  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:5,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3 },
   contracts_hub:{ cargo_delivery:5,bulk_trade:4,bounty_hunt:2,salvage_retrieval:1,escort:5,patrol_clear:3,smuggling_run:1,passenger_transport:3,recon_scan:3 },
 });
 
