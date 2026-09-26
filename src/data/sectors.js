@@ -446,7 +446,7 @@ const CORE_SECTORS = [
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
     stations: [
-      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['repair','refuel','missions'], repGated: true,
+      { id: 'station_ashcache', name: 'Ruined Cache Station', type: 'blackmarket', factionId: 'faction_vael', size: 'S', services: ['black_market','repair','refuel','missions'], repGated: true,
         chartNote: "Vael salvage, half-lit. Buys what shouldn't exist at what it shouldn't cost." },
     ],
     fields: [
