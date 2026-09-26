@@ -161,6 +161,9 @@ class StructuralPool {
     }
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor.needsUpdate = true;
+    // Dead pools park invisible at construction — the idle gate skips the update() that
+    // used to write this on the first frame, so a never-spawned mesh would draw-call forever.
+    this.mesh.visible = false;
   }
 
   claim(priority = DEFAULT_PRIORITY) {
