@@ -135,6 +135,7 @@ import { sectorPostcard } from '../ui/sectorPostcard.js';
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';
 import { stationBroadcast } from '../systems/stationBroadcast.js';
 import { hazardHints } from '../data/hazardLanguage.js';
+import { noFireAdvisory } from '../data/stationBubbles.js';
 import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';
 import { dangerGradient } from '../ui/dangerGradient.js';
 import { causeLedger } from '../ui/causeLedger.js';
@@ -329,6 +330,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],
+    ['noFireAdvisory', noFireAdvisory],
     ['bulkHaulTag', bulkHaulTag],
     ['dangerGradient', dangerGradient],
     ['causeLedger', causeLedger],

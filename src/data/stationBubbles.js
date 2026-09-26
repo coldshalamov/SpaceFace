@@ -199,10 +199,21 @@ export const noFireAdvisory = {
   },
 
   _stations(state) {
-    const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+    // Index when it is the live one (house convention — engagementAuthority.protectedStationAt);
+    // entityList is the fallback for partial/headless states, so an empty-but-stale index
+    // cannot silently swallow stations.
+    const index = state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      ? index.stations
+      : null;
+    const list = indexed || state.entityList || [];
     const out = [];
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      // Jump gates are transit infrastructure, not traffic control — the law's own
+      // jurisdiction lookup skips them (engagementAuthority: a gate sanctuary mints a bogus
+      // protected volume). "Traffic control" over a wormhole would be a fiction error.
+      if (e.data && e.data.isGate) continue;
       out.push(e);
     }
     return out;
