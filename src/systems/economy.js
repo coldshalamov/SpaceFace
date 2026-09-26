@@ -64,7 +64,7 @@ import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
-import { hasFittedModule } from '../core/fittedModules.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -1005,7 +1005,7 @@ export const economy = {
     if (this._lastDockedStation && markets[this._lastDockedStation]) {
       this.snapshotIntel(this._lastDockedStation);
     }
-    if (hasFittedModule(state, 'mod_market_data_s')) {
+    if (this._uplinkFitted(state)) {
       this._syncUplinkIntel(state);
     }
 
@@ -1316,7 +1316,7 @@ export const economy = {
     }
     if (!stations) return;
     for (const st of stations) this.ensureMarket(st.id, st.type, st.size);
-    if (hasFittedModule(state, 'mod_market_data_s')) this._syncUplinkIntel(state);
+    if (this._uplinkFitted(state)) this._syncUplinkIntel(state);
   },
 
   /** Cache a price snapshot for the map / route-planner UI (marketIntel). */
@@ -1340,11 +1340,19 @@ export const economy = {
     this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
   },
 
+  /** Any fitted module carrying the marketIntel flag powers the feed — the flag, not the defId. */
+  _uplinkFitted(state) {
+    const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive === false) return false;
+    return fittedModuleDefs(state).some((def) => def.mods && def.mods.marketIntel === true);
+  },
+
   /**
    * Fitted Market Data Uplink: streams one live exchange quote per station in the current sector
    * on the docked-feed cadence. Records carry provenance 'uplink' so the intel surfaces can say
-   * "market uplink" instead of pretending the player berthed there. The docked station itself is
-   * left to the dock writer — a real visit outranks a feed row and must keep dock provenance.
+   * "market uplink" instead of pretending the player berthed there. The currently-docked berth is
+   * left to the dock writer, and a prior dock observation keeps its provenance under the feed —
+   * the visit happened; only the quotes refresh.
    */
   _syncUplinkIntel(state) {
     const sectorId = state && state.world && state.world.currentSectorId;
@@ -1415,7 +1423,10 @@ export const economy = {
         demandMult: Number(e.demandMult) || 1,
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
-      if (source) record.source = source;
+      // A berth the player physically made outranks the feed: the uplink may refresh the quotes,
+      // but the record keeps its dock provenance — the visit is the stronger fact.
+      const keepDockProvenance = source === 'uplink' && prior && prior.source == null;
+      if (source && !keepDockProvenance) record.source = source;
       stationMemory[cid] = record;
     }
     return stationMemory;

@@ -6,6 +6,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { economy } from '../src/systems/economy.js';
 import { world } from '../src/systems/world.js';
 import { quoteProvenance, knownStationQuotes } from '../src/ui/marketIntelligence.js';
+import { describeTradeIntel, computeBestTrades } from '../src/ui/market/tradeLogic.js';
 
 // INFERENCE-25 (WF-06): the Market Data Uplink was sold, shipped fitted on starter builds, and
 // billed continuous power while its own catalog admitted it changed nothing. A fitted uplink now
@@ -111,6 +112,71 @@ test('the docked berth keeps dock provenance; survey cannot downgrade a feed row
     sim.bus.emit('map:sectorCharted', { sectorId: SECTOR_ID, source: 'survey' });
     assert.deepEqual(state.player.marketMemory[dockedId][IRON], dockedMemory,
       'a survey packet must not overwrite stronger live knowledge');
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
+});
+
+test('the trade board says uplink, never scanned, for feed rows', () => {
+  const sim = boot([UPLINK]);
+  const state = sim.state;
+  try {
+    sim.bus.emit('sector:enter', { sectorId: SECTOR_ID });
+    economy._instance.econTick(5, state);
+    const hereId = sectorStationIds()[0];
+    const trades = computeBestTrades(state, hereId);
+    const uplinkTrades = trades.filter((trade) => trade.intelSource === 'uplink');
+    assert.ok(uplinkTrades.length > 0,
+      'feed-sourced destinations reach the trade board as uplink, not scanned');
+    for (const trade of uplinkTrades) {
+      assert.equal(trade.intelLabel, 'uplink · fresh',
+        `${trade.destStation} must not masquerade as a dock scan`);
+    }
+    assert.equal(describeTradeIntel(state, { intelSource: 'uplink', seenAtT: state.simTime }),
+      'uplink · fresh');
+    assert.equal(describeTradeIntel(state, { intelSource: 'scanned', seenAtT: state.simTime }),
+      'scan · fresh');
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
+});
+
+test('a berth the player physically made keeps dock provenance under the feed', () => {
+  const sim = boot([UPLINK]);
+  const state = sim.state;
+  try {
+    const dockedId = sectorStationIds()[0];
+    sim.bus.emit('sector:enter', { sectorId: SECTOR_ID });
+    sim.bus.emit('dock:docked', { stationId: dockedId });
+    economy._instance.econTick(5, state);
+    sim.bus.emit('dock:undocked', { stationId: dockedId });
+    state.simTime += 10;
+    economy._instance.econTick(5, state);
+    assert.equal(state.player.marketMemory[dockedId][IRON].source, undefined,
+      'the visit is the stronger fact — the feed refreshes quotes, not provenance');
+    assert.equal(state.player.marketMemory[dockedId][IRON].seenAt, 133,
+      'the quotes still refresh under the feed');
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
+});
+
+test('a dead hull does not keep streaming the sector', () => {
+  const sim = boot([UPLINK]);
+  const state = sim.state;
+  try {
+    sim.bus.emit('sector:enter', { sectorId: SECTOR_ID });
+    economy._instance.econTick(5, state);
+    const stationId = sectorStationIds()[0];
+    assert.equal(state.player.marketMemory[stationId][IRON].seenAt, 123);
+    state.entities.get(state.playerId).alive = false;
+    state.simTime += 30;
+    economy._instance.econTick(5, state);
+    assert.equal(state.player.marketMemory[stationId][IRON].seenAt, 123,
+      'the feed dies with the ship that carries it');
   } finally {
     sim.dispose();
     economy._instance = null;
