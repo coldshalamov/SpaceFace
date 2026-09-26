@@ -558,15 +558,36 @@ const ROUTES = {
         if (!b) return null; b.click(); return (b.textContent || '').trim();
       });
       await sleep(900);
+      // Select the first held row so the detail pane shows the sell commit, then click the live
+      // data-go verb ("Sell N") — not the Buy/Sell mode tab, which only switches the pane.
+      const picked = await ctx.page.evaluate(() => {
+        const row = [...document.querySelectorAll('.sx-mkt-row, tr, .k-row')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /held [0-9]+u|held\b/i.test(e.textContent || ''))[0];
+        if (row) { row.click(); return (row.textContent || '').trim().slice(0, 60); }
+        return null;
+      });
+      await sleep(900);
+      const sellMode = await ctx.page.evaluate(() => {
+        const tab = [...document.querySelectorAll('.sx-trade__go--sell, button, [data-action]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^\s*sell\s*$/i.test((e.textContent || '').trim()) && !e.hasAttribute('data-go'))[0];
+        if (tab) { tab.click(); return true; } return false;
+      });
+      await sleep(700);
       const sold = await ctx.page.evaluate(() => {
-        const b = [...document.querySelectorAll('button, [data-action]')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^sell/i.test((e.textContent || '').trim()) && !/sell what|selling/i.test(e.textContent || ''))[0];
-        if (!b) return null; b.click(); return (b.textContent || '').trim();
+        const b = [...document.querySelectorAll('[data-go]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live') && /^sell/i.test((e.textContent || '').trim()) && !e.disabled)[0];
+        if (!b) {
+          const dead = [...document.querySelectorAll('[data-go]')].filter((e) => e.offsetParent !== null && /sell/i.test(e.textContent || '') && e.disabled)[0];
+          return dead ? 'DISABLED:' + (dead.textContent || '').trim() : null;
+        }
+        b.click(); return (b.textContent || '').trim();
       });
       await sleep(1200);
       const crAfter = await ctx.page.evaluate(() => window.SF.state.player && window.SF.state.player.credits);
-      if (sold && crAfter <= crBefore) observe(ctx, 'rough-edge', 'market', `SELL clicked but credits did not rise (${crBefore} -> ${crAfter})`);
-      return { inHold, sellVerb: sold, credits: [crBefore, crAfter] };
+      if (sold && !sold.startsWith('DISABLED') && crAfter <= crBefore) observe(ctx, 'rough-edge', 'market', `SELL clicked but credits did not rise (${crBefore} -> ${crAfter})`);
+      if (sold && sold.startsWith('DISABLED')) observe(ctx, 'rough-edge', 'market', `held commodity's sell verb is disabled: ${sold} (picked=${picked})`);
+      if (!sold) observe(ctx, 'rough-edge', 'market', `no live Sell commit found in market detail (picked=${picked}, sellMode=${sellMode})`);
+      return { inHold, picked, sellMode, sellVerb: sold, credits: [crBefore, crAfter] };
     });
 
     await B(ctx, 'l04b-job', 'missions tab -> accept a delivery job (target the mission sector next)', async () => {
