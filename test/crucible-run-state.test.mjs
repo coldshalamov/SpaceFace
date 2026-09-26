@@ -263,6 +263,9 @@ test('successful begin emits run:started with the loadout payload', () => {
     ruleset: 'scored',
     seed: 7,
     phase: 'loadout',
+    // Carried for survivalRun's first-run teaching beat (survivalRun._onStarted); false
+    // unless the begin request asked for the round-zero lesson.
+    openingLesson: false,
   });
 });
 

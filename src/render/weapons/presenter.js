@@ -150,6 +150,7 @@ export class WeaponVfxPresenter {
     this.lights = new WeaponLightPool(this.scene);
     this.scorches = new HullScorchPool(this.scene);
     this.quarks = new QuarksVfxSystem({ scene: this.scene });
+    this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
@@ -361,7 +362,16 @@ export class WeaponVfxPresenter {
     this.lights.update(dt);
     this.ribbons.setCamera(camera, viewportHeight);
     this.ribbons.update(dt, camera && camera.position, accessibilityProfile);
-    if (this.quarks) this.quarks.update(dt);
+    if (this.quarks) {
+      const now=this.state?.simTime;
+      let particleDt=dt;
+      if(Number.isFinite(now)){
+        if(this._quarksSimTime!==null&&now<this._quarksSimTime)this.quarks.reset();
+        particleDt=this._quarksSimTime===null?0:Math.max(0,now-this._quarksSimTime);
+        this._quarksSimTime=now;
+      }
+      this.quarks.update(particleDt, accessibilityProfile);
+    }
   }
 
   _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
@@ -724,6 +734,7 @@ export class WeaponVfxPresenter {
     const ox = Number(dx) || 0;
     const oz = Number(dz) || 0;
     if (!ox && !oz) return;
+    this.quarks?.reproject(ox, oz);
     this.discharges.reproject(ox, oz);
     for (const slot of this.scorches.slots) {
       if (!slot.alive) continue;
@@ -766,6 +777,8 @@ export class WeaponVfxPresenter {
       this.distortion.scene,
       this.wellDistortion.scene,
       this.lights.group,
+      this.quarks?.root,
+      this.quarks?.renderer,
     ];
   }
 

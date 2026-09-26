@@ -1,4 +1,4 @@
-import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml } from '../../views/marketPresentation.js';
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
 // Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
@@ -210,7 +210,11 @@ function parseHistoryPoints(entry) {
     if (point && typeof point === 'object') {
       const mid = Number(point.mid != null ? point.mid : point);
       const t = Number(point.t);
-      if (Number.isFinite(mid) && mid > 0) out.push(Number.isFinite(t) ? { t, mid } : { mid });
+      if (Number.isFinite(mid) && mid > 0) {
+        const row = Number.isFinite(t) ? { t, mid } : { mid };
+        if (point.origin === 'modelled' || point.origin === 'observed') row.origin = point.origin;
+        out.push(row);
+      }
     } else {
       const mid = Number(point);
       if (Number.isFinite(mid) && mid > 0) out.push({ mid });
@@ -255,9 +259,9 @@ function liveRegimeWord(state, sid, commodityId) {
   return regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
 }
 
-// Docked inspector looks at the live feed. Opening the market restamps
-// seenAt, so a fresh/stale word here was a constant. Age bands stay on
-// remote intel. This readout does not pretend the counter has a memory age.
+// The docked chart says "fresh quote" from the live feed in renderStage.
+// Opening the market restamps seenAt, so a word computed only from that
+// stamp was a constant. Survey packets are labeled separately.
 export function quoteAgeWord(_state, _sid, _commodityId) {
   return '';
 }
@@ -480,10 +484,14 @@ export function createMarketScreen(ctx) {
   // nothing — stock moves only in execute() on confirm.
   function contemplatedSaleQuote(sid, cmdtyId, quantity) {
     const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
-    if (!economy || typeof economy.quote !== 'function' || !stationId) return null;
+    if (!economy || typeof economy.quote !== 'function' || !sid) return null;
     try {
-      const q = economy.quote(stationId, cmdtyId, 'sell', Math.max(1, Math.floor(Number(quantity) || 1)));
-      return q && q.ok ? q : null;
+      const q = economy.quote(sid, cmdtyId, 'sell', Math.max(1, Math.floor(Number(quantity) || 1)));
+      if (!q || !q.ok) return null;
+      // The sale is at the berth the pilot is already in, so no jump remains to subtract.
+      // Settling at the counter does not charge automation upkeep. Both stay on the line
+      // so a later non-zero bill cannot hide inside the gross.
+      return { ...q, travelCost: 0, operatingCost: 0 };
     } catch (_) { return null; }
   }
 
@@ -747,7 +755,9 @@ export function createMarketScreen(ctx) {
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
-      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
+      quoteAge: 'fresh', quoteSource: 'live',
+      survey: rememberedSurveyFreshness(state, r.id),
+      saleQty: qty,
       saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
     if (decisionEl) {
       const decisionHtml = marketDecisionHtml(state, sid);

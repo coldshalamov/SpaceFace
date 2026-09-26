@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { fieldSignature, SURFACE_MATERIALS } from './catalog.js';
 import { SweptSurfaceBatch, SURFACE_FLOATS } from './sweptSurfaceBatch.js';
 import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLifecycle.js';
+import { ForceParticleFlow } from '../vfx/forceParticleFlow.js';
 export { FIELD_RELEASE_SECONDS } from './effectLifecycle.js';
 
 export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the published Seed
@@ -31,9 +32,12 @@ export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){
     this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage'});
     this.mesh=this.batch.mesh;this.toLocal=toLocal;
+    this.particles=new ForceParticleFlow(this.mesh,{capacity:360});
+    this.particleOptions={reducedMotion:false,reducedFlash:false};
+    this.particleBurst={kind:'well',x:0,z:0,y:.7,dx:1,dz:0,radius:1,seed:0,count:6,life:.65,strength:1,halfAngle:.56,halfWidth:52};
     this.local={x:0,z:0};this.descriptor=new Float32Array(SURFACE_FLOATS);
     this.slots=Array.from({length:10},()=>({
-      id:null,seedId:null,kind:null,born:0,character:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,
+      id:null,seedId:null,kind:null,born:0,character:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,particlePulse:0,
       // The producer REUSES its records. Keep value snapshots, not foreign record references,
       // so a retiring Well cannot become the Cone subsequently stored in the same array cell.
       field:{engaged:false,halfAngleRad:0.56,halfWidth:52},
@@ -64,6 +68,7 @@ export class FieldForcePresentation {
       if(!slot){this.stats.dropped++;return;}
       slot.id=field.id;slot.kind=field.kind;slot.seedId=seedId;slot.born=this.time;
       slot.character=character(field.kind==='seed'?seedId:field.id,this.time);
+      slot.particlePulse=0;
     }
     slot.seen=true;slot.release=-1;slot.lastSeen=this.time;
     slot.field.engaged=field.engaged===true;
@@ -86,11 +91,16 @@ export class FieldForcePresentation {
     if(this.disposed)return this.stats;
     const clock=Number.isFinite(state.simTime)?state.simTime:this.time+Math.max(0,finite(dt));
     // A restored/new simulation may rewind the clock. Release old purely cosmetic identities.
-    if(clock<this.time)for(const s of this.slots){s.id=null;s.release=-1;}
+    const elapsed=Math.max(0,clock-this.time);
+    if(clock<this.time){for(const s of this.slots){s.id=null;s.release=-1;}this.particles.clear();}
     this.time=clock;this.frame++;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
     const motion=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce);
     const flash=!!(video?.flashReduce||a11y?.flashReduce||a11y?.reducedFlash);
+    this.particleOptions.reducedMotion=motion;this.particleOptions.reducedFlash=flash;
+    // Decorative transport stops in reduced motion; the stable force silhouette remains intact.
+    if(motion)this.particles.clear();
+    else this.particles.update(elapsed,this.particleOptions);
     const stats=this.stats;stats.active=0;stats.releasing=0;stats.dropped=0;stats.unknown=0;stats.culled=0;
     const camera=state.render?.camera;
     const cull=!!(camera?.projectionMatrix&&camera?.matrixWorldInverse);
@@ -144,8 +154,21 @@ export class FieldForcePresentation {
         case 'cone':this._cone(s);break;
         case 'sheet':this._sheet(s);break;
       }
+      const pulse=Math.floor((this.time-s.born)/(.16+s.character*.045));
+      if(!motion && !this.releasing && pulse>s.particlePulse){
+        const p=this.particleBurst;s.particlePulse=pulse;
+        p.kind=s.kind==='sheet'?'skim':s.kind;p.x=this.local.x;p.z=this.local.z;
+        p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);p.radius=s.kind==='seed'?Math.min(s.radius*.33,14):s.radius;
+        p.halfAngle=s.field.halfAngleRad;p.halfWidth=s.field.halfWidth;
+        p.seed=s.character+Math.imul(pulse,2654435761)/4294967296;
+        p.count=s.field.engaged?8:5;p.strength=s.field.engaged?1.12:.85;
+        p.life=Math.min(.8,this.cycle.release*.85);
+        this.particles.emit(p);
+      }
     }
     this.batch.end();stats.surfaces=this.batch.count;stats.dropped+=this.batch.dropped;
+    if(!stats.active&&!stats.releasing)this.particles.clear();
+    this.mesh.visible=this.batch.count>0||this.particles.live>0;
     return stats;
   }
   _position(slot){
@@ -314,13 +337,13 @@ export class FieldForcePresentation {
     return {
       schema:'spaceface.force-language.lifecycle.v2', time:this.time, frame:this.frame,
       motionReduced:this.batch.material.uniforms.uMotion.value===0,
-      stats:{...this.stats},
+      stats:{...this.stats,particles:this.particles.live},
       instances:this.slots.filter(s=>s.id!==null).map(s=>({
         id:s.id,kind:s.kind,born:s.born,releaseAt:s.release,
         ...sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[s.kind],{}),
       })),
     };
   }
-  reproject(dx,dz){ this.batch.reproject(dx,dz); } // Also safe when the next simulation dt is zero.
-  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
+  reproject(dx,dz){ this.batch.reproject(dx,dz);this.particles.reproject(dx,dz); } // Also safe when the next simulation dt is zero.
+  dispose(){if(this.disposed)return;this.disposed=true;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
 }

@@ -32,6 +32,24 @@ never square noise cells. Randomness selects stable per-deployment character; di
 radius, speed, contact and lifecycle select the composition. Repeated shots can vary in curl,
 reach and timing while preserving the readable verb. Simulation RNG is never consumed.
 
+**Optical and particle refinement (2026-09-25).** Energy is optically thin: leave open space
+between transported filaments, concentrate light at folds and junctions, and reserve opaque
+coverage for actual matter and source hardware. Filter narrow ridges and periodic detail using
+screen derivatives, attenuating unresolved frequencies instead of turning them into sparkling
+pixels. Combustion absorbs as well as emits so overlapping lobes retain their dark cavities.
+Quarks carries bounded, seeded parcels through ten force-specific trajectories; these particles
+launch, accelerate or curl, shear and cool. Power-off removes the active boundary while residue
+keeps moving on a decelerating clock. Never freeze the whole effect and merely shrink it away.
+Bomb fields share one capped particle batch: singularities shear matter inward, while viscous
+parcels creep, lift, stretch and rejoin the goo. Their footprint and timing follow the bomb owner.
+
+Five further action responses cover boost preparation, reactor venting, cargo caught in a net,
+rich-core extraction and a failed rich-core charge. They use the existing production event bus
+and real body/contact anchors, with the same pause, rebasing, cleanup and accessibility rules.
+
+Use the [ship-context lab workflow](./VFX_LAB_WORKFLOW.md) for repeatable multi-frame review
+beside released ship and asteroid assets. Its scenario code imports the production effect owners.
+
 The September renewal adds twelve reaction routes in `src/render/actionVfx.js`: capture, fling,
 grind, hitch latch/cut, specialist disruption, chain priming/end, charge combo, repair, transfer,
 and bomb command. This is +24.5% against the audited 49 directly subscribed visible-event

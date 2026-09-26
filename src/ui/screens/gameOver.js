@@ -14,6 +14,10 @@
 // career's time round it, the lost hull's life the red arc that ends it at the top, the figures on
 // stations round the rim); restore is the one Lamp Key (the recovery berth, else Load save, else New
 // Game in Ironman). Red is only the loss. Composition: src/ui/orrery/saveLayouts.js.
+// The signature: the last sortie as a black box along the foot (src/ui/orrery/saveSortieTape.js),
+// read from the session's own flight record. Drag the Hand back through it and the ring answers: a
+// bead runs round the red arc to that moment, the hub reads the time into the sortie, and the lost
+// hull's plan view brightens back toward the ship it was.
 
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
@@ -21,6 +25,7 @@ import { dressLampKey } from '../orrery/lampKey.js';
 import { injectSaveLayouts } from '../orrery/saveLayouts.js';
 import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
 import { decrypt, rollTo } from '../orrery/text.js';
+import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
 import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
@@ -152,6 +157,63 @@ export function lastDeathSummary(ctx = {}) {
     cause: deathCauseLabel(entry),
     lifespan: entry && entry.lifespanMs != null ? fmtMs(entry.lifespanMs) : '-',
   };
+}
+
+/** What the sortie's black box kept: the moments of the lost hull's last sortie, from the session's own
+ *  telemetry ring (launch -> loss). Returns { lengthS, events } in seconds from the launch; lengthS null
+ *  when the loss has no recorded lifespan. Events are the kinds a pilot remembers; threats flagged. */
+export function sortieRecord(ctx = {}) {
+  const telemetry = telemetryHandle(ctx);
+  if (!telemetry) return { lengthS: null, events: [] };
+  let entry = null;
+  try {
+    const stats = telemetry.getSessionStats();
+    const log = stats && Array.isArray(stats.deathLog) ? stats.deathLog : [];
+    entry = log.length ? log[log.length - 1] : null;
+  } catch (e) { entry = null; }
+  const lengthMs = entry && Number(entry.lifespanMs);
+  if (!(lengthMs > 0)) return { lengthS: null, events: [] };
+  const lengthS = lengthMs / 1000;
+  const endAt = Number(entry.atMs);
+  let ring = [];
+  if (Number.isFinite(endAt) && typeof telemetry.getRecentEvents === 'function') {
+    try { ring = telemetry.getRecentEvents() || []; } catch (e) { ring = []; }
+  }
+  const startAt = endAt - lengthMs;
+  const events = [];
+  let kind = '';
+  const push = (atMs, label, threat = false) => {
+    const t = (atMs - startAt) / 1000;
+    if (!(t >= 0 && t < lengthS)) return;
+    // one mark per kind within ~2% of the sortie (a run of mining yields is one moment)
+    const last = events.length ? events[events.length - 1] : null;
+    if (last && last.kind === kind && t - last.t < lengthS * 0.02) return;
+    events.push({ t, label, threat, kind });
+  };
+  for (const e of Array.isArray(ring) ? ring : []) {
+    if (!e || !Number.isFinite(Number(e.atMs))) continue;
+    const d = e.data || {};
+    kind = e.type;
+    switch (e.type) {
+      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + prettyLabel(d.stationId) : '')); break;
+      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + prettyLabel(d.sectorId) : ''), !!d.interdicted); break;
+      case 'entity:killed': push(e.atMs, 'Kill' + (d.victimClass ? ' · ' + prettyLabel(d.victimClass) : '')); break;
+      case 'economy:tradeCompleted': push(e.atMs, d.side === 'sell' ? 'Sold cargo' : 'Bought cargo'); break;
+      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + prettyLabel(d.commodityId) : '')); break;
+      case 'mission:accepted': push(e.atMs, 'Contract taken'); break;
+      case 'mission:completed': push(e.atMs, 'Contract done'); break;
+      case 'mission:failed': push(e.atMs, 'Contract failed', true); break;
+      case 'escalation:arrived': push(e.atMs, 'Hostiles inbound', true); break;
+      default: break;
+    }
+  }
+  // the warning, when a telegraph led the kill
+  kind = 'telegraph';
+  if (entry.telegraphed && Number.isFinite(Number(entry.telegraphLeadTicks))) {
+    push(endAt - (Number(entry.telegraphLeadTicks) * 1000) / 60, 'It warned you', true);
+  }
+  events.sort((a, b) => a.t - b.t);
+  return { lengthS, events };
 }
 
 export function currentDefeat(ctx = {}) {
@@ -376,6 +438,13 @@ export const gameOverScreen = {
     });
 
     rootEl.appendChild(foot);
+    // The black box of the last sortie, along the foot: the screen's instrument to play.
+    const tapeHost = el('section', 'sf-go-tape');
+    tapeHost.setAttribute('aria-label', 'Last sortie');
+    rootEl.appendChild(tapeHost);
+    this._tapeHost = tapeHost;
+    this._tape = createSortieTape({ host: tapeHost, onScrub: (t, ev, atEnd) => this._onSortieScrub(t, ev, atEnd) });
+    this._tapeSig = null;
     this._titleRegion = title;
     this._stageRegion = stage;
     this._footRegion = foot;
@@ -445,8 +514,13 @@ export const gameOverScreen = {
     const state = ctx && ctx.state || {};
     const stats = state.player && state.player.stats || {};
     const count = (n) => Math.max(0, Math.round(Number(n) || 0)).toLocaleString();
+    const playtimeS = Number(state.meta && state.meta.playtimeS) || 0;
+    if (this._recapRows.parentNode && this._recapRows.parentNode.classList) {
+      if (playtimeS > 0) this._recapRows.parentNode.classList.remove('is-blank');
+      else this._recapRows.parentNode.classList.add('is-blank');
+    }
     const items = [
-      ['Time flown', fmtTime(state.meta && state.meta.playtimeS)],
+      ['Time flown', playtimeS > 0 ? fmtTime(playtimeS) : 'No record'],
       ['This hull lasted', lastDeathSummary(ctx).lifespan],
       ['Contracts done', count(stats.missionsDone)],
       ['Kills', count(stats.kills)],
@@ -489,7 +563,36 @@ export const gameOverScreen = {
     const owned = Array.isArray(player.ownedShips) ? player.ownedShips : [];
     const ship = owned[Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0] || owned[0] || null;
     const hullId = (ship && typeof ship.defId === 'string' && ship.defId) || NEW_GAME.shipId;
-    this._paintCareerRing(Number(state.meta && state.meta.playtimeS) || 0, parseDurationS(lastDeathSummary(ctx).lifespan), hullId);
+    this._paintCareerRing(playtimeS, parseDurationS(lastDeathSummary(ctx).lifespan), hullId);
+    if (this._tape) {
+      const record = sortieRecord(ctx);
+      const receipt = currentDefeat(ctx);
+      const killLabel = (receipt && (receipt.fatalSummary || receipt.cause)) || lastDeathSummary(ctx).cause;
+      this._sortie = record;
+      this._tape.paint({ lengthS: record.lengthS, events: record.events, killLabel: /^unknown loss$/i.test(killLabel) ? 'The loss' : killLabel });
+      this._onSortieScrub(record.lengthS || 0, null, true);
+    }
+  },
+
+  /** The ring answers the black box: a bead runs round the red arc to the moment under the Hand, the
+   *  hub reads the time into the sortie, and the lost hull's plan view brightens toward the ship it was. */
+  _onSortieScrub(t, ev, atEnd) {
+    const bead = this._ringBead;
+    const host = this._ringEl;
+    const len = this._sortie && this._sortie.lengthS;
+    const recap = host && host.parentNode;
+    const frac = len > 0 ? Math.max(0, Math.min(1, t / len)) : 1;
+    if (recap && recap.classList) {
+      if (atEnd || !(len > 0)) recap.classList.remove('is-scrubbing');
+      else recap.classList.add('is-scrubbing');
+    }
+    if (host && host.style && typeof host.style.setProperty === 'function') host.style.setProperty('--life-left', (1 - frac).toFixed(3));
+    if (bead && this._lostFrom != null) {
+      const deg = this._lostFrom + (360 - this._lostFrom) * frac;
+      bead.setAttribute('transform', `rotate(${deg.toFixed(2)})`);
+    }
+    if (this._hubScrubT) this._hubScrubT.textContent = fmtSortieTime(t);
+    if (this._hubScrubW) this._hubScrubW.textContent = ev ? ev.label : 'Into the sortie';
   },
 
   /** The ring the career record stands round: the career's time as one closed track with a bezel of
@@ -501,14 +604,19 @@ export const gameOverScreen = {
     if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.replaceChildren !== 'function') return;
     const root = svg('svg', { class: 'orr-svg sf-go-ring__svg', viewBox: '-120 -120 240 240', 'aria-hidden': 'true', focusable: 'false' });
     const r = 100;
-    root.appendChild(svg('path', { d: ticksD(0, 0, r + 9, 60, { len: 3, major: 5, majorLen: 7, inward: true }), class: 'sf-go-ring__ticks' }));
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 9, 60, { len: 3, inward: true }), class: 'sf-go-ring__ticks' }));
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 10, 12, { len: 8, inward: true }), class: 'sf-go-ring__majors-bloom' }));
+    root.appendChild(svg('path', { d: ticksD(0, 0, r + 10, 12, { len: 8, inward: true }), class: 'sf-go-ring__majors' }));
     // a lit band between the track and the inner ring (one annulus, even-odd)
     root.appendChild(svg('path', { d: `${arcD(0, 0, r - 1, 0, 360)} ${arcD(0, 0, r - 21, 0, 360)}`, 'fill-rule': 'evenodd', class: 'sf-go-ring__band' }));
     root.appendChild(svg('circle', { cx: 0, cy: 0, r, class: 'sf-go-ring__track' }));
     root.appendChild(svg('circle', { cx: 0, cy: 0, r: r - 22, class: 'sf-go-ring__inner' }));
     const share = playtimeS > 0 && lifespanS != null ? Math.max(0.012, Math.min(1, lifespanS / playtimeS)) : null;
+    this._lostFrom = null;
+    this._ringBead = null;
     if (playtimeS > 0) {
       const lostFrom = share == null ? 360 : 360 - share * 360;
+      if (share != null) this._lostFrom = lostFrom;
       if (lostFrom > 0.5) {
         const career = arcD(0, 0, r, 0, lostFrom - (share == null ? 0 : 1.2));
         root.appendChild(svg('path', { d: career, class: 'sf-go-ring__bloom orr-draw', pathLength: 1 }));
@@ -526,6 +634,14 @@ export const gameOverScreen = {
     const [x0, y0] = polar(0, 0, r - 9, 0);
     const [x1, y1] = polar(0, 0, r + 12, 0);
     root.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: 'sf-go-ring__stop' }));
+    // the black box's bead: turned round the red arc to the moment under the tape's Hand
+    if (this._lostFrom != null) {
+      const bead = svg('g', { class: 'sf-go-ring__bead', transform: 'rotate(0)' });
+      bead.appendChild(svg('circle', { cx: 0, cy: -r, r: 7, class: 'sf-go-ring__bead-glow' }));
+      bead.appendChild(svg('circle', { cx: 0, cy: -r, r: 3.4, class: 'sf-go-ring__bead-core' }));
+      root.appendChild(bead);
+      this._ringBead = bead;
+    }
     // the hull that was lost, at the hub: its produced plan view, cooled, under the time flown
     const art = hullPosterUrl(hullId, 'top');
     const nodes = [root];
@@ -537,6 +653,15 @@ export const gameOverScreen = {
       img.src = art;
       nodes.unshift(img);
     }
+    // the hub's reading while the tape is scrubbed (the career's time stands aside)
+    const hubScrub = el('div', 'sf-go-hubscrub');
+    const hubT = el('span', 'sf-go-hubscrub__t', '');
+    const hubW = el('span', 'sf-go-hubscrub__w', 'Into the sortie');
+    hubScrub.appendChild(hubT);
+    hubScrub.appendChild(hubW);
+    this._hubScrubT = hubT;
+    this._hubScrubW = hubW;
+    nodes.push(hubScrub);
     host.replaceChildren(...nodes);
   },
 
@@ -612,7 +737,7 @@ export const gameOverScreen = {
         receipt.direction,
         String(receipt.dominantLayer || 'hull').toUpperCase(),
         receipt.subsystemId && String(receipt.subsystemId).replace(/_/g, ' ').toUpperCase(),
-        receipt.vitalsPct && `S${receipt.vitalsPct.shield}% A${receipt.vitalsPct.armor}% H${receipt.vitalsPct.hull}%`,
+        receipt.vitalsPct && `shield ${receipt.vitalsPct.shield}% · armour ${receipt.vitalsPct.armor}% · hull ${receipt.vitalsPct.hull}%`,
       ].filter(Boolean).join(' · ') : 'Unresolved',
       dock: recovery.stationName || 'No recovery route',
       cost: recovery.costCr != null ? costText : '-',
@@ -669,6 +794,11 @@ export const gameOverScreen = {
         this._recoveryEl.textContent = ironman
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';
+      }
+      // The receipt line repeats the figures above it: it leaves the view and stays their description.
+      if (this._recoveryEl.classList) {
+        if (recoverable) this._recoveryEl.classList.add('is-receipt');
+        else this._recoveryEl.classList.remove('is-receipt');
       }
     }
     setWordHidden(this._retryButton, !recoverable);

@@ -169,6 +169,14 @@ const FRAGMENT_SHADER = /* glsl */`
   uniform float uBoltTime;
   uniform float uBoltFlicker;
 
+  float boltWave(float phase) {
+    return sin(phase)*(1.0-smoothstep(0.7,3.14159,fwidth(phase)));
+  }
+  float boltStrand(float distance, float width) {
+    float resolved=max(width,fwidth(distance));
+    return exp(-pow(distance/resolved,2.0))*width/resolved;
+  }
+
   float linearDepth(float depth01) {
     float z = depth01 * 2.0 - 1.0;
     return (2.0 * uCameraNear * uCameraFar)
@@ -180,7 +188,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float across = abs(vUv.y * 2.0 - 1.0);
     float core = pow(max(0.0, 1.0 - across), 6.0);
     float sheath = 1.0 - smoothstep(0.72, 1.0, across);
-    float tip = smoothstep(0.0, 0.16, vAlong) * smoothstep(1.0, 0.68, vAlong);
+    float tip = smoothstep(0.0, 0.16, vAlong) * (1.0 - smoothstep(0.68, 1.0, vAlong));
     float body = (sheath * 0.55 + core * 0.85) * tip;
     if (body < 0.004) discard;
 
@@ -191,7 +199,7 @@ const FRAGMENT_SHADER = /* glsl */`
     // this is the starter gun, so it is the shot the player sees most and it may never be a
     // still image sliding across the screen.
     float pulse = 1.0 - step(0.5, vVariant);
-    float pulseTip = smoothstep(0.0, 0.1, vAlong) * smoothstep(1.0, 0.88, vAlong);
+    float pulseTip = smoothstep(0.0, 0.1, vAlong) * (1.0 - smoothstep(0.88, 1.0, vAlong));
     float pulseHead = smoothstep(0.40, 0.76, vAlong);
     float pulseShed = sin(vAlong * 5.0 + uBoltTime * 17.0);
     float pulseLip = exp(-pow((across - (0.57 + 0.13 * pulseShed)) / 0.13, 2.0));
@@ -203,7 +211,7 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
     float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));
     float plasmaBulb = sin(clamp(vAlong, 0.0, 1.0) * 3.14159);
-    float plasmaBoil = 0.5 + 0.5 * sin(vAlong * (10.0 + vVariation.y * 2.0) - boltClock * 14.0);
+    float plasmaBoil = 0.5 + 0.5 * boltWave(vAlong * (10.0 + vVariation.y * 2.0) - boltClock * 14.0);
     float plasmaCore = pow(max(0.0, 1.0 - across), 3.2);
     body = mix(body, (plasmaCore * 1.1 + sheath * 0.7)
       * (0.52 + plasmaBulb * 0.42 + plasmaBoil * 0.16), plasma);
@@ -214,9 +222,9 @@ const FRAGMENT_SHADER = /* glsl */`
     // crisp ballistic punch that reads at combat distance, not a soft glowing ball.
     float kinetic = step(1.5, vVariant) * (1.0 - step(2.5, vVariant));
     float machHead = smoothstep(0.55, 1.0, vAlong);
-    float machTail = smoothstep(0.5, 0.0, vAlong);
+    float machTail = 1.0 - smoothstep(0.0, 0.5, vAlong);
     float machCore = pow(max(0.0, 1.0 - across), 12.0);
-    float machDiamonds = 0.82 + uBoltFlicker * 0.18 * sin(vAlong * 46.0 - boltClock * 55.0);
+    float machDiamonds = 0.82 + uBoltFlicker * 0.18 * boltWave(vAlong * 46.0 - boltClock * 55.0);
     body = mix(body, (machCore * 1.5 + sheath * 0.28) * machDiamonds * (0.75 + machHead * 0.9), kinetic);
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
@@ -227,7 +235,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
-    float railRings = 0.86 + uBoltFlicker * 0.14 * sin(vAlong * 44.0 - boltClock * 62.0);
+    float railRings = 0.86 + uBoltFlicker * 0.14 * boltWave(vAlong * 44.0 - boltClock * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
     body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
     col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
@@ -235,13 +243,13 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
     float forkCenter = 0.43 + 0.15 * sin(vAlong * 6.28318 - boltClock * 5.0);
-    float empArc = exp(-pow((across - forkCenter) / 0.17, 2.0));
-    float empCrackle = 0.78 + uBoltFlicker * 0.22 * sin(vAlong * 24.0 - boltClock * 33.0);
+    float empArc = boltStrand(across - forkCenter, 0.17);
+    float empCrackle = 0.78 + uBoltFlicker * 0.22 * boltWave(vAlong * 24.0 - boltClock * 33.0);
     // Open air between the two branches is a silhouette feature, not a pale stripe
     // painted over the pulse body. A short root joins them at the trailing heel.
     float empRoot = (1.0 - smoothstep(0.12, 0.30, vAlong)) * core;
     body = mix(body, (empArc * 1.28 + empRoot * 0.55) * tip * empCrackle, emp);
-    if (emp > 0.5 && empArc + empRoot < 0.12) discard;
+    if (emp > 0.5) body *= smoothstep(0.025,0.12,empArc + empRoot);
     col = mix(col, vec3(0.75, 0.88, 1.0), empArc * emp * 0.8);
 
     // Variant 5: Concussion - dense shockwave compression slug. Pressure rings peel off the bow
@@ -249,7 +257,7 @@ const FRAGMENT_SHADER = /* glsl */`
     // hulls around has to look like it is carrying a wall of pressure, not like a painted capsule.
     float concussion = step(4.5, vVariant) * (1.0 - step(5.5, vVariant));
     float concShock = smoothstep(0.65, 0.98, vAlong);
-    float concRings = 0.5 + 0.5 * sin(vAlong * 21.0 + boltClock * 44.0);
+    float concRings = 0.5 + 0.5 * boltWave(vAlong * 21.0 + boltClock * 44.0);
     float concThrob = 0.86 + uBoltFlicker * 0.14 * sin(boltClock * 26.0);
     body = mix(body, (core * 0.85 + sheath * (0.5 + 0.34 * concRings * (1.0 - concShock)))
       * (0.8 + concShock * 0.6 * concThrob), concussion);
@@ -258,8 +266,8 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 6: Flak - fragmentation fleck with incendiary spark jacket
     float flak = step(5.5, vVariant);
     // The spark jacket crawls tailward and spits: fragmentation is burning, not striped.
-    float flakCrawl = sin(vAlong * 25.0 + boltClock * 39.0);
-    float flakSpit = 1.0 + uBoltFlicker * 0.16 * sin(boltClock * 67.0 + vAlong * 9.0);
+    float flakCrawl = boltWave(vAlong * 25.0 + boltClock * 39.0);
+    float flakSpit = 1.0 + uBoltFlicker * 0.16 * boltWave(boltClock * 67.0 + vAlong * 9.0);
     body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * flakCrawl) * flakSpit, flak);
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 

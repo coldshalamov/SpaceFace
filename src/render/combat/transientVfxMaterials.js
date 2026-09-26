@@ -93,15 +93,18 @@ const SURFACE_FRAGMENT = /* glsl */`
     float grazing = pow(1.0-abs(dot(n, normalize(cameraPosition-vWorld))), 2.0);
     float crossSection = vUv.y*2.0-1.0;
     float crease=crossSection-0.28*sin(vUv.x*7.0+(vSection+vPhase.y)*6.28-vPhase.x*5.0);
-    float creaseWidth=max(0.14,fwidth(crease)*1.1);
-    float ridge = exp(-pow(crease/creaseWidth,2.0));
-    float lip = exp(-pow((abs(crossSection)-0.78)*11.0,2.0));
+    float creaseWidth=max(0.12,fwidth(crease)*1.1);
+    float ridge = exp(-pow(crease/creaseWidth,2.0))*min(1.0,0.12/creaseWidth);
+    float lipDistance=abs(crossSection)-0.78;
+    float lipWidth=max(0.09,fwidth(lipDistance)*1.1);
+    float lip = exp(-pow(lipDistance/lipWidth,2.0))*min(1.0,0.09/lipWidth);
     float body = 0.10 + 0.87*ridge + 0.48*lip;
-    float transport = 0.60 + 0.40*sin(vUv.x*11.0-vPhase.x*10.0+(vSection+vPhase.y)*6.28);
+    float wave=vUv.x*11.0-vPhase.x*10.0+(vSection+vPhase.y)*6.28;
+    float transport = 0.60 + 0.40*sin(wave)*(1.0-smoothstep(.7,3.14,fwidth(wave)));
     float tips = smoothstep(0.0,0.10,vUv.x)*(1.0-smoothstep(0.79,1.0,vUv.x));
-    float edge = 1.0-smoothstep(0.86,1.0,abs(crossSection));
+    float edge = 1.0-smoothstep(0.86-max(fwidth(crossSection),.01),1.0,abs(crossSection));
     float release = 1.0-smoothstep(0.53+0.14*vSection,1.0,vPhase.x+vUv.x*0.13);
-    float alpha = vSpriteOpacity * tips * edge * release;
+    float alpha = vSpriteOpacity * tips * edge * release*(.08+.66*ridge+.26*lip);
     if (alpha < 0.004) discard;
     vec3 heat = mix(vSpriteColor*0.32, vSpriteColor, body);
     heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*0.85*ridge*transport;
@@ -209,12 +212,15 @@ const VOLUME_FRAGMENT = /* glsl */`
       float ridge=clamp(density*2.1,0.0,1.0);
       vec3 pigment=mix(vec3(0.43,0.40,0.70),vec3(1.10,0.98,0.83),smoothstep(0.26,0.65,light));
       vec3 soot=vSpriteColor*pigment*(0.10+1.04*paintedLight)*(0.64+0.36*ridge);
-      vec3 fire=mix(vSpriteColor*0.14, vSpriteColor*1.75,pow(hot,.75));
+      // Cold cavities absorb; ignition lives on the hot, exposed interface and then cools.
+      // This prevents stacked lobes from turning into a featureless additive light ball.
+      float interfaceHeat=hot*(0.22+0.78*light);
+      vec3 fire=soot*.42+vSpriteColor*2.8*pow(interfaceHeat,1.35);
       // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
       float peak=pow(hot,3.0)*(0.25+0.75*light);
       float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
       fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*3.8,peak*.72);
-      fire*=0.24+0.76*paintedLight;
+      fire*=0.18+0.82*paintedLight;
       sum+=transmittance*absorb*mix(soot,fire,uCombustion);
       transmittance*=1.0-absorb;
       if (transmittance<0.018) break;
@@ -251,7 +257,7 @@ export function createTransientVfxMaterial(kind, radiance, densityTexture = null
     vertexShader: volume ? VOLUME_VERTEX : SURFACE_VERTEX,
     fragmentShader: volume ? VOLUME_FRAGMENT : SURFACE_FRAGMENT,
     transparent: true, depthWrite: false, depthTest: true,
-    blending: smoke ? THREE.NormalBlending : THREE.AdditiveBlending,
+    blending: volume ? THREE.NormalBlending : THREE.AdditiveBlending,
     side: volume ? THREE.BackSide : THREE.DoubleSide,
     forceSinglePass: true,
     toneMapped: smoke,

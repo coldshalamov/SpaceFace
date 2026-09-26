@@ -31,10 +31,10 @@
       "career": "hauler",
       "minutes": 30,
       "seed": 3232800769,
-      "credits": 87,
-      "netWorth": 9621,
-      "earnedValue": -4913,
-      "creditsPerMin": -163.77,
+      "credits": 49,
+      "netWorth": 9684,
+      "earnedValue": -4951,
+      "creditsPerMin": -165.03,
       "completedLoops": 22,
       "completedContracts": 22,
       "failedContracts": 0,
@@ -52,7 +52,7 @@
       "authorityReceipts": 1,
       "ok": false,
       "assertionFails": [
-        "dead_income -163.77 < 50 (hauler)"
+        "dead_income -165.03 < 50 (hauler)"
       ],
       "assertionWarns": []
     },
@@ -60,16 +60,16 @@
       "career": "hauler",
       "minutes": 60,
       "seed": 3232800769,
-      "credits": 900,
-      "netWorth": 8900,
-      "earnedValue": -4100,
-      "creditsPerMin": -68.33,
+      "credits": 807,
+      "netWorth": 8807,
+      "earnedValue": -4193,
+      "creditsPerMin": -69.88,
       "completedLoops": 45,
       "completedContracts": 45,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 2845.3,
+      "travelS": 2868.5,
       "actionS": 720,
       "bottlenecks": [
         {
@@ -81,7 +81,7 @@
       "authorityReceipts": 1,
       "ok": false,
       "assertionFails": [
-        "dead_income -68.33 < 50 (hauler)"
+        "dead_income -69.88 < 50 (hauler)"
       ],
       "assertionWarns": []
     },
@@ -89,28 +89,32 @@
       "career": "hauler",
       "minutes": 90,
       "seed": 3232800769,
-      "credits": 37,
-      "netWorth": 9025,
-      "earnedValue": -4963,
-      "creditsPerMin": -55.14,
-      "completedLoops": 67,
-      "completedContracts": 67,
+      "credits": 169,
+      "netWorth": 8169,
+      "earnedValue": -4831,
+      "creditsPerMin": -53.68,
+      "completedLoops": 66,
+      "completedContracts": 66,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 4316.5,
-      "actionS": 1080,
+      "travelS": 4322.9,
+      "actionS": 1056,
       "bottlenecks": [
         {
           "code": "spread_collapse",
           "detail": "Route cmdty_ore_iron→station_helios collapsed"
+        },
+        {
+          "code": "capital_bind",
+          "detail": "Cannot afford next buy lot"
         }
       ],
       "adaptersUsed": [],
       "authorityReceipts": 1,
       "ok": false,
       "assertionFails": [
-        "dead_income -55.14 < 50 (hauler)"
+        "dead_income -53.68 < 50 (hauler)"
       ],
       "assertionWarns": []
     },
@@ -283,10 +287,10 @@
       "career": "prospector",
       "minutes": 60,
       "seed": 3232808963,
-      "credits": 12983,
-      "netWorth": 20983,
-      "earnedValue": 7983,
-      "creditsPerMin": 133.05,
+      "credits": 13088,
+      "netWorth": 21088,
+      "earnedValue": 8088,
+      "creditsPerMin": 134.8,
       "completedLoops": 5,
       "completedContracts": 5,
       "failedContracts": 0,
@@ -316,10 +320,10 @@
       "career": "prospector",
       "minutes": 90,
       "seed": 3232808963,
-      "credits": 1209,
-      "netWorth": 17269,
-      "earnedValue": 11209,
-      "creditsPerMin": 124.54,
+      "credits": 1710,
+      "netWorth": 17823,
+      "earnedValue": 11710,
+      "creditsPerMin": 130.11,
       "completedLoops": 7,
       "completedContracts": 7,
       "failedContracts": 0,
@@ -355,10 +359,10 @@
       "30": {
         "ok": false,
         "horizonMin": 30,
-        "endingCapital": 87,
-        "earnedValue": -4913,
-        "creditsPerMin": -163.77,
-        "netWorth": 9621,
+        "endingCapital": 49,
+        "earnedValue": -4951,
+        "creditsPerMin": -165.03,
+        "netWorth": 9684,
         "completedLoops": 22,
         "completedContracts": 22,
         "failedContracts": 0,
@@ -381,7 +385,7 @@
         ],
         "adaptersUsed": [],
         "assertionFails": [
-          "dead_income -163.77 < 50 (hauler)"
+          "dead_income -165.03 < 50 (hauler)"
         ],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -404,10 +408,10 @@
       "60": {
         "ok": false,
         "horizonMin": 60,
-        "endingCapital": 900,
-        "earnedValue": -4100,
-        "creditsPerMin": -68.33,
-        "netWorth": 8900,
+        "endingCapital": 807,
+        "earnedValue": -4193,
+        "creditsPerMin": -69.88,
+        "netWorth": 8807,
         "completedLoops": 45,
         "completedContracts": 45,
         "failedContracts": 0,
@@ -415,8 +419,8 @@
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 3565.3,
-          "travelS": 2845.3,
+          "simS": 3588.5,
+          "travelS": 2868.5,
           "actionS": 720,
           "dockS": 0,
           "recoveryS": 0,
@@ -430,7 +434,7 @@
         ],
         "adaptersUsed": [],
         "assertionFails": [
-          "dead_income -68.33 < 50 (hauler)"
+          "dead_income -69.88 < 50 (hauler)"
         ],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -453,20 +457,20 @@
       "90": {
         "ok": false,
         "horizonMin": 90,
-        "endingCapital": 37,
-        "earnedValue": -4963,
-        "creditsPerMin": -55.14,
-        "netWorth": 9025,
-        "completedLoops": 67,
-        "completedContracts": 67,
+        "endingCapital": 169,
+        "earnedValue": -4831,
+        "creditsPerMin": -53.68,
+        "netWorth": 8169,
+        "completedLoops": 66,
+        "completedContracts": 66,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 5396.5,
-          "travelS": 4316.5,
-          "actionS": 1080,
+          "simS": 5378.9,
+          "travelS": 4322.9,
+          "actionS": 1056,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -475,11 +479,15 @@
           {
             "code": "spread_collapse",
             "detail": "Route cmdty_ore_iron→station_helios collapsed"
+          },
+          {
+            "code": "capital_bind",
+            "detail": "Cannot afford next buy lot"
           }
         ],
         "adaptersUsed": [],
         "assertionFails": [
-          "dead_income -55.14 < 50 (hauler)"
+          "dead_income -53.68 < 50 (hauler)"
         ],
         "assertionWarns": [],
         "hullDamageHp": 0,
@@ -768,10 +776,10 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 12983,
-        "earnedValue": 7983,
-        "creditsPerMin": 133.05,
-        "netWorth": 20983,
+        "endingCapital": 13088,
+        "earnedValue": 8088,
+        "creditsPerMin": 134.8,
+        "netWorth": 21088,
         "completedLoops": 5,
         "completedContracts": 5,
         "failedContracts": 0,
@@ -821,10 +829,10 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 1209,
-        "earnedValue": 11209,
-        "creditsPerMin": 124.54,
-        "netWorth": 17269,
+        "endingCapital": 1710,
+        "earnedValue": 11710,
+        "creditsPerMin": 130.11,
+        "netWorth": 17823,
         "completedLoops": 7,
         "completedContracts": 7,
         "failedContracts": 0,
@@ -837,8 +845,8 @@
             "price": 15000,
             "reason": "buyShip:ship_pelican",
             "atS": 4984.4,
-            "creditsBefore": 16209,
-            "creditsAfter": 1209,
+            "creditsBefore": 16710,
+            "creditsAfter": 1710,
             "authority": "ships.buyShip"
           }
         ],
@@ -913,37 +921,37 @@
       {
         "seed": 3232800769,
         "ok": false,
-        "endingCapital": 87,
-        "earnedValue": -4913,
-        "creditsPerMin": -163.77,
+        "endingCapital": 49,
+        "earnedValue": -4951,
+        "creditsPerMin": -165.03,
         "completedLoops": 22,
         "completedContracts": 22,
         "assertionFails": [
-          "dead_income -163.77 < 50 (hauler)"
+          "dead_income -165.03 < 50 (hauler)"
         ]
       },
       {
         "seed": 3232800785,
         "ok": false,
-        "endingCapital": 505,
-        "earnedValue": -4495,
-        "creditsPerMin": -149.83,
+        "endingCapital": 975,
+        "earnedValue": -4025,
+        "creditsPerMin": -134.17,
         "completedLoops": 23,
         "completedContracts": 23,
         "assertionFails": [
-          "dead_income -149.83 < 50 (hauler)"
+          "dead_income -134.17 < 50 (hauler)"
         ]
       },
       {
         "seed": 3232800801,
         "ok": false,
-        "endingCapital": 1401,
-        "earnedValue": -3599,
-        "creditsPerMin": -119.97,
+        "endingCapital": 1334,
+        "earnedValue": -3666,
+        "creditsPerMin": -122.2,
         "completedLoops": 22,
         "completedContracts": 22,
         "assertionFails": [
-          "dead_income -119.97 < 50 (hauler)"
+          "dead_income -122.2 < 50 (hauler)"
         ]
       }
     ],
@@ -975,11 +983,11 @@
       {
         "seed": 3232804898,
         "ok": true,
-        "endingCapital": 8345,
-        "earnedValue": 4545,
-        "creditsPerMin": 151.5,
-        "completedLoops": 3,
-        "completedContracts": 3,
+        "endingCapital": 11880,
+        "earnedValue": 8080,
+        "creditsPerMin": 269.33,
+        "completedLoops": 4,
+        "completedContracts": 4,
         "assertionFails": []
       }
     ],
@@ -1109,6 +1117,11 @@
       "detail": "spread_collapse"
     },
     {
+      "area": "bottleneck:hauler",
+      "status": "measured",
+      "detail": "capital_bind"
+    },
+    {
       "area": "bottleneck:hunter",
       "status": "measured",
       "detail": "capital_for_wasp"
@@ -1183,8 +1196,8 @@
           "price": 15000,
           "reason": "buyShip:ship_pelican",
           "atS": 4984.4,
-          "creditsBefore": 16209,
-          "creditsAfter": 1209,
+          "creditsBefore": 16710,
+          "creditsAfter": 1710,
           "authority": "ships.buyShip"
         }
       ],

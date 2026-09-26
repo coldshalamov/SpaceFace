@@ -302,7 +302,12 @@ try {
     report_realSaves = { dir: real.dir, slots: real.slots, versions };
   }
   if (!ELECTRON) {
-    await page.goto(routeBaseUrl, { waitUntil: 'domcontentloaded' });
+    // Transport budget, not an assertion: DCL waits on the whole ~1200-request static module
+    // graph. Measured 14s on a quiet box, 110s+ while the ladder's own parallel checks saturate
+    // the CPU (per-request wall time then starves in the renderer, not the network — the server
+    // answers a 1.4MB file in 170ms while the box is pinned). 180s matches the budget this file
+    // already grants the desktop route's waitForLoadState below; a real hang still fails here.
+    await page.goto(routeBaseUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   } else {
     // The desktop route boots itself and may raise the cinematic splash, which swallows a scripted
     // .click(). A real key press is the only thing that dismisses it.
