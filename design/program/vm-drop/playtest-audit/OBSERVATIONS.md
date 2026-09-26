@@ -170,6 +170,51 @@ recoverable berth verb needs the real combat receipt path; synthetic emit can't 
 **Run 7 queue**: full-route rerun with all beats — i/l overlays, t02b switch, l04 sell commit,
 l04b job-accept→l06 mission-sector jump→l09 dock-and-get-paid, l07 hail in flight, l08 gameOver.
 
+## Run 7 — routes=screens+edge+combat+loop @ 1743a1143
+
+**screens**: 26 beats clean — i04-cargo / i06-comms verified as live HUD overlays (overlay=true);
+t02b switch toggle measured correctly; s02 walked market|shipworks|industry|contracts|factions|bar|
+ledger (station tab PNGs all read A-list: bar has patron roster + numbered answers + leads,
+industry has recipe tree with SHORT badges + NEEDS REFINERY gate, ledger has event timeline +
+net-CR dial). Sandbox screen = dev harness by design.
+
+**edge**: 8 beats, 1 observation — x04 Continue now works (x03 Esc-through-screens fix);
+x07 F5/F9 round-trip clean again. x08 real saveLoad slot click landed mode=menu: the slot's Load
+verb opens a "Load this save?" confirm modal the probe didn't answer (two-step load is correct
+design — probe now clicks the confirm's Load too). Logged-copy nuance, not fixed: from title the
+confirm warns "Loading will replace your current game… Unsaved progress is lost" when there is no
+in-flight game — shared confirm component, text is generic; watch item.
+
+**combat**: 7 beats, 0 observations — lab doors, launch, fight, deathwatch, c04b death→results, exit
+all clean.
+
+**loop**: 10 beats, 1 obs + 1 console error:
+- **l04-sell VERIFIED**: held-row → sell-mode tab → live `data-go` "Sell 5" → credits 5400→5446.
+  Market sell path works end-to-end.
+- **l05/l06 VERIFIED**: clickText found fixed footer "Undock" → mode=flight → jump helios_prime →
+  ceres_belt `arrived:true`, autosave `saveNow:true` on arrival. Jump path works end-to-end.
+- **l07-hail VERIFIED**: in flight, targeted ship id=328 at 501 WU → hail deck opened
+  (`deckOpen:true`, card shows "BELT OUTPOST ↔ CINDER SLUICE / HAULER / FREQ IDLE / FREQ 3.19k").
+- **l04b-job**: probe clicked the row CARD (which only selects) instead of the leaf "Dispatch this
+  job" verb inside it → active 0→0. Probe fixed (leaf-only verb match + detail-pane fallback).
+- **l09-deliver**: early-out "none-in-sector" — no active mission (l04b's miss), untested this run.
+- **l08-death**: synthetic path still shows only Load save / New Game (expected — recovery berth
+  verb requires the real combat-death receipt; not a defect).
+- **NEW console error — needs investigation**: `[render] sector authored prewarm invariant failed;
+  residency was not rotated — Incoming sector sector_ceres_belt lost a prepared authored boundary
+  before publish` (renderer.js:3560, thrown through the prewarm catch at ~10376). One READY
+  boundary record failed `publish()`'s revalidation between snapshot and publish — a generation/
+  abort race in sector-prewarm. Arrival still completed; sector falls back to procedural boundaries.
+  Repro attempt: `--route=loop --only=l06-jump`. If deterministic → ledger row or targeted fix;
+  if a benign supersede, the invariant's loss-detection may need to tolerate rotation.
+
+| run | routes | beats | obs | game fixes landed |
+|-----|--------|-------|-----|-------------------|
+| 7 | screens+edge+combat+loop | 26+8+7+10 | 1 probe-gap (l04b card-click) + 1 console error (prewarm race) | — (probe fixes only) |
+
+**Run 8 queue**: l04b leaf-verb fix verify → l09 real deliver-and-get-paid chain; x08 confirm-step
+verify; s03 bar patron dialogue; i08 find palette; prewarm-invariant repro result.
+
 ## Run ledger
 
 | run | routes | beats | obs | game fixes landed |
