@@ -10,6 +10,16 @@
 const electron = require('electron');
 const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
 const path = require('path');
+// Bytecode-cache the shell's own module graph under userData so launches after the first skip
+// recompiling the main-process modules below. Isolated evidence keeps its cache inside the
+// throwaway profile (its setPath override has not run yet). No-op where the host lacks support.
+try {
+  const compileCacheBase = process.env.SPACEFACE_ELECTRON_TEST_MODE === 'isolated-evidence'
+    && process.env.SPACEFACE_ELECTRON_TEST_USER_DATA
+    ? process.env.SPACEFACE_ELECTRON_TEST_USER_DATA
+    : app.getPath('userData');
+  require('node:module').enableCompileCache?.(path.join(compileCacheBase, 'v8-compile-cache'));
+} catch {}
 const fs = require('fs');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const { resolveMountedUserContentDir } = require('../scripts/lib/userContentStore.cjs');
@@ -780,6 +790,9 @@ if (!app.requestSingleInstanceLock()) {
     migratePlayerStore: true,
     runtime: collectRuntimeIdentity(),
   });
+  // Binding the loopback listener is pure Node work; run it while Chromium still initializes
+  // so it leaves the window-critical path. The first awaiter still owns failure handling.
+  void ensureGameServerPort().catch(() => {});
   app.whenReady()
     .then(() => runPlayerStoreMigration())
     .catch(handleWindowCreationFailure);
@@ -792,6 +805,9 @@ if (!app.requestSingleInstanceLock()) {
     evidenceBackgroundOverride: allowEvidenceBackgroundExecution,
     runtime: collectRuntimeIdentity(),
   });
+  // Binding the loopback listener is pure Node work; run it while Chromium still initializes
+  // so it leaves the window-critical path. The first awaiter still owns failure handling.
+  void ensureGameServerPort().catch(() => {});
   app.on('second-instance', () => {
     const w = BrowserWindow.getAllWindows()[0];
     if (w) {
