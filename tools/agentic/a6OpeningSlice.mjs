@@ -147,7 +147,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
 
   // ---- helpers ---------------------------------------------------------------
   const shipsNear = (r) => (state.entityList || []).filter(e =>
-    e && e.alive !== false && e.type === 'ship' && e.id !== playerId && dist(e.pos, player.pos) < r);
+    e && e.alive !== false && e.type === 'ship' && e.id !== playerId && e.pos && dist(e.pos, player.pos) < r);
   // Law responders are cover, not targets: every patrol answer comes in on team 1
   // with no friendly marker, so the raw team check would count the rescue as a
   // threat — the pilot could shoot the law (assault -> wanted heat -> warrant
@@ -267,9 +267,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     const deny = resolveDockDeny(state, STATION);
     if (deny) return false;
     clearAutopilot();
+    state.ui.docked = true; state.ui.dockedStationId = STATION;
     bus.emit('dock:attempt', { stationId: STATION });
     bus.emit('dock:docked', { stationId: STATION });
-    state.ui.docked = true; state.ui.dockedStationId = STATION;
     beat('dock', { hot: true });
     return true;
   }
@@ -360,7 +360,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       && beats.some(b => b.name === 'throw_kill')) {
       const tk = beats.find(b => b.name === 'throw_kill').t;
       const got = events.some(e => {
-        if (!(e.t > tk - 0.5)) return false;
+        // same-tick events share simTime with the beat — >= admits them; a scoop
+        // during the swing (before the kill lands) must not bank the beat.
+        if (!(e.t >= tk)) return false;
         if (e.ev === 'pickup:collected') {
           // only the player's own scoop counts — a raider securing a custody pod
           // emits the same event, and rejected scoops emit it with acceptedAmount 0.
@@ -418,6 +420,8 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         log('payload', payloadId, 'hauler', haulerId, 'raider dist', dist(byMass[0].pos, player.pos).toFixed(0));
         phase = 'latch'; phaseStart = t;
       }
+      // the day-0 guarantee is [60,170]s; a silent no_budget waits 14 min otherwise
+      if (t - phaseStart > 240) { log('raid never fired'); phase = 'fail_raid'; break; }
     } else if (phase === 'latch') {
       let target = payloadId != null ? state.entities.get(payloadId) : null;
       if (!target || target.alive === false) {
@@ -785,10 +789,11 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       if (!victim) {
         if (i % 90 === 0) log(`  crime dbg t=${t.toFixed(1)} no lawful target near inc=${inc.length}`);
         if (t - phaseStart > 120) { log('no lawful target to assault'); phase = 'fail_crime'; break; }
-        continue;
-      }
+        // no continue here: falling through to runTicks is what lets a trader drift
+        // into range — continuing would freeze simTime and livelock the run.
+      } else {
       // stand OFF the hull — parked inside the victim's disc, shots never register entry
-      const standoff = Math.max(170, (victim.radius || 0) + 130);
+      const standoff = Math.min(220, Math.max(170, (victim.radius || 0) + 130));
       const d = dist(victim.pos, player.pos);
       const ux = d > 1e-3 ? (player.pos.x - victim.pos.x) / d : 1;
       const uz = d > 1e-3 ? (player.pos.z - victim.pos.z) / d : 0;
@@ -800,6 +805,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       input.aimAngle = Math.atan2(victim.pos.z + hv.z * lead - player.pos.z, victim.pos.x + hv.x * lead - player.pos.x);
       input.fireGroup = 1;
       input.fire = d < 235;
+      }
       if (t - phaseStart > 120) { log('could not land a hit on the hauler'); phase = 'fail_crime'; break; }
     } else if (phase === 'await_patrol') {
       // wait for a law responder inside the composed frame (the observation block logs it)
@@ -813,9 +819,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         clearAutopilot();
         const deny = resolveDockDeny(state, STATION);
         if (deny) { log('dock denied:', JSON.stringify(deny)); phase = 'fail_dockdeny'; break; }
+        state.ui.docked = true; state.ui.dockedStationId = STATION;
         bus.emit('dock:attempt', { stationId: STATION });
         bus.emit('dock:docked', { stationId: STATION });
-        state.ui.docked = true; state.ui.dockedStationId = STATION;
         docked = true;
         beat('dock', {});
         phase = 'docked'; phaseStart = t;
