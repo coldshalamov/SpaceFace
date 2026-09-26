@@ -658,6 +658,7 @@ export const ui = {
     let lastEndpointCx = null;
     let lastEndpointCy = null;
     let lastFlightPathDrawing = null;
+    let lastFlightCursorActive = null;
 
     // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
@@ -678,8 +679,13 @@ export const ui = {
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
-      document.body.classList.toggle('sf-flight-cursor', active);
-      const reticleEl = document.getElementById('aim-reticle') || reticle;
+      if (lastFlightCursorActive !== active) {
+        lastFlightCursorActive = active;
+        document.body.classList.toggle('sf-flight-cursor', active);
+      }
+      // `reticle` created above is the only element with id 'aim-reticle': the old
+      // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
+      const reticleEl = reticle;
       // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
       // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
       const nextReticleDisplay = reticleAlive ? 'block' : 'none';

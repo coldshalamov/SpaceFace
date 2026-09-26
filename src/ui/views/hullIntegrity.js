@@ -234,6 +234,37 @@ export function updateShipCondition(host, entity, dt = 0, reducedMotion = false,
   const c = CACHE.get(host) || mount(host);
   if (!c) return null;
   const m = stepIntegrity(c.m, entity, dt, reducedMotion, reducedFlash);
+  // Whole-write signature: every DOM write below derives from these model fields, so an
+  // identical signature skips the ~40 cached attr/text/opacity calls (and their String()
+  // allocs) entirely. Object.is keeps NaN maxes/raws comparing equal so unshielded hulls
+  // still settle. Fields not rendered (hAge, hStart, ...) are intentionally absent.
+  const s = c.sig || (c.sig = {});
+  const rawHull = entity ? entity.hull : undefined;
+  const rawShield = entity ? entity.shield : undefined;
+  if (s.on === true
+    && s.defId === m.defId && s.owner === m.owner
+    && s.hullState === m.hullState && s.shieldState === m.shieldState
+    && s.motion === m.motion && s.flashes === m.flashes
+    && s.hullAvailable === m.hullAvailable && s.shieldAvailable === m.shieldAvailable
+    && s.shieldFitted === m.shieldFitted
+    && Object.is(s.hull, m.hull) && Object.is(s.shield, m.shield)
+    && Object.is(s.hullTrail, m.hullTrail) && Object.is(s.shieldTrail, m.shieldTrail)
+    && Object.is(s.hImpact, m.hImpact) && Object.is(s.sImpact, m.sImpact)
+    && Object.is(s.repair, m.repair) && Object.is(s.recharge, m.recharge)
+    && Object.is(s.hMax, m.hMax) && Object.is(s.sMax, m.sMax)
+    && Object.is(s.rawHull, rawHull) && Object.is(s.rawShield, rawShield)) return m;
+  s.on = true;
+  s.defId = m.defId; s.owner = m.owner;
+  s.hullState = m.hullState; s.shieldState = m.shieldState;
+  s.motion = m.motion; s.flashes = m.flashes;
+  s.hullAvailable = m.hullAvailable; s.shieldAvailable = m.shieldAvailable;
+  s.shieldFitted = m.shieldFitted;
+  s.hull = m.hull; s.shield = m.shield;
+  s.hullTrail = m.hullTrail; s.shieldTrail = m.shieldTrail;
+  s.hImpact = m.hImpact; s.sImpact = m.sImpact;
+  s.repair = m.repair; s.recharge = m.recharge;
+  s.hMax = m.hMax; s.sMax = m.sMax;
+  s.rawHull = rawHull; s.rawShield = rawShield;
   const shape = integrityHullId(m.defId);
   if (c.shape !== shape) {
     // Only a hull change reparses geometry. Health, shield and digits retain their node identities.
