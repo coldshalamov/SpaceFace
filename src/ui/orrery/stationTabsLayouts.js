@@ -13,19 +13,22 @@ const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
+// WEIGHT (owner 2026-09-25: no thin wireframe): a spine is a 2px line over a 7px faint band (left edge at x);
+// minor ticks are 1.5px, row ticks 2px. `pos` is the layer's position / size.
+const SPINE = (x, a = .4, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x}px, rgb(${BONE} / ${a}) ${x}px, rgb(${BONE} / ${a}) ${x + 2}px, transparent ${x + 2}px) ${pos} no-repeat`;
+const BAND = (x, pos = '0 0 / 100% 100%') => `linear-gradient(90deg, transparent ${x - 2.5}px, rgb(${BONE} / .085) ${x - 2.5}px, rgb(${BONE} / .085) ${x + 4.5}px, transparent ${x + 4.5}px) ${pos} no-repeat`;
 /** The rail of light down a list, a tick on every row, the Hand on the chosen one. */
 const rail = (list, row, chosen) => `
-${T} ${list} { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .32) 7px, rgb(${BONE} / .32) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent 5px, rgb(${BONE} / .07) 5px, rgb(${BONE} / .07) 10px, transparent 10px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} ${list} { background:${SPINE(7)}, ${BAND(7)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 ${T} ${row} { ${PLAIN} position:relative !important; padding-left:44px !important; }
 ${T} ${row}::after { display:none !important; }
-${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1.5px !important;
+${T} ${row}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:2px !important;
   margin:0 !important; background:rgb(${BONE} / .55) !important; box-shadow:none !important; transform:none !important; clip-path:none !important; border:0 !important; }
 ${T} ${row}:is(${chosen})::before { translate:none !important; scale:none !important; left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important; clip-path:none !important; border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important;
   box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; filter:none !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .75)); }
-${T} ${row}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important; width:26px !important; height:1.5px !important; margin:-.75px 0 0 !important;
+${T} ${row}:is(${chosen})::after { content:"" !important; display:block !important; position:absolute !important; left:7px !important; top:50% !important; width:26px !important; height:2px !important; margin:-1px 0 0 !important;
   translate:none !important; scale:none !important; rotate:none !important;
   clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
@@ -625,7 +628,7 @@ ${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-select
 ${T} .sx-ct__rows .sx-ct-row::before { top:17px !important; margin-top:0 !important; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { top:17px !important; margin-top:-7px !important; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { top:17px !important; margin-top:-14px !important; }
-${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { width:16px !important; height:1.5px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; }
+${T} .sx-ct__rows .sx-ct-row:focus-visible:not(.is-active, .is-selected, [aria-selected="true"])::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; }
 /* FEATURED: a word over the row under a rule of light; the price stays on the title's line */
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:26px !important; }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { position:absolute !important; left:26px !important; right:0 !important; top:6px !important; margin:0 !important; padding-top:4px !important;
@@ -635,12 +638,12 @@ ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected,
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:34px !important; }
 /* the dispatch's alternative hangs off its own minor tick: the verb and its terms on one line */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:9px !important;
-  width:8px !important; height:1px !important; margin:0 !important; background:rgb(${BONE} / .38) !important; clip-path:none !important; transform:none !important; }
+  width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { padding:2px 0 8px 26px !important; margin-top:-2px; flex-wrap:nowrap !important; align-items:baseline !important; gap:0 6px !important; min-width:0; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { flex:none; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:block !important; white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub::before { content:"· "; color:rgb(${BONE} / .4); }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:1.5px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
 /* the rail ends with its last row: each block carries its own length of scale, edge to edge */
 ${T} .sx-ct__hang { background:none !important; }
 ${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat, repeating-linear-gradient(180deg, rgb(${BONE} / .22) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
@@ -789,9 +792,9 @@ ${T} .sx-ct__hang > .sx-ct__yours { padding-top:30px !important; }
 /* FEATURED: a major tick and a word beside it, at the standard pitch; no rule */
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { background:none !important; padding-top:0 !important; top:8px !important; font-size:11px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:24px !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { content:"" !important; display:block !important; position:absolute !important; left:2px !important; top:14px !important; width:11px !important; height:1.5px !important;
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { content:"" !important; display:block !important; position:absolute !important; left:2px !important; top:14px !important; width:11px !important; height:2px !important;
   margin:0 !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:14px !important; margin:0 !important; width:11px !important; height:1.5px !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:14px !important; margin:0 !important; width:11px !important; height:2px !important; border-radius:0 !important; background:rgb(248 244 234 / .8) !important; }
 /* DISPATCH is a verb on its own rung: a chevron word in the light, the terms after it */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { color:rgb(248 244 234) !important; font-size:10.5px !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name::before { content:"› "; color:rgb(${BONE} / .5); }
@@ -799,10 +802,10 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:is(:hover, :focus-visible) .k
 /* the terms are rungs on one ladder with the two scales: a rail down the label column, a tick per term */
 ${T} .sx-dossier__terms { position:relative; padding-left:16px !important; background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .24) 3px, rgb(${BONE} / .24) 4px, transparent 4px) 0 0 / 100% 100% no-repeat; }
 ${T} .sx-dossier__terms > li { position:relative; }
-${T} .sx-dossier__terms > li::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:1px; background:rgb(${BONE} / .42); }
+${T} .sx-dossier__terms > li::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
 ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-16px; top:.55em; }
-${T} .orr-ct-scales { position:relative; padding-left:16px !important; box-sizing:border-box; background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .24) 3px, rgb(${BONE} / .24) 4px, transparent 4px) 0 0 / 100% 100% no-repeat; }
-${T} .orr-ct-scales::before, ${T} .orr-ct-scales::after { content:""; position:absolute; left:0; width:9px; height:1px; background:rgb(${BONE} / .42); }
+${T} .orr-ct-scales { position:relative; padding-left:16px !important; box-sizing:border-box; background:${SPINE(3, .36)}, ${BAND(3)}; }
+${T} .orr-ct-scales::before, ${T} .orr-ct-scales::after { content:""; position:absolute; left:0; width:9px; height:1.5px; background:rgb(${BONE} / .46); }
 ${T} .orr-ct-scales::before { top:20px; }
 ${T} .orr-ct-scales::after { top:62px; }
 /* the title is one line under the numeral; the ladder column gives its titles room */
@@ -940,7 +943,7 @@ ${T} .orr-bar-wave { height:24px !important; }
 ${T} .sx-ledger > .sx-ledger__right { gap:0 !important; }
 ${T} .sx-ledger__right > .orr-ledger-tape { margin-top:-4px !important; }
 ${T} .sx-ledger__right > .sx-ledger__read { position:relative !important; padding:14px 0 0 0 !important; }
-${T} .sx-ledger__read::after { content:""; position:absolute; left:0; top:0; width:1px; height:14px; background:rgb(${BONE} / .6); pointer-events:none; }
+${T} .sx-ledger__read::after { content:""; position:absolute; left:0; top:0; width:2px; height:14px; background:rgb(${BONE} / .6); pointer-events:none; }
 ${T} .sx-ledger__read::before { inset:-24px -60px -40px -40px; }
 /* the unit sits on the numeral's baseline as a suffix; one label above says the direction */
 ${T} .sx-ledger__read-hero { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
@@ -990,7 +993,7 @@ ${T} .sx-dossier > .orr-ct-route { z-index:0; isolation:isolate; }
 ${T} .sx-dossier > .orr-ct-route::before { z-index:-1 !important; inset:-4% -4% 6% -4% !important; width:auto !important; height:auto !important; transform:none !important; }
 
 /* the arm follows the bone cursors where the Hand lives elsewhere (Missions beam, Factions arm, Ledger tape) */
-${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; left:7px !important; top:50% !important; width:26px !important; height:1.5px !important; margin:-.75px 0 0 !important; border-radius:0 !important; clip-path:none !important; opacity:1 !important; background:rgb(248 244 234) !important; filter:drop-shadow(0 0 4px rgb(248 244 234 / .5)) !important; }
+${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; left:7px !important; top:50% !important; width:26px !important; height:2px !important; margin:-1px 0 0 !important; border-radius:0 !important; clip-path:none !important; opacity:1 !important; background:rgb(248 244 234) !important; filter:drop-shadow(0 0 4px rgb(248 244 234 / .5)) !important; }
 ${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::before { left:31px !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
 ${T} :is(.sx-ct__rows, .sx-fac__rows, .st-ledger-list):is(:focus-within, :hover) :is(.sx-ct-row, .sx-fac-row, .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { background:rgb(255 250 240) !important; }
 
@@ -1047,24 +1050,24 @@ ${T} .sx-ledger__keys { display:block !important; }
 }
 /* the empty ladder keeps its rail with one empty rung where the first receipt will land */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) { position:relative !important; margin-top:36px !important; padding:8px 0 8px 26px !important;
-  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
-${T} .sx-ledger .st-ledger-empty:not([hidden])::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:1px; background:rgb(${BONE} / .42); }
+  background:${SPINE(7, .36)}, ${BAND(7)},
+    repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; background:rgb(${BONE} / .46); }
 
 /* ================================ ROUND 6: MISSIONS ========================================= */
 /* the open contract keeps a quiet mark: a 16px full-ink tick on the rail and its price in ink; no arrowhead */
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { display:none !important; }
-${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { left:4px !important; width:16px !important; height:1.5px !important; filter:none !important; }
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { left:4px !important; width:16px !important; height:2px !important; filter:none !important; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
 ${T} .sx-ct__rows .sx-ct-row:not(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(${BONE} / .72) !important; }
 /* focus is the light cursor: a 16px tick with its bloom, the name lifted to full ink and weight */
-${T} .sx-ct__rows .sx-ct-row:focus-visible::before { display:block !important; left:4px !important; width:16px !important; height:1.5px !important; margin-top:-.75px !important; top:50% !important; clip-path:none !important;
+${T} .sx-ct__rows .sx-ct-row:focus-visible::before { display:block !important; left:4px !important; width:16px !important; height:2px !important; margin-top:-1px !important; top:50% !important; clip-path:none !important;
   background:rgb(255 250 240) !important; box-shadow:0 0 7px 1px rgb(248 244 234 / .55) !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible::after { display:none !important; }
 ${T} .sx-ct__rows .sx-ct-row:focus-visible .sx-ct-row__title { color:rgb(255 255 255) !important; font-weight:700 !important; }
 /* the rail's ticks read at 1x: row ticks 8px at 55%, major ticks 16px at 60%, the rail at 30% */
-${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; height:1.5px !important; background:rgb(${BONE} / .55) !important; }
-${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { width:16px !important; height:1.5px !important; background:rgb(248 244 234 / .6) !important; }
+${T} .sx-ct__rows .sx-ct-row::before { width:8px !important; height:2px !important; background:rgb(${BONE} / .55) !important; }
+${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after { width:16px !important; height:2px !important; background:rgb(248 244 234 / .6) !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:38px !important; }
 ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__badge { top:12px !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:19px !important; }
@@ -1120,8 +1123,8 @@ ${T} .sx-talk__avatar::before { -webkit-mask-image:radial-gradient(ellipse 42% 6
   background:radial-gradient(ellipse 42% 60% at 56% 47%, rgb(6 8 11 / .92), rgb(6 8 11 / .82) 42%, rgb(6 8 11 / .5) 62%, rgb(6 8 11 / 0) 84%); }
 /* the replies hang off a spine: ticks cross it, the current reply is a light cursor on it, no triangle */
 ${T} .sx-talk__choices { background:linear-gradient(90deg, transparent 30px, rgb(${BONE} / .22) 30px, rgb(${BONE} / .22) 31px, transparent 31px) 0 8px / 100% calc(100% - 16px) no-repeat !important; padding:8px 0 !important; }
-${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { left:27px !important; width:7px !important; height:1px !important; margin-top:0 !important; top:50% !important; clip-path:none !important; background:rgb(${BONE} / .42) !important; }
-${T} .sx-talk__choices > li .sx-choice.is-current::before, ${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:29.5px !important; width:2px !important; height:18px !important; margin-top:-9px !important; clip-path:none !important;
+${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { left:27px !important; width:8px !important; height:2px !important; margin-top:0 !important; top:50% !important; clip-path:none !important; background:rgb(${BONE} / .42) !important; }
+${T} .sx-talk__choices > li .sx-choice.is-current::before, ${T} .sx-talk__choices > li .sx-choice:is(:hover, :focus-visible)::before { left:29px !important; width:4px !important; height:18px !important; margin-top:-9px !important; clip-path:none !important;
   background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
 /* the keys read as keys */
 ${T} .sx-choice::after { font-size:12px !important; color:rgb(${BONE} / .7) !important; }
@@ -1198,7 +1201,7 @@ ${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { paddin
   ${T} .sx-talk__choices > li .sx-choice { padding-top:13px !important; padding-bottom:13px !important; }
 }
 /* the reply spine and its ticks at rest light */
-${T} .sx-talk__choices { background:linear-gradient(90deg, transparent 30px, rgb(${BONE} / .3) 30px, rgb(${BONE} / .3) 31.5px, transparent 31.5px) 0 8px / 100% calc(100% - 16px) no-repeat !important; }
+${T} .sx-talk__choices { background:${SPINE(30, .38, '0 8px / 100% calc(100% - 16px)')}, ${BAND(30, '0 8px / 100% calc(100% - 16px)')} !important; }
 ${T} .sx-choice::before, ${T} .sx-talk__choices > li:first-child .sx-choice::before { background:rgb(${BONE} / .55) !important; }
 /* the reply keys are keys, not list numbers: dim unless current */
 ${T} .sx-choice::after { font-size:11px !important; font-weight:600 !important; color:rgb(${BONE} / .55) !important; }
@@ -1212,7 +1215,7 @@ ${T} .sx-talk__avatar { -webkit-mask-image:linear-gradient(180deg, #000 76%, tra
 /* a lead's price is a reading on the column's edge; the first lead is current at rest */
 ${T} .sx-lead__rows .sx-lead { margin-right:0 !important; }
 ${T} .sx-lead__s { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important; font-size:15px !important; color:rgb(${BONE} / .85) !important; }
-${T} .sx-lead__rows .sx-lead.is-current::before { left:6px !important; top:5px !important; bottom:5px !important; width:2px !important; height:auto !important; margin:0 !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
+${T} .sx-lead__rows .sx-lead.is-current::before { left:6px !important; top:5px !important; bottom:5px !important; width:4px !important; height:auto !important; margin:0 !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .55) !important; }
 ${T} .sx-lead__rows .sx-lead.is-current .sx-lead__t { color:rgb(248 244 234) !important; }
 ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 
@@ -1325,14 +1328,14 @@ ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__rew { display:inline !important; float:
   font-family:var(--dp-face-numeral, "Archivo") !important; font-weight:600 !important; font-size:12.5px !important; letter-spacing:.02em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew { color:rgb(248 244 234) !important; }
 /* the bead sits at the rail junction (on the spine), the arm runs from it to the words */
-${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:5.5px !important; width:4.5px !important; height:4.5px !important; margin-top:-2.25px !important; border-radius:50% !important;
+${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { left:5px !important; width:6px !important; height:6px !important; margin-top:-3px !important; border-radius:50% !important;
   background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
 /* a sub-verb (Dispatch this job) is quieter than the job it hangs off until its row is chosen */
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__name { color:rgb(${BONE} / .62) !important; font-weight:500 !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:not(.is-active, .is-selected, [aria-selected="true"]) .k-row__sub { color:rgb(${BONE} / .5) !important; }
 /* one spine through the terms: the scales' rule continues down the ladder; the dashes are its ticks; the key is the last rung */
 ${T} .sx-dossier__terms { position:relative !important; padding-bottom:0 !important; margin-bottom:0 !important; min-height:0 !important; }
-${T} .sx-dossier__terms::before { content:""; position:absolute; left:3px; top:-2px; bottom:6px; width:1px; background:rgb(${BONE} / .28); pointer-events:none; }
+${T} .sx-dossier__terms::before { content:""; position:absolute; left:0; top:-2px; bottom:6px; width:8px; background:${SPINE(3, .36)}, ${BAND(3)}; pointer-events:none; }
 ${T} .sx-dossier__terms > li:last-child { margin-bottom:0 !important; }
 ${T} .sx-dossier__foot { margin-top:6px !important; }
 /* the glass under the route orrery: the instrument is not part of the set */
@@ -1349,8 +1352,8 @@ ${T} .sx-dossier > .orr-ct-route::before { background:radial-gradient(circle, rg
 /* ================================ ROUND 9b: MISSIONS — the tether ============================= */
 ${T} .sx-dossier { position:relative !important; }
 ${T} .sx-dossier > .sx-ct-tether { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:1; grid-area:auto; }
-${T} .sx-ct-tether__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:5; opacity:.09; stroke-linejoin:round; }
-${T} .sx-ct-tether__core { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
+${T} .sx-ct-tether__bloom { fill:none; stroke:rgb(${BONE}); stroke-width:9; opacity:.09; stroke-linejoin:round; }
+${T} .sx-ct-tether__core { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2; stroke-linejoin:miter; }
 ${T} .sx-ct-tether__bead { fill:rgb(248 244 234); filter:drop-shadow(0 0 3px rgb(248 244 234 / .7)); }
 ${T} .sx-ct-tether__pulse-bloom { fill:rgb(143 203 255 / .28); }
 ${T} .sx-ct-tether__pulse-dot { fill:rgb(223 238 255); }
@@ -1397,8 +1400,8 @@ ${T} .sx-ind .orr-extent::before, ${T} .sx-ind__list .orr-extent::before, ${T} .
 /* ================================ ROUND 10: MISSIONS ======================================== */
 /* the junction bead: on the spine where the arm leaves it, at every spelling of "chosen" */
 ${T} .sx-ct__rows .sx-ct-row.is-active::before, ${T} .sx-ct__rows .sx-ct-row.is-selected::before, ${T} .sx-ct__rows .sx-ct-row[aria-selected="true"]::before {
-  content:"" !important; display:block !important; position:absolute !important; left:5.5px !important; top:50% !important; width:4.5px !important; height:4.5px !important;
-  margin:-2.25px 0 0 !important; border-radius:50% !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important;
+  content:"" !important; display:block !important; position:absolute !important; left:5px !important; top:50% !important; width:6px !important; height:6px !important;
+  margin:-3px 0 0 !important; border-radius:50% !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important;
   clip-path:none !important; transform:none !important; opacity:1 !important; filter:none !important; }
 /* the ladder window's extent cursor is a rail mark, not a selection */
 ${T} .sx-ct__board > .orr-extent::before, ${T} .sx-ct__board .orr-extent::before { opacity:.3 !important; }
@@ -1417,7 +1420,7 @@ ${T} .sx-lead__rows:focus-within .sx-lead.is-current::before { background:rgb(25
 /* B3: one spine at one rest light from the first contact to the last lead; the lists keep their ticks only */
 ${T} .sx-bar__hang { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .36) 7px, rgb(${BONE} / .36) 8.5px, transparent 8.5px) 0 0 / 100% 100% no-repeat !important;
   -webkit-mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; }
-${T} .sx-bar__rows, ${T} .sx-lead__rows { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-bar__rows, ${T} .sx-lead__rows { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 /* B4: three hints, one voice */
 ${T} .sx-talk__keys, ${T} .sx-bar__keys, ${T} .sx-bar__leadkeys { font-size:10px !important; letter-spacing:.14em !important; color:rgb(119 112 104) !important; opacity:1 !important; }
 ${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(${BONE} / .6) !important; }
@@ -1483,7 +1486,7 @@ ${T} .sx-ind-process__head .sx-ind-process__count { color:rgb(${BONE} / .62) !im
 /* one spine for the whole ladder, drawn once at 40%; the group lists keep their ticks; the extent cursor retires (the window ends on a whole rung) */
 ${T} .sx-ind__list { position:relative !important; }
 /* (the spine is the scroller's own background since round 12: it cannot scroll away and shares the cursor's box) */
-${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 4px 0 / 4px 100% no-repeat !important; }
+${T} .sx-ind-process__items { background:repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 4px 0 / 6px 100% no-repeat !important; }
 /* (the ladder's light cursor rides the one spine again: see ROUND 11) */
 @media (max-width:1280px) { ${T} .sx-ind-process__head { white-space:nowrap !important; } ${T} .sx-ind-process__head .sx-ind-process__count, ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:8px; } }
 
@@ -1526,7 +1529,7 @@ ${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
 /* YOURS hangs off the ruler with a major tick like FEATURED; the tracked row carries its row tick */
 ${T} .sx-ct__yours::after { content:""; position:absolute; left:2px; top:50%; width:12px; height:1.5px; margin-top:-.75px; background:rgb(${BONE} / .7); pointer-events:none; }
 ${T} .sx-ct__jobs .sx-job { position:relative !important; }
-${T} .sx-ct__jobs .sx-job::before { content:""; position:absolute; left:-40px; top:.75em; width:8px; height:1.5px; background:rgb(${BONE} / .6); pointer-events:none; }
+${T} .sx-ct__jobs .sx-job::before { content:""; position:absolute; left:-40px; top:.75em; width:8px; height:2px; background:rgb(${BONE} / .6); pointer-events:none; }
 /* the featured row's tick sits on its title, not on its badge */
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::before { top:48px !important; }
 ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge):is(.is-active, .is-selected, [aria-selected="true"])::after { top:48px !important; }
@@ -1553,15 +1556,15 @@ ${T} .sx-ind-process__items .sx-ind-row:is(.is-active, [aria-selected="true"]) .
 ${T} .sx-ind-process__items .sx-ind-row:is(.is-materials, .is-blocked) .sx-ind-row__why { display:inline !important; }
 /* the ladder's light cursor rides the one spine: a 3px bar at 60% with an end tick */
 ${T} .sx-ind__list .orr-extent { display:block !important; }
-${T} .sx-ind__list .orr-extent::before { left:6px !important; width:3px !important; background:rgb(${BONE} / .45) !important; box-shadow:none !important; opacity:1 !important; }
-${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:9px; height:1.5px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 1.5px); background:rgb(${BONE} / .6); }
+${T} .sx-ind__list .orr-extent::before { left:6px !important; width:4px !important; background:rgb(${BONE} / .45) !important; box-shadow:none !important; opacity:1 !important; }
+${T} .sx-ind__list .orr-extent::after { content:""; position:absolute; left:3px; width:10px; height:2px; top:calc(var(--orr-ext-top, 0px) + var(--orr-ext-h, 0px) - 2px); background:rgb(${BONE} / .6); }
 ${T} .sx-ind__list[data-overflow="0"] .orr-extent::after { display:none; }
 
 /* ================================ ROUND 11: BAR ============================================= */
 /* K1: the Hand stops at its bead's rim (the core stays on top) and carries a bloom */
 ${T} .sx-bar__rows .sx-bar-row:is(.is-active, .is-selected, [aria-selected="true"])::after { width:26px !important; box-shadow:0 0 3px 1px rgb(242 185 80 / .28) !important; }
 /* K2: one 1px spine from the first heading to twelve px under the board key; the leads' marker opaque and asleep */
-${T} .sx-bar__hang::after { width:1px !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
+${T} .sx-bar__hang::after { left:4px !important; width:8px !important; background:${SPINE(3, .38)}, ${BAND(3)} !important; top:var(--bar-spine-top, 0px) !important; bottom:auto !important; height:var(--bar-spine-h, 100%) !important;
   -webkit-mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, transparent, #000 16px, #000 calc(100% - 16px), transparent) !important; }
 ${T} .sx-lead__rows .sx-lead.is-current::before { background:rgb(124 120 112) !important; }
 /* K5: every lead title at full light (the marker alone says current); at 720 a long title takes a second line */
@@ -1575,16 +1578,14 @@ ${T} .sx-lead__rows .sx-lead .sx-lead__t, ${T} .sx-lead__rows .sx-lead.is-curren
 
 /* ================================ ROUND 13: MISSIONS ======================================== */
 /* one tick series: every block's minor ticks tile at 8px from the phase the screen measured off the ladder's first tick */
-${T} .sx-ct__hang > * { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .24) 7px, rgb(${BONE} / .24) 8px, transparent 8px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent 5px, rgb(${BONE} / .07) 5px, rgb(${BONE} / .07) 10px, transparent 10px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 4px var(--ct-tick-y, 0px) / 5px 8px repeat-y !important; }
+${T} .sx-ct__hang > * { background:${SPINE(7, .36)}, ${BAND(7)},
+    linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 4px var(--ct-tick-y, 0px) / 6px 8px repeat-y !important; }
 /* the seam takes the blocks' measured stroke: a 1px spine at .24, its band, 5px ticks on the same series */
-${T} .sx-ct__yours::before { left:4px !important; width:6px !important;
-  background:linear-gradient(90deg, transparent 3px, rgb(${BONE} / .24) 3px, rgb(${BONE} / .24) 4px, transparent 4px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent 1px, rgb(${BONE} / .07) 1px, rgb(${BONE} / .07) 6px, transparent 6px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 0 var(--ct-seam-phase, 0px) / 5px 8px repeat-y !important; }
+${T} .sx-ct__yours::before { left:3px !important; width:9px !important;
+  background:${SPINE(4, .36)}, ${BAND(4)},
+    linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 1px var(--ct-seam-phase, 0px) / 6px 8px repeat-y !important; }
 /* section and row ticks sit on the series, on their words */
-${T} .sx-ct__yours::after { top:var(--ct-yours-major, 50%) !important; margin-top:0 !important; height:1.5px !important; }
+${T} .sx-ct__yours::after { top:var(--ct-yours-major, 50%) !important; margin-top:0 !important; height:2px !important; }
 ${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margin-top:0 !important; }
 @media (max-height:800px) {
   /* the ladder's measure: row text runs to x 420 so no reward orphans; the dossier keeps its place */
@@ -1596,7 +1597,7 @@ ${T} .sx-ct__jobs .sx-job::before { top:var(--ct-row-y, .75em) !important; margi
 
 /* ================================ ROUND 12: INDUSTRY ======================================== */
 /* the spine belongs to the scroller's own box: the cursor maps to the same box, so they share a top and an end */
-${T} .sx-ind__list { background:linear-gradient(rgb(${BONE} / .4), rgb(${BONE} / .4)) 7px 0 / 1px 100% no-repeat !important; }
+${T} .sx-ind__list { background:${SPINE(7, .4)}, ${BAND(7)} !important; }
 /* the group's shared tier on its header, after the process word */
 ${T} .sx-ind-process__head .sx-ind-process__tier { margin-left:10px; color:rgb(${BONE} / .62) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color:rgb(${BONE} / .4); }
@@ -1604,9 +1605,9 @@ ${T} .sx-ind-process__head .sx-ind-process__tier::before { content:"·  "; color
 /* ================================ ROUND 12: BAR ============================================= */
 /* the lead marker paints above the spine; one tick weight: every row tick one pixel on a whole pixel */
 ${T} .sx-lead__rows .sx-lead.is-current::before { z-index:1 !important; }
-${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead)::before { height:1px !important; margin-top:0 !important; top:round(down, 50%, 1px) !important; }
+${T} :is(.sx-bar__rows .sx-bar-row, .sx-lead__rows .sx-lead)::before { height:2px !important; margin-top:0 !important; top:round(down, 50%, 1px) !important; }
 /* the contacts' minor ticks are phased so one lands on the Hand's row, never 2px under it */
-${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px) 4px var(--bar-tick-y, 0px) / 4px 8px repeat-y !important; }
+${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px) 4px var(--bar-tick-y, 0px) / 6px 8px repeat-y !important; }
 /* one rhythm down the rail on a tall screen: the contacts at the leads' kind of pitch */
 @media (min-width:1500px) and (min-height:900px) { ${T} .sx-bar__rows .sx-bar-row { padding-top:8px !important; padding-bottom:8px !important; } }
 
@@ -1616,8 +1617,8 @@ ${T} .sx-bar__rows { background:linear-gradient(180deg, rgb(${BONE} / .3) 0 1px,
 
 /* ================================ ROUND 13: BAR ============================================= */
 /* N1: the Hand's arm and bead on one whole row: the arm one pixel on it, the bead's five rows centred on it */
-${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:var(--bar-arm-y, round(down, 50%, 1px)) !important; margin-top:0 !important; height:1px !important; }
-${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(var(--bar-arm-y, round(down, 50%, 1px)) - 2px) !important; margin-top:0 !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::after { top:var(--bar-arm-y, round(down, 50%, 1px)) !important; margin-top:0 !important; height:2px !important; }
+${T} .sx-bar__rows .sx-bar-row:is(.is-active, [aria-selected="true"], [aria-current="true"])::before { top:calc(var(--bar-arm-y, round(down, 50%, 1px)) - 2px) !important; margin-top:0 !important; width:6px !important; height:6px !important; }
 /* N2: the key hints at the label size: 11px caps about 5:1 */
 ${T} .sx-bar__hang .sx-bar__keys, ${T} .sx-bar__hang .sx-bar__leadkeys, ${T} .sx-talk .sx-talk__keys { font-size:11px !important; letter-spacing:.12em !important; color:rgb(138 132 122) !important; }
 /* N3: at 720 the leads keep room under the key so the spine's fade ends inside the box */
