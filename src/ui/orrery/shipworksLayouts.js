@@ -903,6 +903,52 @@ ${W} .sx-buybar [data-buyship] > .sx-buykey__rim path { stroke-width:1.5px !impo
 @media (min-height:801px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:none !important; } }
 @media (max-height:800px) { ${W} .orr-sw-readouts.sx-sw__gauges { background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)) 0 0 / 100% 1.5px no-repeat !important; } }
 
+/* ================================ ROUND 16: a bezel with a body ================================ */
+/* the For Sale ring is a bezel you grip: a band with a body (lum ~70 at rest, ~100 under the pointer, ~130 while
+   it turns), edged at both radii, its scale cut across it (dark notches, bright majors) */
+${W} .sx-sw__salering { --bezel-a:.27; --bezel-edge-a:.58; }
+${W} .sx-sw__stage:has(> .sx-sw__turn:hover) > .sx-sw__salering { --bezel-a:.40; --bezel-edge-a:.72; }
+${W} .sx-sw__stage.is-turning > .sx-sw__salering { --bezel-a:.53; --bezel-edge-a:.82; }
+${W} :is(.sx-sw__salering, .sx-sw__jigband) .sx-sw__bezel-band { fill:none; stroke:rgb(${BONE} / var(--bezel-a, .27)); stroke-linecap:butt; }
+${W} :is(.sx-sw__salering, .sx-sw__jigband) .sx-sw__bezel-edge { fill:none; stroke:rgb(${BONE} / var(--bezel-edge-a, .58)); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-edge.sx-sw__salering-ring { stroke:rgb(${BONE} / var(--bezel-edge-a, .58)); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-notch { fill:none; stroke:rgb(4 6 9 / .8); stroke-width:1.5px; }
+${W} .sx-sw__salering .sx-sw__bezel-major { fill:none; stroke:rgb(252 249 240 / .95); stroke-width:2px; }
+${W} .sx-sw__salering .sx-sw__bezel-lit { fill:none; stroke:rgb(246 242 232 / .96); stroke-linecap:butt; }
+${W} .sx-sw__salering .sx-sw__bezel-index { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2px; stroke-linecap:butt; }
+${W} .sx-sw__salering .sx-sw__bezel-index.is-detent { stroke:rgb(255 252 244); }
+/* the view words ride inside the band, turned along it; the current one is dark ink on its lit stretch */
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { transform:var(--vw-rot, none) !important; translate:none !important; scale:none !important; transform-origin:50% 50% !important;
+  font-size:10px !important; font-weight:600 !important; font-variation-settings:"wdth" 112, "wght" 600 !important; letter-spacing:.16em !important; line-height:1 !important;
+  padding:2px 3px !important; color:rgb(250 247 238 / .96) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(12 14 18) !important; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]:is(:hover, :focus-visible):not(.is-current) { color:rgb(255 253 246) !important; }
+@media (max-height:800px) {
+  ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { font-size:9px !important; letter-spacing:.12em !important; padding:1px 2px !important; }
+}
+/* the jig's bearing numerals would sit under the bezel's inner edge: the band's own scale carries the bearing */
+${W} .orr-sw-jig text.orr-hull__bearing { display:none !important; }
+/* the hand-over: poster and live hull cross-fade in 180 ms, the live hull graded like the poster */
+${W} .sx-sw__stage.has-salering > .sx-sw__canvas, ${W} .sx-sw__stage.has-salering > .sx-sw__poster { transition:opacity 180ms linear !important; }
+${W.replace('html body', 'html.sf-reduce-motion body')} .sx-sw__stage.has-salering > .sx-sw__canvas, ${W.replace('html body', 'html.sf-reduce-motion body')} .sx-sw__stage.has-salering > .sx-sw__poster { transition:none !important; }
+${W} .sx-sw__stage.has-salering > .sx-sw__poster { filter:brightness(1.14) contrast(1.04) !important; }
+/* the fit dial's unlit capacity has a body too */
+${W} .orr-power__band { stroke:rgb(${BONE} / .21) !important; }
+/* the handling scales are readings, not sliders: a square band, the lit fill ending in a 2px bright head */
+${W} .sx-sw-bar__track { border-radius:0 !important; }
+${W} .sx-sw-bar__track > .k-bar__fill { border-radius:0 !important; background:rgb(236 230 216 / .78) !important; }
+${W} .sx-sw-bar__track > .k-bar__fill::before { content:none !important; display:none !important; }
+${W} .sx-sw-bar__track > .k-bar__fill::after { right:-1px !important; top:50% !important; width:2px !important; height:9px !important; margin-top:-4.5px !important; border-radius:0 !important;
+  background:rgb(255 252 244) !important; box-shadow:none !important; }
+/* the exploded schematic: the module riding its leader out of the socket */
+${W} .orr-sw-jig > .sx-sw__explode { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:6; }
+${W} .sx-sw__explode .sx-sw__module-well { fill:rgb(4 6 9 / .92); }
+${W} .sx-sw__explode .sx-sw__module-bloom { fill:none; stroke:rgb(255 240 214 / .22); stroke-width:6px; }
+${W} .sx-sw__explode .sx-sw__module { fill:none; stroke:rgb(250 247 238); stroke-width:2px; }
+${W} .sx-sw__explode .sx-sw__module-core { fill:rgb(250 247 238 / .55); }
+${W} .sx-sw__explode.is-seated .sx-sw__module { fill:rgb(250 247 238); }
+${W} .sx-sw__explode.is-seated .sx-sw__module-core { fill:rgb(12 14 18); }
+
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {

@@ -1530,6 +1530,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function restoreCurrentPreview() {
+    if (!explodeLockSeat) explodeSeat(false);
     for (const n of jigHost ? jigHost.querySelectorAll('.orr-sw-node.is-preview') : []) n.classList.remove('is-preview');
     { const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null; if (def) syncPowerGhost(def, null); }
     ghostActive = false;
@@ -1723,7 +1724,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     jigBandKey = key;
     jigBand.setAttribute('viewBox', `0 0 ${r.W} ${r.H}`);
     jigBand.textContent = '';
-    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R, 0, 360), class: 'orr-band' }));
+    // the same bezel body the For Sale ring carries, static: a band from R - bw to R, edged inside (the jig's
+    // own ring is its outer edge)
+    const bw = bezelWidth(r);
+    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw / 2, 0, 360), class: 'sx-sw__bezel-band', 'stroke-width': bw }));
+    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw, 0, 360), class: 'sx-sw__bezel-edge' }));
   }
   function readJigRing() {
     if (!jigHost || !jigHost.classList.contains('orr-hull--on')) return null;
@@ -1788,17 +1793,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   let saleRing = null;
   let saleZoomKey = '';
-  // The live hull on the glass: hulls are painted from bright copper to near-black, and the preview lights
-  // them for a bay they no longer stand in. After each change of hull, bearing or asset the render is read
-  // back once (a 96px copy) and lifted until its bright pixels read like the Pelican's, and the canvas is
-  // shifted so the silhouette's box is centred on the ring.
+  // The live hull on the glass. Once per hull (and ring size, and asset) the render is read back at five
+  // bearings across the whole turn (96px copies): the canvas is scaled about the hull's turn axis so its
+  // farthest pixel over the whole turn stays inside 82% of R, the axis is set on the ring's centre, and the
+  // render is lifted until its bright pixels match the produced poster's (so the hand-over does not change
+  // the ship's brightness).
   let saleLightKey = '';
-  let saleLightAt = 0;
   let saleLightTimer = 0;
   let saleSample = null;
   let saleLightHull = '';
   let saleLightTries = 0;
-  const SALE_HULL_P90 = 88;
+  const SALE_HULL_P90 = 125;
+  const SALE_FIT = 0.82;
   // the authored hull arrives on its own clock (no projection follows it on a hull with no render):
   // look again shortly while the picture is empty or still a stand-in
   function relightSaleHullSoon(g) {
@@ -1809,54 +1815,63 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g);
     }, 500);
   }
-  function lightSaleHull(g) {
-    if (!mount || typeof mount.frame !== 'function' || !canvas) return;
+  function lightSaleHull(g, { force = false } = {}) {
+    if (!mount || typeof mount.frame !== 'function' || typeof mount.setYaw !== 'function' || !canvas || !g) return false;
     if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; }
-    if (poster.has() && !poster.isLive()) return;
-    const view = typeof mount.getView === 'function' ? mount.getView() : { yaw: 0, zoom: 1 };
+    if (!force && poster.has() && !poster.isLive()) return false;
     const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
-    const key = `${buyId}|${Math.round(g.R)}|${Number(view.yaw || 0).toFixed(2)}|${Number(view.zoom || 1).toFixed(2)}|${state}|${canvas.clientWidth}`;
-    if (key === saleLightKey) return;
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    if (now - saleLightAt < 140) {
-      if (!saleLightTimer) saleLightTimer = setTimeout(() => { saleLightTimer = 0; if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g); }, 160);
-      return;
-    }
-    saleLightAt = now;
+    const key = `${buyId}|${Math.round(g.R)}|${state}|${canvas.clientWidth}`;
+    if (key === saleLightKey) return true;
     try {
       const N = 96;
       if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
       const c2 = saleSample.getContext('2d', { willReadFrequently: true });
-      if (!c2) return;
-      // the drawing buffer is only readable in the task that drew it
-      mount.frame();
-      c2.clearRect(0, 0, N, N);
-      c2.drawImage(canvas, 0, 0, N, N);
-      const d = c2.getImageData(0, 0, N, N).data;
+      if (!c2) return false;
+      // measured on the plain canvas: the fit is recomputed from scratch
+      for (const p of ['scale', 'translate', 'transform-origin']) canvas.style.removeProperty(p);
+      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
+      if (cw < 20 || ch < 20) return false;
+      const rect = canvas.getBoundingClientRect();
+      // the turn axis: the hull's own origin, where the preview turns it
+      let ax = cw / 2; let ay = ch / 2;
+      const o = typeof mount.projectLocalPoint === 'function' ? mount.projectLocalPoint({ x: 0, y: 0, z: 0 }) : null;
+      // (screen px back to the canvas's own px: the station scales its whole layout on a large screen)
+      const onScreen = rect.width > 0 ? rect.width / cw : 1;
+      if (o && Number.isFinite(o.x) && Number.isFinite(o.y)) { ax = (o.x - rect.left) / onScreen; ay = (o.y - rect.top) / onScreen; }
       const lum = [];
-      let x0 = N; let y0 = N; let x1 = -1; let y1 = -1;
-      for (let y = 0; y < N; y++) {
-        for (let x = 0; x < N; x++) {
-          const i = (y * N + x) * 4;
-          const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-          if (l < 6) continue;
-          lum.push(l);
-          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      let far = 0;
+      // the drawing buffer is only readable in the task that drew it: each bearing is drawn and read at once
+      for (const t of [-84, -42, 0, 42, 84]) {
+        mount.setYaw(CENTERED_SHIP_YAW - (t * Math.PI) / 180);
+        c2.clearRect(0, 0, N, N);
+        c2.drawImage(canvas, 0, 0, N, N);
+        const d = c2.getImageData(0, 0, N, N).data;
+        for (let y = 0; y < N; y++) {
+          for (let x = 0; x < N; x++) {
+            const i = (y * N + x) * 4;
+            const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+            if (l < 6) continue;
+            lum.push(l);
+            const dist = Math.hypot(((x + 0.5) / N) * cw - ax, ((y + 0.5) / N) * ch - ay);
+            if (dist > far) far = dist;
+          }
         }
       }
-      if (lum.length < 40) { relightSaleHullSoon(g); return; }
+      mount.setYaw(CENTERED_SHIP_YAW - (bezelTurn * Math.PI) / 180);
+      if (lum.length < 200) { relightSaleHullSoon(g); return false; }
       saleLightKey = key;
       if (!/^authored/.test(String(state || ''))) relightSaleHullSoon(g);
       lum.sort((a, b) => a - b);
       const p90 = lum[Math.floor(lum.length * 0.9)];
-      const k = Math.max(1.2, Math.min(3.2, SALE_HULL_P90 / Math.max(1, p90)));
-      canvas.style.setProperty('filter', `brightness(${k.toFixed(2)}) contrast(1.04)`);
-      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
-      const dx = (((x0 + x1 + 1) / 2) / N) * cw - cw / 2;
-      const dy = (((y0 + y1 + 1) / 2) / N) * ch - ch / 2;
-      canvas.style.setProperty('translate', `${Math.round(-dx)}px ${Math.round(-dy)}px`);
-      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} dx ${Math.round(dx)} dy ${Math.round(dy)}`;
-    } catch (_) { /* a render that cannot be read keeps the sheet's lift */ }
+      const k = Math.max(1.2, Math.min(3.4, SALE_HULL_P90 / Math.max(1, p90)));
+      const scale = Math.max(0.5, Math.min(1.25, (SALE_FIT * g.R) / Math.max(1, far)));
+      canvas.style.setProperty('filter', `brightness(${k.toFixed(2)}) saturate(.84) contrast(1.04)`);
+      canvas.style.setProperty('transform-origin', `${ax.toFixed(1)}px ${ay.toFixed(1)}px`);
+      canvas.style.setProperty('scale', scale.toFixed(3));
+      canvas.style.setProperty('translate', `${(cw / 2 - ax).toFixed(1)}px ${(ch / 2 - ay).toFixed(1)}px`);
+      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} far ${Math.round(far)} fit ${scale.toFixed(3)} axis ${Math.round(ax - cw / 2)},${Math.round(ay - ch / 2)}`;
+      return true;
+    } catch (_) { return false; /* a render that cannot be read keeps the sheet's lift */ }
   }
   // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
   // words as marks on the upper arc, a glass under the render so the ship separates from the hangar
@@ -1873,7 +1888,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       saleGeo = null;
       if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
       stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets', 'is-turning');
-      if (canvas && canvas.style) { canvas.style.removeProperty('filter'); canvas.style.removeProperty('translate'); }
+      if (canvas && canvas.style) { for (const p of ['filter', 'translate', 'scale', 'transform-origin']) canvas.style.removeProperty(p); }
       return;
     }
     if (!saleRing) {
@@ -1881,18 +1896,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       stageEl.appendChild(saleRing);
     }
     ensureTurnSurface();
-    // a new hull on the disc arrives facing the centre view
+    // a new hull on the disc arrives facing the centre view, and the bezel takes on its mass
     if (buyId !== saleTurnHull) {
       saleTurnHull = buyId;
+      setTurnMass(buyId);
       if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
     }
     saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
     saleRing.textContent = '';
     const f = (n) => Math.round(n * 100) / 100;
     const short = ringShort();
-    const ringD = orrArcD(g.hx, g.hy, g.R, 0, 360);
-    saleRing.appendChild(orrSvg('path', { d: ringD, class: 'orr-band sx-sw__salering-band' }));
-    saleRing.appendChild(orrSvg('path', { d: ringD, class: 'orr-edge sx-sw__salering-ring' }));
+    // the bezel: a band with a body from R - bw to R (inward: every word outside keeps its place), edged at both radii
+    const bw = bezelWidth(g);
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R - bw / 2, 0, 360), class: 'sx-sw__bezel-band', 'stroke-width': bw }));
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R - bw, 0, 360), class: 'sx-sw__bezel-edge' }));
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'sx-sw__bezel-edge sx-sw__salering-ring' }));
+    // the fixed index at the top, outside the band: the view standing under it is the one you look from
+    { const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 2, 0); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 11, 0);
+      saleRing.appendChild(orrSvg('path', { d: `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`, class: 'sx-sw__bezel-index' })); }
     // the arcs the scale leaves open: under the caption and under each socket group
     const open = [];
     // the caption on the lower arc leads with the hull's name, then what the column beside does not say:
@@ -1926,12 +1947,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const stepDeg = (stepPx / g.R) * (180 / Math.PI);
         for (let i = 0; i < count; i++) {
           const a = bearing + (i - (count - 1) / 2) * stepDeg;
+          // this hull's socket crosses the whole bezel and stands out past it; yours stays inside the band
           if (i < n) {
-            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - 4, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 7, a);
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 8, a);
             socketPaths[compare && i >= m ? 'gain' : 'sale'] += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
-          }
-          if (compare && i < m) {
-            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - 11, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 6, a);
+          } else if (compare && i < m) {
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + 2, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 2, a);
             socketPaths.ghost += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
           }
         }
@@ -1952,14 +1973,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stageEl.classList.add('has-salering');
     saleGeo = g;
     saleOpen = open;
-    lightSaleHull(g);
-    // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale):
-    // at zoom 1 its bounding sphere fills 0.95 of the ring, so the hull stays inside it at every bearing
+    // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale) at
+    // zoom 1, then fitted by its reach over the whole turn about its own turn axis
     const zoomKey = `${buyId}|${Math.round(g.R)}`;
     if (mount && typeof mount.setZoom === 'function' && zoomKey !== saleZoomKey) {
       saleZoomKey = zoomKey;
+      saleLightKey = '';
       try { mount.setZoom(1); } catch (_) { /* a mount without zoom keeps its own fit */ }
     }
+    lightSaleHull(g);
     stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
     stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
     stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
@@ -1984,28 +2006,61 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let saleView = 'reset';
   let saleTurnHull = '';
   let turnSettleFrame = 0;
+  let turnMass = 1;
+  let turnMoving = false;
+  let detentAt = 0;
+  let indexFlashTimer = 0;
   const norm360 = (a) => ((a % 360) + 360) % 360;
   const nearestView = (t) => VIEW_ORDER.reduce((best, k) => (Math.abs(VIEW_TURN[k] - t) < Math.abs(VIEW_TURN[best] - t) ? k : best), 'reset');
-  const turnSpring = createSpring({
-    value: 0,
-    preset: 'swing',
-    onUpdate: (v) => {
-      applyTurn(v);
-      if (v === turnSpring.target && !turnDrag) {
-        if (turnSettleFrame) cancelAnimationFrame(turnSettleFrame);
-        turnSettleFrame = requestAnimationFrame(() => { turnSettleFrame = 0; afterTurnSettle(); });
-      }
-    },
-  });
+  // the bezel's body: a band you can grip, drawn inward so every word outside the ring keeps its place
+  function bezelWidth(g) { return Math.max(13, Math.round(((g && g.R) || 272) * 0.059)); }
+  function onTurnUpdate(v) {
+    applyTurn(v);
+    if (v === turnSpring.target && !turnDrag) {
+      turnMoving = false;
+      if (turnSettleFrame) cancelAnimationFrame(turnSettleFrame);
+      turnSettleFrame = requestAnimationFrame(() => { turnSettleFrame = 0; afterTurnSettle(); });
+    }
+  }
+  // the bezel carries the hull's mass (Hitch 18 t = 1): a light hull swings free and settles fast, a heavy
+  // one lags the hand and takes longer to come to rest; the damping ratio stays the same
+  function makeTurnSpring(massRatio) {
+    const m = Math.max(0.6, Math.min(4, Number(massRatio) || 1));
+    return createSpring({ value: bezelTurn, preset: { k: 170 / m, c: 16 / Math.sqrt(m) }, onUpdate: onTurnUpdate });
+  }
+  let turnSpring = makeTurnSpring(1);
+  function setTurnMass(defId) {
+    const def = SHIP_BY_ID.get(defId);
+    const m = def && Number(def.mass) > 0 ? Number(def.mass) / 18 : 1;
+    if (Math.abs(m - turnMass) < 1e-6) return;
+    turnMass = m;
+    turnSpring.stop();
+    turnSpring = makeTurnSpring(m);
+  }
   // the hull turns with the bezel, one to one (a clockwise drag turns it clockwise as seen from above)
   const turnYaw = () => CENTERED_SHIP_YAW - (bezelTurn * Math.PI) / 180;
+  function flashIndex() {
+    const ix = saleRing && saleRing.querySelector('.sx-sw__bezel-index');
+    if (!ix) return;
+    ix.classList.add('is-detent');
+    if (indexFlashTimer) clearTimeout(indexFlashTimer);
+    indexFlashTimer = setTimeout(() => { indexFlashTimer = 0; ix.classList.remove('is-detent'); }, 150);
+  }
   function applyTurn(v) {
+    const prev = bezelTurn;
     bezelTurn = Math.max(-TURN_LIMIT - 12, Math.min(TURN_LIMIT + 12, Number(v) || 0));
     // the live hull turns with the bezel frame by frame while it is on the glass; hidden behind the render,
     // it takes its bearing once when the bezel settles
     const liveOnGlass = !poster.has() || poster.isLive();
     if (liveOnGlass && mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
       try { mount.setYaw(turnYaw()); } catch (_) { /* a mount without yaw keeps its view */ }
+    }
+    // a detent as each major mark (every 30 degrees) reaches the top index, while the hand or the spring turns it
+    if (turnDrag || turnMoving) {
+      const cur = bezelTurn;
+      const crossed = cur > prev ? Math.floor(cur / 30) * 30 > prev : (cur < prev ? Math.ceil(cur / 30) * 30 < prev : false);
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (crossed && now - detentAt > 60) { detentAt = now; emitUiCue(UI_SWITCH_DETENT_CUE); flashIndex(); }
     }
     drawBezel();
   }
@@ -2025,12 +2080,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function turnToView(view) {
     if (!(view in VIEW_TURN)) return;
     saleView = view;
+    turnMoving = true;
     turnSpring.set(VIEW_TURN[view]);
     if (!stageEl.classList.contains('has-salering')) return;
     // a snap (reduced motion, or already there) still settles the poster and the light
-    if (turnSpring.value === VIEW_TURN[view]) afterTurnSettle();
+    if (turnSpring.value === VIEW_TURN[view]) { turnMoving = false; afterTurnSettle(); }
   }
-  // the bezel: the scale's ticks (flowing under the plate's open arcs) and the three view marks
+  // the bezel's moving parts: the tick scale cut across the band (dark notches, bright majors) and the three
+  // view words riding inside the band, upright along it; the current view is a lit stretch of the band with
+  // its word in dark ink. The scale opens where the fixed plate holds the caption and the sockets.
   function drawBezel() {
     const g = saleGeo;
     if (!saleRing || !g) return;
@@ -2038,23 +2096,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!bez) { bez = orrSvg('g', { class: 'sx-sw__bezel' }); saleRing.appendChild(bez); }
     bez.textContent = '';
     const f = (n) => Math.round(n * 100) / 100;
+    const bw = bezelWidth(g);
+    const rMid = g.R - bw / 2;
     const inArc = (a, [a0, a1]) => { const x = norm360(a - a0); return x <= norm360(a1 - a0); };
-    const shut = (a) => saleOpen.some((arc) => inArc(a, arc));
-    let minor = ''; let major = '';
+    const cam0 = el.querySelector('.sx-sw__camera');
+    const wordArcs = cam0 ? [...cam0.querySelectorAll('[data-camera]')].map((b) => {
+      const a = norm360((VIEW_BASE[b.getAttribute('data-camera')] ?? 0) + bezelTurn);
+      const half = ((((b.offsetWidth || 44) + 10) / 2) / rMid) * (180 / Math.PI);
+      return [a - half, a + half];
+    }) : [];
+    const shut = (a) => saleOpen.some((arc) => inArc(a, arc)) || wordArcs.some((arc) => inArc(a, arc));
+    let notch = ''; let major = '';
     for (let i = 0; i < 72; i++) {
       const a = norm360(i * 5 + bezelTurn);
       if (shut(a)) continue;
       const isMajor = i % 6 === 0;
-      const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 3, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + (isMajor ? 12 : 8), a);
+      const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + (isMajor ? 0.75 : 1.5), a);
+      const [x1, y1] = orrPolar(g.hx, g.hy, g.R - (isMajor ? 0.75 : 1.5), a);
       const seg = `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
-      if (isMajor) major += seg; else minor += seg;
+      if (isMajor) major += seg; else notch += seg;
     }
-    if (minor) bez.appendChild(orrSvg('path', { d: minor.trim(), class: 'orr-tick sx-sw__bezel-tick' }));
-    if (major) bez.appendChild(orrSvg('path', { d: major.trim(), class: 'orr-tick orr-tick--major sx-sw__bezel-tick' }));
+    if (notch) bez.appendChild(orrSvg('path', { d: notch.trim(), class: 'sx-sw__bezel-notch' }));
+    if (major) bez.appendChild(orrSvg('path', { d: major.trim(), class: 'sx-sw__bezel-major' }));
     const cam = el.querySelector('.sx-sw__camera');
     if (!cam) return;
     const current = nearestView(bezelTurn);
-    // a mark that turns down into the plate's sector fades under it (the plate holds the sockets and the caption)
+    // a word that turns down into the plate's sector fades under it (the plate holds the sockets and the caption)
     const plateFade = (a) => {
       const x = norm360(a);
       const into = Math.min(x - 100, 260 - x);
@@ -2069,31 +2136,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.style.opacity = vis >= 1 ? '' : vis.toFixed(2);
       b.style.pointerEvents = vis < 0.5 ? 'none' : '';
-      if (vis > 0) {
-        if (on) {
-          const [ix, iy] = orrPolar(g.hx, g.hy, g.R - 10, a); const [ox, oy] = orrPolar(g.hx, g.hy, g.R + 9, a);
-          const d = `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`;
-          bez.appendChild(orrSvg('path', { d, class: 'orr-lit-bloom sx-sw__mark' }));
-          bez.appendChild(orrSvg('path', { d, class: 'orr-lit sx-sw__mark' }));
-          const [bx, by] = orrPolar(g.hx, g.hy, g.R, a);
-          bez.appendChild(orrSvg('circle', { cx: f(bx), cy: f(by), r: 8, class: 'orr-bead-bloom' }));
-          bez.appendChild(orrSvg('circle', { cx: f(bx), cy: f(by), r: 4, class: 'orr-bead' }));
-        } else {
-          const [ix, iy] = orrPolar(g.hx, g.hy, g.R - 6, a); const [ox, oy] = orrPolar(g.hx, g.hy, g.R + 8, a);
-          bez.appendChild(orrSvg('path', { d: `M ${f(ix)} ${f(iy)} L ${f(ox)} ${f(oy)}`, class: 'orr-tick orr-tick--major sx-sw__mark', style: `opacity:${vis.toFixed(2)}` }));
-        }
+      const w = b.offsetWidth || 44; const h = b.offsetHeight || 14;
+      if (on && vis > 0) {
+        const half = (((w + 14) / 2) / rMid) * (180 / Math.PI);
+        bez.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, rMid, a - half, a + half), class: 'sx-sw__bezel-lit', 'stroke-width': Math.max(6, bw - 3) }));
       }
-      // the word beyond its mark at R + 17, its box anchored continuously round the ring as the bezel turns
-      const [px, py] = orrPolar(g.hx, g.hy, g.R + 17, a);
-      const cs = getComputedStyle(b);
-      const pl = parseFloat(cs.paddingLeft) || 0; const pr = parseFloat(cs.paddingRight) || 0;
-      const pt = parseFloat(cs.paddingTop) || 0; const pb = parseFloat(cs.paddingBottom) || 0;
-      const cw = Math.max(0, (b.offsetWidth || 0) - pl - pr); const ch = Math.max(0, (b.offsetHeight || 0) - pt - pb);
-      const sx = Math.sin((a * Math.PI) / 180); const sy = -Math.cos((a * Math.PI) / 180);
-      const fx = 0.5 - 0.5 * Math.max(-1, Math.min(1, sx * 1.6));
-      const fy = 0.5 - 0.5 * Math.max(-1, Math.min(1, sy * 1.6));
-      b.style.left = `${Math.round(px - pl - fx * cw)}px`;
-      b.style.top = `${Math.round(py - pt - fy * ch)}px`;
+      // the word rides the band's middle, turned along it and never upside down
+      const [px, py] = orrPolar(g.hx, g.hy, rMid, a);
+      const rot = a > 90 && a < 270 ? a - 180 : a;
+      b.style.left = `${Math.round(px - w / 2)}px`;
+      b.style.top = `${Math.round(py - h / 2)}px`;
+      b.style.setProperty('--vw-rot', `rotate(${rot.toFixed(1)}deg)`);
     }
   }
   // the grip: a disc over the ring and the hull in it (the words stay above it and keep their clicks)
@@ -2134,23 +2187,116 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const over = Math.max(0, Math.abs(next) - TURN_LIMIT);
       turnDrag.turn = over > 0 ? Math.sign(next) * (TURN_LIMIT + over * 0.3) : next;
       turnDrag.v = delta / dt;
-      applyTurn(turnDrag.turn);
+      // the bezel chases the hand on the hull's own spring: a heavy hull lags it (reduced motion: it follows at once)
+      turnSpring.set(turnDrag.turn);
     });
     const release = (ev) => {
       if (!turnDrag || (ev && ev.pointerId !== turnDrag.id)) return;
       const fling = Math.max(-240, Math.min(240, turnDrag.v || 0));
-      const view = nearestView(bezelTurn + fling * 0.12);
+      // a light hull carries a flick further than a heavy one
+      const view = nearestView(turnDrag.turn + (fling * 0.16) / turnMass);
       turnDrag = null;
       try { turnEl.releasePointerCapture(ev.pointerId); } catch (_) { /* already released */ }
       stageEl.classList.remove('is-turning');
       saleView = view;
-      turnSpring.set(bezelTurn, { instant: true });
-      turnSpring.kick(fling);
+      turnMoving = true;
+      turnSpring.kick((fling * 0.5) / turnMass);
       turnSpring.set(VIEW_TURN[view]);
-      if (turnSpring.value === VIEW_TURN[view]) afterTurnSettle();
+      if (turnSpring.value === VIEW_TURN[view]) { turnMoving = false; afterTurnSettle(); }
     };
     turnEl.addEventListener('pointerup', release);
     turnEl.addEventListener('pointercancel', release);
+  }
+
+  // THE EXPLODED SCHEMATIC (Fleet's signature): choosing a socket slides its module 48 px out along its
+  // leader, the leader the rail it rides; while the chooser previews a candidate the module on the rail is
+  // that candidate, seated; BUY & FIT drives it home into the socket. Reduced motion snaps.
+  const EXPLODE_OUT = 48;
+  let explodeSvg = null;
+  let explodeSlot = -1;
+  let explodeSeated = false;
+  let explodeDist = 0;
+  let explodeLockSeat = false;
+  const explodeSpring = createSpring({
+    value: 0,
+    preset: 'swing',
+    onUpdate: (v) => {
+      explodeDist = v;
+      if (v === 0 && explodeSpring.target === 0) { explodeSlot = -1; explodeLockSeat = false; if (explodeSvg) explodeSvg.style.display = 'none'; return; }
+      placeExplode();
+    },
+  });
+  // the leader of socket i as a polyline from the socket to the ring (read off the jig's own drawing)
+  function explodeRail(i) {
+    const layer = jigHost && [...jigHost.querySelectorAll(':scope > svg')].find((s) => s.querySelector('.orr-hull__node'));
+    if (!layer) return null;
+    const node = layer.querySelectorAll('.orr-hull__node')[i];
+    const ring = node && node.querySelector('.orr-hull__ring');
+    if (!ring) return null;
+    const p = { x: Number(ring.getAttribute('cx')), y: Number(ring.getAttribute('cy')) };
+    const pts = [];
+    const take = (path) => {
+      const nums = String((path && path.getAttribute('d')) || '').match(/-?\d+(?:\.\d+)?/g) || [];
+      for (let k = 0; k + 1 < nums.length; k += 2) pts.push({ x: Number(nums[k]), y: Number(nums[k + 1]) });
+    };
+    take(layer.querySelectorAll('path.orr-hull__leader--hidden')[i]);
+    take(layer.querySelectorAll('path.orr-hull__leader:not(.orr-hull__leader--hidden)')[2 * i]);
+    const bloom = layer.querySelectorAll('path.orr-hull__leader-bloom')[i];
+    const exitNums = String((bloom && bloom.getAttribute('d')) || '').match(/-?\d+(?:\.\d+)?/g);
+    const g = jigRing;
+    const inside = (q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && !(q.x === 0 && q.y === 0) && (!g || Math.hypot(q.x - g.hx, q.y - g.hy) <= g.R + 2);
+    const rail = pts.filter(inside);
+    if (exitNums && exitNums.length >= 2) rail.push({ x: Number(exitNums[0]), y: Number(exitNums[1]) });
+    rail.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    const out = [p];
+    for (const q of rail) { const last = out[out.length - 1]; if (Math.hypot(q.x - last.x, q.y - last.y) > 0.5) out.push(q); }
+    return out.length > 1 ? out : null;
+  }
+  function placeExplode() {
+    if (explodeSlot < 0 || !jigHost || !jigHost.classList.contains('orr-hull--on')) { if (explodeSvg) explodeSvg.style.display = 'none'; return; }
+    const rail = explodeRail(explodeSlot);
+    if (!rail) return;
+    if (!explodeSvg) {
+      explodeSvg = orrSvg('svg', { class: 'orr-svg sx-sw__explode', 'aria-hidden': 'true', focusable: 'false' });
+      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-well', r: 11 }));
+      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-bloom', r: 12 }));
+      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module', r: 7 }));
+      explodeSvg.appendChild(orrSvg('circle', { class: 'sx-sw__module-core', r: 2.6 }));
+    }
+    if (explodeSvg.parentNode !== jigHost) jigHost.appendChild(explodeSvg);
+    const vb = jigRing ? `0 0 ${jigRing.W} ${jigRing.H}` : null;
+    if (vb && explodeSvg.getAttribute('viewBox') !== vb) explodeSvg.setAttribute('viewBox', vb);
+    // walk the rail
+    let left = Math.max(0, explodeDist);
+    let x = rail[0].x; let y = rail[0].y;
+    for (let k = 1; k < rail.length && left > 0; k++) {
+      const dx = rail[k].x - rail[k - 1].x; const dy = rail[k].y - rail[k - 1].y;
+      const len = Math.hypot(dx, dy);
+      const u = len > 0 ? Math.min(1, left / len) : 1;
+      x = rail[k - 1].x + dx * u; y = rail[k - 1].y + dy * u;
+      left -= len;
+    }
+    for (const c of explodeSvg.querySelectorAll('circle')) { c.setAttribute('cx', x.toFixed(1)); c.setAttribute('cy', y.toFixed(1)); }
+    explodeSvg.classList.toggle('is-seated', explodeSeated);
+    explodeSvg.style.display = '';
+  }
+  function explodeOut(slot) {
+    if (host !== 'dock' || !jigHost || !jigHost.classList.contains('orr-hull--on')) return;
+    if (explodeSlot !== slot) { explodeSpring.set(0, { instant: true }); explodeDist = 0; }
+    explodeSlot = slot;
+    explodeSeated = false;
+    explodeLockSeat = false;
+    explodeSpring.set(EXPLODE_OUT);
+    placeExplode();
+  }
+  function explodeSeat(on) {
+    if (explodeSlot < 0) return;
+    explodeSeated = !!on;
+    placeExplode();
+  }
+  function explodeHome() {
+    if (explodeSlot < 0) return;
+    explodeSpring.set(0);
   }
   // the verbs' one home, both modes and both sizes: centred under the ring's caption
   function seatSaleStats(g) {
@@ -2162,8 +2308,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
     const tight = ringShort();
     const w = Math.max(170, Math.min(250, g.hx - g.R - (tight ? 18 : 28)));
+    const k = stageScale();
     stats.style.setProperty('position', 'fixed', 'important');
-    stats.style.setProperty('left', `${Math.round(sr.left + (tight ? 6 : 16))}px`, 'important');
     stats.style.setProperty('width', `${Math.round(w)}px`, 'important');
     stats.style.setProperty('max-width', `${Math.round(w)}px`, 'important');
     stats.style.setProperty('right', 'auto', 'important');
@@ -2171,8 +2317,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stats.style.setProperty('transform', 'none', 'important');
     stats.style.setProperty('z-index', '3', 'important');
     const h = stats.offsetHeight || 200;
-    const short = sr.height < 600;
-    stats.style.setProperty('top', `${Math.round(short ? sr.top + 6 : sr.bottom - h - 14)}px`, 'important');
+    const short = sr.height / k < 600;
+    placeFixed(stats, sr.left + (tight ? 6 : 16) * k, short ? sr.top + 6 * k : sr.bottom - (h + 14) * k);
   }
   // the verbs' one home, both modes: one row centred on the dial, at the band reserved under it
   function seatVerbs(g) {
@@ -2181,18 +2327,36 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!rack) return;
     if (!g) { rack.style.cssText = ''; return; }
     const sr = stageEl.getBoundingClientRect();
+    const k = stageScale();
+    rack.style.cssText = 'position:fixed !important; left:0px !important; top:0px !important; margin:0 !important; z-index:4;';
     const w = rack.offsetWidth || 300;
     const rh = rack.offsetHeight || 29;
-    const top = ringShort() && host !== 'dock' ? sr.bottom - rh + 4 : sr.top + verbRowTop(g.W, g.H);
-    const left = Math.round(sr.left + g.hx - w / 2);
-    rack.style.cssText = `position:fixed !important; left:${left}px !important; top:${Math.round(top)}px !important; margin:0 !important; z-index:4;`;
+    const cx = sr.left + g.hx * k;
+    const top = ringShort() && host !== 'dock' ? sr.bottom - (rh - 4) * k : sr.top + verbRowTop(g.W, g.H) * k;
+    placeFixed(rack, cx - (w * k) / 2, top);
     // centre the words on the dial, not the box: an empty slot's gap or the last word's tracking must not
     // pull the row off the ring's axis
     const ink = verbInk(rack);
     if (ink) {
-      const shift = Math.round(sr.left + g.hx - (ink.left + ink.right) / 2);
-      if (shift) rack.style.setProperty('left', `${left + shift}px`, 'important');
+      const shift = cx - (ink.left + ink.right) / 2;
+      if (Math.abs(shift) >= 1) { const r = rack.getBoundingClientRect(); placeFixed(rack, r.left + shift, r.top); }
     }
+  }
+  // the stage's scale on screen (the station scales its whole layout to fit a large screen)
+  function stageScale() {
+    const w = stageEl.offsetWidth || 0;
+    const k = w > 0 ? stageEl.getBoundingClientRect().width / w : 1;
+    return Number.isFinite(k) && k > 0 ? k : 1;
+  }
+  // seat a fixed box at a point on the screen: under a scaled ancestor a fixed box lays out in that ancestor's
+  // own (unscaled) coordinates, so its origin is read back and the scale divided out
+  function placeFixed(node, x, y) {
+    node.style.setProperty('left', '0px', 'important');
+    node.style.setProperty('top', '0px', 'important');
+    const o = node.getBoundingClientRect();
+    const k = stageScale();
+    node.style.setProperty('left', `${Math.round((x - o.left) / k)}px`, 'important');
+    node.style.setProperty('top', `${Math.round((y - o.top) / k)}px`, 'important');
   }
   // the lit extent of the verb row: from the first verb's chevron to the last glyph of the last word
   function verbInk(rack) {
@@ -2398,6 +2562,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   /** The live hull has drawn when its authored asset is in: then the poster yields to it. */
+  let saleHandover = false;
+  let saleHandoverTimer = 0;
+  let saleHandoverTries = 0;
+  let saleHandoverHull = '';
   function syncPosterLive() {
     if (!poster.has()) { canvas.tabIndex = 0; return; }
     const state = mount && mount.getAssetState ? mount.getAssetState() : '';
@@ -2405,8 +2573,33 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // Only ever poster -> live for one hull: a refit that re-seats the same hull must not flash
     // the render back in. A different hull resets through poster.setHull.
     if (!poster.isLive() && sameHull && /^authored/.test(String(state || ''))) {
-      poster.setLive(true);
-      scheduleSpatialProjection();
+      if (host === 'dock' && mode === 'buy' && stageEl.classList.contains('has-salering')) {
+        // For Sale hands over only once the live canvas has drawn this hull, graded and fitted to the ring;
+        // one more frame, then the two cross-fade (the sheet's 180 ms), so the disc never blinks empty
+        if (saleHandoverHull !== poster.defId()) { saleHandoverHull = poster.defId(); saleHandoverTries = 0; }
+        if (!saleHandover) {
+          const g = stageRingGeo();
+          const ready = g ? lightSaleHull(g, { force: true }) : false;
+          if (!ready) {
+            if (!saleHandoverTimer && saleHandoverTries < 40) {
+              saleHandoverTries += 1;
+              saleHandoverTimer = setTimeout(() => { saleHandoverTimer = 0; syncPosterLive(); }, 250);
+            }
+          } else {
+            saleHandover = true;
+            const hull = poster.defId();
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              saleHandover = false;
+              if (poster.isLive() || poster.defId() !== hull) return;
+              poster.setLive(true);
+              scheduleSpatialProjection();
+            }));
+          }
+        }
+      } else {
+        poster.setLive(true);
+        scheduleSpatialProjection();
+      }
     }
     // The canvas cannot be orbited while it is hidden behind the render: keep it out of the tab order.
     canvas.tabIndex = poster.showing() ? -1 : 0;
@@ -2548,6 +2741,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     seatVerbs(ringNow);
     drawFleetCaption(ringNow);
     drawJigBand();
+    if (explodeSlot >= 0) placeExplode();
 
     const pointOf = (index) => {
       if (livePath) {
@@ -3117,6 +3311,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     const slots = buildSlotList(def); const slot = slots[slotIndex]; if (!slot) return;
     if (!opts.silent) emitUiCue(UI_SWITCH_DETENT_CUE);
+    explodeOut(slotIndex);
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
     const availability = shipworksActionAvailability(ctx.state);
@@ -3303,6 +3498,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!opts.silent) emitUiCue(UI_DRAWER_LATCH_CUE);
     const returnFocus = chooserAnchor;
     restoreCurrentPreview();
+    explodeHome();
     selectedSlot = -1;
     payloadSocket = -1;
     if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
@@ -3417,6 +3613,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!ghost.ok || !Array.isArray(ghost.afterFittings)) return;
     ghostActive = true;
     ghostSource = 'module';
+    explodeSeat(true);
     previewShip(ghost.defId, ghost.afterFittings, true, {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
@@ -3951,6 +4148,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }
       }
       if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: viewIdx }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      // the bought module rides home into its socket
+      explodeSeat(true);
+      explodeLockSeat = true;
       closeChooser(); setTimeout(refresh, 70); return;
     }
     // A module already owned in the hold: ui:fitModule takes the row's instanceId and the viewed
