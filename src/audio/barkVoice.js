@@ -4,7 +4,7 @@
 // and caption text are pure functions of (faction, situation, line). Sim RNG is never read.
 // Agents run scripts/generate-bark-voice.mjs to emit representative WAVs.
 
-import { BARKS, BARK_FACTIONS, BARK_SITUATIONS } from '../data/barks.js';
+import { BARKS, BARK_EVENT_SITUATIONS, BARK_FACTIONS, BARK_SITUATIONS } from '../data/barks.js';
 import { SAMPLE_MANIFEST } from './sampleLibrary.js';
 import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
@@ -169,7 +169,8 @@ export function resolveBarkVoice(input = {}) {
     : (input.factionId && FACTION_VOICE_REGISTERS[input.factionId] ? input.factionId : 'faction_free');
   const situation = mechanic
     ? 'berth'
-    : (BARK_SITUATIONS.includes(input.situation) ? input.situation : 'scan');
+    : (BARK_SITUATIONS.includes(input.situation) || BARK_EVENT_SITUATIONS.includes(input.situation)
+      ? input.situation : 'scan');
   const line = typeof input.line === 'string' && input.line.trim()
     ? input.line.trim()
     : (mechanic ? MECHANIC_LINES[0] : ((BARKS[factionId] && BARKS[factionId][situation] && BARKS[factionId][situation][0]) || '...'));

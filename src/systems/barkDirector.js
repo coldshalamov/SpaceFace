@@ -4,6 +4,7 @@
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
 import {
+  BARK_EVENT_SITUATIONS,
   BARK_SITUATIONS,
   barkFor,
   historyBarkFor,
@@ -34,7 +35,7 @@ import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
-const BARK_SET = new Set(BARK_SITUATIONS);
+const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
 const VOICE_TTL_S = 1.2;
 const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
@@ -251,6 +252,7 @@ export const barkDirector = {
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
+    this._onVictimKilled = (payload) => this._speakVictimDistress(payload || {});
     this._onBodyReleased = (payload) => this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId);
     this._onBodyShoved = (payload) => {
       if (!payload || payload.attackerId !== (this.state && this.state.playerId) || !(Number(payload.deltaV) > 0)) return;
@@ -278,6 +280,7 @@ export const barkDirector = {
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
       this.bus.on('entity:killed', this._onCargoKilled);
+      this.bus.on('entity:killed', this._onVictimKilled);
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
@@ -909,6 +912,40 @@ export const barkDirector = {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 
+  // A dying hull keys open once: the victim's faction register delivers one authored last
+  // transmission — then the channel dies with it. The dead can't pass eligibleShip (alive gate),
+  // so the same checks are re-run minus it: ship/drone type, not the player, not player-team,
+  // and no authored mute. Relevance mirrors the think loop: speak when the kill was a player
+  // threat, was authored by the player, or happened inside the authority radius the player can
+  // hear — far-side NPC attrition stays silent instead of queueing unheard radio spam.
+  _speakVictimDistress(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.id == null && payload.entityId == null) return false;
+    if (payload.type !== 'ship' && payload.type !== 'drone') return false;
+    const id = payload.id != null ? payload.id : payload.entityId;
+    if (id === state.playerId) return false;
+    let entity = entityFromState(state, id);
+    if (entity) {
+      if (entity.team === PLAYER_TEAM) return false;
+      const data = entity.data || {};
+      if (data.barkDirectorSuppressed || (data.ai && data.ai.barkDirectorSuppressed)) return false;
+    }
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const pos = payload.pos || (entity && entity.pos);
+    const near = !!(player && player.pos && pos
+      && ((pos.x - player.pos.x) ** 2 + (pos.z - player.pos.z) ** 2)
+        <= tableSimAuthorityWuFromState(state) ** 2);
+    if (payload.targetHostileToPlayer !== true && payload.killerId !== state.playerId && !near) {
+      return false;
+    }
+    if (!entity) {
+      // Victim already reaped — speak anyway when the payload still names a faction.
+      if (typeof payload.factionId !== 'string' || !payload.factionId) return false;
+      entity = { id, factionId: payload.factionId };
+    }
+    return this._speak(entity, 'distress', 'entity:killed', payload);
+  },
+
   /**
    * PQ-148.03 — one bark + ledger citation when a named pod spills, is jettisoned, or drops on kill.
    * Player jettison of their own hold is a null reaction (no self-bounty).
@@ -991,6 +1028,7 @@ export const barkDirector = {
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
       if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
+      if (this._onVictimKilled) this.bus.off('entity:killed', this._onVictimKilled);
       if (this._onLawDispatchStarted) this.bus.off('law:dispatchStarted', this._onLawDispatchStarted);
       if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
@@ -1008,6 +1046,7 @@ export const barkDirector = {
     this._onCargoSpilled = null;
     this._onCargoJettisoned = null;
     this._onCargoKilled = null;
+    this._onVictimKilled = null;
     this._onLawDispatchStarted = null;
     this._onLawWarrantPosted = null;
     this._onLawCheckpointPosted = null;

@@ -50,6 +50,12 @@ export const BARK_SITUATIONS = [
   'scan', 'warn', 'demand-cargo', 'attack', 'flee', 'reinforce', 'taunt', 'patrol-greeting',
 ];
 
+// Event situations: every faction covers these too, but they fire on a moment, not a contact
+// state — same precedent as HULL_RECOGNITION below. They are deliberately NOT in BARK_SITUATIONS:
+// that set is the generated-WAV index contract (faction × situation × line), and appending would
+// renumber every later faction's shipped line_*.wav rows.
+export const BARK_EVENT_SITUATIONS = Object.freeze(['distress']);
+
 // Corpus: BARKS[factionId][situation] = [lines...]. Each array is non-empty.
 export const BARKS = {
   // ── Concord — procedural / bureaucratic ────────────────────────────────────
