@@ -12451,7 +12451,7 @@
       "priority": 274,
       "title": "Landmarks fielded",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -17626,7 +17626,7 @@
       "priority": 452,
       "title": "Min-spec floors and soak",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
