@@ -47,6 +47,8 @@ ${T} .con-read__w { ${LABEL} font-size:clamp(10px, .6vw, 12.5px); line-height:1.
 ${T} > .k-stage.con-stage { grid-area:auto; grid-column:1; grid-row:1 / 3; position:relative; z-index:0; min-width:0; min-height:0; margin:0; padding:0; border:0 !important; background:none !important; box-shadow:none !important;
   overflow:visible; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; }
 ${T} .con-skyhost { position:absolute; inset:0; }
+/* a star's focus is its own ring of light (the instrument draws it), never the kit's square outline */
+${T} .con-star-btn:is(:focus, :focus-visible) { outline:none !important; box-shadow:none !important; }
 
 /* the reading beside the dial */
 ${T} > .con-side { grid-area:side; position:relative; z-index:1; min-width:0; min-height:0; align-self:stretch; box-sizing:border-box;

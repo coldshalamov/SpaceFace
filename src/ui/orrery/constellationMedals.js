@@ -66,7 +66,7 @@ html.sf-reduce-motion .con-medalgrid::after { transition:none; }
 .con-medal:is(:hover, :focus-visible, [aria-current="true"]) .con-medal__name { color:rgb(255 252 245); }
 .con-medal:is(:hover, :focus-visible) .con-medal__glyph { color:rgb(${WARM}); }
 .con-medal:focus-visible { outline:none !important; }
-.con-medal:focus-visible .con-medal__focus { opacity:1; }
+.con-medal:focus-visible .con-medal__focus, html.sf-gamepad-focus .con-medal:focus .con-medal__focus { opacity:1; }
 .orr-svg .con-medal__ticks { fill:none; stroke:rgb(${BONE} / .26); stroke-width:1; }
 .orr-svg .con-medal__ghost { fill:none; stroke:rgb(${BONE} / .3); stroke-width:2; stroke-dasharray:2.2 3.4; }
 .orr-svg .con-medal__inner { fill:none; stroke:rgb(${BONE} / 0); stroke-width:1; }
@@ -74,7 +74,7 @@ html.sf-reduce-motion .con-medalgrid::after { transition:none; }
 .orr-svg .con-medal__bloom { fill:none; stroke:rgb(${WARM}); stroke-width:12; opacity:.2; stroke-linecap:butt; }
 .orr-svg .con-medal__head { fill:rgb(255 252 245); }
 .orr-svg .con-medal__head-bloom { fill:rgb(255 252 245); opacity:.3; }
-.orr-svg .con-medal__focus { fill:none; stroke:rgb(${WARM} / .9); stroke-width:1; opacity:0; transition:opacity .15s linear; }
+.orr-svg .con-medal__focus { fill:none; stroke:rgb(${WARM} / .9); stroke-width:1.6; opacity:0; transition:opacity .15s linear; }
 .con-medal[data-state="earned"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${WARM} / .5); }
 .con-medal[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .5); }
 .con-medal[data-state="earned"] .orr-svg .con-medal__ticks { stroke:rgb(${WARM} / .45); }
@@ -281,11 +281,17 @@ export function createMedalGrid(host, { onPick = null, onEdge = null, glyph = nu
     list.style.removeProperty('--con-medal');
     const face = list.querySelector('.con-medal__face');
     const base = face ? face.offsetWidth : 0;
-    for (const c of [4, 5, 6, 8]) {
+    // a short set (one category) stands on one row, its medals larger
+    const n = list.children.length;
+    const few = n > 0 && n <= 6;
+    for (const c of few ? [n, 6, 8] : [4, 5, 6, 8]) {
       list.style.setProperty('--con-cols', String(c));
-      for (const k of base > 0 ? [1, 0.92, 0.85] : [1]) {
-        if (k < 1) list.style.setProperty('--con-medal', `${Math.round(base * k)}px`);
-        if (list.offsetHeight <= room + 1) return;
+      for (const k of base > 0 ? (few ? [1.3, 1.15, 1, 0.92, 0.85] : [1, 0.92, 0.85]) : [1]) {
+        if (k !== 1) list.style.setProperty('--con-medal', `${Math.round(base * k)}px`); else list.style.removeProperty('--con-medal');
+        const cell = list.firstElementChild;
+        const cellFace = cell && cell.querySelector('.con-medal__face');
+        const fitsWide = !cellFace || cellFace.offsetWidth + 24 <= cell.offsetWidth;
+        if (list.offsetHeight <= room + 1 && fitsWide) return;
       }
       list.style.removeProperty('--con-medal');
     }

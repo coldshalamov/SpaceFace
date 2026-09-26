@@ -38,6 +38,9 @@ const f = (n) => Math.round(n * 100) / 100;
 const CSS = `
 .con-sky { position:absolute; inset:0; isolation:isolate; overflow:hidden; cursor:grab; touch-action:none; }
 .con-sky.is-dragging { cursor:grabbing; }
+/* a moved sky is a map under glass: it fades out under the screen's heading and at the frame's edges */
+.con-sky.is-moved { -webkit-mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, #000 calc(100% - 40px), transparent 100%);
+  -webkit-mask-composite:source-in; mask-image:linear-gradient(180deg, transparent 0, transparent var(--con-mask-top, 0px), #000 calc(var(--con-mask-top, 0px) + 56px), #000 calc(100% - 40px), transparent 100%), linear-gradient(90deg, #000 calc(100% - 40px), transparent 100%); mask-composite:intersect; }
 .con-sky.is-dragging .con-star-btn, .con-sky.is-dragging .con-label { cursor:grabbing; }
 .con-sky__world { position:absolute; inset:0; transform-origin:0 0; will-change:transform; }
 .con-sky__pool { position:absolute; z-index:-1; left:var(--con-cx, 50%); top:var(--con-cy, 50%); width:var(--con-pool, 900px); height:var(--con-pool, 900px);
@@ -53,8 +56,15 @@ const CSS = `
 .con-lens, .con-lens * { pointer-events:none !important; }
 .con-lens__view { position:absolute; inset:0; border-radius:50%; overflow:hidden; background:rgb(5 7 10 / .94); }
 .con-lens__view > .con-sky__world { inset:auto; left:0; top:0; width:var(--con-w, 100%); height:var(--con-h, 100%); will-change:auto; }
-.con-lens__view .con-label.is-dropped { display:block; }
-.con-lens__view .con-label.is-under-hand, .con-lens__view .con-label.is-covered { opacity:1; }
+.con-lens__view .con-label { display:none !important; }
+.con-lens__read { position:absolute; left:50%; top:calc(100% + 30px); transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:3px; white-space:nowrap;
+  text-align:center; opacity:0; transition:opacity .12s linear; text-shadow:0 0 2px rgb(4 6 9), 0 0 6px rgb(4 6 9), 0 0 12px rgb(4 6 9 / .9); }
+.con-lens__read.is-on { opacity:1; }
+.con-lens__read::before { content:""; position:absolute; z-index:-1; inset:-12px -26px; pointer-events:none; background:radial-gradient(closest-side, rgb(4 6 9 / .94), rgb(4 6 9 / .8) 55%, rgb(4 6 9 / 0)); }
+.con-lens__read-name { font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-weight:600; font-size:calc(var(--con-px, 13px) + 2px); line-height:1.2; color:rgb(255 252 245); }
+.con-lens__read-sub { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:var(--con-cost-px, 10.5px); letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .72); }
+html.sf-reduce-motion .con-lens__read { transition:none; }
+.orr-svg .con-lens__cross { fill:none; stroke:rgb(${WARM} / .7); stroke-width:1.4; }
 .con-lens__view .con-label::before { display:none; }
 .con-lens__rim { position:absolute; inset:-14px; width:calc(100% + 28px); height:calc(100% + 28px); overflow:visible; }
 .orr-svg .con-lens__ring { fill:none; stroke:rgb(${WARM}); stroke-width:1.8; }
@@ -162,7 +172,7 @@ html.sf-reduce-motion .orr-svg .con-star__art { transition:none; }
   cursor:pointer; pointer-events:auto; color:inherit; font:inherit; outline:none !important; min-width:0 !important; min-height:0 !important; }
 .con-star-btn::before { content:""; position:absolute; left:50%; top:50%; width:var(--con-focus, 30px); height:var(--con-focus, 30px); margin:calc(var(--con-focus, 30px) / -2) 0 0 calc(var(--con-focus, 30px) / -2);
   border-radius:50% !important; box-shadow:0 0 0 1px rgb(${WARM} / 0); transition:box-shadow .16s linear; pointer-events:none; }
-.con-star-btn:focus-visible::before { box-shadow:0 0 0 1px rgb(${WARM} / .95), 0 0 0 4px rgb(${WARM} / .14); }
+.con-star-btn:focus-visible::before, html.sf-gamepad-focus .con-star-btn:focus::before { box-shadow:0 0 0 1.5px rgb(${WARM} / .95), 0 0 0 5px rgb(${WARM} / .14); }
 .con-star-btn::after { content:none !important; }
 .con-label { position:absolute; display:block; box-sizing:border-box; white-space:nowrap; pointer-events:auto; cursor:pointer; line-height:1;
   text-shadow:0 0 2px rgb(4 6 9), 0 0 4px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9); }
@@ -501,6 +511,14 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   const lensView = doc.createElement('div');
   lensView.className = 'con-lens__view';
   lens.appendChild(lensView);
+  const lensCaption = doc.createElement('div');
+  lensCaption.className = 'con-lens__read';
+  const lensName = doc.createElement('span');
+  lensName.className = 'con-lens__read-name';
+  const lensSub = doc.createElement('span');
+  lensSub.className = 'con-lens__read-sub';
+  lensCaption.append(lensName, lensSub);
+  lens.appendChild(lensCaption);
   host.append(world, lens);
   starLayer.addEventListener('keydown', (event) => {
     const from = event.target && event.target.closest ? event.target.closest('.con-star-btn') : null;
@@ -563,6 +581,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   let lensDirty = true;
   let lensWorld = null;
   let lensAt = { x: 0, y: 0 };
+  let lensFocus = null;
   let onViewCb = null;
   const clampView = () => {
     if (!geo) return;
@@ -618,6 +637,28 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     lensWorld.setAttribute('inert', '');
     lensView.appendChild(lensWorld);
     if (geo) { lensView.style.setProperty('--con-w', `${geo.W}px`); lensView.style.setProperty('--con-h', `${geo.H}px`); }
+    lensFocus = null;
+  }
+  /** The star nearest the Lens's centre, within reach, is the one the Lens reads. */
+  function lensRead(w) {
+    if (!geo) return;
+    let best = null;
+    let bestD = 34 / view.z;
+    for (const [id, st] of Object.entries(geo.stars)) {
+      const d = Math.hypot(st.x - w.x, st.y - w.y);
+      if (d < bestD) { bestD = d; best = id; }
+    }
+    if (best === lensFocus) return;
+    lensFocus = best;
+    lensCaption.classList.toggle('is-on', !!best);
+    if (!best || !data) return;
+    const n = data.nodes.find((x) => x.id === best);
+    const st = stateOf(best);
+    const ready = st === 'available' && !!(data.ready && data.ready[best]);
+    const word = st === 'researched' ? 'researched' : st === 'available' ? (ready ? 'ready' : 'open') : 'locked';
+    const cost = st === 'researched' ? '' : String((data.costs && data.costs[best]) || '');
+    lensName.textContent = (n && n.name) || best;
+    lensSub.textContent = cost ? `${word} · ${cost}` : word;
   }
   function placeLens() {
     if (!lensWorld || lensDirty) refreshLens();
@@ -626,6 +667,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const k = view.z * LENS_K;
     lens.style.transform = `translate(${f(lensAt.x)}px, ${f(lensAt.y)}px)`;
     lensWorld.style.transform = `translate(${f(D / 2 - w.x * k)}px, ${f(D / 2 - w.y * k)}px) scale(${k.toFixed(4)})`;
+    lensRead(w);
   }
   function showLens(on) {
     lensOn = !!on && !!geo;
@@ -784,6 +826,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       }
     }
     geo = layoutConstellation(data.nodes, data.branches, { width: W, height: H, labelOut, avoid: avoidRects });
+    host.style.setProperty('--con-mask-top', `${Math.round(Math.max(0, ...avoidRects.map((r) => r.y + r.h - 6)))}px`);
     if (geo) geo.avoid = avoidRects;
     if (!geo) { standDown(); return; }
     host.classList.remove('is-off');
@@ -859,6 +902,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       svg('circle', { r: f(D / 2), class: 'con-lens__ring' }),
       svg('path', { d: ticksD(0, 0, D / 2 + 9, 48, { len: 3, major: 6, majorLen: 7, inward: true }), class: 'con-lens__ticks' }),
     );
+    rim.appendChild(svg('path', { class: 'con-lens__cross', d: 'M -14 0 L -6 0 M 6 0 L 14 0 M 0 -14 L 0 -6 M 0 6 L 0 14' }));
     const mag = svg('text', { y: f(D / 2 + 13), class: 'con-lens__mag' });
     mag.textContent = `${LENS_K}×`;
     rim.appendChild(mag);
@@ -1057,6 +1101,9 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       if (under.length) covers.set(id, under);
     }
 
+    // a rebuild under the player's focus (fonts landing, a resize, a research) keeps focus on the same star
+    const active = doc.activeElement;
+    const focusedNode = active && starLayer.contains(active) && active.dataset ? active.dataset.node : null;
     starLayer.textContent = '';
     buttons = new Map();
     const labelDelayBase = 520;
@@ -1105,6 +1152,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       buttons.set(n.id, b);
     }
     paint({ instant: true });
+    if (focusedNode && buttons.get(focusedNode)) { try { buttons.get(focusedNode).focus({ preventScroll: true }); } catch (_) { /* focus is a nicety */ } }
     if (pendingArrive && motion) runArrival();
     pendingArrive = false;
   }
