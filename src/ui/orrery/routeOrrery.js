@@ -428,7 +428,7 @@ export function createRouteOrrery(host, { maxRings = 3, caption: captionMode = '
       }
     }
     // the dial's rule breaks for its numerals: rings and lanes are cut 4px round every placed name
-    const cutId = `orr-route-cut-${Math.random().toString(36).slice(2, 8)}`;
+    const cutId = `orr-route-cut-${++pathSeq}`;
     const mask = svg('mask', { id: cutId, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
     mask.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
     for (const nb of nameBoxes) mask.appendChild(svg('rect', { x: f(nb.l - 4), y: f(nb.t - 4), width: f(nb.r - nb.l + 8), height: f(nb.b - nb.t + 8), fill: '#000' }));

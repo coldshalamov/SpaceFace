@@ -371,7 +371,9 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
       let prev = polar(geo.cx, geo.cy, ring.r, 0);
       for (let a = 7.5; a <= 360; a += 7.5) {
         const pt = polar(geo.cx, geo.cy, ring.r, a);
-        segs.push({ x1: prev[0], y1: prev[1], x2: pt[0], y2: pt[1] });
+        const sg = { x1: prev[0], y1: prev[1], x2: pt[0], y2: pt[1] };
+        segs.push(sg);
+        if (ring === front) segs.push(sg, sg);
         prev = pt;
       }
     }
