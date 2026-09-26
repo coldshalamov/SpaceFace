@@ -20,7 +20,7 @@
 // Save policy: PQ-146 preserves deployed force geometry, emitter identity, expiry and cooldown.
 // Old saves without field data still normalize away; sector changes and new games clear fields.
 
-import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, FIELD_VOLUMES, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
 import { createFieldKernel, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
 import {
   classifyClusterReceipt,
@@ -347,6 +347,10 @@ export const fields = {
     this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
+    // Mass Seed hitch post: the live seed mirrors into a kernel lock-ring; ring-entry edges
+    // (rope-delivered bodies and loose mass drifting in) latch hitches through it.
+    this._seedLockFieldId = null;
+    this._insideRing = new Map();
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -366,6 +370,9 @@ export const fields = {
         this.bus.on('combat:tumbled', (p) => this._onClusterReceipt('combat:tumbled', p)),
         this.bus.on('combat:collisionConsequence', (p) => this._onClusterReceipt('combat:collisionConsequence', p)),
         this.bus.on('physics:impact', (p) => this._onClusterReceipt('physics:impact', p)),
+        // Re-roping a hitched body is the manual release: the latch path is player-only, so a
+        // hitch on the seed ring is cut by roping the same body again.
+        this.bus.on('tether:latched', (p) => this._onTetherLatchedForHitch(p)),
       ];
     }
   },
@@ -559,6 +566,127 @@ export const fields = {
     return true;
   },
 
+  // Re-roping a hitched body is the manual release. The latch event is emitted only by the
+  // player's latch path, so this can never cut an NPC's rope.
+  _onTetherLatchedForHitch(payload) {
+    if (!payload || payload.targetId == null) return;
+    this.cutFieldHitch(this.state, payload.targetId);
+  },
+
+  // The Mass Seed's lock-ring is a real kernel field while the seed lives: FIELD_DEFS.seed
+  // carries lockStrength 400 and the kernel's hitch branch is already implemented — it just
+  // never had a producer. tag 'external' keeps the mirror out of serialize, the deploy cap,
+  // and the Intake-funnel publish records (_publishSeedVolume already draws the ring).
+  _syncSeedLockField(state, rt) {
+    const ms = state && state.massSeed;
+    const live = !!ms && (ms.phase === 'active' || ms.phase === 'warning');
+    const seedEnt = live && ms.seedId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(ms.seedId)
+      : null;
+    const fieldId = seedEnt && seedEnt.alive !== false ? `field_seed_lock_${ms.seedId}` : null;
+    if (fieldId) {
+      let rec = this._kernel.get(fieldId);
+      const sx = finite(seedEnt.pos && seedEnt.pos.x);
+      const sz = finite(seedEnt.pos && seedEnt.pos.z);
+      if (!rec) {
+        const def = FIELD_DEFS.seed;
+        rec = this._kernel.register({
+          id: fieldId,
+          kind: FIELD_KINDS.WELL,
+          volume: FIELD_VOLUMES.RING,
+          center: { x: sx, z: sz },
+          radius: def.radius,
+          strength: 0,
+          falloff: def.falloff,
+          durationS: Infinity,
+          // sourceId MUST be the seed entity id: hitchLockAcceleration matches
+          // field.sourceId against profile.hitchedTo, which comes from rt.hitches[].sourceId.
+          sourceId: ms.seedId,
+          ownerId: ms.ownerId,
+          team: seedEnt.team != null ? seedEnt.team : null,
+          createdAt: nowOf(state),
+          lockStrength: def.lockStrength,
+          tag: 'external',
+        });
+      } else {
+        rec.center.x = sx;
+        rec.center.z = sz;
+      }
+      this._seedLockFieldId = fieldId;
+      return;
+    }
+    if (this._seedLockFieldId && this._kernel.has(this._seedLockFieldId)) {
+      const deadId = this._seedLockFieldId;
+      this._kernel.unregister(deadId);
+      for (const id of Object.keys(rt.hitches || {})) {
+        if (rt.hitches[id] && rt.hitches[id].fieldId === deadId) delete rt.hitches[id];
+      }
+    }
+    this._seedLockFieldId = null;
+  },
+
+  // Ring-entry edge trigger: a body the rope delivers into the lock-ring (or loose mass that
+  // drifts in) latches a hitch and gets clamped to the anchor. Edge-triggered, never level —
+  // a body freed inside the ring by re-roping must not re-latch until it exits and returns.
+  // Ships and drones never auto-catch: the ring is a parking tool, not a passive trap.
+  _syncHitches(state, rt) {
+    if (rt.hitches) {
+      for (const id of Object.keys(rt.hitches)) {
+        const rec = rt.hitches[id];
+        // Object.keys stringifies numeric entity ids — look up both forms or every
+        // legitimate hitch is swept the tick after it latches.
+        const ent = state.entities && state.entities.get
+          ? (state.entities.get(id) || state.entities.get(Number(id)))
+          : null;
+        if (!rec || !ent || ent.alive === false || !this._kernel.has(rec.fieldId)) delete rt.hitches[id];
+      }
+    }
+    const field = this._seedLockFieldId ? this._kernel.get(this._seedLockFieldId) : null;
+    const ring = this._insideRing || (this._insideRing = new Map());
+    const prev = new Map(ring);
+    ring.clear();
+    if (!field) { prev.clear(); return; }
+    const latch = (ent) => {
+      if (!ent || ent.id == null || !ent.pos) return;
+      const inside = fieldContainsPoint(field, ent.pos.x, ent.pos.z);
+      ring.set(ent.id, inside);
+      if (!inside || prev.get(ent.id) === true) return;
+      if (rt.hitches[ent.id] || rt.hitches[String(ent.id)]) return;
+      if (Object.keys(rt.hitches).length >= 16) return;
+      const rec = this.latchFieldHitch(state, ent.id, field.id);
+      if (rec) {
+        this.bus.emit('toast', { text: 'Hitched to the anchor', kind: 'info', ttl: 1.6 });
+        this.bus.emit('audio:cue', { id: 'lock_acquired' });
+        this._emitDeployCue('seed', field.center.x, field.center.z, field.radius);
+      }
+    };
+    // The rope is the delivery verb: whatever the player is towing gets checked this tick.
+    const tether = state.player && state.player.tether;
+    const tetheredId = tether && tether.active ? tether.targetId : null;
+    if (tetheredId != null) {
+      const ent = state.entities && state.entities.get
+        ? (state.entities.get(tetheredId) || state.entities.get(String(tetheredId)))
+        : null;
+      latch(ent);
+    }
+    // Loose mass drifting through the ring is caught: same edge rule, same latch.
+    const index = state && state.entityIndex;
+    const lists = [];
+    if (index && index.__spacefaceEntityIndexV1) {
+      lists.push(index.pickups, index.wrecks, index.payloads);
+    } else {
+      lists.push(state && state.entityList);
+    }
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (const ent of list) {
+        if (!ent || ent.alive === false || !ent.pos) continue;
+        if (!FIELD_LOOSE_TYPES.has(ent.type) && !(ent.data && ent.data.majorDebris)) continue;
+        latch(ent);
+      }
+    }
+  },
+
   update(dt, state) {
     const rt = ensureRuntime(state);
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).
@@ -569,6 +697,8 @@ export const fields = {
       if (rt.coneActive) this._setConeActive(state, rt, false, FIELD_END_REASONS.toggledOff);
       this._syncSkimSheet(state, rt);
       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
+      this._syncSeedLockField(state, rt);
+      this._syncHitches(state, rt);
       this._publish(state, rt, 0, 0, 0);
       return;
     }
@@ -579,6 +709,8 @@ export const fields = {
     this._syncAnchoredFields(state, rt);
     this._syncOrbit(state);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
+    this._syncSeedLockField(state, rt);
+    this._syncHitches(state, rt);
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
@@ -1106,6 +1238,8 @@ export const fields = {
     }
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     if (this._kernel) this._kernel.clear();
+    this._seedLockFieldId = null;
+    if (this._insideRing) this._insideRing.clear();
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
     if (this._grindPairs) this._grindPairs.clear();
@@ -1829,6 +1963,9 @@ export const fields = {
     rec.engaged = true;
     rec.distortionRadius = 0;
     rec.distortionStrength = 0;
+    // Hitch badge: the ring is a parking tool — HUD/VFX consumers can show what's clamped.
+    const hitches = state.fields && state.fields.hitches;
+    rec.hitchedCount = hitches ? Object.keys(hitches).length : 0;
     return n + 1;
   },
 
