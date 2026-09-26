@@ -4185,7 +4185,7 @@ export const world = {
   },
 
   // Named-zone awareness (WORLD_OVERHAUL_2_1): announce when the player crosses into a named zone so
-  // the world reads as inhabited/territorial ("⟢ Belt-Shadow Ambush") instead of anonymous space.
+  // the world reads as inhabited/territorial ("Belt-Shadow Ambush") instead of anonymous space.
   // Also publishes state.world.currentZone for the HUD/map to label the player's surroundings.
   _tickZoneLabel(state) {
     const player = state.entities.get(state.playerId);
@@ -4205,7 +4205,7 @@ export const world = {
       const threat = zoneThreat(zone);
       const kind = threat >= 3 ? 'danger' : (threat >= 2 ? 'warn' : 'info');
       this.bus.emit('world:zoneEntered', { zoneId: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat, reason: zone.reason });
-      this.bus.emit('toast', { text: `⟢ ${zone.name}`, kind, ttl: 2.5 });
+      this.bus.emit('toast', { text: zone.name, kind, ttl: 2.5 });
     } else {
       this.bus.emit('world:zoneExited', { zoneId: prevId });
     }
