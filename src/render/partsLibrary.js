@@ -5743,7 +5743,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     if (prefetchedLibrary) {
       try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
     }
-    const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
+    const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
+      ...options,
+      admissionDeadline: true,
+    });
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
     try {
@@ -6448,25 +6451,57 @@ function admitEntityPlan(renderer, options, library, plan) {
     lanes = new Map();
     planAdmissionByRenderer.set(renderer, lanes);
   }
-  const previous = lanes.get(partRoot) || Promise.resolve();
-  const task = previous.catch(() => {}).then(async () => {
-    // Re-check only after earlier demand has committed its records. Checking before joining the lane
-    // permits duplicate decodes; copying slot arrays outside the lane permits last-writer data loss.
-    if (!libraryHasPreloadPlan(library, plan)) {
-      await loadPlanIntoLibrary(renderer, options, library, plan);
+  let lane = lanes.get(partRoot);
+  if (!lane) {
+    lane = { running: false, queued: [] };
+    lanes.set(partRoot, lane);
+  }
+  return new Promise((resolve, reject) => {
+    const entry = {
+      deadline: options && options.admissionDeadline === true,
+      run: async () => {
+        // Re-check only after earlier demand has committed its records. Checking before joining
+        // the lane permits duplicate decodes; copying slot arrays outside the lane permits
+        // last-writer data loss.
+        if (!libraryHasPreloadPlan(library, plan)) {
+          await loadPlanIntoLibrary(renderer, options, library, plan);
+        }
+        return library;
+      },
+      resolve,
+      reject,
+    };
+    // The lane stays serial, but not every caller sits on the player's deadline: prefetch and
+    // runway decodes are ambient warm-up while the admitted upgrade job is the presentation
+    // path itself. A deadline entry splices ahead of queued ambient entries — the running
+    // task and earlier deadline entries keep their order.
+    if (entry.deadline) {
+      let index = lane.queued.length;
+      while (index > 0 && lane.queued[index - 1].deadline) index--;
+      lane.queued.splice(index, 0, entry);
+    } else {
+      lane.queued.push(entry);
     }
-    return library;
+    pumpEntityPlanLane(lanes, partRoot, lane);
   });
-  lanes.set(partRoot, task);
-  const cleanup = () => {
-    if (lanes.get(partRoot) === task) lanes.delete(partRoot);
-  };
-  return task.then((value) => {
-    cleanup();
-    return value;
+}
+
+function pumpEntityPlanLane(lanes, partRoot, lane) {
+  if (lane.running) return;
+  const entry = lane.queued.shift();
+  if (!entry) {
+    lanes.delete(partRoot);
+    return;
+  }
+  lane.running = true;
+  entry.run().then((value) => {
+    lane.running = false;
+    entry.resolve(value);
+    pumpEntityPlanLane(lanes, partRoot, lane);
   }, (error) => {
-    cleanup();
-    throw error;
+    lane.running = false;
+    entry.reject(error);
+    pumpEntityPlanLane(lanes, partRoot, lane);
   });
 }
 
