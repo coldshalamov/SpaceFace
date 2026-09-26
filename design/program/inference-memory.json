@@ -1701,6 +1701,19 @@
       "integration": "live",
       "commit": "d77197454",
       "verification": "focused_green"
+    },
+    {
+      "id": "INFERENCE-19",
+      "date": "2026-09-26",
+      "wf": "WF-18",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "The bounty board sold a hunt but delivered a slot machine: 'a wanted target' that materialized on an anonymous ring around the player — the one contract type whose fiction is a specific person never produced one. Generated single-mark bounties now roll a deterministic storyTarget (hash32 on seed+offerId, zero rng draws) naming a wanted-poster person at a named place (POI, lurk-able zone, or gate); the title, brief, and nav reason read like a warrant; the spawn table shares markArchetypePoolFor so the implied hull is honest; Continue-adopted marks get their person identity re-stamped; and the mark hails once on comms when the player closes inside scanner range.",
+      "fingerprint": "verb=collect,subject=board-writ-mark,sector=any-bounty-board,layer=contract-identity,tempo=stalk,domain=wf-18",
+      "references": [],
+      "integration": "live",
+      "commit": "3d7ee135b",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
