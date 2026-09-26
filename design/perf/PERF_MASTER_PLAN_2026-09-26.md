@@ -289,6 +289,26 @@ window was stale; refreshed to 300-325 with the derivation in a comment.
   (fails identically on master tip 314cfaaa8; the integratedCommit SHAs live in
   the pre-Sep-8 archived history that was never pushed).
 
+### Sixth round (head 1f151a793 — settled)
+
+- `sim`: PASS. `draw-flight`: PASS (fix verified in CI).
+- `static (3)`: 2 failures — `check-onboarding` + `check-kestrel-wholeship`
+  (lod0 40468 tris vs 36000-38000 — **byte-identical on master tip**, verified
+  locally on the adjudicate worktree). `check-bundle` now passes — likely
+  improved by the Pole G asset rebuild.
+- `static (2)`: same 9 adjudicated master-side failures as round 2.
+- `feel`: same 4 adjudicated master-side contract failures (B2/B3 + hitstun).
+- `browser`: skipped (upstream shard dependency) — unchanged from prior rounds.
+- `check` rollup: inherits the shard failures.
+- Final end-state probe on this head (two runs, high box noise): missingFrames
+  511 then 217, stuckMissing 347 then 141 — same admission-bound classes as the
+  06-06Z run, inside the probe's ±2-4x run-to-run envelope (the 06-29Z run read
+  875 on near-identical code). No regression attributable to Pole G/merge: the
+  lone 14.1 s decode is `helios_cradle.glb` (14.3 MB, unchanged since HEAD~8)
+  and the single 404 page error appears identically in pre-Pole-G probe logs.
+  Residual is still Pole A serial-admission throughput (upgradePending ~21,
+  inFlight=1).
+
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
 authored-admission, audio-parameter-churn, pq146-projectiles, projectile-flight,
