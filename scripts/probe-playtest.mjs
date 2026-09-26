@@ -517,16 +517,22 @@ const ROUTES = {
       const sl = await snap(ctx);
       // Click the first save row/slot that carries a load affordance.
       const clicked = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/load|resume|restore|quick|auto|continue/i));
-      await sleep(1500);
-      // Slot click opens a "Load this save?" confirm — answer it if present.
+      await ctx.page.waitForFunction(() =>
+        !!document.querySelector('#sf-confirm-root [role="dialog"], #sf-confirm-root .sf-confirm'),
+        null, { timeout: 4000 }).catch(() => {});
+      await sleep(400);
+      // Slot click opens a "Load this save?" confirm — answer it if present. Prefer the
+      // canonical confirm root; a widened selector can bind an unrelated hidden dialog first.
       const confirmed = await ctx.page.evaluate(() => {
-        const root = document.querySelector('#sf-confirm-root, [role="dialog"], .sx-pop:not([hidden])');
-        if (!root) return null;
-        const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
-          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /^\s*(load|yes|confirm|restore)\s*$/i.test(e.textContent || ''))[0];
-        if (!b) return null;
-        b.click();
-        return (b.textContent || '').trim();
+        const roots = [document.querySelector('#sf-confirm-root'),
+          ...document.querySelectorAll('[role="dialog"], .sx-pop:not([hidden])')];
+        for (const root of roots) {
+          if (!root) continue;
+          const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
+            .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /^\s*(load|yes|confirm|restore)\s*$/i.test(e.textContent || ''))[0];
+          if (b) { b.click(); return (b.textContent || '').trim(); }
+        }
+        return null;
       });
       await sleep(3500);
       const s = await snap(ctx);
