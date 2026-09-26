@@ -1292,6 +1292,12 @@ export const vfx = {
     this._momentumSinkCandidateStatuses = new Array(MOMENTUM_SINK_VFX_TARGET_CAPACITY);
     this._momentumSinkCandidatePriorities = new Float64Array(MOMENTUM_SINK_VFX_TARGET_CAPACITY);
     this._momentumSinkCandidateCount = 0;
+    // Quiet settled flight: empty MOMENTUM_SINK bag still paid for-in over
+    // combat.entities + status probes every 12 Hz cadence. Latch after first
+    // empty collect when statusNextPendingSeq is trustworthy; wake on seq bump.
+    // Soft-GPU fps not claimed.
+    this._momentumSinkQuietEmpty = false;
+    this._momentumSinkQuietSeq = -1;
     this._momentumSinkParticleStart = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleStart);
     this._momentumSinkParticleEnd = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleEnd);
     this._cadenceStationSideEvent = 0;
@@ -1392,6 +1398,12 @@ export const vfx = {
     // WF-12 law/heat telegraph: scan sweep, suspicion build, WANTED flip. Shares EVENT_LIGHT_POOL.
     this._lawHeatTelegraph = createLawHeatTelegraphController();
     this._lawHeatTelegraphLocal = { x: 0, z: 0 };
+    // Quiet-empty residual: consecutive idle ticks still paid a11y resolve + stamp()
+    // alloc + light-pool find/release with no live cues. Latch after first empty
+    // update; wake when scan/heat accept bumps _lawHeatWakeSeq. Soft-GPU fps not claimed.
+    this._lawHeatQuietEmpty = false;
+    this._lawHeatQuietSeq = -1;
+    this._lawHeatWakeSeq = 0;
     this._projectileCandidates = [];
     this._projectileCacheDirty = true;
     this._projectileListRef = null;
@@ -2248,7 +2260,16 @@ export const vfx = {
     // emits no juice cue so cue-count contracts stay frozen.
     add('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     add('combat:collisionDebris', (p) => this._onCollisionDebris(p));
-    add('combat:statusApplied', (p) => this._onArcadeCausalReceipt('combat:statusApplied', p));
+    add('combat:statusApplied', (p) => {
+      this._onArcadeCausalReceipt('combat:statusApplied', p);
+      // Damage-path statuses spend ≥1 tick in pendingStatuses and land via applyActive
+      // with no statusNextPendingSeq bump — a cadence pull inside that window would
+      // re-latch and hide the sink for its whole life. Wake on the sink's application.
+      if (p && p.statusId === MOMENTUM_SINK_STATUS_ID) {
+        this._momentumSinkQuietEmpty = false;
+        this._momentumSinkQuietSeq = -1;
+      }
+    });
     add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
@@ -6615,6 +6636,8 @@ export const vfx = {
 
   _onLawHeatScan(payload) {
     if (!this._lawHeatTelegraph) return false;
+    this._lawHeatWakeSeq = (this._lawHeatWakeSeq | 0) + 1;
+    this._lawHeatQuietEmpty = false;
     const p = payload && typeof payload === 'object' ? { ...payload } : {};
     const state = this.state;
     // Resolve scanned hull position from authoritative entity truth when the payload omits pos.
@@ -6634,11 +6657,20 @@ export const vfx = {
 
   _onLawHeatChanged(payload) {
     if (!this._lawHeatTelegraph) return null;
+    this._lawHeatWakeSeq = (this._lawHeatWakeSeq | 0) + 1;
+    this._lawHeatQuietEmpty = false;
     return this._lawHeatTelegraph.acceptHeat(payload || {});
   },
 
   _updateLawHeatTelegraph(dt) {
     if (!this._lawHeatTelegraph) return 0;
+    // Quiet settled flight: idle law/heat still paid a11y resolve + controller.update
+    // + stamp() alloc + light-pool find/release every tick with no live cues. Latch
+    // after first empty publish; wake on scan/heat accept seq. Soft-GPU fps not claimed.
+    const wakeSeq = this._lawHeatWakeSeq | 0;
+    if (this._lawHeatQuietEmpty && wakeSeq === this._lawHeatQuietSeq) {
+      return 0;
+    }
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reducedMotion = accessibility.id === 'reduced-motion'
       || accessibility.id === 'reduced-motion-and-flash';
@@ -6649,6 +6681,12 @@ export const vfx = {
       : null;
     const live = this._lawHeatTelegraph.update(dt, { reducedMotion, heatValue });
     this._applyLawHeatTelegraphLights(reducedMotion, reducedFlash, accessibility);
+    if (live === 0) {
+      this._lawHeatQuietEmpty = true;
+      this._lawHeatQuietSeq = wakeSeq;
+    } else {
+      this._lawHeatQuietEmpty = false;
+    }
     return live;
   },
 
@@ -6965,6 +7003,8 @@ export const vfx = {
     this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SCAN_SWEEP);
     this._releaseLawHeatSustainedLight(LAW_HEAT_LIGHT_KEY.SUSPICION);
     this._releaseLawHeatSustainedLight('law-wanted-flip');
+    this._lawHeatQuietEmpty = false;
+    this._lawHeatQuietSeq = -1;
     return true;
   },
 
@@ -12215,6 +12255,8 @@ export const vfx = {
   _resetMomentumSinkPresentation() {
     this._cadenceMomentumSink = 0;
     this._momentumSinkCandidateCount = 0;
+    this._momentumSinkQuietEmpty = false;
+    this._momentumSinkQuietSeq = -1;
     const candidates = this._momentumSinkCandidates;
     const statuses = this._momentumSinkCandidateStatuses;
     if (candidates && statuses) {
@@ -12416,6 +12458,19 @@ export const vfx = {
   },
 
   _updateMomentumSinkPresentation() {
+    // Quiet-empty residual: consecutive cadence ticks still paid combat.entities
+    // for-in + MOMENTUM_SINK status probes with zero live sinks. Latch after first
+    // empty collect when statusNextPendingSeq is trustworthy; wake on seq bump.
+    // Soft-GPU fps not claimed.
+    const combat = this.state && this.state.combat;
+    const pendingSeq = combat && Number.isInteger(combat.statusNextPendingSeq)
+      ? combat.statusNextPendingSeq
+      : null;
+    if (this._momentumSinkQuietEmpty
+      && pendingSeq != null
+      && pendingSeq === this._momentumSinkQuietSeq) {
+      return 0;
+    }
     const count = this._collectMomentumSinkCandidates();
     let emittedTargets = 0;
     for (let index = 0; index < count; index++) {
@@ -12436,6 +12491,12 @@ export const vfx = {
     input.targetVelocity = null;
     input.frameVelocity = null;
     input.frameReady = false;
+    if (count === 0 && pendingSeq != null) {
+      this._momentumSinkQuietEmpty = true;
+      this._momentumSinkQuietSeq = pendingSeq;
+    } else {
+      this._momentumSinkQuietEmpty = false;
+    }
     return emittedTargets;
   },
 
