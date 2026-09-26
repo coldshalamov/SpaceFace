@@ -263,7 +263,8 @@ export function respawnToastText(payload = {}) {
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
   if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
   else if (payload.cargoLost) parts.push('cargo lost');
-  parts.push('3s shields online');
+  const invulnS = Math.max(0, Math.round(Number(payload.invulnS) || 0));
+  if (invulnS > 0) parts.push(invulnS + 's shields online');
   return parts.join(' - ');
 }
 

@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -421,11 +421,18 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'insurance') {
-    const ins = p.insurance || {};
-    const active = !!ins.insuredModules;
+    // No policy on file prices exactly what the purchase click will charge: the lazy write
+    // seeds INSURANCE_DEFAULTS before debiting, so quoting `{}` would promise a free 0-cr
+    // deductible the click does not deliver.
+    const ins = (p.insurance && typeof p.insurance === 'object')
+      ? p.insurance
+      : { rate: INSURANCE_DEFAULTS.rate, deductibleCr: INSURANCE_DEFAULTS.deductibleCr, insuredModules: false };
     const index = Math.max(0, Math.floor(Number(p.activeShipIndex) || 0));
     const owned = Array.isArray(p.ownedShips) ? p.ownedShips[index] : null;
-    const quote = recoveryCostQuote(owned && owned.defId || 'ship_kestrel', ins);
+    // Same hull the recovery plan would price: owned record, then the live entity's defId.
+    const quote = recoveryCostQuote(
+      (owned && owned.defId) || (entity && entity.data && entity.data.defId) || 'ship_kestrel', ins);
+    const active = quote.insured === true;
     const deductible = quote.deductibleCr;
     const recovery = 'cargo loss still applies';
     if (active) {

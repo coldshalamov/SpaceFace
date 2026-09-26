@@ -109,6 +109,11 @@ function resolveEnemyWeapon(w, slotIndex) {
     tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
     arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
     heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
+    // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
+    // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
+    // these — they must survive resolution or the mounts read as always-on primaries.
+    ...(w.occasional === true ? { occasional: true } : null),
+    ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
     _cooldown: 0, _heat: 0,
   };
 }
@@ -924,6 +929,7 @@ export const combat = {
       stationId,
       shipId: t.data && t.data.defId,
       refundCr,
+      invulnS: UNDOCK_INVULN_S,
       cargoLost: cargoLostQty > 0,
       cargoLostQty,
     });

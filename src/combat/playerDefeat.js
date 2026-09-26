@@ -197,6 +197,7 @@ function chooseLawfulStation(state) {
 // Recovery pricing as a pure quote so the docked service row can price the player's actual
 // hull before they ever need it — buildRecoveryPlan consumes the same math at loss time.
 export function recoveryCostQuote(shipId, insurance = {}) {
+  insurance = insurance && typeof insurance === 'object' ? insurance : {};
   const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
   const rate = Math.max(0, Math.min(1, Number(insurance.rate) || 0));
   const deductibleCr = Math.max(0, Math.round(Number(insurance.deductibleCr) || 0));
