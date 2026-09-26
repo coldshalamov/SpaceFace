@@ -264,10 +264,13 @@ export function createScreenManager(ctx) {
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the
     // flight canvas (z-index 10) and blank the screen after New Game even though the sim is live.
+    // A bare global-find palette (`.sf-find--host`) lives in #screens without a stack entry —
+    // it owns the same lifted-lid contract, so an open palette also keeps the layer shown.
     if (screensRoot) {
-      screensRoot.style.display = open ? 'flex' : 'none';
-      screensRoot.inert = !open;
-      if (open) screensRoot.removeAttribute('aria-hidden');
+      const findOpen = !open && !!screensRoot.querySelector('.sf-find--host');
+      screensRoot.style.display = (open || findOpen) ? 'flex' : 'none';
+      screensRoot.inert = !(open || findOpen);
+      if (open || findOpen) screensRoot.removeAttribute('aria-hidden');
       else screensRoot.setAttribute('aria-hidden', 'true');
     }
 
