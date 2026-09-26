@@ -376,7 +376,9 @@ const CORE_SECTORS = [
       { type: 'dense_asteroid', center: { x: -500, z: -400 }, radius: 700, intensity: 0.6 },
     ],
     pois: [
-      { id: 'poi_bounty', type: 'wreck', name: 'Bounty Wrecks' },
+      { id: 'poi_bounty', type: 'wreck', name: 'Bounty Wrecks',
+        requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        manualInvestigation: true, recoveryEncounter: true },
       { id: 'poi_stash',  type: 'cache', name: 'Stash Cache', hidden: true },
       // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
       // Anchors zone_sker_haven (Skerris Deep) on the approach to the Bazaar: a fortress welded
