@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "e1e77328792bfee15f7a4465758da568456a0901d307e875fe8f04879bc2742f",
+    "authoritativeHash": "f542e2e96a47e0f2ba2bedc35633b70231a8c9a25dccc4b95267211809d97ab2",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -175,6 +175,7 @@
     "The V3 envelope never moved in the window (identical at a394b7483, 9c3dab1f1 and 9d957b603); the legacy envelope carries the full signature.",
     "d225c6222 (ships keep their own colliders) repaired the measured-skin collider bug from ad1f92053/4f102db53 that had broken reload determinism; reload@600 reproduces the uninterrupted hash exactly.",
     "Evidence on the fixed tree at 9d957b603: repeat-20 deterministic; check:sim:compare reports hashEqual with zero envelope diffs — zero phase0ObservedTraceCounts moved.",
-    "Recorded against a clean HEAD worktree; the dirty primary tree carries foreign lanes that move this hash and is excluded."
+    "Recorded against a clean HEAD worktree; the dirty primary tree carries foreign lanes that move this hash and is excluded.",
+    "2026-09-26 shots leave the weapon socket for every aim, including off the nose. Prior authoritativeHash was e1e77328792bfee15f7a4465758da568456a0901d307e875fe8f04879bc2742f. Trace counts and reload@600 are unchanged; the in-flight rounds are the hash."
   ]
 }

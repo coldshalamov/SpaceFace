@@ -29,6 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
@@ -2991,8 +2992,10 @@ export const vfx = {
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
     if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
+    const socketName = modelTruthPlumeSocketName(e);
+    if (!socketName) return null;
     if (this.helpers.socketWorldPose) {
-      const pose = this.helpers.socketWorldPose(e.id, 'SOCKET_Trail_Main');
+      const pose = this.helpers.socketWorldPose(e.id, socketName);
       if (pose) {
         return this._writeTrailSocketPose(
           pose.x, pose.y || 0, pose.z,
@@ -3001,7 +3004,7 @@ export const vfx = {
       }
     }
     if (this.helpers.socketWorldPos) {
-      const pos = this.helpers.socketWorldPos(e.id, 'SOCKET_Trail_Main');
+      const pos = this.helpers.socketWorldPos(e.id, socketName);
       if (pos) {
         const cf = Math.cos(e && e.rot || 0);
         const sf = Math.sin(e && e.rot || 0);
@@ -3021,13 +3024,16 @@ export const vfx = {
       const childCount = root.children ? root.children.length : 0;
       if (!cache || cache.root !== root || cache.assetState !== assetState
         || cache.compositionId !== compositionId || cache.childCount !== childCount) {
+        const nozzles = [];
         const sockets = [];
         const drivePlumes = [];
         root.traverse((o) => {
           if (!o || !o.userData || o.userData.spacefaceEnergyPlume) return;
-          if (isTrailSocketObject(o)) sockets.push(o);
+          if (isNozzleSocketObject(o)) nozzles.push(o);
+          else if (isTrailSocketObject(o)) sockets.push(o);
           else if (isDrivePlumeAnchor(o)) drivePlumes.push(o);
         });
+        nozzles.sort(sortNozzleAnchors);
         sockets.sort(sortTrailAnchors);
         drivePlumes.sort(sortTrailAnchors);
         cache = view.__vfxTrailSockets = {
@@ -3035,7 +3041,7 @@ export const vfx = {
           assetState,
           compositionId,
           childCount,
-          sockets: sockets.length ? sockets : drivePlumes,
+          sockets: nozzles.length ? nozzles : (sockets.length ? sockets : drivePlumes),
         };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
@@ -15469,10 +15475,19 @@ export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+function isNozzleSocketObject(object) {
+  if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
+  return /^SOCKET_Engine_/i.test(String(object.name || ''));
+}
+
 function isTrailSocketObject(object) {
   if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
   const name = String(object.name || '');
   return name === 'SOCKET_Trail_Main' || /^SOCKET_Trail_/i.test(name);
+}
+
+function sortNozzleAnchors(a, b) {
+  return String(a && a.name || '').localeCompare(String(b && b.name || ''));
 }
 
 function isDrivePlumeAnchor(object) {

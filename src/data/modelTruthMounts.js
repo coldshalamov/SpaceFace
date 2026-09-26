@@ -107,8 +107,23 @@ export function shotWorldFromRow(row, entity, slotIndex) {
   return socketWorldFromRow(row, entity, name);
 }
 
+export function plumeSocketNameFromNames(names) {
+  const list = Array.isArray(names) ? names.map((name) => String(name || '')) : [];
+  const engines = list.filter((name) => name.startsWith('SOCKET_Engine_')).sort();
+  if (engines.length) return engines[0];
+  const trails = list.filter((name) => name.startsWith('SOCKET_Trail_'));
+  trails.sort((a, b) => {
+    if (a === 'SOCKET_Trail_Main') return -1;
+    if (b === 'SOCKET_Trail_Main') return 1;
+    return a.localeCompare(b);
+  });
+  return trails[0] || null;
+}
+
 export function plumeWorldFromRow(row, entity) {
-  return nozzleWorldFromRow(row, entity);
+  const names = (row && Array.isArray(row.sockets) ? row.sockets : []).map((socket) => socket && socket.name);
+  const name = plumeSocketNameFromNames(names);
+  return name ? socketWorldFromRow(row, entity, name) : null;
 }
 
 export function nozzleWorldFromRow(row, entity) {

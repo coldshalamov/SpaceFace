@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { weapons } from '../src/systems/weapons.js';
+import { vfx } from '../src/render/vfx.js';
 import { contextualAttachmentWorlds } from '../src/systems/tetherGameplay.js';
 import {
   modelTruthNozzleOrigin,
-  modelTruthPlumeOrigin,
+  modelTruthPlumeSocketName,
   modelTruthRopeEnd,
   modelTruthRow,
   modelTruthRows,
@@ -42,25 +43,55 @@ test('shot, flash, and socket are the same point', () => {
     const entity = hull(row.id);
     const weapon = { slotIndex: 0 };
     const shot = weapons._muzzle(entity, weapon, entity.rot);
+    const shotOffNose = weapons._muzzle(entity, weapon, entity.rot + 0.2);
     const flash = weapons.flashOrigin(entity, weapon);
     const socket = modelTruthSocketWorld(entity, modelTruthWeaponSocketName(entity, weapon));
     assert.ok(socket, row.id);
     assert.ok(dist(shot, socket) <= 0.5, `${row.id} shot ${dist(shot, socket)}`);
+    assert.ok(dist(shotOffNose, socket) <= 0.5, `${row.id} off-nose ${dist(shotOffNose, socket)}`);
     assert.ok(dist(flash, socket) <= 0.5, `${row.id} flash`);
     assert.equal(weapons._muzzle.length >= 1, true);
   }
 });
 
-test('plume and nozzle are the same point', () => {
+test('the drawn plume anchor is the nozzle socket', () => {
   const ships = modelTruthRows().filter((row) => (row.sockets || []).some((socket) => socket.name.startsWith('SOCKET_Engine_') || socket.name.startsWith('SOCKET_Trail_')));
   assert.ok(ships.length > 10);
   for (const row of ships) {
     const entity = hull(row.id);
-    const plume = modelTruthPlumeOrigin(entity);
+    const objects = (row.sockets || [])
+      .filter((socket) => socket.name.startsWith('SOCKET_Engine_') || socket.name.startsWith('SOCKET_Trail_'))
+      .map((socket) => ({ name: socket.name, userData: { spacefaceSocket: true } }));
+    const root = {
+      children: objects,
+      traverse(fn) { for (const object of objects) fn(object); },
+    };
+    const picked = vfx._trailSocketObjects({ view: { root } });
+    assert.ok(picked.length, row.id);
     const nozzle = modelTruthNozzleOrigin(entity);
-    assert.ok(plume && nozzle, row.id);
-    assert.ok(dist(plume, nozzle) <= 0.5, row.id);
+    const drawn = modelTruthSocketWorld(entity, picked[0].name);
+    assert.ok(nozzle && drawn, row.id);
+    assert.ok(dist(drawn, nozzle) <= 0.5, `${row.id} ${picked[0].name} ${dist(drawn, nozzle)}`);
+    const trail = (row.sockets || []).find((socket) => socket.name.startsWith('SOCKET_Trail_'));
+    if (trail) {
+      const trailWorld = modelTruthSocketWorld(entity, trail.name);
+      if (dist(trailWorld, nozzle) > 0.5) assert.notEqual(picked[0].name, trail.name, row.id);
+    }
   }
+  const boss = hull('dreadnought_boss');
+  let asked = null;
+  vfx._trailSocketWorldPose.call({
+    _trailSocketObjects() { return []; },
+    helpers: {
+      socketWorldPos(_id, name) {
+        asked = name;
+        return { x: 0, y: 0, z: 0 };
+      },
+    },
+    _writeTrailSocketPose(x, y, z) { return { x, y, z }; },
+  }, boss);
+  assert.equal(asked, modelTruthPlumeSocketName(boss));
+  assert.equal(String(asked).startsWith('SOCKET_Engine_'), true);
 });
 
 test('a wreck with no tether socket uses the measured hardpoint', () => {

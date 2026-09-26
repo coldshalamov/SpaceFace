@@ -19,6 +19,7 @@ import {
   mountFractionsFromRow,
   nozzleWorldFromRow,
   placeDrawScaleFromRow,
+  plumeSocketNameFromNames,
   plumeWorldFromRow,
   ropeEndFromRow,
   shotWorldFromRow,
@@ -281,6 +282,13 @@ export function modelTruthFlashOrigin(entity, weapon) {
   return modelTruthShotOrigin(entity, weapon);
 }
 
+export function modelTruthPlumeSocketName(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const names = (row.sockets || []).map((socket) => socket && socket.name);
+  return plumeSocketNameFromNames(names);
+}
+
 export function modelTruthPlumeOrigin(entity) {
   const row = rowFor(entity);
   return row ? plumeWorldFromRow(row, entity) : null;
@@ -340,6 +348,48 @@ export function modelTruthNameplateHeight(entity) {
 
 export function modelTruthPipRadius(entity) {
   return Math.max(1.2, modelTruthPlanarRadius(entity) * 0.08);
+}
+
+function chartContactEntity(contact) {
+  if (!contact) return null;
+  if (contact.pos && contact.data) return contact;
+  const kind = contact.kind || contact.type;
+  const isGate = kind === 'gate' || contact.isGate === true;
+  return {
+    type: kind === 'station' || isGate ? 'station' : kind === 'asteroid' ? 'asteroid' : 'ship',
+    radius: Number(contact.radius) || 0,
+    id: contact.defId || contact.placeId || contact.id,
+    data: {
+      defId: contact.defId,
+      placeId: contact.placeId,
+      stationTypeId: contact.stationTypeId || contact.stationId,
+      dockRadius: contact.dockRadius,
+      archetypeGlb: contact.archetypeGlb,
+      typeId: contact.typeId,
+      isGate,
+    },
+  };
+}
+
+/** Screen size of a map pip, in pixels when pxPerWu is the map scale. */
+export function censusPipRadiusPx(contact, pxPerWu) {
+  const world = modelTruthPipRadius(chartContactEntity(contact));
+  const scale = Number(pxPerWu);
+  return scale > 0 ? world * scale : world;
+}
+
+/** Screen offset of a world nameplate, in pixels when pxPerWu is the map scale. */
+export function censusNameplateOffsetPx(contact, pxPerWu) {
+  const world = modelTruthNameplateHeight(chartContactEntity(contact));
+  const scale = Number(pxPerWu);
+  return scale > 0 ? world * scale : world;
+}
+
+export function chartMarkSizes(contact, pxPerWu) {
+  return {
+    pipPx: censusPipRadiusPx(contact, pxPerWu),
+    nameplatePx: censusNameplateOffsetPx(contact, pxPerWu),
+  };
 }
 
 export function modelTruthWeaponSocketName(entity, weapon) {
