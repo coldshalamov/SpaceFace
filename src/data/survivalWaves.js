@@ -58,6 +58,8 @@ export const SURVIVAL_ARENA_PHASES = Object.freeze([
 const SPAWN_BUDGET_DEFAULT_MAX = 24;
 
 const ENEMY_IDS = new Set(ENEMY_TYPES.map((enemy) => enemy.id));
+/** PQ-140 — authored mass per roster id, for the physical-problem props gate below. */
+const ENEMY_MASS = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy.mass]));
 const ROLE_SET = new Set(SURVIVAL_WAVE_ROLES);
 const GATE_SET = new Set(SURVIVAL_GATE_GROUPS);
 /** Set view of SURVIVAL_ARENA_PHASES for the validator below. Kept private on purpose:
@@ -217,6 +219,125 @@ export const WAVE_20_QUESTION = freezeDeep({
   answerVerb: 'well',
 });
 
+// ── PQ-140 — the roster is a set of physical problems ────────────────────────────────────────
+// A named question is only honest if the wave fields the bodies the question names. The rows
+// below are that promise, machine-checked by questionPropsIssues() so a later composition edit
+// cannot silently de-grade a wave into a question its packages cannot answer.
+//
+// Physical classes, in authored mass units (src/data/enemies.js). Do not import
+// src/systems/impulseKernel.js from here — this file is data-only — so the heavy boundary is
+// copied with its citation: HEAVY_AS_TERRAIN_MASS = 150 at impulseKernel.js:215, the roster's own
+// heavy line (ships.js gives every mass-150+ hull a heavyMotion profile). A hull at or above it is
+// terrain: gun-scale impulses do nothing (leaf .01, B11), and a thrown light dies ON it rather
+// than hurting it. Everything at or below THROW_CLASS_MAX_MASS is ammunition: light enough for
+// the starter kit's momentum budget (concussion S is 520 per hit; INF-026 re-massed the corsair
+// to 32 on exactly this argument) to be thrown, whipped or well-flung as a projectile.
+export const THROW_CLASS_MAX_MASS = 32;
+export const HEAVY_TERRAIN_MIN_MASS = 150;
+
+/**
+ * The physical props each template question names, by template wave number (1..10). Wave 20
+ * overlays the fortress question on the wave-10 template, so it shares this row's props.
+ *
+ *   bodies     — enemyIds the question text names; every one must ship in the wave's packages.
+ *   pair       — for a shove question: [mover, receiver]; both must ship, the mover must be
+ *                starter-movable (mass ≤ 96, the roster's heaviest non-heavy screen), and the
+ *                receiver must be the body whose mass does the receiving.
+ *   clusterMin — for a well question: some single gate + tick must field at least this many
+ *                bodies, so the well has something to share one hole.
+ *   throwable  — at least one package must field a body of mass ≤ THROW_CLASS_MAX_MASS.
+ *   heavyMin   — at least one package must field a body of mass ≥ this value (moving terrain).
+ */
+export const SURVIVAL_QUESTION_PROPS = freezeDeep({
+  1: { id: 'identical_mass', bodies: ['wasp_swarmer'], throwable: true },
+  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate'], pair: ['reaver_pirate', 'wasp_swarmer'] },
+  3: { id: 'tether_pull', bodies: ['tether_control_raider'] },
+  4: { id: 'three_gate_anvil', bodies: ['mine_layer_jackal', 'bruiser_brawler'], pair: ['mine_layer_jackal', 'bruiser_brawler'] },
+  5: { id: 'ace_in_the_noise', bodies: ['wasp_swarmer', 'corsair_raider'], throwable: true },
+  6: { id: 'snare_holds_the_room', bodies: ['field_anchor_controller'], heavyMin: HEAVY_TERRAIN_MIN_MASS },
+  7: { id: 'ghosts_and_choir', bodies: ['choir_zealot'], clusterMin: 3 },
+  8: { id: 'twin_silhouette', bodies: ['wasp_swarmer', 'choir_zealot'], clusterMin: 3 },
+  9: { id: 'exam_screens', bodies: ['pd_screen_escort'], clusterMin: 2 },
+  10: { id: 'fortress_behind', bodies: ['wasp_swarmer'], throwable: true, heavyMin: HEAVY_TERRAIN_MIN_MASS },
+});
+
+/** Wave 20 re-uses the fortress props under its own question id. */
+export const WAVE_20_QUESTION_PROPS = freezeDeep({
+  id: 'plate_theft',
+  bodies: ['pd_screen_escort'],
+  clusterMin: 2,
+});
+
+export function questionPropsFor(wave) {
+  if (!Number.isInteger(wave) || wave < 1) return null;
+  if (wave === 20) return WAVE_20_QUESTION_PROPS;
+  return SURVIVAL_QUESTION_PROPS[((wave - 1) % 10) + 1] || null;
+}
+
+function packageBodies(packages) {
+  const counts = new Map();
+  for (const pkg of packages || []) {
+    if (!pkg || typeof pkg.enemyId !== 'string') continue;
+    counts.set(pkg.enemyId, (counts.get(pkg.enemyId) || 0) + (Number.isInteger(pkg.count) ? pkg.count : 0));
+  }
+  return counts;
+}
+
+/**
+ * PQ-140 — does this recipe's composition still answer the question it names? Returns issues
+ * (empty when honest). Shared shape with catalogQuestionIssues so the catalog gate and any
+ * single-recipe caller speak one vocabulary.
+ */
+export function questionPropsIssues(recipe) {
+  if (!isPlainObject(recipe)) return [issue('', 'recipe missing')];
+  const wave = recipe.wave;
+  const props = questionPropsFor(wave);
+  if (!props) return []; // factory override recipes and non-template waves name no props
+  const issues = [];
+  const bodies = packageBodies(recipe.packages);
+  for (const enemyId of props.bodies || []) {
+    if (!(bodies.get(enemyId) > 0)) {
+      issues.push(issue('packages', `question ${props.id} names ${enemyId} but no package fields it`));
+    }
+  }
+  if (props.pair) {
+    const [mover, receiver] = props.pair;
+    const moverMass = ENEMY_MASS.get(mover);
+    if (moverMass != null && moverMass > 96) {
+      issues.push(issue('packages', `question ${props.id} shoves ${mover} at mass ${moverMass}: beyond the starter kit's momentum budget`));
+    }
+    const receiverMass = ENEMY_MASS.get(receiver);
+    if (receiverMass != null && receiverMass <= 0) {
+      issues.push(issue('packages', `question ${props.id} shoves into ${receiver} at mass ${receiverMass}: nothing to receive`));
+    }
+  }
+  if (Number.isInteger(props.clusterMin)) {
+    let best = 0;
+    for (const pkg of recipe.packages || []) {
+      if (!pkg || typeof pkg.gateGroup !== 'string') continue;
+      if (props.bodies && !props.bodies.includes(pkg.enemyId)) continue;
+      best = Math.max(best, Number.isInteger(pkg.count) ? pkg.count : 0);
+    }
+    if (best < props.clusterMin) {
+      issues.push(issue('packages', `question ${props.id} wells a cluster of ${props.clusterMin}+ but the largest named package fields ${best}`));
+    }
+  }
+  if (props.throwable) {
+    const lightest = Math.min(...[...bodies.keys()].map((id) => ENEMY_MASS.get(id) ?? Infinity));
+    if (!(lightest <= THROW_CLASS_MAX_MASS)) {
+      issues.push(issue('packages', `question ${props.id} throws mass but the lightest body fields at mass ${lightest} > ${THROW_CLASS_MAX_MASS}`));
+    }
+  }
+  if (Number.isInteger(props.heavyMin)) {
+    let heaviest = 0;
+    for (const id of bodies.keys()) heaviest = Math.max(heaviest, ENEMY_MASS.get(id) ?? 0);
+    if (heaviest < props.heavyMin) {
+      issues.push(issue('packages', `question ${props.id} leans on terrain but the heaviest body fields at mass ${heaviest} < ${props.heavyMin}`));
+    }
+  }
+  return issues;
+}
+
 /** The room is itself a question (current, furnace, snare). Swarm consecutive ids include it. */
 export const SURVIVAL_ROOM_QUESTIONS = freezeDeep({
   idle: { id: 'quiet_room', clause: 'The room is quiet. The fight is the arrivals.' },
@@ -276,7 +397,16 @@ function swarmProblemFromPackages(packages) {
       answerVerb: 'throw',
     };
   }
-  if (roles.has('support')) return SURVIVAL_TEMPLATE_QUESTIONS[9];
+  if (roles.has('support')) {
+    // PQ-140 — self-contained on purpose: this reader also names the problem for swapped act
+    // II/III and endless compositions, where the template row's "lances / raiders" clauses would
+    // name hulls that are not on the field.
+    return {
+      id: 'screened_pack',
+      question: 'Screens cover the pack. Well the screens so they share one hole.',
+      answerVerb: 'well',
+    };
+  }
   if (roles.has('anchor')) return SURVIVAL_TEMPLATE_QUESTIONS[6];
   if (roles.has('disruptor')) {
     return {
@@ -302,8 +432,22 @@ function swarmProblemFromPackages(packages) {
     };
   }
   if (gates.size === 2) return SURVIVAL_TEMPLATE_QUESTIONS[2];
-  return SURVIVAL_TEMPLATE_QUESTIONS[1];
+  // Self-contained fallback (see screened_pack): "six identical lights on one bearing" would
+  // misname any other count or bearing.
+  return {
+    id: 'bare_mass',
+    question: 'Bare mass on a bearing. Throw a body through the pack, or shoot it down.',
+    answerVerb: 'throw',
+  };
 }
+
+/**
+ * PQ-140 — the package-level problem reader, exported for consumers that must name the physical
+ * problem from a plan's ACTUAL bodies (the wave announcer in act II/III and endless, where the
+ * arc composer swaps roles, so the template row could misname the room). Same reader the swarm
+ * question uses; arc packages never set `champion`, where that branch is inert.
+ */
+export const physicalProblemFromPackages = swarmProblemFromPackages;
 
 /** Swarm plans have no authored recipe. The question is the opening plus the room. */
 export function questionFromSwarmPlan(plan) {
@@ -337,6 +481,11 @@ export function catalogQuestionIssues(recipes = SURVIVAL_WAVES) {
     const path = recipe.id || '';
     if (!recipe.questionId || !recipe.question || !recipe.answerVerb) {
       issues.push({ path, message: 'missing question fields' });
+    }
+    // PQ-140 — the question must also be TRUE of the composition: the bodies it names ship,
+    // the shoved pair is starter-movable, the well has a cluster, the throw has ammunition.
+    for (const item of questionPropsIssues(recipe)) {
+      issues.push({ path: `${path}.${item.path}`, message: item.message });
     }
     const result = validateWaveRecipe(recipe);
     if (!result.ok) {
@@ -618,6 +767,27 @@ function thirdGate(gateA, gateB) {
   return gateA;
 }
 
+/**
+ * PQ-133.04 — the authored Foundry wave-ten question. Mirrorjaw replaces the generic fortress,
+ * and its question names the committed pass rather than the fortress behind. Named here (not
+ * inline in waveRecipe) so the question gates assert against the same row the recipe ships.
+ */
+export const WAVE_10_FOUNDRY_QUESTION = freezeDeep({
+  id: 'foundry_foreman_commit',
+  question: 'Cross the Foreman\'s committed pass and punish its slow turn. Throw the escort screen into its hull.',
+  answerVerb: 'throw',
+});
+
+/**
+ * The question a shipped recipe carries for this arena and template wave — the one authority for
+ * the Foundry wave-ten override (PQ-133.04), shared by waveRecipe and by the combat net
+ * (survivalAnnounce) so the bark names exactly the row the wave ships.
+ */
+export function shippedQuestionFor(arenaId, wave) {
+  if (arenaId === 'helios_core' && wave === 10) return WAVE_10_FOUNDRY_QUESTION;
+  return SURVIVAL_TEMPLATE_QUESTIONS[wave] || null;
+}
+
 function waveRecipe({
   arenaId,
   wave,
@@ -631,11 +801,7 @@ function waveRecipe({
   xp,
   credits,
 }) {
-  const asked = arenaId === 'helios_core' && wave === 10 ? {
-    id: 'foundry_foreman_commit',
-    question: 'Cross the Foreman\'s committed pass and punish its slow turn. Throw the escort screen into its hull.',
-    answerVerb: 'throw',
-  } : SURVIVAL_TEMPLATE_QUESTIONS[wave];
+  const asked = shippedQuestionFor(arenaId, wave);
   return {
     id: `${arenaId}_w${String(wave).padStart(2, '0')}_${shape}`,
     schemaVersion: SURVIVAL_WAVE_SCHEMA_VERSION,

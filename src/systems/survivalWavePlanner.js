@@ -418,8 +418,10 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     wave: mode === 'boss_circuit' ? wave : wave,
   });
   let packages = applyDifficulty(composed.packages, difficulty);
+  let heaviesOnly = false;
   if (mutatorList(mutators).includes('heavies_only')) {
     packages = applyHeaviesOnly(packages);
+    heaviesOnly = true;
   }
   const schedule = expandSchedule(packages);
   const peak = peakConcurrentDemand(packages);
@@ -451,6 +453,10 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     },
   };
   if (composed.systemEvent) plan.systemEvent = composed.systemEvent;
+  // PQ-140 — the announcer reads the physical problem from the shipped bodies; a heavies-only
+  // rewrite of the mass slots is exactly the swap it must know about. Additive, deterministic,
+  // and present ONLY under the mutator so plan shape is unchanged for every ordinary wave.
+  if (heaviesOnly) plan.heaviesOnly = true;
   if (mode === 'endless' && composed.endlessOverlay) {
     plan.endlessOverlay = composed.endlessOverlay;
     plan.endlessCycle = composed.endlessCycle;

@@ -26,13 +26,14 @@
 // because a finite-ttl alert BECOMES a voice line downstream. The bound is hard, not advisory.
 
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
+import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
 import { validateRunState } from '../core/runState.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
- * turns a finite-ttl alert into a voice:say. Worst authored case is the boss wave:
- * opener + arrival + cleared + levelUp = 4. The fifth slot is headroom for a build-pressure
- * substitution that puts a second unseen archetype on the board; nothing can exceed it.
+ * turns a finite-ttl alert into a voice:say. Worst authored case is the arc boss wave:
+ * opener + question (PQ-140) + arrival + cleared + levelUp = 5. Nothing can exceed it.
  */
 export const MAX_LINES_PER_WAVE = 5;
 
@@ -125,6 +126,27 @@ function joinBearings(words) {
 
 function packagesOf(plan) {
   return plan && Array.isArray(plan.packages) ? plan.packages : [];
+}
+
+/**
+ * PQ-140 — the wave's physical question, as one player-facing sentence, or null.
+ *
+ * Act I arc waves read the question the shipped recipe carries (shippedQuestionFor — the one
+ * authority for the PQ-133.04 Foundry boss override). Everywhere the arc composer or a mutator
+ * swaps bodies in — act II/III, endless overlays, heavies_only, and every generated swarm wave —
+ * the row is read from the packages the plan ACTUALLY fields instead
+ * (physicalProblemFromPackages). A combat net that names a hull that is not coming teaches the
+ * player to ignore the net. The boss circuit is silent on purpose: its step number is not a
+ * template wave, and the boss arrival line names itself.
+ */
+function questionClauseFor(wave, plan, arenaId) {
+  if (!plan || plan.mode === 'boss_circuit') return null;
+  const derived = Boolean(plan.swarm) || plan.heaviesOnly === true || plan.mode === 'endless'
+    || !Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_TEMPLATE_BLOCK;
+  const row = derived
+    ? physicalProblemFromPackages(packagesOf(plan))
+    : shippedQuestionFor(arenaId, wave);
+  return row && typeof row.question === 'string' && row.question.length > 0 ? row.question : null;
 }
 
 /**
@@ -365,7 +387,15 @@ export const survivalAnnounce = {
     const line = waveOpeningLine(wave, this._plan);
     // 'objective' (60) — this IS the objective nudge: it yields to danger and story, and outranks
     // enemy chatter. voiceArbiter.js:41.
-    this._say('objective', `survival:w${wave}:open`, line, 6);
+    const spoke = this._say('objective', `survival:w${wave}:open`, line, 6);
+    // PQ-140 — then the wave names the PHYSICAL problem it poses, as its own one-sentence beat
+    // on the same channel. One line, inside the per-wave budget (the arc boss wave is the worst
+    // authored case at five). A wave that cannot open cannot spend a second line.
+    if (spoke) {
+      const arenaId = this.state && this.state.run ? this.state.run.arenaId : null;
+      const question = questionClauseFor(wave, this._plan, arenaId);
+      if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
+    }
   },
 
   _onWaveMaterialized(payload) {

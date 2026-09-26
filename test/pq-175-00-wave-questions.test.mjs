@@ -10,6 +10,7 @@ import {
   SURVIVAL_ANSWER_VERBS,
   SURVIVAL_TEMPLATE_QUESTIONS,
   SURVIVAL_WAVES,
+  WAVE_10_FOUNDRY_QUESTION,
   catalogQuestionIssues,
   consecutiveQuestionIssues,
   questionForGeneratedPlan,
@@ -49,7 +50,10 @@ test('PQ-175.00: every authored recipe declares a question and a 174.03 verb', (
   for (const recipe of SURVIVAL_WAVES) {
     const result = validateWaveRecipe(recipe);
     assert.equal(result.ok, true, `${recipe.id}: ${JSON.stringify(result.issues)}`);
-    const asked = SURVIVAL_TEMPLATE_QUESTIONS[recipe.wave];
+    // PQ-133.04 authored the Foundry wave-ten override in place of the generic fortress row.
+    const asked = recipe.questionId === WAVE_10_FOUNDRY_QUESTION.id
+      ? WAVE_10_FOUNDRY_QUESTION
+      : SURVIVAL_TEMPLATE_QUESTIONS[recipe.wave];
     assert.equal(recipe.questionId, asked.id, recipe.id);
     assert.equal(recipe.question, asked.question, recipe.id);
     assert.equal(recipe.answerVerb, asked.answerVerb, recipe.id);
