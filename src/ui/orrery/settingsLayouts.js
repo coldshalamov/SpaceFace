@@ -297,7 +297,7 @@ ${C} .orr-cr-head::after { content:""; flex:0 1 180px; height:1px; background:li
 ${C} .of-credits-made { margin:0 0 20px !important; }
 ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
-  font-weight:800 !important; font-size:clamp(52px, 7.4vh, 88px) !important; line-height:.92 !important; letter-spacing:-.005em !important; text-transform:uppercase !important;
+  font-weight:800 !important; font-size:clamp(48px, 7vh, 80px) !important; line-height:.92 !important; white-space:nowrap; letter-spacing:-.005em !important; text-transform:uppercase !important;
   color:rgb(${HOT}) !important; text-shadow:0 2px 24px rgb(0 0 0 / .5); }
 ${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size:11px !important; letter-spacing:.24em !important;
   color:rgb(${BONE} / .72) !important; }
@@ -444,8 +444,8 @@ export function createReelProgress(doc = globalThis.document) {
   const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 62 62' });
   s.appendChild(svg('path', { d: ticksD(31, 31, 30, 40, { len: 2, major: 10, majorLen: 5 }), class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-linecap': 'butt' }));
   s.appendChild(svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 2 }));
-  const bloom = svg('path', { d: arcD(31, 31, 22, 0, 359.99), class: 'orr-bloom orr-phos', 'stroke-width': 6, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
-  const arc = svg('path', { d: arcD(31, 31, 22, 0, 359.99), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+  const bloom = svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-bloom orr-phos', 'stroke-width': 6, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+  const arc = svg('path', { d: arcD(31, 31, 22, 0, 360), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
   s.append(bloom, arc);
   const read = doc.createElement('div');
   const n = doc.createElement('b');
