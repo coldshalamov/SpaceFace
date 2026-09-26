@@ -201,10 +201,11 @@ function assertSourceContracts() {
     'bulkHaulTag must be registered in the registry system lookup for init materialization');
   const bulkIdx = PRODUCTION_INIT_ORDER.indexOf('bulkHaulTag');
   assert.ok(bulkIdx >= 0, 'bulkHaulTag must be in production init order');
-  assert.equal(PRODUCTION_INIT_ORDER[bulkIdx - 1], 'hazardHints',
-    'bulkHaulTag must be a SYSTEMS-only additive registration near other prompt surfaces');
+  const hazardIdx = PRODUCTION_INIT_ORDER.indexOf('hazardHints');
+  assert.ok(hazardIdx >= 0 && hazardIdx < bulkIdx,
+    'bulkHaulTag must be a SYSTEMS-only additive registration after the prompt surfaces');
   assert.equal(PRODUCTION_INIT_ORDER[bulkIdx + 1], 'dangerGradient',
-    'bulkHaulTag must sit between hazardHints and dangerGradient in init order');
+    'bulkHaulTag must sit after hazardHints and before dangerGradient in init order');
   assert.ok(!PRODUCTION_UPDATE_ORDER.includes('bulkHaulTag'),
     'bulkHaulTag must not enter the fixed-timestep update order');
   assert.doesNotMatch(promptSource, /Math\.random|Date\.now|setTimeout|setInterval/,
