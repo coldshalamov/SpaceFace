@@ -4014,7 +4014,7 @@ export const missions = {
    * after contractClauses has judged the kill — a kill no clause fails must still complete.
    */
   _settleBountyTargetKill(m, i, p) {
-    if (!m.targetEntityIds.includes(p.id)) return;
+    if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
@@ -4033,15 +4033,26 @@ export const missions = {
   },
 
   /**
-   * A kill contractClauses judged clean — no clause failed, so the mission owes its objective.
-   * Without this pass-through a clause-observing bounty could never complete (the entity:killed
-   * loop defers to the observer; the observer used to only ever speak on breach).
+   * A kill contractClauses judged clean — no clause failed, so the mission owes whatever the
+   * entity:killed loop would have done with it. Same dispatch as _onKill: non-player kills
+   * take the INF-067 fair-void half (deposit back, never credited), and only bounty/patrol
+   * targets settle — an escortee also sits in targetEntityIds and must never "complete".
    */
   _onClauseSettledKill(p) {
     if (!p || !p.missionId) return;
+    const byPlayer = p.killerId === this.state.playerId;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.id !== p.missionId || m.status !== 'active') continue;
+      if (!byPlayer) {
+        const gone = (id) => {
+          const e = this.state.entities && this.state.entities.get(id);
+          return !e || e.alive === false;
+        };
+        if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
+        continue;
+      }
+      if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
       this._settleBountyTargetKill(m, i, { ...p, id: p.entityId });
     }
   },

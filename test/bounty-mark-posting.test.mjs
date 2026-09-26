@@ -369,24 +369,50 @@ test('a bounty carrying hostile no-kill fine print fails when the mark dies', ()
   assert.ok(bus.emitted.some((e) => e.name === 'mission:failed'));
 });
 
-test('a mark killed by a third party still settles through the clause pass-through', () => {
+test('a mark killed by a third party voids through the clause pass-through', () => {
   const world = makeWorld();
   const { state, bus, missionSystem } = world;
   const board = missionSystem.ensureBoard(BOARD_ID);
   const offer = bountyOffers(board)[0];
-  // no_kills only breaches on PLAYER kills; a third-party kill is not a breach, but the clause-
-  // observing mission defers its whole kill path to the observer — the settled-kill pass-through
-  // must still deliver the objective.
+  // INF-067 semantics, deferred shape: the mark died to someone else — the clause-observing
+  // contract must still void fairly (deposit back), never pay, and never honor the premium.
   assert.ok(missionSystem.acceptMission(offer.id));
   const active = state.missions.active[0];
   state.world.currentSectorId = active.destSectorId;
   missionSystem._ensureMissionTargets(active);
   const markId = active.targetEntityIds[0];
   bus.emit('entity:killed', { id: markId, killerId: 4242, type: 'ship' });
-  assert.equal(state.missions.active.length, 0,
-    'non-breaching kill settles through contract:clauseSettledKill');
-  assert.equal(bus.emitted.filter((e) => e.name === 'mission:completed').length, 1);
-  assert.equal(bus.emitted.filter((e) => e.name === 'mission:failed').length, 0);
+  assert.equal(state.missions.active.length, 0, 'a dead mark voids the contract');
+  const failed = bus.emitted.find((e) => e.name === 'mission:failed');
+  assert.equal(failed && failed.payload && failed.payload.reason, 'target_lost');
+  assert.equal(bus.emitted.filter((e) => e.name === 'mission:completed').length, 0);
+  assert.equal(bus.emitted.filter((e) => e.name === 'contract:clauseHonored').length, 0);
+});
+
+test('an escortee killed by a third party fails escortee_lost, never completes', () => {
+  const world = makeWorld();
+  const { state, bus, missionSystem } = world;
+  // escort_the_tender carries authored no_kills fine print. The escortee is also a tagged target
+  // (targetEntityIds), so the clause pass-through MUST NOT treat its death as an objective kill —
+  // the entity:destroyed path owns escortee_lost.
+  const escortee = { id: 90210, alive: true, pos: { x: 10, z: -5 }, flags: {}, data: {} };
+  state.entities.set(escortee.id, escortee);
+  state.missions.active.push({
+    id: 'am_escort_test_1', type: 'escort', status: 'active',
+    title: 'Escort the tender', factionId: null, collateral_cr: 0, rewardCr: 900,
+    targetEntityIds: [escortee.id], objectiveTarget: 1, objectiveProgress: 0,
+    _escorteeId: escortee.id,
+    clauses: [{ id: 'no_kills', event: 'entity:killed' }],
+    params: {}, receipts: [],
+  });
+  escortee.alive = false;
+  bus.emit('entity:killed', { id: escortee.id, killerId: 4242, type: 'ship' });
+  assert.equal(state.missions.active.length, 1, 'the pass-through must not settle the escortee');
+  bus.emit('entity:destroyed', { id: escortee.id, pos: { x: 10, z: -5 } });
+  assert.equal(state.missions.active.length, 0);
+  const failed = bus.emitted.find((e) => e.name === 'mission:failed');
+  assert.equal(failed && failed.payload && failed.payload.reason, 'escortee_lost');
+  assert.equal(bus.emitted.filter((e) => e.name === 'mission:completed').length, 0);
 });
 
 test('the mark hails once when the player closes inside scanner range', () => {
