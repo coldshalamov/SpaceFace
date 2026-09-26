@@ -88,7 +88,7 @@ test('mounted HUD roster stays visible, capped, clickable, and rebuild-free at h
       assert.deepEqual(rows.map((row) => row.querySelector('.sf-overview-row__name')?.textContent),
         ['Selected Wreck', 'Threat One', 'Threat Two', 'Wing Ally', 'Other Wreck'],
         `${fps} FPS keeps selected/threat/ally/wreck ordering in the mounted DOM`);
-      assert.equal(overview.querySelector('.sf-overview-footer')?.textContent, '+2 · 2 OTHERS',
+      assert.equal(overview.querySelector('.sf-overview-footer')?.textContent, '+2 OTHERS',
         `${fps} FPS mounts truthful compact overflow`);
       // The roster is reconciled by entity id, so a moving contact never tears the subtree down.
       // The 5 Hz cadence itself is covered by hud-contact-roster-keyed-rows.test.mjs, which counts

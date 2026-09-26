@@ -26,6 +26,17 @@ const PAUSING_SCREENS = new Set([
 ]);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
+// Injected screen layouts pin `display` with !important; only an important inline none beats
+// them. Plain style objects (headless fixtures) fall back to the ordinary property.
+function hideImportant(style) {
+  if (typeof style.setProperty === 'function') style.setProperty('display', 'none', 'important');
+  else style.display = 'none';
+}
+
+function clearInlineDisplay(style) {
+  if (typeof style.removeProperty === 'function') style.removeProperty('display');
+}
+
 export function createScreenManager(ctx) {
   const { state, bus } = ctx;
   const timeEffects = ctx.timeEffects || createTimeEffects(state);
@@ -227,7 +238,7 @@ export function createScreenManager(ctx) {
         // Injected screen layouts (e.g. orrery constellation screens) pin `display` with
         // !important on the root; that rule outranks the hide path's important none only if the
         // none is still sitting on the element — clear the property so the fresh value applies.
-        rec.el.style.removeProperty('display');
+        clearInlineDisplay(rec.el.style);
         rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
           && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
         rec.el.removeAttribute('aria-hidden');
@@ -243,7 +254,7 @@ export function createScreenManager(ctx) {
       } else {
         rec.el.classList.remove('sf-screen--visible', 'sf-screen--entering');
         // Injected screen layouts pin display with !important; only an important inline none wins.
-        rec.el.style.setProperty('display', 'none', 'important');
+        hideImportant(rec.el.style);
         rec.el.setAttribute('aria-hidden', 'true');
         rec.el.removeAttribute('aria-modal');
         rec.el.inert = true;
@@ -267,7 +278,8 @@ export function createScreenManager(ctx) {
     // A bare global-find palette (`.sf-find--host`) lives in #screens without a stack entry —
     // it owns the same lifted-lid contract, so an open palette also keeps the layer shown.
     if (screensRoot) {
-      const findOpen = !open && !!screensRoot.querySelector('.sf-find--host');
+      const findOpen = !open && typeof screensRoot.querySelector === 'function'
+        && !!screensRoot.querySelector('.sf-find--host');
       screensRoot.style.display = (open || findOpen) ? 'flex' : 'none';
       screensRoot.inert = !(open || findOpen);
       if (open || findOpen) screensRoot.removeAttribute('aria-hidden');
@@ -463,7 +475,7 @@ export function createScreenManager(ctx) {
       closingRec.exitTimer = setTimeout(() => {
         closingRec.exitTimer = null;
         el.classList.remove('sf-screen--exiting');
-        el.style.setProperty('display', 'none', 'important');
+        hideImportant(el.style);
       }, 200); // matches the 0.2s exiting transition
     }
 
