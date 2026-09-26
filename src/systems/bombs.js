@@ -49,6 +49,46 @@ function liveBombList(state) {
   return index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
     ? index.bombs : state?.entityList || EMPTY;
 }
+
+/** Bench A/B: production default ON. Quiet latch skips collect/tick when no live bombs. */
+let BOMBS_EMPTY_QUIET_LATCH = true;
+export function setBombsEmptyQuietLatchForBench(enabled) {
+  BOMBS_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getBombsEmptyQuietLatchForBench() {
+  return BOMBS_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const BOMBS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/** True when a ready typed bombs bucket exists (latch refuses entityList fallback). */
+function readyBombsBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs));
+}
+
+function anyLiveBomb(state) {
+  if (!readyBombsBucket(state)) return true; // refuse latch — fall through to full path
+  const list = state.entityIndex.bombs;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (e && e.alive !== false && e.type === BOMB_TYPE && e.data) return true;
+  }
+  return false;
+}
+
+function publishBombsQuiet(state, latched) {
+  const rt = state.bombsRuntime || (state.bombsRuntime = {});
+  rt.quietLatched = !!latched;
+}
 // Typed buckets whose union is exactly the population the target predicate can accept:
 // DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload) for the
 // movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union cannot
@@ -191,6 +231,7 @@ export const bombs = {
     this._motion = {};
     this._viscosity = { x: 0, y: 0, z: 0 };
     this._ownerCooldowns = new Map();
+    this._bombsQuiet = null;
     ensureRuntime(ctx.state);
     // Rack work is dock-side only: every ui: intent is gated by the same berth authority
     // the Shipworks module verbs use. Direct method calls stay open to internal callers
@@ -234,16 +275,49 @@ export const bombs = {
   newGame() { this._resetRuntime('new_game'); },
   update(dt, state) {
     if (state.mode !== 'flight' || !(dt > 0) || !Number.isFinite(dt)) return;
-    const rt = ensureRuntime(state), actions = state.input?.actions;
+    const actions = state.input && state.input.actions;
+    const dropEdge = !!(actions && actions.dropBomb);
+    const detonateEdge = !!(actions && actions.chargeDetonate);
+    const cycleEdge = !!(actions && actions.cycleBomb);
+    // Quiet settled flight: empty typed bombs bucket still paid ensureRuntime normalize +
+    // collect+sort+empty tick every frame. Latch when the ready bombs lane is empty and no
+    // bay edges fire; wake on drop/cycle/detonate, entity-index membership, or a 0.5 s rescan.
+    // Without a versioned bombs bucket the latch refuses so the entityList fallback stays live.
+    // ensureRuntime (rack normalize) stays AFTER the latch so quiet ticks skip it too.
+    if (BOMBS_EMPTY_QUIET_LATCH !== false && !dropEdge && !detonateEdge && !cycleEdge) {
+      const membership = entityIndexVersion(state);
+      if (membership != null && readyBombsBucket(state)) {
+        const tick = state.tick | 0;
+        const quiet = this._bombsQuiet;
+        if (quiet
+          && quiet.membership === membership
+          && ((tick - (quiet.armedTick | 0)) < BOMBS_EMPTY_QUIET_RESCAN_TICKS)) {
+          publishBombsQuiet(state, true);
+          return;
+        }
+        if (!anyLiveBomb(state)) {
+          this._bombsQuiet = { membership, armedTick: tick };
+          publishBombsQuiet(state, true);
+          return;
+        }
+        this._bombsQuiet = null;
+      } else if (this._bombsQuiet) {
+        this._bombsQuiet = null;
+      }
+    } else if (this._bombsQuiet) {
+      this._bombsQuiet = null;
+    }
+    const rt = ensureRuntime(state);
     const player = state.entities.get(state.playerId);
-    if (actions?.cycleBomb) {
+    // Rack cycle is dock/flight UI even with zero live bombs.
+    if (cycleEdge) {
       actions.cycleBomb = false;
       if (!blocked(state, player)) this.cycleSelection(state);
     }
     this._collect(state);
     // R is the existing shared ordnance command. Read it BEFORE impulseCharges consumes it;
     // never clear another owner's edge. Both consumers are pinned by a manifest-order test.
-    if (actions?.chargeDetonate && !blocked(state, player)) {
+    if (detonateEdge && !blocked(state, player)) {
       const n = this.commandDetonate(player.id, state);
       // The charge net detonates after us from the same press. A press that fires neither net is
       // answered once, here — silence was how "pressing Blast does nothing" stayed invisible.
@@ -252,13 +326,19 @@ export const bombs = {
       }
     }
     this._tickBombs(dt, state);
-    if (actions?.dropBomb) {
+    if (dropEdge) {
       actions.dropBomb = false;
       if (!blocked(state, player)) {
-        if (rt.selectedId) this.drop(player, rt.selectedId, state);
-        else this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+        if (rt.selectedId) {
+          this.drop(player, rt.selectedId, state);
+          // A live bomb means the empty latch must not re-arm until the bay drains.
+          this._bombsQuiet = null;
+        } else {
+          this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+        }
       }
     }
+    publishBombsQuiet(state, false);
   },
 
   // In-flight cycle walks only LOADED rack sockets — the catalogue order (BOMB_IDS) is the
@@ -827,6 +907,8 @@ export const bombs = {
       count++;
     }
     this._ownerCooldowns?.clear();
+    this._bombsQuiet = null;
+    if (this.state) publishBombsQuiet(this.state, false);
     if (count) this.bus?.emit('bombs:released', { count, reason });
     return count;
   },
