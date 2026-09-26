@@ -86,17 +86,20 @@ appear `noMesh` at R0_GLASS while their job waits behind station/fx misses.
   arms when `mode==='flight' && firstPlayableFrameAt` — pre-first-frame pendings
   wait for the 0.25 s poll.
 
-### Pole B — entityList / table authority (program's named "next 50%")
-Sim explorer measured pocket: entityList=96 live, of which 42 are never-moving optic
-lattice cells (`opticStructureId`) and 11 field-grown asteroids — nearest asteroid
-308 WU, p50 4201 WU. 279 dormant field rows already exist. Demote lane takes 96→~54.
-- PRECONDITION: D50 overlap-safe promote (`promoteAsteroidFieldRock` spawns at the
-  drifted `rec.pos`; ram path guarantees overlap → push-apart "yeet").
-- Hazards (explorer): spawn order changes → hash moves; demote must NOT release the
-  id (`worldLedgerHoldsId` covers asteroidField; an opticRows table must join that
-  guard); demote emits entity:spawned/removed — subscribers may draw rng.
-- Size: removes ~53 entities from every O(entityList) walk + 42 static colliders +
-  42 residency slots + 42 scene nodes.
+### Pole B — entityList / table authority — CLOSED (measured not-worth-it, 2026-09-26)
+"Next 50%" was measured when entityList was 408 under the parasite; the landed
+table-authority work already took the fat lanes (279 dormant field rows, shelved
+far actors). Residual: 96 live, of which 42 are optic lattice cells. Why demote is
+wrong now: (1) per-tick systems consume entityIndex lanes, not raw entityList —
+the only raw-list walks left are lifetimeSweep, incremental index reconcile, and a
+few system paths (~3 raw `for (const e of entityList)` sites); (2) optic cells must
+stay collidable + radar-visible + rendered, so they would remain in collidables /
+spatialStatics / physicsStatics / radarAsteroids anyway — demote trims only the
+handful of raw walks, ≈126 entity-touches/step ≈ microseconds; (3) the price is
+L-effort: a parallel static-collider feed for the broadphase, radar/overlay table
+reads, save round-trip, spawn/despawn event ordering (rng-moving), and
+`worldLedgerHoldsId` guard coverage. D50 (`resolveAdmitOverlap` + exempt ram path)
+already landed on master — the precondition exists; the leaf doesn't pay for it.
 
 ### Pole C — calendar tick straddle — LANDED (82da377ed)
 Cohorts of index%3 in CALENDAR_CLOCK_IDS phase onto tick%30 ∈ {0,10,20}. Turned out
@@ -104,10 +107,10 @@ Cohorts of index%3 in CALENDAR_CLOCK_IDS phase onto tick%30 ∈ {0,10,20}. Turne
 every tick — straddle is production-only, `check:sim` reproduces `f542e2e9` exactly.
 Test updated to pin cohort phase + wake-runs-all semantics.
 
-### Pole D — projectile sweep batching
-`_admitProjectileSweepBodies` runs field+far queries per projectile per step (up to
-4× under catch-up). Union the swept segments once per step, intersect per projectile.
-Zero behavior change. S effort.
+### Pole D — projectile sweep batching — LANDED (e9ab3de59)
+Step-level union bbox queried once (`_sweepUnionBounds*`); segments inside it reuse
+the union rows via `segmentCircleHitInto` per body; a projectile spawned mid-sweep
+falls back to its own queries. Order-preserving, zero behavior change.
 
 ### Pole E — render submit tail
 - Shadow pass walks the whole scene per refresh to draw ~5-20 casters
@@ -257,6 +260,11 @@ retry-budget semantics.
 - `draw-flight`: same adjudicated `accelerates to actual G cap` speed assert.
 - `browser`: cancelled (dependency), not run.
 - **Zero new failures attributable to this branch.**
+
+### Third round (head 3206ebc05 — gate fix + hitch instrumentation + Pole G assets)
+
+- `draw-flight`: same `accelerates to actual G cap` assert (adjudicated twice above —
+  `s.speed`≈312 on master tip too; unrelated to assets/instrumentation).
 
 Focused node --test sweep over the touched modules at branch tip (far-actors,
 time-effects, moment-detector, docking-corridor, hlod, entity-mesh-visibility,
