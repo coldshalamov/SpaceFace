@@ -1766,6 +1766,24 @@
       "integration": "live",
       "commit": "8de1b6963",
       "verification": "focused_green"
+    },
+    {
+      "unit": "INFERENCE-25",
+      "title": "The uplink stops lying",
+      "lane": "WF-06",
+      "fingerprint": "verb=stream,subject=market-uplink,sector=any,layer=simulation,tempo=ambient,domain=wf-06",
+      "summary": "mod_market_data_s shipped fitted on smuggler/hauler starter kits and billed continuous power while its catalog admitted it changed nothing; a fitted uplink now streams live exchange quotes for every station in the current sector on the docked-feed cadence, tagged provenance uplink so intel surfaces read market uplink instead of pretending a berth — dock keeps dock provenance, survey cannot downgrade a live row, unfitting stops the feed and retained rows age honestly.",
+      "files": [
+        "src/systems/economy.js",
+        "src/ui/marketIntelligence.js",
+        "src/data/modules.js",
+        "src/ui/station/outfittingGuidance.js",
+        "scripts/check-progression-verb-audit.mjs",
+        "test/economy-market-uplink.test.mjs"
+      ],
+      "commit": "d869c5e75",
+      "status": "integrated",
+      "verification": "focused 6/6 green; regression set 42/42; verb-audit + localization-readiness PASS"
     }
   ],
   "knownDefects": [
