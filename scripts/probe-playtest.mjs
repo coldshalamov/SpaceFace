@@ -100,6 +100,10 @@ async function travelToStation(ctx, stationId, timeoutMs = 5 * 60_000) {
     if (s.d <= (await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dockRange(id), stationId)) * 1.05) {
       return { arrived: true, d: s.d };
     }
+    // Autopilot can drop on manual-input/lost-target — re-engage instead of timing out dumbly.
+    const apLive = await ctx.page.evaluate(() =>
+      !!(window.SF.state.nav && window.SF.state.nav.autopilot && window.SF.state.nav.autopilot.active));
+    if (!apLive) await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.autopilot(id), stationId);
     lastD = s.d;
     await sleep(1500);
   }
@@ -328,7 +332,7 @@ const ROUTES = {
       if (!stations.length) return { stations: 0 };
       const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
       dists.sort((a, b) => a.d - b.d);
-      const r = await travelToStation(ctx, dists[0].id, 4 * 60_000);
+      const r = await travelToStation(ctx, dists[0].id, 8 * 60_000);
       if (!r.arrived && !r.docked) { observe(ctx, 'rough-edge', 'stations', `job-accept travel ended ${JSON.stringify(r)}`); return { travel: r }; }
       if (!r.docked) { await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), dists[0].id); await sleep(1800); }
       await ctx.page.evaluate(() => {
@@ -337,14 +341,24 @@ const ROUTES = {
       });
       await sleep(1300);
       await shotNow(ctx, 'x06-missions');
-      // Select the first recommended offer row, then click its commit verb (DISPATCH THIS JOB /
-      // ACCEPT / TAKE ON). A blocked readiness row is a real outcome, not a harness failure.
+      // Pick the row that actually carries a commit verb (DISPATCH THIS JOB / ACCEPT / TAKE ON) —
+      // services rows like "Sell what you hauled" match job-y words but commit nothing.
       const row = await ctx.page.evaluate(() => {
-        const r = [...document.querySelectorAll('.k-word, button, [role="button"], [data-action], li, tr')]
-          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live')
-            && /deliver|transport|escort|scan|mine|haul|cargo|convoy|passenger/i.test(e.textContent || '')
-            && !/dispatch|tracked|abandon/i.test(e.textContent || ''))[0];
-        if (!r) return null; r.click(); return (r.textContent || '').trim().slice(0, 80);
+        const isVerb = (t) => /dispatch this job|^\s*accept|take on|take contract|sign on/i.test(t || '');
+        const rows = [...document.querySelectorAll('li, tr, [data-offer], .offer, .job, [class*="offer"], [class*="job"]')]
+          .filter((e) => e.offsetParent !== null && !e.closest('#toasts,#alerts,#toast-live'));
+        for (const el of rows) {
+          const btn = [...el.querySelectorAll('button, .k-word, [role="button"], [data-action]')].find((b) => isVerb(b.textContent));
+          if (btn) { btn.click(); return (el.textContent || '').trim().slice(0, 80); }
+        }
+        // No inline verb — select the first plausible offer row, then find the commit verb
+        // in the detail pane it opens.
+        const cand = rows.find((el) => /deliver|transport|escort|scan|mine|haul|cargo|convoy|passenger|survey|bounty/i.test(el.textContent || '') && !/sell what/i.test(el.textContent || ''));
+        if (cand) cand.click();
+        const bare = [...document.querySelectorAll('button, .k-word, [role="button"], [data-action]')]
+          .find((b) => b.offsetParent !== null && !b.closest('#toasts,#alerts,#toast-live') && isVerb(b.textContent));
+        if (bare) { bare.click(); return (cand ? '(row+pane) ' : '(pane) ') + (bare.textContent || '').trim(); }
+        return cand ? '(row selected, no verb) ' + (cand.textContent || '').trim().slice(0, 60) : null;
       });
       await sleep(900);
       const blocked = await ctx.page.evaluate(() =>
@@ -476,7 +490,7 @@ const ROUTES = {
       if (!stations.length) return { stations: 0 };
       const dists = await ctx.page.evaluate((ids) => ids.map((id) => ({ id, d: window.__SF_PT_HELPERS__.distTo(id) })), stations);
       dists.sort((a, b) => a.d - b.d);
-      const r = await travelToStation(ctx, dists[0].id, 4 * 60_000);
+      const r = await travelToStation(ctx, dists[0].id, 8 * 60_000);
       if (!r.arrived && !r.docked) return { travel: r };
       if (!r.docked) { await ctx.page.evaluate((id) => window.__SF_PT_HELPERS__.dock(id), dists[0].id); await sleep(1800); }
       const crBefore = await ctx.page.evaluate(() => window.SF.state.player && window.SF.state.player.credits);
