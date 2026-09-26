@@ -315,9 +315,16 @@ export function catchUpFarRecord(rec, simTime) {
   return rec;
 }
 
-export function insertFarActor(state, entity, simTime = 0) {
+export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  // A shelved body's entity:destroyed releases its spawn-budget slot. Remember who owned it so
+  // promotion re-acquires a slot instead of returning an uncounted live entity (D70).
+  const budget = helpers && helpers.spawnBudget;
+  if (budget && typeof budget.ownerForEntity === 'function') {
+    const requester = budget.ownerForEntity(entity.id);
+    if (requester != null) rec.budgetRequester = requester;
+  }
   if (table.byId.has(rec.id)) {
     const existing = table.byId.get(rec.id);
     const idx = table.rows.indexOf(existing);
@@ -502,6 +509,17 @@ export function promoteFarActor(state, id, helpers) {
   if (!rec || rec.alive === false) return live;
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
   if (!spawn) return null;
+  // Re-acquire the slot this body released when it was shelved. A saturated cap defers the
+  // promotion — the row stays shelved and a later pass retries — rather than let a promoted
+  // body return live but uncounted (D70).
+  const budget = helpers && helpers.spawnBudget;
+  const requester = rec.budgetRequester != null ? rec.budgetRequester : null;
+  let granted = false;
+  if (requester != null) {
+    if (!budget || typeof budget.request !== 'function'
+      || budget.request(1, requester) <= 0) return null;
+    granted = true;
+  }
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
   catchUpFarRecord(rec, simTime);
   // The renderer resolves an id to one presentation row, so never raise a body onto an id a
@@ -542,7 +560,19 @@ export function promoteFarActor(state, id, helpers) {
     data,
   };
   const ent = spawn(spec);
-  if (!ent) return null;
+  if (!ent) {
+    if (granted) budget.releaseSome(requester, 1);
+    return null;
+  }
+  if (granted && !budget.bindEntity(ent.id, requester)) {
+    // Defensive: a fresh spawn cannot collide with a foreign binding — but never leave the
+    // grant unbound or the body live but uncounted.
+    const remove = typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+    if (remove) remove(ent.id, { immediate: true, reason: 'virtualize' });
+    else ent.alive = false;
+    budget.releaseSome(requester, 1);
+    return null;
+  }
   if (rec.homeSectorId) {
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
@@ -621,7 +651,7 @@ export function tickFarActors(state, helpers, bus) {
       : null;
     if (!shouldVirtualizeFarActor(entity, state)) continue;
     if (dist2(entity.pos, player.pos) <= exit2) continue;
-    const rec = insertFarActor(state, entity, simTime);
+    const rec = insertFarActor(state, entity, simTime, helpers);
     const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
     if (remove) remove(entity.id, { immediate: true, reason: 'virtualize' });
     else entity.alive = false;

@@ -285,6 +285,10 @@ export const core = {
       pos: { x: e.pos.x, z: e.pos.z },
       radius: e.radius,
       factionId: e.factionId,
+      // The entity object itself: ids recycle, and a queued receipt can flush after a different
+      // occupant took the id. Subscribers that key on identity (spawnBudget's slot release)
+      // compare this ref, not the id alone.
+      entity: e,
     };
     if (opts && opts.reason) destroyed.reason = opts.reason;
     this.bus.queue('entity:destroyed', destroyed);

@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../src/world/activityClassification.js';
 import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
@@ -432,4 +433,77 @@ test('a missing or empty far-actor payload restores to no table', () => {
   assert.equal(restoreFarActorTable(state, { schema: 'bogus', rows: [{ id: 5 }] }), null);
   // Legacy saves (no farActors key) keep the old behavior: records rematerialize live.
   assert.equal(farActorHoldsWorldRecord(state, 'wr_npc_roundtrip'), false);
+});
+
+test('shelving records the bound requester and promotion re-acquires its slot', () => {
+  const { state, helpers, bus } = boot();
+  const budget = makeBudgetApi(state);
+  helpers.spawnBudget = budget;
+  // The registered system wires this in init(); the bare API does not self-subscribe.
+  bus.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id));
+
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+  budget.request(1, 'world:ambient:sector_ceres_belt');
+  assert.ok(budget.bindEntity(farId, 'world:ambient:sector_ceres_belt'));
+  assert.equal(budget.current(), 1);
+
+  // Shelve through the same call site the world uses: the destroy receipt frees the live
+  // binding while the row keeps the requester it must re-acquire to come back.
+  insertFarActor(state, far, 0, helpers);
+  helpers.removeEntity(farId, { immediate: true, reason: 'virtualize' });
+  bus.flush();
+  assert.equal(budget.current(), 0, 'virtualize releases the live-bound slot');
+  assert.equal(getFarActor(state, farId).budgetRequester, 'world:ambient:sector_ceres_belt');
+
+  const promoted = promoteFarActor(state, farId, helpers);
+  assert.ok(promoted);
+  assert.equal(budget.ownerForEntity(promoted.id), 'world:ambient:sector_ceres_belt');
+  assert.equal(budget.current(), 1, 'a promoted bound actor is counted again');
+});
+
+test('a saturated cap defers promotion of a bound row instead of returning it unbound', () => {
+  const { state, helpers, bus } = boot();
+  const budget = makeBudgetApi(state);
+  helpers.spawnBudget = budget;
+  // The registered system wires this in init(); the bare API does not self-subscribe.
+  bus.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id));
+
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+  budget.request(1, 'world:ambient:sector_ceres_belt');
+  budget.bindEntity(farId, 'world:ambient:sector_ceres_belt');
+  insertFarActor(state, far, 0, helpers);
+  helpers.removeEntity(farId, { immediate: true, reason: 'virtualize' });
+  bus.flush();
+
+  // Every slot is now claimed by a different requester.
+  assert.equal(budget.request(budget.max(), 'fixture:saturated'), budget.max());
+  assert.equal(promoteFarActor(state, farId, helpers), null,
+    'promotion refuses rather than spawning uncounted');
+  assert.ok(getFarActor(state, farId), 'the refused row stays shelved for a later retry');
+
+  budget.release('fixture:saturated');
+  const promoted = promoteFarActor(state, farId, helpers);
+  assert.ok(promoted, 'the row promotes once a slot frees');
+  assert.equal(budget.ownerForEntity(promoted.id), 'world:ambient:sector_ceres_belt');
+});
+
+test('an unbound shelved actor promotes without touching the budget', () => {
+  const { state, helpers, bus } = boot();
+  const budget = makeBudgetApi(state);
+  helpers.spawnBudget = budget;
+  // The registered system wires this in init(); the bare API does not self-subscribe.
+  bus.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id));
+
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+  insertFarActor(state, far, 0, helpers);
+  helpers.removeEntity(farId, { immediate: true, reason: 'virtualize' });
+  assert.equal(getFarActor(state, farId).budgetRequester, undefined);
+
+  budget.request(budget.max(), 'fixture:saturated');
+  const promoted = promoteFarActor(state, farId, helpers);
+  assert.ok(promoted, 'never-bound rows (traffic, wrecks) promote even when saturated');
+  assert.equal(budget.ownerForEntity(promoted.id), null);
 });

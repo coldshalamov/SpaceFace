@@ -79,7 +79,19 @@ export function createNemesisEncounterHost({ makeSpawnSpec, approveEncounter = n
       on('nemesis:encounterRequested', (p) => { this._queued = clone(p); });
       on('nemesis:requestCancelled', (p) => { if (this._queued && this._queued.requestId === p.requestId) this._queued = null; });
       on('nemesis:encounterEnded', (p) => this._end(p));
-      on('entity:destroyed', (p) => this._releaseId(p && p.id));
+      on('entity:destroyed', (p) => {
+        // Recycled-id guard: ids recycle, and a queued destroy for an id's prior occupant can
+        // flush after a different entity took it. Release the reservation entry only when the
+        // id's current occupant is not itself a live ship of this reservation — a dead crew
+        // member's entry must still clear, but a live crew member's must not (D70).
+        const d = this.state.nemesisDeployment, r = d && d.reservation;
+        const live = this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(p && p.id)
+          : null;
+        if (live && live.alive !== false && r && r.ids.includes(p.id)
+          && live.data && live.data.nemesis && live.data.nemesis.encounterId === r.requestId) return;
+        this._releaseId(p && p.id);
+      });
       on('save:loaded', () => { this._queued = null; this._reconcile(); });
       // New Game clears the deployment ledger with the arc (integration notes §4); see the
       // matching game:newGame subscription note in systems/nemesis.js init.
