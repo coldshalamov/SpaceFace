@@ -30,7 +30,7 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
@@ -150,6 +150,32 @@ function finite(value, fallback = 0) {
  * and remains the sole action executor. Missing ports throw before gameplay updates; no intent.fire
  * or velocity fallback exists.
  */
+/** Bench A/B: production default ON. Skip tacticalAI.update when no non-player needs AI think. */
+let TACTICAL_AI_QUIET_LATCH = true;
+export function setTacticalAiQuietLatchForBench(enabled) {
+  TACTICAL_AI_QUIET_LATCH = enabled !== false;
+}
+export function getTacticalAiQuietLatchForBench() {
+  return TACTICAL_AI_QUIET_LATCH !== false;
+}
+
+function anyNonPlayerNeedsAiThink(state, shipLikeList) {
+  const list = shipLikeList || indexedShipLikeScan(state);
+  if (!list || !list.length) return false;
+  const pid = state && state.playerId;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.id === pid) continue;
+    if (entityNeedsAiThink(entity, state)) return true;
+  }
+  return false;
+}
+
+function publishTacticalAiQuiet(state, latched) {
+  const rt = state.tacticalAiRuntime || (state.tacticalAiRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export function createTacticalAISystem({
   seed = null,
   config = {},
@@ -189,6 +215,7 @@ export function createTacticalAISystem({
   const lastDecisionEntityRefs = new Map();
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
+  let quietLatch = null;
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -275,6 +302,7 @@ export function createTacticalAISystem({
     lastOwnershipRefreshTick = -Infinity;
     lastManeuverRequests = [];
     lastDecisionEntityRefs.clear();
+    quietLatch = null;
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
@@ -364,10 +392,31 @@ export function createTacticalAISystem({
 
     update(_dt, state) {
       ensureActivityClassified(state);
+      // Quiet latch: no non-player needs AI think → skip cohort stamp, squad/fodder steps, stack
+      // update, and maneuver replay. Probe think interest every tick (nextEventAtT / pins can flip
+      // without membership). Injected-port fixtures keep every-tick cadence; production quiet
+      // Ceres is the latch target. Different angle from held preStep-all-sleeping.
       // One classified scan per tick: every helper below walks the same shipLike view, so the list
       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
       // entity) four to six times per fixed step.
       const shipLikeList = indexedShipLikeScan(state);
+      if (TACTICAL_AI_QUIET_LATCH !== false && productionPortDefaults) {
+        if (!anyNonPlayerNeedsAiThink(state, shipLikeList)) {
+          quietLatch = {
+            armed: true,
+            armedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
+            membership: entityIndexVersion(state),
+          };
+          lastManeuverRequests.length = 0;
+          lastDecisionEntityRefs.clear();
+          publishTacticalAiQuiet(state, true);
+          return;
+        }
+        quietLatch = null;
+        publishTacticalAiQuiet(state, false);
+      } else if (state && state.tacticalAiRuntime) {
+        state.tacticalAiRuntime.quietLatched = false;
+      }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
       const liveStack = ensureStack(state);
