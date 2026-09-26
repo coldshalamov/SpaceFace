@@ -147,6 +147,11 @@ export const FACTION_STINGS = Object.freeze({
   faction_choir: sting('faction_choir', 'harmonic_drone', 330, 'sine', 'Choir'),
   faction_free: sting('faction_free', 'investigative', 220, 'triangle', 'Frontier'),
   faction_vael: sting('faction_vael', 'landmark_override', 82, 'sine', 'Vael'),
+  faction_archive: sting('faction_archive', 'landmark_override', 103, 'sine', 'Archive'),
+  faction_fulfillment: sting('faction_fulfillment', 'routing_loop', 262, 'square', 'Fulfillment'),
+  faction_pitborn: sting('faction_pitborn', 'pirate_roast', 131, 'sawtooth', 'Pitborn'),
+  faction_understory: sting('faction_understory', 'harmonic_drone', 98, 'sine', 'Understory'),
+  faction_verge_layers: sting('faction_verge_layers', 'numbers_station', 494, 'sine', 'Verge-Layer'),
 });
 
 function clamp01(v) {

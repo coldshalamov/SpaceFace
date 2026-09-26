@@ -695,7 +695,7 @@ export const BARKS = {
     ],
     taunt: [
       'Seen better hulls in the burn pile, friend.',
-      'Your guns are Concord-issue. Cute. We melt those.',
+      'Your guns were bought, not born. The yard melts both.',
       'Bright target, dim pilot. The yard prices both.',
       'That hull\'s worth more dead than you are flying it.',
     ],
@@ -753,11 +753,11 @@ export const BARKS = {
       'You are bright and brief. The dark is patient and fed.',
       'Everything you carry was once ours. It returns eventually.',
       'Strike the bloom and it flowers elsewhere. Gardens do not die in pieces.',
-      'We have eaten navies. You are a snack with a transponder.',
+      'We have eaten navies. You are barely a mouthful.',
     ],
     'patrol-greeting': [
       'The garden admits all travelers. Especially the tired.',
-      'Drift easy. The wreck-light warms those who mean no cutting.',
+      'Rest easy. The wreck-light warms those who mean no cutting.',
       'Tender\'s greeting. The garden asks what you will become.',
       'Pass through the bloom gently. It keeps what it catches.',
     ],
@@ -1571,6 +1571,9 @@ export const BAR_GREETING_BARKS = Object.freeze({
       'Rest. The chorus holds your place.',
     ]),
   }),
+  // STAGED: the five deep factions below have no station or sector carrying their factionId
+  // yet, so no bar pool resolves to them in production. They stay authored — a deep-faction
+  // station presence activates this corpus with no further copy work.
   faction_archive: Object.freeze({
     any: Object.freeze([
       'The reading room admits you. Speak; it will be filed.',
@@ -1674,6 +1677,7 @@ export const BAR_APPROACH_BARKS = Object.freeze({
     'A measure of silence, then room. Speak.',
     'The chorus pauses for you. Ask.',
   ]),
+  // STAGED: same reachability caveat as BAR_GREETING_BARKS — no deep-faction station exists yet.
   faction_archive: Object.freeze([
     'They close a folio as you sit. Your entry opens.',
     'A reader\'s nod — already annotated. Ask your question.',
@@ -2095,7 +2099,7 @@ export const ESCAPE_TAUNT_BARKS = Object.freeze({
   faction_pitborn: Object.freeze([
     'Gone! Enjoy the scrap money — the fence charges interest too.',
     'You outran the yard today. The yard eats tomorrow anyway.',
-    'Fast bird! The whole fence knows your hull now.',
+    'Gone hot! The whole fence knows your hull now.',
     'Escaped clean, kin. Next time we weigh you at the light.',
   ]),
   faction_understory: Object.freeze([

@@ -89,7 +89,7 @@ export const FACTION_VOICE_REGISTERS = Object.freeze({
     formants: [500, 1100, 2350],
   }),
   faction_fulfillment: register('faction_fulfillment', 'Fulfillment', {
-    // Administrative automaton: cleanest signal in the set, clipped and fast, zero grit.
+    // Administrative automaton: cleanest faction signal in the set, clipped and fast, zero grit.
     sampleId: 'bark_fulfillment', f0: 147, pitch: 1.02, rate: 1.14,
     filterHz: 2200, q: 0.7, noise: 0.02, bandpassLo: 480, bandpassHi: 3200, drive: 0.04,
     formants: [620, 1380, 2600],
@@ -121,11 +121,11 @@ export const MECHANIC_VOICE_REGISTER = register('mechanic', 'Mechanic', {
 });
 
 // The instructor: the first-hour tutorial voice. Low, clean, unhurried — a dispatcher register a
-// stranger can tell apart blind from all eight factions and the mechanic (least noise and drive in
+// stranger can tell apart blind from the thirteen faction registers and the mechanic (least noise and drive in
 // the set; the bandpass sits high enough to stay soft over the comms bed).
 export const INSTRUCTOR_VOICE_REGISTER = register('instructor', 'Instructor', {
   sampleId: 'bark_instructor', f0: 118, pitch: 0.92, rate: 0.96,
-  filterHz: 1500, q: 0.9, noise: 0.03, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,
+  filterHz: 1500, q: 0.9, noise: 0.01, bandpassLo: 340, bandpassHi: 2700, drive: 0.04,
   formants: [520, 1180, 2450],
 });
 
