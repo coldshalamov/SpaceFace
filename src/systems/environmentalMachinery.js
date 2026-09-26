@@ -15,6 +15,7 @@ import {
   CINDER_SLUICE_SITE_ID,
   KILL_MACHINES,
   STARTER_FIELD_MACHINE,
+  ALL_KILL_MACHINES,
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
@@ -116,7 +117,7 @@ export const environmentalMachinery = {
     this._killFieldStrength = new Map();
     this._killPlayerInside = new Set();
     this._anvilsEnsured = new Set();
-    this._starterMouthId = null;
+    this._mouthIds = new Map();
     this._reefPhaseOut = {};
     this._reefFieldPatch = { strength: 0 };
     this._reefFieldRegistered = false;
@@ -350,7 +351,7 @@ export const environmentalMachinery = {
     const record = state && state.sites && state.sites.worldById
       && state.sites.worldById[CINDER_SLUICE_SITE_ID];
     const simTime = simTimeOf(state);
-    const machines = [...KILL_MACHINES, STARTER_FIELD_MACHINE].map((machine) => {
+    const machines = ALL_KILL_MACHINES.map((machine) => {
       const phase = killMachinePhase(machine, simTime);
       return Object.freeze({
         id: machine.id,
@@ -474,7 +475,7 @@ export const environmentalMachinery = {
       if (phase.fieldActive) this._upsertKillMachineFields(machine, phase);
       else this._removeKillMachineFields(machine);
       this._ensureAnvil(machine);
-      this._ensureStarterMouth(machine);
+      this._ensureMachineMouth(machine);
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
     }
   },
@@ -482,21 +483,22 @@ export const environmentalMachinery = {
   _retireKillMachinesOutside(live) {
     const keep = new Set();
     for (const machine of live) keep.add(machine.id);
-    for (const machine of [...KILL_MACHINES, STARTER_FIELD_MACHINE]) {
+    for (const machine of ALL_KILL_MACHINES) {
       if (keep.has(machine.id)) continue;
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
         this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, 'wrong_sector');
         this._killPlayerInside.delete(machine.id);
       }
+      this._mouthIds.delete(machine.id);
     }
-    if (!keep.has(STARTER_FIELD_MACHINE.id)) this._starterMouthId = null;
   },
 
   // The jaw is an existing kit body. World already knows how to place one; this adapter
-  // asks once per visit, and only for the starter cracker, so Ceres mouths stay as they are.
-  _ensureStarterMouth(machine) {
-    if (!machine || machine.id !== STARTER_FIELD_MACHINE.id || this._starterMouthId) return;
+  // asks once per visit for any machine that names a `mouth`, so Ceres mouths stay as they
+  // are (their shells come from occupationalYardDressing.js, not this path).
+  _ensureMachineMouth(machine) {
+    if (!machine || !machine.mouth || this._mouthIds.has(machine.id)) return;
     const world = this.registry && typeof this.registry.get === 'function'
       ? this.registry.get('world')
       : null;
@@ -508,7 +510,7 @@ export const environmentalMachinery = {
     if (this.state.world.currentSectorId !== machine.sectorId) return;
     const existing = (active.dressing || []).find((row) => row.environmentalMachineryId === machine.id);
     if (existing) {
-      this._starterMouthId = existing.id;
+      this._mouthIds.set(machine.id, existing.id);
       return;
     }
     const ent = world._spawnPlaceProp(active, sector, machine.placeId, {
@@ -516,12 +518,12 @@ export const environmentalMachinery = {
       z: machine.globalPos.z,
     }, {
       rot: machine.rot,
-      name: 'Claim Cracker',
-      radius: 18,
+      name: machine.mouth.name,
+      radius: machine.mouth.radius,
       worldOneOff: true,
     });
     if (ent && ent.id != null) {
-      this._starterMouthId = ent.id;
+      this._mouthIds.set(machine.id, ent.id);
       const row = (active.dressing || []).find((item) => item.id === ent.id);
       if (row) row.environmentalMachineryId = machine.id;
     }
@@ -940,7 +942,7 @@ export const environmentalMachinery = {
   },
 
   _clearKillMachines(why) {
-    for (const machine of [...KILL_MACHINES, STARTER_FIELD_MACHINE]) {
+    for (const machine of ALL_KILL_MACHINES) {
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
         this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, why);
@@ -949,7 +951,7 @@ export const environmentalMachinery = {
     this._killPlayerInside.clear();
     this._killFieldStrength.clear();
     this._anvilsEnsured.clear();
-    this._starterMouthId = null;
+    this._mouthIds.clear();
   },
 
   _clearAperture(why) {
