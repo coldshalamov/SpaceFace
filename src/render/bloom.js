@@ -1245,6 +1245,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   quadMesh.frustumCulled = false;
   quadMesh.matrixAutoUpdate = false;
   quadMesh.updateMatrix();
+  // QUAD_VERT writes clip space directly (gl_Position = vec4(position.xy, 0, 1)) and ignores
+  // every transform matrix, so the per-blit scene/camera matrix refresh can never change a
+  // pixel — freeze both. The ortho camera never moves: matrixWorldInverse stays the identity
+  // it was constructed with, which is the correct value.
+  quadScene.matrixWorldAutoUpdate = false;
+  quadCam.matrixWorldAutoUpdate = false;
   quadScene.add(quadMesh);
 
   const mkMat = (frag, uniforms) => new THREE.ShaderMaterial({
@@ -1551,7 +1557,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
       renderer.setRenderTarget(rtScene);
-      renderer.clear();
+      // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
+      // bit is a spec no-op that still pays a stencil.setMask GL state write.
+      renderer.clear(true, true, false);
       renderer.render(scene, camera);
       if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
     } finally {
@@ -1606,7 +1614,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       releaseBloomSceneSamplers();
       hideUnreadySceneDrawables(scene);
       renderer.setRenderTarget(rtScene);
-      renderer.clear();
+      renderer.clear(true, true, false);
       renderer.render(scene, camera);
       rememberBloomGeometries(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
@@ -1650,8 +1658,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
     compositeMat.uniforms.uExposure.value = exposure;
     compositeMat.uniforms.uAces.value = aces;
-    const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-    compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
+    // uGrainFrame only feeds the grain term, which the shader short-circuits below 0.001 —
+    // skip the clock read entirely in the default grain-off presentation.
+    if (grain > 0.001) {
+      const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
+      compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
+    }
     // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
     // Full-res: composite writes the canvas directly — no extra target, no extra pass.
     const sharpen = casActive && rtPost;
