@@ -112,6 +112,26 @@ standing/payload/readiness columns), market (spread/trend chart/forecast/quantit
 explicit autosave contract text), crucible results (RUN OVER + kill-cam sector diagram + killer
 card + LAST 8 HITS + gold primary). Nothing to fix on these surfaces today.
 
+## Run 5 — routes=loop+edge @ 9e009042d
+
+**loop**: l03 mining verified again (hold gained ore_iron×1, silicate×2, assay_sample×1). l04 station
+travel timed out at 4 min with ~630 WU remaining — focused probe `/tmp/probe-ap.mjs` shows the
+autopilot leg itself is *working*: 1462→145 WU over ~2 min, status cycling cruise→avoiding→braking,
+speed 12–250 with detour wiggles (d briefly rose 554→646 mid-avoid). Not a game defect — a probe
+budget issue on ~1500 WU legs; travel timeout raised to 8 min + re-engage on autopilot drop.
+l04 sell/l05 outfit therefore skipped; l06 gate-jump beat added next run.
+
+**edge**: all clean. x03 quit seam verified (Esc→pause→Main Menu→confirm→mainMenu). **x04 resume now
+verified**: `continueAvailable:true`, restored into live flight (simTime 29.6, hull 140, shield 345,
+credits 5000) — the x06-dock + x03-undock autosave chain works. x06 picked a *services* row
+("Sell what you hauled" matched /haul/) instead of a contract — probe now clicks the row that
+actually contains a commit verb, falling back to select-row→detail-pane verb.
+
+**CI note**: static(2) went red on 9 checks — verified 7/9 identical on clean master (upstream);
+fixed the 2 that upstream commit 6ff452c31 left stale: `check:ui:control-labels` (tether gained the
+Digit3 hotbar alias) and `check:gamepad-mission-log` (live-glyph prompt dropped the Start → Pause →
+Mission Log sentence; stub lacked `style.removeProperty`/`cancelAnimationFrame`).
+
 ## Run ledger
 
 | run | routes | beats | obs | game fixes landed |
@@ -120,7 +140,7 @@ card + LAST 8 HITS + gold primary). Nothing to fix on these surfaces today.
 | 2 | screens | 25 | B1..B3 | A1 ghost fix (harness-verified) |
 | 3 | screens+edge+combat | 25+6+6 | 0 new | B2 tofu glyph `7780d8827` |
 | 4 | loop+edge | 3+6 | 0 defects (1 designed full-hold) | x06/x03 harness fixes |
-| 5 | loop+edge | pending | — | sell/outfit/undock beats + census cargo |
+| 5 | loop+edge | 5+6 | 0 defects (travel budget only) | 2 upstream CI checks fixed |
 
 ## Next runs
 
