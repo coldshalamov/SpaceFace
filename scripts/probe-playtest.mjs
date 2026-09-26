@@ -469,6 +469,42 @@ const ROUTES = {
       else if (s.mode !== 'flight' || (after && after.credits !== before.credits)) observe(ctx, 'rough-edge', 'save', `F9 reload landed mode=${s.mode} credits ${before.credits}->${after && after.credits}`);
       return { before, savedAt, after, mode: s.mode, simDrift: drift };
     });
+
+    await B(ctx, 'x08-load-slot', 'title -> Load -> click a save row -> restores flight', async () => {
+      // Quit to title first (through the real pause path), then exercise the saveLoad screen's
+      // actual slot-click path — x07 only covered the F5/F9 keys.
+      for (let i = 0; i < 3; i++) {
+        await pressKey(ctx, 'Escape', 1000);
+        const p = await snap(ctx);
+        if (p.screen === 'pause') break;
+      }
+      await ctx.page.evaluate(() => {
+        const b = [...document.querySelectorAll('.k-word, button, [role="button"]')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu/i.test(e.textContent || ''))[0];
+        if (b) b.click();
+      });
+      await sleep(1600);
+      await ctx.page.evaluate(() => {
+        const root = document.querySelector('#sf-confirm-root');
+        if (!root) return;
+        const b = [...root.querySelectorAll('.k-word, button, [role="button"]')]
+          .filter((e) => window.__SF_PT_HELPERS__.isVis(e) && /main menu|confirm|yes|leave/i.test(e.textContent || ''))[0];
+        if (b) b.click();
+      });
+      await sleep(1800);
+      const t = await snap(ctx);
+      if (t.screen !== 'mainMenu') return { quit: false, screen: t.screen };
+      const opened = await clickWord(ctx, /^load\b|load game|load save/i, 8_000).then(() => true).catch(() => false);
+      await sleep(1400);
+      await shotNow(ctx, 'x08-saveload');
+      const sl = await snap(ctx);
+      // Click the first save row/slot that carries a load affordance.
+      const clicked = await ctx.page.evaluate(() => window.__SF_PT_HELPERS__.clickText(/load|resume|restore|quick|auto|continue/i));
+      await sleep(3500);
+      const s = await snap(ctx);
+      if (opened && clicked && s.mode !== 'flight') observe(ctx, 'rough-edge', 'lifecycle', `Load-slot click "${clicked}" landed mode=${s.mode} screen=${s.screen}`);
+      return { titleScreen: t.screen, opened, screen: sl.screen, clicked, afterMode: s.mode, afterScreen: s.screen, player: s.player };
+    });
   },
 
   // Economy loop: flight -> find rock -> mine it -> ore/cargo receipt.
