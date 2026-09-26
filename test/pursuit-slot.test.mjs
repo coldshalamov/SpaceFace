@@ -195,7 +195,7 @@ test('G activates auto-target weapon lead and never creates a pursuit/orbit slot
     'auto-target must lead a moving enemy instead of aiming at its current position');
 });
 
-test('the shipped route restores draw-to-fly auto-target while removing pursuit impulses and HUD', () => {
+test('the shipped route uses the dynamic combat stick while removing pursuit impulses and HUD', () => {
   const inputSource = readFileSync(new URL('../src/systems/input.js', import.meta.url), 'utf8');
   const flightSource = readFileSync(new URL('../src/systems/flightV3.js', import.meta.url), 'utf8');
   const weaponsSource = readFileSync(new URL('../src/systems/weapons.js', import.meta.url), 'utf8');
@@ -206,14 +206,14 @@ test('the shipped route restores draw-to-fly auto-target while removing pursuit 
   const hudSource = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 
   assert.doesNotMatch(inputSource, /adjustPursuitSlot|pursuitPressed|createPursuitSlot/);
-  assert.match(inputSource, /recordAutoTargetPath|updateAutoTargetPathDrawing/);
+  assert.match(inputSource, /recordAutoTargetStick|publishAutoTargetStick|recordDynamicFlightStick/);
   assert.doesNotMatch(flightSource, /stepPursuitSlotAssist|pursuitSlot\.impulse/);
   assert.doesNotMatch(flightSource, /pursuitFollowPoint|AUTOPURSUIT_FOLLOW_DIST/);
   assert.match(assistSource, /requestPointerLock|exitPointerLock|pointerlockchange/);
   assert.match(modeSource, /inp\.aimAngle\s*=|inp\.aimWorld\.[xz]\s*=|followAutoTargetPath/);
   assert.doesNotMatch(weaponsSource, /if \(state\.input\.autoFire\)|_autoFireTarget|_selectedAutoFireTarget/,
     'weapon aim is owned by auto-target mode; weapons must not choose another target');
-  assert.match(uiRootSource, /auto-target-flight-path|sf-flight-path__route/);
+  assert.match(uiRootSource, /auto-target-flight-stick|sf-combat-stick__knob/);
   assert.doesNotMatch(hudSource, /sf-pursuit-slot|PURSUIT ASSIST|Pursuit assist/);
 });
 
@@ -259,7 +259,7 @@ test('auto-target acceptance tools exercise the shipped control instead of retir
     assert.doesNotMatch(source,
       /import .*pursuitSlotAssist|state\.input\.pursuitSlot|exercisePursuitSlot|queuePhysicsImpulse\(entity,\s*pursuitSlot/,
       `${name} must not validate the retired pursuit/orbit implementation`);
-    assert.match(source, /autoFire|autoTargetPath/,
+    assert.match(source, /autoFire|autoTargetVector|dynamic combat stick|combat stick/i,
       `${name} must exercise the current auto-target contract`);
   }
 });

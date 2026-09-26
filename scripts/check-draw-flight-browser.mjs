@@ -61,40 +61,68 @@ try{
   await page.evaluate(()=>drawFlightFixture.step(1));
   assert.equal((await page.evaluate(()=>drawFlightFixture.snapshot())).auto,true,'G toggles through production owner');
   if(locked)await page.waitForFunction(()=>document.pointerLockElement===document.getElementById('gl-canvas'));
+  // One deliberate native swipe must produce a bounded stick vector, not route geometry.
   await move(560,400,60,0);
   let s=await page.evaluate(()=>drawFlightFixture.step(120));
-  assert.ok(s.command?.active,'real movement, not injected autoTargetPath, starts draw flight');
-  assert.ok(s.speed>145 && s.speed<160,'accelerates to actual G cap');
-  const start=s.pos;
-  s=await page.evaluate(()=>drawFlightFixture.step(60));
-  assert.ok(Math.hypot(s.pos.x-start.x,s.pos.z-start.z)>145,'finger lift never parks at a stroke end');
-  // Real trackpad-like stream: discrete movements with simulation ticks and camera tracking between them.
-  for(let i=1;i<=16;i++){
+  assert.ok(s.vector?.active,'real mouse motion activates the dynamic combat stick');
+  assert.ok(s.vector.screenX>0.2,'rightward native motion deflects the stick right');
+  assert.ok(Math.hypot(s.vector.screenX,s.vector.screenY)<=1.0001,'stick deflection is bounded');
+  assert.equal(s.active,false,'desktop G no longer activates persistent path following');
+  assert.equal(s.command,null,'desktop G no longer emits drawFlight path commands');
+  assert.equal(s.points?.length||0,0,'desktop G never mints route geometry');
+  assert.ok(s.speed>5,'the live vector reaches Flight V3 / Rapier and moves the real hull');
+  const firstVector={...s.vector};
+  const firstPos={...s.pos};
+
+  // Continue the same virtual stick downward. The vector should rotate continuously rather than
+  // append a backlog of waypoints; movement remains under the ordinary propulsion kernel.
+  for(let i=1;i<=10;i++){
     await move(560,400+i*12,0,12);
     await page.evaluate(()=>drawFlightFixture.step(2));
   }
-  s=await page.evaluate(()=>drawFlightFixture.step(45));
-  assert.ok(s.vel.z>140,'downward stroke produces an actual quick 90-degree velocity turn');
-  const turn=s.trace.slice(-77);
-  assert.ok(turn.every(p=>p.speed>145),'no pause/turn governor hidden behind real DOM input');
+  s=await page.evaluate(()=>drawFlightFixture.step(90));
+  assert.ok(s.vector.active && s.vector.screenY>firstVector.screenY+0.2,
+    'additional native deltas rotate the live stick vector');
+  assert.ok(Math.hypot(s.pos.x-firstPos.x,s.pos.z-firstPos.z)>10,
+    'continuous stick authority keeps the real hull moving');
+  assert.equal(s.points?.length||0,0,'turning the stick still authors no path');
   await page.screenshot({path:resolve(out,locked?'locked-turn.png':'unlocked-turn.png')});
+
+  // Camera pan must not reinterpret an already-held screen-space stick as a world-route jump.
+  const beforePan={...s.vector};
   await page.evaluate(()=>drawFlightFixture.pan(180,-100));
-  await move(548,592,-12,0);await page.evaluate(()=>drawFlightFixture.step(60));
-  // Deliberate brake must revoke the flight computer without giving up target assist.
-  await page.keyboard.down('s');s=await page.evaluate(()=>drawFlightFixture.step(240));
-  assert.equal(s.command,null);assert.equal(s.active,false);assert.ok(s.speed<3,'S really brakes');
-  await page.keyboard.up('s');await page.evaluate(()=>drawFlightFixture.step(1));
-  await move(520,592,-28,0);s=await page.evaluate(()=>drawFlightFixture.step(90));
-  assert.ok(s.command?.active,'fresh finger stroke after brake restarts');
+  s=await page.evaluate(()=>drawFlightFixture.step(2));
+  assert.ok(Math.hypot(s.vector.screenX-beforePan.screenX,s.vector.screenY-beforePan.screenY)<1e-6,
+    'camera motion does not move the physical virtual-stick knob');
+
+  // Deliberate brake outranks the combat stick without disabling target assist.
+  await page.keyboard.down('s');
+  s=await page.evaluate(()=>drawFlightFixture.step(240));
+  assert.equal(s.command,null);
+  assert.equal(s.active,false);
+  assert.equal(s.auto,true,'braking does not drop G target assist');
+  assert.ok(s.speed<3,'S brake overrides a deflected combat stick');
+  await page.keyboard.up('s');
+
+  // Releasing brake resumes the held vector; no fresh drawn stroke is required.
+  s=await page.evaluate(()=>drawFlightFixture.step(90));
+  assert.ok(s.vector.active && s.speed>5,'held combat-stick authority resumes after brake release');
+
+  // Modal ownership neutralizes the published vector and ignores hidden pointer motion.
   await page.evaluate(()=>drawFlightFixture.block(true));
   s=await page.evaluate(()=>drawFlightFixture.step(1));
-  assert.equal(s.command,null);assert.equal(s.active,false);
-  await page.mouse.move(500,560);s=await page.evaluate(()=>drawFlightFixture.step(1));
-  assert.equal(s.active,false,'overlay cannot write hidden flight');
+  assert.equal(s.vector.active,false);
+  await page.mouse.move(500,560);
+  s=await page.evaluate(()=>drawFlightFixture.step(1));
+  assert.equal(s.vector.active,false,'overlay cannot write hidden flight');
+
   await page.evaluate(()=>drawFlightFixture.block(false));
-  await page.keyboard.press('g');s=await page.evaluate(()=>drawFlightFixture.step(1));
-  assert.equal(s.auto,false);assert.equal(s.command,null);
-  results.push({locked,nativePointer:locked,mouseEvents:await page.evaluate(()=>drawFlightMouseEvents),proof:s.proof,turnMin:Math.min(...turn.map(p=>p.speed)),turnMax:Math.max(...turn.map(p=>p.speed)),assertions:'passed'});
+  await page.keyboard.press('g');
+  s=await page.evaluate(()=>drawFlightFixture.step(1));
+  assert.equal(s.auto,false);
+  assert.equal(s.vector.active,false);
+  assert.equal(s.command,null);
+  results.push({locked,nativePointer:locked,mouseEvents:await page.evaluate(()=>drawFlightMouseEvents),proof:s.proof,assertions:'passed'});
   await page.close();currentPage=null;
  }
  assert.deepEqual(errors,[],'no browser runtime exceptions');

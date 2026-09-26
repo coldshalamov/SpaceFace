@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { emptyDrawFlightPath } from '../src/systems/drawFlightInput.js';
+import { DYNAMIC_FLIGHT_STICK_TUNING, dynamicFlightStickRadius } from '../src/systems/dynamicFlightStick.js';
 
 const ROOT = new URL('../', import.meta.url);
 const inputSource = readFileSync(new URL('src/systems/input.js', ROOT), 'utf8');
@@ -15,17 +15,20 @@ check('G remains the auto-target toggle', () => {
     'the shipped G handler must toggle auto-target mode');
 });
 
-check('trackpad gestures create a clutchable world-space flight path', () => {
-  assertSource(/recordAutoTargetPath/, inputSource,
-    'relative pointer motion must record the draw-to-fly path');
-  assertSource(/recordDrawFlightGesture/, inputSource,
-    'input must call the relative stroke recorder');
-  const path = emptyDrawFlightPath();
-  if (path.active !== false || !Array.isArray(path.points) || path.pointIndex !== 1) {
-    throw new Error('the input contract must retain neutral world-space path points');
+check('trackpad motion drives a bounded dynamic combat stick', () => {
+  assertSource(/recordAutoTargetStick/, inputSource,
+    'relative pointer motion must feed the combat stick');
+  assertSource(/recordDynamicFlightStick/, inputSource,
+    'input must use the bounded dynamic-stick reducer');
+  assertSource(/publishAutoTargetStick/, inputSource,
+    'the input tick must publish the live stick vector');
+  assertNoSource(/recordAutoTargetPath\(this/, inputSource,
+    'desktop G must no longer author persistent flight geometry');
+  const radius = dynamicFlightStickRadius(1920, 1080);
+  if (!(radius >= DYNAMIC_FLIGHT_STICK_TUNING.minRadiusPx
+    && radius <= DYNAMIC_FLIGHT_STICK_TUNING.maxRadiusPx)) {
+    throw new Error('combat-stick radius must remain inside its authored calibration envelope');
   }
-  assertSource(/followAutoTargetPath/, modeSource,
-    'auto-target mode must consume the recorded path');
 });
 
 check('weapon lead stays independent from ship steering', () => {
@@ -33,15 +36,15 @@ check('weapon lead stays independent from ship steering', () => {
     'auto-target must compute projectile lead');
   assertSource(/inp\.aimAngle\s*=/, modeSource,
     'auto-target must write weapon aim');
+  assertSource(/autoTargetVector/, modeSource,
+    'combat stick must enter through the independent flight-vector channel');
   assertSource(/applyWorldFlightCommand/, modeSource,
-    'draw-to-fly must write flight intent separately');
+    'combat stick must write flight intent separately from weapon aim');
 });
 
-check('auto-target flight authority is present without an orbit controller', () => {
+check('auto-target keeps ordinary ship physics and no orbit controller', () => {
   assertSource(/applyAutoTargetHelmProfile/, flightSource,
-    'Flight V3 must restore auto-target helm response');
-  assertSource(/applyAutoTargetPathProfile/, flightSource,
-    'Flight V3 must restore draw-to-fly acceleration authority');
+    'Flight V3 must retain the responsive auto-target helm profile');
   assertNoSource(/AUTOPURSUIT_FOLLOW_DIST|pursuitFollowPoint|stepPursuitSlotAssist/, flightSource,
     'Flight V3 must not contain an automatic orbit/follow controller');
 });
@@ -54,22 +57,11 @@ if (failed.length) {
   console.log(`\n${failed.length}/${checks.length} auto-target checks failed.`);
   process.exit(1);
 }
-
 console.log(`\nAll ${checks.length} auto-target checks passed.`);
 
 function check(name, fn) {
-  try {
-    fn();
-    checks.push({ name, ok: true });
-  } catch (error) {
-    checks.push({ name, ok: false, error: error?.message || String(error) });
-  }
+  try { fn(); checks.push({ name, ok: true }); }
+  catch (error) { checks.push({ name, ok: false, error: error?.message || String(error) }); }
 }
-
-function assertSource(pattern, source, message) {
-  if (!pattern.test(source)) throw new Error(message);
-}
-
-function assertNoSource(pattern, source, message) {
-  if (pattern.test(source)) throw new Error(message);
-}
+function assertSource(pattern, source, message) { if (!pattern.test(source)) throw new Error(message); }
+function assertNoSource(pattern, source, message) { if (pattern.test(source)) throw new Error(message); }
