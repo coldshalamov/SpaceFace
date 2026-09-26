@@ -1,7 +1,7 @@
 {
   "counts": {
-    "green": 184,
-    "red": 3,
+    "green": 187,
+    "red": 0,
     "rows": 187
   },
   "generatedBy": "scripts/model-truth-census.mjs",
@@ -38,7 +38,7 @@
       "bytes": 393364,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.038378,
+        "gapWu": 0.121697,
         "id": "skin:place_interdiction_buoy",
         "kind": "proxy",
         "outline": [
@@ -68,7 +68,7 @@
           3.700049
         ],
         "overTolerance": false,
-        "stickWu": 0.038378,
+        "stickWu": 0.121697,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -157,7 +157,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.038378,
+        "gapWu": 0.121697,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -592,7 +592,7 @@
       "bytes": 46232,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.329506,
+        "gapWu": 0.357964,
         "id": "skin:place_lane_pin",
         "kind": "proxy",
         "outline": [
@@ -622,7 +622,7 @@
           3.938046
         ],
         "overTolerance": false,
-        "stickWu": 0.329506,
+        "stickWu": 0.357964,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -727,7 +727,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.329506,
+        "gapWu": 0.357964,
         "mouthBearingDeg": null,
         "primitiveCount": 19,
         "primitives": [
@@ -1203,7 +1203,7 @@
       "bytes": 187148,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.602719,
+        "gapWu": 0.642261,
         "id": "skin:place_whistle",
         "kind": "proxy",
         "outline": [
@@ -1233,7 +1233,7 @@
           1.701686
         ],
         "overTolerance": false,
-        "stickWu": 0.602719,
+        "stickWu": 0.642261,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -1338,7 +1338,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.602719,
+        "gapWu": 0.642261,
         "mouthBearingDeg": null,
         "primitiveCount": 24,
         "primitives": [
@@ -2064,8 +2064,8 @@
       },
       "bytes": 8319692,
       "collider": {
-        "coverageWu": 0.042907,
-        "gapWu": 0.042907,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:bruiser_brawler",
         "kind": "proxy",
         "outline": [
@@ -2232,7 +2232,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.115655,
-        "gapWu": 0.042907,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -2534,7 +2534,7 @@
       "bytes": 8098496,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.354606,
+        "gapWu": 0.570155,
         "id": "skin:choir_zealot",
         "kind": "proxy",
         "outline": [
@@ -2564,7 +2564,7 @@
           9.252297
         ],
         "overTolerance": false,
-        "stickWu": 0.354606,
+        "stickWu": 0.570155,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -2693,7 +2693,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.354606,
+        "gapWu": 0.570155,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -2966,8 +2966,8 @@
       },
       "bytes": 8132444,
       "collider": {
-        "coverageWu": 0.028811,
-        "gapWu": 0.303309,
+        "coverageWu": 0,
+        "gapWu": 0.731684,
         "id": "skin:corsair_raider",
         "kind": "proxy",
         "outline": [
@@ -2997,7 +2997,7 @@
           14.254692
         ],
         "overTolerance": false,
-        "stickWu": 0.303309,
+        "stickWu": 0.731684,
         "throatSealed": false,
         "toleranceWu": 2.093003,
         "worstSize": null
@@ -3142,7 +3142,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.093003,
-        "gapWu": 0.303309,
+        "gapWu": 0.731684,
         "mouthBearingDeg": null,
         "primitiveCount": 24,
         "primitives": [
@@ -3948,8 +3948,8 @@
       },
       "bytes": 645736,
       "collider": {
-        "coverageWu": 1.033326,
-        "gapWu": 1.033326,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:dreadnought_boss",
         "kind": "proxy",
         "outline": [
@@ -4013,9 +4013,9 @@
         "lod2": true,
         "outlineDeltaWu": {
           "lod1": 0.052792,
-          "lod2": 15.758748
+          "lod2": 0.033493
         },
-        "overTolerance": true,
+        "overTolerance": false,
         "toleranceWu": 4.360856
       },
       "materials": [
@@ -4119,7 +4119,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 6.541284,
-        "gapWu": 1.033326,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -4274,9 +4274,7 @@
         "silhouetteRadius": 54.510701,
         "toleranceWu": 6.541284
       },
-      "reasons": [
-        "lod-outline"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.35325,
@@ -4375,7 +4373,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 56910,
       "url": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb",
@@ -4410,8 +4408,8 @@
       },
       "bytes": 8319692,
       "collider": {
-        "coverageWu": 0.277105,
-        "gapWu": 0.277105,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:field_anchor_controller",
         "kind": "proxy",
         "outline": [
@@ -4578,7 +4576,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.385049,
-        "gapWu": 0.277105,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -5375,8 +5373,8 @@
       },
       "bytes": 7984716,
       "collider": {
-        "coverageWu": 0.028977,
-        "gapWu": 0.028977,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:mine_layer_jackal",
         "kind": "proxy",
         "outline": [
@@ -5543,7 +5541,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.105023,
-        "gapWu": 0.028977,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -5824,8 +5822,8 @@
       },
       "bytes": 8319692,
       "collider": {
-        "coverageWu": 0.277105,
-        "gapWu": 0.277105,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:mirrorjaw_foreman",
         "kind": "proxy",
         "outline": [
@@ -5992,7 +5990,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.385049,
-        "gapWu": 0.277105,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -7266,8 +7264,8 @@
       },
       "bytes": 8319692,
       "collider": {
-        "coverageWu": 0.042907,
-        "gapWu": 0.042907,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:pd_screen_escort",
         "kind": "proxy",
         "outline": [
@@ -7434,7 +7432,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.115655,
-        "gapWu": 0.042907,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -8231,8 +8229,8 @@
       },
       "bytes": 7984716,
       "collider": {
-        "coverageWu": 0.028977,
-        "gapWu": 0.028977,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:reaver_pirate",
         "kind": "proxy",
         "outline": [
@@ -8399,7 +8397,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.105023,
-        "gapWu": 0.028977,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -8680,8 +8678,8 @@
       },
       "bytes": 7984716,
       "collider": {
-        "coverageWu": 0.028977,
-        "gapWu": 0.028977,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:tether_control_raider",
         "kind": "proxy",
         "outline": [
@@ -8848,7 +8846,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.105023,
-        "gapWu": 0.028977,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -9129,8 +9127,8 @@
       },
       "bytes": 8319692,
       "collider": {
-        "coverageWu": 0.058897,
-        "gapWu": 0.058897,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:warden_escort",
         "kind": "proxy",
         "outline": [
@@ -9297,7 +9295,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.221438,
-        "gapWu": 0.058897,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -9599,7 +9597,7 @@
       "bytes": 8098496,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.354606,
+        "gapWu": 0.570155,
         "id": "skin:wasp_swarmer",
         "kind": "proxy",
         "outline": [
@@ -9629,7 +9627,7 @@
           9.252297
         ],
         "overTolerance": false,
-        "stickWu": 0.354606,
+        "stickWu": 0.570155,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -9758,7 +9756,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.354606,
+        "gapWu": 0.570155,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -12941,8 +12939,8 @@
       },
       "bytes": 8150588,
       "collider": {
-        "coverageWu": 1.245531,
-        "gapWu": 1.245531,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_gate_jump_ring",
         "kind": "proxy",
         "outline": [
@@ -13096,7 +13094,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 9.565675,
-        "gapWu": 1.245531,
+        "gapWu": 0,
         "mouthBearingDeg": 0,
         "primitiveCount": 5,
         "primitives": [
@@ -13536,8 +13534,8 @@
       },
       "bytes": 10868,
       "collider": {
-        "coverageWu": 0.914111,
-        "gapWu": 0.914111,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_breakaway_fork",
         "kind": "proxy",
         "outline": [
@@ -13664,7 +13662,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 7.020371,
-        "gapWu": 0.914111,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 19,
         "primitives": [
@@ -14585,8 +14583,8 @@
       },
       "bytes": 7113496,
       "collider": {
-        "coverageWu": 0.674548,
-        "gapWu": 0.674548,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_base",
         "kind": "proxy",
         "outline": [
@@ -14705,7 +14703,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.115235,
-        "gapWu": 0.674548,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -14990,8 +14988,8 @@
       },
       "bytes": 7686812,
       "collider": {
-        "coverageWu": 0.723388,
-        "gapWu": 0.723388,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_bastion",
         "kind": "proxy",
         "outline": [
@@ -15110,7 +15108,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.555621,
-        "gapWu": 0.723388,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 18,
         "primitives": [
@@ -15346,8 +15344,8 @@
       },
       "bytes": 1575280,
       "collider": {
-        "coverageWu": 0.812778,
-        "gapWu": 0.812778,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_catcher",
         "kind": "proxy",
         "outline": [
@@ -15466,7 +15464,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 6.242132,
-        "gapWu": 0.812778,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 10,
         "primitives": [
@@ -15646,8 +15644,8 @@
       },
       "bytes": 1462828,
       "collider": {
-        "coverageWu": 0.922168,
-        "gapWu": 0.922168,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_fence",
         "kind": "proxy",
         "outline": [
@@ -15766,7 +15764,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 6.644827,
-        "gapWu": 0.922168,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 15,
         "primitives": [
@@ -15981,8 +15979,8 @@
       },
       "bytes": 8180092,
       "collider": {
-        "coverageWu": 0.680387,
-        "gapWu": 0.680387,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_refinery",
         "kind": "proxy",
         "outline": [
@@ -16101,7 +16099,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.225369,
-        "gapWu": 0.680387,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -16372,8 +16370,8 @@
       },
       "bytes": 3338672,
       "collider": {
-        "coverageWu": 0.854452,
-        "gapWu": 0.854452,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_claim_outpost_relay",
         "kind": "proxy",
         "outline": [
@@ -16492,7 +16490,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 6.473677,
-        "gapWu": 0.854452,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -17114,7 +17112,7 @@
       "bytes": 27592,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.847311,
+        "gapWu": 0.875339,
         "id": "skin:place_comms_array",
         "kind": "proxy",
         "outline": [
@@ -17144,7 +17142,7 @@
           1.57821
         ],
         "overTolerance": false,
-        "stickWu": 0.847311,
+        "stickWu": 0.875339,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -17249,7 +17247,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.847311,
+        "gapWu": 0.875339,
         "mouthBearingDeg": null,
         "primitiveCount": 20,
         "primitives": [
@@ -17710,8 +17708,8 @@
       },
       "bytes": 4988468,
       "collider": {
-        "coverageWu": 0.570186,
-        "gapWu": 0.570186,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_conveyor_barge",
         "kind": "proxy",
         "outline": [
@@ -17862,7 +17860,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 4.37903,
-        "gapWu": 0.570186,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 22,
         "primitives": [
@@ -18883,8 +18881,8 @@
       },
       "bytes": 8865692,
       "collider": {
-        "coverageWu": 0.321936,
-        "gapWu": 0.321936,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_dock_interior",
         "kind": "proxy",
         "outline": [
@@ -19059,7 +19057,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.602812,
-        "gapWu": 0.321936,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 18,
         "primitives": [
@@ -22081,7 +22079,7 @@
       "bytes": 375204,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 1.224108,
+        "gapWu": 1.269411,
         "id": "skin:place_memorial_array",
         "kind": "proxy",
         "outline": [
@@ -22111,7 +22109,7 @@
           7.434942
         ],
         "overTolerance": false,
-        "stickWu": 1.224108,
+        "stickWu": 1.269411,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -22216,7 +22214,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 1.224108,
+        "gapWu": 1.269411,
         "mouthBearingDeg": null,
         "primitiveCount": 20,
         "primitives": [
@@ -22728,7 +22726,7 @@
       "bytes": 29000,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 1.269646,
+        "gapWu": 1.311795,
         "id": "skin:place_ore_sorter",
         "kind": "proxy",
         "outline": [
@@ -22758,7 +22756,7 @@
           4.865602
         ],
         "overTolerance": false,
-        "stickWu": 1.269646,
+        "stickWu": 1.311795,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -22855,7 +22853,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 1.269646,
+        "gapWu": 1.311795,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -23652,7 +23650,7 @@
       "bytes": 31804,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 1.09148,
+        "gapWu": 1.211284,
         "id": "skin:place_pirate_sensor_mast",
         "kind": "proxy",
         "outline": [
@@ -23682,7 +23680,7 @@
           0
         ],
         "overTolerance": false,
-        "stickWu": 1.09148,
+        "stickWu": 1.211284,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -23795,7 +23793,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 1.09148,
+        "gapWu": 1.211284,
         "mouthBearingDeg": null,
         "primitiveCount": 11,
         "primitives": [
@@ -23935,7 +23933,7 @@
       "bytes": 22732,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0,
+        "gapWu": 0.083867,
         "id": "skin:place_power_skid",
         "kind": "proxy",
         "outline": [
@@ -23965,7 +23963,7 @@
           4.126319
         ],
         "overTolerance": false,
-        "stickWu": 0,
+        "stickWu": 0.083867,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -24078,7 +24076,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0,
+        "gapWu": 0.083867,
         "mouthBearingDeg": null,
         "primitiveCount": 24,
         "primitives": [
@@ -24317,7 +24315,7 @@
       "bytes": 25216,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.186764,
+        "gapWu": 0.287693,
         "id": "skin:place_power_skid_patched",
         "kind": "proxy",
         "outline": [
@@ -24347,7 +24345,7 @@
           4.126319
         ],
         "overTolerance": false,
-        "stickWu": 0.186764,
+        "stickWu": 0.287693,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -24460,7 +24458,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.186764,
+        "gapWu": 0.287693,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -29276,8 +29274,8 @@
       },
       "bytes": 155952,
       "collider": {
-        "coverageWu": 1.643167,
-        "gapWu": 1.643167,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:var_station_trade_hub_free_overlay_v01",
         "kind": "proxy",
         "outline": [
@@ -29372,7 +29370,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 9.251065,
-        "gapWu": 1.643167,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 8,
         "primitives": [
@@ -29481,8 +29479,8 @@
       },
       "bytes": 83644,
       "collider": {
-        "coverageWu": 2.027192,
-        "gapWu": 2.027192,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:var_station_trade_hub_mts_overlay_v01",
         "kind": "proxy",
         "outline": [
@@ -29585,7 +29583,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 11.172485,
-        "gapWu": 2.027192,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
         "primitives": [
@@ -29785,8 +29783,8 @@
       },
       "bytes": 75588,
       "collider": {
-        "coverageWu": 0.966394,
-        "gapWu": 0.966394,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:var_station_trade_hub_scn_overlay_v01",
         "kind": "proxy",
         "outline": [
@@ -29897,7 +29895,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 7.42191,
-        "gapWu": 0.966394,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 3,
         "primitives": [
@@ -29971,8 +29969,8 @@
       },
       "bytes": 884292,
       "collider": {
-        "coverageWu": 0.280573,
-        "gapWu": 0.280573,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_atlas",
         "kind": "proxy",
         "outline": [
@@ -30158,7 +30156,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.290902,
-        "gapWu": 0.280573,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -30475,8 +30473,8 @@
       },
       "bytes": 495116,
       "collider": {
-        "coverageWu": 0.018454,
-        "gapWu": 0.018454,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_bastion",
         "kind": "proxy",
         "outline": [
@@ -30678,7 +30676,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.436774,
-        "gapWu": 0.018454,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -30995,8 +30993,8 @@
       },
       "bytes": 654960,
       "collider": {
-        "coverageWu": 0.353045,
-        "gapWu": 0.353045,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_colossus",
         "kind": "proxy",
         "outline": [
@@ -31166,7 +31164,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.50327,
-        "gapWu": 0.353045,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -31981,8 +31979,8 @@
       },
       "bytes": 2947040,
       "collider": {
-        "coverageWu": 0.035855,
-        "gapWu": 0.035855,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_hawser",
         "kind": "proxy",
         "outline": [
@@ -32109,7 +32107,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.387115,
-        "gapWu": 0.035855,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -32882,8 +32880,8 @@
       },
       "bytes": 509784,
       "collider": {
-        "coverageWu": 0.148071,
-        "gapWu": 0.148071,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_ironback",
         "kind": "proxy",
         "outline": [
@@ -33053,7 +33051,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.687035,
-        "gapWu": 0.148071,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -33930,8 +33928,8 @@
       },
       "bytes": 645736,
       "collider": {
-        "coverageWu": 0.638797,
-        "gapWu": 0.638797,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_leviathan",
         "kind": "proxy",
         "outline": [
@@ -33995,9 +33993,9 @@
         "lod2": true,
         "outlineDeltaWu": {
           "lod1": 0.039594,
-          "lod2": 10.300104
+          "lod2": 0.018565
         },
-        "overTolerance": true,
+        "overTolerance": false,
         "toleranceWu": 4
       },
       "materials": [
@@ -34101,7 +34099,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 4.905963,
-        "gapWu": 0.638797,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -34284,9 +34282,7 @@
         "silhouetteRadius": 40.883026,
         "toleranceWu": 4.905963
       },
-      "reasons": [
-        "lod-outline"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 0,
         "inwardFaceFraction": 0.35325,
@@ -34385,7 +34381,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 56910,
       "url": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb",
@@ -34420,8 +34416,8 @@
       },
       "bytes": 567680,
       "collider": {
-        "coverageWu": 0.040358,
-        "gapWu": 0.040358,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_mule",
         "kind": "proxy",
         "outline": [
@@ -34607,7 +34603,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.153511,
-        "gapWu": 0.040358,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -35924,8 +35920,8 @@
       },
       "bytes": 719892,
       "collider": {
-        "coverageWu": 0.150362,
-        "gapWu": 0.150362,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:ship_warden",
         "kind": "proxy",
         "outline": [
@@ -36119,7 +36115,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2.876335,
-        "gapWu": 0.150362,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -36933,7 +36929,7 @@
       "bytes": 17204,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.307896,
+        "gapWu": 0.357653,
         "id": "skin:place_cargo_pod_hazmat",
         "kind": "proxy",
         "outline": [
@@ -36963,7 +36959,7 @@
           1.138017
         ],
         "overTolerance": false,
-        "stickWu": 0.307896,
+        "stickWu": 0.357653,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -37060,7 +37056,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.307896,
+        "gapWu": 0.357653,
         "mouthBearingDeg": null,
         "primitiveCount": 20,
         "primitives": [
@@ -37507,7 +37503,7 @@
       "bytes": 21524,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 1.234608,
+        "gapWu": 1.331169,
         "id": "skin:place_cargo_pod_standard_breached",
         "kind": "proxy",
         "outline": [
@@ -37537,7 +37533,7 @@
           3.065434
         ],
         "overTolerance": false,
-        "stickWu": 1.234608,
+        "stickWu": 1.331169,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -37634,7 +37630,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 1.234608,
+        "gapWu": 1.331169,
         "mouthBearingDeg": null,
         "primitiveCount": 18,
         "primitives": [
@@ -40383,8 +40379,8 @@
       },
       "bytes": 0,
       "collider": {
-        "coverageWu": 2.414737,
-        "gapWu": 2.414737,
+        "coverageWu": 2.254319,
+        "gapWu": 2.254319,
         "id": null,
         "kind": "ball",
         "outline": [
@@ -40414,7 +40410,7 @@
           12.955283
         ],
         "overTolerance": true,
-        "stickWu": 0.158638,
+        "stickWu": 0.319056,
         "toleranceWu": 2
       },
       "drawScale": 12,
@@ -43171,8 +43167,8 @@
       },
       "bytes": 7632344,
       "collider": {
-        "coverageWu": 1.435092,
-        "gapWu": 1.435092,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_blackmarket",
         "kind": "proxy",
         "outline": [
@@ -43307,7 +43303,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 8.130494,
-        "gapWu": 1.435092,
+        "gapWu": 0,
         "mouthBearingDeg": 67.5,
         "primitiveCount": 21,
         "primitives": [
@@ -43532,8 +43528,8 @@
       },
       "bytes": 7233748,
       "collider": {
-        "coverageWu": 1.34656,
-        "gapWu": 1.34656,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_fab",
         "kind": "proxy",
         "outline": [
@@ -43668,7 +43664,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 8.111639,
-        "gapWu": 1.34656,
+        "gapWu": 0,
         "mouthBearingDeg": 187.5,
         "primitiveCount": 9,
         "primitives": [
@@ -43809,8 +43805,8 @@
       },
       "bytes": 4459728,
       "collider": {
-        "coverageWu": 2.053923,
-        "gapWu": 2.053923,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_military",
         "kind": "proxy",
         "outline": [
@@ -44001,7 +43997,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 10.717471,
-        "gapWu": 2.053923,
+        "gapWu": 0,
         "mouthBearingDeg": 277.5,
         "primitiveCount": 21,
         "primitives": [
@@ -44226,8 +44222,8 @@
       },
       "bytes": 7482876,
       "collider": {
-        "coverageWu": 1.702357,
-        "gapWu": 1.702357,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_mining",
         "kind": "proxy",
         "outline": [
@@ -44362,7 +44358,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 10.257664,
-        "gapWu": 1.702357,
+        "gapWu": 0,
         "mouthBearingDeg": 292.5,
         "primitiveCount": 21,
         "primitives": [
@@ -44587,8 +44583,8 @@
       },
       "bytes": 5725268,
       "collider": {
-        "coverageWu": 2.02465,
-        "gapWu": 2.02465,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_refinery",
         "kind": "proxy",
         "outline": [
@@ -44723,7 +44719,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 10.58599,
-        "gapWu": 2.02465,
+        "gapWu": 0,
         "mouthBearingDeg": 232.5,
         "primitiveCount": 20,
         "primitives": [
@@ -44941,8 +44937,8 @@
       },
       "bytes": 6965856,
       "collider": {
-        "coverageWu": 1.828261,
-        "gapWu": 1.828261,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_research",
         "kind": "proxy",
         "outline": [
@@ -45069,7 +45065,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 11.034791,
-        "gapWu": 1.828261,
+        "gapWu": 0,
         "mouthBearingDeg": 322.5,
         "primitiveCount": 21,
         "primitives": [
@@ -45294,8 +45290,8 @@
       },
       "bytes": 82073572,
       "collider": {
-        "coverageWu": 2.134601,
-        "gapWu": 2.134601,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_station_trade_hub",
         "kind": "proxy",
         "outline": [
@@ -45510,7 +45506,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 11.055006,
-        "gapWu": 2.134601,
+        "gapWu": 0,
         "mouthBearingDeg": 322.5,
         "primitiveCount": 21,
         "primitives": [
@@ -49496,7 +49492,7 @@
       "bytes": 2781868,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.522356,
+        "gapWu": 0.736116,
         "id": "skin:traffic:prospector",
         "kind": "proxy",
         "outline": [
@@ -49526,7 +49522,7 @@
           11.166616
         ],
         "overTolerance": false,
-        "stickWu": 0.522356,
+        "stickWu": 0.736116,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -49623,7 +49619,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.522356,
+        "gapWu": 0.736116,
         "mouthBearingDeg": null,
         "primitiveCount": 24,
         "primitives": [
@@ -54508,7 +54504,7 @@
       "bytes": 30712,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.120578,
+        "gapWu": 0.228536,
         "id": "skin:place_aftermath_aft_dock_collar",
         "kind": "proxy",
         "outline": [
@@ -54538,7 +54534,7 @@
           6.044862
         ],
         "overTolerance": false,
-        "stickWu": 0.120578,
+        "stickWu": 0.228536,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -54635,7 +54631,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.120578,
+        "gapWu": 0.228536,
         "mouthBearingDeg": null,
         "primitiveCount": 16,
         "primitives": [
@@ -57400,8 +57396,8 @@
       },
       "bytes": 31692,
       "collider": {
-        "coverageWu": 0.220069,
-        "gapWu": 0.220069,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_deb_ore_freighter_ring_span",
         "kind": "proxy",
         "outline": [
@@ -57512,7 +57508,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.016766,
-        "gapWu": 0.220069,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 10,
         "primitives": [
@@ -58405,7 +58401,7 @@
       "bytes": 8108,
       "collider": {
         "coverageWu": 0,
-        "gapWu": 0.190436,
+        "gapWu": 0.197669,
         "id": "skin:place_aftermath_frag_plate_curl",
         "kind": "proxy",
         "outline": [
@@ -58435,7 +58431,7 @@
           1.528554
         ],
         "overTolerance": false,
-        "stickWu": 0.190436,
+        "stickWu": 0.197669,
         "throatSealed": false,
         "toleranceWu": 2,
         "worstSize": null
@@ -58500,7 +58496,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 2,
-        "gapWu": 0.190436,
+        "gapWu": 0.197669,
         "mouthBearingDeg": null,
         "primitiveCount": 12,
         "primitives": [
@@ -59083,8 +59079,8 @@
       },
       "bytes": 53756,
       "collider": {
-        "coverageWu": 0.579442,
-        "gapWu": 0.579442,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_corvette_engine",
         "kind": "proxy",
         "outline": [
@@ -59243,7 +59239,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 4.450113,
-        "gapWu": 0.579442,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 15,
         "primitives": [
@@ -59418,8 +59414,8 @@
       },
       "bytes": 93088,
       "collider": {
-        "coverageWu": 0.810469,
-        "gapWu": 0.810469,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_corvette_forward",
         "kind": "proxy",
         "outline": [
@@ -59594,7 +59590,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.387056,
-        "gapWu": 0.810469,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 12,
         "primitives": [
@@ -59764,8 +59760,8 @@
       },
       "bytes": 101480,
       "collider": {
-        "coverageWu": 0.810469,
-        "gapWu": 0.810469,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_corvette_forward__fresh",
         "kind": "proxy",
         "outline": [
@@ -59964,7 +59960,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.387056,
-        "gapWu": 0.810469,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 12,
         "primitives": [
@@ -60134,8 +60130,8 @@
       },
       "bytes": 47180,
       "collider": {
-        "coverageWu": 0.698375,
-        "gapWu": 0.698375,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_corvette_forward__stripped_heavy",
         "kind": "proxy",
         "outline": [
@@ -60278,7 +60274,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.363521,
-        "gapWu": 0.698375,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 14,
         "primitives": [
@@ -60770,8 +60766,8 @@
       },
       "bytes": 881832,
       "collider": {
-        "coverageWu": 0.249182,
-        "gapWu": 0.249182,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_liner_boatbay_authored_down",
         "kind": "proxy",
         "outline": [
@@ -60890,7 +60886,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.323742,
-        "gapWu": 0.249182,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 16,
         "primitives": [
@@ -61072,8 +61068,8 @@
       },
       "bytes": 787740,
       "collider": {
-        "coverageWu": 0.494265,
-        "gapWu": 0.494265,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_liner_bow_authored_down",
         "kind": "proxy",
         "outline": [
@@ -61184,7 +61180,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 4.186448,
-        "gapWu": 0.494265,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 18,
         "primitives": [
@@ -61380,8 +61376,8 @@
       },
       "bytes": 81128,
       "collider": {
-        "coverageWu": 0.715386,
-        "gapWu": 0.715386,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_liner_drum",
         "kind": "proxy",
         "outline": [
@@ -61532,7 +61528,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.494161,
-        "gapWu": 0.715386,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 15,
         "primitives": [
@@ -61715,8 +61711,8 @@
       },
       "bytes": 40336,
       "collider": {
-        "coverageWu": 0.762163,
-        "gapWu": 0.762163,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_liner_drum__derelict",
         "kind": "proxy",
         "outline": [
@@ -61843,7 +61839,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.476565,
-        "gapWu": 0.762163,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 15,
         "primitives": [
@@ -62026,8 +62022,8 @@
       },
       "bytes": 86600,
       "collider": {
-        "coverageWu": 0.715386,
-        "gapWu": 0.715386,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_aftermath_wreck_liner_drum__fresh",
         "kind": "proxy",
         "outline": [
@@ -62194,7 +62190,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 5.494161,
-        "gapWu": 0.715386,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 15,
         "primitives": [
@@ -63900,8 +63896,8 @@
       },
       "bytes": 1805264,
       "collider": {
-        "coverageWu": 0.521604,
-        "gapWu": 0.521604,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_ceres_bait_wreck",
         "kind": "proxy",
         "outline": [
@@ -64036,7 +64032,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 4.207769,
-        "gapWu": 0.521604,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 23,
         "primitives": [
@@ -64591,8 +64587,8 @@
       },
       "bytes": 1944652,
       "collider": {
-        "coverageWu": 0.299649,
-        "gapWu": 0.299649,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": "skin:place_dead_hulk",
         "kind": "proxy",
         "outline": [
@@ -64735,7 +64731,7 @@
         "adopted": true,
         "capped": false,
         "cellWu": 3.301659,
-        "gapWu": 0.299649,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 25,
         "primitives": [
@@ -65362,10 +65358,10 @@
       },
       "bytes": 7563260,
       "collider": {
-        "coverageWu": 309.608209,
-        "gapWu": 309.608209,
-        "id": null,
-        "kind": "none",
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:place_landmark_wreck_cathedral",
+        "kind": "proxy",
         "outline": [
           286.896794,
           287.309913,
@@ -65392,7 +65388,7 @@
           259.654101,
           309.608209
         ],
-        "overTolerance": true,
+        "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
         "toleranceWu": 37.152985,
@@ -65409,8 +65405,8 @@
       "frozenMesh": false,
       "gameplay": {
         "ballFactor": null,
-        "colliderId": null,
-        "colliderKind": "none",
+        "colliderId": "skin:place_landmark_wreck_cathedral",
+        "colliderKind": "proxy",
         "dockRadius": null,
         "entityRadius": 12,
         "proportions": null,
@@ -65503,10 +65499,10 @@
         -12.999469
       ],
       "proposedSkin": {
-        "adopted": false,
+        "adopted": true,
         "capped": false,
         "cellWu": 37.152985,
-        "gapWu": 8.249406,
+        "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 22,
         "primitives": [
@@ -65668,9 +65664,7 @@
         "silhouetteRadius": 309.608209,
         "toleranceWu": 37.152985
       },
-      "reasons": [
-        "collider-gap"
-      ],
+      "reasons": [],
       "shell": {
         "boundaryEdges": 544,
         "inwardFaceFraction": 0.452,
@@ -65705,7 +65699,7 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 253652,
       "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",

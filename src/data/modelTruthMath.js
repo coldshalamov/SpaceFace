@@ -221,16 +221,34 @@ export function ballPrimitives(radius) {
   return [{ kind: 'circle', id: 'ball', x: 0, z: 0, r }];
 }
 
+function rayCircleOuter(directionX, directionZ, circle) {
+  const cx = circle.x;
+  const cz = circle.z;
+  const b = directionX * cx + directionZ * cz;
+  const c = cx * cx + cz * cz - circle.r * circle.r;
+  const disc = b * b - c;
+  if (disc < 0) return 0;
+  const root = Math.sqrt(disc);
+  const far = b + root;
+  return far > 0 ? far : 0;
+}
+
 export function colliderRadiusAt(angle, primitives, maxRadius) {
-  const cap = Math.max(1, maxRadius * 1.35);
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  // Shells are hollow, so "inside" is not a prefix of the ray. Sample the ray.
-  const steps = 48;
+  const directionX = Math.cos(angle);
+  const directionZ = Math.sin(angle);
   let outer = 0;
+  let needsSample = false;
+  for (const primitive of primitives || []) {
+    if (primitive.kind === 'circle') {
+      outer = Math.max(outer, rayCircleOuter(directionX, directionZ, primitive));
+    } else needsSample = true;
+  }
+  if (!needsSample) return outer;
+  const cap = Math.max(1, (maxRadius || outer || 1) * 1.35, outer);
+  const steps = 96;
   for (let i = 0; i <= steps; i += 1) {
     const radius = (cap * i) / steps;
-    if (skinContains(c * radius, s * radius, primitives)) outer = radius;
+    if (skinContains(directionX * radius, directionZ * radius, primitives)) outer = Math.max(outer, radius);
   }
   return outer;
 }
