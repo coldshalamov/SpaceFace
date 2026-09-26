@@ -185,6 +185,7 @@ export function classifySessionSink(reason) {
   if (r === 'service:repair' || r === 'beam:repair') return 'repair';
   if (r === 'fine:contraband' || r.startsWith('fine:')) return 'fine';
   if (r === 'service:insurance' || r === 'recovery:deductible') return 'insurance';
+  if (r === 'recovery:hull_share') return 'repair';
   if (r === 'restitution' || r.startsWith('restitution:')) return 'restitution';
   if (r === 'impound:pay' || r.startsWith('impound:')) return 'impound';
   return null;

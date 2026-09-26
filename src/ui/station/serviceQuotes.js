@@ -421,6 +421,20 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'insurance') {
+    // Ironman permadeath returns before the recovery path — no charge ever occurs, so a
+    // policy can never pay. Say so instead of selling a strict no-op.
+    const difficulty = state && state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    if (difficulty === 'ironman') {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: 'Permadeath — there is no recovery for a policy to cover.',
+        buttonLabel: 'Purchase',
+        disabled: true,
+        disabledReason: 'ironman runs have no recovery to insure',
+        chips: [{ text: 'no-op on ironman', kind: 'bad' }],
+      };
+    }
     // No policy on file prices exactly what the purchase click will charge: the lazy write
     // seeds INSURANCE_DEFAULTS before debiting, so quoting `{}` would promise a free 0-cr
     // deductible the click does not deliver.
@@ -462,7 +476,9 @@ export function serviceQuote(type, state, entity) {
       chips: disabled
         ? [{ text: fmtCr(deductible) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(deductible - credits) + ' cr', kind: 'bad' }]
         : [{ text: fmtCr(deductible) + ' cr', kind: 'cost' },
-           ...(quote.starter ? [] : [{ text: 'saves ' + fmtCr(quote.coveredCostCr) + ' cr/loss', kind: 'gain' }]),
+           ...(quote.starter || quote.coveredCostCr <= 0
+             ? []
+             : [{ text: 'saves ' + fmtCr(quote.coveredCostCr) + ' cr/loss', kind: 'gain' }]),
            afterCreditsChip(credits, deductible)],
     };
   }

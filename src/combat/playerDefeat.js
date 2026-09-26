@@ -262,6 +262,7 @@ export function buildRecoveryPlan(state, playerEntity) {
     costCr,
     quotedCostCr,
     hardshipCoveredCr,
+    insured,
     insuranceRate: rate,
     insuranceStatus: (ship && ship.tier === 0
       ? `STARTER RECOVERY · ${deductible.toLocaleString('en-US')} CR DEDUCTIBLE`

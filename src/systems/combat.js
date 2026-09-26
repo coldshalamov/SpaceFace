@@ -832,7 +832,12 @@ export const combat = {
         cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
       }
       if (plan.costCr > 0) {
-        this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: 'recovery:deductible' });
+        // An uninsured recovery is a hull share, not a deductible — the session ledger
+        // would otherwise file a 6,000-cr uninsured charge under 'insurance'.
+        this.bus.emit('economy:chargeCredits', {
+          amount: plan.costCr,
+          reason: plan.insured ? 'recovery:deductible' : 'recovery:hull_share',
+        });
       }
 
       this._pendingPlayerRecovery = null;
