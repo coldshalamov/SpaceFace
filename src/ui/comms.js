@@ -278,6 +278,12 @@ export function createComms(ctx) {
     traceFactionId = resolveCommsFactionId(payload, state, traceFactionId);
     pushComms(payload);
   });
+  // Traffic uses this event only after routing a message to the player. Keep it on the existing
+  // capped/queued comms surface instead of mirroring it into transient HUD toasts.
+  listen('comms:message', (payload) => {
+    if (!payload || typeof payload.text !== 'string' || !payload.text.trim()) return;
+    pushComms({ sender: payload.sender || 'TRAFFIC', text: payload.text, category: 'personal' });
+  });
   listen('scenario:dialogueLine', (payload) => {
     const comms = scenarioDialogueCommsPayload(payload || {});
     if (comms) pushComms(comms, { bypassAttentionGate: true });
