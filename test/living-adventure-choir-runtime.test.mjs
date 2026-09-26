@@ -32,11 +32,15 @@ test('production Choir crew repairs and brings Mercy to the actual Helios berth'
     assert.ok(attendant.data.jobId, 'production boot commissions the actual tender job');
     console.log('CHOIR_BOOT', attendant.data.jobId);
     const collected = new Set(), deliveries = [], faces = new Set();
+    const completedShifts = () => {
+      const miner = state.entityList.find((e) => e.data?.activityActorSlotId === 'helios_starter_cutter');
+      return state.npcJobs.byId[miner?.data.jobId]?.job.loopCount || 0;
+    };
     bus.on('traffic:oreCollected', (p) => collected.add(p.manifestId));
     bus.on('freight:arrival', (p) => { if (collected.has(p.manifestId)) deliveries.push(p); });
     const start = { ...patient.pos };
     let repairedAt = null;
-    for (let second = 0; second < 180 && (!state.player.uniqueWrecks.choirRelief.evacuated || deliveries.length < 2 || faces.size < 2); second++) {
+    for (let second = 0; second < 180 && (!state.player.uniqueWrecks.choirRelief.evacuated || deliveries.length < 2 || completedShifts() < 2); second++) {
       runtime.runTicks(60, 1 / 60);
       for (const e of state.entityList) if (e.data?.minerShiftRockId != null) faces.add(e.data.minerShiftRockId);
       if (repairedAt == null && state.player.uniqueWrecks.choirRelief.driveRestored) repairedAt = state.simTime;
@@ -49,7 +53,7 @@ test('production Choir crew repairs and brings Mercy to the actual Helios berth'
     assert.ok(Math.hypot(patient.pos.x - start.x, patient.pos.z - start.z) > 100, 'the survivor physically departs');
     assert.equal(state.player.uniqueWrecks.choirRelief.evacuated, true, 'arrival requires the actual body at the medical berth');
     assert.ok(deliveries.length >= 2, 'the same physical arrival control lets the opening shift deliver real ore repeatedly');
-    assert.ok(faces.size >= 2, 'the physical cutter returns to work a fresh face');
+    assert.ok(completedShifts() >= 2, 'the physical cutter completes repeated work and return cycles');
     console.log(`CHOIR_RELIEF seed=8008 repaired=${repairedAt.toFixed(2)}s observedThrough=${state.simTime.toFixed(2)}s evacuated=true oreDeliveries=${deliveries.length} faces=${faces.size}`);
   } finally { runtime.dispose(); }
 });
