@@ -172,7 +172,7 @@ ${CX} .cx-ladder .k-row .cx-code { color:rgb(${BONE} / .86); }
 ${CX} .cx-filed { color:rgb(252 250 244); }
 
 /* ---- the reading: one column, wrapped to meet the plate ---- */
-${CX} > .k-stage { ${PLAIN} padding:0 0 26px !important; overflow:hidden auto; }
+${CX} > .k-stage { ${PLAIN} padding:0 0 26px 14px !important; margin-left:-14px !important; overflow:hidden auto; }
 ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(28px, 3vw, 64px)) !important; }
 ${CX} > .k-stage { display:flex !important; flex-direction:column; }
 ${CX} .sf-codex-entry { ${PLAIN} position:relative; display:block !important; max-width:none !important; min-height:0 !important; padding:0 !important; margin:0 !important; color:${INK}; }
@@ -433,7 +433,7 @@ ${ML} .ml-trace__bead { position:absolute; left:6px; top:-8px; width:16px; heigh
 ${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced::before { background:radial-gradient(circle, rgb(8 10 13) 0 4.2px, rgb(223 238 255) 4.5px 7px, rgb(8 10 13 / 0) 7.3px) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__name { color:rgb(255 255 255) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__sub { color:rgb(${BONE} / .86) !important; }
-${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__sub.k-bad { color:var(--dp-danger, #ff5038) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__sub.k-bad { color:rgb(255 112 92) !important; }
 ${ML} > .k-hang.sf-mlog-body { cursor:default; }
 ${RML} .ml-trace::after { animation:none !important; display:none; }
 ${ML} .orr-mdial__pct .orr-mdial__num.orr-counter { height:.9em; line-height:.9; }
@@ -462,7 +462,7 @@ ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__name { ${BODY} display:inline; fo
 ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] .k-row__name { color:rgb(252 250 244) !important; font-weight:600 !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 255 255) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.4 !important; color:rgb(${BONE} / .72) !important; }
-${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub.k-bad { color:var(--dp-danger, #ff5038) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub.k-bad { color:rgb(255 112 92) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__num { ${PLAIN} min-height:0 !important; padding:1px 0 0 !important; display:block !important;
   font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 480 !important; font-weight:480 !important; font-size:14px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(223 238 255) !important; font-variant-numeric:tabular-nums; }
