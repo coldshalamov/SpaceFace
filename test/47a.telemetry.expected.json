@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "2c2007a157ecd52e1ce43dacf5e021d3aaa8d41bd9ce082716c731f4c785722b",
+    "authoritativeHash": "e1e77328792bfee15f7a4465758da568456a0901d307e875fe8f04879bc2742f",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -155,7 +155,7 @@
     "000b6ff05 imported src/data/encounters/mega-heist.js but the file only landed at dcb805e49, so sim-golden-diff's default --ref crashes; the oldest cleanly-exportable reproducer of 82d9de5c is dcb805e49. Pass --ref explicitly.",
     "Recorded against a clean git-archive export of HEAD 11b64303f. The uncommitted capital-boss/finale lane in the primary working tree moves this hash and re-records when it lands.",
     "Repeat-20 and reload@600 are deterministic. The V3 envelope re-records in the same commit against the same two commits and the same verdict.",
-    "2026-09-22 deliberate re-record over eaa817447..worktree. The prior authoritativeHash was e2d355ca18264842fece43568ba5c6872ff2d642809a09185bad722cd5911118.",
+    "2026-09-25 deliberate re-record over eaa817447..worktree. The prior authoritativeHash was e2d355ca18264842fece43568ba5c6872ff2d642809a09185bad722cd5911118.",
     "sim-golden-diff --ref eaa817447 reproduces the prior hash exactly, so the previous envelope was correct and the harness is deterministic.",
     "Evidence: VERDICT CONTENT_ONLY, 32 snapshot fields moved (22 $.entities[], 4 $.economy, 3 $.story, 1 $.entities, 1 $.physics, 1 $.player).",
     "ZERO entity pos/vel/rot/angVel/prevPos fields changed after 720 ticks and no event trace count moved, so phase0ObservedTraceCounts is unchanged. This papers over no physics regression.",
@@ -166,6 +166,15 @@
     "Recorded against the working tree; the constituent lanes may land in separate commits.",
     "2026-09-22 count re-pin (D46 tether-cue repair): tether.near_break is restored to the legacy 47-A path — LEGACY_47A_MASSLINE_BREAK returns to 140/90 after the +25% sweep raised the warn band above the authored ~119 peak.",
     "phase0ObservedTraceCounts +1 per restored fan-out lane: camera:shake 1->2, cameraCue 1->2, vfxCue 2->3, audioCue 2->3, uiCue 2->3, caption 2->3, cueApplied 6->7, cue 6->7, audio:cue 3->4.",
-    "authoritativeHash unchanged at 2c2007a: warning bookkeeping is not hashed physics — zero motion fields moved. Evidence: check-sg05-runtime.mjs commits tether.near_break to this run."
+    "authoritativeHash unchanged at 2c2007a: warning bookkeeping is not hashed physics — zero motion fields moved. Evidence: check-sg05-runtime.mjs commits tether.near_break to this run.",
+    "2026-09-25 deliberate re-record over 9d957b603 (clean HEAD worktree). The prior authoritativeHash was 2c2007a157ecd52e1ce43dacf5e021d3aaa8d41bd9ce082716c731f4c785722b.",
+    "Bisected causal record — net drift vs prior golden is 51135a97d (The Mercenary Outpost becomes a real camp — adds station_io_merc to src/data/sectors.js).",
+    "51135a97d: per-tick snapshots identical through tick 300; first divergence at tick 301 and only in $.economy (rngSeed 3815412143 vs 4191483025, plus cycles/markets).",
+    "Entities and physics bodies identical at tick 720 in both flight modes; removing station_io_merc on the fixed tree reproduces the exact prior goldens.",
+    "Window history: 6ff452c31 (Measure live hulls) moved this hash transiently — a uniform ~(-5.1,+1.45) remeasured-hull translation across $.entities[10..22]; 9d957b603 then restored the recorded flight path and the hash returned to this value.",
+    "The V3 envelope never moved in the window (identical at a394b7483, 9c3dab1f1 and 9d957b603); the legacy envelope carries the full signature.",
+    "d225c6222 (ships keep their own colliders) repaired the measured-skin collider bug from ad1f92053/4f102db53 that had broken reload determinism; reload@600 reproduces the uninterrupted hash exactly.",
+    "Evidence on the fixed tree at 9d957b603: repeat-20 deterministic; check:sim:compare reports hashEqual with zero envelope diffs — zero phase0ObservedTraceCounts moved.",
+    "Recorded against a clean HEAD worktree; the dirty primary tree carries foreign lanes that move this hash and is excluded."
   ]
 }
