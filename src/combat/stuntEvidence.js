@@ -323,13 +323,21 @@ export function evidenceForConsequence(receipt, state = activeState) {
   if (!root) return null;
   return structuredClone({ revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null });
 }
-export function pruneEvidence(state, tick) {
+export function pruneEvidence(state, tick, livesSweepEvery = 1) {
   const j = journalFor(state); if (!j) return;
   for (const [id,r] of j.roots) if (tick-r.tick > 480 || tick < r.tick) j.roots.delete(id);
   for (const [id,b] of j.bodies) if (!j.roots.has(b.rootId)) j.bodies.delete(id);
   for (const [id,c] of j.contacts) if (tick-c.tick > 180) j.contacts.delete(id);
   for (const [id,c] of j.constraints) if (!c.attached && tick-c.lastTick > 480) j.constraints.delete(id);
-  for (const [id,l] of j.lives) if (state.entities?.get?.(l.entity.id)!==l.entity && !j.bodies.has(l.id)) j.lives.delete(id);
+  // `lives` is the one unbounded scan here — a long fight accrues a record per body that ever
+  // entered an observation, and the sweep re-reads every one of those entity ids per tick
+  // (PQ-210.01 Crucible CPU profile). The per-tick caller may sweep it on a cadence instead:
+  // a live entity's record is always retained by the identity filter, a stale record is
+  // invisible to every read (bodyLife rebinds through its identity check), and the serialize
+  // path prunes with the default cadence 1 before it reads, so saves are byte-identical.
+  if (livesSweepEvery <= 1 || tick % livesSweepEvery === 0) {
+    for (const [id,l] of j.lives) if (state.entities?.get?.(l.entity.id)!==l.entity && !j.bodies.has(l.id)) j.lives.delete(id);
+  }
 }
 export function closeFieldIntervals(state,tick) {
   const j=journalFor(state);if(!j)return;

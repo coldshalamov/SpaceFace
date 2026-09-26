@@ -183,7 +183,11 @@ export const stuntGrammar={
   },
   update(_dt,state) {
     if(state.mode!=='flight')return;
-    const st=ensure(state),j=journalFor(state);pruneEvidence(state,state.tick);closeFieldIntervals(state,state.tick);
+    const st=ensure(state),j=journalFor(state);
+    // The per-tick sweep's `lives` pass is unbounded (PQ-210.01 Crucible CPU profile); sweep it
+    // every 30th sim tick. Roots/bodies/contacts/constraints stay per-tick, and the serialize
+    // path prunes at cadence 1 before it reads, so nothing observable moves.
+    pruneEvidence(state,state.tick,30);closeFieldIntervals(state,state.tick);
     for(const receipt of this.flight.update(state)) {
       if(receipt.escape.closeShave&&!receipt.stuntEvidence.root.needle) {
         recordBridge(st.combo,{kind:'close_shave',tick:receipt.tick,threatEpisodeId:receipt.escape.threatEpisodeId,preventedInterception:true});

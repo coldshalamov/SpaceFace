@@ -82,7 +82,7 @@ export class StuntFlightObserver {
         root.nodes.push({kind:'launch_retained',tick,entityId:player.id,lifeId:life.id,deltaV:Math.hypot(root.dv.x,root.dv.z),
           exitSpeed,retainedSpeed:speed,retainedTicks:tick-root.tick});
       }
-      this._gap(state,player,life,root,track,previous);
+      this._gap(state,player,life,root,track,previous,this._gapOldFrame(state));
       const escaped=distance(player.pos,track.playerPos)>=3*L&&track.maxSeparation-track.initialSeparation>=2*L
         &&tick-root.tick>=60&&this.lastDamageTick<root.tick&&this.lastContactTick<root.tick&&track.minClearance>0;
       if(!escaped)continue;
@@ -98,34 +98,70 @@ export class StuntFlightObserver {
           momentum:root.kind==='flight'?0:life.mass*Math.hypot(root.dv.x,root.dv.z)},contact:null})});
     }
     const frame={tick,pos:pt(player.pos),vel:pt(player.vel),bodies:[]};
-    for(const e of state.entities.values())if(e?.pos&&e.vel&&e.collides!==false&&e.id!==player.id&&distance(e.pos,player.pos)<L*8&&frame.bodies.length<32)
+    // Squared-range prefilter against the player position held in locals: the witness window is
+    // ~8 hull lengths, so nearly every entity in a 500-body fight fails it, and the old form paid
+    // a Math.hypot per entity per tick to learn that (PQ-210.01 Crucible CPU profile). Same
+    // selection, same entity order, same 32-body cap.
+    const nearR=L*8,nearSq=nearR*nearR,px=player.pos.x,pz=player.pos.z;
+    for(const e of state.entities.values()){
+      if(frame.bodies.length>=32)break;
+      if(!e?.pos||!e.vel||e.collides===false||e.id===player.id)continue;
+      const dx=e.pos.x-px,dz=e.pos.z-pz;
+      if(dx*dx+dz*dz>=nearSq)continue;
       frame.bodies.push({id:e.id,pos:pt(e.pos),vel:pt(e.vel),radius:e.radius??0});
+    }
     this.history.push(frame);if(this.history.length>121)this.history.shift();
     return results;
   }
-  _gap(state,player,life,root,track,previous) {
+  _gapOldFrame(state) {
+    // The reference frame depends only on the tick, so it is resolved once per update instead of
+    // once per tracked threat (the history scan was running up to 12x per tick).
+    return this.history.find(f=>f.tick<=state.tick-30&&f.tick>=state.tick-31);
+  }
+  _gap(state,player,life,root,track,previous,old) {
     if(root.needle||!previous||this.lastContactTick>=track.tick||Math.hypot(player.vel.x,player.vel.z)<1.25*life.cruise)return;
-    const old=this.history.find(f=>f.tick<=state.tick-30&&f.tick>=state.tick-31);if(!old)return;
+    if(!old)return;
     const diameter=2*life.radius,candidates=previous.bodies;
-    for(let i=0;i<candidates.length;i++)for(let k=i+1;k<candidates.length;k++) {
-      const a=state.entities.get(candidates[i].id),b=state.entities.get(candidates[k].id);
-      if(!a?.pos||!b?.pos||!a.vel||!b.vel||a.alive===false||b.alive===false||a.ownerId===player.id||b.ownerId===player.id)continue;
-      if(journalFor(state).bodies.has(bodyLife(a,state).id)||journalFor(state).bodies.has(bodyLife(b,state).id))continue;
-      const aa=old.bodies.find(e=>e.id===a.id),bb=old.bodies.find(e=>e.id===b.id);if(!aa||!bb)continue;
-      const gap=distance(a.pos,b.pos)-(a.radius??0)-(b.radius??0),prior=distance(aa.pos,bb.pos)-aa.radius-bb.radius;
-      if(gap<1.1*diameter||gap>1.6*diameter||Math.abs(prior-gap)<.2*diameter)continue;
-      if(distance(a.vel,player.vel)<.1*life.cruise||distance(b.vel,player.vel)<.1*life.cruise)continue;
-      const x=b.pos.x-a.pos.x,z=b.pos.z-a.pos.z,len2=x*x+z*z;
-      const along=((player.pos.x-a.pos.x)*x+(player.pos.z-a.pos.z)*z)/len2;
-      const side=(player.pos.x-a.pos.x)*z-(player.pos.z-a.pos.z)*x;
-      const oldSide=(previous.pos.x-candidates[i].pos.x)*(candidates[k].pos.z-candidates[i].pos.z)
-        -(previous.pos.z-candidates[i].pos.z)*(candidates[k].pos.x-candidates[i].pos.x);
-      if(along<=0||along>=1||side*oldSide>0||angleBetween(track.playerVel,player.vel)<20)continue;
-      const hit=e=>interceptSeconds({x:e.pos.x-track.playerPos.x,z:e.pos.z-track.playerPos.z},
-        {x:e.vel.x-track.playerVel.x,z:e.vel.z-track.playerVel.z},life.radius+(e.radius??0))<=3;
-      if(!hit(aa)&&!hit(bb))continue;
-      root.needle={tick:state.tick,boundaryIds:[a.id,b.id],boundaryLifeIds:[bodyLife(a,state).id,bodyLife(b,state).id],width:gap,priorWidth:prior,speed:Math.hypot(player.vel.x,player.vel.z)};
-      root.nodes.push({kind:'needle_crossing',entityId:player.id,...root.needle});return;
+    // The pair loop below used to re-fetch BOTH entities, re-key bodyLife twice and linear-scan
+    // the old frame for EVERY pair — O(n^2) entity/journal work per tick, named by the PQ-210.01
+    // Crucible CPU profile. The memo keeps the exact call order (lazy, short-circuit-preserving:
+    // bodyLife is still first touched at the same pair as before), so journal sequence numbers
+    // — which are serialized — and every observable stay identical. Pure reads throughout.
+    const bodies=journalFor(state).bodies;
+    const oldById=new Map();for(const f of old.bodies)oldById.set(f.id,f);
+    const memo=new Array(candidates.length);
+    const resolve=(i)=>{
+      let r=memo[i];
+      if(!r){
+        const ent=state.entities.get(candidates[i].id);
+        r=memo[i]={ent,ok:!!(ent?.pos&&ent.vel&&ent.alive!==false&&ent.ownerId!==player.id),lifeId:undefined,old:false};
+      }
+      return r;
+    };
+    const lifeIdOf=(r)=>{if(r.lifeId===undefined)r.lifeId=bodyLife(r.ent,state)?.id??null;return r.lifeId;};
+    const oldOf=(r)=>{if(r.old===false)r.old=oldById.get(r.ent.id);return r.old;};
+    for(let i=0;i<candidates.length;i++){
+      const ra=resolve(i);if(!ra.ok)continue;
+      for(let k=i+1;k<candidates.length;k++) {
+        const rb=resolve(k);if(!rb.ok)continue;
+        const a=ra.ent,b=rb.ent;
+        if(bodies.has(lifeIdOf(ra))||bodies.has(lifeIdOf(rb)))continue;
+        const aa=oldOf(ra),bb=oldOf(rb);if(!aa||!bb)continue;
+        const gap=distance(a.pos,b.pos)-(a.radius??0)-(b.radius??0),prior=distance(aa.pos,bb.pos)-aa.radius-bb.radius;
+        if(gap<1.1*diameter||gap>1.6*diameter||Math.abs(prior-gap)<.2*diameter)continue;
+        if(distance(a.vel,player.vel)<.1*life.cruise||distance(b.vel,player.vel)<.1*life.cruise)continue;
+        const x=b.pos.x-a.pos.x,z=b.pos.z-a.pos.z,len2=x*x+z*z;
+        const along=((player.pos.x-a.pos.x)*x+(player.pos.z-a.pos.z)*z)/len2;
+        const side=(player.pos.x-a.pos.x)*z-(player.pos.z-a.pos.z)*x;
+        const oldSide=(previous.pos.x-candidates[i].pos.x)*(candidates[k].pos.z-candidates[i].pos.z)
+          -(previous.pos.z-candidates[i].pos.z)*(candidates[k].pos.x-candidates[i].pos.x);
+        if(along<=0||along>=1||side*oldSide>0||angleBetween(track.playerVel,player.vel)<20)continue;
+        const hit=e=>interceptSeconds({x:e.pos.x-track.playerPos.x,z:e.pos.z-track.playerPos.z},
+          {x:e.vel.x-track.playerVel.x,z:e.vel.z-track.playerVel.z},life.radius+(e.radius??0))<=3;
+        if(!hit(aa)&&!hit(bb))continue;
+        root.needle={tick:state.tick,boundaryIds:[a.id,b.id],boundaryLifeIds:[bodyLife(a,state).id,bodyLife(b,state).id],width:gap,priorWidth:prior,speed:Math.hypot(player.vel.x,player.vel.z)};
+        root.nodes.push({kind:'needle_crossing',entityId:player.id,...root.needle});return;
+      }
     }
   }
   serialize(){return {revision:2,tracks:[...this.tracks],history:this.history,lastTick:this.lastTick,lastDamageTick:Number.isFinite(this.lastDamageTick)?this.lastDamageTick:null,lastContactTick:Number.isFinite(this.lastContactTick)?this.lastContactTick:null};}

@@ -45,7 +45,12 @@ let count=0;for(const entity of state.entities.values()){if(count>=8)break;if(!e
 for(const [id,row] of Object.entries(record.surfaceHistory))if(state.tick-(row.frames.at(-1)?.tick??-Infinity)>120)delete record.surfaceHistory[id];
 for(const [id,torque] of Object.entries(record.surfaceTorques||{})){const entity=state.entities.get(torque.id);if(!entity||bodyLife(entity,state)?.id!==id||state.tick-torque.tick>120){delete record.surfaceTorques[id];continue;}const turn=Math.atan2(Math.sin((entity.rot||0)-torque.lastRot),Math.cos((entity.rot||0)-torque.lastRot)),spin=entity.angVel||0;
 if(turn*torque.delta>0)torque.ownedDegrees+=Math.abs(turn)*180/Math.PI*Math.min(1,Math.abs(torque.delta)/Math.max(Math.abs(torque.after),Math.abs(spin),1e-6));torque.lastRot=entity.rot||0;}
-for(const [lifeId,shot] of Object.entries(record.shots)){const body=state.entities.get(shot.id),pending=Object.values(record.contacts).some(c=>c.projectileLife===lifeId&&!c.emitted&&state.tick-c.tick<=180);if(state.tick-shot.tick>480||(!body&&!pending)||(body&&bodyLife(body,state)?.id!==lifeId)){delete record.shots[lifeId];continue;}if(body?.alive&&state.tick>(shot.velocitySyncTick??-1)&&valid(body.vel)&&!same(body.vel,shot.expectedVelocity))shot.invalid=true;}
+// One pass over the contacts instead of a full Object.values scan PER SHOT (the O(shots x contacts)
+// product was named by the PQ-210.01 Crucible CPU profile). Same predicate, same snapshot of
+// record.contacts — the contacts map is not mutated until the loop below.
+const pendingProjectiles=new Set();
+for(const c of Object.values(record.contacts))if(!c.emitted&&state.tick-c.tick<=180)pendingProjectiles.add(c.projectileLife);
+for(const [lifeId,shot] of Object.entries(record.shots)){const body=state.entities.get(shot.id),pending=pendingProjectiles.has(lifeId);if(state.tick-shot.tick>480||(!body&&!pending)||(body&&bodyLife(body,state)?.id!==lifeId)){delete record.shots[lifeId];continue;}if(body?.alive&&state.tick>(shot.velocitySyncTick??-1)&&valid(body.vel)&&!same(body.vel,shot.expectedVelocity))shot.invalid=true;}
 for(const [id,contact] of Object.entries(record.contacts)){if(state.tick-contact.tick>180){delete record.contacts[id];continue;}if(contact.emitted||!contact.damage)continue;const target=state.entities.get(contact.targetId);if(!target||bodyLife(target,state)?.id!==contact.targetLife)continue;const tumble=readTumbleStatus(state,target);const active=tumble?.data&&tumble.applyTick>=contact.tick&&tumble.applyTick<=state.tick&&state.simTime<tumble.data.until;
 if(active){contact.helmTicks=contact.lastHelmTick===state.tick-1?(contact.helmTicks||0)+1:1;contact.lastHelmTick=state.tick;}else if(!contact.death)contact.helmTicks=0;
 if(contact.helmTicks>=60)publishConsequence(state,contact,bus);}}
